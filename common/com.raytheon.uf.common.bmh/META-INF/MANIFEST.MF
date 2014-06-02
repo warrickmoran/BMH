@@ -1,0 +1,20 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: COMMON BMH
+Bundle-SymbolicName: com.raytheon.uf.common.bmh
+Bundle-Version: 1.14.0.qualifier
+Bundle-Vendor: RAYTHEON
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Eclipse-RegisterBuddy:  com.raytheon.uf.common.serialization
+Require-Bundle: com.raytheon.uf.common.time,
+ com.raytheon.uf.common.message,
+ com.raytheon.uf.common.status,
+ com.raytheon.uf.common.util,
+ com.raytheon.uf.common.serialization,
+ com.raytheon.uf.common.serialization.comm,
+ javax.persistence
+Export-Package: com.raytheon.uf.common.bmh.datamodel.language,
+ com.raytheon.uf.common.bmh.datamodel.msg,
+ com.raytheon.uf.common.bmh.datamodel.transmitter,
+ com.raytheon.uf.common.bmh.request
+ 
