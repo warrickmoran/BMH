@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: NeoSpeech Voiceware API
+Bundle-SymbolicName: voiceware
+Bundle-Version: 3.10.6.0
+Bundle-ClassPath: neospeech.jar
+Export-Package: voiceware;version="3.10.6.0"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6

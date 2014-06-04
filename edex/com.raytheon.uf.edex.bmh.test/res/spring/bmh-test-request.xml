@@ -1,0 +1,38 @@
+<!-- Note: this spring configuration should only be used for testing & development 
+	purposes. Nothing in here will be deployed on an operational system. -->
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+	<!-- TODO: Rename file once bmh has its own jvm -->
+
+	<bean id="ttsManagerTester" class="com.raytheon.uf.edex.bmh.test.tts.TTSManagerTester"
+		init-method="initialize" />
+
+	<!-- Route to handle incoming TEST data. -->
+	<camelContext id="bmh-test-in" xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+
+		<endpoint id="testTTSConversionFileEndpoint"
+			uri="file:${bmh.tts.test.directory.input}?delete=true" />
+
+		<route id="ttsTestEncodeAudio">
+			<from uri="testTTSConversionFileEndpoint" />
+			<bean ref="ttsManagerTester" method="process" />
+			<to uri="direct-vm:ttsIngest"/>
+		</route>
+	</camelContext>
+	
+	<!-- Route to produce outgoing TEST results. -->
+	<camelContext id="bmh-test-out" xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+		
+		<route id="ttsTestAudioToWav">
+			<from uri="direct-vm:ttsSchedule"/>
+			<bean ref="ttsManagerTester" method="convertToWav" />
+		</route>		
+		
+	</camelContext>
+
+</beans>

@@ -5,12 +5,17 @@ Bundle-SymbolicName: com.raytheon.uf.edex.bmh
 Bundle-Version: 1.14.0.qualifier
 Bundle-Vendor: RAYTHEON
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
-Export-Package: com.raytheon.uf.edex.bmh
-Require-Bundle: com.raytheon.uf.common.bmh, 
+Export-Package: com.raytheon.uf.edex.bmh,
+ com.raytheon.uf.edex.bmh.msg
+Require-Bundle: com.raytheon.uf.common.bmh,
  com.raytheon.uf.common.time,
  com.raytheon.uf.common.message,
  com.raytheon.uf.common.status,
  com.raytheon.uf.common.util,
  com.raytheon.uf.common.serialization,
  com.raytheon.uf.common.serialization.comm,
- com.raytheon.uf.edex.database
+ com.raytheon.uf.edex.database,
+ com.raytheon.uf.edex.core,
+ voiceware;bundle-version="3.10.6",
+ org.apache.commons.io;bundle-version="2.4.0",
+ com.raytheon.uf.common.datastorage;bundle-version="1.14.0"
