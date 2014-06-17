@@ -48,6 +48,14 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * the way the current EDEX data directory is set.
  */
 public final class BMHConstants {
+    /*
+     * IUFStatusHandler will be used in this class because it is utilized before
+     * the BMH Notification Manager has been fully initialized (it is used
+     * during the initialization of the BMH Notification Manager).
+     * 
+     * Additionally, if there is a problem in this class, as it is currently
+     * used (06/17/2014), it will be obvious because EDEX will fail to start.
+     */
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(BMHConstants.class);
 

@@ -33,14 +33,14 @@ import org.apache.commons.io.FileUtils;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.msg.BroadcastMsg;
 import com.raytheon.uf.edex.bmh.msg.BroadcastMsgBody;
+import com.raytheon.uf.edex.bmh.status.BMH_CATEGORY;
+import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
+import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.datastorage.records.ByteDataRecord;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
@@ -55,6 +55,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 2, 2014  3228       bkowal      Initial creation
+ * Jun 17, 2014 3291       bkowal      Updated to use the IBMHStatusHandler
  * 
  * </pre>
  * 
@@ -63,8 +64,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  */
 
 public class TTSManager implements IContextStateProcessor {
-    private static final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(TTSManager.class);
+    private static final IBMHStatusHandler statusHandler = BMHStatusHandler
+            .getInstance(TTSManager.class);
 
     /* Output root subdirectory */
     private static final String AUDIO_DATA_DIRECTORY = "audio";
@@ -130,7 +131,7 @@ public class TTSManager implements IContextStateProcessor {
         try {
             this.initialize();
         } catch (TTSConfigurationException | IOException e) {
-            statusHandler.handle(Priority.CRITICAL,
+            statusHandler.fatal(BMH_CATEGORY.TTS_CONFIGURATION_ERROR,
                     "TTS Manager Initialization Failed!", e);
             /* Halt the context startup. */
             throw new RuntimeException("TTS Manager Initialization Failed!", e);
@@ -278,10 +279,15 @@ public class TTSManager implements IContextStateProcessor {
                     && returnValue != TTS_RETURN_VALUE.TTS_SOCKET_ERROR) {
                 retry = false;
             } else {
-                statusHandler.warn("Connection Attempt (" + attempt
-                        + ") to the TTS Server has failed! "
-                        + this.getTTSErrorLogStatement(returnValue)
-                        + ". Retrying ...");
+                StringBuilder stringBuilder = new StringBuilder(
+                        "Connection Attempt (");
+                stringBuilder.append(attempt);
+                stringBuilder.append(") to the TTS Server has failed! ");
+                stringBuilder.append(this.getTTSErrorLogStatement(returnValue));
+                stringBuilder.append(". Retrying ...");
+                statusHandler.warn(returnValue.getAssociatedBMHCategory(),
+                        stringBuilder.toString());
+
                 this.sleepDelayTime();
             }
         }
@@ -393,17 +399,20 @@ public class TTSManager implements IContextStateProcessor {
             } else {
                 String logMessage = "Text-to-Speech Transformation was unsuccessful for message: "
                         + message.getId() + "; ";
+                BMH_CATEGORY category = null;
                 if (ioException == null) {
                     /* Build the log message. */
                     logMessage += this.getTTSErrorLogStatement(returnValue);
+                    category = returnValue.getAssociatedBMHCategory();
                 } else {
                     logMessage += "IO Error = "
                             + ioException.getLocalizedMessage();
+                    category = BMH_CATEGORY.TTS_SYSTEM_ERROR;
                 }
                 logMessage += "! Attempt (" + attempt + ")";
 
                 /* Just log a warning. */
-                statusHandler.warn(logMessage);
+                statusHandler.warn(category, logMessage);
 
                 this.sleepDelayTime();
             }
@@ -431,11 +440,14 @@ public class TTSManager implements IContextStateProcessor {
                         + message.getId() + "." + byteCount
                         + " bytes were written.");
             } catch (IOException e) {
-                statusHandler.handle(
-                        Priority.PROBLEM,
-                        "Failed to write audio output file: "
-                                + outputFile.getAbsolutePath() + "; REASON = "
-                                + e.getLocalizedMessage(), e);
+                ioException = e;
+                StringBuilder stringBuilder = new StringBuilder(
+                        "Failed to write audio output file: ");
+                stringBuilder.append(outputFile.getAbsolutePath());
+                stringBuilder.append("; REASON = ");
+                stringBuilder.append(e.getLocalizedMessage());
+                statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
+                        stringBuilder.toString(), e);
                 /*
                  * TTS Conversion may have succeeded; however, the file write
                  * has failed!
@@ -443,17 +455,19 @@ public class TTSManager implements IContextStateProcessor {
                 success = false;
             }
         } else {
+            StringBuilder stringBuilder = new StringBuilder(
+                    "Text-to-Speech Transformation failed for message: ");
+            stringBuilder.append(message.getId());
             if (ioException == null) {
-                statusHandler.handle(
-                        Priority.PROBLEM,
-                        "Text-to-Speech Transformation failed for message: "
-                                + message.getId() + "; "
-                                + this.getTTSErrorLogStatement(returnValue)
-                                + "!");
+                stringBuilder.append("; ");
+                stringBuilder.append(this.getTTSErrorLogStatement(returnValue));
+                stringBuilder.append("!");
+                statusHandler.error(returnValue.getAssociatedBMHCategory(),
+                        stringBuilder.toString());
             } else {
-                statusHandler.handle(Priority.PROBLEM,
-                        "Text-to-Speech Transformation failed for message: "
-                                + message.getId() + "!", ioException);
+                stringBuilder.append("!");
+                statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
+                        stringBuilder.toString(), ioException);
             }
         }
         message.getBody().setSuccess(success);
@@ -472,8 +486,16 @@ public class TTSManager implements IContextStateProcessor {
             /*
              * Not sure what the actual likelihood of this error actually is.
              */
-            statusHandler.warn("Failed to wait " + this.ttsRetryDelay
-                    + "milliseconds!", e.getLocalizedMessage());
+            StringBuilder stringBuilder = new StringBuilder("Failed to wait ");
+            stringBuilder.append(this.ttsRetryDelay);
+            stringBuilder.append("milliseconds!");
+            if (e.getLocalizedMessage() != null) {
+                stringBuilder.append(" REASON = ");
+                stringBuilder.append(e.getLocalizedMessage());
+            }
+            statusHandler.warn(BMH_CATEGORY.INTERRUPTED,
+                    stringBuilder.toString());
+
             /* Just log the error and continue. */
         }
     }

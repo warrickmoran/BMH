@@ -22,10 +22,13 @@ package com.raytheon.uf.edex.bmh.tts;
 import java.util.Map;
 import java.util.HashMap;
 
+import com.raytheon.uf.edex.bmh.status.BMH_CATEGORY;
+
 import voiceware.libttsapi;
 
 /**
- * TODO Add Description
+ * A collection of constants that are primarily utilized by the TTS Manager
+ * component.
  * 
  * <pre>
  * 
@@ -34,6 +37,8 @@ import voiceware.libttsapi;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 10, 2014 3228       bkowal      Initial creation
+ * Jun 17, 2014 3291       bkowal      Added a method to translate the TTS return values to BMH categories.
+ * 
  * 
  * </pre>
  * 
@@ -109,6 +114,35 @@ public final class TTSConstants {
             }
 
             return lookupMap.get(code);
+        }
+
+        public BMH_CATEGORY getAssociatedBMHCategory() {
+            switch (this) {
+            case TTS_RESULT_SUCCESS:
+                return BMH_CATEGORY.SUCCESS;
+            case TTS_RESULT_CONTINUE:
+                return BMH_CATEGORY.TTS_CONTINUE;
+            case TTS_RESULT_ERROR:
+            case TTS_READWRITE_ERROR:
+            case TTS_MEMORY_ERROR:
+            case TTS_TEXT_ERROR:
+            case TTS_VOICEFORMAT_ERROR:
+            case TTS_PARAM_ERROR:
+            case TTS_SPEAKER_ERROR:
+            case TTS_SSML_ERROR:
+            case TTS_ENC_ERROR:
+            case TTS_ABNORMAL_ERROR:
+            case TTS_MAX_ERROR:
+                return BMH_CATEGORY.TTS_SOFTWARE_ERROR;
+            case TTS_SOCKET_ERROR:
+            case TTS_CONNECT_ERROR:
+            case TTS_DISK_ERROR:
+                return BMH_CATEGORY.TTS_SYSTEM_ERROR;
+            case TTS_HOSTNAME_ERROR:
+                return BMH_CATEGORY.TTS_FATAL_ERROR;
+            default:
+                return BMH_CATEGORY.UNKNOWN;
+            }
         }
     }
 
