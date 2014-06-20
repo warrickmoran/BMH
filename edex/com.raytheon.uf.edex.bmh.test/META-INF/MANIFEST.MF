@@ -10,4 +10,5 @@ Require-Bundle: com.raytheon.uf.common.status;bundle-version="1.12.1174",
  com.raytheon.uf.common.bmh;bundle-version="1.14.0",
  org.apache.commons.configuration;bundle-version="1.6.0",
  org.apache.commons.io;bundle-version="2.4.0",
- org.apache.commons.lang;bundle-version="2.3.0"
+ org.apache.commons.lang;bundle-version="2.3.0",
+ com.raytheon.uf.common.datastorage;bundle-version="1.14.0"

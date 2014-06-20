@@ -20,18 +20,12 @@
 package com.raytheon.uf.edex.bmh.test.tts;
 
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.UUID;
 
-import javax.sound.sampled.AudioFileFormat.Type;
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioFormat.Encoding;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
@@ -42,6 +36,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.msg.BroadcastMsg;
 import com.raytheon.uf.edex.bmh.msg.BroadcastMsgBody;
 import com.raytheon.uf.edex.bmh.msg.BroadcastMsgHeader;
+import com.raytheon.uf.edex.bmh.test.AbstractWavFileGeneratingTest;
+import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
 
 /**
  * NOT OPERATIONAL CODE! Created to test the TTS Manager. Refer to the data/tts
@@ -54,6 +50,7 @@ import com.raytheon.uf.edex.bmh.msg.BroadcastMsgHeader;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2014 3228       bkowal      Initial creation
+ * Jun 23, 2014 3304       bkowal      Re-factored
  * 
  * </pre>
  * 
@@ -61,22 +58,17 @@ import com.raytheon.uf.edex.bmh.msg.BroadcastMsgHeader;
  * @version 1.0
  */
 
-public class TTSManagerTester {
+public class TTSManagerTester extends AbstractWavFileGeneratingTest {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(TTSManagerTester.class);
 
-    private static final String DEFAULT_OUTPUT_DIRECTORY = File.separatorChar
-            + "tmp";
+    private static final String TEST_NAME = "TTS Manager";
 
     private static final String TTS_DIRECTORY_INPUT_PROPERTY = "bmh.tts.test.directory.input";
 
     private static final String TTS_DIRECTORY_OUTPUT_PROPERTY = "bmh.tts.test.directory.output";
 
-    private static final String WAV_FILE_EXTENSION = ".wav";
-
     private static final TtsVoice DEFAULT_TTS_VOICE = constructDefaultTtsVoice();
-
-    private String ttsOutputDirectory;
 
     private static final class INPUT_PROPERTIES {
         public static final String TTS_AFOS_ID_PROPERTY = "tts.afosid";
@@ -117,177 +109,28 @@ public class TTSManagerTester {
         return voice;
     }
 
-    public void initialize() {
-        statusHandler.info("Initializing the TTS Manager Tester ...");
-
-        String ttsInputDirectory = System
-                .getProperty(TTS_DIRECTORY_INPUT_PROPERTY);
-        this.ttsOutputDirectory = System
-                .getProperty(TTS_DIRECTORY_OUTPUT_PROPERTY);
-
-        if (ttsInputDirectory == null) {
-            /*
-             * If the input directory has not been set, do not continue. This
-             * will eventually cause problems when the Spring Container attempts
-             * to use the configuration property directly.
-             */
-            statusHandler
-                    .error("Failed to retrieve the Test Input Directory from the configuration. Spring Container Crash Expected!");
-            return;
-        }
-
-        File inputDirectoryFile = new File(ttsInputDirectory);
-        /* Attempt to create the specified input directory if it does not exist. */
-        if (inputDirectoryFile.exists() == false) {
-            statusHandler.info("Attempting to create Test Input Directory: "
-                    + ttsInputDirectory + " ...");
-            /*
-             * In this case, we do not care if the creation was successful or
-             * not because the directory will eventually need to exist in order
-             * to complete testing.
-             */
-            inputDirectoryFile.mkdirs();
-        }
-
-        if (this.ttsOutputDirectory == null) {
-            statusHandler
-                    .warn("Failed to retrieve the Test Output Directory from the configuration. Using the default output directory: "
-                            + DEFAULT_OUTPUT_DIRECTORY);
-            this.ttsOutputDirectory = DEFAULT_OUTPUT_DIRECTORY;
-        } else {
-            File outputDirectoryFile = new File(this.ttsOutputDirectory);
-            /*
-             * Attempt to create the specified output directory if it does not
-             * exist.
-             */
-            if (outputDirectoryFile.exists() == false) {
-                statusHandler
-                        .info("Attempting to create Test Output Directory: "
-                                + this.ttsOutputDirectory + " ...");
-                if (outputDirectoryFile.mkdirs() == false) {
-                    statusHandler
-                            .warn("Failed to create Test Output Directory. Using the default output directory: "
-                                    + DEFAULT_OUTPUT_DIRECTORY);
-                    this.ttsOutputDirectory = DEFAULT_OUTPUT_DIRECTORY;
-                }
-            }
-        }
-
-        statusHandler.info("Test Input Directory = " + ttsInputDirectory);
-        statusHandler
-                .info("Test Output Directory = " + this.ttsOutputDirectory);
+    public TTSManagerTester() {
+        super(statusHandler, TEST_NAME, TTS_DIRECTORY_INPUT_PROPERTY,
+                TTS_DIRECTORY_OUTPUT_PROPERTY);
     }
 
-    /**
-     * Processes the input test file
-     * 
-     * @param testFile
-     *            the input test file
-     * @return the BroadcastMsg that is constructed
-     * @throws Exception
-     *             if a BroadcastMsg was not successfully constructed based on
-     *             the input test file.
-     */
-    public BroadcastMsg process(File testFile) throws Exception {
-        BroadcastMsg message = this.generateTestBroadcastMessage(testFile);
-
-        if (message != null) {
-            statusHandler
-                    .info("Successfully generated a Broadcast Message with id: "
-                            + message.getId()
-                            + " based on input file: "
-                            + testFile.getAbsolutePath());
-            return message;
-        }
-
-        /* Manually delete the input file on failure. */
-        testFile.delete();
-
-        throw new Exception(
-                "Failed to generate a broadcast message based on input file: "
-                        + testFile.getAbsolutePath() + "!");
-    }
-
-    /**
-     * Attempts to generate a broadcast message using information provided in a
-     * simple Java properties file.
-     * 
-     * @param testFile
-     *            the properties file
-     * @return the constructed BroadcastMsg object or NULL if construction fails
-     */
-    private BroadcastMsg generateTestBroadcastMessage(File testFile) {
-        /*
-         * Data integrity checks.
-         */
-
-        /* Verify a file has been provided and that the file exists. */
-        if (testFile == null) {
-            statusHandler.error("File cannot be NULL!");
-            return null;
-        }
-
-        if (testFile.exists() == false) {
-            statusHandler.error("The specified file: "
-                    + testFile.getAbsolutePath() + " does not exist!");
-            return null;
-        }
-
-        statusHandler.info("Processing input file: "
-                + testFile.getAbsolutePath() + " ...");
-
-        /* Read the file. */
-        Configuration configuration = null;
-        try {
-            configuration = new PropertiesConfiguration(testFile);
-        } catch (ConfigurationException e) {
-            statusHandler.error("Failed to load the specified file: "
-                    + testFile.getAbsolutePath() + "!", e);
-            return null;
-        }
-
-        String ssmlMessage = null;
+    @Override
+    protected Object processInput(Configuration configuration,
+            final String inputFileName) throws TestProcessingFailedException {
+        String ssmlMessage = super.getStringProperty(configuration,
+                INPUT_PROPERTIES.TTS_MESSAGE_PROPERTY, inputFileName);
         String afosID = null;
-
         try {
-            ssmlMessage = configuration.getString(
-                    INPUT_PROPERTIES.TTS_MESSAGE_PROPERTY, null);
-            if (ssmlMessage == null) {
-                statusHandler.error("Invalid input file: "
-                        + testFile.getAbsolutePath() + "! The "
-                        + INPUT_PROPERTIES.TTS_MESSAGE_PROPERTY
-                        + " property must be set!");
-                return null;
-            }
-        } catch (ConversionException e) {
-            statusHandler.error("Invalid value specified for property "
-                    + INPUT_PROPERTIES.TTS_MESSAGE_PROPERTY
-                    + " in input file: " + testFile.getAbsolutePath() + "!", e);
-            return null;
-        }
-
-        try {
-            afosID = configuration.getString(
-                    INPUT_PROPERTIES.TTS_AFOS_ID_PROPERTY, null);
-            if (afosID == null) {
-                statusHandler.info("The "
-                        + INPUT_PROPERTIES.TTS_AFOS_ID_PROPERTY
-                        + " property has not been set in input file: "
-                        + testFile.getAbsolutePath()
-                        + "! Generating a default afos id.");
-                afosID = String.valueOf(System.currentTimeMillis());
-            }
-        } catch (ConversionException e) {
-            statusHandler.warn("Invalid value specified for property "
-                    + INPUT_PROPERTIES.TTS_AFOS_ID_PROPERTY
-                    + " in input file: " + testFile.getAbsolutePath()
-                    + "! Generating a default afos id.",
-                    e.getLocalizedMessage());
+            super.getStringProperty(configuration,
+                    INPUT_PROPERTIES.TTS_AFOS_ID_PROPERTY, inputFileName);
+        } catch (TestProcessingFailedException e) {
+            statusHandler.info("The " + INPUT_PROPERTIES.TTS_AFOS_ID_PROPERTY
+                    + " property has not been set in input file: "
+                    + inputFileName + "! Generating a default afos id.");
             afosID = String.valueOf(System.currentTimeMillis());
         }
 
-        TtsVoice voice = this.buildVoiceFromInput(configuration,
-                testFile.getAbsolutePath());
+        TtsVoice voice = this.buildVoiceFromInput(configuration, inputFileName);
 
         BroadcastMsg message = new BroadcastMsg(UUID.randomUUID().toString());
         message.setHeader(new BroadcastMsgHeader());
@@ -296,9 +139,6 @@ public class TTSManagerTester {
         messageBody.setSsml(ssmlMessage);
         messageBody.setVoice(voice);
         message.setBody(messageBody);
-
-        statusHandler.info("Successfully processed input file: "
-                + testFile.getAbsolutePath() + "!");
 
         return message;
     }
@@ -350,31 +190,20 @@ public class TTSManagerTester {
         String filename = FilenameUtils.getBaseName(outputUlawFile
                 .getAbsolutePath());
 
-        /* Construct the full name of the output file. */
-        String fullWavFileName = this.ttsOutputDirectory + File.separatorChar
-                + filename + WAV_FILE_EXTENSION;
-        File outputWavFile = new File(fullWavFileName);
-
-        long fileSize = outputUlawFile.length();
-        int frameSize = 160;
-        long numFrames = fileSize / frameSize;
-
-        AudioFormat audioFormat = new AudioFormat(Encoding.ULAW, 8000, 8, 1,
-                frameSize, 50, true);
-        boolean success = true;
+        /* Retrieve the contents of the file. */
+        byte[] data;
         try {
-            AudioInputStream audioInputStream = new AudioInputStream(
-                    new FileInputStream(outputUlawFile), audioFormat, numFrames);
-            AudioSystem.write(audioInputStream, Type.WAVE, outputWavFile);
-        } catch (Exception e) {
-            statusHandler.error("Failed to write wav file: " + fullWavFileName
-                    + "!", e);
-            success = false;
+            data = FileUtils.readFileToByteArray(outputUlawFile);
+        } catch (IOException e) {
+            statusHandler.error(
+                    "Failed to read ulaw file: "
+                            + outputUlawFile.getAbsolutePath()
+                            + "; skipping message [" + messageID + "]!", e);
+            return;
         }
+        boolean success = super.writeWavData(data, filename);
 
         if (success) {
-            statusHandler.info("Successfully wrote wav file: "
-                    + fullWavFileName);
             statusHandler.info("Successfully processed message: " + messageID
                     + ".");
         } else {

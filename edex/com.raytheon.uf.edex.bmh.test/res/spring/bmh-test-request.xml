@@ -10,6 +10,10 @@
 	<bean id="ttsManagerTester" class="com.raytheon.uf.edex.bmh.test.tts.TTSManagerTester"
 		init-method="initialize" />
 
+	<bean id="toneGenerationTesterUtil"
+		class="com.raytheon.uf.edex.bmh.test.util.tones.ToneGenerationTester"
+		init-method="initialize" />
+
 	<!-- Route to handle incoming TEST data. -->
 	<camelContext id="bmh-test-in" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
@@ -17,22 +21,30 @@
 		<endpoint id="testTTSConversionFileEndpoint"
 			uri="file:${bmh.tts.test.directory.input}?delete=true" />
 
+		<endpoint id="testToneGenerationFileEndpoint"
+			uri="file:${bmh.util.tones.test.directory.input}?delete=true" />
+
 		<route id="ttsTestEncodeAudio">
 			<from uri="testTTSConversionFileEndpoint" />
 			<bean ref="ttsManagerTester" method="process" />
-			<to uri="direct-vm:ttsIngest"/>
+			<to uri="direct-vm:ttsIngest" />
+		</route>
+
+		<route id="testToneGeneration">
+			<from uri="testToneGenerationFileEndpoint" />
+			<bean ref="toneGenerationTesterUtil" method="process" />
 		</route>
 	</camelContext>
-	
+
 	<!-- Route to produce outgoing TEST results. -->
 	<camelContext id="bmh-test-out" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
-		
+
 		<route id="ttsTestAudioToWav">
-			<from uri="direct-vm:ttsSchedule"/>
+			<from uri="direct-vm:ttsSchedule" />
 			<bean ref="ttsManagerTester" method="convertToWav" />
-		</route>		
-		
+		</route>
+
 	</camelContext>
 
 </beans>
