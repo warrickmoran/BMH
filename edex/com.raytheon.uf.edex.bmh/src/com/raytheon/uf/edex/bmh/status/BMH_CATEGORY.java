@@ -19,8 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.status;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * An enum representing different types of events that can occur within the BMH
@@ -69,6 +69,21 @@ public enum BMH_CATEGORY {
      * were not configured correctly.
      */
     TTS_CONFIGURATION_ERROR(5),
+    /*
+     * Specific to the input message parser. used to indicate that the parser
+     * cannot understand the format of the input.
+     */
+    INPUT_MESSAGE_PARSE_ERROR(6),
+    /*
+     * Specific to the message validation component: used to indicate that an
+     * unexpected error occured during validation.
+     */
+    MESSAGE_VALIDATION_ERROR(7),
+    /*
+     * Specific to the message validation component: used to indicate that a
+     * massage has failed validation.
+     */
+    MESSAGE_VALIDATION_FAILED(8),
     /*
      * Indicates that a thread has been interrupted while performing some
      * action.

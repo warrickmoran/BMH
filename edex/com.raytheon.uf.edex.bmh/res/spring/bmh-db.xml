@@ -1,0 +1,18 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+	<bean id="bmhDbPluginProperties" class="com.raytheon.uf.edex.database.DatabasePluginProperties">
+		<property name="pluginFQN" value="com.raytheon.uf.common.bmh" />
+		<property name="database" value="${bmh.database}" />
+	</bean>
+
+	<bean factory-bean="dbPluginRegistry" factory-method="register">
+		<constructor-arg value="com.raytheon.uf.common.bmh" />
+		<constructor-arg ref="bmhDbPluginProperties" />
+	</bean>
+	
+	<bean id="inputMessageDao" class="com.raytheon.uf.edex.bmh.dao.InputMessageDao"/>
+
+	<bean id="validatedMessageDao" class="com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao"/>
+</beans>
