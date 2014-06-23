@@ -1,0 +1,19 @@
+/* XPM */
+static char *alarm_label_xpm[]={
+"12 12 3 1",
+"  c White",
+". c Black",
+"o c #ffff00000000",
+"   oooooo   ",
+"  oooooooo  ",
+" oo      oo ",
+" oo      oo ",
+" oo      oo ",
+" oooooooooo ",
+" oooooooooo ",
+" oo      oo ",
+" oo      oo ",
+" oo      oo ",
+" oo      oo ",
+" oo      oo "
+};

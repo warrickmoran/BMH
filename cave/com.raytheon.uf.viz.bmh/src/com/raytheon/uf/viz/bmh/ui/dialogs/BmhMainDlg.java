@@ -25,7 +25,8 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Shell;
 
-import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
+import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
+import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
  * Initial implementation/place holder
@@ -44,7 +45,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * @version 1.0
  */
 
-public class BmhMainDlg extends CaveSWTDialogBase {
+public class BmhMainDlg extends CaveSWTDialog {
 
     public BmhMainDlg(Shell parentShell) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT);
@@ -52,6 +53,10 @@ public class BmhMainDlg extends CaveSWTDialogBase {
 
     @Override
     protected void initializeComponents(Shell shell) {
+        // Launch the system status dlg
+        SystemStatusDlg statusDlg = new SystemStatusDlg(shell);
+        statusDlg.open();
+
         Button b = new Button(shell, SWT.PUSH);
         b.setText("BMH...");
         b.addSelectionListener(new SelectionAdapter() {
