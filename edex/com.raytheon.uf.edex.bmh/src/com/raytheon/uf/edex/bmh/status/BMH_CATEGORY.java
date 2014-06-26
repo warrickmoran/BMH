@@ -34,6 +34,7 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Jun 16, 2014            bkowal      Initial creation
  * Jun 26, 2014 3302       bkowal      Added categories for the Message Transformer.
+ * Jul 01, 2014 3283       bsteffen    Added categories for message validation.
  * 
  * </pre>
  * 
@@ -96,6 +97,11 @@ public enum BMH_CATEGORY {
      * have an associated dictionary.
      */
     XFORM_MISSING_DICTIONARY(10),
+    /*
+     * Specific to the message validation component: used to indicate that a
+     * massage area is not in the configuration.
+     */
+    MESSAGE_AREA_UNCONFIGURED(11),
     /*
      * Indicates that a thread has been interrupted while performing some
      * action.

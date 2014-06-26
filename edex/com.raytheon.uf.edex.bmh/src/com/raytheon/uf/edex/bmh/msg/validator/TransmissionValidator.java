@@ -20,18 +20,30 @@
 package com.raytheon.uf.edex.bmh.msg.validator;
 
 import java.util.Calendar;
-import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
+import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
+import com.raytheon.uf.edex.bmh.dao.ProgramDao;
+import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
+import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.BMH_CATEGORY;
-import com.raytheon.uf.edex.database.DataAccessLayerException;
 
 /**
  * 
@@ -55,17 +67,27 @@ public class TransmissionValidator {
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(TransmissionValidator.class);
 
-    private InputMessageDao dao = new InputMessageDao();
+    private InputMessageDao inputMessageDao = new InputMessageDao();
+
+    private MessageTypeDao messageTypeDao = new MessageTypeDao();
+
+    private TransmitterGroupDao transmitterGroupDao = new TransmitterGroupDao();
+
+    private AreaDao areaDao = new AreaDao();
+
+    private ZoneDao zoneDao = new ZoneDao();
+
+    private ProgramDao programDao = new ProgramDao();
 
     public void validate(ValidatedMessage message) {
         InputMessage input = message.getInputMessage();
         try {
             if (isExpired(input)) {
                 message.setTransmissionStatus(TransmissionStatus.EXPIRED);
+            } else if (inputMessageDao.checkDuplicate(input)) {
+                message.setTransmissionStatus(TransmissionStatus.DUPLICATE);
             } else if (checkConfiguration(input)) {
                 message.setTransmissionStatus(TransmissionStatus.UNDEFINED);
-            } else if (dao.checkDuplicate(input)) {
-                message.setTransmissionStatus(TransmissionStatus.DUPLICATE);
             } else {
                 Set<TransmitterGroup> groups = getTransmissionGroups(input);
                 if (groups.isEmpty()) {
@@ -80,7 +102,7 @@ public class TransmissionValidator {
                     }
                 }
             }
-        } catch (DataAccessLayerException e) {
+        } catch (Throwable e) {
             message.setTransmissionStatus(TransmissionStatus.ERROR);
             statusHandler.error(BMH_CATEGORY.MESSAGE_VALIDATION_ERROR,
                     "Error Parsing InputMessage", e);
@@ -112,14 +134,14 @@ public class TransmissionValidator {
      *            the message to validate.
      * @return true if the message type is not defined
      */
-    protected static boolean checkConfiguration(InputMessage message) {
-        // TODO implement this
-        return false;
+    protected boolean checkConfiguration(InputMessage message) {
+        return messageTypeDao.getByID(message.getAfosid()) == null;
     }
 
     /**
-     * Check if a message Geographical information can be mapped to the
-     * broadcast area of any transmitters.
+     * Get any transmitter groups that contain transmitters covering the
+     * geographical area of the message.
+     * 
      * 
      * @param message
      *            the message to validate.
@@ -127,8 +149,39 @@ public class TransmissionValidator {
      *         message.
      */
     protected Set<TransmitterGroup> getTransmissionGroups(InputMessage message) {
-        // TODO implement this
-        return Collections.emptySet();
+        List<String> ugcList = message.getAreaCodeList();
+        Set<String> transmitterGroupNames = new HashSet<>(ugcList.size() * 2);
+        for (String ugc : ugcList) {
+            if (ugc.charAt(2) == 'Z') {
+                Zone zone = zoneDao.getByID(ugc);
+                if (zone == null) {
+                    statusHandler.warn(BMH_CATEGORY.MESSAGE_AREA_UNCONFIGURED,
+                            "Message zone is not configured: " + ugc);
+                } else {
+                    for (Area area : zone.getAreas().values()) {
+                        for (Transmitter t : area.getTransmitters().values()) {
+                            transmitterGroupNames.add(t.getTransmitterGroup());
+                        }
+                    }
+                }
+            } else {
+                Area area = areaDao.getByID(ugc);
+                if (area == null) {
+                    statusHandler.warn(BMH_CATEGORY.MESSAGE_AREA_UNCONFIGURED,
+                            "Message area is not configured: " + ugc);
+                } else {
+                    for (Transmitter t : area.getTransmitters().values()) {
+                        transmitterGroupNames.add(t.getTransmitterGroup());
+                    }
+                }
+            }
+        }
+        Set<TransmitterGroup> result = new HashSet<>(
+                transmitterGroupNames.size(), 1.0f);
+        for (String name : transmitterGroupNames) {
+            result.add(transmitterGroupDao.getByID(name));
+        }
+        return result;
     }
 
     /**
@@ -141,9 +194,37 @@ public class TransmissionValidator {
      * @return any transmitter groups from groups whose program contains a suite
      *         for this message type.
      */
-    protected static Set<TransmitterGroup> checkSuite(InputMessage message,
+    protected Set<TransmitterGroup> checkSuite(InputMessage message,
             Set<TransmitterGroup> groups) {
-        return groups;
+        Set<String> programNames = new HashSet<>(groups.size(), 1.0f);
+        for (TransmitterGroup group : groups) {
+            programNames.add(group.getProgramName());
+        }
+        Iterator<String> nameIterator = programNames.iterator();
+        while (nameIterator.hasNext()) {
+            boolean valid = false;
+            Program program = programDao.getByID(nameIterator.next());
+            Iterator<Suite> suiteIterator = program.getSuites().iterator();
+            while (suiteIterator.hasNext() && valid == false) {
+                for (SuiteMessage smessage : suiteIterator.next().getSuiteMessages()) {
+                    if (smessage.getId().getAfosid()
+                            .equals(message.getAfosid())) {
+                        valid = true;
+                        break;
+                    }
+                }
+            }
+            if (!valid) {
+                nameIterator.remove();
+            }
+        }
+        Set<TransmitterGroup> result = new HashSet<>(groups.size(), 1.0f);
+        for (TransmitterGroup group : groups) {
+            if (programNames.contains(group.getProgramName())) {
+                result.add(group);
+            }
+        }
+        return result;
     }
 
 }

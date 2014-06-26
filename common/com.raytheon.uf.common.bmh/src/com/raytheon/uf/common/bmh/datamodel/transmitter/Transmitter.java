@@ -34,9 +34,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * May 30, 2014  3175     rjpeter     Initial creation
+ * Jun 30, 2014  3283     bsteffen    Add some getter/setters.
  * 
  * </pre>
  * 
@@ -133,4 +134,22 @@ public class Transmitter {
     public void setServiceArea(String serviceArea) {
         this.serviceArea = serviceArea;
     }
+
+    public int getPosition() {
+        return position;
+    }
+
+    public void setPosition(int position) {
+        this.position = position;
+    }
+
+    public String getTransmitterGroup() {
+        return transmitterGroup;
+    }
+
+    public void setTransmitterGroup(String transmitterGroup) {
+        this.transmitterGroup = transmitterGroup;
+    }
+
+
 }

@@ -30,6 +30,8 @@ import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
@@ -55,6 +57,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @author bsteffen
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = InputMessage.DUP_QUERY_NAME, query = InputMessage.DUP_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "input_msg", schema = "bmh")
@@ -62,6 +65,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class InputMessage {
 
     protected static final String GEN = "Input Messsage Id Generator";
+
+    /**
+     * Named query to pull all messages with a matching afosid and with a valid
+     * time range encompassing a specified time range.
+     */
+    public static final String DUP_QUERY_NAME = "getDuplicateInputMessages";
+
+    protected static final String DUP_QUERY = "FROM InputMessage m WHERE m.id != :id AND m.afosid = :afosid AND ((m.mrd = :mrd) OR (m.effectiveTime <= :effectiveTime AND m.expirationTime >= :expirationTime))";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
@@ -437,24 +448,6 @@ public class InputMessage {
 
     @Override
     public boolean equals(Object obj) {
-        if (equalsExceptId(obj)) {
-            InputMessage other = (InputMessage) obj;
-            return other.id == id;
-        }
-        return false;
-    }
-
-    /**
-     * Performs the same function as {@link #equals(Object)} except that
-     * messages that only differ by id will be considered equals.
-     * 
-     * @param obj
-     *            the reference object with which to compare.
-     * @return {@code true} if this object is the same as the obj argument;
-     *         {@code false} otherwise.
-     * @see #equals(Object)
-     */
-    public boolean equalsExceptId(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
@@ -506,6 +499,8 @@ public class InputMessage {
             if (other.expirationTime != null)
                 return false;
         } else if (!expirationTime.equals(other.expirationTime))
+            return false;
+        if (id != other.id)
             return false;
         if (interrupt == null) {
             if (other.interrupt != null)

@@ -19,8 +19,13 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.List;
+
+import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
-import com.raytheon.uf.edex.database.DataAccessLayerException;
 
 /**
  * 
@@ -54,9 +59,39 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
      * @return true if duplicates exist, false otherwise
      * @see InputMessage#equalsExceptId(Object)
      */
-    public boolean checkDuplicate(InputMessage message)
-            throws DataAccessLayerException {
-        // TODO generate a named query.
+    public boolean checkDuplicate(final InputMessage message) {
+        List<?> messages = txTemplate
+                .execute(new TransactionCallback<List<?>>() {
+            @Override
+                    public List<?> doInTransaction(TransactionStatus status) {
+                HibernateTemplate ht = getHibernateTemplate();
+                return ht.findByNamedQueryAndNamedParam(
+                        InputMessage.DUP_QUERY_NAME,
+                        new String[] { "id", "afosid", "areaCodes", "mrd",
+                                "effectiveTime", "expirationTime" },
+                        new Object[] { message.getId(), message.getAfosid(),
+                                message.getAreaCodes(), message.getMrd(),
+                                message.getEffectiveTime(),
+                                message.getExpirationTime() });
+            }
+                });
+        for (Object obj : messages) {
+            InputMessage dup = (InputMessage) obj;
+            if (dup.getId() == message.getId()) {
+                continue;
+            } else if (!dup.getAfosid().equals(message.getAfosid())) {
+                continue;
+            }
+            if (dup.getAreaCodeList().containsAll(message.getAreaCodeList())) {
+                continue;
+            }
+            int mrd = message.getMrdId();
+            if (mrd != -1 && mrd == dup.getMrdId()) {
+                return true;
+            } else if (dup.getContent().equals(message.getContent())) {
+                return true;
+            }
+        }
         return false;
     }
 
