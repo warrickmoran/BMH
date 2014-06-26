@@ -2,17 +2,6 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
-	<!-- TODO: Rename file once bmh has its own jvm -->
-	<bean id="bmhDbPluginProperties" class="com.raytheon.uf.edex.database.DatabasePluginProperties">
-		<property name="pluginFQN" value="com.raytheon.uf.common.bmh" />
-		<property name="database" value="${bmh.database}" />
-	</bean>
-
-	<bean factory-bean="dbPluginRegistry" factory-method="register">
-		<constructor-arg value="com.raytheon.uf.common.bmh" />
-		<constructor-arg ref="bmhDbPluginProperties" />
-	</bean>
-
 	<bean id="getAllDataHandler" class="com.raytheon.uf.edex.bmh.handler.GetAllDataHandler" />
 	<bean factory-bean="handlerRegistry" factory-method="register">
 		<constructor-arg
@@ -33,7 +22,7 @@
 		<route id="ttsEncodeAudio">
 			<from uri="direct-vm:ttsIngest" />
 			<bean ref="ttsManager" method="process" />
-			<to uri="direct-vm:ttsSchedule"/>
+			<to uri="direct-vm:ttsSchedule" />
 		</route>
 
 	</camelContext>

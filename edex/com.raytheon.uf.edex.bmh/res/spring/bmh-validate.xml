@@ -1,0 +1,51 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+ 
+	<bean id="fileChangedStrategy" class="com.raytheon.uf.edex.esb.camel.FileChangedExclusiveReadLockStrategy"/>
+
+	<bean id="inputMessageParser" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageParser"/>
+
+	<bean id="inputMessageValidator" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageValidator"/>
+  	
+	<camelContext id="clusteredBmhDirectoryScanner"
+		xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+		<endpoint id="bmhDirectoryScanner"
+            uri="file:${BMH_DATA}/nwr/ready?delete=true&amp;delay=5000&amp;maxMessagesPerPoll=1000&amp;exclusiveReadLockStrategy=#fileChangedStrategy&amp;recursive=true" />
+		
+		<route id="bmhInputMessageParser">
+		    <from ref="bmhDirectoryScanner" />
+		    <doTry>
+				<pipeline>
+				    <bean ref="inputMessageParser" method="parse" />
+				    <bean ref="inputMessageDao" method="persist" />
+				    <filter>
+  						<simple>${body.validHeader} == false</simple>
+  						<stop />
+					</filter> 
+				    <bean ref="inputMessageValidator" method="validate" />
+  					<bean ref="validatedMessageDao" method="persist" />
+  					<filter>
+  						<simple>${body.isAccepted} == false</simple>
+  						<stop />
+					</filter>
+  					<setBody>
+  						<simple>${body.getId}</simple>
+					</setBody>
+  					<to uri="jms-durable:queue:BMH.Transform" />
+				</pipeline>
+				<doCatch>
+					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR"/>
+				</doCatch>
+			</doTry>
+		</route>
+		
+    </camelContext>
+
+	<bean factory-bean="contextManager" factory-method="registerClusteredContext">
+		<constructor-arg ref="clusteredBmhDirectoryScanner" />
+  	</bean>
+</beans>
