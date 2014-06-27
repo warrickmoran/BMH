@@ -41,6 +41,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
+ * Jun 26, 2014 3302       bkowal      Added getters/setters for all data.
  * 
  * </pre>
  * 
@@ -80,4 +81,74 @@ public class TransmitterLanguage {
     @ManyToOne(optional = false)
     @JoinColumn(name = "voiceNumber")
     private TtsVoice voice;
+
+    /**
+     * @return the id
+     */
+    public TransmitterLanguagePK getId() {
+        return id;
+    }
+
+    /**
+     * @param id the id to set
+     */
+    public void setId(TransmitterLanguagePK id) {
+        this.id = id;
+    }
+
+    /**
+     * @return the stationIdMsg
+     */
+    public String getStationIdMsg() {
+        return stationIdMsg;
+    }
+
+    /**
+     * @param stationIdMsg the stationIdMsg to set
+     */
+    public void setStationIdMsg(String stationIdMsg) {
+        this.stationIdMsg = stationIdMsg;
+    }
+
+    /**
+     * @return the timeMsg
+     */
+    public String getTimeMsg() {
+        return timeMsg;
+    }
+
+    /**
+     * @param timeMsg the timeMsg to set
+     */
+    public void setTimeMsg(String timeMsg) {
+        this.timeMsg = timeMsg;
+    }
+
+    /**
+     * @return the dictionaryName
+     */
+    public String getDictionaryName() {
+        return dictionaryName;
+    }
+
+    /**
+     * @param dictionaryName the dictionaryName to set
+     */
+    public void setDictionaryName(String dictionaryName) {
+        this.dictionaryName = dictionaryName;
+    }
+
+    /**
+     * @return the voice
+     */
+    public TtsVoice getVoice() {
+        return voice;
+    }
+
+    /**
+     * @param voice the voice to set
+     */
+    public void setVoice(TtsVoice voice) {
+        this.voice = voice;
+    }
 }

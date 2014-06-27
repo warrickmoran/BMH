@@ -23,7 +23,6 @@ import java.io.IOException;
 
 import voiceware.libttsapi;
 
-import com.raytheon.uf.common.datastorage.records.ByteDataRecord;
 import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_RETURN_VALUE;
 
@@ -38,6 +37,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_RETURN_VALUE;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2014 3228       bkowal      Initial creation
+ * Jun 26, 2014 3302       bkowal      Eliminated the use of *DataRecord
  * 
  * </pre>
  * 
@@ -109,25 +109,26 @@ public class TTSInterface {
      * @throws IOException
      *             if the request to the TTS Server fails due to an I/O error.
      */
-    public TTS_RETURN_VALUE transformSSMLToAudio(final String ssml,
-            final int voice, final TTS_FORMAT ttsFormat, ByteDataRecord output,
-            boolean getFirstFrame) throws IOException {
+    public TTSReturn transformSSMLToAudio(final String ssml, final int voice,
+            final TTS_FORMAT ttsFormat, boolean getFirstFrame)
+            throws IOException {
         int firstFrame = getFirstFrame ? libttsapi.TRUE : libttsapi.FALSE;
 
         int returnCode = this.ttsapi.ttsRequestBufferSSMLEx(this.ttsServer,
                 this.ttsPort, ssml, voice, ttsFormat.getCode(), 0, 0, 0, 0,
                 firstFrame);
         TTS_RETURN_VALUE returnValue = TTS_RETURN_VALUE.lookup(returnCode);
+        TTSReturn ttsReturn = new TTSReturn(returnValue);
         /*
          * If the transformation was successful, copy the result to the output
          * data structure.
          */
         if (returnValue == TTS_RETURN_VALUE.TTS_RESULT_CONTINUE
                 || returnValue == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
-            output.setByteData(ttsapi.szVoiceData);
+            ttsReturn.setVoiceData(ttsapi.szVoiceData);
         }
 
-        return returnValue;
+        return ttsReturn;
     }
 
     /**

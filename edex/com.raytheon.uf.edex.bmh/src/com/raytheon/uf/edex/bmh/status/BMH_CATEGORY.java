@@ -32,7 +32,8 @@ import java.util.Map;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 16, 2014            bkowal     Initial creation
+ * Jun 16, 2014            bkowal      Initial creation
+ * Jun 26, 2014 3302       bkowal      Added categories for the Message Transformer.
  * 
  * </pre>
  * 
@@ -84,6 +85,17 @@ public enum BMH_CATEGORY {
      * massage has failed validation.
      */
     MESSAGE_VALIDATION_FAILED(8),
+    /*
+     * Specific to the Message Transformation Components; used to indicate that
+     * an afos id was encountered without an associated message type.
+     */
+    XFORM_MISSING_MSG_TYPE(9),
+    /*
+     * Specific to the Message Transformation Components; used to indicate that
+     * a transmitter group, language combination was encountered that did not
+     * have an associated dictionary.
+     */
+    XFORM_MISSING_DICTIONARY(10),
     /*
      * Indicates that a thread has been interrupted while performing some
      * action.

@@ -17,15 +17,10 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.msg;
-
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+package com.raytheon.uf.edex.bmh.xformer.data;
 
 /**
- * The header of a broadcast message. The header includes information about the
- * message, including the Specific Area Message Encoding (SAME) tones to be
- * issued before and after message broadcast and Alert tones; Comms Manager uses
- * this information to generate the sound bytes corresponding to these tones.
+ * Text that transformations will be applied to before it is used.
  * 
  * <pre>
  * 
@@ -33,7 +28,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 2, 2014  3228       bkowal      Initial creation
+ * Jun 26, 2014 3302       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -41,18 +36,27 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * @version 1.0
  */
 
-/*
- * TODO: define the message header. Contains tone information & primarily used
- * by the Comms Manager.
- */
-@DynamicSerialize
-public class BroadcastMsgHeader {
+public class RulingBoundText extends AbstractTextRuling implements IBoundText {
+
+    @SuppressWarnings("unused")
+    private ITextTransformation transformation;
 
     /**
-     * 
+     * @param text
      */
-    public BroadcastMsgHeader() {
-        // TODO Auto-generated constructor stub
+    public RulingBoundText(String text) {
+        super(text);
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.xformer.data.IBoundText#setTransformation(com
+     * .raytheon.uf.edex.bmh.xformer.data.ITextTransformation)
+     */
+    @Override
+    public void setTransformation(ITextTransformation transformation) {
+        this.transformation = transformation;
+    }
 }

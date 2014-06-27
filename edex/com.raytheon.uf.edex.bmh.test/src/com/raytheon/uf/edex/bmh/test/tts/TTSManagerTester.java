@@ -21,7 +21,7 @@ package com.raytheon.uf.edex.bmh.test.tts;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.UUID;
+import java.util.Random;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConversionException;
@@ -33,9 +33,8 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.edex.bmh.msg.BroadcastMsg;
-import com.raytheon.uf.edex.bmh.msg.BroadcastMsgBody;
-import com.raytheon.uf.edex.bmh.msg.BroadcastMsgHeader;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.edex.bmh.test.AbstractWavFileGeneratingTest;
 import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
 
@@ -51,6 +50,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2014 3228       bkowal      Initial creation
  * Jun 23, 2014 3304       bkowal      Re-factored
+ * Jun 24, 2014 3302       bkowal      Updated to use the BroadcastMsg Entity.
  * 
  * </pre>
  * 
@@ -132,13 +132,13 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
 
         TtsVoice voice = this.buildVoiceFromInput(configuration, inputFileName);
 
-        BroadcastMsg message = new BroadcastMsg(UUID.randomUUID().toString());
-        message.setHeader(new BroadcastMsgHeader());
-        BroadcastMsgBody messageBody = new BroadcastMsgBody();
-        messageBody.setAfosID(afosID);
-        messageBody.setSsml(ssmlMessage);
-        messageBody.setVoice(voice);
-        message.setBody(messageBody);
+        Random random = new Random(System.currentTimeMillis());
+        BroadcastMsg message = new BroadcastMsg();
+        message.setInputMessage(new InputMessage());
+        message.setId(random.nextLong());
+        message.getInputMessage().setAfosid(afosID);
+        message.setSsml(ssmlMessage);
+        message.setVoice(voice);
 
         return message;
     }
@@ -152,33 +152,33 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
      *            the provided Broadcast Message
      */
     public void convertToWav(BroadcastMsg message) {
-        if (message == null || message.getBody() == null) {
+        if (message == null) {
             statusHandler
                     .handle(Priority.PROBLEM,
                             "Receieved an uninitialized or incomplete Broadcast Message to process!");
             return;
         }
 
-        final String messageID = message.getId();
+        final long messageID = message.getId();
 
         statusHandler.info("Processing message: " + messageID);
 
-        if (message.getBody().isSuccess() == false) {
+        if (message.isSuccess() == false) {
             statusHandler
                     .error("TTS Conversion was unsuccessful; skipping message ["
                             + messageID + "]!");
             return;
         }
 
-        if (message.getBody().getOutputName() == null
-                || message.getBody().getOutputName().isEmpty()) {
+        if (message.getOutputName() == null
+                || message.getOutputName().trim().isEmpty()) {
             statusHandler
                     .error("Output file name has not been set on the message; skipping message ["
                             + messageID + "]!");
             return;
         }
 
-        File outputUlawFile = new File(message.getBody().getOutputName());
+        File outputUlawFile = new File(message.getOutputName().trim());
         if (outputUlawFile.exists() == false) {
             statusHandler.error("Specified output file: "
                     + outputUlawFile.getAbsolutePath()

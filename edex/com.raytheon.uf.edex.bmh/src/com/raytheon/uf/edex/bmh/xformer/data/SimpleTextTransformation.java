@@ -17,37 +17,34 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.msg.validator;
-
-import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
-import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
-import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
+package com.raytheon.uf.edex.bmh.xformer.data;
 
 /**
- * 
- * Placeholder transform so that the transform queue does not end up going
- * nowhere. Delete this after a real transformer has been implemented.
+ * A simple find and replace transformation.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date          Ticket#  Engineer    Description
- * ------------- -------- ----------- --------------------------
- * Jun 23, 2014  3283     bsteffen    Initial creation
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * Jun 26, 2014 3302       bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author bkowal
  * @version 1.0
  */
-public class PlaceholderTransformer {
 
-    InputMessageDao messageDao = new InputMessageDao();
+public class SimpleTextTransformation extends AbstractTextTransformation {
 
-    public BroadcastMsg transform(ValidatedMessage message) {
-        System.out.println("Pretending to transform: "
-                + message.getInputMessage());
-        return null;
+    /**
+     * Constructor
+     * 
+     * @param text
+     *            the text to replace
+     */
+    public SimpleTextTransformation(String text) {
+        super(text, null);
     }
 }

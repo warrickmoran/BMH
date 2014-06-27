@@ -49,6 +49,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
+ * Jun 26, 2014 3302       bkowal      Added a getter/setter for the
+ *                                     Languages map.
  * 
  * </pre>
  * 
@@ -162,6 +164,20 @@ public class TransmitterGroup {
 
     public void setProgramName(String programName) {
         this.programName = programName;
+    }
+
+    /**
+     * @return the languages
+     */
+    public Map<Language, TransmitterLanguage> getLanguages() {
+        return languages;
+    }
+
+    /**
+     * @param languages the languages to set
+     */
+    public void setLanguages(Map<Language, TransmitterLanguage> languages) {
+        this.languages = languages;
     }
 
     public Tone getTone() {

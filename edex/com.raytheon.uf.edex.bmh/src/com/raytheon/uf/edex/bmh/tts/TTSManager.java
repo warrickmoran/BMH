@@ -31,8 +31,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.FileUtils;
 
 import com.raytheon.uf.edex.bmh.BMHConstants;
-import com.raytheon.uf.edex.bmh.msg.BroadcastMsg;
-import com.raytheon.uf.edex.bmh.msg.BroadcastMsgBody;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.edex.bmh.status.BMH_CATEGORY;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
@@ -40,7 +39,6 @@ import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
-import com.raytheon.uf.common.datastorage.records.ByteDataRecord;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
@@ -56,6 +54,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * ------------ ---------- ----------- --------------------------
  * Jun 2, 2014  3228       bkowal      Initial creation
  * Jun 17, 2014 3291       bkowal      Updated to use the IBMHStatusHandler
+ * Jun 24, 2014 3302       bkowal      Updated to use the BroadcastMsg Entity. Eliminated the
+ *                                     use of *DataRecord.
  * 
  * </pre>
  * 
@@ -305,7 +305,7 @@ public class TTSManager implements IContextStateProcessor {
      * @return
      */
     public BroadcastMsg process(BroadcastMsg message) throws Exception {
-        if (message == null || message.getBody() == null) {
+        if (message == null) {
             /* Do not send a NULL downstream. */
             throw new Exception(
                     "Receieved an uninitialized or incomplete Broadcast Message to process!");
@@ -314,7 +314,7 @@ public class TTSManager implements IContextStateProcessor {
         if (this.disabled) {
             statusHandler
                     .info("TTS Manager is currently disabled. No messages can be processed.");
-            message.getBody().setSuccess(false);
+            message.setSuccess(false);
             return message;
         }
 
@@ -322,13 +322,10 @@ public class TTSManager implements IContextStateProcessor {
                 .info("Performing Text-to-Speech Transformation for message: "
                         + message.getId() + ".");
 
-        /* The TTS Manager only uses the body of the message. */
-        BroadcastMsgBody body = message.getBody();
-
         /* LinkedList to maintain the order of the converted data. */
-        List<ByteDataRecord> convertedData = new LinkedList<ByteDataRecord>();
+        List<byte[]> convertedData = new LinkedList<byte[]>();
         int attempt = 0;
-        TTS_RETURN_VALUE returnValue = null;
+        TTSReturn ttsReturn = null;
         boolean getFirstFrame = true;
         boolean success = false;
         IOException ioException = null;
@@ -336,14 +333,13 @@ public class TTSManager implements IContextStateProcessor {
         TTSInterface ttsInterface = this.getInterface();
 
         while (true) {
-            ByteDataRecord output = new ByteDataRecord();
             ++attempt;
 
             /* Attempt the Conversion */
             try {
-                returnValue = ttsInterface.transformSSMLToAudio(body.getSsml(),
-                        body.getVoice().getVoiceNumber(), TTS_DEFAULT_FORMAT,
-                        output, getFirstFrame);
+                ttsReturn = ttsInterface.transformSSMLToAudio(
+                        message.getSsml(), message.getVoice().getVoiceNumber(),
+                        TTS_DEFAULT_FORMAT, getFirstFrame);
             } catch (IOException e1) {
                 /*
                  * Prepare to retry on an IOException. Save the current
@@ -353,10 +349,10 @@ public class TTSManager implements IContextStateProcessor {
                 ioException = e1;
             }
 
-            if (returnValue == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
-                convertedData.add(output);
+            if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
+                convertedData.add(ttsReturn.getVoiceData());
                 statusHandler.info("Successfully retrieved "
-                        + output.getSizeInBytes()
+                        + ttsReturn.getVoiceData().length
                         + " bytes of audio data for message: "
                         + message.getId() + ". Data retrieval complete!");
                 /* Successful Conversion */
@@ -364,10 +360,10 @@ public class TTSManager implements IContextStateProcessor {
                 break;
             }
 
-            if (returnValue == TTS_RETURN_VALUE.TTS_RESULT_CONTINUE) {
-                convertedData.add(output);
+            if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_CONTINUE) {
+                convertedData.add(ttsReturn.getVoiceData());
                 statusHandler.info("Successfully retrieved "
-                        + output.getSizeInBytes()
+                        + ttsReturn.getVoiceData().length
                         + " bytes of audio data for message: "
                         + message.getId() + ". Retrieving additional data ...");
                 /*
@@ -383,7 +379,7 @@ public class TTSManager implements IContextStateProcessor {
                 continue;
             }
 
-            if (this.retry(returnValue) == false) {
+            if (this.retry(ttsReturn.getReturnValue()) == false) {
                 /* Absolute Failure */
                 break;
             }
@@ -402,8 +398,10 @@ public class TTSManager implements IContextStateProcessor {
                 BMH_CATEGORY category = null;
                 if (ioException == null) {
                     /* Build the log message. */
-                    logMessage += this.getTTSErrorLogStatement(returnValue);
-                    category = returnValue.getAssociatedBMHCategory();
+                    logMessage += this.getTTSErrorLogStatement(ttsReturn
+                            .getReturnValue());
+                    category = ttsReturn.getReturnValue()
+                            .getAssociatedBMHCategory();
                 } else {
                     logMessage += "IO Error = "
                             + ioException.getLocalizedMessage();
@@ -423,18 +421,17 @@ public class TTSManager implements IContextStateProcessor {
                     .info("Text-to-Speech Transformation completed successfully for message: "
                             + message.getId() + ".");
             /* Write the output file. */
-            File outputFile = this.determineOutputFile(message.getId(),
-                    body.getAfosID(), body.getVoice());
+            File outputFile = this.determineOutputFile(message.getId(), message
+                    .getInputMessage().getAfosid(), message.getVoice());
             try {
                 boolean append = false;
                 int byteCount = 0;
-                for (ByteDataRecord data : convertedData) {
-                    FileUtils.writeByteArrayToFile(outputFile,
-                            data.getByteData(), append);
-                    byteCount += data.getSizeInBytes();
+                for (byte[] data : convertedData) {
+                    FileUtils.writeByteArrayToFile(outputFile, data, append);
+                    byteCount += data.length;
                     append = true;
                 }
-                message.getBody().setOutputName(outputFile.getAbsolutePath());
+                message.setOutputName(outputFile.getAbsolutePath());
                 statusHandler.info("Successfully wrote audio output file: "
                         + outputFile.getAbsolutePath() + " for message: "
                         + message.getId() + "." + byteCount
@@ -460,17 +457,18 @@ public class TTSManager implements IContextStateProcessor {
             stringBuilder.append(message.getId());
             if (ioException == null) {
                 stringBuilder.append("; ");
-                stringBuilder.append(this.getTTSErrorLogStatement(returnValue));
+                stringBuilder.append(this.getTTSErrorLogStatement(ttsReturn
+                        .getReturnValue()));
                 stringBuilder.append("!");
-                statusHandler.error(returnValue.getAssociatedBMHCategory(),
-                        stringBuilder.toString());
+                statusHandler.error(ttsReturn.getReturnValue()
+                        .getAssociatedBMHCategory(), stringBuilder.toString());
             } else {
                 stringBuilder.append("!");
                 statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
                         stringBuilder.toString(), ioException);
             }
         }
-        message.getBody().setSuccess(success);
+        message.setSuccess(true);
 
         return message;
     }
@@ -513,7 +511,7 @@ public class TTSManager implements IContextStateProcessor {
      *            process
      * @return the output file
      */
-    private File determineOutputFile(final String bmhID, final String afosID,
+    private File determineOutputFile(final long bmhID, final String afosID,
             TtsVoice voice) {
 
         final String fileNamePartsSeparator = "_";
