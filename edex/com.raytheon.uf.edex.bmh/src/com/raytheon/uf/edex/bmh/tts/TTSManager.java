@@ -56,6 +56,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jun 17, 2014 3291       bkowal      Updated to use the IBMHStatusHandler
  * Jun 24, 2014 3302       bkowal      Updated to use the BroadcastMsg Entity. Eliminated the
  *                                     use of *DataRecord.
+ * Jul 1, 2014  3302       bkowal      Fixed log message.
  * 
  * </pre>
  * 
@@ -434,7 +435,7 @@ public class TTSManager implements IContextStateProcessor {
                 message.setOutputName(outputFile.getAbsolutePath());
                 statusHandler.info("Successfully wrote audio output file: "
                         + outputFile.getAbsolutePath() + " for message: "
-                        + message.getId() + "." + byteCount
+                        + message.getId() + ". " + byteCount
                         + " bytes were written.");
             } catch (IOException e) {
                 ioException = e;

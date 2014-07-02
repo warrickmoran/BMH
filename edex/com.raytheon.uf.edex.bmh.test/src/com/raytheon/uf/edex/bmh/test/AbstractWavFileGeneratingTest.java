@@ -36,8 +36,8 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 
 /**
- * Abstract representation of a test capability that is capable of producing
- * a WAV file as the final output.
+ * Abstract representation of a test capability that is capable of producing a
+ * WAV file as the final output.
  * 
  * <pre>
  * 
@@ -46,6 +46,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 23, 2014 3304       bkowal      Initial creation
+ * Jul 1, 2014  3302       bkowal      Improved Exception Handling.
  * 
  * </pre>
  * 
@@ -146,14 +147,12 @@ public abstract class AbstractWavFileGeneratingTest {
 
         /* Verify a file has been provided and that the file exists. */
         if (testFile == null) {
-            statusHandler.error("File cannot be NULL!");
-            return null;
+            throw new Exception("File cannot be NULL!");
         }
 
         if (testFile.exists() == false) {
-            statusHandler.error("The specified file: "
+            throw new Exception("The specified file: "
                     + testFile.getAbsolutePath() + " does not exist!");
-            return null;
         }
 
         statusHandler.info("Processing input file: "
@@ -164,9 +163,10 @@ public abstract class AbstractWavFileGeneratingTest {
         try {
             configuration = new PropertiesConfiguration(testFile);
         } catch (ConfigurationException e) {
-            statusHandler.error("Failed to load the specified file: "
+            testFile.delete();
+
+            throw new Exception("Failed to load the specified file: "
                     + testFile.getAbsolutePath() + "!", e);
-            return null;
         }
 
         Object output = null;

@@ -174,7 +174,8 @@ public class TransmitterGroup {
     }
 
     /**
-     * @param languages the languages to set
+     * @param languages
+     *            the languages to set
      */
     public void setLanguages(Map<Language, TransmitterLanguage> languages) {
         this.languages = languages;

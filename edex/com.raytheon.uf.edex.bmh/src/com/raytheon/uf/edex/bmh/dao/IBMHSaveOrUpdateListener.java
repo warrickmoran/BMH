@@ -19,8 +19,10 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import org.hibernate.event.SaveOrUpdateEvent;
+
 /**
- * Database Constants
+ * Defines the BMH Database Listener.
  * 
  * <pre>
  * 
@@ -28,15 +30,28 @@ package com.raytheon.uf.edex.bmh.dao;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
- * Jul 1, 2014  3202       bkowal      Changed the default database to bmh.
+ * Jul 1, 2014  3302       bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author rjpeter
+ * @author bkowal
  * @version 1.0
  */
-public class DatabaseConstants {
-    public static final String BMH_DATABASE_NAME = System.getProperty(
-            "bmh.database", "bmh");
+
+public interface IBMHSaveOrUpdateListener {
+    /**
+     * Initiates a custom action just before a specified database entity is
+     * saved to the database.
+     * 
+     * @param event
+     *            details about the event
+     */
+    public void onSaveOrUpdate(SaveOrUpdateEvent event);
+
+    /**
+     * Defines the class the implementing update listener is interested in.
+     * 
+     * @return class the implementing update listener is interested in.
+     */
+    public Class<?> getEntityClass();
 }
