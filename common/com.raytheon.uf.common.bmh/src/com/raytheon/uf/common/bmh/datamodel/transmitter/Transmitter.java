@@ -151,5 +151,4 @@ public class Transmitter {
         this.transmitterGroup = transmitterGroup;
     }
 
-
 }

@@ -19,8 +19,10 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+
 /**
- * Database Constants
+ * BMH DAO for {@link TtsVoice}.
  * 
  * <pre>
  * 
@@ -28,15 +30,17 @@ package com.raytheon.uf.edex.bmh.dao;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
- * Jul 1, 2014  3202       bkowal      Changed the default database to bmh.
+ * Jul 1, 2014  3302       bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author rjpeter
+ * @author bkowal
  * @version 1.0
  */
-public class DatabaseConstants {
-    public static final String BMH_DATABASE_NAME = System.getProperty(
-            "bmh.database", "bmh");
+
+public class TtsVoiceDao extends AbstractBMHDao<TtsVoice, Integer> {
+
+    public TtsVoiceDao() {
+        super(TtsVoice.class);
+    }
 }

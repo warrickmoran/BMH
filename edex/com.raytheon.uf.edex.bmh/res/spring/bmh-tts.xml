@@ -2,27 +2,31 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
-	<bean id="getAllDataHandler" class="com.raytheon.uf.edex.bmh.handler.GetAllDataHandler" />
-	<bean factory-bean="handlerRegistry" factory-method="register">
-		<constructor-arg
-			value="com.raytheon.uf.common.bmh.request.GetAllDataRequest" />
-		<constructor-arg ref="getAllDataHandler" />
-	</bean>
-
-	<!-- tts manager -->
 	<bean id="ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager" />
+	
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
-		<constructor-arg ref="bmh" />
+		<constructor-arg ref="bmh-tts" />
 		<constructor-arg ref="ttsManager" />
 	</bean>
 
-	<camelContext id="bmh" xmlns="http://camel.apache.org/schema/spring"
+	<camelContext id="bmh-tts" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
 
 		<route id="ttsEncodeAudio">
-			<from uri="direct-vm:ttsIngest" />
-			<bean ref="ttsManager" method="process" />
-			<to uri="direct-vm:ttsSchedule" />
+			<from uri="jms-durable:queue:BMH.TTS" />
+			<doTry>
+				<bean ref="broadcastMsgDao" method="getByID" />
+				<bean ref="ttsManager" method="process" />
+				<bean ref="broadcastMsgDao" method="saveOrUpdate" />
+				<setBody>
+					<simple>${body.getId}</simple>
+				</setBody>
+				<to uri="jms-durable:queue:BMH.Schedule" />
+				<doCatch>
+					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR" />
+				</doCatch>
+			</doTry>
 		</route>
 
 	</camelContext>

@@ -52,6 +52,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Table(name = "transmitter_language", schema = "bmh")
 @DynamicSerialize
 public class TransmitterLanguage {
+
     @EmbeddedId
     @DynamicSerializeElement
     private TransmitterLanguagePK id;
@@ -90,7 +91,8 @@ public class TransmitterLanguage {
     }
 
     /**
-     * @param id the id to set
+     * @param id
+     *            the id to set
      */
     public void setId(TransmitterLanguagePK id) {
         this.id = id;
@@ -104,7 +106,8 @@ public class TransmitterLanguage {
     }
 
     /**
-     * @param stationIdMsg the stationIdMsg to set
+     * @param stationIdMsg
+     *            the stationIdMsg to set
      */
     public void setStationIdMsg(String stationIdMsg) {
         this.stationIdMsg = stationIdMsg;
@@ -118,7 +121,8 @@ public class TransmitterLanguage {
     }
 
     /**
-     * @param timeMsg the timeMsg to set
+     * @param timeMsg
+     *            the timeMsg to set
      */
     public void setTimeMsg(String timeMsg) {
         this.timeMsg = timeMsg;
@@ -132,7 +136,8 @@ public class TransmitterLanguage {
     }
 
     /**
-     * @param dictionaryName the dictionaryName to set
+     * @param dictionaryName
+     *            the dictionaryName to set
      */
     public void setDictionaryName(String dictionaryName) {
         this.dictionaryName = dictionaryName;
@@ -146,7 +151,8 @@ public class TransmitterLanguage {
     }
 
     /**
-     * @param voice the voice to set
+     * @param voice
+     *            the voice to set
      */
     public void setVoice(TtsVoice voice) {
         this.voice = voice;

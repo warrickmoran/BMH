@@ -17,37 +17,30 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.msg.validator;
+package com.raytheon.uf.edex.bmh.dao;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
-import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
-import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 
 /**
- * 
- * Placeholder transform so that the transform queue does not end up going
- * nowhere. Delete this after a real transformer has been implemented.
+ * BMH DAO for {@link BroadcastMsg}.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date          Ticket#  Engineer    Description
- * ------------- -------- ----------- --------------------------
- * Jun 23, 2014  3283     bsteffen    Initial creation
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * Jun 26, 2014 3302       bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author bkowal
  * @version 1.0
  */
-public class PlaceholderTransformer {
 
-    InputMessageDao messageDao = new InputMessageDao();
+public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
 
-    public BroadcastMsg transform(ValidatedMessage message) {
-        System.out.println("Pretending to transform: "
-                + message.getInputMessage());
-        return null;
+    public BroadcastMsgDao() {
+        super(BroadcastMsg.class);
     }
 }
