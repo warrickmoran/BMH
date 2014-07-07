@@ -25,7 +25,7 @@ import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
-import com.raytheon.uf.viz.bmh.ui.dialogs.BmhMainDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.BMHLauncherDlg;
 
 /**
  * TODO Add Description
@@ -46,12 +46,21 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.BmhMainDlg;
 
 public class BmhAction extends AbstractHandler {
 
+    private BMHLauncherDlg bmhLauncher;
+
     @Override
     public Object execute(ExecutionEvent event) throws ExecutionException {
-        Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                .getShell();
-        BmhMainDlg main = new BmhMainDlg(shell);
-        main.open();
+
+        if (bmhLauncher == null || bmhLauncher.isDisposed()) {
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+
+            bmhLauncher = new BMHLauncherDlg(shell);
+            bmhLauncher.open();
+        }
+
+        // BmhMainDlg main = new BmhMainDlg(shell);
+        // main.open();
         return null;
     }
 }
