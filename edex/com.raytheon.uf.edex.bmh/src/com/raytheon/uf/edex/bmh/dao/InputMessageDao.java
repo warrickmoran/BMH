@@ -62,18 +62,18 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
     public boolean checkDuplicate(final InputMessage message) {
         List<?> messages = txTemplate
                 .execute(new TransactionCallback<List<?>>() {
-            @Override
+                    @Override
                     public List<?> doInTransaction(TransactionStatus status) {
-                HibernateTemplate ht = getHibernateTemplate();
-                return ht.findByNamedQueryAndNamedParam(
-                        InputMessage.DUP_QUERY_NAME,
-                        new String[] { "id", "afosid", "areaCodes", "mrd",
-                                "effectiveTime", "expirationTime" },
-                        new Object[] { message.getId(), message.getAfosid(),
-                                message.getAreaCodes(), message.getMrd(),
-                                message.getEffectiveTime(),
-                                message.getExpirationTime() });
-            }
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht.findByNamedQueryAndNamedParam(
+                                InputMessage.DUP_QUERY_NAME,
+                                new String[] { "id", "afosid", "mrd",
+                                        "effectiveTime", "expirationTime" },
+                                new Object[] { message.getId(),
+                                        message.getAfosid(), message.getMrd(),
+                                        message.getEffectiveTime(),
+                                        message.getExpirationTime() });
+                    }
                 });
         for (Object obj : messages) {
             InputMessage dup = (InputMessage) obj;
@@ -81,8 +81,8 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
                 continue;
             } else if (!dup.getAfosid().equals(message.getAfosid())) {
                 continue;
-            }
-            if (dup.getAreaCodeList().containsAll(message.getAreaCodeList())) {
+            } else if (!dup.getAreaCodeList().containsAll(
+                    message.getAreaCodeList())) {
                 continue;
             }
             int mrd = message.getMrdId();
