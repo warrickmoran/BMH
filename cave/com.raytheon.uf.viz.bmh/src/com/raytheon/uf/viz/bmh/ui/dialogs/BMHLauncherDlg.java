@@ -160,11 +160,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         transmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                Rectangle rect = transmitterBtn.getBounds();
-                Point pt = new Point(rect.x, rect.y + rect.height);
-                pt = buttonComp.toDisplay(pt);
-                transmittersMenu.setLocation(pt.x, pt.y);
-                transmittersMenu.setVisible(true);
+                displayMenu(buttonComp, transmitterBtn, transmittersMenu);
             }
         });
 
@@ -178,11 +174,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         programsBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                Rectangle rect = programsBtn.getBounds();
-                Point pt = new Point(rect.x, rect.y + rect.height);
-                pt = buttonComp.toDisplay(pt);
-                programsMenu.setLocation(pt.x, pt.y);
-                programsMenu.setVisible(true);
+                displayMenu(buttonComp, programsBtn, programsMenu);
             }
         });
 
@@ -196,11 +188,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         messagesBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                Rectangle rect = messagesBtn.getBounds();
-                Point pt = new Point(rect.x, rect.y + rect.height);
-                pt = buttonComp.toDisplay(pt);
-                messagesMenu.setLocation(pt.x, pt.y);
-                messagesMenu.setVisible(true);
+                displayMenu(buttonComp, messagesBtn, messagesMenu);
             }
         });
 
@@ -214,11 +202,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         systemBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                Rectangle rect = systemBtn.getBounds();
-                Point pt = new Point(rect.x, rect.y + rect.height);
-                pt = buttonComp.toDisplay(pt);
-                systemMenu.setLocation(pt.x, pt.y);
-                systemMenu.setVisible(true);
+                displayMenu(buttonComp, systemBtn, systemMenu);
             }
         });
 
@@ -232,11 +216,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         maintenanceBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                Rectangle rect = maintenanceBtn.getBounds();
-                Point pt = new Point(rect.x, rect.y + rect.height);
-                pt = buttonComp.toDisplay(pt);
-                maintenanceMenu.setLocation(pt.x, pt.y);
-                maintenanceMenu.setVisible(true);
+                displayMenu(buttonComp, maintenanceBtn, maintenanceMenu);
             }
         });
     }
@@ -502,5 +482,23 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
             }
         });
+    }
+
+    /**
+     * Display the popup menu associated with the specified button.
+     * 
+     * @param comp
+     *            Composite when the button resides.
+     * @param btn
+     *            Button clicked.
+     * @param menu
+     *            Menu to be displayed.
+     */
+    private void displayMenu(Composite comp, Button btn, Menu menu) {
+        Rectangle rect = btn.getBounds();
+        Point pt = new Point(rect.x, rect.y + rect.height);
+        pt = comp.toDisplay(pt);
+        menu.setLocation(pt.x, pt.y);
+        menu.setVisible(true);
     }
 }

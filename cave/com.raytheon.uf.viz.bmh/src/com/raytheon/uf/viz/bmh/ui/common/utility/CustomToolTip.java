@@ -74,10 +74,12 @@ public class CustomToolTip {
     private Control tipControl = null;
 
     /** Foreground color for the tool tip text. */
-    private RGB tipForegroundClr = new RGB(0, 0, 0);
+    private RGB tipForegroundClr = Display.getCurrent()
+            .getSystemColor(SWT.COLOR_INFO_FOREGROUND).getRGB();
 
     /** Background color for the tool tip text. */
-    private RGB tipBackgroundClr = new RGB(255, 255, 255);
+    private RGB tipBackgroundClr = Display.getCurrent()
+            .getSystemColor(SWT.COLOR_INFO_BACKGROUND).getRGB();
 
     /** Width of the screen. */
     private int screenWidth = 0;
