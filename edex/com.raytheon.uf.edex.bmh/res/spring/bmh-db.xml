@@ -20,6 +20,7 @@
 				<value>com.raytheon.uf.common.bmh.datamodel.msg</value>
 				<value>com.raytheon.uf.common.bmh.datamodel.language</value>
 				<value>com.raytheon.uf.common.bmh.datamodel.transmitter</value>
+				<value>com.raytheon.uf.common.bmh.datamodel.playlist</value>
 			</list>
 		</property>
 	</bean>
