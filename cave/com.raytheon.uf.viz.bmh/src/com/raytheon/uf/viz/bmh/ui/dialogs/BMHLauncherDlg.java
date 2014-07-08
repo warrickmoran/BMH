@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs;
 
+import java.util.Map;
+
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -36,11 +38,14 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * 
@@ -336,7 +341,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         disableAlarmMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
+                handleDisableSilenceAlarm();
             }
         });
 
@@ -500,5 +505,37 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         pt = comp.toDisplay(pt);
         menu.setLocation(pt.x, pt.y);
         menu.setVisible(true);
+    }
+
+    private void handleDisableSilenceAlarm() {
+
+        // TODO - REMOVE DUMMY CODE
+        CheckListData cld = new CheckListData();
+        boolean checked = true;
+        for (int i = 0; i < 30; i++) {
+            checked = true;
+            if (i % 2 == 0) {
+                checked = false;
+            }
+            cld.addDataItem("Transmitter:" + i, checked);
+        }
+
+        CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
+                "Disable Silence Alarm", "Select Transmitter to Disable:", cld,
+                true);
+        checkListDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue != null && returnValue instanceof CheckListData) {
+                    CheckListData listData = (CheckListData) returnValue;
+                    Map<String, Boolean> dataMap = listData.getDataMap();
+                    for (String str : dataMap.keySet()) {
+                        System.out.println("Type = " + str + "\t Selected: "
+                                + dataMap.get(str));
+                    }
+                }
+            }
+        });
+        checkListDlg.open();
     }
 }
