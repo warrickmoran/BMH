@@ -19,27 +19,27 @@
  **/
 package com.raytheon.uf.edex.bmh.tts;
 
-import java.io.IOException;
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.TimeZone;
-import java.util.List;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.TimeZone;
 
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 
-import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
+import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
+import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
-import com.raytheon.uf.edex.bmh.status.BMH_CATEGORY;
+import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
-import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_FORMAT;
-import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
-import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
-import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
  * The TTS Manager is responsible for interacting with the TTS Server to convert
@@ -110,7 +110,7 @@ public class TTSManager implements IContextStateProcessor {
 
     private long ttsRetryDelay;
 
-    private boolean disabled;
+    private final boolean disabled;
 
     public TTSManager() {
         this.disabled = Boolean.getBoolean(TTS_DISABLED_PROPERTY);
@@ -584,7 +584,7 @@ public class TTSManager implements IContextStateProcessor {
         }
     }
 
-    private TTSInterface getInterface() {
+    public TTSInterface getInterface() {
         TTSInterface ttsInterface = new TTSInterface(this.ttsServer,
                 this.ttsPort, this.ttsConnectionTimeout);
 

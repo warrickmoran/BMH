@@ -32,6 +32,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
@@ -43,6 +44,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -57,7 +59,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 7, 2014  #3338      lvenable     Initial creation
+ * Jul 07, 2014  #3338     lvenable    Initial creation
+ * Jul 08, 2014   3355     mpduff      Implement legacy dictionary converter
  * 
  * </pre>
  * 
@@ -96,6 +99,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     /** Status dialog. */
     private SystemStatusDlg statusDlg;
 
+    private LegacyDictionaryConverterDlg dictConverterDlg;
+
     /**
      * Constructor.
      * 
@@ -104,7 +109,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      */
     public BMHLauncherDlg(Shell parentShell) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.DO_NOT_BLOCK
-                | CAVE.MODE_INDEPENDENT | CAVE.INDEPENDENT_SHELL);
+                | CAVE.MODE_INDEPENDENT);
     }
 
     @Override
@@ -136,7 +141,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         createMenuComp(shell);
         createQuickAccessButtons(shell);
 
-        statusDlg = new SystemStatusDlg(shell);
+        statusDlg = new SystemStatusDlg(getParent());
         statusDlg.open();
     }
 
@@ -484,7 +489,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         convertDictMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
+                launchLegacyDictionaryConverter();
             }
         });
     }
@@ -505,6 +510,30 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         pt = comp.toDisplay(pt);
         menu.setLocation(pt.x, pt.y);
         menu.setVisible(true);
+    }
+
+    /**
+     * Launch the legacy dictionary converter
+     */
+    private void launchLegacyDictionaryConverter() {
+        if (this.dictConverterDlg == null || dictConverterDlg.isDisposed()) {
+            FileDialog dialog = new FileDialog(shell, SWT.SAVE);
+            String[] filterNames = new String[] { "Dictionary Files",
+                    "All Files (*)" };
+            String[] filterExtensions = new String[] { "*.dic;*.nat;", "*" };
+            String filterPath = "/";
+            dialog.setFilterNames(filterNames);
+            dialog.setFilterExtensions(filterExtensions);
+            dialog.setFilterPath(filterPath);
+            String file = dialog.open();
+            if (file != null && file.length() > 0) {
+                this.dictConverterDlg = new LegacyDictionaryConverterDlg(
+                        getShell(), file);
+                dictConverterDlg.open();
+            }
+        } else {
+            dictConverterDlg.bringToTop();
+        }
     }
 
     private void handleDisableSilenceAlarm() {
@@ -536,6 +565,5 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                 }
             }
         });
-        checkListDlg.open();
     }
 }

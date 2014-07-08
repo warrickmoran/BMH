@@ -19,10 +19,10 @@
  **/
 package com.raytheon.uf.edex.bmh.msg.validator;
 
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
-import com.raytheon.uf.edex.bmh.status.BMH_CATEGORY;
 
 /**
  * Validate {@link InputMessage}, generating a {@link ValidatedMessage}.

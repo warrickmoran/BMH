@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.tts;
 
-import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_RETURN_VALUE;
+import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 
 /**
  * Wraps data returned by {@link TTSInterface}

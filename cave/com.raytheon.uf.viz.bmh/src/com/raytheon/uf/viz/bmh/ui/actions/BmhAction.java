@@ -58,9 +58,6 @@ public class BmhAction extends AbstractHandler {
             bmhLauncher = new BMHLauncherDlg(shell);
             bmhLauncher.open();
         }
-
-        // BmhMainDlg main = new BmhMainDlg(shell);
-        // main.open();
         return null;
     }
 }

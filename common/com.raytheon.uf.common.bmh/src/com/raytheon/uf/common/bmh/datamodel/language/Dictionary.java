@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.language;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
@@ -28,7 +29,8 @@ import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
@@ -46,18 +48,22 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
- * Jul 8, 2014  3302       bkowal      Use eager fetching to eliminate session closed
- *                                     errors with lazy loading.
+ * Jul 08, 2014 3302       bkowal      Use eager fetching to eliminate session closed
+ * Jul 08, 2014 3355       mpduff      Updated mappings between dictionary and words
  * 
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = Dictionary.GET_DICTIONARY_NAMES_QUERY, query = "select dict.name from Dictionary dict") })
 @Entity
 @Table(name = "dictionary", schema = "bmh")
 @DynamicSerialize
 public class Dictionary {
+
+    public static final String GET_DICTIONARY_NAMES_QUERY = "getDictionaryNames";
+
     @Id
     @Column(length = 20)
     @DynamicSerializeElement
@@ -68,8 +74,7 @@ public class Dictionary {
     @DynamicSerializeElement
     private Language language = Language.ENGLISH;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinColumn(name = "dictionary_name")
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "dictionary", fetch = FetchType.EAGER)
     @DynamicSerializeElement
     private Set<Word> words;
 
@@ -90,11 +95,49 @@ public class Dictionary {
     }
 
     public Set<Word> getWords() {
+        if (words == null) {
+            words = new HashSet<Word>();
+        }
         return words;
     }
 
     public void setWords(Set<Word> words) {
         this.words = words;
+        if (words != null && !words.isEmpty()) {
+            for (Word word : words) {
+                word.setDictionary(this);
+            }
+        }
     }
 
+    public boolean containsWord(String wordName) {
+        if (words != null) {
+            for (Word word : words) {
+                if (wordName.equalsIgnoreCase(word.getWord())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get a {@link Word} from the dictionary.
+     * 
+     * @param wordName
+     *            The word name
+     * @return The Word or null if no word
+     */
+    public Word getWord(String wordName) {
+        if (words != null) {
+            for (Word word : words) {
+                if (wordName.equalsIgnoreCase(word.getWord())) {
+                    return word;
+                }
+            }
+        }
+
+        return null;
+    }
 }

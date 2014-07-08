@@ -23,8 +23,8 @@ import java.io.IOException;
 
 import voiceware.libttsapi;
 
-import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_FORMAT;
-import com.raytheon.uf.edex.bmh.tts.TTSConstants.TTS_RETURN_VALUE;
+import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
+import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 
 /**
  * Provides a somewhat generic interface to a TTS API. Note: This class is NOT

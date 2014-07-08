@@ -30,7 +30,8 @@ import org.eclipse.swt.SWT;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 3, 2014     3289    mpduff      Initial creation
+ * Jun 03, 2014    3289    mpduff      Initial creation
+ * Jul 08, 2014    3355    mpduff      Added constructor with alignment option.
  * 
  * </pre>
  * 
@@ -71,9 +72,24 @@ public class TableColumnData {
      * @param width
      *            column width
      */
-    public TableColumnData(String text, int minimumWidth) {
+    public TableColumnData(String text, int minimumwidth) {
+        this(text, minimumwidth, SWT.CENTER);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param text
+     *            header text
+     * @param width
+     *            column width
+     * @param alignment
+     *            column header alignment
+     */
+    public TableColumnData(String text, int minimumwidth, int alignment) {
         this.text = text;
-        this.minimumWidth = minimumWidth;
+        this.minimumWidth = minimumwidth;
+        this.alignment = alignment;
     }
 
     /**

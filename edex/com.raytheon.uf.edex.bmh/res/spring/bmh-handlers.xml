@@ -11,4 +11,27 @@
 		<constructor-arg ref="getAllDataHandler" />
 	</bean>
 
+	<bean id="dictionaryHandler" class="com.raytheon.uf.edex.bmh.handler.DictionaryHandler" />
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.bmh.request.DictionaryRequest" />
+		<constructor-arg ref="dictionaryHandler" />
+	</bean>
+  
+	<bean id="wordHandler" class="com.raytheon.uf.edex.bmh.handler.WordHandler" />
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.bmh.request.WordRequest" />
+		<constructor-arg ref="wordHandler" />
+	</bean>
+
+	<bean id="ttsHandler" class="com.raytheon.uf.edex.bmh.handler.TextToSpeechHandler">
+		<constructor-arg ref="ttsManager" />
+	</bean>
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.bmh.request.TextToSpeechRequest" />
+		<constructor-arg ref="ttsHandler" />
+	</bean>
+
 </beans>

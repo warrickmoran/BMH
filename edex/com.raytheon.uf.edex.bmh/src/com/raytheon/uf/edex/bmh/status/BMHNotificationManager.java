@@ -34,12 +34,12 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.status.BMH_ACTION;
-import com.raytheon.uf.edex.bmh.status.BMH_CATEGORY;
 
 /**
  * Reads the notification configuration at startup. Used to lookup what action

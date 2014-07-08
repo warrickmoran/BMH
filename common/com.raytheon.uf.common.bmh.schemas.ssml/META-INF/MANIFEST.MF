@@ -6,4 +6,5 @@ Bundle-Version: 1.14.0.qualifier
 Bundle-Vendor: RAYTHEON
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Require-Bundle: com.raytheon.uf.common.serialization;bundle-version="1.14.0"
-Export-Package: com.raytheon.uf.common.bmh.schemas.ssml
+Export-Package: com.raytheon.uf.common.bmh.schemas.ssml,
+ com.raytheon.uf.common.bmh.schemas.ssml.jaxb

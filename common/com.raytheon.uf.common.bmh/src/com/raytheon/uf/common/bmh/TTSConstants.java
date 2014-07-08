@@ -17,12 +17,10 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.tts;
+package com.raytheon.uf.common.bmh;
 
-import java.util.Map;
 import java.util.HashMap;
-
-import com.raytheon.uf.edex.bmh.status.BMH_CATEGORY;
+import java.util.Map;
 
 import voiceware.libttsapi;
 
@@ -38,6 +36,7 @@ import voiceware.libttsapi;
  * ------------ ---------- ----------- --------------------------
  * Jun 10, 2014 3228       bkowal      Initial creation
  * Jun 17, 2014 3291       bkowal      Added a method to translate the TTS return values to BMH categories.
+ * Jul 08, 2014 3355       mpduff      Moved to common
  * 
  * 
  * </pre>
@@ -47,7 +46,6 @@ import voiceware.libttsapi;
  */
 
 public final class TTSConstants {
-
     public static enum TTS_RETURN_VALUE {
         TTS_RESULT_SUCCESS(libttsapi.TTS_RESULT_SUCCESS, "Success"), TTS_RESULT_CONTINUE(
                 libttsapi.TTS_RESULT_CONTINUE,

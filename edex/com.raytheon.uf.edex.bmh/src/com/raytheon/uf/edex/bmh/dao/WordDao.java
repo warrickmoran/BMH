@@ -17,12 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.status;
+package com.raytheon.uf.edex.bmh.dao;
 
-import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.datamodel.language.Word;
 
 /**
- * Defines the BMH status handler.
+ * BMH DAO for {@link Word}.
  * 
  * <pre>
  * 
@@ -30,30 +30,16 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 16, 2014 3291       bkowal      Initial creation
+ * Jul 03, 2014    3355    mpduff      Initial creation
  * 
  * </pre>
  * 
- * @author bkowal
+ * @author mpduff
  * @version 1.0
  */
 
-public interface IBMHStatusHandler {
-    public void debug(String message);
-
-    public void debug(BMH_CATEGORY category, String message);
-
-    public void info(String message);
-
-    public void info(BMH_CATEGORY category, String message);
-
-    public void warn(BMH_CATEGORY category, String message);
-
-    public void error(BMH_CATEGORY category, String message);
-
-    public void error(BMH_CATEGORY category, String message, Throwable throwable);
-
-    public void fatal(BMH_CATEGORY category, String message);
-
-    public void fatal(BMH_CATEGORY category, String message, Throwable throwable);
+public class WordDao extends AbstractBMHDao<Word, String> {
+    public WordDao() {
+        super(Word.class);
+    }
 }

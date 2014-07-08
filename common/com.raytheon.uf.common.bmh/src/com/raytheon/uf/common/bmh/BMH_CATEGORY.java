@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.status;
+package com.raytheon.uf.common.bmh;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,6 +36,7 @@ import java.util.Map;
  * Jun 26, 2014 3302       bkowal      Added categories for the Message Transformer.
  * Jul 01, 2014 3283       bsteffen    Added categories for message validation.
  * Jul 7, 2014  3302       bkowal      Added a category for failed SSML generation.
+ * Jul 08, 2014 3355       mpduff      Moved to common
  * 
  * </pre>
  * 

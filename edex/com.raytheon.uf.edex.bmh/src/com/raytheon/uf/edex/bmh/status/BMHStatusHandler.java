@@ -24,9 +24,9 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.status.BMH_ACTION;
-import com.raytheon.uf.edex.bmh.status.BMH_CATEGORY;
 import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**

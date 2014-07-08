@@ -27,6 +27,7 @@ import java.util.regex.Matcher;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
@@ -41,7 +42,6 @@ import com.raytheon.uf.common.bmh.schemas.ssml.Sentence;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
-import com.raytheon.uf.edex.bmh.status.BMH_CATEGORY;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.bmh.xformer.data.IBoundText;
 import com.raytheon.uf.edex.bmh.xformer.data.IFreeText;

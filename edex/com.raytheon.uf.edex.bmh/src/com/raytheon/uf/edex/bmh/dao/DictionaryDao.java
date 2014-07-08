@@ -19,6 +19,13 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.Collections;
+import java.util.List;
+
+import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 
 /**
@@ -31,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2014 3302       bkowal      Initial creation
+ * Jul 08, 2014 3355       mpduff      Added getDictionaryNames()
  * 
  * </pre>
  * 
@@ -41,5 +49,27 @@ import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 public class DictionaryDao extends AbstractBMHDao<Dictionary, String> {
     public DictionaryDao() {
         super(Dictionary.class);
+    }
+
+    /**
+     * Get a list of all dictionaries in the BMH database.
+     * 
+     * @return dictList list of dictionaries
+     */
+    public List<String> getDictionaryNames() {
+        List<String> names = txTemplate
+                .execute(new TransactionCallback<List<String>>() {
+                    @Override
+                    public List<String> doInTransaction(TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht
+                                .findByNamedQuery(Dictionary.GET_DICTIONARY_NAMES_QUERY);
+                    }
+                });
+        if (names == null) {
+            names = Collections.emptyList();
+        }
+
+        return names;
     }
 }

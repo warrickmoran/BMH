@@ -29,5 +29,8 @@
 	<mode name="bmh">
 	 	<include>^bmh-</include>
 	</mode>
+	<mode name="request">
+	 	<include>^bmh-</include>
+	</mode>
 
 </edexModes>
