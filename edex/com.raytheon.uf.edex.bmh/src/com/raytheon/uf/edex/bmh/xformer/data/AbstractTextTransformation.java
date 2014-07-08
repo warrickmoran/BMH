@@ -19,8 +19,15 @@
  **/
 package com.raytheon.uf.edex.bmh.xformer.data;
 
+import java.io.Serializable;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.xml.bind.JAXBException;
+
+import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
+import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 
 /**
  * Abstract representation of a text transformation definition.
@@ -32,6 +39,7 @@ import java.util.regex.Pattern;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 26, 2014 3302       bkowal      Initial creation
+ * Jul 7, 2014  3302       bkowal      Implemented the transformation capabilities.
  * 
  * </pre>
  * 
@@ -39,22 +47,50 @@ import java.util.regex.Pattern;
  * @version 1.0
  */
 
-public class AbstractTextTransformation implements ITextTransformation {
+public abstract class AbstractTextTransformation implements ITextTransformation {
+
+    private static final String REPLACEMENT_TXT = "REPLACE_TXT";
+
+    private static String ssmlSpeakWrapperText;
 
     private final Pattern transformationRegex;
+
+    protected String ssmlReplacement;
 
     /**
      * Constructor
      * 
      * @param text
      *            the text of interest
-     * @param transformationApplication
-     *            TBD manifestation of how the transformation will be applied;
-     *            dependent on the final state of Word.java
+     * @param ssmlReplacement
+     *            the ssml snippet that will be utilized in the application of
+     *            the transformation
+     * @throws JAXBException
      */
-    public AbstractTextTransformation(String text,
-            Object transformationApplication) {
+    public AbstractTextTransformation(String text, final String ssmlReplacement)
+            throws SSMLConversionException {
+        if (ssmlSpeakWrapperText == null) {
+            generateSpeakSSMLWrapper();
+        }
         this.transformationRegex = Pattern.compile(text);
+        this.ssmlReplacement = ssmlReplacement;
+    }
+
+    private static synchronized void generateSpeakSSMLWrapper()
+            throws SSMLConversionException {
+        SSMLDocument ssmlDocument = new SSMLDocument();
+        ssmlDocument.getRootTag().getContent().add(REPLACEMENT_TXT);
+
+        ssmlSpeakWrapperText = ssmlDocument.toSSML();
+    }
+
+    protected static final List<Serializable> convertSSML(String ssml)
+            throws SSMLConversionException {
+        String ssmlToConvert = ssmlSpeakWrapperText.replace(REPLACEMENT_TXT,
+                ssml);
+        SSMLDocument ssmlDocument = SSMLDocument.fromSSML(ssmlToConvert);
+
+        return ssmlDocument.getRootTag().getContent();
     }
 
     /*
@@ -86,7 +122,6 @@ public class AbstractTextTransformation implements ITextTransformation {
      * (java.lang.String)
      */
     @Override
-    public Object applyTransformation(String text) {
-        return null;
-    }
+    public abstract List<Serializable> applyTransformation(String text)
+            throws SSMLConversionException;
 }

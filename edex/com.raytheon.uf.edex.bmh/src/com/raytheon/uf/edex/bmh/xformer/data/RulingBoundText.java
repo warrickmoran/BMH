@@ -29,6 +29,7 @@ package com.raytheon.uf.edex.bmh.xformer.data;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 26, 2014 3302       bkowal      Initial creation
+ * Jul 7, 2014  3302       bkowal      Implemented a method to return a transformation.
  * 
  * </pre>
  * 
@@ -37,8 +38,6 @@ package com.raytheon.uf.edex.bmh.xformer.data;
  */
 
 public class RulingBoundText extends AbstractTextRuling implements IBoundText {
-
-    @SuppressWarnings("unused")
     private ITextTransformation transformation;
 
     /**
@@ -58,5 +57,10 @@ public class RulingBoundText extends AbstractTextRuling implements IBoundText {
     @Override
     public void setTransformation(ITextTransformation transformation) {
         this.transformation = transformation;
+    }
+
+    @Override
+    public ITextTransformation getTransformation() {
+        return this.transformation;
     }
 }

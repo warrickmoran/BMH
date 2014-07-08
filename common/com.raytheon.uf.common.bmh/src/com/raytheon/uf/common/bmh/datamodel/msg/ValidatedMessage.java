@@ -25,6 +25,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -51,6 +52,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 16, 2014  3283     bsteffen    Initial creation
+ * Jul 7, 2014   3302     bkowal      Use eager fetching to eliminate session closed
+ *                                    errors with lazy loading.
  * 
  * </pre>
  * 
@@ -96,7 +99,7 @@ public class ValidatedMessage {
     @PrimaryKeyJoinColumn
     private InputMessage inputMessage;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(schema = "bmh", name = "validated_msg_transmitter_groups", joinColumns = @JoinColumn(name = "validated_msg_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_name", referencedColumnName = "name"))
     private Set<TransmitterGroup> transmitterGroups;
 

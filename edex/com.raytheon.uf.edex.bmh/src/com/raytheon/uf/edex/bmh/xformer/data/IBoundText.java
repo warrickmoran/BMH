@@ -29,6 +29,7 @@ package com.raytheon.uf.edex.bmh.xformer.data;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 26, 2014 3302       bkowal      Initial creation
+ * Jul 7, 2014  3302       bkowal      Added a method to get the transformation.
  * 
  * </pre>
  * 
@@ -44,4 +45,6 @@ public interface IBoundText extends ITextRuling {
      *            the transformation that can be applied to the contained text.
      */
     public void setTransformation(ITextTransformation transformation);
+    
+    public ITextTransformation getTransformation();
 }

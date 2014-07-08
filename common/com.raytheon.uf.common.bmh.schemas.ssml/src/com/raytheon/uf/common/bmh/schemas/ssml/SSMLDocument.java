@@ -19,8 +19,8 @@
  **/
 package com.raytheon.uf.common.bmh.schemas.ssml;
 
+import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
-
 
 import com.raytheon.uf.common.bmh.schemas.ssml.jaxb.SSMLJaxbManager;
 
@@ -35,6 +35,8 @@ import com.raytheon.uf.common.bmh.schemas.ssml.jaxb.SSMLJaxbManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 12, 2014 3259       bkowal      Initial creation
+ * Jul 7, 2014  3302       bkowal      Created a method that would accept a String of
+ *                                     SSML and return a new document.
  * 
  * </pre>
  * 
@@ -64,9 +66,41 @@ public class SSMLDocument {
         this.rootTag.setLang(DEFAULT_LANG);
     }
 
-    public String toSSML() throws JAXBException {
-        return SSMLJaxbManager.getInstance().getJaxbManager()
-                .marshalToXml(this.rootTag);
+    protected SSMLDocument(Speak rootTag) {
+        this.factory = new ObjectFactory();
+
+        this.rootTag = rootTag;
+    }
+
+    public static SSMLDocument fromSSML(String ssml)
+            throws SSMLConversionException {
+        JAXBElement<?> jaxbElement;
+        try {
+            jaxbElement = (JAXBElement<?>) SSMLJaxbManager.getInstance()
+                    .getJaxbManager().unmarshalFromXml(ssml);
+        } catch (JAXBException e) {
+            throw new SSMLConversionException(
+                    "JAXB deserialization of the SSML has failed: " + ssml
+                            + "!", e);
+        }
+        if ((jaxbElement.getValue() instanceof Speak) == false) {
+            throw new SSMLConversionException(
+                    "Unrecognized SSML format: expected "
+                            + Speak.class.getName()
+                            + " as the root element, received: "
+                            + jaxbElement.getClass().getName() + "!");
+        }
+        return new SSMLDocument((Speak) jaxbElement.getValue());
+    }
+
+    public String toSSML() throws SSMLConversionException {
+        try {
+            return SSMLJaxbManager.getInstance().getJaxbManager()
+                    .marshalToXml(this.rootTag, false);
+        } catch (JAXBException e) {
+            throw new SSMLConversionException(
+                    "JAXB serialization of the SSML has failed!", e);
+        }
     }
 
     public ObjectFactory getFactory() {

@@ -35,6 +35,7 @@ import java.util.Map;
  * Jun 16, 2014            bkowal      Initial creation
  * Jun 26, 2014 3302       bkowal      Added categories for the Message Transformer.
  * Jul 01, 2014 3283       bsteffen    Added categories for message validation.
+ * Jul 7, 2014  3302       bkowal      Added a category for failed SSML generation.
  * 
  * </pre>
  * 
@@ -102,6 +103,12 @@ public enum BMH_CATEGORY {
      * massage area is not in the configuration.
      */
     MESSAGE_AREA_UNCONFIGURED(11),
+    /*
+     * Specific to the Message Transformation Components; used to indicate that
+     * SSML Generation failed when attempting to transform a message using a
+     * dictionary.
+     */
+    XFORM_SSML_GENERATION_FAILED(12),
     /*
      * Indicates that a thread has been interrupted while performing some
      * action.

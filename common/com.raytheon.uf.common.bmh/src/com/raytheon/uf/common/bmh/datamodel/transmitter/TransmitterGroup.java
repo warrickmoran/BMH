@@ -28,6 +28,7 @@ import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.MapKey;
@@ -51,6 +52,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014 3175       rjpeter     Initial creation
  * Jun 26, 2014 3302       bkowal      Added a getter/setter for the
  *                                     Languages map.
+ * Jul 8, 2014  3302       bkowal      Use eager fetching to eliminate session closed
+ *                                     errors with lazy loading.
  * 
  * </pre>
  * 
@@ -99,7 +102,7 @@ public class TransmitterGroup {
     @DynamicSerializeElement
     private String programName;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "transmitterGroupName")
     @MapKey(name = "id.language")
     @DynamicSerializeElement

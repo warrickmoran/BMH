@@ -26,6 +26,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.OneToMany;
@@ -45,6 +46,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
+ * Jul 8, 2014  3302       bkowal      Use eager fetching to eliminate session closed
+ *                                     errors with lazy loading.
  * 
  * </pre>
  * 
@@ -65,7 +68,7 @@ public class Dictionary {
     @DynamicSerializeElement
     private Language language = Language.ENGLISH;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "dictionary_name")
     @DynamicSerializeElement
     private Set<Word> words;

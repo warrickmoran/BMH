@@ -19,6 +19,13 @@
  **/
 package com.raytheon.uf.edex.bmh.xformer.data;
 
+import java.io.Serializable;
+import java.util.List;
+
+import javax.xml.bind.JAXBException;
+
+import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
+
 /**
  * A simple find and replace transformation.
  * 
@@ -29,6 +36,7 @@ package com.raytheon.uf.edex.bmh.xformer.data;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 26, 2014 3302       bkowal      Initial creation
+ * Jul 7, 2014  3302       bkowal      Implemented the transformation method.
  * 
  * </pre>
  * 
@@ -38,13 +46,28 @@ package com.raytheon.uf.edex.bmh.xformer.data;
 
 public class SimpleTextTransformation extends AbstractTextTransformation {
 
+    private List<Serializable> appliedTransformation;
+
     /**
      * Constructor
      * 
      * @param text
      *            the text to replace
+     * @throws JAXBException
      */
-    public SimpleTextTransformation(String text) {
-        super(text, null);
+    public SimpleTextTransformation(String text, final String ssmlReplacement)
+            throws SSMLConversionException {
+        super(text, ssmlReplacement);
+        this.determineDefaultReplacement();
+    }
+
+    private void determineDefaultReplacement() throws SSMLConversionException {
+        appliedTransformation = convertSSML(this.ssmlReplacement);
+    }
+
+    @Override
+    public List<Serializable> applyTransformation(String text)
+            throws SSMLConversionException {
+        return this.appliedTransformation;
     }
 }

@@ -19,6 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.xformer.data;
 
+import java.io.Serializable;
+import java.util.List;
+
+import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
+
 /**
  * Describes a generic Text Transformation.
  * 
@@ -29,6 +34,8 @@ package com.raytheon.uf.edex.bmh.xformer.data;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 26, 2014 3302       bkowal      Initial creation
+ * Jul 7, 2014  3302       bkowal      Updated the transformation application method
+ *                                     to return a list of Serializable.
  * 
  * </pre>
  * 
@@ -55,5 +62,6 @@ public interface ITextTransformation {
      *            the raw text to apply the transformation to
      * @return the result of the transformation
      */
-    public Object applyTransformation(String text);
+    public List<Serializable> applyTransformation(String text)
+            throws SSMLConversionException;
 }

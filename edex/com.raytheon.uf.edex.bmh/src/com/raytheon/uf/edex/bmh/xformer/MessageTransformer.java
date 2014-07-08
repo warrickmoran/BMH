@@ -35,6 +35,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
+import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
+import com.raytheon.uf.common.bmh.schemas.ssml.Sentence;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
@@ -59,6 +62,8 @@ import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2014 3302       bkowal      Initial creation
+ * Jul 7, 2014  3302       bkowal      Finished the SSML Document generation and the
+ *                                     Broadcast Message generation.
  * 
  * </pre>
  * 
@@ -67,9 +72,8 @@ import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
  */
 
 /*
- * TODO: IN PROGRESS. This is representative of a shell implementation of the
- * Message Transformer. A final version of Word.java is required to fully finish
- * the Message Transformer.
+ * TODO: IN PROGRESS. Missing a few if statements and the use of constants that
+ * will be available with the updated version of Word.java.
  */
 public class MessageTransformer {
 
@@ -102,16 +106,26 @@ public class MessageTransformer {
      * 
      * @param message
      *            the specified {@link ValidatedMessage}
-     * @return TBD
+     * @return the list of broadcast messages that were generated
      * @throws Exception
      *             when the transformation fails
      */
-    public Object process(ValidatedMessage message) throws Exception {
-        /* Verify that a message id has been provided. */
+    public List<BroadcastMsg> process(ValidatedMessage message)
+            throws Exception {
+        final String completionError = "Receieved an uninitialized or incomplete Validated Message to process!";
+
         if (message == null) {
             /* Do not send a NULL downstream. */
-            throw new Exception(
-                    "Receieved an uninitialized or incomplete Validated Message to process!");
+            throw new Exception(completionError);
+        }
+
+        /* Verify that the message is complete. */
+        if (message.getInputMessage() == null) {
+            throw new Exception(completionError + " Missing Input Message.");
+        }
+
+        if (message.getInputMessage().getAfosid() == null) {
+            throw new Exception(completionError + " Missing Afos ID.");
         }
 
         /* Retrieve the validation message associated with the message id. */
@@ -125,19 +139,52 @@ public class MessageTransformer {
          * Iterate through the destination transmitters; determine which
          * dictionary to use.
          */
+        List<BroadcastMsg> generatedMessages = new LinkedList<>();
         for (TransmitterGroup group : message.getTransmitterGroups()) {
             Dictionary dictionary = this.getDictionary(group, messageType
                     .getVoice().getLanguage(), message.getId());
-            this.transformText(message.getInputMessage(), dictionary, group,
-                    messageType);
+            BroadcastMsg msg = null;
+            try {
+                msg = this.transformText(message.getInputMessage(), dictionary,
+                        group, messageType);
+            } catch (SSMLConversionException e) {
+                StringBuilder errorString = new StringBuilder(
+                        "Failed to generate a Broadcast Msg for Input Message: ");
+                errorString.append(message.getId());
+                if (dictionary == null) {
+                    errorString.append("!");
+                } else {
+                    errorString.append(" with dictionary: ");
+                    errorString.append(dictionary.getName());
+                    errorString.append("!");
+                }
+                errorString.append(" Skipping ...");
+
+                statusHandler.error(BMH_CATEGORY.XFORM_SSML_GENERATION_FAILED,
+                        errorString.toString(), e);
+                continue;
+            }
+
+            generatedMessages.add(msg);
+        }
+
+        if (generatedMessages.isEmpty()) {
+            /*
+             * Errors would have already been generated for each individual
+             * broadcast msg that could not be successfully generated. So,
+             * terminate the camel route.
+             */
+            throw new Exception(
+                    "Failed to generate Broadcast Messages associated with Input Message: "
+                            + message.getId() + "!");
         }
 
         /* Transformation complete. */
         statusHandler.info("Transformation of message: " + message.getId()
-                + " was successful. Generated " + "X"
+                + " was successful. Generated " + generatedMessages.size()
                 + " Broadcast Message(s).");
 
-        return null;
+        return generatedMessages;
     }
 
     /**
@@ -248,13 +295,11 @@ public class MessageTransformer {
      *            the {@link MessageType} associated with the Validated Message
      *            based on afosid
      * @return the broadcast message that was built.
+     * @throws SSMLConversionException
      */
     private BroadcastMsg transformText(InputMessage inputMessage,
             Dictionary dictionary, TransmitterGroup group,
-            MessageType messageType) {
-
-        // TODO: verify that content is not empty.
-
+            MessageType messageType) throws SSMLConversionException {
         /* Initially all text is Free. */
         List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
         transformationCandidates.add(new RulingFreeText(inputMessage
@@ -264,13 +309,9 @@ public class MessageTransformer {
         List<ITextTransformation> textTransformations = new LinkedList<ITextTransformation>();
         if (dictionary != null) {
             for (Word word : dictionary.getWords()) {
-                /*
-                 * This is not representative of the final usage of
-                 * ITextTransformation. The final usage is dependent on the
-                 * final implementation of Word.java.
-                 */
+                // TODO: has the dynamic flag been set in the {@link Word}?
                 textTransformations.add(new SimpleTextTransformation(word
-                        .getWord()));
+                        .getWord(), word.getSubstitute()));
             }
         }
 
@@ -278,17 +319,17 @@ public class MessageTransformer {
         transformationCandidates = this.setTransformations(textTransformations,
                 transformationCandidates);
 
-        /* Apply the transformations can build the SSML Document. */
-        this.applyTransformations(transformationCandidates,
-                inputMessage.getContent());
+        /* Apply the transformations and build the SSML Document. */
+        SSMLDocument ssmlDocument = this.applyTransformations(
+                transformationCandidates, inputMessage.getContent());
 
-        /* Create the Broadcast Message - Note: Not Finished! */
+        /* Create the Broadcast Message */
         BroadcastMsg message = new BroadcastMsg();
         /* Message Header */
         message.setTransmitterGroup(group);
         message.setInputMessage(inputMessage);
         /* Message Body */
-        message.setSsml(null);
+        message.setSsml(ssmlDocument.toSSML());
         message.setVoice(messageType.getVoice());
 
         return message;
@@ -350,10 +391,11 @@ public class MessageTransformer {
      *            the transformed text
      * @param originalMessage
      *            the text associated with the original message.
+     * @throws SSMLConversionException
      */
-    private void applyTransformations(
+    private SSMLDocument applyTransformations(
             List<ITextRuling> transformationCandidates,
-            final String originalMessage) {
+            final String originalMessage) throws SSMLConversionException {
         /* Approximate the sentence divisions in the original message. */
         List<String> approximateSentences = new LinkedList<String>();
         Matcher sentenceMatcher = SENTENCE_PATTERN.matcher(originalMessage);
@@ -361,24 +403,52 @@ public class MessageTransformer {
             approximateSentences.add(sentenceMatcher.group(0));
         }
 
-        // TODO: create first SSML sentence tag.
+        // Create the SSML Document.
+        SSMLDocument ssmlDocument = new SSMLDocument();
+        // Start the first sentence.
+        Sentence ssmlSentence = ssmlDocument.getFactory().createSentence();
+
         String currentSentence = approximateSentences.remove(0);
         /*
          * Align the transformed text with the approximated sentences.
          */
         for (ITextRuling candidate : transformationCandidates) {
-            // TODO: populate SSMLDocument during loop
+            if (candidate instanceof IBoundText) {
+                /*
+                 * Bound text is added in its entirety; however, we still want
+                 * to perform the sentence alignment.
+                 */
+                IBoundText boundText = (IBoundText) candidate;
+                ssmlSentence.getContent().addAll(
+                        boundText.getTransformation().applyTransformation(
+                                candidate.getText()));
+            }
             sentenceMatcher = SENTENCE_PATTERN.matcher(candidate.getText());
             while (sentenceMatcher.find()) {
                 String textPart = sentenceMatcher.group(0);
+                if (candidate instanceof IFreeText) {
+                    /*
+                     * Add free text fragments to the current sentence as they
+                     * are discovered.
+                     */
+                    ssmlSentence.getContent().add(textPart);
+                }
                 currentSentence = StringUtils.difference(textPart,
                         currentSentence).trim();
                 if (currentSentence.isEmpty()
                         && approximateSentences.isEmpty() == false) {
-                    // TODO: create new SSML sentence tag
+                    ssmlDocument.getRootTag().getContent().add(ssmlSentence);
+                    ssmlSentence = ssmlDocument.getFactory().createSentence();
                     currentSentence = approximateSentences.remove(0);
                 }
             }
         }
+
+        /*
+         * Add the final sentence to the SSML document.
+         */
+        ssmlDocument.getRootTag().getContent().add(ssmlSentence);
+
+        return ssmlDocument;
     }
 }
