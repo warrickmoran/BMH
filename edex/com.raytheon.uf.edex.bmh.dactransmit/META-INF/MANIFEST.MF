@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: BMH DAC Transmit
+Bundle-SymbolicName: com.raytheon.uf.edex.bmh.dactransmit
+Bundle-Version: 0.14.0.qualifier
+Bundle-Vendor: RAYTHEON
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Require-Bundle: org.apache.commons.cli;bundle-version="1.0.0",
+ com.raytheon.uf.common.util;bundle-version="1.14.0",
+ com.raytheon.uf.common.time;bundle-version="1.12.1174"
