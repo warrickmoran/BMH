@@ -12,11 +12,14 @@
 			<doTry>
 				<bean ref="validatedMessageDao" method="getByID" />
 				<bean ref="messageTransformer" method="process" />
-				<bean ref="broadcastMsgDao" method="persist" />
-				<setBody>
-					<simple>${body.getId}</simple>
-				</setBody>
-				<to uri="jms-durable:queue:BMH.TTS" />
+				<split>
+					<simple>${body}</simple>
+					<bean ref="broadcastMsgDao" method="persist" />
+					<setBody>
+						<simple>${body.getId}</simple>
+					</setBody>
+					<to uri="jms-durable:queue:BMH.TTS" />
+				</split>
 				<doCatch>
 					<exception>java.lang.Throwable</exception>
 					<to uri="log:bmh?level=ERROR" />

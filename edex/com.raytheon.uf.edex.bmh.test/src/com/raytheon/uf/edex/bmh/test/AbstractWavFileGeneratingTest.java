@@ -28,11 +28,6 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.AudioFileFormat.Type;
 import javax.sound.sampled.AudioFormat.Encoding;
 
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.ConversionException;
-import org.apache.commons.configuration.PropertiesConfiguration;
-
 import com.raytheon.uf.common.status.IUFStatusHandler;
 
 /**
@@ -47,6 +42,8 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
  * ------------ ---------- ----------- --------------------------
  * Jun 23, 2014 3304       bkowal      Initial creation
  * Jul 1, 2014  3302       bkowal      Improved Exception Handling.
+ * Jul 8, 2014  3302       bkowal      Re-factor. Abstract common functionality
+ *                                     into a new parent class.
  * 
  * </pre>
  * 
@@ -54,15 +51,11 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
  * @version 1.0
  */
 
-public abstract class AbstractWavFileGeneratingTest {
+public abstract class AbstractWavFileGeneratingTest extends AbstractBMHTester {
     private static final String DEFAULT_OUTPUT_DIRECTORY = File.separatorChar
             + "tmp";
 
     private static final String WAV_FILE_EXTENSION = ".wav";
-
-    private final IUFStatusHandler statusHandler;
-
-    private final String name;
 
     private final String inputDirectoryProperty;
 
@@ -73,44 +66,20 @@ public abstract class AbstractWavFileGeneratingTest {
     protected AbstractWavFileGeneratingTest(IUFStatusHandler statusHandler,
             String name, String inputDirectoryProperty,
             String outputDirectoryProperty) {
-        this.statusHandler = statusHandler;
-        this.name = name.trim();
+        super(statusHandler, name);
         this.inputDirectoryProperty = inputDirectoryProperty;
         this.outputDirectoryProperty = outputDirectoryProperty;
     }
 
+    @Override
     public void initialize() {
         statusHandler.info("Initializing the " + this.name + " Tester ...");
 
-        String inputDirectory = System.getProperty(this.inputDirectoryProperty,
-                null);
-        this.outputDirectory = System.getProperty(this.outputDirectoryProperty,
-                null);
-
-        if (inputDirectory == null) {
-            /*
-             * If the input directory has not been set, do not continue. This
-             * will eventually cause problems when the Spring Container attempts
-             * to use the configuration property directly.
-             */
-            statusHandler
-                    .error("Failed to retrieve the Test Input Directory from the configuration. Spring Container Crash Expected!");
+        if (this.validateTestInputs(this.inputDirectoryProperty) == false) {
             return;
         }
-
-        File inputDirectoryFile = new File(inputDirectory);
-        /* Attempt to create the specified input directory if it does not exist. */
-        if (inputDirectoryFile.exists() == false) {
-            statusHandler.info("Attempting to create Test Input Directory: "
-                    + inputDirectory + " ...");
-
-            /*
-             * In this case, we do not care if the creation was successful or
-             * not because the directory will eventually need to exist in order
-             * to complete testing.
-             */
-            inputDirectoryFile.mkdirs();
-        }
+        this.outputDirectory = System.getProperty(this.outputDirectoryProperty,
+                null);
 
         if (this.outputDirectory == null) {
             statusHandler
@@ -136,60 +105,8 @@ public abstract class AbstractWavFileGeneratingTest {
             }
         }
 
-        statusHandler.info("Test Input Directory = " + inputDirectory);
         statusHandler.info("Test Output Directory = " + this.outputDirectory);
     }
-
-    public Object process(File testFile) throws Exception {
-        /*
-         * Data integrity checks.
-         */
-
-        /* Verify a file has been provided and that the file exists. */
-        if (testFile == null) {
-            throw new Exception("File cannot be NULL!");
-        }
-
-        if (testFile.exists() == false) {
-            throw new Exception("The specified file: "
-                    + testFile.getAbsolutePath() + " does not exist!");
-        }
-
-        statusHandler.info("Processing input file: "
-                + testFile.getAbsolutePath() + " ...");
-
-        /* Read the file. */
-        Configuration configuration = null;
-        try {
-            configuration = new PropertiesConfiguration(testFile);
-        } catch (ConfigurationException e) {
-            testFile.delete();
-
-            throw new Exception("Failed to load the specified file: "
-                    + testFile.getAbsolutePath() + "!", e);
-        }
-
-        Object output = null;
-        try {
-            output = this.processInput(configuration,
-                    testFile.getAbsolutePath());
-        } catch (TestProcessingFailedException e) {
-            /*
-             * Input file processing failed, manually remove the file.
-             */
-            testFile.delete();
-
-            throw new Exception("Failed to process input file: "
-                    + testFile.getAbsolutePath() + "!", e);
-        }
-
-        statusHandler.info("Successfully processed input file: "
-                + testFile.getAbsolutePath() + ".");
-        return output;
-    }
-
-    protected abstract Object processInput(Configuration configuration,
-            final String inputFileName) throws TestProcessingFailedException;
 
     protected boolean writeWavData(byte[] audioData, final String outputFileName) {
         /* Build the full path to the output wav file. */
@@ -219,43 +136,5 @@ public abstract class AbstractWavFileGeneratingTest {
         }
 
         return success;
-    }
-
-    protected String getStringProperty(Configuration configuration,
-            String propertyName, final String inputFileName)
-            throws TestInputPropertyInvalidException,
-            TestInputPropertyNotSetException {
-        String propertyValue = null;
-        try {
-            propertyValue = configuration.getString(propertyName, null);
-            if (propertyValue == null) {
-                throw new TestInputPropertyNotSetException(inputFileName,
-                        propertyName);
-            }
-        } catch (ConversionException e) {
-            throw new TestInputPropertyInvalidException(inputFileName,
-                    propertyName, e);
-        }
-
-        return propertyValue;
-    }
-
-    protected Double getDoubleProperty(Configuration configuration,
-            String propertyName, final String inputFileName)
-            throws TestInputPropertyInvalidException,
-            TestInputPropertyNotSetException {
-        Double propertyValue = null;
-        try {
-            propertyValue = configuration.getDouble(propertyName, null);
-            if (propertyValue == null) {
-                throw new TestInputPropertyNotSetException(inputFileName,
-                        propertyName);
-            }
-        } catch (ConversionException e) {
-            throw new TestInputPropertyInvalidException(inputFileName,
-                    propertyName, e);
-        }
-
-        return propertyValue;
     }
 }

@@ -21,14 +21,12 @@ package com.raytheon.uf.edex.bmh.test.tts;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.springframework.transaction.TransactionException;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
@@ -38,12 +36,11 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.test.AbstractWavFileGeneratingTest;
+import com.raytheon.uf.edex.bmh.test.TestDataUtil;
 import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
-import com.raytheon.uf.edex.database.DataAccessLayerException;
 
 /**
  * NOT OPERATIONAL CODE! Created to test the TTS Manager. Refer to the data/tts
@@ -59,6 +56,7 @@ import com.raytheon.uf.edex.database.DataAccessLayerException;
  * Jun 23, 2014 3304       bkowal      Re-factored
  * Jun 24, 2014 3302       bkowal      Updated to use the BroadcastMsg Entity.
  * Jul 1, 2014  3302       bkowal      Updated to use the db when testing.
+ * Jul 7, 2014  3302       bkowal      Re-factor: Use the Test Data Util, ...
  * 
  * </pre>
  * 
@@ -82,11 +80,10 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
 
     private static final String TTS_TEST_PROGRAM_NAME = "TTSTESTPROGRAM";
 
-    private static final TtsVoice DEFAULT_TTS_VOICE = constructDefaultTtsVoice();
+    private static final TtsVoice DEFAULT_TTS_VOICE = TestDataUtil
+            .constructDefaultTtsVoice();
 
     private final TtsVoiceDao ttsVoiceDao;
-
-    private final InputMessageDao inputMessageDao;
 
     private final TransmitterGroupDao transmitterGroupDao;
 
@@ -110,30 +107,10 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
                 + "male";
     }
 
-    /**
-     * Creates an instance of a TTS Voice based on the NeoSpeech Julie voice.
-     * Julie was used based on the current TTS Server setup in Omaha.
-     * 
-     * @return the TtsVoice that is constructed
-     */
-    private static TtsVoice constructDefaultTtsVoice() {
-        /*
-         * This could optionally be configurable via the test properties file.
-         */
-        TtsVoice voice = new TtsVoice();
-        voice.setVoiceNumber(103);
-        voice.setVoiceName("Julie");
-        voice.setLanguage(Language.ENGLISH);
-        voice.setMale(false);
-
-        return voice;
-    }
-
     public TTSManagerTester() {
         super(statusHandler, TEST_NAME, TTS_DIRECTORY_INPUT_PROPERTY,
                 TTS_DIRECTORY_OUTPUT_PROPERTY);
         this.ttsVoiceDao = new TtsVoiceDao();
-        this.inputMessageDao = new InputMessageDao();
         this.transmitterGroupDao = new TransmitterGroupDao();
     }
 
@@ -143,15 +120,15 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
         String ssmlMessage = super.getStringProperty(configuration,
                 INPUT_PROPERTIES.TTS_MESSAGE_PROPERTY, inputFileName);
 
-        String afosID = null;
+        String afosid = null;
         try {
-            super.getStringProperty(configuration,
+            afosid = super.getStringProperty(configuration,
                     INPUT_PROPERTIES.TTS_AFOS_ID_PROPERTY, inputFileName);
         } catch (TestProcessingFailedException e) {
             statusHandler.info("The " + INPUT_PROPERTIES.TTS_AFOS_ID_PROPERTY
                     + " property has not been set in input file: "
                     + inputFileName + "! Generating a default afos id.");
-            afosID = TTS_TEST_AFOS_ID;
+            afosid = TTS_TEST_AFOS_ID;
         }
 
         TtsVoice voice = this.buildVoiceFromInput(configuration, inputFileName);
@@ -163,14 +140,9 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
             /*
              * Create a record for the specified test voice.
              */
-            try {
-                this.ttsVoiceDao.persist(voice);
-                statusHandler.info("Created Test Tts Voice with id: "
-                        + voice.getVoiceNumber());
-            } catch (TransactionException e) {
-                throw new TestProcessingFailedException(
-                        "Failed to create a test Tts Voice!", e);
-            }
+            TestDataUtil.persistTtsVoice(voice);
+            statusHandler.info("Created Test Tts Voice with id: "
+                    + voice.getVoiceNumber());
         } else {
             statusHandler.info("Using existing Test Tts Voice with id: "
                     + voice.getVoiceNumber());
@@ -181,21 +153,15 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
          * Only setting the minimum required fields for the purposes of this
          * test.
          */
-        InputMessage inputMessage = this.checkForExistingTestInputMessage();
+        InputMessage inputMessage = TestDataUtil
+                .checkForExistingTestInputMessage(afosid);
         if (inputMessage == null) {
             /*
              * Create a new InputMessage for the purposes of this test.
              */
-            inputMessage = new InputMessage();
-            inputMessage.setAfosid(afosID);
-            try {
-                this.inputMessageDao.persist(inputMessage);
-                statusHandler.info("Created Test Input Message with id: "
-                        + inputMessage.getId());
-            } catch (TransactionException e) {
-                throw new TestProcessingFailedException(
-                        "Failed to create a test Input Message!", e);
-            }
+            inputMessage = TestDataUtil.persistInputMessage(afosid, null);
+            statusHandler.info("Created Test Input Message with id: "
+                    + inputMessage.getId());
         } else {
             statusHandler.info("Using existing Test Input Message with id: "
                     + inputMessage.getId());
@@ -206,18 +172,10 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
         TransmitterGroup transmitterGroup = this
                 .checkForExistingTransmitterGroup();
         if (transmitterGroup == null) {
-            transmitterGroup = new TransmitterGroup();
-            transmitterGroup.setName(TTS_TEST_TRANSMITTER_GROUP);
-            transmitterGroup.setProgramName(TTS_TEST_PROGRAM_NAME);
-
-            try {
-                this.transmitterGroupDao.persist(transmitterGroup);
-                statusHandler.info("Created Test Transmitter Group with id: "
-                        + transmitterGroup.getName());
-            } catch (TransactionException e) {
-                throw new TestProcessingFailedException(
-                        "Failed to create a test Transmitter Group!", e);
-            }
+            transmitterGroup = TestDataUtil.persistTransmitterGroup(
+                    TTS_TEST_TRANSMITTER_GROUP, TTS_TEST_PROGRAM_NAME, null);
+            statusHandler.info("Created Test Transmitter Group with id: "
+                    + transmitterGroup.getName());
         } else {
             statusHandler.info("Using existing Transmitter Group with id: "
                     + transmitterGroup.getName());
@@ -230,27 +188,6 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
         message.setVoice(voice);
 
         return message;
-    }
-
-    private InputMessage checkForExistingTestInputMessage() {
-        Collection<?> results = null;
-        try {
-            results = this.inputMessageDao.queryBySingleCriteria("afosid",
-                    TTS_TEST_AFOS_ID);
-        } catch (DataAccessLayerException e) {
-
-        }
-
-        if (results == null || results.isEmpty()) {
-            return null;
-        }
-
-        Object result = results.iterator().next();
-        if (result instanceof InputMessage) {
-            return (InputMessage) result;
-        }
-
-        return null;
     }
 
     private TransmitterGroup checkForExistingTransmitterGroup() {
