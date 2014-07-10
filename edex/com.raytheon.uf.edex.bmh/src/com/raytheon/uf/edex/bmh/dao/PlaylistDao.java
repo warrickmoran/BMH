@@ -25,10 +25,12 @@ import org.springframework.orm.hibernate3.HibernateTemplate;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 
-import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
+
 
 /**
- * BMH DAO for {@link BroadcastMsg}.
+ * 
+ * DAO for {@link Playlist} objects.
  * 
  * <pre>
  * 
@@ -36,35 +38,39 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
  * 
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
- * Jun 26, 2014  3302     bkowal      Initial creation
- * Jul 10, 2014  3285     bsteffen    Add getMessagesByAfosid()
+ * Jul 07, 2014  3285     bsteffen    Initial creation
  * 
  * </pre>
  * 
- * @author bkowal
+ * @author bsteffen
  * @version 1.0
  */
+public class PlaylistDao extends AbstractBMHDao<Playlist, Integer> {
 
-public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
-
-    public BroadcastMsgDao() {
-        super(BroadcastMsg.class);
+    public PlaylistDao() {
+        super(Playlist.class);
     }
 
-    public List<BroadcastMsg> getMessagesByAfosid(final String afosid){
-        List<?> messages = txTemplate
+    public Playlist getBySuiteAndGroupName(final String suiteName,
+            final String transmitterGroupName) {
+        List<?> playlists = txTemplate
                 .execute(new TransactionCallback<List<?>>() {
                     @Override
                     public List<?> doInTransaction(TransactionStatus status) {
                         HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                BroadcastMsg.GET_MSGS_BY_AFOS_ID,
-                                new String[] {"afosid" },
-                                new String[] { afosid });
+                        return ht
+                                .findByNamedQueryAndNamedParam(
+                                        Playlist.QUERY_BY_SUITE_GROUP_NAMES,
+                                        new String[] { "suiteName", "groupName" },
+                                        new String[] { suiteName,
+                                                transmitterGroupName });
                     }
                 });
-        @SuppressWarnings("unchecked")
-        List<BroadcastMsg> result = (List<BroadcastMsg>) messages;
-        return result;
+        if (playlists.isEmpty()) {
+            return null;
+        } else {
+            return (Playlist) playlists.get(0);
+        }
     }
+
 }

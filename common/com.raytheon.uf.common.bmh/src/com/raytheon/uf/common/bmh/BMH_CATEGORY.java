@@ -37,6 +37,8 @@ import java.util.Map;
  * Jul 01, 2014 3283       bsteffen    Added categories for message validation.
  * Jul 7, 2014  3302       bkowal      Added a category for failed SSML generation.
  * Jul 08, 2014 3355       mpduff      Moved to common
+ * Jul 10, 2014 3285       bsteffen    Added a category for playlist manager.
+ * 
  * 
  * </pre>
  * 
@@ -110,6 +112,10 @@ public enum BMH_CATEGORY {
      * dictionary.
      */
     XFORM_SSML_GENERATION_FAILED(12),
+    /*
+     * An error has occured adding a message to a playlist.
+     */
+    PLAYLIST_MANAGER_ERROR(13),
     /*
      * Indicates that a thread has been interrupted while performing some
      * action.
