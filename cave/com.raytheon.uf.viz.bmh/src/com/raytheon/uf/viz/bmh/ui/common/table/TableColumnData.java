@@ -42,8 +42,10 @@ public class TableColumnData {
     /** Column header text */
     private String text;
 
-    /** Column width */
-    private int width;
+    /** Column minimum width */
+    private int minimumWidth = 100;
+
+    private boolean pack;
 
     /**
      * Column alignment SWT.LEFT, SWT.CENTER, SWT.RIGHT
@@ -51,16 +53,27 @@ public class TableColumnData {
     private int alignment = SWT.CENTER;
 
     /**
-     * Constructor.
+     * Constructor for packed column.
+     * 
+     * @param text
+     *            header text
+     */
+    public TableColumnData(String text) {
+        this.text = text;
+        this.pack = true;
+    }
+
+    /**
+     * Constructor for a no pack column of width.
      * 
      * @param text
      *            header text
      * @param width
      *            column width
      */
-    public TableColumnData(String text, int width) {
+    public TableColumnData(String text, int minimumWidth) {
         this.text = text;
-        this.width = width;
+        this.minimumWidth = minimumWidth;
     }
 
     /**
@@ -81,23 +94,50 @@ public class TableColumnData {
     /**
      * @return the width
      */
-    public int getWidth() {
-        return width;
+    public int getMinimumWidth() {
+        return minimumWidth;
     }
 
     /**
      * @param width
      *            the width to set
      */
-    public void setWidth(int width) {
-        this.width = width;
+    public void setMinimumWidth(int width) {
+        this.minimumWidth = width;
     }
 
+    /**
+     * @return the pack
+     */
+    public boolean isPack() {
+        return pack;
+    }
+
+    /**
+     * @param pack
+     *            the pack to set
+     */
+    public void setPack(boolean pack) {
+        this.pack = pack;
+    }
+
+    /**
+     * @return the alignment
+     */
     public int getAlignment() {
         return alignment;
     }
 
+    /**
+     * @param alignment
+     *            the alignment to set
+     */
     public void setAlignment(int alignment) {
         this.alignment = alignment;
+    }
+
+    @Override
+    public String toString() {
+        return text;
     }
 }

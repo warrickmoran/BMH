@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.common.table;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
@@ -26,6 +27,7 @@ import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -68,6 +70,8 @@ public abstract class TableComp extends Composite {
 
     /** The TableData object holding all data for the table */
     private TableData tableData;
+
+    private int[] columnWidths;
 
     /**
      * Constructor.
@@ -154,33 +158,70 @@ public abstract class TableComp extends Composite {
 
         createColumns();
 
+        GC gc = new GC(table);
+        gc.setFont(table.getFont());
+
+        TableColumn[] columns = table.getColumns();
+
         for (TableRowData rowData : tableData.getTableRows()) {
             TableItem ti = new TableItem(table, SWT.NONE);
+            ti.setData(rowData);
             List<TableCellData> cellDataList = rowData.getTableCellData();
             for (int i = 0; i < cellDataList.size(); i++) {
                 TableCellData cellData = cellDataList.get(i);
                 ti.setText(i, cellData.getDisplayString());
                 ti.setBackground(i, cellData.getBackgroundColor());
                 ti.setForeground(i, cellData.getForegroundColor());
+                if (!((TableColumnData) columns[i].getData()).isPack()) {
+                    columnWidths[i] = Math.max(gc.stringExtent(ti.getText()).x,
+                            columnWidths[i]);
+                }
             }
         }
 
+        int index = 0;
         for (TableColumn tc : table.getColumns()) {
-            tc.pack();
+            TableColumnData tcd = (TableColumnData) tc.getData();
+            if (tcd.isPack()) {
+                tc.pack();
+            } else {
+                tc.setWidth(columnWidths[index] + 25);
+            }
+            index++;
         }
+
+        gc.dispose();
     }
 
     /**
      * Create the table columns.
      */
     private void createColumns() {
+        columnWidths = new int[tableData.getColumnNames().size()];
+        int i = 0;
         for (TableColumnData tcd : tableData.getColumnNames()) {
             TableColumn tc = new TableColumn(table, SWT.NONE);
             tc.setText(tcd.getText());
-            tc.setWidth(tcd.getWidth());
+            tc.setWidth(tcd.getMinimumWidth());
             tc.setAlignment(tcd.getAlignment());
+            tc.setData(tcd);
+            if (tcd.isPack()) {
+                columnWidths[i] = -1;
+            } else {
+                columnWidths[i] = tcd.getMinimumWidth();
+            }
+            i++;
+        }
+    }
+
+    public List<TableRowData> getSelection() {
+        List<TableRowData> rowList = new ArrayList<TableRowData>();
+        TableItem[] tableItems = table.getSelection();
+        for (TableItem ti : tableItems) {
+            rowList.add((TableRowData) ti.getData());
         }
 
+        return rowList;
     }
 
     /**
