@@ -26,6 +26,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.OrderColumn;
@@ -43,9 +44,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * May 30, 2014  3175     rjpeter     Initial creation
+ * Jul 10, 2014  3283     bsteffen    Eagerly fetch suites.
+ * 
  * 
  * </pre>
  * 
@@ -76,7 +79,7 @@ public class Suite {
     @DynamicSerializeElement
     private Integer programPosition;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "suite", orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "suite", orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderColumn(name = "suitePosition", nullable = false)
     @DynamicSerializeElement
     private List<SuiteMessage> suiteMessages;

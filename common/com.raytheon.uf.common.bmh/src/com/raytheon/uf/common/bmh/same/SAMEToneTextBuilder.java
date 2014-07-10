@@ -225,13 +225,13 @@ public class SAMEToneTextBuilder {
             throw new IllegalArgumentException("Unrecognized county portion: "
                     + p);
         }
-        Integer stateCode = stateCodes.getStateCode(area.substring(0, 2));
+        Integer stateCode = stateCodes.getStateCode(ugc.substring(0, 2));
         if (stateCode == null) {
             throw new IllegalArgumentException("Unrecognized state: "
-                    + area.substring(0, 2));
+                    + ugc.substring(0, 2));
         }
-        area.append(String.format("%02d", area));
-        area.append(area.substring(3));
+        area.append(String.format("%02d", stateCode));
+        area.append(ugc.substring(3));
         addArea(area);
     }
 

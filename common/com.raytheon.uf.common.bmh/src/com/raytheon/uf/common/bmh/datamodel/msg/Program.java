@@ -24,6 +24,7 @@ import java.util.List;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.OneToMany;
@@ -41,9 +42,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * May 30, 2014  3175     rjpeter     Initial creation
+ * Jul 10, 2014  3283     bsteffen    Eagerly fetch suites.
  * 
  * </pre>
  * 
@@ -61,7 +63,7 @@ public class Program {
 
     // TODO: Technically should be a map of lists with key being the suite
     // priority.
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "programName", nullable = false)
     @OrderColumn(name = "programPosition", nullable = false)
     @DynamicSerializeElement

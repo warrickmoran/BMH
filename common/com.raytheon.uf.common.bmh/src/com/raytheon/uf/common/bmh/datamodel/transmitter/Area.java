@@ -19,16 +19,16 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
-import java.util.Map;
+import java.util.Set;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
-import javax.persistence.MapKey;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -41,9 +41,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * May 30, 2014  3175     rjpeter     Initial creation
+ * Jul 10, 2014  3283     bsteffen    Change transmitters from map to set.
  * 
  * </pre>
  * 
@@ -72,11 +73,10 @@ public class Area {
     @DynamicSerializeElement
     private String areaName;
 
-    @ManyToMany(cascade = CascadeType.ALL)
-    @MapKey(name = "mnemonic")
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(name = "area_tx", schema = "bmh", joinColumns = @JoinColumn(name = "areaCode"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
     @DynamicSerializeElement
-    private Map<String, Transmitter> transmitters;
+    private Set<Transmitter> transmitters;
 
     public String getAreaCode() {
         return areaCode;
@@ -94,11 +94,11 @@ public class Area {
         this.areaName = areaName;
     }
 
-    public Map<String, Transmitter> getTransmitters() {
+    public Set<Transmitter> getTransmitters() {
         return transmitters;
     }
 
-    public void setTransmitters(Map<String, Transmitter> transmitters) {
+    public void setTransmitters(Set<Transmitter> transmitters) {
         this.transmitters = transmitters;
     }
 }

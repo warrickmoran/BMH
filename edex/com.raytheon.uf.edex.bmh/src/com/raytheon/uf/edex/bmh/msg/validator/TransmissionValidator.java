@@ -159,7 +159,7 @@ public class TransmissionValidator {
                             "Message zone is not configured: " + ugc);
                 } else {
                     for (Area area : zone.getAreas().values()) {
-                        for (Transmitter t : area.getTransmitters().values()) {
+                        for (Transmitter t : area.getTransmitters()) {
                             transmitterGroupNames.add(t.getTransmitterGroup());
                         }
                     }
@@ -170,7 +170,7 @@ public class TransmissionValidator {
                     statusHandler.warn(BMH_CATEGORY.MESSAGE_AREA_UNCONFIGURED,
                             "Message area is not configured: " + ugc);
                 } else {
-                    for (Transmitter t : area.getTransmitters().values()) {
+                    for (Transmitter t : area.getTransmitters()) {
                         transmitterGroupNames.add(t.getTransmitterGroup());
                     }
                 }
