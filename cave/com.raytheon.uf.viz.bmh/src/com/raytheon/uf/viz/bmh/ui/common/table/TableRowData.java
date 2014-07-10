@@ -120,8 +120,8 @@ public class TableRowData implements Comparable<TableRowData> {
      * 
      * @return List of display strings
      */
-    public ArrayList<String> getRowOfDisplayStrings() {
-        ArrayList<String> strArray = new ArrayList<String>();
+    public List<String> getRowOfDisplayStrings() {
+        List<String> strArray = new ArrayList<String>();
 
         for (TableCellData tcd : rowCells) {
             strArray.add(tcd.getDisplayString());
