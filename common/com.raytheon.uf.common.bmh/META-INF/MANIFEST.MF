@@ -15,6 +15,7 @@ Require-Bundle: com.raytheon.uf.common.time,
  javax.persistence
 Export-Package: com.raytheon.uf.common.bmh.datamodel.language,
  com.raytheon.uf.common.bmh.datamodel.msg,
+ com.raytheon.uf.common.bmh.datamodel.playlist,
  com.raytheon.uf.common.bmh.datamodel.transmitter,
  com.raytheon.uf.common.bmh.request,
  com.raytheon.uf.common.bmh.same
