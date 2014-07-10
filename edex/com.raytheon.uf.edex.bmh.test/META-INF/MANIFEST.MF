@@ -14,4 +14,5 @@ Require-Bundle: com.raytheon.uf.common.status;bundle-version="1.12.1174",
  com.raytheon.uf.common.datastorage;bundle-version="1.14.0",
  org.springframework;bundle-version="3.2.8",
  com.raytheon.uf.edex.database;bundle-version="1.0.0",
- com.raytheon.uf.edex.core;bundle-version="1.14.0"
+ com.raytheon.uf.edex.core;bundle-version="1.14.0",
+ com.raytheon.uf.common.bmh.dac;bundle-version="1.0.0"
