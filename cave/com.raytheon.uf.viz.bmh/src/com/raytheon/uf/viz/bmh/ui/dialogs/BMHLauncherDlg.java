@@ -44,6 +44,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
+import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
@@ -103,6 +104,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     private MessageTypeAssocDlg msgTypeAssocDlg;
 
     private LegacyDictionaryConverterDlg dictConverterDlg;
+
+    private LdadConfigDlg ldadConfigDlg;
 
     /**
      * Constructor.
@@ -486,6 +489,20 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      */
     private void createMaintenanceMenu() {
         maintenanceMenu = new Menu(shell, SWT.POP_UP);
+
+        MenuItem ldadConfigMI = new MenuItem(maintenanceMenu, SWT.PUSH);
+        ldadConfigMI.setText("LDAD Configuration...");
+        ldadConfigMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                if (ldadConfigDlg == null || ldadConfigDlg.isDisposed()) {
+                    ldadConfigDlg = new LdadConfigDlg(getShell());
+                    ldadConfigDlg.open();
+                } else {
+                    ldadConfigDlg.bringToTop();
+                }
+            }
+        });
 
         /*
          * Convert Legacy Dictionary
