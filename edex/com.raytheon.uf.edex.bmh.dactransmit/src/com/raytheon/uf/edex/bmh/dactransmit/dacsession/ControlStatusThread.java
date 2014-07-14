@@ -26,6 +26,9 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusException;
 
@@ -42,7 +45,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 2, 2014    #3286   dgilling     Initial creation
+ * Jul 02, 2014  #3286     dgilling     Initial creation
+ * Jul 14, 2014  #3286     dgilling     Used logback for logging.
+ * 
  * 
  * </pre>
  * 
@@ -51,6 +56,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  */
 
 public class ControlStatusThread extends Thread {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private static final int RECEIVE_BUFFER_SIZE = 256;
 
@@ -110,21 +117,16 @@ public class ControlStatusThread extends Thread {
                 try {
                     try {
                         DacStatusMessage currentStatus = receiveHeartbeat();
-                        // System.out
-                        // .println("DEBUG [ControlStatusThread] : Current DAC status"
-                        // + currentStatus);
+                        // logger.debug("Current DAC status: " + currentStatus);
                         session.receivedDacStatus(currentStatus);
                     } catch (MalformedDacStatusException e) {
-                        System.out
-                                .println("ERROR [ControlStatusThread] : Invalid status message received from DAC.");
-                        e.printStackTrace();
+                        logger.error(
+                                "Invalid status message received from DAC.", e);
                     }
 
                     sendHeartbeat();
                 } catch (Throwable t) {
-                    System.out
-                            .println("ERROR [ControlStatusThread] : Runtime exception thrown.");
-                    t.printStackTrace();
+                    logger.error("Runtime exception thrown.", t);
                 }
             }
         } finally {
@@ -156,9 +158,9 @@ public class ControlStatusThread extends Thread {
             currentStatus = new DacStatusMessage(new String(receiveBuffer, 0,
                     bytesReceived, StandardCharsets.US_ASCII));
         } catch (IOException e) {
-            System.out
-                    .println("ERROR [ControlStatusThread] : Error while waiting to receive DAC's heartbeat message.");
-            e.printStackTrace();
+            logger.error(
+                    "Error while waiting to receive DAC's heartbeat message.",
+                    e);
         }
         return currentStatus;
     }
@@ -171,9 +173,7 @@ public class ControlStatusThread extends Thread {
                 socket.send(packet);
                 lastHeartbeatSent = currentTime;
             } catch (IOException e) {
-                System.out
-                        .println("ERROR [ControlStatusThread] : Could not transmit heartbeat to DAC.");
-                e.printStackTrace();
+                logger.error("Could not transmit heartbeat to DAC.", e);
             }
         }
     }

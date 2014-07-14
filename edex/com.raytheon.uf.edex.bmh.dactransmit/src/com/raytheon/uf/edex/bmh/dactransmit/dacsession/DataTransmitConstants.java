@@ -29,6 +29,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 08, 2014  #3286     dgilling     Initial creation
+ * Jul 14, 2014  #3286     dgilling     Tweaked cycle time constants.
  * 
  * </pre>
  * 
@@ -40,11 +41,11 @@ public final class DataTransmitConstants {
 
     public static final long DEFAULT_CYCLE_TIME = 20; // in MS
 
-    public static final long FAST_CYCLE_TIME = 15; // in MS
+    public static final long FAST_CYCLE_TIME = 12; // in MS
 
-    public static final long SLOW_CYCLE_TIME = 21; // in MS
+    public static final long SLOW_CYCLE_TIME = 25; // in MS
 
-    public static final int WATERMARK_PACKETS_IN_BUFFER = 4;
+    public static final int WATERMARK_PACKETS_IN_BUFFER = 20;
 
     public static final int UNKNOWN_BUFFER_SIZE = -1;
 
