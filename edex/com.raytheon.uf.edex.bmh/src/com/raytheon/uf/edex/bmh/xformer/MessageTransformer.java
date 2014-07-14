@@ -43,6 +43,7 @@ import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
+import com.raytheon.uf.edex.bmh.xformer.data.DynamicNumericTextTransformation;
 import com.raytheon.uf.edex.bmh.xformer.data.IBoundText;
 import com.raytheon.uf.edex.bmh.xformer.data.IFreeText;
 import com.raytheon.uf.edex.bmh.xformer.data.ITextRuling;
@@ -71,10 +72,6 @@ import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
  * @version 1.0
  */
 
-/*
- * TODO: IN PROGRESS. Missing a few if statements and the use of constants that
- * will be available with the updated version of Word.java.
- */
 public class MessageTransformer {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
@@ -309,9 +306,14 @@ public class MessageTransformer {
         List<ITextTransformation> textTransformations = new LinkedList<ITextTransformation>();
         if (dictionary != null) {
             for (Word word : dictionary.getWords()) {
-                // TODO: has the dynamic flag been set in the {@link Word}?
-                textTransformations.add(new SimpleTextTransformation(word
-                        .getWord(), word.getSubstitute()));
+                if (word.isDynamic()) {
+                    textTransformations
+                            .add(new DynamicNumericTextTransformation(word
+                                    .getWord(), word.getSubstitute()));
+                } else {
+                    textTransformations.add(new SimpleTextTransformation(word
+                            .getWord(), word.getSubstitute()));
+                }
             }
         }
 

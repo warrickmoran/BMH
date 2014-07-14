@@ -27,6 +27,7 @@ import java.util.regex.Matcher;
 
 import org.apache.commons.lang.math.NumberUtils;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 
 /**
@@ -65,14 +66,7 @@ public class DynamicNumericTextTransformation extends
     }
 
     private static String buildNumericTransformationRegex(String originalRegex) {
-        /*
-         * TODO: this will actually be defined as a constant in the updated
-         * Word.java
-         */
-        final String numericReplacementIdentifier = "#";
-
-        return originalRegex
-                .replace(numericReplacementIdentifier, NUMBER_REGEX);
+        return originalRegex.replace(Word.DYNAMIC_NUMERIC_CHAR, NUMBER_REGEX);
     }
 
     /*
@@ -84,11 +78,6 @@ public class DynamicNumericTextTransformation extends
     @Override
     public List<Serializable> applyTransformation(String text)
             throws SSMLConversionException {
-        /*
-         * TODO: this will actually be defined as a constant in the updated
-         * Word.java
-         */
-        final String numericReplacementIdentifier = "#";
         List<Integer> extractedNumerics = new LinkedList<>();
         Matcher matcher = NUMBER_PATTERN.matcher(text);
         while (matcher.find()) {
@@ -100,7 +89,7 @@ public class DynamicNumericTextTransformation extends
         }
         String result = this.ssmlReplacement;
         for (Integer extractedNumeric : extractedNumerics) {
-            result = result.replaceFirst(numericReplacementIdentifier,
+            result = result.replaceFirst(Word.DYNAMIC_NUMERIC_CHAR,
                     extractedNumeric.toString());
         }
 
