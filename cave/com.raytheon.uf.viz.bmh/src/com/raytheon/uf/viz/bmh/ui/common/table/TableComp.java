@@ -44,7 +44,8 @@ import org.eclipse.swt.widgets.TableItem;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 28, 2014    3289    mpduff      Initial creation
+ * May 28, 2014   3289      mpduff      Initial creation
+ * Jul 14, 2014   #3377     lvenable    Added callback updates.
  * 
  * </pre>
  * 
@@ -73,6 +74,15 @@ public abstract class TableComp extends Composite {
 
     private int[] columnWidths;
 
+    /** Table width hint. */
+    private int tableWidth = -9999;
+
+    /** Table height hint. */
+    private int tableHeight = -9999;
+
+    /** Callback. */
+    protected ITableActionCB callbackAction;
+
     /**
      * Constructor.
      * 
@@ -92,6 +102,49 @@ public abstract class TableComp extends Composite {
         this.displayLines = displayLines;
         this.displayHeader = displayHeader;
         init();
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param parent
+     *            Parent composite
+     * @param tableStyle
+     *            table style settings
+     * @param displayLines
+     *            true to display table lines
+     * @param displayHeader
+     *            true to display table column headers
+     * @param width
+     *            Table width hint.
+     * @param height
+     *            Table height hint.
+     */
+    public TableComp(Composite parent, int tableStyle, boolean displayLines,
+            boolean displayHeader, int width, int height) {
+        super(parent, SWT.NONE);
+        this.tableStyle = tableStyle;
+        this.displayLines = displayLines;
+        this.displayHeader = displayHeader;
+        this.tableWidth = width;
+        this.tableHeight = height;
+        init();
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param parent
+     *            Parent composite.
+     * @param tableStyle
+     *            Table style.
+     * @param width
+     *            Table width hint.
+     * @param height
+     *            Table height hint.
+     */
+    public TableComp(Composite parent, int tableStyle, int width, int height) {
+        this(parent, tableStyle, true, true, width, height);
     }
 
     /**
@@ -129,6 +182,14 @@ public abstract class TableComp extends Composite {
      */
     private void createTable() {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
+
+        if (tableWidth > 0) {
+            gd.widthHint = tableWidth;
+        }
+
+        if (tableHeight > 0) {
+            gd.heightHint = tableHeight;
+        }
 
         table = new Table(this, this.tableStyle);
         table.setLayoutData(gd);
@@ -214,6 +275,11 @@ public abstract class TableComp extends Composite {
         }
     }
 
+    /**
+     * Get the data for the selected row.
+     * 
+     * @return Row of data.
+     */
     public List<TableRowData> getSelection() {
         List<TableRowData> rowList = new ArrayList<TableRowData>();
         TableItem[] tableItems = table.getSelection();
@@ -222,6 +288,16 @@ public abstract class TableComp extends Composite {
         }
 
         return rowList;
+    }
+
+    /**
+     * Set the callback action on the table.
+     * 
+     * @param cb
+     *            Callback
+     */
+    public void setCallbackAction(ITableActionCB cb) {
+        this.callbackAction = cb;
     }
 
     /**
