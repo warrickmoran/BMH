@@ -45,6 +45,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -98,6 +99,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     /** Status dialog. */
     private SystemStatusDlg statusDlg;
+
+    private MessageTypeAssocDlg msgTypeAssocDlg;
 
     private LegacyDictionaryConverterDlg dictConverterDlg;
 
@@ -410,7 +413,10 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         messageTypesAssocMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
+                if (msgTypeAssocDlg == null || msgTypeAssocDlg.isDisposed()) {
+                    msgTypeAssocDlg = new MessageTypeAssocDlg(getShell());
+                    msgTypeAssocDlg.open();
+                }
             }
         });
 
