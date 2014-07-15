@@ -25,8 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.raytheon.uf.edex.bmh.dactransmit.playlist.AudioFileDirectoryPlaylist;
-import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistMessageCache;
+import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 
 /**
  * Manages a transmission session to the DAC. Class pre-buffers all audio data
@@ -41,7 +40,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistMessageCache;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 1, 2014   #3268    dgilling     Initial creation
+ * Jul 01, 2014  #3286     dgilling     Initial creation
+ * Jul 14, 2014  #3286     dgilling     Switched to PlaylistScheduler to feed
+ *                                      audio data to DataTransmitThread.
  * 
  * </pre>
  * 
@@ -53,13 +54,11 @@ public final class DacSession {
 
     private final DacSessionConfig config;
 
-    private final AudioFileDirectoryPlaylist playlist;
+    private final PlaylistScheduler playlistMgr;
 
-    private final ExecutorService executor;
+    private final ExecutorService notificationExecutor;
 
     private final AtomicInteger bufferSize;
-
-    private final PlaylistMessageCache audioCache;
 
     /**
      * Constructor for the {@code DacSession} class. Reads the input directory
@@ -72,14 +71,10 @@ public final class DacSession {
      */
     public DacSession(final DacSessionConfig config) throws IOException {
         this.config = config;
-        this.playlist = new AudioFileDirectoryPlaylist(
-                config.getInputDirectory());
-        this.audioCache = new PlaylistMessageCache();
-        this.audioCache.addToCache(this.playlist);
-        this.executor = Executors.newSingleThreadExecutor();
+        this.playlistMgr = new PlaylistScheduler(config.getInputDirectory());
+        this.notificationExecutor = Executors.newSingleThreadExecutor();
         this.bufferSize = new AtomicInteger(
                 DataTransmitConstants.UNKNOWN_BUFFER_SIZE);
-
     }
 
     /**
@@ -93,8 +88,8 @@ public final class DacSession {
      */
     public void startPlayback() throws IOException, InterruptedException {
         DataTransmitThread dataThread = new DataTransmitThread(this,
-                audioCache, config.getDacAddress(), config.getDataPort(),
-                config.getTransmitters(), playlist);
+                playlistMgr, config.getDacAddress(), config.getDataPort(),
+                config.getTransmitters());
 
         ControlStatusThread controlThread = new ControlStatusThread(this,
                 config.getDacAddress(), config.getControlPort());
@@ -104,21 +99,20 @@ public final class DacSession {
         controlThread.start();
 
         dataThread.join();
-        executor.shutdown();
+        notificationExecutor.shutdown();
     }
 
     public void receivedDacStatus(final DacStatusMessage dacStatus) {
-        bufferSize.set(dacStatus.getBufferSize());
-
         Runnable validateJob = new Runnable() {
 
             @Override
             public void run() {
+                bufferSize.set(dacStatus.getBufferSize());
                 dacStatus.validateStatus(config);
             }
         };
         try {
-            executor.submit(validateJob);
+            notificationExecutor.submit(validateJob);
         } catch (RejectedExecutionException e) {
             // tried to submit during shutdown, ignoring...
         }

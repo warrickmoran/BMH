@@ -22,21 +22,24 @@ package com.raytheon.uf.edex.bmh.dactransmit;
 import java.io.IOException;
 
 import org.apache.commons.cli.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 
 /**
  * Main entry point for DacTransmit program. Reads from a specified directory
- * for audio files and plays them back to the specified DAC endpoint in creation
- * time order (newest->oldest).
+ * for playlist files, sorts them into correct playback order (by priority, then
+ * newest creation time), and then plays the playlist continuously until program
+ * termination.
  * <p>
  * At this time, this program can only be run via the Eclipse IDE. Future
  * versions will need to be structured so they can be launched as standalone
  * applications via a future CommsManager component.
  * <p>
- * Usage: DacTransmit [--help] -d hostname -p port -c port -t channel -i
- * directory
+ * Usage: DacTransmit [--help] -d hostname -p port -c port -t channel -g group
+ * -i directory
  * 
  * 
  * <pre>
@@ -45,7 +48,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 1, 2014   #3286    dgilling     Initial creation
+ * Jul 01, 2014  #3286     dgilling     Initial creation
+ * Jul 14, 2014  #3286     dgilling     Used logback for logging.
  * 
  * </pre>
  * 
@@ -55,12 +59,11 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 
 public class DacTransmitMain {
 
+    private static final Logger logger = LoggerFactory
+            .getLogger(DacTransmitMain.class);
+
     public static void main(String[] args) {
-        /*
-         * FIXME: this and other sysout prints will have to be replaced by a
-         * true logging mechanism. See redmine ticket #3367.
-         */
-        System.out.println("INFO [main] : Starting DacTransmit.");
+        logger.info("Starting DacTransmit.");
 
         DacTransmitArgParser argParser = new DacTransmitArgParser();
 
@@ -68,8 +71,7 @@ public class DacTransmitMain {
         try {
             sessionConfig = argParser.parseCommandLine(args);
         } catch (ParseException e) {
-            System.out.println("ERROR [main] : Invalid argument specified");
-            e.printStackTrace();
+            logger.error("Invalid argument specified.", e);
             argParser.printUsage();
         }
 
@@ -79,14 +81,14 @@ public class DacTransmitMain {
                     DacSession session = new DacSession(sessionConfig);
                     session.startPlayback();
                 } catch (IOException | InterruptedException e) {
-                    System.out.println("ERROR [main] : Unhandled exception:");
-                    e.printStackTrace();
+                    logger.error("Unhandled exception thrown from DacSession:",
+                            e);
                 }
             } else {
                 argParser.printUsage();
             }
         }
 
-        System.out.println("INFO [main] : Exiting DacTransmit.");
+        logger.info("Exiting DacTransmit.");
     }
 }

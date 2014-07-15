@@ -37,6 +37,7 @@ import javax.xml.bind.annotation.XmlElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 01, 2014  3285     bsteffen    Initial creation
+ * Jul 14, 2014  3286     dgilling    Implement hashCode()/equals().
  * 
  * </pre>
  * 
@@ -76,6 +77,91 @@ public class DACPlaylistMessage {
 
     public DACPlaylistMessage() {
 
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        return new Long(broadcastId).hashCode();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        DACPlaylistMessage other = (DACPlaylistMessage) obj;
+        if (SAMEtone == null) {
+            if (other.SAMEtone != null) {
+                return false;
+            }
+        } else if (!SAMEtone.equals(other.SAMEtone)) {
+            return false;
+        }
+        if (alertTone != other.alertTone) {
+            return false;
+        }
+        if (broadcastId != other.broadcastId) {
+            return false;
+        }
+        if (expire == null) {
+            if (other.expire != null) {
+                return false;
+            }
+        } else if (!expire.equals(other.expire)) {
+            return false;
+        }
+        if (messageText == null) {
+            if (other.messageText != null) {
+                return false;
+            }
+        } else if (!messageText.equals(other.messageText)) {
+            return false;
+        }
+        if (messageType == null) {
+            if (other.messageType != null) {
+                return false;
+            }
+        } else if (!messageType.equals(other.messageType)) {
+            return false;
+        }
+        if (periodicity == null) {
+            if (other.periodicity != null) {
+                return false;
+            }
+        } else if (!periodicity.equals(other.periodicity)) {
+            return false;
+        }
+        if (soundFile == null) {
+            if (other.soundFile != null) {
+                return false;
+            }
+        } else if (!soundFile.equals(other.soundFile)) {
+            return false;
+        }
+        if (start == null) {
+            if (other.start != null) {
+                return false;
+            }
+        } else if (!start.equals(other.start)) {
+            return false;
+        }
+        return true;
     }
 
     public long getBroadcastId() {
@@ -125,7 +211,6 @@ public class DACPlaylistMessage {
     public void setPeriodicity(String periodicity) {
         this.periodicity = periodicity;
     }
-
 
     public String getMessageText() {
         return messageText;

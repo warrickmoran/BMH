@@ -26,10 +26,11 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Collection;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.AudioFileBuffer;
-import com.raytheon.uf.edex.bmh.dactransmit.playlist.AudioFileDirectoryPlaylist;
-import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistMessage;
-import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistMessageCache;
+import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
 
@@ -45,7 +46,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 2, 2014   #3286    dgilling     Initial creation
+ * Jul 02, 2014  #3286     dgilling     Initial creation
+ * Jul 14, 2014  #3286     dgilling     Use logback for logging, integrated
+ *                                      PlaylistScheduler to feed audio files.
  * 
  * </pre>
  * 
@@ -54,6 +57,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  */
 
 public final class DataTransmitThread extends Thread {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final DacSession session;
 
@@ -65,9 +70,7 @@ public final class DataTransmitThread extends Thread {
 
     private final DatagramSocket socket;
 
-    private final AudioFileDirectoryPlaylist playlist;
-
-    private final PlaylistMessageCache audioCache;
+    private final PlaylistScheduler playlistMgr;
 
     private RtpPacketIn previousPacket;
 
@@ -80,13 +83,11 @@ public final class DataTransmitThread extends Thread {
      * @param session
      *            Reference back to {@code DacSession} that spawned this thread.
      *            Needed to retrieve buffer status.
-     * @param cache
-     *            {@code PlaylistMessageCache} that holds the buffered audio
-     *            data for every message in the playlist.
+     * @param playlistMgr
+     *            {@code PlaylistManager} reference used to retrieve next file
+     *            to send to DAC.
      * @param transmitters
      *            List of destination transmitters for this audio data.
-     * @param playlist
-     *            Playlist of audio files to transmit.
      * @param dacAdress
      *            {@code InetAddress} of DAC IP endpoint.
      * @param dataPort
@@ -95,16 +96,14 @@ public final class DataTransmitThread extends Thread {
      *             If the socket could not be opened.
      */
     public DataTransmitThread(final DacSession session,
-            final PlaylistMessageCache cache, InetAddress address, int port,
-            Collection<Integer> transmitters,
-            AudioFileDirectoryPlaylist playlist) throws SocketException {
+            final PlaylistScheduler playlistMgr, InetAddress address, int port,
+            Collection<Integer> transmitters) throws SocketException {
         super("DataTransmitThread");
         this.session = session;
-        this.audioCache = cache;
         this.address = address;
         this.port = port;
         this.transmitters = transmitters;
-        this.playlist = playlist;
+        this.playlistMgr = playlistMgr;
         this.previousPacket = null;
         this.nextCycleTime = DataTransmitConstants.DEFAULT_CYCLE_TIME;
         this.socket = new DatagramSocket();
@@ -123,12 +122,8 @@ public final class DataTransmitThread extends Thread {
              * AudioFileDirectoryPlaylist's iterator loops over the same files
              * forever.
              */
-            for (PlaylistMessage audioFile : playlist) {
-                System.out
-                        .println("DEBUG [DataTransmitThread] : Switching to file ["
-                                + audioFile.getFilename() + "].");
-
-                AudioFileBuffer fileBuffer = audioCache.get(audioFile);
+            while (true) {
+                AudioFileBuffer fileBuffer = playlistMgr.next();
                 while (fileBuffer.hasRemaining()) {
                     try {
                         byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
@@ -153,13 +148,9 @@ public final class DataTransmitThread extends Thread {
 
                         Thread.sleep(nextCycleTime);
                     } catch (InterruptedException e) {
-                        System.out
-                                .println("ERROR [ControlStatusThread] : Thread sleep interrupted.");
-                        e.printStackTrace();
+                        logger.error("Thread sleep interrupted.", e);
                     } catch (Throwable t) {
-                        System.out
-                                .println("ERROR [ControlStatusThread] : Runtime exception thrown.");
-                        t.printStackTrace();
+                        logger.error("Runtime exception thrown.", t);
                     }
                 }
             }
@@ -195,9 +186,7 @@ public final class DataTransmitThread extends Thread {
             DatagramPacket finalizedPacket = buildPacket(rawPacket);
             socket.send(finalizedPacket);
         } catch (IOException e) {
-            System.out
-                    .println("ERROR [DataTransmitThread] : Error sending RTP packet to DAC.");
-            e.printStackTrace();
+            logger.error("Error sending RTP packet to DAC.", e);
         }
     }
 

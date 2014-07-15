@@ -50,7 +50,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 1, 2014   #3286    dgilling     Initial creation
+ * Jul 01, 2014  #3286     dgilling     Initial creation
+ * Jul 14, 2014  #3286     dgilling     Add transmitter group argument.
  * 
  * </pre>
  * 
@@ -60,7 +61,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 
 public final class DacTransmitArgParser {
 
-    private static final String USAGE_STATEMENT = "DacTransmit [--help] -d hostname -p port -c port -t channel -i directory";
+    private static final String USAGE_STATEMENT = "DacTransmit [--help] -d hostname -p port -c port -t channel -g groupname -i directory";
 
     private static final String HELP_OPTION_KEY = "help";
 
@@ -71,6 +72,8 @@ public final class DacTransmitArgParser {
     private static final char CONTROL_PORT_OPTION_KEY = 'c';
 
     private static final char TRANSMITTER_OPTION_KEY = 't';
+
+    private static final char TRANSMITTER_GROUP_OPTION_KEY = 'g';
 
     private static final char INPUT_DIR_OPTION_KEY = 'i';
 
@@ -134,6 +137,13 @@ public final class DacTransmitArgParser {
             throw new ParseException("Required option -t not provided.");
         }
 
+        String transmitterGroup;
+        if (cmd.hasOption(TRANSMITTER_GROUP_OPTION_KEY)) {
+            transmitterGroup = cmd.getOptionValue(TRANSMITTER_GROUP_OPTION_KEY);
+        } else {
+            throw new ParseException("Required option -g not provided.");
+        }
+
         Path inputDirectory = null;
         if (cmd.hasOption(INPUT_DIR_OPTION_KEY)) {
             inputDirectory = FileSystems.getDefault().getPath(
@@ -147,7 +157,8 @@ public final class DacTransmitArgParser {
         }
 
         DacSessionConfig config = new DacSessionConfig(false, dacAddress,
-                dataPort, controlPort, transmitters, inputDirectory);
+                dataPort, controlPort, transmitters, transmitterGroup,
+                inputDirectory);
         return config;
     }
 
@@ -173,8 +184,14 @@ public final class DacTransmitArgParser {
                 .withDescription(
                         "Channel number of the transmitter to broadcast with. Specify multiple transmitters by passing the channel numbers together (ex: 1234 to send the audio to all channels.")
                 .hasArg().withArgName("channel").create(TRANSMITTER_OPTION_KEY);
+        Option transmitterGroup = OptionBuilder
+                .withDescription(
+                        "Name of the transmitter group to use to broadcast this session.")
+                .hasArg().withArgName("groupname")
+                .create(TRANSMITTER_GROUP_OPTION_KEY);
         Option inputDirectory = OptionBuilder
-                .withDescription("Directory containing files to stream to DAC.")
+                .withDescription(
+                        "Directory containing playlist files to stream to DAC.")
                 .hasArg().withArgName("directory").create(INPUT_DIR_OPTION_KEY);
 
         options.addOption(help);
@@ -182,6 +199,7 @@ public final class DacTransmitArgParser {
         options.addOption(dataPort);
         options.addOption(controlPort);
         options.addOption(transmitter);
+        options.addOption(transmitterGroup);
         options.addOption(inputDirectory);
         return options;
     }

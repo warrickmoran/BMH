@@ -20,9 +20,10 @@
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -30,6 +31,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.raytheon.uf.common.bmh.datamodel.playlist.DACPlaylistMessage;
 
 /**
  * Cache for {@code PlaylistMessage} objects. Stores the contents of each audio
@@ -42,6 +47,8 @@ import java.util.concurrent.Future;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 10, 2014  #3286     dgilling     Initial creation
+ * Jul 14, 2014  #3286     dgilling     Use logback for logging, switch to
+ *                                      proper playlist objects.
  * 
  * </pre>
  * 
@@ -51,13 +58,15 @@ import java.util.concurrent.Future;
 
 public final class PlaylistMessageCache {
 
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
     private static final int THREAD_POOL_MAX_SIZE = 3;
 
     private final ExecutorService cacheThreadPool;
 
-    private final ConcurrentMap<PlaylistMessage, AudioFileBuffer> cachedFiles;
+    private final ConcurrentMap<DACPlaylistMessage, AudioFileBuffer> cachedFiles;
 
-    private final ConcurrentMap<PlaylistMessage, Future<?>> cacheStatus;
+    private final ConcurrentMap<DACPlaylistMessage, Future<?>> cacheStatus;
 
     public PlaylistMessageCache() {
         cacheThreadPool = Executors.newFixedThreadPool(THREAD_POOL_MAX_SIZE);
@@ -65,25 +74,26 @@ public final class PlaylistMessageCache {
         cacheStatus = new ConcurrentHashMap<>();
     }
 
-    public void addToCache(final AudioFileDirectoryPlaylist playlist) {
-        Collection<PlaylistMessage> playlistFiles = playlist.getUniqueFiles();
-        for (PlaylistMessage file : playlistFiles) {
-            addToCache(file);
+    public void addToCache(final List<DACPlaylistMessage> playlist) {
+        for (DACPlaylistMessage message : playlist) {
+            addToCache(message);
         }
     }
 
-    public void addToCache(final PlaylistMessage message) {
+    public void addToCache(final DACPlaylistMessage message) {
         Runnable cacheFileJob = new Runnable() {
 
             @Override
             public void run() {
-                Path filePath = message.getFilename();
+                Path filePath = FileSystems.getDefault().getPath(
+                        message.getSoundFile());
                 try {
                     byte[] rawData = Files.readAllBytes(filePath);
                     AudioFileBuffer buffer = new AudioFileBuffer(rawData);
                     cachedFiles.put(message, buffer);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.error(
+                            "Failed to buffer file: " + filePath.toString(), e);
                 }
             }
         };
@@ -103,7 +113,7 @@ public final class PlaylistMessageCache {
      * @return The audio file's data, or {@code null} if the data isn't in the
      *         cache.
      */
-    public AudioFileBuffer get(final PlaylistMessage message) {
+    public AudioFileBuffer get(final DACPlaylistMessage message) {
         Future<?> fileStatus = cacheStatus.get(message);
         if (fileStatus != null) {
             try {
@@ -112,10 +122,8 @@ public final class PlaylistMessageCache {
                 buffer.rewind();
                 return buffer;
             } catch (InterruptedException | ExecutionException e) {
-                System.out
-                        .println("ERROR [PlaylistMessageCache] : Exception thrown waiting on cache status for "
-                                + message);
-                e.printStackTrace();
+                logger.error("Exception thrown waiting on cache status for "
+                        + message, e);
             }
         }
 

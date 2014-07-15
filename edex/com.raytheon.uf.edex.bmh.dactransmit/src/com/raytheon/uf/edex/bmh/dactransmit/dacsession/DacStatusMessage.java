@@ -21,6 +21,9 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusException;
 
 /**
@@ -41,7 +44,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 1, 2014   #3286    dgilling     Initial creation
+ * Jul 01, 2014  #3286     dgilling     Initial creation
+ * Jul 14, 2014  #3286     dgilling     Used logback for logging.
  * 
  * </pre>
  * 
@@ -50,6 +54,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  */
 
 public final class DacStatusMessage {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final static char STATUS_MSG_INDICATOR = '0';
 
@@ -105,6 +111,7 @@ public final class DacStatusMessage {
     public DacStatusMessage(final String rawMessage)
             throws MalformedDacStatusException {
         if (rawMessage.charAt(0) != STATUS_MSG_INDICATOR) {
+            logger.debug("Received malformed status message: " + rawMessage);
             throw new MalformedDacStatusException(
                     "This is not a valid DAC heartbeat/status message.");
         }
@@ -229,13 +236,11 @@ public final class DacStatusMessage {
      */
     public void validateStatus(final DacSessionConfig sessionConfig) {
         if (Double.isNaN(psu1Voltage)) {
-            System.out
-                    .println("ERROR [DacStatusMessage] : DAC Power Supply 1 is offline.");
+            logger.error("DAC Power Supply 1 is offline.");
         }
 
         if (Double.isNaN(psu2Voltage)) {
-            System.out
-                    .println("ERROR [DacStatusMessage] : DAC Power Supply 2 is offline.");
+            logger.error("DAC Power Supply 2 is offline.");
         }
 
         for (Integer channelNumber : sessionConfig.getTransmitters()) {
@@ -246,23 +251,20 @@ public final class DacStatusMessage {
             // threshold of values for that setting?
 
             if (voiceStatus[index] != DacVoiceStatus.IP_AUDIO) {
-                System.out
-                        .println("WARN [DacStatusMessage] : DAC channel "
-                                + channelNumber
-                                + " doesn't appear to be receiving audio broadcast stream. Reporting voice status of "
-                                + voiceStatus[index]);
+                logger.warn("DAC channel "
+                        + channelNumber
+                        + " doesn't appear to be receiving audio broadcast stream. Reporting voice status of "
+                        + voiceStatus[index]);
             }
         }
 
         if (recoverablePacketErrors > 0) {
-            System.out.println("WARN [DacStatusMessage] : Detected "
-                    + recoverablePacketErrors
+            logger.warn("Detected " + recoverablePacketErrors
                     + " recoverable packet errors in this session.");
         }
 
         if (unrecoverablePacketErrors > 0) {
-            System.out.println("ERROR [DacStatusMessage] : Detected "
-                    + unrecoverablePacketErrors
+            logger.error("Detected " + unrecoverablePacketErrors
                     + " unrecoverable packet errors in this session.");
         }
     }
