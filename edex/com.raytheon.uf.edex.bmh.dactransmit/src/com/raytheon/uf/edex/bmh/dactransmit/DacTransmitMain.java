@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit;
 
-import java.io.IOException;
-
 import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +48,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * ------------ ---------- ----------- --------------------------
  * Jul 01, 2014  #3286     dgilling     Initial creation
  * Jul 14, 2014  #3286     dgilling     Used logback for logging.
+ * Jul 15, 2014  #3388     dgilling     Ensure all RuntimeExceptions are
+ *                                      caught.
  * 
  * </pre>
  * 
@@ -80,9 +80,9 @@ public class DacTransmitMain {
                 try {
                     DacSession session = new DacSession(sessionConfig);
                     session.startPlayback();
-                } catch (IOException | InterruptedException e) {
+                } catch (Throwable t) {
                     logger.error("Unhandled exception thrown from DacSession:",
-                            e);
+                            t);
                 }
             } else {
                 argParser.printUsage();
