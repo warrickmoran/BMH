@@ -132,7 +132,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      * contain dialogs that may be created off of the display and would normally
      * remain open if the main dialog is closed.
      */
-    private Set<CaveSWTDialogBase> dialogsMap = new HashSet<CaveSWTDialogBase>();
+    private Set<CaveSWTDialogBase> dialogsSet = new HashSet<CaveSWTDialogBase>();
 
     /**
      * Constructor.
@@ -186,7 +186,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                 }
 
                 if (openDialogs.size() > 0) {
-                    e.doit = confirmClose(openDialogs);
+                    e.doit = confirmCloseOpenDialogs(openDialogs);
+                } else {
+                    e.doit = confirmClose();
                 }
             }
         });
@@ -196,10 +198,17 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
         statusDlg = new SystemStatusDlg(getParent());
         statusDlg.open();
-        dialogsMap.add(statusDlg);
+        dialogsSet.add(statusDlg);
     }
 
-    private boolean confirmClose(List<String> openDialogs) {
+    /**
+     * Confirm closing BMH when there are dialogs open that may require saving.
+     * 
+     * @param openDialogs
+     *            List of open dialogs.
+     * @return True to close BMH, false to keep it open.
+     */
+    private boolean confirmCloseOpenDialogs(List<String> openDialogs) {
         StringBuilder sb = new StringBuilder();
         sb.append("The following dialogs are open:\n\n");
 
@@ -216,25 +225,48 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         mb.setText("Confirm Close");
         mb.setMessage(sb.toString());
         if (mb.open() == SWT.OK) {
-
-            // Force close the dialogs that make need action before closing.
-            for (AbstractBMHDialog abd : dlgsToValidateCloseMap.keySet()) {
-                if (abd == null || abd.isDisposed()) {
-                    continue;
-                }
-
-                abd.forceClose();
-            }
-
-            // Close dialogs that do not require any action before closing.
-            for (CaveSWTDialogBase dlg : dialogsMap) {
-                dlg.close();
-            }
-
+            closeDialogs();
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Confirm closing BMH
+     * 
+     * @return True to close BMH, false to keep it open.
+     */
+    private boolean confirmClose() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Do you wish to exit out of BMH?");
+
+        MessageBox mb = new MessageBox(shell, SWT.ICON_QUESTION | SWT.OK
+                | SWT.CANCEL);
+        mb.setText("Confirm Close");
+        mb.setMessage(sb.toString());
+        if (mb.open() == SWT.OK) {
+            closeDialogs();
+            return true;
+        }
+
+        return false;
+    }
+
+    private void closeDialogs() {
+        // Force close the dialogs that may need action before closing.
+        for (AbstractBMHDialog abd : dlgsToValidateCloseMap.keySet()) {
+            if (abd == null || abd.isDisposed()) {
+                continue;
+            }
+
+            abd.forceClose();
+        }
+
+        // Close dialogs that do not require any action before closing.
+        for (CaveSWTDialogBase dlg : dialogsSet) {
+            dlg.close();
+        }
     }
 
     /**
