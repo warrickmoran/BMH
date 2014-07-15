@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -42,7 +43,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
-import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 
 /**
  * Dialog that displays the message types associations.
@@ -54,13 +55,14 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 14, 2014  #3330     lvenable     Initial creation
+ * Jul 15, 2014  #3387     lvenable     Implemented abstract BMH dialog.
  * 
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
-public class MessageTypeAssocDlg extends CaveSWTDialog {
+public class MessageTypeAssocDlg extends AbstractBMHDialog {
 
     /** Message Types combo box. */
     private Combo msgTypeCbo;
@@ -89,15 +91,19 @@ public class MessageTypeAssocDlg extends CaveSWTDialog {
     /** Table containing the message types that are available. */
     private MsgTypeTable msgAvailTableComp;
 
+    /** Dialog Title. */
+    private static final String dialogTitle = "Message Type Association";
+
     /**
      * Constructor.
      * 
      * @param parentShell
      *            Parent shell.
      */
-    public MessageTypeAssocDlg(Shell parentShell) {
-        super(parentShell, SWT.DIALOG_TRIM, CAVE.DO_NOT_BLOCK
-                | CAVE.MODE_INDEPENDENT);
+    public MessageTypeAssocDlg(Shell parentShell,
+            Map<AbstractBMHDialog, String> dlgMap) {
+        super(dlgMap, dialogTitle, parentShell, SWT.DIALOG_TRIM,
+                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
     }
 
     @Override
@@ -119,7 +125,7 @@ public class MessageTypeAssocDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("Message Type Association");
+        setText(dialogTitle);
 
         createMessageTypeControls();
         createMsgReplaceGroup();
@@ -299,6 +305,24 @@ public class MessageTypeAssocDlg extends CaveSWTDialog {
                 + " (Title)");
         msgReplaceGrp.setText(msgReplaceGrpPrefix + " "
                 + msgTypeCbo.getItem(msgTypeCbo.getSelectionIndex()));
+    }
+
+    /**
+     * Method to check if the dialog can close.
+     * 
+     * For example: if there are items that are unsaved then the user should be
+     * prompted that the dialog has unsaved items and be given the opportunity
+     * to prevent the dialog from closing.
+     */
+    @Override
+    public boolean okToClose() {
+        /*
+         * TODO:
+         * 
+         * Need to put in code to check/validate if the dialog can close (need
+         * to save before closing, etc).
+         */
+        return true;
     }
 
     /**********************************************************************

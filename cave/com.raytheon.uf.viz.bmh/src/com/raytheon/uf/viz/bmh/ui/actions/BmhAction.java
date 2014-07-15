@@ -37,6 +37,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.BMHLauncherDlg;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 18, 2014            mpduff     Initial creation
+ * Jul 15, 2014  #3387     lvenable   Updated to bring dialog to top if it already exists.
  * 
  * </pre>
  * 
@@ -46,6 +47,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.BMHLauncherDlg;
 
 public class BmhAction extends AbstractHandler {
 
+    /** BMH launcher dialog. */
     private BMHLauncherDlg bmhLauncher;
 
     @Override
@@ -57,6 +59,8 @@ public class BmhAction extends AbstractHandler {
 
             bmhLauncher = new BMHLauncherDlg(shell);
             bmhLauncher.open();
+        } else {
+            bmhLauncher.bringToTop();
         }
         return null;
     }

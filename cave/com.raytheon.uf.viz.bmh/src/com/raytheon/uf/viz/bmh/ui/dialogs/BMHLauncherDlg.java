@@ -19,12 +19,19 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.ShellAdapter;
+import org.eclipse.swt.events.ShellEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
@@ -36,6 +43,7 @@ import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
@@ -49,6 +57,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
+import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -63,6 +72,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 07, 2014  #3338     lvenable    Initial creation
  * Jul 08, 2014   3355     mpduff      Implement legacy dictionary converter
+ * Jul 15, 2014  #3387     lvenable    Implemented code for the abstract BMH dialog
+ *                                     functionality.
  * 
  * </pre>
  * 
@@ -101,11 +112,27 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     /** Status dialog. */
     private SystemStatusDlg statusDlg;
 
+    /** Message type association dialog. */
     private MessageTypeAssocDlg msgTypeAssocDlg;
 
+    /** Legacy converter dialog. */
     private LegacyDictionaryConverterDlg dictConverterDlg;
 
     private LdadConfigDlg ldadConfigDlg;
+
+    /**
+     * This is a map that contains dialog that may require some sort of save
+     * action before closing. These dialogs are reported to the user so they can
+     * take action to save any changes from open dialogs.
+     */
+    private Map<AbstractBMHDialog, String> dlgsToValidateCloseMap = new HashMap<AbstractBMHDialog, String>();
+
+    /**
+     * This is a set of dialogs that can be closed normally. This will also
+     * contain dialogs that may be created off of the display and would normally
+     * remain open if the main dialog is closed.
+     */
+    private Set<CaveSWTDialogBase> dialogsMap = new HashSet<CaveSWTDialogBase>();
 
     /**
      * Constructor.
@@ -144,11 +171,70 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     protected void initializeComponents(Shell shell) {
         setText("BMH Menu");
 
+        shell.addShellListener(new ShellAdapter() {
+            @Override
+            public void shellClosed(ShellEvent e) {
+
+                List<String> openDialogs = new ArrayList<String>();
+                for (AbstractBMHDialog abd : dlgsToValidateCloseMap.keySet()) {
+                    if (abd == null || abd.isDisposed()) {
+                        continue;
+                    }
+
+                    openDialogs.add(dlgsToValidateCloseMap.get(abd));
+
+                }
+
+                if (openDialogs.size() > 0) {
+                    e.doit = confirmClose(openDialogs);
+                }
+            }
+        });
+
         createMenuComp(shell);
         createQuickAccessButtons(shell);
 
         statusDlg = new SystemStatusDlg(getParent());
         statusDlg.open();
+        dialogsMap.add(statusDlg);
+    }
+
+    private boolean confirmClose(List<String> openDialogs) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("The following dialogs are open:\n\n");
+
+        for (String str : openDialogs) {
+            if (str != null) {
+                sb.append(str).append("\n");
+            }
+        }
+
+        sb.append("\nDo you wish to close all dialogs and lose any unsaved changes?");
+
+        MessageBox mb = new MessageBox(shell, SWT.ICON_WARNING | SWT.OK
+                | SWT.CANCEL);
+        mb.setText("Confirm Close");
+        mb.setMessage(sb.toString());
+        if (mb.open() == SWT.OK) {
+
+            // Force close the dialogs that make need action before closing.
+            for (AbstractBMHDialog abd : dlgsToValidateCloseMap.keySet()) {
+                if (abd == null || abd.isDisposed()) {
+                    continue;
+                }
+
+                abd.forceClose();
+            }
+
+            // Close dialogs that do not require any action before closing.
+            for (CaveSWTDialogBase dlg : dialogsMap) {
+                dlg.close();
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -417,7 +503,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (msgTypeAssocDlg == null || msgTypeAssocDlg.isDisposed()) {
-                    msgTypeAssocDlg = new MessageTypeAssocDlg(getShell());
+                    msgTypeAssocDlg = new MessageTypeAssocDlg(getShell(),
+                            dlgsToValidateCloseMap);
                     msgTypeAssocDlg.open();
                 }
             }
