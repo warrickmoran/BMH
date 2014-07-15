@@ -44,9 +44,36 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
  */
 public class MsgTypeTable extends TableComp {
 
+    /**
+     * Constructor.
+     * 
+     * @param parentComp
+     *            Parent composite.
+     * @param width
+     *            Table width.
+     * @param height
+     *            Table height.
+     */
     public MsgTypeTable(Composite parentComp, int width, int height) {
-        super(parentComp, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.MULTI,
+        this(parentComp, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.MULTI,
                 width, height);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param parentComp
+     *            Parent composite.
+     * @param tableStyle
+     *            Table style.
+     * @param width
+     *            Table width.
+     * @param height
+     *            Table height.
+     */
+    public MsgTypeTable(Composite parentComp, int tableStyle, int width,
+            int height) {
+        super(parentComp, tableStyle, width, height);
     }
 
     @Override
