@@ -1,0 +1,40 @@
+<project default="deploy-BMH" basedir=".">
+	<target name="deploy-BMH">
+	    <property name="bmh.root.directory" value="${edex.root.directory}/../bmh" />
+	    <property name="bmh.scripts.directory" value="${bmh.root.directory}/bin" />
+
+        <mkdir dir="${bmh.scripts.directory}" />
+        <mkdir dir="${bmh.root.directory}/conf" />
+        <mkdir dir="${bmh.root.directory}/logs" />
+		
+		<echo message="basedir: ${basedir}" />
+        
+        <if>
+		    <available file="${basedir}/conf" type="dir" />	
+		    <then>
+		        <copy todir="${bmh.root.directory}/conf" failonerror="true">
+		            <fileset dir="${basedir}/conf">
+		                <include name="**/*" />
+		            </fileset>
+		        </copy>
+		    </then>
+		</if>
+
+        <if>
+		    <available file="${basedir}/bin" type="dir" />	
+		    <then>
+		        <copy todir="${bmh.scripts.directory}" failonerror="true">
+		            <fileset dir="${basedir}/bin">
+		                <include name="**/*" />
+		            </fileset>
+		        </copy>
+		    </then>
+		</if>
+
+	    <chmod perm="ugo+rx" >
+		    <fileset dir="${bmh.scripts.directory}">
+		        <include name="**/*.sh"/>
+		    </fileset>
+		</chmod>
+	</target>
+</project>

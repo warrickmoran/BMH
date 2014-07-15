@@ -1,0 +1,37 @@
+<configuration debug="false" scan="true">
+   
+<!-- general application log -->
+   <timestamp key="startupTime" datePattern="yyyyMMdd'T'HHmmss"/>
+
+   <appender name="DacTransmitLog" class="ch.qos.logback.core.FileAppender">
+      <file>${BMH_HOME}/logs/dactransmit-${TRANSMITTER_GROUP}-${startupTime}.log</file>
+      <encoder>
+         <pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
+      </encoder>
+   </appender>
+
+   <appender name="console" class="ch.qos.logback.core.ConsoleAppender">       
+      <encoder> 
+         <pattern>%-5p %d [%t] %c{0}: %m%n</pattern> 
+      </encoder> 
+   </appender>
+
+   <appender name="asyncConsole" class="ch.qos.logback.classic.AsyncAppender">            
+      <appender-ref ref="console" />
+   </appender>
+
+   <logger name="com.raytheon">
+      <level value="INFO"/>
+   </logger>
+   <logger name="org.apache">
+      <level value="INFO"/>
+   </logger>
+
+   <!-- default logging --> 
+   <root> 
+      <level value="INFO"/> 
+      <appender-ref ref="asyncConsole"/> 
+      <appender-ref ref="DacTransmitLog"/>
+   </root> 
+</configuration>
+
