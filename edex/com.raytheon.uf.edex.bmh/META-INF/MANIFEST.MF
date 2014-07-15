@@ -26,3 +26,4 @@ Require-Bundle: com.raytheon.uf.common.bmh,
  com.google.guava;bundle-version="11.0.2",
  com.raytheon.uf.common.bmh.schemas.ssml;bundle-version="1.14.0",
  com.raytheon.uf.common.dataquery;bundle-version="1.0.0"
+Import-Package: com.raytheon.edex.site

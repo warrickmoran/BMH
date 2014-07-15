@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import java.util.Calendar;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -44,9 +45,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 23, 2014 3302       bkowal      Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jun 23, 2014  3302     bkowal      Initial creation
+ * Jul 10, 2014  3285     bsteffen    Add getAfosid()
+ * 
  * 
  * </pre>
  * 
@@ -272,5 +275,18 @@ public class BroadcastMsg {
      */
     public void setSuccess(boolean success) {
         this.success = success;
+    }
+
+    /**
+     * Convenience method, equivalent to getInput().getAfosid();
+     * 
+     * @return the afosid
+     */
+    public String getAfosid() {
+        if (inputMessage == null) {
+            return null;
+        } else {
+            return inputMessage.getAfosid();
+        }
     }
 }
