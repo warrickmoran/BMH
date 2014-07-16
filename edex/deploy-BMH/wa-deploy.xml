@@ -21,10 +21,10 @@
 		</if>
 
         <if>
-		    <available file="${basedir}/bin" type="dir" />	
+		    <available file="${basedir}/scripts" type="dir" />	
 		    <then>
 		        <copy todir="${bmh.scripts.directory}" failonerror="true">
-		            <fileset dir="${basedir}/bin">
+		            <fileset dir="${basedir}/scripts">
 		                <include name="**/*" />
 		            </fileset>
 		        </copy>
