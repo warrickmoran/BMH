@@ -19,16 +19,18 @@
  **/
 package com.raytheon.uf.edex.bmh.generate.tones;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
+import com.raytheon.uf.common.bmh.audio.AudioConversionException;
+import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.edex.bmh.generate.tones.data.Tone;
-import com.raytheon.uf.edex.bmh.mmscomputing.sound.CompressInputStream;
-import com.raytheon.uf.edex.bmh.mmscomputing.sound.CompressInputStream.COMPRESSION_TYPE;
 
 /**
  * Used to generate the various tones that may be precede the broadcast of
@@ -84,7 +86,7 @@ public class TonesManager {
      *             when Alert tone generation fails
      */
     public static byte[] generateAlertTone(double amplitude, double duration)
-            throws IOException {
+            throws ToneGenerationException {
         Tone tone = new Tone();
         tone.setFrequency(ALERT_TONE_FREQUENCY);
         tone.setAmplitude(amplitude);
@@ -107,9 +109,15 @@ public class TonesManager {
      *             when SAME tone generation fails
      */
     public static byte[] generateSAMETone(final String SAMEMessage)
-            throws IOException {
+            throws ToneGenerationException {
         AFSKToneGenerator toneGenerator = new AFSKToneGenerator();
-        short[] data = toneGenerator.execute(SAMEMessage);
+        short[] data;
+        try {
+            data = toneGenerator.execute(SAMEMessage);
+        } catch (UnsupportedEncodingException e) {
+            throw new ToneGenerationException(
+                    "Failed to generate a SAME tone!", e);
+        }
         if (data.length <= 0) {
             return null;
         }
@@ -127,7 +135,7 @@ public class TonesManager {
      *             when Transfer tone generation fails
      */
     public static byte[] generateTransferTone(TRANSFER_TYPE transferType)
-            throws IOException {
+            throws ToneGenerationException {
         Tone primaryTone = new Tone();
         primaryTone.setFrequency(TRANSFER_TONE_PRIMARY_FREQUENCY);
         primaryTone.setAmplitude(TRANSFER_TONE_AMPLITUDE);
@@ -202,24 +210,22 @@ public class TonesManager {
     /**
      * Converts the byte data, currently in PCM format, to ulaw format.
      * 
-     * @param pcmData the data to convert
+     * @param pcmData
+     *            the data to convert
      * @return the converted data
-     * @throws IOException when conversion fails
+     * @throws UnsupportedAudioFormatException
+     * @throws IOException
+     *             when conversion fails
      */
-    private static byte[] convertToUlaw(byte[] pcmData) throws IOException {
-        CompressInputStream inputStream = null;
+    private static byte[] convertToUlaw(byte[] pcmData)
+            throws ToneGenerationException {
         try {
-            inputStream = new CompressInputStream(new ByteArrayInputStream(
-                    pcmData), COMPRESSION_TYPE.ULAW);
-            int bytesRead = inputStream.read(pcmData);
-            /* Resize the array */
-            byte[] ulawArray = new byte[bytesRead];
-            System.arraycopy(pcmData, 0, ulawArray, 0, bytesRead);
-            return ulawArray;
-        } finally {
-            if (inputStream != null) {
-                inputStream.close();
-            }
+            return AudioConvererterManager.getInstance().convertAudio(pcmData,
+                    BMHAudioFormat.PCM, BMHAudioFormat.ULAW);
+        } catch (UnsupportedAudioFormatException | AudioConversionException e) {
+            throw new ToneGenerationException(
+                    "Failed to convert the tone data to the required format!",
+                    e);
         }
     }
 }

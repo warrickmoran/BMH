@@ -19,13 +19,15 @@
  **/
 package com.raytheon.uf.edex.bmh.test.util.tones;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
 
 import org.apache.commons.configuration.Configuration;
+
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
 import com.raytheon.uf.edex.bmh.generate.tones.TonesManager;
 import com.raytheon.uf.edex.bmh.generate.tones.TonesManager.TRANSFER_TYPE;
 import com.raytheon.uf.edex.bmh.test.AbstractWavFileGeneratingTest;
@@ -43,6 +45,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014 3304       bkowal      Initial creation
+ * Jul 17, 2014 3383       bkowal      Updated to use the Audio Conversion API.
  * 
  * </pre>
  * 
@@ -128,7 +131,7 @@ public class ToneGenerationTester extends AbstractWavFileGeneratingTest {
                             + inputFileName + " ...");
             try {
                 audioData = TonesManager.generateAlertTone(amplitude, duration);
-            } catch (IOException e) {
+            } catch (ToneGenerationException e) {
                 throw new TestProcessingFailedException(
                         "Failed to generate an Alert tone for input file: "
                                 + inputFileName + "!", e);
@@ -143,7 +146,7 @@ public class ToneGenerationTester extends AbstractWavFileGeneratingTest {
                             + inputFileName + " ...");
             try {
                 audioData = TonesManager.generateSAMETone(SAMEMessage);
-            } catch (IOException e) {
+            } catch (ToneGenerationException e) {
                 throw new TestProcessingFailedException(
                         "Failed to generate a SAME tone for input file: "
                                 + inputFileName + "!", e);
@@ -168,7 +171,7 @@ public class ToneGenerationTester extends AbstractWavFileGeneratingTest {
                             + inputFileName + " ...");
             try {
                 audioData = TonesManager.generateTransferTone(transferType);
-            } catch (IOException e) {
+            } catch (ToneGenerationException e) {
                 throw new TestProcessingFailedException(
                         "Failed to generate a Transfer tone for input file: "
                                 + inputFileName + "!", e);
@@ -176,7 +179,8 @@ public class ToneGenerationTester extends AbstractWavFileGeneratingTest {
             break;
         }
 
-        super.writeWavData(audioData, this.generateOutputFileName(toneType));
+        super.writeWavData(BMHAudioFormat.ULAW, audioData,
+                this.generateOutputFileName(toneType));
 
         return null;
     }
