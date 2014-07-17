@@ -35,6 +35,7 @@ import java.util.Collection;
  * ------------ ---------- ----------- --------------------------
  * Jul 01, 2014  #3286     dgilling     Initial creation
  * Jul 14, 2014  #3286     dgilling     Added transmitter group.
+ * Jul 17, 2014  #3399     bsteffen     Add comms manager port argument.
  * 
  * </pre>
  * 
@@ -58,13 +59,15 @@ public final class DacSessionConfig {
 
     private final Path inputDirectory;
 
+    private final int managerPort;
+
     public DacSessionConfig(boolean printHelp) {
-        this(printHelp, null, -1, -1, null, null, null);
+        this(printHelp, null, -1, -1, null, null, null, -1);
     }
 
     public DacSessionConfig(boolean printHelp, InetAddress dacAddress,
             int dataPort, int controlPort, Collection<Integer> transmitters,
-            String transmitterGroup, Path inputDirectory) {
+            String transmitterGroup, Path inputDirectory, int managerPort) {
         this.printHelp = printHelp;
         this.dacAddress = dacAddress;
         this.dataPort = dataPort;
@@ -72,6 +75,7 @@ public final class DacSessionConfig {
         this.transmitters = transmitters;
         this.transmitterGroup = transmitterGroup;
         this.inputDirectory = inputDirectory;
+        this.managerPort = managerPort;
     }
 
     /*
@@ -84,7 +88,8 @@ public final class DacSessionConfig {
         return "DacSessionConfig [dacAddress=" + dacAddress + ", dataPort="
                 + dataPort + ", controlPort=" + controlPort + ", transmitters="
                 + transmitters + ", transmitterGroup=" + transmitterGroup
-                + ", inputDirectory=" + inputDirectory + "]";
+                + ", inputDirectory=" + inputDirectory + ", managerPort="
+                + managerPort + "]";
     }
 
     public boolean isPrintHelp() {
@@ -114,4 +119,9 @@ public final class DacSessionConfig {
     public Path getInputDirectory() {
         return inputDirectory;
     }
+
+    public int getManagerPort() {
+        return managerPort;
+    }
+
 }

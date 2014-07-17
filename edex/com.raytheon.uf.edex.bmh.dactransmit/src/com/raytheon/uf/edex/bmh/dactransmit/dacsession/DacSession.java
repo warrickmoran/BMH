@@ -43,6 +43,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
  * Jul 01, 2014  #3286     dgilling     Initial creation
  * Jul 14, 2014  #3286     dgilling     Switched to PlaylistScheduler to feed
  *                                      audio data to DataTransmitThread.
+ * Jul 17, 2014  #3399     bsteffen     Add comms manager communication.
  * 
  * </pre>
  * 
@@ -59,6 +60,8 @@ public final class DacSession {
     private final ExecutorService notificationExecutor;
 
     private final AtomicInteger bufferSize;
+
+    private CommsManagerCommunicator commsManager;
 
     /**
      * Constructor for the {@code DacSession} class. Reads the input directory
@@ -87,6 +90,8 @@ public final class DacSession {
      *             If any thread has interrupted the current thread.
      */
     public void startPlayback() throws IOException, InterruptedException {
+        commsManager = new CommsManagerCommunicator(config.getManagerPort(),
+                config.getTransmitterGroup());
         DataTransmitThread dataThread = new DataTransmitThread(this,
                 playlistMgr, config.getDacAddress(), config.getDataPort(),
                 config.getTransmitters());
@@ -97,7 +102,7 @@ public final class DacSession {
 
         dataThread.start();
         controlThread.start();
-
+        commsManager.start();
         dataThread.join();
         notificationExecutor.shutdown();
     }
@@ -109,6 +114,7 @@ public final class DacSession {
             public void run() {
                 bufferSize.set(dacStatus.getBufferSize());
                 dacStatus.validateStatus(config);
+                commsManager.sendConnectionStatus(true);
             }
         };
         try {

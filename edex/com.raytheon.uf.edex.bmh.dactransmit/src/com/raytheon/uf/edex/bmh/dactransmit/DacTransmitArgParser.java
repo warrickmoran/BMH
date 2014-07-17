@@ -52,6 +52,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * ------------ ---------- ----------- --------------------------
  * Jul 01, 2014  #3286     dgilling     Initial creation
  * Jul 14, 2014  #3286     dgilling     Add transmitter group argument.
+ * Jul 17, 2014  #3399     bsteffen     Add comms manager port argument.
  * 
  * </pre>
  * 
@@ -61,21 +62,23 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 
 public final class DacTransmitArgParser {
 
-    private static final String USAGE_STATEMENT = "DacTransmit [--help] -d hostname -p port -c port -t channel -g groupname -i directory";
+    private static final String USAGE_STATEMENT = "DacTransmit [--help] -d hostname -p port -c port -t channel -g groupname -i directory -m port";
 
     private static final String HELP_OPTION_KEY = "help";
 
-    private static final char DAC_OPTION_KEY = 'd';
+    public static final char DAC_HOSTNAME_OPTION_KEY = 'd';
 
-    private static final char DATA_PORT_OPTION_KEY = 'p';
+    public static final char DATA_PORT_OPTION_KEY = 'p';
 
-    private static final char CONTROL_PORT_OPTION_KEY = 'c';
+    public static final char CONTROL_PORT_OPTION_KEY = 'c';
 
-    private static final char TRANSMITTER_OPTION_KEY = 't';
+    public static final char TRANSMITTER_OPTION_KEY = 't';
 
-    private static final char TRANSMITTER_GROUP_OPTION_KEY = 'g';
+    public static final char TRANSMITTER_GROUP_OPTION_KEY = 'g';
 
-    private static final char INPUT_DIR_OPTION_KEY = 'i';
+    public static final char INPUT_DIR_OPTION_KEY = 'i';
+
+    public static final char COMMS_MANAGER_PORT_OPTION_KEY = 'm';
 
     private final Options programOptions;
 
@@ -103,10 +106,10 @@ public final class DacTransmitArgParser {
         }
 
         InetAddress dacAddress = null;
-        if (cmd.hasOption(DAC_OPTION_KEY)) {
+        if (cmd.hasOption(DAC_HOSTNAME_OPTION_KEY)) {
             try {
                 dacAddress = InetAddress.getByName(cmd
-                        .getOptionValue(DAC_OPTION_KEY));
+                        .getOptionValue(DAC_HOSTNAME_OPTION_KEY));
             } catch (UnknownHostException e) {
                 throw new ParseException("Invalid DAC address specified: "
                         + e.getLocalizedMessage());
@@ -156,9 +159,23 @@ public final class DacTransmitArgParser {
                     "Path specified by -i must point to a directory.");
         }
 
+        int managerPort = -1;
+        if (cmd.hasOption(COMMS_MANAGER_PORT_OPTION_KEY)) {
+            try {
+            managerPort = Integer.parseInt(cmd
+                    .getOptionValue(COMMS_MANAGER_PORT_OPTION_KEY));
+            } catch (NumberFormatException e) {
+                throw new ParseException(
+                        cmd.getOptionValue(COMMS_MANAGER_PORT_OPTION_KEY)
+                                + " is not a number.");
+            }
+        } else {
+            throw new ParseException("Required option -m not provided.");
+        }
+
         DacSessionConfig config = new DacSessionConfig(false, dacAddress,
                 dataPort, controlPort, transmitters, transmitterGroup,
-                inputDirectory);
+                inputDirectory, managerPort);
         return config;
     }
 
@@ -170,7 +187,7 @@ public final class DacTransmitArgParser {
                 "print this message.");
         Option dacAddress = OptionBuilder
                 .withDescription("Hostname/IPv4 address to send audio to.")
-                .hasArg().withArgName("address").create(DAC_OPTION_KEY);
+                .hasArg().withArgName("address").create(DAC_HOSTNAME_OPTION_KEY);
         Option dataPort = OptionBuilder
                 .withDescription("UDP port for the DAC's data channel.")
                 .hasArg().withArgName("port").withType(Number.class)
@@ -193,6 +210,11 @@ public final class DacTransmitArgParser {
                 .withDescription(
                         "Directory containing playlist files to stream to DAC.")
                 .hasArg().withArgName("directory").create(INPUT_DIR_OPTION_KEY);
+        Option managerPort = OptionBuilder
+                .withDescription(
+                        "TCP/IP port for communicating with the Comms Manager")
+                .hasArg().withArgName("port").withType(Number.class)
+                .create(COMMS_MANAGER_PORT_OPTION_KEY);
 
         options.addOption(help);
         options.addOption(dacAddress);
@@ -201,6 +223,7 @@ public final class DacTransmitArgParser {
         options.addOption(transmitter);
         options.addOption(transmitterGroup);
         options.addOption(inputDirectory);
+        options.addOption(managerPort);
         return options;
     }
 
