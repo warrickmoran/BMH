@@ -28,6 +28,8 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.raytheon.uf.common.time.util.TimeUtil;
+
 /**
  * 
  * Xml representation of a playlist that is sent from the playlist manager to
@@ -40,6 +42,7 @@ import javax.xml.bind.annotation.XmlRootElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 30, 2014  3285     bsteffen    Initial creation
+ * Jul 22, 2014  3286     dgilling    Added toString(), isValid().
  * 
  * </pre>
  * 
@@ -76,6 +79,30 @@ public class DACPlaylist {
 
     public DACPlaylist() {
 
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        return PlaylistUpdateNotification.getFilePath(this).toString();
+    }
+
+    /**
+     * Determine whether this playlist is within its valid playback period based
+     * on the current time.
+     * 
+     * @return {@code true}, if the playlist's start time is before the current
+     *         time and the expire time is after the current time. Else,
+     *         {@code false}.
+     */
+    public boolean isValid() {
+        long currentTime = TimeUtil.currentTimeMillis();
+        return ((currentTime >= start.getTimeInMillis()) && (currentTime <= expired
+                .getTimeInMillis()));
     }
 
     public int getPriority() {

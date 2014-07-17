@@ -50,6 +50,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * Jul 14, 2014  #3286     dgilling     Used logback for logging.
  * Jul 15, 2014  #3388     dgilling     Ensure all RuntimeExceptions are
  *                                      caught.
+ * Jul 16, 2014  #3286     dgilling     Change execution now that
+ *                                      startPlayback() doesn't block.
  * 
  * </pre>
  * 
@@ -80,6 +82,7 @@ public class DacTransmitMain {
                 try {
                     DacSession session = new DacSession(sessionConfig);
                     session.startPlayback();
+                    session.waitForShutdown();
                 } catch (Throwable t) {
                     logger.error("Unhandled exception thrown from DacSession:",
                             t);

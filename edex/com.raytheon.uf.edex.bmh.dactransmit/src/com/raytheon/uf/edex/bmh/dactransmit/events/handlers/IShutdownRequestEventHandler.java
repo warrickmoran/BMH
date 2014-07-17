@@ -17,10 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
+package com.raytheon.uf.edex.bmh.dactransmit.events.handlers;
+
+import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
 
 /**
- * Constants used for data transmission to the DAC.
+ * Event handler interface for {@code ShutdownRequestedEvent}.
  * 
  * <pre>
  * 
@@ -28,9 +30,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 08, 2014  #3286     dgilling     Initial creation
- * Jul 14, 2014  #3286     dgilling     Tweaked cycle time constants.
- * Jul 16, 2014  #3286     dgilling     Remove unneeded constants.
+ * Jul 22, 2014  #3286     dgilling     Initial creation
  * 
  * </pre>
  * 
@@ -38,20 +38,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
  * @version 1.0
  */
 
-public final class DataTransmitConstants {
+public interface IShutdownRequestEventHandler {
 
-    public static final long DEFAULT_CYCLE_TIME = 20; // in MS
-
-    public static final long INITIAL_CYCLE_TIME = 5; // in MS
-
-    public static final int WATERMARK_PACKETS_IN_BUFFER = 20;
-
-    public static final int SEQUENCE_INCREMENT = 1;
-
-    public static final int TIMESTAMP_INCREMENT = 160;
-
-    private DataTransmitConstants() {
-        throw new AssertionError(
-                "Cannot directly instantiate instances of this class.");
-    }
+    void handleShutdownRequest(ShutdownRequestedEvent e);
 }

@@ -21,7 +21,7 @@
    </appender>
 
    <logger name="com.raytheon">
-      <level value="INFO"/>
+      <level value="DEBUG"/>
    </logger>
    <logger name="org.apache">
       <level value="INFO"/>
@@ -29,7 +29,7 @@
 
    <!-- default logging --> 
    <root> 
-      <level value="INFO"/> 
+      <level value="DEBUG"/> 
       <appender-ref ref="asyncConsole"/> 
       <appender-ref ref="DacTransmitLog"/>
    </root> 

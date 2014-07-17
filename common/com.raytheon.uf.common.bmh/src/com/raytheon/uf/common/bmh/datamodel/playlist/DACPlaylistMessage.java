@@ -25,6 +25,8 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 
+import com.raytheon.uf.common.time.util.TimeUtil;
+
 /**
  * 
  * Xml representation of a playlist message that is sent from the playlist
@@ -37,7 +39,8 @@ import javax.xml.bind.annotation.XmlElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 01, 2014  3285     bsteffen    Initial creation
- * Jul 14, 2014  3286     dgilling    Implement hashCode()/equals().
+ * Jul 14, 2014  3286     dgilling    Implement hashCode()/equals() and
+ *                                    isValid().
  * 
  * </pre>
  * 
@@ -162,6 +165,20 @@ public class DACPlaylistMessage {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Determine whether this message is within its valid playback period based
+     * on the current time.
+     * 
+     * @return {@code true}, if the message start time is before the current
+     *         time and the expire time is after the current time. Else,
+     *         {@code false}.
+     */
+    public boolean isValid() {
+        long currentTime = TimeUtil.currentTimeMillis();
+        return ((currentTime >= start.getTimeInMillis()) && (currentTime <= expire
+                .getTimeInMillis()));
     }
 
     public long getBroadcastId() {

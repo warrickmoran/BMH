@@ -28,6 +28,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    07/15/14        3388          dgilling       Initial Creation.
+#    07/17/14        3286          dgilling       Add google guava to classpath.
 ##############################################################################
 
 path_to_script=`readlink -f $0`
@@ -40,7 +41,7 @@ export EDEX_HOME="${awips_home}/edex"
 export JAVA_HOME="${awips_home}/java"
 
 # set Java into the path
-export PATH=${awips_home}/bin:${JAVA_INSTALL}/bin
+export PATH=${awips_home}/bin:${JAVA_HOME}/bin
 
 # determine transmitter group name which will be used for logging purposes
 CAPTURE_NEXT_ARG=
@@ -62,7 +63,7 @@ done
 export TRANSMITTER_GROUP
 
 ENTRY_POINT="com.raytheon.uf.edex.bmh.dactransmit.DacTransmitMain"
-CLASSPATH="${EDEX_HOME}/lib/plugins/*:${EDEX_HOME}/lib/dependencies/ch.qos.logback/*:${EDEX_HOME}/lib/dependencies/org.apache.commons.cli/*:${EDEX_HOME}/lib/dependencies/org.slf4j/*"
+CLASSPATH="${EDEX_HOME}/lib/plugins/*:${EDEX_HOME}/lib/dependencies/ch.qos.logback/*:${EDEX_HOME}/lib/dependencies/org.apache.commons.cli/*:${EDEX_HOME}/lib/dependencies/org.slf4j/*:${EDEX_HOME}/lib/dependencies/com.google.guava/*:${EDEX_HOME}/lib/dependencies/org.geotools/*:${EDEX_HOME}/lib/dependencies/javax.measure/*:${EDEX_HOME}/lib/dependencies/org.apache.thrift/*:${EDEX_HOME}/lib/dependencies/net.sf.cglib/*"
 JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
 JVM_PROPS="-Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml"
 

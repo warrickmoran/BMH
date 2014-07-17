@@ -28,8 +28,10 @@ import java.net.Socket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
@@ -46,6 +48,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
+ * Jul 22, 2014  3286     dgilling    Connect to event bus.
  * 
  * </pre>
  * 
@@ -68,10 +71,14 @@ public final class CommsManagerCommunicator extends Thread {
 
     private DacTransmitStatus statusToSend = new DacTransmitStatus(false);
 
-    public CommsManagerCommunicator(int port, String transmitterGroup) {
+    private final EventBus eventBus;
+
+    public CommsManagerCommunicator(int port, String transmitterGroup,
+            EventBus eventBus) {
         super("CommsManagerReaderThread");
         this.port = port;
         this.transmitterGroup = transmitterGroup;
+        this.eventBus = eventBus;
     }
 
     @Override
@@ -153,8 +160,20 @@ public final class CommsManagerCommunicator extends Thread {
     private void handleMessage(Object message) {
         if (message instanceof DacTransmitShutdown) {
             // TODO graceful shutdown.
+            // Maybe make this a direct call or something to the DacSession
+            // shutdown method?
+            /*
+             * The problem with doing this here is you won't have proper control
+             * of shutdown. Shutdown should be an ordered sequence. Here you are
+             * disconnecting form CommsManager, even though on a shutdown you
+             * are going to wait for the message to finish playing. Shutdown
+             * doesn't fit well with the event bus paradigm--shutdown is
+             * specifically dependent on killing the event bus's thread. What
+             * happens when killing the event bus thread happens on that same
+             * thread??
+             */
+            eventBus.post(new ShutdownRequestedEvent());
             disconnect();
-            System.exit(0);
         } else {
             logger.error("Unrecognized message from comms manager of type "
                     + message.getClass().getSimpleName());

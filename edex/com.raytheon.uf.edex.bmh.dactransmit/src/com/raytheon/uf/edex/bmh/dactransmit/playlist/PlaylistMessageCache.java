@@ -49,6 +49,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DACPlaylistMessage;
  * Jul 10, 2014  #3286     dgilling     Initial creation
  * Jul 14, 2014  #3286     dgilling     Use logback for logging, switch to
  *                                      proper playlist objects.
+ * Jul 16, 2014  #3286     dgilling     Add shutdown() to take down executor.
  * 
  * </pre>
  * 
@@ -68,38 +69,64 @@ public final class PlaylistMessageCache {
 
     private final ConcurrentMap<DACPlaylistMessage, Future<?>> cacheStatus;
 
+    /**
+     * Constructs a new cache instance.
+     */
     public PlaylistMessageCache() {
         cacheThreadPool = Executors.newFixedThreadPool(THREAD_POOL_MAX_SIZE);
         cachedFiles = new ConcurrentHashMap<>();
         cacheStatus = new ConcurrentHashMap<>();
     }
 
+    /**
+     * Stops all background threads this class was using. After this method is
+     * called, this instance cannot be restarted.
+     */
+    public void shutdown() {
+        cacheThreadPool.shutdown();
+    }
+
+    /**
+     * Adds all messages in the list to the cache.
+     * 
+     * @param playlist
+     *            List of messages to cache.
+     */
     public void addToCache(final List<DACPlaylistMessage> playlist) {
         for (DACPlaylistMessage message : playlist) {
             addToCache(message);
         }
     }
 
+    /**
+     * Cache a single message.
+     * 
+     * @param message
+     *            Message to cache.
+     */
     public void addToCache(final DACPlaylistMessage message) {
-        Runnable cacheFileJob = new Runnable() {
+        if (!cacheStatus.containsKey(message)) {
+            Runnable cacheFileJob = new Runnable() {
 
-            @Override
-            public void run() {
-                Path filePath = FileSystems.getDefault().getPath(
-                        message.getSoundFile());
-                try {
-                    byte[] rawData = Files.readAllBytes(filePath);
-                    AudioFileBuffer buffer = new AudioFileBuffer(rawData);
-                    cachedFiles.put(message, buffer);
-                } catch (IOException e) {
-                    logger.error(
-                            "Failed to buffer file: " + filePath.toString(), e);
+                @Override
+                public void run() {
+                    Path filePath = FileSystems.getDefault().getPath(
+                            message.getSoundFile());
+                    try {
+                        byte[] rawData = Files.readAllBytes(filePath);
+                        AudioFileBuffer buffer = new AudioFileBuffer(rawData);
+                        cachedFiles.put(message, buffer);
+                    } catch (IOException e) {
+                        logger.error(
+                                "Failed to buffer file: " + filePath.toString(),
+                                e);
+                    }
                 }
-            }
-        };
+            };
 
-        Future<?> jobStatus = cacheThreadPool.submit(cacheFileJob);
-        cacheStatus.put(message, jobStatus);
+            Future<?> jobStatus = cacheThreadPool.submit(cacheFileJob);
+            cacheStatus.put(message, jobStatus);
+        }
     }
 
     /**

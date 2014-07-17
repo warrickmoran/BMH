@@ -28,7 +28,8 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 1, 2014   #3268    dgilling     Initial creation
+ * Jul 01, 2014  #3286     dgilling     Initial creation
+ * Jul 22, 2014  #3283     dgilling     Add DAC heartbeat constants.
  * 
  * </pre>
  * 
@@ -58,6 +59,12 @@ public final class DacSessionConstants {
     public static final int RTP_PACKET_SIZE = 340;
 
     public static final byte SILENCE = (byte) 0xFF;
+
+    public static final int DAC_HEARTBEAT_CYCLE_TIME = 100; // in ms
+
+    public static final int INITIAL_SYNC_TIMEOUT_PERIOD = DAC_HEARTBEAT_CYCLE_TIME * 2;
+
+    public static final int DEFAULT_SYNC_TIMEOUT_PERIOD = DAC_HEARTBEAT_CYCLE_TIME * 3;
 
     private DacSessionConstants() {
         throw new AssertionError(

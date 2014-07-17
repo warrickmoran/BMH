@@ -29,6 +29,10 @@ import java.util.Collection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.AudioFileBuffer;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
@@ -49,6 +53,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Jul 02, 2014  #3286     dgilling     Initial creation
  * Jul 14, 2014  #3286     dgilling     Use logback for logging, integrated
  *                                      PlaylistScheduler to feed audio files.
+ * Jul 16, 2014  #3286     dgilling     Use event bus.
  * 
  * </pre>
  * 
@@ -56,11 +61,13 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * @version 1.0
  */
 
-public final class DataTransmitThread extends Thread {
+public final class DataTransmitThread extends Thread implements
+        IDacStatusUpdateEventHandler {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final DacSession session;
+    // TODO: Does this thread need to send events or only receive??
+    private final EventBus eventBus;
 
     private final InetAddress address;
 
@@ -74,13 +81,15 @@ public final class DataTransmitThread extends Thread {
 
     private RtpPacketIn previousPacket;
 
+    private volatile boolean keepRunning;
+
     private long nextCycleTime;
 
     /**
      * Constructor for this thread. Attempts to open a {@code DatagramSocket}
      * and connect to DAC IP endpoint specified by IP address and port.
      * 
-     * @param session
+     * @param eventBus
      *            Reference back to {@code DacSession} that spawned this thread.
      *            Needed to retrieve buffer status.
      * @param playlistMgr
@@ -95,17 +104,18 @@ public final class DataTransmitThread extends Thread {
      * @throws SocketException
      *             If the socket could not be opened.
      */
-    public DataTransmitThread(final DacSession session,
+    public DataTransmitThread(final EventBus eventBus,
             final PlaylistScheduler playlistMgr, InetAddress address, int port,
             Collection<Integer> transmitters) throws SocketException {
         super("DataTransmitThread");
-        this.session = session;
+        this.eventBus = eventBus;
         this.address = address;
         this.port = port;
         this.transmitters = transmitters;
         this.playlistMgr = playlistMgr;
         this.previousPacket = null;
-        this.nextCycleTime = DataTransmitConstants.DEFAULT_CYCLE_TIME;
+        this.keepRunning = true;
+        this.nextCycleTime = DataTransmitConstants.INITIAL_CYCLE_TIME;
         this.socket = new DatagramSocket();
     }
 
@@ -117,12 +127,9 @@ public final class DataTransmitThread extends Thread {
     @Override
     public void run() {
         try {
-            /*
-             * this is effectively an infinite loop since
-             * AudioFileDirectoryPlaylist's iterator loops over the same files
-             * forever.
-             */
-            while (true) {
+            eventBus.register(this);
+
+            while (keepRunning) {
                 AudioFileBuffer fileBuffer = playlistMgr.next();
                 while (fileBuffer.hasRemaining()) {
                     try {
@@ -136,16 +143,6 @@ public final class DataTransmitThread extends Thread {
 
                         previousPacket = rtpPacket;
 
-                        int bufferSize = session.getCurrentBufferSize();
-                        if ((bufferSize == DataTransmitConstants.WATERMARK_PACKETS_IN_BUFFER)
-                                || (bufferSize == DataTransmitConstants.UNKNOWN_BUFFER_SIZE)) {
-                            nextCycleTime = DataTransmitConstants.DEFAULT_CYCLE_TIME;
-                        } else if (bufferSize < DataTransmitConstants.WATERMARK_PACKETS_IN_BUFFER) {
-                            nextCycleTime = DataTransmitConstants.FAST_CYCLE_TIME;
-                        } else {
-                            nextCycleTime = DataTransmitConstants.SLOW_CYCLE_TIME;
-                        }
-
                         Thread.sleep(nextCycleTime);
                     } catch (InterruptedException e) {
                         logger.error("Thread sleep interrupted.", e);
@@ -158,6 +155,19 @@ public final class DataTransmitThread extends Thread {
             socket.disconnect();
             socket.close();
         }
+    }
+
+    /**
+     * Informs this thread that it should begin shutdown. This thread will not
+     * die until it has reached the end of the current message. If your code
+     * desires to block until this thread dies, use {@link #join()} or
+     * {@link #isAlive()}.
+     * 
+     * @see #join()
+     * @see #isAlive()
+     */
+    public void shutdown() {
+        keepRunning = false;
     }
 
     private RtpPacketIn buildRtpPacket(final RtpPacketIn previousPacket,
@@ -192,5 +202,21 @@ public final class DataTransmitThread extends Thread {
 
     private DatagramPacket buildPacket(byte[] buf) {
         return new DatagramPacket(buf, buf.length, address, port);
+    }
+
+    @Override
+    @Subscribe
+    public void receivedDacStatus(DacStatusUpdateEvent e) {
+        int differenceFromWatermark = DataTransmitConstants.WATERMARK_PACKETS_IN_BUFFER
+                - e.getStatus().getBufferSize();
+
+        if (differenceFromWatermark <= 0) {
+            nextCycleTime = DataTransmitConstants.DEFAULT_CYCLE_TIME;
+        } else {
+            int packetsToSendUntilNextStatus = Math
+                    .abs(differenceFromWatermark) + 5;
+            nextCycleTime = 100L / packetsToSendUntilNextStatus;
+            logger.debug("Speeding up cycle time to: " + nextCycleTime);
+        }
     }
 }

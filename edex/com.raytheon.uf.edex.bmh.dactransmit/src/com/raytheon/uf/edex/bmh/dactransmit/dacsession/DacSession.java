@@ -22,9 +22,18 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.eventbus.AsyncEventBus;
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
+import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IShutdownRequestEventHandler;
+import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistDirectoryObserver;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 
 /**
@@ -44,6 +53,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
  * Jul 14, 2014  #3286     dgilling     Switched to PlaylistScheduler to feed
  *                                      audio data to DataTransmitThread.
  * Jul 17, 2014  #3399     bsteffen     Add comms manager communication.
+ * Jul 16, 2014  #3286     dgilling     Initial event bus implementation, add
+ *                                      shutdown() method.
  * 
  * </pre>
  * 
@@ -51,7 +62,10 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
  * @version 1.0
  */
 
-public final class DacSession {
+public final class DacSession implements IDacStatusUpdateEventHandler,
+        IShutdownRequestEventHandler {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final DacSessionConfig config;
 
@@ -59,9 +73,19 @@ public final class DacSession {
 
     private final ExecutorService notificationExecutor;
 
-    private final AtomicInteger bufferSize;
+    private final EventBus eventBus;
+
+    private final DataTransmitThread dataThread;
+
+    private final ControlStatusThread controlThread;
+
+    private final PlaylistDirectoryObserver newPlaylistObserver;
+
+    private volatile boolean isRunning;
 
     private CommsManagerCommunicator commsManager;
+
+    private final Object shutdownSignal;
 
     /**
      * Constructor for the {@code DacSession} class. Reads the input directory
@@ -74,10 +98,21 @@ public final class DacSession {
      */
     public DacSession(final DacSessionConfig config) throws IOException {
         this.config = config;
-        this.playlistMgr = new PlaylistScheduler(config.getInputDirectory());
         this.notificationExecutor = Executors.newSingleThreadExecutor();
-        this.bufferSize = new AtomicInteger(
-                DataTransmitConstants.UNKNOWN_BUFFER_SIZE);
+        this.eventBus = new AsyncEventBus("DAC-Transmit", notificationExecutor);
+        this.playlistMgr = new PlaylistScheduler(
+                this.config.getInputDirectory());
+        this.controlThread = new ControlStatusThread(this.eventBus,
+                this.config.getDacAddress(), this.config.getControlPort());
+        this.dataThread = new DataTransmitThread(this.eventBus, playlistMgr,
+                this.config.getDacAddress(), this.config.getDataPort(),
+                this.config.getTransmitters());
+        this.commsManager = new CommsManagerCommunicator(
+                this.config.getManagerPort(),
+                this.config.getTransmitterGroup(), this.eventBus);
+        this.newPlaylistObserver = new PlaylistDirectoryObserver(
+                this.config.getInputDirectory(), this.eventBus);
+        this.shutdownSignal = new Object();
     }
 
     /**
@@ -86,45 +121,94 @@ public final class DacSession {
      * 
      * @throws IOException
      *             If a transmission error occurs with the DAC.
-     * @throws InterruptedException
-     *             If any thread has interrupted the current thread.
      */
-    public void startPlayback() throws IOException, InterruptedException {
-        commsManager = new CommsManagerCommunicator(config.getManagerPort(),
-                config.getTransmitterGroup());
-        DataTransmitThread dataThread = new DataTransmitThread(this,
-                playlistMgr, config.getDacAddress(), config.getDataPort(),
-                config.getTransmitters());
+    public void startPlayback() throws IOException {
+        logger.info("Starting audio playback.");
+        logger.info("Session configuration: " + config.toString());
+        logger.info("Obtaining sync with DAC.");
 
-        ControlStatusThread controlThread = new ControlStatusThread(this,
-                config.getDacAddress(), config.getControlPort());
         controlThread.performInitialSync();
+
+        logger.info("Obtained sync with DAC and beginning transmission.");
 
         dataThread.start();
         controlThread.start();
         commsManager.start();
-        dataThread.join();
-        notificationExecutor.shutdown();
+        newPlaylistObserver.start();
+        eventBus.register(playlistMgr);
+        eventBus.register(this);
+
+        isRunning = true;
     }
 
-    public void receivedDacStatus(final DacStatusMessage dacStatus) {
-        Runnable validateJob = new Runnable() {
+    /**
+     * Performs orderly shutdown of this {@code DacSession} instance. Will wait
+     * for the current message being transmitted to finish before completing.
+     * After calling this method, the instance cannot be restarted; a new one
+     * must be created.
+     * 
+     * @throws InterruptedException
+     *             If any thread interrupts the current thread while waiting for
+     *             all the child threads to die.
+     */
+    public void shutdown() throws InterruptedException {
+        logger.info("Intiating shutdown...");
 
-            @Override
-            public void run() {
-                bufferSize.set(dacStatus.getBufferSize());
-                dacStatus.validateStatus(config);
-                commsManager.sendConnectionStatus(true);
+        dataThread.shutdown();
+        playlistMgr.shutdown();
+        newPlaylistObserver.shutdown();
+        dataThread.join();
+
+        controlThread.shutdown();
+        controlThread.join();
+
+        notificationExecutor.shutdown();
+
+        isRunning = false;
+
+        shutdownSignal.notifyAll();
+    }
+
+    /**
+     * TODO
+     */
+    public void waitForShutdown() {
+        if (isRunning) {
+            try {
+                shutdownSignal.wait();
+            } catch (InterruptedException e) {
+                logger.error(
+                        "DacSession.waitForShutdown() interrupted by another thread.",
+                        e);
             }
-        };
-        try {
-            notificationExecutor.submit(validateJob);
-        } catch (RejectedExecutionException e) {
-            // tried to submit during shutdown, ignoring...
         }
     }
 
-    public int getCurrentBufferSize() {
-        return bufferSize.get();
+    @Override
+    @Subscribe
+    public void receivedDacStatus(DacStatusUpdateEvent e) {
+        // TODO: Is there any messages that come out of validateStatus() that
+        // we should simply make part of the message that goes back to the
+        // CommsManager?
+        e.getStatus().validateStatus(config);
+        commsManager.sendConnectionStatus(true);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.edex.bmh.dactransmit.events.handlers.
+     * IShutdownRequestEventHandler
+     * #handleShutdownRequest(com.raytheon.uf.edex.bmh
+     * .dactransmit.events.ShutdownRequestedEvent)
+     */
+    @Override
+    @Subscribe
+    public void handleShutdownRequest(ShutdownRequestedEvent e) {
+        try {
+            shutdown();
+        } catch (InterruptedException e1) {
+            logger.error("Shutdown interrupted.", e1);
+        }
     }
 }
