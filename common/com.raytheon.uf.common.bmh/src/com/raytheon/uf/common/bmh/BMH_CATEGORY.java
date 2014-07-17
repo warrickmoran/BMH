@@ -38,7 +38,7 @@ import java.util.Map;
  * Jul 7, 2014  3302       bkowal      Added a category for failed SSML generation.
  * Jul 08, 2014 3355       mpduff      Moved to common
  * Jul 10, 2014 3285       bsteffen    Added a category for playlist manager.
- * 
+ * Jul 17, 2014 3175       rjpeter     Added legacy parsing category.
  * 
  * </pre>
  * 
@@ -116,6 +116,11 @@ public enum BMH_CATEGORY {
      * An error has occured adding a message to a playlist.
      */
     PLAYLIST_MANAGER_ERROR(13),
+    /*
+     * Specific to the legacy database import. Used to indicate an issue
+     * occurred with the legacy database import.
+     */
+    LEGACY_DATABASE_IMPORT(500),
     /*
      * Indicates that a thread has been interrupted while performing some
      * action.

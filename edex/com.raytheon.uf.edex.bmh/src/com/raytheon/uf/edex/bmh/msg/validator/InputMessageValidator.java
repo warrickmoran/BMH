@@ -45,9 +45,9 @@ public class InputMessageValidator {
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(InputMessageValidator.class);
 
-    private TransmissionValidator transmissionCheck = new TransmissionValidator();
+    private final TransmissionValidator transmissionCheck = new TransmissionValidator();
 
-    private LdadValidator ldadCheck = new LdadValidator();
+    private final LdadValidator ldadCheck = new LdadValidator();
 
     /**
      * Validate an InputMessage.

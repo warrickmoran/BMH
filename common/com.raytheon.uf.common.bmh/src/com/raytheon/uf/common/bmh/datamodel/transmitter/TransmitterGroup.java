@@ -19,27 +19,24 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
-import java.util.Map;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.MapKey;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
-import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -65,11 +62,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @author rjpeter
  * @version 1.0
  */
-// @NamedQueries({
-// @NamedQuery(name = "getTransmitterGroupNames", query =
-// "SELECT t.name FROM TransmitterGroup"),
-// @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUPS, query =
-// "SELECT t FROM TransmitterGroup") })
+@NamedQueries({ @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME, query = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME_QUERY) })
 @Entity
 @Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }) })
 @SequenceGenerator(initialValue = 1, name = TransmitterGroup.GEN, sequenceName = "zone_seq")
@@ -77,48 +70,23 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class TransmitterGroup {
     static final String GEN = "Transmitter Group Generator";
 
-    public static final String GET_TRANSMITTER_GROUPS = "getTransmitterGroups";
+    public static final String GET_TRANSMITTER_GROUP_FOR_NAME = "getTransmitterGroupForName";
 
-    public static final int NAME_LENGTH = 20;
+    protected static final String GET_TRANSMITTER_GROUP_FOR_NAME_QUERY = "FROM TransmitterGroup tg WHERE tg.name = :name";
 
-    public enum TxStatus {
-        ENABLED, DISABLED
-    };
-
-    public enum TxMode {
-        PRIMARY, SECONDARY
-    };
+    public static final int NAME_LENGTH = 40;
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     @DynamicSerializeElement
     protected int id;
 
+    /**
+     * Alternate key, id only used to allow for ease of rename function.
+     */
     @Column(length = NAME_LENGTH)
+    @DynamicSerializeElement
     private String name;
-
-    @Enumerated(EnumType.STRING)
-    @Column(length = 8, nullable = false)
-    private TxStatus txStatus = TxStatus.ENABLED;
-
-    @Enumerated(EnumType.STRING)
-    @Column(length = 9, nullable = false)
-    private TxMode txMode = TxMode.PRIMARY;
-
-    // @ManyToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    // @PrimaryKeyJoinColumn
-    // @DynamicSerializeElement
-    // private Program program;
-    // ForeignKey to Program enforced at table creation via scripts.
-    @Column(length = 20, nullable = false)
-    @DynamicSerializeElement
-    private String programName;
-
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinColumn(name = "id")
-    @MapKey(name = "id.language")
-    @DynamicSerializeElement
-    private Map<Language, TransmitterLanguage> languages;
 
     @Embedded
     @DynamicSerializeElement
@@ -144,10 +112,9 @@ public class TransmitterGroup {
     @DynamicSerializeElement
     private Boolean daylightSaving;
 
-    @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "id")
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
     @DynamicSerializeElement
-    Set<Transmitter> transmitters;
+    private Set<Transmitter> transmitters;
 
     /**
      * @return the id
@@ -170,45 +137,6 @@ public class TransmitterGroup {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public TxStatus getTxStatus() {
-        return txStatus;
-    }
-
-    public void setTxStatus(TxStatus txStatus) {
-        this.txStatus = txStatus;
-    }
-
-    public TxMode getTxMode() {
-        return txMode;
-    }
-
-    public void setTxMode(TxMode txMode) {
-        this.txMode = txMode;
-    }
-
-    public String getProgramName() {
-        return programName;
-    }
-
-    public void setProgramName(String programName) {
-        this.programName = programName;
-    }
-
-    /**
-     * @return the languages
-     */
-    public Map<Language, TransmitterLanguage> getLanguages() {
-        return languages;
-    }
-
-    /**
-     * @param languages
-     *            the languages to set
-     */
-    public void setLanguages(Map<Language, TransmitterLanguage> languages) {
-        this.languages = languages;
     }
 
     public Tone getTone() {
@@ -258,4 +186,61 @@ public class TransmitterGroup {
     public void setDaylightSaving(Boolean daylightSaving) {
         this.daylightSaving = daylightSaving;
     }
+
+    public Set<Transmitter> getTransmitters() {
+        return transmitters;
+    }
+
+    public void setTransmitters(Set<Transmitter> transmitters) {
+        this.transmitters = transmitters;
+
+        if (transmitters != null) {
+            for (Transmitter trans : transmitters) {
+                trans.setTransmitterGroup(this);
+            }
+        }
+    }
+
+    public void addTransmitter(Transmitter trans) {
+        if (trans != null) {
+            trans.setTransmitterGroup(this);
+
+            if (transmitters == null) {
+                transmitters = new LinkedHashSet<>();
+            }
+
+            transmitters.add(trans);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result) + ((name == null) ? 0 : name.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        TransmitterGroup other = (TransmitterGroup) obj;
+        if (name == null) {
+            if (other.name != null) {
+                return false;
+            }
+        } else if (!name.equals(other.name)) {
+            return false;
+        }
+        return true;
+    }
+
 }

@@ -18,19 +18,51 @@
  * further licensing information.
  **/
 
+/**
+ * SOFTWARE HISTORY
+ * 
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * Jun 10, 2014 3175       rjpeter     Initial creation.
+ * Jul 28, 2014 3175       rjpeter     Added on delete cascade for inputmessage through playlist.
+ **/
+
+/**
+ * Allow cascading delete of incoming message all the way through to the playlist
+ **/
+
+alter table bmh.validated_msg drop constraint fkceb729d04a334ab9;
+alter table bmh.validated_msg add constraint fkceb729d04a334ab9
+    foreign key (input_msg_id) references bmh.input_msg (id) on delete cascade;
+
+alter table bmh.validated_msg_transmitter_groups drop constraint fka166c131a4daf631;
+alter table bmh.validated_msg_transmitter_groups add constraint fka166c131a4daf631
+    foreign key (validated_msg_id) references bmh.validated_msg (id) on delete cascade;
+
+alter table bmh.broadcast_msg drop constraint fkc71a77035d48c9f3;
+alter table bmh.broadcast_msg add constraint fkc71a77035d48c9f3
+    foreign key (input_message_id) references bmh.input_msg (id) on delete cascade;
+
+alter table bmh.playlist_messages drop constraint fk86d39d1946dde881;
+alter table bmh.playlist_messages add constraint fk86d39d1946dde881
+    foreign key (message_id) references bmh.broadcast_msg (id) on delete cascade;
+
+/**
+ * Area/Zone join table cascade delete
+ **/
 alter table bmh.area_tx drop constraint fkd381bb7657342f33;
 alter table bmh.area_tx add constraint fkd381bb7657342f33
     foreign key (areaId) references bmh.area(areaId) on delete cascade;
-    
-alter table bmh.area_tx drop constraint fkd381bb76f6502a8e;
-alter table bmh.area_tx add constraint fkd381bb76f6502a8e
-    foreign key (id) references bmh.transmitter(id) on delete cascade;
+
+alter table bmh.area_tx drop constraint fkd381bb762d91c1bf;
+alter table bmh.area_tx add constraint fkd381bb762d91c1bf
+    foreign key (transmitterId) references bmh.transmitter(id) on delete cascade;
     
 alter table bmh.zone_area drop constraint fk1feed14057342f33;
 alter table bmh.zone_area add constraint fk1feed14057342f33
     foreign key (areaId) references bmh.area(areaId) on delete cascade;
 
-alter table bmh.zone_area drop constraint fk1feed140ab43a105;
-alter table bmh.zone_area add constraint fk1feed140ab43a105
-    foreign key (id) references bmh.zone(id) on delete cascade;
+alter table bmh.zone_area drop constraint fk1feed14081c289b1;
+alter table bmh.zone_area add constraint fk1feed14081c289b1
+    foreign key (zoneId) references bmh.zone(id) on delete cascade;
 

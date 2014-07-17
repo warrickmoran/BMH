@@ -20,8 +20,12 @@
 package com.raytheon.uf.edex.bmh.dao;
 
 import java.io.Serializable;
+import java.util.List;
 
 import org.springframework.dao.DataAccessException;
+import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.edex.database.dao.CoreDao;
 import com.raytheon.uf.edex.database.dao.DaoConfig;
@@ -35,7 +39,8 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 24, 2014 3302       bkowal      Initial creation
+ * Jun 24, 2014 3302       bkowal      Initial creation.
+ * Jul 17, 2014 3175       rjpeter     Added getAll.
  * 
  * </pre>
  * 
@@ -45,7 +50,7 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
 
 public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
 
-    private Class<T> daoClass;
+    private final Class<T> daoClass;
 
     public AbstractBMHDao(Class<T> daoClass) {
         super(DaoConfig.forClass(DatabaseConstants.BMH_DATABASE_NAME, daoClass));
@@ -63,5 +68,20 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
      */
     public T getByID(I id) throws DataAccessException {
         return super.getHibernateTemplate().get(this.daoClass, id);
+    }
+
+    /**
+     * Temporary type safety work around until CoreDao generics fixed.
+     * 
+     * @return
+     */
+    public List<T> getAll() {
+        return txTemplate.execute(new TransactionCallback<List<T>>() {
+            @Override
+            public List<T> doInTransaction(TransactionStatus status) {
+                HibernateTemplate ht = getHibernateTemplate();
+                return ht.loadAll(daoClass);
+            }
+        });
     }
 }

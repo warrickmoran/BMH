@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.Column;
@@ -30,6 +31,8 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
@@ -55,12 +58,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @author rjpeter
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = Area.GET_AREA_FOR_CODE, query = Area.GET_AREA_FOR_CODE_QUERY) })
 @Entity
 @Table(name = "area", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "areaCode" }) })
 @SequenceGenerator(initialValue = 1, name = Area.GEN, sequenceName = "area_seq")
 @DynamicSerialize
 public class Area {
     static final String GEN = "Area Generator";
+
+    public static final String GET_AREA_FOR_CODE = "getAreaForCode";
+
+    protected static final String GET_AREA_FOR_CODE_QUERY = "FROM Area a WHERE a.areaCode = :areaCode";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
@@ -80,7 +88,7 @@ public class Area {
     @DynamicSerializeElement
     private String areaCode;
 
-    @Column(length = 20, nullable = false)
+    @Column(length = 30, nullable = false)
     @DynamicSerializeElement
     private String areaName;
 
@@ -127,4 +135,46 @@ public class Area {
     public void setTransmitters(Set<Transmitter> transmitters) {
         this.transmitters = transmitters;
     }
+
+    public void addTransmitter(Transmitter transmitter) {
+        if (transmitter != null) {
+            if (transmitters == null) {
+                transmitters = new HashSet<>();
+            }
+
+            transmitters.add(transmitter);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result)
+                + ((areaCode == null) ? 0 : areaCode.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Area other = (Area) obj;
+        if (areaCode == null) {
+            if (other.areaCode != null) {
+                return false;
+            }
+        } else if (!areaCode.equals(other.areaCode)) {
+            return false;
+        }
+        return true;
+    }
+
 }

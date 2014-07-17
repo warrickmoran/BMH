@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: EDEX BMH Legacy
+Bundle-SymbolicName: com.raytheon.uf.edex.bmh.legacy
+Bundle-Version: 0.14.0.qualifier
+Bundle-Vendor: RAYTHEON
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Require-Bundle: com.raytheon.uf.common.bmh,
+ com.raytheon.uf.common.bmh.legacy,
+ com.raytheon.uf.edex.bmh,
+ com.raytheon.uf.common.message,
+ com.raytheon.uf.common.util,
+ com.raytheon.uf.edex.core,
+ com.raytheon.uf.edex.database

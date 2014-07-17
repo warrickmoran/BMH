@@ -19,18 +19,29 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.OrderColumn;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -46,35 +57,70 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * May 30, 2014  3175     rjpeter     Initial creation
  * Jul 10, 2014  3283     bsteffen    Eagerly fetch suites.
- * 
+ * Jul 17, 2014  3175     rjpeter     Added surrogate key.
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
+@NamedQueries({
+        @NamedQuery(name = Program.GET_PROGRAM_FOR_TRANSMITTER_GROUP, query = Program.GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY),
+        @NamedQuery(name = Program.GET_GROUPS_FOR_MSG_TYPE, query = Program.GET_GROUPS_FOR_MSG_TYPE_QUERY) })
 @Entity
 @Table(name = "program", schema = "bmh")
+@SequenceGenerator(initialValue = 1, schema = "bmh", name = Program.GEN, sequenceName = "program_seq")
 @DynamicSerialize
 public class Program {
-    @Id
-    @Column(length = 20)
-    @DynamicSerializeElement
-    private String programName;
+    static final String GEN = "Program Id Generator";
 
-    // TODO: Technically should be a map of lists with key being the suite
-    // priority.
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinColumn(name = "programName", nullable = false)
-    @OrderColumn(name = "programPosition", nullable = false)
+    public static final String GET_PROGRAM_FOR_TRANSMITTER_GROUP = "getProgramsForTransmitterGroups";
+
+    protected static final String GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY = "select p FROM Program p inner join p.transmitterGroups tg WHERE tg = :group";
+
+    protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY = "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.suites s inner join s.suiteMessages sm inner join sm.id.msgType mt WHERE mt.afosid = :afosid";
+
+    // protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY =
+    // "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.suites.suiteMessages.id.msgType mt  WHERE mt.afosid = :afosid";
+
+    // protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY =
+    // "SELECT p.transmitterGroups FROM Program p WHERE p.suites.suiteMessages.id.msgType.afosid = :afosid";
+
+    public static final String GET_GROUPS_FOR_MSG_TYPE = "getGroupsForMsgType";
+
+    // use surrogate key
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
+    @DynamicSerializeElement
+    protected int id;
+
+    @Column(length = 20, unique = true, nullable = false)
+    @DynamicSerializeElement
+    private String name;
+
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinTable(name = "program_suites", schema = "bmh", joinColumns = { @JoinColumn(name = "program_id") }, inverseJoinColumns = { @JoinColumn(name = "suite_id") })
+    @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
     private List<Suite> suites;
 
-    public String getProgramName() {
-        return programName;
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "program_id")
+    private Set<TransmitterGroup> transmitterGroups;
+
+    public int getId() {
+        return id;
     }
 
-    public void setProgramName(String programName) {
-        this.programName = programName;
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public List<Suite> getSuites() {
@@ -83,6 +129,64 @@ public class Program {
 
     public void setSuites(List<Suite> suites) {
         this.suites = suites;
+    }
+
+    public void addSuite(Suite suite) {
+        if (suite != null) {
+            if (suites == null) {
+                suites = new ArrayList<>();
+            }
+
+            suites.add(suite);
+        }
+    }
+
+    public Set<TransmitterGroup> getTransmitterGroups() {
+        return transmitterGroups;
+    }
+
+    public void setTransmitterGroups(Set<TransmitterGroup> transmitterGroups) {
+        this.transmitterGroups = transmitterGroups;
+    }
+
+    public void addTransmitterGroup(TransmitterGroup group) {
+        if (group != null) {
+            if (transmitterGroups == null) {
+                transmitterGroups = new HashSet<>();
+            }
+
+            transmitterGroups.add(group);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result) + ((name == null) ? 0 : name.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Program other = (Program) obj;
+        if (name == null) {
+            if (other.name != null) {
+                return false;
+            }
+        } else if (!name.equals(other.name)) {
+            return false;
+        }
+        return true;
     }
 
 }

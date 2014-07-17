@@ -153,8 +153,8 @@ public class SuiteListDlg extends CaveSWTDialogBase {
 
         for (Suite s : suiteList) {
             TableRowData trd = new TableRowData();
-            trd.addTableCellData(new TableCellData(s.getSuiteName()));
-            trd.addTableCellData(new TableCellData(s.getSuiteType().name()));
+            trd.addTableCellData(new TableCellData(s.getName()));
+            trd.addTableCellData(new TableCellData(s.getType().name()));
             td.addDataRow(trd);
         }
 

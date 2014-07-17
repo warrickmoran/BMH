@@ -20,10 +20,10 @@
 package com.raytheon.uf.edex.bmh.xformer;
 
 import java.util.Deque;
-import java.util.List;
 import java.util.LinkedList;
-import java.util.regex.Pattern;
+import java.util.List;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -36,11 +36,13 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.Sentence;
-import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
+import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.bmh.xformer.data.DynamicNumericTextTransformation;
@@ -86,14 +88,14 @@ public class MessageTransformer {
     private final MessageTypeDao messageTypeDao;
 
     /* Used to retrieve the dictionary. */
-    private final DictionaryDao dictionaryDao;
+    private final TransmitterLanguageDao transmitterLanguageDao;
 
     /**
      * Constructor
      */
     public MessageTransformer() {
         messageTypeDao = new MessageTypeDao();
-        dictionaryDao = new DictionaryDao();
+        transmitterLanguageDao = new TransmitterLanguageDao();
         statusHandler.info("Message Transformer Ready ...");
     }
 
@@ -197,7 +199,7 @@ public class MessageTransformer {
      */
     private MessageType getMessageType(String afosid, int messageID)
             throws Exception {
-        MessageType messageType = this.messageTypeDao.getByID(afosid);
+        MessageType messageType = this.messageTypeDao.getByAfosId(afosid);
         if (messageType == null) {
             StringBuilder exceptionText = new StringBuilder(
                     "Unable to find a Message Type associated with afos id:");
@@ -239,8 +241,13 @@ public class MessageTransformer {
      */
     private Dictionary getDictionary(TransmitterGroup group, Language language,
             int messageID) {
-        /* First attempt to get the name of the dictionary. */
-        if (group.getLanguages().containsKey(language) == false) {
+        TransmitterLanguagePK pk = new TransmitterLanguagePK();
+        pk.setTransmitterGroup(group);
+        pk.setLanguage(language);
+        TransmitterLanguage lang = transmitterLanguageDao.getByID(pk);
+
+        // lookup dictionary
+        if ((lang == null) || (lang.getDictionary() == null)) {
             StringBuilder stringBuilder = new StringBuilder(
                     "No dictionary has been defined for language: ");
             stringBuilder.append(language.toString());
@@ -252,27 +259,10 @@ public class MessageTransformer {
 
             statusHandler.warn(BMH_CATEGORY.XFORM_MISSING_DICTIONARY,
                     stringBuilder.toString());
-
             return null;
         }
-        final String dictionaryName = group.getLanguages().get(language)
-                .getDictionaryName();
-        Dictionary dictionary = this.dictionaryDao.getByID(dictionaryName);
-        if (dictionary == null) {
-            StringBuilder stringBuilder = new StringBuilder(
-                    "Unable to find a dictionary with the specified name: ");
-            stringBuilder.append(dictionaryName);
-            stringBuilder.append(" specified by transmitter group: ");
-            stringBuilder.append(group.getName());
-            stringBuilder.append("! [ Message = ");
-            stringBuilder.append(messageID);
-            stringBuilder.append("]");
 
-            statusHandler.warn(BMH_CATEGORY.XFORM_MISSING_DICTIONARY,
-                    stringBuilder.toString());
-        }
-
-        return dictionary;
+        return lang.getDictionary();
     }
 
     /**
@@ -438,7 +428,7 @@ public class MessageTransformer {
                 currentSentence = StringUtils.difference(textPart,
                         currentSentence).trim();
                 if (currentSentence.isEmpty()
-                        && approximateSentences.isEmpty() == false) {
+                        && (approximateSentences.isEmpty() == false)) {
                     ssmlDocument.getRootTag().getContent().add(ssmlSentence);
                     ssmlSentence = ssmlDocument.getFactory().createSentence();
                     currentSentence = approximateSentences.remove(0);

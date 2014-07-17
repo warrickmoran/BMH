@@ -17,14 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.request;
+package com.raytheon.uf.common.bmh.legacy.ascii.data;
 
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 
 /**
- * Request for retrieving all records of a given type.
+ * Container for station id data. BMH integrates this in to the transmitter.
  * 
  * <pre>
  * 
@@ -32,27 +30,49 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
+ * Jul 17, 2014 3175       rjpeter     Initial creation
  * 
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
-@DynamicSerialize
-public class GetAllDataRequest implements IServerRequest {
-    public enum DataType {
-        Transmitters, Programs, Suites, Areas, Zones, MessageTypes
+public class StationIdData {
+    // Block 2
+    private String name;
+
+    private Language language;
+
+    private String text;
+
+    public String getName() {
+        return name;
     }
 
-    @DynamicSerializeElement
-    private DataType dataType;
-
-    public DataType getDataType() {
-        return dataType;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public void setDataType(DataType dataType) {
-        this.dataType = dataType;
+    public Language getLanguage() {
+        return language;
     }
+
+    public void setLanguage(Language language) {
+        this.language = language;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+
+    @Override
+    public String toString() {
+        return "StationIdData [name=" + name + ", language=" + language
+                + ", text=" + text + "]";
+    }
+
 }

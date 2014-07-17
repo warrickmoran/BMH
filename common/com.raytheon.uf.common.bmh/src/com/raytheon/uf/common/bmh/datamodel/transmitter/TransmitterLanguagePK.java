@@ -25,6 +25,7 @@ import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.ManyToOne;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -52,9 +53,8 @@ public class TransmitterLanguagePK implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // FK to transmitterGroup
-    @Column(length = TransmitterGroup.NAME_LENGTH, nullable = false)
-    @DynamicSerializeElement
-    private String transmitterGroupName;
+    @ManyToOne(optional = false)
+    private TransmitterGroup transmitterGroup;
 
     // Language: 0-English, 1-Spanish
     @Enumerated(EnumType.STRING)
@@ -62,12 +62,12 @@ public class TransmitterLanguagePK implements Serializable {
     @DynamicSerializeElement
     private Language language;
 
-    public String getTransmitterGroupName() {
-        return transmitterGroupName;
+    public TransmitterGroup getTransmitterGroup() {
+        return transmitterGroup;
     }
 
-    public void setTransmitterGroupName(String transmitterGroupName) {
-        this.transmitterGroupName = transmitterGroupName;
+    public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
+        this.transmitterGroup = transmitterGroup;
     }
 
     public Language getLanguage() {
@@ -77,4 +77,41 @@ public class TransmitterLanguagePK implements Serializable {
     public void setLanguage(Language language) {
         this.language = language;
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result)
+                + ((language == null) ? 0 : language.hashCode());
+        result = (prime * result)
+                + ((transmitterGroup == null) ? 0 : transmitterGroup.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        TransmitterLanguagePK other = (TransmitterLanguagePK) obj;
+        if (language != other.language) {
+            return false;
+        }
+        if (transmitterGroup == null) {
+            if (other.transmitterGroup != null) {
+                return false;
+            }
+        } else if (!transmitterGroup.equals(other.transmitterGroup)) {
+            return false;
+        }
+        return true;
+    }
+
 }

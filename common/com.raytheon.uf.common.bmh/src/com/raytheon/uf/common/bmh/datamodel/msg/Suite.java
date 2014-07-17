@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.persistence.CascadeType;
@@ -27,11 +28,13 @@ import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.OrderColumn;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
-import javax.persistence.UniqueConstraint;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -48,7 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * May 30, 2014  3175     rjpeter     Initial creation
  * Jul 10, 2014  3283     bsteffen    Eagerly fetch suites.
- * 
+ * Jul 17, 2014  3175     rjpeter     Added surrogate key.
  * 
  * </pre>
  * 
@@ -57,55 +60,58 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Entity
 @DynamicSerialize
-@Table(name = "suite", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
-        "programName", "suiteType", "programPosition" }) })
+@Table(name = "suite", schema = "bmh")
+@SequenceGenerator(initialValue = 1, schema = "bmh", name = Suite.GEN, sequenceName = "suite_seq")
 public class Suite {
     public enum SuiteType {
         GENERAL, HIGH, EXCLUSIVE, INTERRUPT;
     }
 
+    static final String GEN = "Suite Id Generator";
+
+    // use surrogate key
     @Id
-    @Column(length = 20)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     @DynamicSerializeElement
-    private String suiteName;
+    protected int id;
+
+    @Column(length = 20, unique = true, nullable = false)
+    @DynamicSerializeElement
+    private String name;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 9, nullable = false)
     @DynamicSerializeElement
-    private SuiteType suiteType = SuiteType.GENERAL;
+    private SuiteType type = SuiteType.GENERAL;
 
-    // position within the program
-    @Column(nullable = false, insertable = false, updatable = false)
-    @DynamicSerializeElement
-    private Integer programPosition;
-
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "suite", orphanRemoval = true, fetch = FetchType.EAGER)
-    @OrderColumn(name = "suitePosition", nullable = false)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "id.suite", fetch = FetchType.EAGER)
+    // updating position broken https://hibernate.atlassian.net/browse/HHH-5732
+    @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
     private List<SuiteMessage> suiteMessages;
 
-    public String getSuiteName() {
-        return suiteName;
+    public int getId() {
+        return id;
     }
 
-    public void setSuiteName(String suiteName) {
-        this.suiteName = suiteName;
+    public void setId(int id) {
+        this.id = id;
     }
 
-    public SuiteType getSuiteType() {
-        return suiteType;
+    public String getName() {
+        return name;
     }
 
-    public void setSuiteType(SuiteType suiteType) {
-        this.suiteType = suiteType;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public Integer getProgramPosition() {
-        return programPosition;
+    public SuiteType getType() {
+        return type;
     }
 
-    public void setProgramPosition(Integer programPosition) {
-        this.programPosition = programPosition;
+    public void setType(SuiteType type) {
+        this.type = type;
     }
 
     public List<SuiteMessage> getSuiteMessages() {
@@ -114,6 +120,67 @@ public class Suite {
 
     public void setSuiteMessages(List<SuiteMessage> suiteMessages) {
         this.suiteMessages = suiteMessages;
+        updatePositions();
+    }
+
+    public void addSuiteMessage(SuiteMessage suiteMessage) {
+        if (suiteMessage != null) {
+            if (suiteMessages == null) {
+                suiteMessages = new ArrayList<>();
+                suiteMessage.setPosition(0);
+            } else {
+                // Work around for
+                // https://hibernate.atlassian.net/browse/HHH-5732
+                suiteMessage.setPosition(suiteMessages.get(
+                        suiteMessages.size() - 1).getPosition() + 1);
+            }
+
+            suiteMessages.add(suiteMessage);
+            suiteMessage.setSuite(this);
+        }
+    }
+
+    /**
+     * Manually sets the position filed in the SuiteMessage. Work around for
+     * https://hibernate.atlassian.net/browse/HHH-5732
+     */
+    public void updatePositions() {
+        if (suiteMessages != null) {
+            int index = 0;
+            for (SuiteMessage sm : suiteMessages) {
+                sm.setPosition(index++);
+            }
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result) + ((name == null) ? 0 : name.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Suite other = (Suite) obj;
+        if (name == null) {
+            if (other.name != null) {
+                return false;
+            }
+        } else if (!name.equals(other.name)) {
+            return false;
+        }
+        return true;
     }
 
 }

@@ -19,12 +19,12 @@
  **/
 package com.raytheon.uf.edex.bmh.test.xform;
 
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.LinkedList;
-import java.util.Set;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.lang.StringUtils;
@@ -152,7 +152,7 @@ public class MessageTransformerTester extends AbstractBMHTester {
             try {
                 String transmitterGroup = super.getStringProperty(
                         configuration, transmitterProperty, inputFileName);
-                if (transmitterGroup == null
+                if ((transmitterGroup == null)
                         || transmitterGroup.trim().isEmpty()) {
                     continue;
                 }
@@ -202,7 +202,7 @@ public class MessageTransformerTester extends AbstractBMHTester {
          * Need to ensure that there is also a {@link MessageType} associated
          * with the afos id.
          */
-        MessageType messageType = this.messageTypeDao.getByID(afosid);
+        MessageType messageType = this.messageTypeDao.getByAfosId(afosid);
         if (messageType == null) {
             /*
              * Create a Message Type to associate with the test record.
@@ -252,20 +252,19 @@ public class MessageTransformerTester extends AbstractBMHTester {
             int currentIndex, TtsVoice ttsVoice)
             throws TestProcessingFailedException {
         TransmitterGroup transmitterGroup = this.transmitterGroupDao
-                .getByID(name);
+                .getByGroupName(name);
         if (transmitterGroup != null) {
             return transmitterGroup;
         }
 
         Map<Language, TransmitterLanguage> languages = new HashMap<Language, TransmitterLanguage>();
         TransmitterLanguagePK transmitterLanguagePK = new TransmitterLanguagePK();
-        transmitterLanguagePK.setTransmitterGroupName(name);
         transmitterLanguagePK.setLanguage(Language.ENGLISH);
         TransmitterLanguage transmitterLanguage = new TransmitterLanguage();
         transmitterLanguage.setId(transmitterLanguagePK);
         transmitterLanguage.setStationIdMsg(StringUtils.EMPTY);
         transmitterLanguage.setTimeMsg(StringUtils.EMPTY);
-        transmitterLanguage.setDictionaryName(TRANSMITTER_LANGUAGE_DICTIONARY);
+        // transmitterLanguage.setDictionaryName(TRANSMITTER_LANGUAGE_DICTIONARY);
         transmitterLanguage.setVoice(ttsVoice);
         languages.put(Language.ENGLISH, transmitterLanguage);
 

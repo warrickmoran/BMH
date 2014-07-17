@@ -192,16 +192,16 @@ public class BroadcastCycleDataManager {
      */
     private void generateTestData() {
         Suite generalSuite = new Suite();
-        generalSuite.setSuiteType(SuiteType.GENERAL);
-        generalSuite.setSuiteName("Suite General");
+        generalSuite.setType(SuiteType.GENERAL);
+        generalSuite.setName("Suite General");
 
         Suite exclusiveSuite = new Suite();
-        exclusiveSuite.setSuiteType(SuiteType.EXCLUSIVE);
-        exclusiveSuite.setSuiteName("Suite Exclusive");
+        exclusiveSuite.setType(SuiteType.EXCLUSIVE);
+        exclusiveSuite.setName("Suite Exclusive");
 
         Suite highSuite = new Suite();
-        highSuite.setSuiteType(SuiteType.HIGH);
-        highSuite.setSuiteName("Suite High");
+        highSuite.setType(SuiteType.HIGH);
+        highSuite.setName("Suite High");
 
         List<Suite> suiteList = new ArrayList<Suite>();
         suiteList.add(generalSuite);
@@ -258,11 +258,11 @@ public class BroadcastCycleDataManager {
 
             TableCellData cell2 = new TableCellData("Message Type");
             rowData.addTableCellData(cell2);
-            if (i > 0 && i < 3) {
+            if ((i > 0) && (i < 3)) {
                 cell2.setBackgroundColor(cm.getInterruptColor());
-            } else if (i == 5 || i == 7) {
+            } else if ((i == 5) || (i == 7)) {
                 cell2.setBackgroundColor(cm.getReplaceColor());
-            } else if (i == 4 || i == 9) {
+            } else if ((i == 4) || (i == 9)) {
                 cell2.setBackgroundColor(cm.getPeriodicColor());
             }
 

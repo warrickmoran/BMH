@@ -31,6 +31,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
+import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.database.DataAccessLayerException;
 
@@ -59,6 +60,8 @@ public final class TestDataUtil {
     private static final InputMessageDao inputMessageDao = new InputMessageDao();
 
     private static final TransmitterGroupDao transmitterGroupDao = new TransmitterGroupDao();
+
+    private static final TransmitterLanguageDao transmitterLanguageDao = new TransmitterLanguageDao();
 
     /**
      * 
@@ -104,7 +107,7 @@ public final class TestDataUtil {
             // Do Nothing.
         }
 
-        if (results == null || results.isEmpty()) {
+        if ((results == null) || results.isEmpty()) {
             return null;
         }
 
@@ -137,15 +140,24 @@ public final class TestDataUtil {
             throws TestProcessingFailedException {
         TransmitterGroup transmitterGroup = new TransmitterGroup();
         transmitterGroup.setName(groupName);
-        transmitterGroup.setProgramName(programName);
-        if (languages != null) {
-            transmitterGroup.setLanguages(languages);
-        }
         try {
             transmitterGroupDao.persist(transmitterGroup);
         } catch (TransactionException e) {
             throw new TestProcessingFailedException(
                     "Failed to create a test Transmitter Group!", e);
+        }
+
+        if ((languages != null) && !languages.isEmpty()) {
+            try {
+                for (TransmitterLanguage lang : languages.values()) {
+                    lang.setTransmitterGroup(transmitterGroup);
+                }
+
+                transmitterLanguageDao.persistAll(languages.values());
+            } catch (TransactionException e) {
+                throw new TestProcessingFailedException(
+                        "Failed to create a test Transmitter Group!", e);
+            }
         }
 
         return transmitterGroup;

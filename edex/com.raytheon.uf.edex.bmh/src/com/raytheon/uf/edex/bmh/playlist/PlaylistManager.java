@@ -46,6 +46,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.same.SAMEOriginatorMapper;
@@ -90,17 +91,17 @@ public class PlaylistManager {
 
     private final File playlistDir;
 
-    private PlaylistDao playlistDao = new PlaylistDao();
+    private final PlaylistDao playlistDao = new PlaylistDao();
 
-    private ZoneDao zoneDao = new ZoneDao();
+    private final ZoneDao zoneDao = new ZoneDao();
 
-    private ProgramDao programDao = new ProgramDao();
+    private final ProgramDao programDao = new ProgramDao();
 
-    private BroadcastMsgDao messageDao = new BroadcastMsgDao();
+    private final BroadcastMsgDao messageDao = new BroadcastMsgDao();
 
-    private SAMEStateCodes stateCodes = new SAMEStateCodes();
+    private final SAMEStateCodes stateCodes = new SAMEStateCodes();
 
-    private SAMEOriginatorMapper originatorMapping = new SAMEOriginatorMapper();
+    private final SAMEOriginatorMapper originatorMapping = new SAMEOriginatorMapper();
 
     public PlaylistManager() {
         playlistDir = new File(BMHConstants.getBmhDataDirectory(), "playlist");
@@ -119,13 +120,12 @@ public class PlaylistManager {
 
     public void newMessage(BroadcastMsg msg) {
         TransmitterGroup group = msg.getTransmitterGroup();
-        String programName = group.getProgramName();
-        Program program = programDao.getByID(programName);
+        Program program = programDao.getProgramForTransmitterGroup(group);
+
         if (msg.getInputMessage().getInterrupt()) {
             Suite suite = new Suite();
-            suite.setSuiteName("Interrupt" + msg.getId());
-            suite.setSuiteType(SuiteType.INTERRUPT);
-            suite.setProgramPosition(program.getSuites().size());
+            suite.setName("Interrupt" + msg.getId());
+            suite.setType(SuiteType.INTERRUPT);
             Playlist playlist = new Playlist();
             playlist.setTransmitterGroup(group);
             playlist.setSuite(suite);
@@ -135,9 +135,10 @@ public class PlaylistManager {
             playlist.setEndTime(msg.getInputMessage().getExpirationTime());
             writePlaylistFile(playlist);
         }
+
         for (Suite suite : program.getSuites()) {
             for (SuiteMessage smessage : suite.getSuiteMessages()) {
-                if (smessage.getId().getAfosid().equals(msg.getAfosid())) {
+                if (smessage.getAfosid().equals(msg.getAfosid())) {
                     addMessageToPlaylist(msg, group, suite,
                             smessage.isTrigger());
                 }
@@ -150,14 +151,14 @@ public class PlaylistManager {
         ClusterTask ct = null;
         do {
             ct = ClusterLockUtils.lock("playlist", group.getName() + "-"
-                    + suite.getSuiteName(), 30000, true);
+                    + suite.getName(), 30000, true);
         } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
         try {
             Playlist playlist = playlistDao.getBySuiteAndGroupName(
-                    suite.getSuiteName(), group.getName());
+                    suite.getName(), group.getName());
             if (playlist == null) {
                 playlist = new Playlist();
-                if (suite.getSuiteType() == SuiteType.GENERAL) {
+                if (suite.getType() == SuiteType.GENERAL) {
                     playlist.setMessages(Collections.<BroadcastMsg> emptyList());
                 } else if (trigger) {
                     playlist.setMessages(loadExistingMessages(suite));
@@ -201,21 +202,21 @@ public class PlaylistManager {
             messages.clear();
             for (SuiteMessage smessage : suite.getSuiteMessages()) {
                 List<BroadcastMsg> afosMessages = afosMapping.remove(smessage
-                        .getId().getAfosid());
+                        .getAfosid());
                 if (afosMessages != null) {
                     messages.addAll(afosMessages);
                     if (smessage.isTrigger()
-                            || suite.getSuiteType() == SuiteType.GENERAL) {
+                            || (suite.getType() == SuiteType.GENERAL)) {
                         for (BroadcastMsg bmessage : afosMessages) {
                             Calendar messageStart = bmessage.getInputMessage()
                                     .getEffectiveTime();
                             Calendar messageEnd = bmessage.getInputMessage()
                                     .getExpirationTime();
-                            if (startTime == null
+                            if ((startTime == null)
                                     || startTime.after(messageStart)) {
                                 startTime = messageStart;
                             }
-                            if (endTime == null || endTime.before(messageEnd)) {
+                            if ((endTime == null) || endTime.before(messageEnd)) {
                                 endTime = messageEnd;
                             }
                         }
@@ -246,7 +247,7 @@ public class PlaylistManager {
         for (SuiteMessage smessage : suite.getSuiteMessages()) {
             if (!smessage.isTrigger()) {
                 // TODO filter by expiration date in dao.
-                messages.addAll(messageDao.getMessagesByAfosid(smessage.getId()
+                messages.addAll(messageDao.getMessagesByAfosid(smessage
                         .getAfosid()));
             }
         }
@@ -335,13 +336,13 @@ public class PlaylistManager {
     private DacPlaylist convertPlaylistForDAC(Playlist db) {
         DacPlaylist dac = new DacPlaylist();
         Suite suite = db.getSuite();
-        dac.setPriority(suite.getSuiteType().ordinal());
+        dac.setPriority(suite.getType().ordinal());
         dac.setTransmitterGroup(db.getTransmitterGroup().getName());
-        dac.setSuite(suite.getSuiteType().toString());
+        dac.setSuite(suite.getType().toString());
         dac.setCreationTime(db.getModTime());
         dac.setStart(db.getStartTime());
         dac.setExpired(db.getEndTime());
-        dac.setInterrupt(suite.getSuiteType() == SuiteType.INTERRUPT);
+        dac.setInterrupt(suite.getType() == SuiteType.INTERRUPT);
         for (BroadcastMsg message : db.getMessages()) {
             dac.addMessage(convertMessageForDAC(message));
         }
@@ -372,10 +373,10 @@ public class PlaylistManager {
             for (String ugc : input.getAreaCodeList()) {
                 try {
                     if (ugc.charAt(2) == 'Z') {
-                        Zone z = zoneDao.getByID(ugc);
+                        Zone z = zoneDao.getByZoneCode(ugc);
                         if (z != null) {
-                            for (String area : z.getAreas().keySet()) {
-                                builder.addAreaFromUGC(area);
+                            for (Area area : z.getAreas()) {
+                                builder.addAreaFromUGC(area.getAreaCode());
                             }
                         }
                     } else {

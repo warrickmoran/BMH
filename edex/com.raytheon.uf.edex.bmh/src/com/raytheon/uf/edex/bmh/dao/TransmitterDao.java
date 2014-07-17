@@ -20,13 +20,9 @@
 package com.raytheon.uf.edex.bmh.dao;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.edex.database.dao.CoreDao;
-import com.raytheon.uf.edex.database.dao.DaoConfig;
 
 /**
  * Dao class for transmitter groups.
@@ -45,16 +41,9 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * @author rjpeter
  * @version 1.0
  */
-public class TransmitterDao extends CoreDao {
+public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
     public TransmitterDao() {
-        super(DaoConfig.forClass(DatabaseConstants.BMH_DATABASE_NAME,
-                Transmitter.class));
-    }
-
-    @SuppressWarnings("unchecked")
-    public Collection<TransmitterGroup> getTransmitters() {
-        return this.getSessionFactory().getCurrentSession()
-                .getNamedQuery(TransmitterGroup.GET_TRANSMITTER_GROUPS).list();
+        super(Transmitter.class);
     }
 
     public List<Transmitter> getAllTransmitters() {

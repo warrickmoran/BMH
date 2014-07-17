@@ -23,6 +23,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 
 /**
@@ -43,10 +47,36 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * @author bsteffen
  * @version 1.0
  */
-public class ZoneDao extends AbstractBMHDao<Zone, String> {
+public class ZoneDao extends AbstractBMHDao<Zone, Integer> {
 
     public ZoneDao() {
         super(Zone.class);
+    }
+
+    /**
+     * Looks up the Zone for the given zoneCode.
+     * 
+     * @param zoneCode
+     * @return
+     */
+    public Zone getByZoneCode(final String zoneCode) {
+        List<Zone> types = txTemplate
+                .execute(new TransactionCallback<List<Zone>>() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public List<Zone> doInTransaction(TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht.findByNamedQueryAndNamedParam(
+                                Zone.GET_ZONE_FOR_CODE,
+                                new String[] { "zoneCode" },
+                                new Object[] { zoneCode });
+                    }
+                });
+        if ((types != null) && !types.isEmpty()) {
+            return types.get(0);
+        }
+
+        return null;
     }
 
     public List<Zone> getAllZones() {

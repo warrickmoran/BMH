@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Legacy Common BMH
+Bundle-SymbolicName: com.raytheon.uf.common.bmh.legacy
+Bundle-Version: 0.14.0.qualifier
+Bundle-Vendor: RAYTHEON
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Require-Bundle: com.raytheon.uf.common.bmh,
+ com.raytheon.uf.common.status,
+ com.raytheon.uf.common.util
+Export-Package: com.raytheon.uf.common.bmh.legacy.ascii
+ 

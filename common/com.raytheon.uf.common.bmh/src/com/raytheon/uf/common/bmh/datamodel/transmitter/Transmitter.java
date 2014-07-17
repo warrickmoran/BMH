@@ -21,9 +21,12 @@ package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
@@ -62,6 +65,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class Transmitter {
     static final String GEN = "Transmitter Generator";
 
+    public enum TxStatus {
+        ENABLED, DISABLED
+    };
+
+    public enum TxMode {
+        PRIMARY, SECONDARY
+    };
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     @DynamicSerializeElement
@@ -71,29 +82,31 @@ public class Transmitter {
     @DynamicSerializeElement
     private String mnemonic;
 
-    @Column(length = 20, nullable = false)
+    @Column(length = 40, nullable = false)
     @DynamicSerializeElement
     private String name;
 
     @Column(precision = 3, nullable = false)
     @DynamicSerializeElement
-    private Float frequency;
+    private float frequency;
 
     @Column(length = 10, nullable = false)
     @DynamicSerializeElement
     private String callSign;
 
-    @Column(length = 30, nullable = false)
+    @Column(length = 40, nullable = false)
     @DynamicSerializeElement
     private String location;
 
-    @Column(length = 30, nullable = false)
+    @Column(length = 40, nullable = false)
     @DynamicSerializeElement
     private String serviceArea;
 
-    @Column(length = 20, nullable = false)
-    @DynamicSerializeElement
-    private String transmitterGroup;
+    /**
+     * Bi-directional relationship. Always serialized from the group side.
+     */
+    @ManyToOne(optional = false)
+    private TransmitterGroup transmitterGroup;
 
     @Column
     @DynamicSerializeElement
@@ -114,6 +127,14 @@ public class Transmitter {
         this.id = id;
     }
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 8, nullable = false)
+    private TxStatus txStatus = TxStatus.ENABLED;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 9, nullable = false)
+    private TxMode txMode = TxMode.PRIMARY;
+
     public String getMnemonic() {
         return mnemonic;
     }
@@ -127,14 +148,18 @@ public class Transmitter {
     }
 
     public void setName(String name) {
-        this.name = name;
+        if (name != null) {
+            this.name = name;
+        } else {
+            this.name = "";
+        }
     }
 
-    public Float getFrequency() {
+    public float getFrequency() {
         return frequency;
     }
 
-    public void setFrequency(Float frequency) {
+    public void setFrequency(float frequency) {
         this.frequency = frequency;
     }
 
@@ -143,7 +168,11 @@ public class Transmitter {
     }
 
     public void setCallSign(String callSign) {
-        this.callSign = callSign;
+        if (callSign != null) {
+            this.callSign = callSign;
+        } else {
+            this.callSign = "";
+        }
     }
 
     public String getLocation() {
@@ -151,7 +180,11 @@ public class Transmitter {
     }
 
     public void setLocation(String location) {
-        this.location = location;
+        if (location != null) {
+            this.location = location;
+        } else {
+            this.location = "";
+        }
     }
 
     public String getServiceArea() {
@@ -159,7 +192,11 @@ public class Transmitter {
     }
 
     public void setServiceArea(String serviceArea) {
-        this.serviceArea = serviceArea;
+        if (serviceArea != null) {
+            this.serviceArea = serviceArea;
+        } else {
+            this.serviceArea = "";
+        }
     }
 
     public int getPosition() {
@@ -170,12 +207,59 @@ public class Transmitter {
         this.position = position;
     }
 
-    public String getTransmitterGroup() {
+    public TransmitterGroup getTransmitterGroup() {
         return transmitterGroup;
     }
 
-    public void setTransmitterGroup(String transmitterGroup) {
+    public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    public TxStatus getTxStatus() {
+        return txStatus;
+    }
+
+    public void setTxStatus(TxStatus txStatus) {
+        this.txStatus = txStatus;
+    }
+
+    public TxMode getTxMode() {
+        return txMode;
+    }
+
+    public void setTxMode(TxMode txMode) {
+        this.txMode = txMode;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result)
+                + ((mnemonic == null) ? 0 : mnemonic.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Transmitter other = (Transmitter) obj;
+        if (mnemonic == null) {
+            if (other.mnemonic != null) {
+                return false;
+            }
+        } else if (!mnemonic.equals(other.mnemonic)) {
+            return false;
+        }
+        return true;
     }
 
 }

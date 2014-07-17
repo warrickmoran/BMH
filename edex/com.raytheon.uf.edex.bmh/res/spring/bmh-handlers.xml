@@ -3,14 +3,6 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-	<bean id="getAllDataHandler" class="com.raytheon.uf.edex.bmh.handler.GetAllDataHandler" />
-
-	<bean factory-bean="handlerRegistry" factory-method="register">
-		<constructor-arg
-			value="com.raytheon.uf.common.bmh.request.GetAllDataRequest" />
-		<constructor-arg ref="getAllDataHandler" />
-	</bean>
-
 	<bean id="dictionaryHandler" class="com.raytheon.uf.edex.bmh.handler.DictionaryHandler" />
 	<bean factory-bean="handlerRegistry" factory-method="register">
 		<constructor-arg

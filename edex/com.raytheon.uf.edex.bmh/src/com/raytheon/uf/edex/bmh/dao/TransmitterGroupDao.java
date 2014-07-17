@@ -19,6 +19,12 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.List;
+
+import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
@@ -39,8 +45,37 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  */
 
 public class TransmitterGroupDao extends
-        AbstractBMHDao<TransmitterGroup, String> {
+        AbstractBMHDao<TransmitterGroup, Integer> {
     public TransmitterGroupDao() {
         super(TransmitterGroup.class);
+    }
+
+    /**
+     * Looks up the TransmitterGroup for the given name.
+     * 
+     * @param areaCode
+     * @return
+     */
+    public TransmitterGroup getByGroupName(final String name) {
+        List<TransmitterGroup> types = txTemplate
+                .execute(new TransactionCallback<List<TransmitterGroup>>() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public List<TransmitterGroup> doInTransaction(
+                            TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht
+                                .findByNamedQueryAndNamedParam(
+                                        TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME,
+                                        new String[] { "name" },
+                                        new Object[] { name });
+                    }
+                });
+
+        if ((types != null) && !types.isEmpty()) {
+            return types.get(0);
+        }
+
+        return null;
     }
 }

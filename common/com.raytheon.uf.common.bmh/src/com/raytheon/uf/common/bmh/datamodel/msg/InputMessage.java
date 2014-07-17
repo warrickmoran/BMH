@@ -61,7 +61,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Entity
 @DynamicSerialize
 @Table(name = "input_msg", schema = "bmh")
-@SequenceGenerator(initialValue = 1, name = InputMessage.GEN, sequenceName = "input_msg_seq")
+@SequenceGenerator(initialValue = 1, schema = "bmh", name = InputMessage.GEN, sequenceName = "input_msg_seq")
 public class InputMessage {
 
     protected static final String GEN = "Input Messsage Id Generator";
@@ -266,7 +266,7 @@ public class InputMessage {
             int days = Integer.parseInt(this.periodicity.substring(0, 2));
             int hours = Integer.parseInt(this.periodicity.substring(2, 4));
             int minutes = Integer.parseInt(this.periodicity.substring(4, 6));
-            return minutes + 60 * (hours + 24 * days);
+            return minutes + (60 * (hours + (24 * days)));
         }
         return -1;
     }
@@ -308,7 +308,7 @@ public class InputMessage {
         }
         int[] result = new int[(end - start) / 3];
         for (int i = 0; i < result.length; i += 1) {
-            int s = start + i * 3;
+            int s = start + (i * 3);
             result[i] = Integer.parseInt(mrd.substring(s, s + 3));
         }
         return result;
@@ -328,7 +328,7 @@ public class InputMessage {
         }
         int[] result = new int[(mrd.length() - start) / 3];
         for (int i = 0; i < result.length; i += 1) {
-            int s = start + i * 3;
+            int s = start + (i * 3);
             result[i] = Integer.parseInt(mrd.substring(s, s + 3));
         }
         return result;
@@ -418,114 +418,148 @@ public class InputMessage {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((active == null) ? 0 : active.hashCode());
-        result = prime * result + ((afosid == null) ? 0 : afosid.hashCode());
-        result = prime * result
+        result = (prime * result) + ((active == null) ? 0 : active.hashCode());
+        result = (prime * result) + ((afosid == null) ? 0 : afosid.hashCode());
+        result = (prime * result)
                 + ((alertTone == null) ? 0 : alertTone.hashCode());
-        result = prime * result
+        result = (prime * result)
                 + ((areaCodes == null) ? 0 : areaCodes.hashCode());
-        result = prime * result + ((confirm == null) ? 0 : confirm.hashCode());
-        result = prime * result + ((content == null) ? 0 : content.hashCode());
-        result = prime * result
+        result = (prime * result)
+                + ((confirm == null) ? 0 : confirm.hashCode());
+        result = (prime * result)
+                + ((content == null) ? 0 : content.hashCode());
+        result = (prime * result)
                 + ((creationTime == null) ? 0 : creationTime.hashCode());
-        result = prime * result
+        result = (prime * result)
                 + ((effectiveTime == null) ? 0 : effectiveTime.hashCode());
-        result = prime * result
+        result = (prime * result)
                 + ((expirationTime == null) ? 0 : expirationTime.hashCode());
-        result = prime * result + id;
-        result = prime * result
+        result = (prime * result) + id;
+        result = (prime * result)
                 + ((interrupt == null) ? 0 : interrupt.hashCode());
-        result = prime * result
+        result = (prime * result)
                 + ((language == null) ? 0 : language.hashCode());
-        result = prime * result + ((mrd == null) ? 0 : mrd.hashCode());
-        result = prime * result
+        result = (prime * result) + ((mrd == null) ? 0 : mrd.hashCode());
+        result = (prime * result)
                 + ((nwrsameTone == null) ? 0 : nwrsameTone.hashCode());
-        result = prime * result
+        result = (prime * result)
                 + ((periodicity == null) ? 0 : periodicity.hashCode());
-        result = prime * result + (validHeader ? 1231 : 1237);
+        result = (prime * result) + (validHeader ? 1231 : 1237);
         return result;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         InputMessage other = (InputMessage) obj;
         if (active == null) {
-            if (other.active != null)
+            if (other.active != null) {
                 return false;
-        } else if (!active.equals(other.active))
+            }
+        } else if (!active.equals(other.active)) {
             return false;
+        }
         if (afosid == null) {
-            if (other.afosid != null)
+            if (other.afosid != null) {
                 return false;
-        } else if (!afosid.equals(other.afosid))
+            }
+        } else if (!afosid.equals(other.afosid)) {
             return false;
+        }
         if (alertTone == null) {
-            if (other.alertTone != null)
+            if (other.alertTone != null) {
                 return false;
-        } else if (!alertTone.equals(other.alertTone))
+            }
+        } else if (!alertTone.equals(other.alertTone)) {
             return false;
+        }
         if (areaCodes == null) {
-            if (other.areaCodes != null)
+            if (other.areaCodes != null) {
                 return false;
-        } else if (!areaCodes.equals(other.areaCodes))
+            }
+        } else if (!areaCodes.equals(other.areaCodes)) {
             return false;
+        }
         if (confirm == null) {
-            if (other.confirm != null)
+            if (other.confirm != null) {
                 return false;
-        } else if (!confirm.equals(other.confirm))
+            }
+        } else if (!confirm.equals(other.confirm)) {
             return false;
+        }
         if (content == null) {
-            if (other.content != null)
+            if (other.content != null) {
                 return false;
-        } else if (!content.equals(other.content))
+            }
+        } else if (!content.equals(other.content)) {
             return false;
+        }
         if (creationTime == null) {
-            if (other.creationTime != null)
+            if (other.creationTime != null) {
                 return false;
-        } else if (!creationTime.equals(other.creationTime))
+            }
+        } else if (!creationTime.equals(other.creationTime)) {
             return false;
+        }
         if (effectiveTime == null) {
-            if (other.effectiveTime != null)
+            if (other.effectiveTime != null) {
                 return false;
-        } else if (!effectiveTime.equals(other.effectiveTime))
+            }
+        } else if (!effectiveTime.equals(other.effectiveTime)) {
             return false;
+        }
         if (expirationTime == null) {
-            if (other.expirationTime != null)
+            if (other.expirationTime != null) {
                 return false;
-        } else if (!expirationTime.equals(other.expirationTime))
+            }
+        } else if (!expirationTime.equals(other.expirationTime)) {
             return false;
-        if (id != other.id)
+        }
+        if (id != other.id) {
             return false;
+        }
         if (interrupt == null) {
-            if (other.interrupt != null)
+            if (other.interrupt != null) {
                 return false;
-        } else if (!interrupt.equals(other.interrupt))
+            }
+        } else if (!interrupt.equals(other.interrupt)) {
             return false;
-        if (language != other.language)
+        }
+        if (language != other.language) {
             return false;
+        }
         if (mrd == null) {
-            if (other.mrd != null)
+            if (other.mrd != null) {
                 return false;
-        } else if (!mrd.equals(other.mrd))
+            }
+        } else if (!mrd.equals(other.mrd)) {
             return false;
+        }
         if (nwrsameTone == null) {
-            if (other.nwrsameTone != null)
+            if (other.nwrsameTone != null) {
                 return false;
-        } else if (!nwrsameTone.equals(other.nwrsameTone))
+            }
+        } else if (!nwrsameTone.equals(other.nwrsameTone)) {
             return false;
+        }
         if (periodicity == null) {
-            if (other.periodicity != null)
+            if (other.periodicity != null) {
                 return false;
-        } else if (!periodicity.equals(other.periodicity))
+            }
+        } else if (!periodicity.equals(other.periodicity)) {
             return false;
-        if (validHeader != other.validHeader)
+        }
+        if (validHeader != other.validHeader) {
             return false;
+        }
         return true;
     }
 

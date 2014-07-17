@@ -23,6 +23,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 
 /**
@@ -43,10 +47,36 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
  * @author bsteffen
  * @version 1.0
  */
-public class AreaDao extends AbstractBMHDao<Area, String> {
+public class AreaDao extends AbstractBMHDao<Area, Integer> {
 
     public AreaDao() {
         super(Area.class);
+    }
+
+    /**
+     * Looks up the Area for the given areaCode.
+     * 
+     * @param areaCode
+     * @return
+     */
+    public Area getByAreaCode(final String areaCode) {
+        List<Area> types = txTemplate
+                .execute(new TransactionCallback<List<Area>>() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public List<Area> doInTransaction(TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht.findByNamedQueryAndNamedParam(
+                                Area.GET_AREA_FOR_CODE,
+                                new String[] { "areaCode" },
+                                new Object[] { areaCode });
+                    }
+                });
+        if ((types != null) && !types.isEmpty()) {
+            return types.get(0);
+        }
+
+        return null;
     }
 
     public List<Area> getAllAreas() {

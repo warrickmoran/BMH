@@ -19,14 +19,33 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
+import javax.persistence.MapKey;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -48,20 +67,33 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @author rjpeter
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_AFOSID, query = MessageType.GET_MESSAGETYPE_FOR_AFOSID_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "message_type", schema = "bmh")
+@SequenceGenerator(initialValue = 1, schema = "bmh", name = MessageType.GEN, sequenceName = "message_type_seq")
 public class MessageType {
     public enum Designation {
         StationID, Forecast, Observation, Outlook, Watch, Warning, Advisory, TimeAnnouncement, Other
     }
 
+    static final String GEN = "Message Type Generator";
+
+    public static final String GET_MESSAGETYPE_FOR_AFOSID = "getMessageTypeForAfosId";
+
+    protected static final String GET_MESSAGETYPE_FOR_AFOSID_QUERY = "FROM MessageType m WHERE m.afosid = :afosid";
+
+    // use surrogate key
     @Id
-    @Column(length = 9)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
+    @DynamicSerializeElement
+    protected int id;
+
+    @Column(length = 9, unique = true)
     @DynamicSerializeElement
     private String afosid;
 
-    @Column(length = 20, nullable = false)
+    @Column(length = 40, nullable = false)
     @DynamicSerializeElement
     private String title;
 
@@ -105,6 +137,40 @@ public class MessageType {
     @Column(length = 6)
     @DynamicSerializeElement
     private String toneBlackOutEnd;
+
+    @ManyToMany(cascade = CascadeType.ALL)
+    @MapKey(name = "mnemonic")
+    @JoinTable(name = "message_same_tx", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
+    @DynamicSerializeElement
+    private Map<String, Transmitter> sameTransmitters;
+
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinTable(name = "message_replace", schema = "bmh", joinColumns = @JoinColumn(name = "id", nullable = false, unique = false), inverseJoinColumns = @JoinColumn(name = "replaces_id", nullable = false, unique = false))
+    @DynamicSerializeElement
+    private Set<MessageType> replacesMsgs;
+
+    @ManyToMany(cascade = CascadeType.ALL)
+    @JoinTable(name = "message_default_areas", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "areacode"))
+    @DynamicSerializeElement
+    private Set<Area> defaultAreas;
+
+    @ManyToMany(cascade = CascadeType.ALL)
+    @JoinTable(name = "message_default_zones", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "zonecode"))
+    @DynamicSerializeElement
+    private Set<Zone> defaultZones;
+
+    @ManyToMany(cascade = CascadeType.ALL)
+    @JoinTable(name = "message_default_transmitters", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
+    @DynamicSerializeElement
+    private Set<TransmitterGroup> defaultTransmitterGroups;
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
 
     public String getAfosid() {
         return afosid;
@@ -200,6 +266,127 @@ public class MessageType {
 
     public void setVoice(TtsVoice voice) {
         this.voice = voice;
+    }
+
+    public Map<String, Transmitter> getSameTransmitters() {
+        return sameTransmitters;
+    }
+
+    public void setSameTransmitters(Map<String, Transmitter> sameTransmitters) {
+        this.sameTransmitters = sameTransmitters;
+    }
+
+    public void addSameTransmitter(Transmitter trans) {
+        if (trans != null) {
+            if (sameTransmitters == null) {
+                sameTransmitters = new HashMap<>();
+            }
+
+            sameTransmitters.put(trans.getMnemonic(), trans);
+        }
+    }
+
+    public Set<MessageType> getReplacesMsgs() {
+        return replacesMsgs;
+    }
+
+    public void setReplacesMsgs(Set<MessageType> replacesMsgs) {
+        this.replacesMsgs = replacesMsgs;
+    }
+
+    public void addReplaceMsg(MessageType replaceMsg) {
+        if (replaceMsg != null) {
+            if (replacesMsgs == null) {
+                replacesMsgs = new HashSet<>();
+            }
+
+            replacesMsgs.add(replaceMsg);
+        }
+    }
+
+    public Set<Area> getDefaultAreas() {
+        return defaultAreas;
+    }
+
+    public void setDefaultAreas(Set<Area> defaultAreas) {
+        this.defaultAreas = defaultAreas;
+    }
+
+    public void addDefaultArea(Area area) {
+        if (area != null) {
+            if (defaultAreas == null) {
+                defaultAreas = new HashSet<>();
+            }
+
+            defaultAreas.add(area);
+        }
+    }
+
+    public Set<Zone> getDefaultZones() {
+        return defaultZones;
+    }
+
+    public void setDefaultZones(Set<Zone> defaultZones) {
+        this.defaultZones = defaultZones;
+    }
+
+    public void addDefaultZone(Zone zone) {
+        if (zone != null) {
+            if (defaultZones == null) {
+                defaultZones = new HashSet<>();
+            }
+
+            defaultZones.add(zone);
+        }
+    }
+
+    public Set<TransmitterGroup> getDefaultTransmitterGroups() {
+        return defaultTransmitterGroups;
+    }
+
+    public void setDefaultTransmitterGroups(
+            Set<TransmitterGroup> defaultTransmitterGroups) {
+        this.defaultTransmitterGroups = defaultTransmitterGroups;
+    }
+
+    public void addDefaultTransmitterGroup(TransmitterGroup transmitterGroup) {
+        if (transmitterGroup != null) {
+            if (defaultTransmitterGroups == null) {
+                defaultTransmitterGroups = new HashSet<>();
+            }
+
+            defaultTransmitterGroups.add(transmitterGroup);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result) + ((afosid == null) ? 0 : afosid.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        MessageType other = (MessageType) obj;
+        if (afosid == null) {
+            if (other.afosid != null) {
+                return false;
+            }
+        } else if (!afosid.equals(other.afosid)) {
+            return false;
+        }
+        return true;
     }
 
 }

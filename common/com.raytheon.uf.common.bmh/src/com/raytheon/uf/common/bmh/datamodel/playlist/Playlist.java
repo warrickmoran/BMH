@@ -76,7 +76,7 @@ public class Playlist {
      */
     public static final String QUERY_BY_SUITE_GROUP_NAMES = "getPlaylistBySuiteAndGroupNames";
 
-    protected static final String QUERY_BY_SUITE_GROUP_NAMES_HQL = "FROM Playlist p WHERE p.suite.suiteName = :suiteName AND p.transmitterGroup.name = :groupName";
+    protected static final String QUERY_BY_SUITE_GROUP_NAMES_HQL = "FROM Playlist p WHERE p.suite.name = :suiteName AND p.transmitterGroup.name = :groupName";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)

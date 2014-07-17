@@ -21,15 +21,11 @@ package com.raytheon.uf.edex.bmh.msg.validator;
 
 import java.util.Calendar;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
-import com.raytheon.uf.common.bmh.datamodel.msg.Program;
-import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
-import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
@@ -56,9 +52,9 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * 
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
- * Jun 23, 2014  3283     bsteffen    Initial creation
+ * Jun 23, 2014  3283     bsteffen    Initial creation.
  * Jul 17, 2014  3406     mpduff      Area object changed.
- * 
+ * Jul 17, 2014  3175     rjpeter     Updated transmitter group lookup.
  * </pre>
  * 
  * @author bsteffen
@@ -136,7 +132,7 @@ public class TransmissionValidator {
      * @return true if the message type is not defined
      */
     protected boolean checkConfiguration(InputMessage message) {
-        return messageTypeDao.getByID(message.getAfosid()) == null;
+        return messageTypeDao.getByAfosId(message.getAfosid()) == null;
     }
 
     /**
@@ -151,38 +147,35 @@ public class TransmissionValidator {
      */
     protected Set<TransmitterGroup> getTransmissionGroups(InputMessage message) {
         List<String> ugcList = message.getAreaCodeList();
-        Set<String> transmitterGroupNames = new HashSet<>(ugcList.size() * 2);
+        Set<TransmitterGroup> transmitterGroups = new HashSet<>(
+                ugcList.size() * 2);
         for (String ugc : ugcList) {
             if (ugc.charAt(2) == 'Z') {
-                Zone zone = zoneDao.getByID(ugc);
+                Zone zone = zoneDao.getByZoneCode(ugc);
                 if (zone == null) {
                     statusHandler.warn(BMH_CATEGORY.MESSAGE_AREA_UNCONFIGURED,
                             "Message zone is not configured: " + ugc);
                 } else {
                     for (Area area : zone.getAreas()) {
                         for (Transmitter t : area.getTransmitters()) {
-                            transmitterGroupNames.add(t.getTransmitterGroup());
+                            transmitterGroups.add(t.getTransmitterGroup());
                         }
                     }
                 }
             } else {
-                Area area = areaDao.getByID(ugc);
+                Area area = areaDao.getByAreaCode(ugc);
                 if (area == null) {
                     statusHandler.warn(BMH_CATEGORY.MESSAGE_AREA_UNCONFIGURED,
                             "Message area is not configured: " + ugc);
                 } else {
                     for (Transmitter t : area.getTransmitters()) {
-                        transmitterGroupNames.add(t.getTransmitterGroup());
+                        transmitterGroups.add(t.getTransmitterGroup());
                     }
                 }
             }
         }
-        Set<TransmitterGroup> result = new HashSet<>(
-                transmitterGroupNames.size(), 1.0f);
-        for (String name : transmitterGroupNames) {
-            result.add(transmitterGroupDao.getByID(name));
-        }
-        return result;
+
+        return transmitterGroups;
     }
 
     /**
@@ -197,35 +190,11 @@ public class TransmissionValidator {
      */
     protected Set<TransmitterGroup> checkSuite(InputMessage message,
             Set<TransmitterGroup> groups) {
-        Set<String> programNames = new HashSet<>(groups.size(), 1.0f);
-        for (TransmitterGroup group : groups) {
-            programNames.add(group.getProgramName());
-        }
-        Iterator<String> nameIterator = programNames.iterator();
-        while (nameIterator.hasNext()) {
-            boolean valid = false;
-            Program program = programDao.getByID(nameIterator.next());
-            Iterator<Suite> suiteIterator = program.getSuites().iterator();
-            while (suiteIterator.hasNext() && valid == false) {
-                for (SuiteMessage smessage : suiteIterator.next()
-                        .getSuiteMessages()) {
-                    if (smessage.getId().getAfosid()
-                            .equals(message.getAfosid())) {
-                        valid = true;
-                        break;
-                    }
-                }
-            }
-            if (!valid) {
-                nameIterator.remove();
-            }
-        }
-        Set<TransmitterGroup> result = new HashSet<>(groups.size(), 1.0f);
-        for (TransmitterGroup group : groups) {
-            if (programNames.contains(group.getProgramName())) {
-                result.add(group);
-            }
-        }
+        // TODO: Optimize
+        List<TransmitterGroup> programGroups = programDao
+                .getGroupsForMsgType(message.getAfosid());
+        Set<TransmitterGroup> result = new HashSet<>(groups);
+        result.retainAll(programGroups);
         return result;
     }
 

@@ -21,6 +21,8 @@ package com.raytheon.uf.common.bmh.datamodel.language;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
@@ -39,7 +41,6 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
- * 
  * </pre>
  * 
  * @author rjpeter
@@ -58,11 +59,12 @@ public class TtsVoice {
     @DynamicSerializeElement
     private String voiceName;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = Language.LENGTH, nullable = false)
     @DynamicSerializeElement
     private Language language;
 
-    @Column
+    @Column(nullable = false)
     @DynamicSerializeElement
     private boolean male;
 

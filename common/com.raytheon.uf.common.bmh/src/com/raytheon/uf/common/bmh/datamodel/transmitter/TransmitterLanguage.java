@@ -27,6 +27,8 @@ import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -66,18 +68,13 @@ public class TransmitterLanguage {
     // Text: 1-40960 characters
     // Must contain a parsable DTG string
     @Lob
-    @Column(nullable = false)
+    @Column
     @DynamicSerializeElement
     private String timeMsg;
 
-    // FK enforced at registration via script
-    // @ManyToMany(cascade = CascadeType.ALL)
-    // @JoinTable(name = "tx_dict", joinColumns = @JoinColumn(name =
-    // "mnemonic"), inverseJoinColumns = @JoinColumn(name = "name"))
-    // private Collection<Dictionary> dicts;
-    @Column(nullable = false)
+    @ManyToOne(optional = true)
     @DynamicSerializeElement
-    private String dictionaryName;
+    private Dictionary dictionary;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "voiceNumber")
@@ -96,6 +93,50 @@ public class TransmitterLanguage {
      */
     public void setId(TransmitterLanguagePK id) {
         this.id = id;
+    }
+
+    /**
+     * 
+     * @return the language
+     */
+    public Language getLanguage() {
+        if (id != null) {
+            return id.getLanguage();
+        }
+
+        return null;
+    }
+
+    /**
+     * 
+     * @param language
+     */
+    public void setLanguage(Language language) {
+        if (id == null) {
+            id = new TransmitterLanguagePK();
+        }
+
+        id.setLanguage(language);
+    }
+
+    /**
+     * 
+     * @return the transmitter group name
+     */
+    public TransmitterGroup getTransmitterGroup() {
+        if (id != null) {
+            return id.getTransmitterGroup();
+        }
+
+        return null;
+    }
+
+    public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
+        if (id == null) {
+            id = new TransmitterLanguagePK();
+        }
+
+        id.setTransmitterGroup(transmitterGroup);
     }
 
     /**
@@ -129,18 +170,20 @@ public class TransmitterLanguage {
     }
 
     /**
-     * @return the dictionaryName
+     * 
+     * @return the dictionary
      */
-    public String getDictionaryName() {
-        return dictionaryName;
+    public Dictionary getDictionary() {
+        return dictionary;
     }
 
     /**
-     * @param dictionaryName
-     *            the dictionaryName to set
+     * 
+     * @param dictionary
+     *            the dictionary to set
      */
-    public void setDictionaryName(String dictionaryName) {
-        this.dictionaryName = dictionaryName;
+    public void setDictionary(Dictionary dictionary) {
+        this.dictionary = dictionary;
     }
 
     /**
@@ -157,4 +200,35 @@ public class TransmitterLanguage {
     public void setVoice(TtsVoice voice) {
         this.voice = voice;
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result) + ((id == null) ? 0 : id.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        TransmitterLanguage other = (TransmitterLanguage) obj;
+        if (id == null) {
+            if (other.id != null) {
+                return false;
+            }
+        } else if (!id.equals(other.id)) {
+            return false;
+        }
+        return true;
+    }
+
 }

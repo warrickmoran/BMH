@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.Column;
@@ -30,6 +31,8 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
@@ -54,12 +57,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @author rjpeter
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = Zone.GET_ZONE_FOR_CODE, query = Zone.GET_ZONE_FOR_CODE_QUERY) })
 @Entity
 @Table(name = "zone", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "zoneCode" }) })
 @SequenceGenerator(initialValue = 1, name = Zone.GEN, sequenceName = "zone_seq")
 @DynamicSerialize
 public class Zone {
     static final String GEN = "Zone Generator";
+
+    public static final String GET_ZONE_FOR_CODE = "getZoneForCode";
+
+    protected static final String GET_ZONE_FOR_CODE_QUERY = "FROM Zone z WHERE z.zoneCode = :zoneCode";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
@@ -79,7 +87,7 @@ public class Zone {
     @DynamicSerializeElement
     private String zoneCode;
 
-    @Column(length = 20)
+    @Column(length = 60)
     @DynamicSerializeElement
     private String zoneName;
 
@@ -133,4 +141,50 @@ public class Zone {
     public void setAreas(Set<Area> areas) {
         this.areas = areas;
     }
+
+    /**
+     * Add the area to the set. Creates set if not already created.
+     * 
+     * @param area
+     */
+    public void addArea(Area area) {
+        if (area != null) {
+            if (areas == null) {
+                areas = new HashSet<>();
+            }
+            areas.add(area);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result)
+                + ((zoneCode == null) ? 0 : zoneCode.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Zone other = (Zone) obj;
+        if (zoneCode == null) {
+            if (other.zoneCode != null) {
+                return false;
+            }
+        } else if (!zoneCode.equals(other.zoneCode)) {
+            return false;
+        }
+        return true;
+    }
+
 }

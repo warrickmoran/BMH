@@ -32,8 +32,7 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.PrimaryKeyJoinColumn;
+import javax.persistence.OneToOne;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
@@ -54,7 +53,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Jun 16, 2014  3283     bsteffen    Initial creation
  * Jul 7, 2014   3302     bkowal      Use eager fetching to eliminate session closed
  *                                    errors with lazy loading.
- * 
+ * Jul 17, 2014  3175     rjpeter     Updated query to match field name.
  * </pre>
  * 
  * @author bsteffen
@@ -62,7 +61,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  */
 @Entity
 @Table(name = "validated_msg", schema = "bmh")
-@SequenceGenerator(initialValue = 1, name = ValidatedMessage.GEN, sequenceName = "validated_msg_seq")
+@SequenceGenerator(initialValue = 1, schema = "bmh", name = ValidatedMessage.GEN, sequenceName = "validated_msg_seq")
 public class ValidatedMessage {
 
     public static enum TransmissionStatus {
@@ -95,12 +94,12 @@ public class ValidatedMessage {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     private int id;
 
-    @ManyToOne
-    @PrimaryKeyJoinColumn
+    @OneToOne
+    @JoinColumn(name = "input_msg_id")
     private InputMessage inputMessage;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(schema = "bmh", name = "validated_msg_transmitter_groups", joinColumns = @JoinColumn(name = "validated_msg_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_name", referencedColumnName = "name"))
+    @JoinTable(schema = "bmh", name = "validated_msg_transmitter_groups", joinColumns = @JoinColumn(name = "validated_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_id"))
     private Set<TransmitterGroup> transmitterGroups;
 
     @Column(nullable = false)

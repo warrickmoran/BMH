@@ -17,14 +17,10 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.handler;
-
-import com.raytheon.uf.common.bmh.request.GetAllDataRequest;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
-import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
+package com.raytheon.uf.common.bmh.legacy.ascii;
 
 /**
- * Handler for GetDallDataRequest.
+ * Parsing exception from the legacy ascii database.
  * 
  * <pre>
  * 
@@ -32,36 +28,29 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
+ * Jul 17, 2014 3175       rjpeter     Initial creation
  * 
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
-public class GetAllDataHandler implements IRequestHandler<GetAllDataRequest> {
+public class ParseException extends Exception {
 
-    @Override
-    public Object handleRequest(GetAllDataRequest request) throws Exception {
-        switch (request.getDataType()) {
-        case Areas:
-            break;
-        case MessageTypes:
-            break;
-        case Programs:
-            break;
-        case Suites:
-            break;
-        case Transmitters:
-            TransmitterDao dao = new TransmitterDao();
-            dao.getTransmitters();
-            break;
-        case Zones:
-            break;
-        default:
-            break;
-        }
-        return null;
+    private static final long serialVersionUID = 4049150169514765720L;
+
+    /**
+     * Constructs a new exception with the specified detail message. The cause
+     * is not initialized, and may subsequently be initialized by a call to
+     * {@link #initCause}.
+     * 
+     * @param message
+     *            the detail message. The detail message is saved for later
+     *            retrieval by the {@link #getMessage()} method.
+     * @param lineNumber
+     * @param sourceFile
+     */
+    public ParseException(String message, int lineNumber, String sourceFile) {
+        super(message + ". Line: " + lineNumber + ", File: " + sourceFile);
     }
-
 }

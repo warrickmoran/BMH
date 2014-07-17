@@ -17,18 +17,13 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.datamodel.msg;
+package com.raytheon.uf.edex.bmh.dao;
 
-import java.io.Serializable;
-
-import javax.persistence.Column;
-import javax.persistence.Embeddable;
-
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 
 /**
- * Suite Message Primary Key
+ * BMH DAO for {@link TransmitterLanguage}.
  * 
  * <pre>
  * 
@@ -36,40 +31,16 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
+ * Jul 28, 2014 3175       rjpeter     Initial creation
  * 
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
-@Embeddable
-@DynamicSerialize
-public class SuiteMessagePK implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    @Column(length = 20)
-    @DynamicSerializeElement
-    private String suiteName;
-
-    @Column(length = 9)
-    @DynamicSerializeElement
-    private String afosid;
-
-    public String getSuiteName() {
-        return suiteName;
+public class TransmitterLanguageDao extends
+        AbstractBMHDao<TransmitterLanguage, TransmitterLanguagePK> {
+    public TransmitterLanguageDao() {
+        super(TransmitterLanguage.class);
     }
-
-    public void setSuiteName(String suiteName) {
-        this.suiteName = suiteName;
-    }
-
-    public String getAfosid() {
-        return afosid;
-    }
-
-    public void setAfosid(String afosid) {
-        this.afosid = afosid;
-    }
-
 }

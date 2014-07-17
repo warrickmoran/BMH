@@ -19,6 +19,12 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.List;
+
+import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 
 /**
@@ -38,8 +44,35 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
  * @version 1.0
  */
 
-public class MessageTypeDao extends AbstractBMHDao<MessageType, String> {
+public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
     public MessageTypeDao() {
         super(MessageType.class);
+    }
+
+    /**
+     * Looks up the MessageType for the given afosId.
+     * 
+     * @param afosId
+     * @return
+     */
+    public MessageType getByAfosId(final String afosId) {
+        List<MessageType> types = txTemplate
+                .execute(new TransactionCallback<List<MessageType>>() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public List<MessageType> doInTransaction(
+                            TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht.findByNamedQueryAndNamedParam(
+                                MessageType.GET_MESSAGETYPE_FOR_AFOSID,
+                                new String[] { "afosid" },
+                                new Object[] { afosId });
+                    }
+                });
+        if ((types != null) && !types.isEmpty()) {
+            return types.get(0);
+        }
+
+        return null;
     }
 }

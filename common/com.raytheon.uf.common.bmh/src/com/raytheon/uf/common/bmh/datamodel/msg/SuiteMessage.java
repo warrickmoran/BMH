@@ -22,10 +22,7 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-import javax.persistence.UniqueConstraint;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 
@@ -48,33 +45,22 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  */
 @Entity
 @DynamicSerialize
-@Table(name = "suite_message", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
-        "suiteName", "suitePosition" }) })
+@Table(name = "suite_message", schema = "bmh")
 public class SuiteMessage {
-
     @EmbeddedId
-    private SuiteMessagePK id;
+    private SuiteMessagePk id;
 
     @Column(nullable = false)
     private boolean trigger;
 
-    // position within the suite
-    @Column(nullable = false, insertable = false, updatable = false)
-    private int suitePosition;
+    @Column(nullable = false)
+    private int position;
 
-    @ManyToOne
-    @JoinColumn(name = "suiteName", insertable = false, updatable = false)
-    private Suite suite;
-
-    // @ManyToOne
-    // @JoinColumn(name = "afosid", insertable = false, updatable = false)
-    // private MessageType msgType;
-
-    public SuiteMessagePK getId() {
+    public SuiteMessagePk getId() {
         return id;
     }
 
-    public void setId(SuiteMessagePK id) {
+    public void setId(SuiteMessagePk id) {
         this.id = id;
     }
 
@@ -86,19 +72,93 @@ public class SuiteMessage {
         this.trigger = trigger;
     }
 
-    public int getPosition() {
-        return suitePosition;
-    }
-
-    public void setPosition(int position) {
-        this.suitePosition = position;
-    }
-
     public Suite getSuite() {
-        return suite;
+        if (id == null) {
+            return null;
+        }
+
+        return id.getSuite();
     }
 
     public void setSuite(Suite suite) {
-        this.suite = suite;
+        if (id == null) {
+            id = new SuiteMessagePk();
+        }
+
+        id.setSuite(suite);
     }
+
+    public MessageType getMsgType() {
+        if (id == null) {
+            return null;
+        }
+
+        return id.getMsgType();
+    }
+
+    public void setMsgType(MessageType msgType) {
+        if (id == null) {
+            id = new SuiteMessagePk();
+        }
+
+        id.setMsgType(msgType);
+    }
+
+    public int getPosition() {
+        return position;
+    }
+
+    public void setPosition(int position) {
+        this.position = position;
+    }
+
+    /**
+     * Convenience method to get the afosId of the msgType associated with this
+     * suiteMessage.
+     * 
+     * @return
+     */
+    public String getAfosid() {
+        if (id == null) {
+            return null;
+        }
+
+        MessageType mt = id.getMsgType();
+        if (mt == null) {
+            return null;
+        }
+
+        return mt.getAfosid();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result) + ((id == null) ? 0 : id.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        SuiteMessage other = (SuiteMessage) obj;
+        if (id == null) {
+            if (other.id != null) {
+                return false;
+            }
+        } else if (!id.equals(other.id)) {
+            return false;
+        }
+        return true;
+    }
+
 }
