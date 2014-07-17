@@ -55,6 +55,8 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.listening.areas.ListeningAreaDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.listening.zones.ListeningZoneDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
@@ -76,7 +78,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 07, 2014  #3338     lvenable    Initial creation
  * Jul 08, 2014   3355     mpduff      Implement legacy dictionary converter
  * Jul 15, 2014  #3387     lvenable    Implemented code for the abstract BMH dialog
- *                                     functionality.
+ * Jul 17, 2014   3406     mpduff      Added Listening area and zone dialogs
  * 
  * </pre>
  * 
@@ -121,6 +123,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     /** Legacy converter dialog. */
     private LegacyDictionaryConverterDlg dictConverterDlg;
 
+    /** LDAD config dialog */
     private LdadConfigDlg ldadConfigDlg;
 
     private BroadcastProgramDlg broadcastProgDlg;
@@ -128,6 +131,12 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     private SuiteManagerDlg suiteManagerDlg;
 
     private BroadcastCycleDlg broadcastCycleDlg;
+
+    /** Listening area configuration dialog */
+    private ListeningAreaDlg listeningAreaDlg;
+
+    /** Listening zone configuration dialog */
+    protected ListeningZoneDlg listeningZoneDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -461,6 +470,13 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         listeningAreasMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
+                if (listeningAreaDlg == null || listeningAreaDlg.isDisposed()) {
+                    listeningAreaDlg = new ListeningAreaDlg(shell,
+                            dlgsToValidateCloseMap);
+                    listeningAreaDlg.open();
+                } else {
+                    listeningAreaDlg.bringToTop();
+                }
             }
         });
 
@@ -469,6 +485,13 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         listeningZonesMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
+                if (listeningZoneDlg == null || listeningZoneDlg.isDisposed()) {
+                    listeningZoneDlg = new ListeningZoneDlg(shell,
+                            dlgsToValidateCloseMap);
+                    listeningZoneDlg.open();
+                } else {
+                    listeningZoneDlg.bringToTop();
+                }
             }
         });
 

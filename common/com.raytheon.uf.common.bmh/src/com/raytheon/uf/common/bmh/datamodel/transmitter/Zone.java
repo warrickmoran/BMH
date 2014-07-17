@@ -19,17 +19,20 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
-import java.util.Map;
+import java.util.Set;
 
-import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
-import javax.persistence.MapKey;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -44,6 +47,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
+ * Jul 17, 2014  3406      mpduff      Added id pk column, named query, removed cascade
  * 
  * </pre>
  * 
@@ -51,9 +55,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @Entity
-@Table(name = "zone", schema = "bmh")
+@Table(name = "zone", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "zoneCode" }) })
+@SequenceGenerator(initialValue = 1, name = Zone.GEN, sequenceName = "zone_seq")
 @DynamicSerialize
 public class Zone {
+    static final String GEN = "Zone Generator";
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
+    @DynamicSerializeElement
+    protected int id;
+
     /**
      * SSZNNN - 6 digit UGC Zone code
      * 
@@ -63,7 +75,6 @@ public class Zone {
      * NNN - zone code number
      * </pre>
      */
-    @Id
     @Column(length = 6)
     @DynamicSerializeElement
     private String zoneCode;
@@ -72,11 +83,25 @@ public class Zone {
     @DynamicSerializeElement
     private String zoneName;
 
-    @ManyToMany(cascade = CascadeType.ALL)
-    @MapKey(name = "areaCode")
-    @JoinTable(name = "zone_area", schema = "bmh", joinColumns = { @JoinColumn(name = "zoneCode") }, inverseJoinColumns = { @JoinColumn(name = "areaCode") })
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "zone_area", schema = "bmh", joinColumns = { @JoinColumn(name = "zoneId") }, inverseJoinColumns = { @JoinColumn(name = "areaId") })
     @DynamicSerializeElement
-    private final Map<String, Area> areas = null;
+    private Set<Area> areas;
+
+    /**
+     * @return the id
+     */
+    public int getId() {
+        return id;
+    }
+
+    /**
+     * @param id
+     *            the id to set
+     */
+    public void setId(int id) {
+        this.id = id;
+    }
 
     public String getZoneCode() {
         return zoneCode;
@@ -94,8 +119,18 @@ public class Zone {
         this.zoneName = zoneName;
     }
 
-    public Map<String, Area> getAreas() {
+    /**
+     * @return the areas
+     */
+    public Set<Area> getAreas() {
         return areas;
     }
 
+    /**
+     * @param areas
+     *            the areas to set
+     */
+    public void setAreas(Set<Area> areas) {
+        this.areas = areas;
+    }
 }

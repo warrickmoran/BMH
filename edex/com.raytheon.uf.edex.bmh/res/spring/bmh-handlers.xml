@@ -25,13 +25,20 @@
 		<constructor-arg ref="wordHandler" />
 	</bean>
 
-	<bean id="ttsHandler" class="com.raytheon.uf.edex.bmh.handler.TextToSpeechHandler">
-		<constructor-arg ref="ttsManager" />
-	</bean>
-	<bean factory-bean="handlerRegistry" factory-method="register">
-		<constructor-arg
-			value="com.raytheon.uf.common.bmh.request.TextToSpeechRequest" />
-		<constructor-arg ref="ttsHandler" />
-	</bean>
+    <bean id="ttsHandler" class="com.raytheon.uf.edex.bmh.handler.TextToSpeechHandler">
+        <constructor-arg ref="ttsManager" />
+    </bean>
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.TextToSpeechRequest" />
+        <constructor-arg ref="ttsHandler" />
+    </bean>
+
+    <bean id="zoneAreaHandler" class="com.raytheon.uf.edex.bmh.handler.ZoneAreaHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.ZoneAreaRequest" />
+        <constructor-arg ref="zoneAreaHandler" />
+    </bean>
 
 </beans>

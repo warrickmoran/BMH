@@ -19,8 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 
 /**
  * 
@@ -33,6 +36,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 25, 2014  3283     bsteffen    Initial creation
+ * Jul 17, 2014  3406     mpduff      Added getAllZones()
  * 
  * </pre>
  * 
@@ -45,4 +49,18 @@ public class ZoneDao extends AbstractBMHDao<Zone, String> {
         super(Zone.class);
     }
 
+    public List<Zone> getAllZones() {
+        List<Object> names = this.loadAll();
+        if (names == null) {
+            return Collections.emptyList();
+        }
+
+        List<Zone> zoneList = new ArrayList<Zone>(names.size());
+        for (Object obj : names) {
+            Zone a = (Zone) obj;
+            zoneList.add(a);
+        }
+
+        return zoneList;
+    }
 }

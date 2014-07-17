@@ -57,6 +57,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
+ * Jul 17, 2014  3406     mpduff      Area object changed.
  * 
  * </pre>
  * 
@@ -68,17 +69,17 @@ public class TransmissionValidator {
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(TransmissionValidator.class);
 
-    private InputMessageDao inputMessageDao = new InputMessageDao();
+    private final InputMessageDao inputMessageDao = new InputMessageDao();
 
-    private MessageTypeDao messageTypeDao = new MessageTypeDao();
+    private final MessageTypeDao messageTypeDao = new MessageTypeDao();
 
-    private TransmitterGroupDao transmitterGroupDao = new TransmitterGroupDao();
+    private final TransmitterGroupDao transmitterGroupDao = new TransmitterGroupDao();
 
-    private AreaDao areaDao = new AreaDao();
+    private final AreaDao areaDao = new AreaDao();
 
-    private ZoneDao zoneDao = new ZoneDao();
+    private final ZoneDao zoneDao = new ZoneDao();
 
-    private ProgramDao programDao = new ProgramDao();
+    private final ProgramDao programDao = new ProgramDao();
 
     public void validate(ValidatedMessage message) {
         InputMessage input = message.getInputMessage();
@@ -158,7 +159,7 @@ public class TransmissionValidator {
                     statusHandler.warn(BMH_CATEGORY.MESSAGE_AREA_UNCONFIGURED,
                             "Message zone is not configured: " + ugc);
                 } else {
-                    for (Area area : zone.getAreas().values()) {
+                    for (Area area : zone.getAreas()) {
                         for (Transmitter t : area.getTransmitters()) {
                             transmitterGroupNames.add(t.getTransmitterGroup());
                         }

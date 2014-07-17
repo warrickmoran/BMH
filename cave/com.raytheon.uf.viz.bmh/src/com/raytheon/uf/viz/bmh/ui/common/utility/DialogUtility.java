@@ -23,6 +23,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Shell;
 
 /**
  * 
@@ -34,7 +36,8 @@ import org.eclipse.swt.widgets.Label;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 7, 2014  #3360      lvenable     Initial creation
+ * Jul 07, 2014  #3360     lvenable    Initial creation
+ * Jul 17, 2014   3120     mpduff      Added showMessageBox convenience method.
  * 
  * </pre>
  * 
@@ -62,5 +65,26 @@ public class DialogUtility {
 
         Label sepLbl = new Label(comp, SWT.SEPARATOR | orientation);
         sepLbl.setLayoutData(gd);
+    }
+
+    /**
+     * Show a message box to the user and get the results if there are any.
+     * 
+     * @param comp
+     *            Parent composite
+     * @param style
+     *            Message box style
+     * @param title
+     *            Title bar text
+     * @param message
+     *            Message to display
+     * @return id of the button selected to close the dialog
+     */
+    public static int showMessageBox(Shell shell, int style, String title,
+            String message) {
+        MessageBox mb = new MessageBox(shell, style);
+        mb.setText(title);
+        mb.setMessage(message);
+        return mb.open();
     }
 }

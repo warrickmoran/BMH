@@ -46,6 +46,7 @@ import org.eclipse.swt.widgets.TableItem;
  * ------------ ---------- ----------- --------------------------
  * May 28, 2014   3289      mpduff      Initial creation
  * Jul 14, 2014   #3377     lvenable    Added callback updates.
+ * Jul 17, 2014   3406      mpduff      Added updateTable method.
  * 
  * </pre>
  * 
@@ -70,7 +71,7 @@ public abstract class TableComp extends Composite {
     private final int tableStyle;
 
     /** The TableData object holding all data for the table */
-    private TableData tableData;
+    protected TableData tableData;
 
     private int[] columnWidths;
 
@@ -255,9 +256,35 @@ public abstract class TableComp extends Composite {
     }
 
     /**
+     * Update an already created table with new data. This is a data update
+     * only, the table is not recreated, only repopulated.
+     * 
+     * @param tableData
+     *            Updated TableData
+     */
+    public void updateTable(TableData tableData) {
+        table.removeAll();
+        this.tableData = tableData;
+
+        if (table.getColumnCount() == 0) {
+            this.createColumns();
+        }
+
+        for (TableRowData rowData : tableData.getTableRows()) {
+            TableItem ti = new TableItem(table, SWT.NONE);
+            ti.setData(rowData);
+            List<TableCellData> cellDataList = rowData.getTableCellData();
+            for (int i = 0; i < cellDataList.size(); i++) {
+                TableCellData cellData = cellDataList.get(i);
+                ti.setText(i, cellData.getDisplayString());
+            }
+        }
+    }
+
+    /**
      * Create the table columns.
      */
-    private void createColumns() {
+    protected void createColumns() {
         columnWidths = new int[tableData.getColumnNames().size()];
         int i = 0;
         for (TableColumnData tcd : tableData.getColumnNames()) {
@@ -276,7 +303,7 @@ public abstract class TableComp extends Composite {
     }
 
     /**
-     * Get the data for the selected row.
+     * Get the data for the selected row(s).
      * 
      * @return Row of data.
      */
@@ -288,6 +315,23 @@ public abstract class TableComp extends Composite {
         }
 
         return rowList;
+    }
+
+    /**
+     * Select the row at the provided index
+     * 
+     * @param row
+     *            index of the row to select
+     */
+    public void select(int row) {
+        table.select(row);
+    }
+
+    /**
+     * Remove all rows from the table.
+     */
+    public void removeAllTableItems() {
+        table.removeAll();
     }
 
     /**

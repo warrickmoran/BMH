@@ -29,11 +29,15 @@ import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.MapKey;
 import javax.persistence.OneToMany;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -54,6 +58,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                     Languages map.
  * Jul 8, 2014  3302       bkowal      Use eager fetching to eliminate session closed
  *                                     errors with lazy loading.
+ * Jul 17, 2014  3406      mpduff      Added id pk column
  * 
  * </pre>
  * 
@@ -66,9 +71,12 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 // @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUPS, query =
 // "SELECT t FROM TransmitterGroup") })
 @Entity
-@Table(name = "transmitter_group", schema = "bmh")
+@Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }) })
+@SequenceGenerator(initialValue = 1, name = TransmitterGroup.GEN, sequenceName = "zone_seq")
 @DynamicSerialize
 public class TransmitterGroup {
+    static final String GEN = "Transmitter Group Generator";
+
     public static final String GET_TRANSMITTER_GROUPS = "getTransmitterGroups";
 
     public static final int NAME_LENGTH = 20;
@@ -82,6 +90,10 @@ public class TransmitterGroup {
     };
 
     @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
+    @DynamicSerializeElement
+    protected int id;
+
     @Column(length = NAME_LENGTH)
     private String name;
 
@@ -103,7 +115,7 @@ public class TransmitterGroup {
     private String programName;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinColumn(name = "transmitterGroupName")
+    @JoinColumn(name = "id")
     @MapKey(name = "id.language")
     @DynamicSerializeElement
     private Map<Language, TransmitterLanguage> languages;
@@ -133,9 +145,24 @@ public class TransmitterGroup {
     private Boolean daylightSaving;
 
     @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "transmitterGroup")
+    @JoinColumn(name = "id")
     @DynamicSerializeElement
     Set<Transmitter> transmitters;
+
+    /**
+     * @return the id
+     */
+    public int getId() {
+        return id;
+    }
+
+    /**
+     * @param id
+     *            the id to set
+     */
+    public void setId(int id) {
+        this.id = id;
+    }
 
     public String getName() {
         return name;

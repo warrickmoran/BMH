@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<states>
+   <state abbreviation="AK" name="Alaska"/>
+   <state abbreviation="AL" name="Alabama"/>
+   <state abbreviation="AR" name="Arkansas"/>
+   <state abbreviation="AS" name="American Samoa"/>
+   <state abbreviation="AZ" name="Arizona"/>
+   <state abbreviation="CA" name="California"/>
+   <state abbreviation="CO" name="Colorado"/>
+   <state abbreviation="CT" name="Connecticut"/>
+   <state abbreviation="DC" name="District of Columbia"/>
+   <state abbreviation="DE" name="Delaware"/>
+   <state abbreviation="FL" name="Florida "/>
+   <state abbreviation="GA" name="Georgia"/>
+   <state abbreviation="GU" name="Guam"/>
+   <state abbreviation="HI" name="Hawaii"/>
+   <state abbreviation="IA" name="Iowa"/>
+   <state abbreviation="ID" name="Idaho"/>
+   <state abbreviation="IL" name="Illinois"/>
+   <state abbreviation="IN" name="Indiana"/>
+   <state abbreviation="KS" name="Kansas"/>
+   <state abbreviation="KY" name="Kentucky"/>
+   <state abbreviation="LA" name="Louisiana"/>
+   <state abbreviation="MA" name="Massachusetts"/>
+   <state abbreviation="MD" name="Maryland"/>
+   <state abbreviation="ME" name="Maine"/>
+   <state abbreviation="MI" name="Michigan"/>
+   <state abbreviation="MN" name="Minnesota"/>
+   <state abbreviation="MO" name="Missouri"/>
+   <state abbreviation="MS" name="Mississippi"/>
+   <state abbreviation="MT" name="Montana"/>
+   <state abbreviation="NC" name="North Carolina"/>
+   <state abbreviation="ND" name="North Dakota"/>
+   <state abbreviation="NE" name="Nebraska"/>
+   <state abbreviation="NH" name="New Hampshire"/>
+   <state abbreviation="NJ" name="New Jersey"/>
+   <state abbreviation="NM" name="New Mexico"/>
+   <state abbreviation="NV" name="Nevada"/>
+   <state abbreviation="NY" name="New York"/>
+   <state abbreviation="OH" name="Ohio"/>
+   <state abbreviation="OK" name="Oklahoma"/>
+   <state abbreviation="OR" name="Oregon"/>
+   <state abbreviation="PA" name="Pennsylvania"/>
+   <state abbreviation="PR" name="Puerto Rico"/>
+   <state abbreviation="RI" name="Rhode Island"/>
+   <state abbreviation="SC" name="South Carolina"/>
+   <state abbreviation="SD" name="South Dakota"/>
+   <state abbreviation="TN" name="Tennessee"/>
+   <state abbreviation="TX" name="Texas"/>
+   <state abbreviation="UT" name="Utah"/>
+   <state abbreviation="VA" name="Virginia"/>
+   <state abbreviation="VI" name="Virgin Islands"/>
+   <state abbreviation="VT" name="Vermont"/>
+   <state abbreviation="WA" name="Washington"/>
+   <state abbreviation="WI" name="Wisconsin"/>
+   <state abbreviation="WV" name="West Virginia"/>
+   <state abbreviation="WY" name="Wyoming"/>
+</states>

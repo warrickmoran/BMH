@@ -19,8 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.edex.database.dao.CoreDao;
 import com.raytheon.uf.edex.database.dao.DaoConfig;
@@ -35,6 +38,7 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
+ * Jul 17, 2014 3406       mpduff      Added getAllTransmitters()
  * 
  * </pre>
  * 
@@ -44,12 +48,22 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
 public class TransmitterDao extends CoreDao {
     public TransmitterDao() {
         super(DaoConfig.forClass(DatabaseConstants.BMH_DATABASE_NAME,
-                TransmitterGroup.class));
+                Transmitter.class));
     }
 
     @SuppressWarnings("unchecked")
     public Collection<TransmitterGroup> getTransmitters() {
         return this.getSessionFactory().getCurrentSession()
                 .getNamedQuery(TransmitterGroup.GET_TRANSMITTER_GROUPS).list();
+    }
+
+    public List<Transmitter> getAllTransmitters() {
+        List<Object> results = this.loadAll();
+        List<Transmitter> tList = new ArrayList<Transmitter>(results.size());
+        for (Object o : results) {
+            tList.add((Transmitter) o);
+        }
+
+        return tList;
     }
 }

@@ -19,8 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 
 /**
  * 
@@ -33,6 +36,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 25, 2014  3283     bsteffen    Initial creation
+ * Jul 17, 2014  3406     mpduff      Added getAllAreas()
  * 
  * </pre>
  * 
@@ -45,4 +49,18 @@ public class AreaDao extends AbstractBMHDao<Area, String> {
         super(Area.class);
     }
 
+    public List<Area> getAllAreas() {
+        List<Object> names = this.loadAll();
+        if (names == null) {
+            return Collections.emptyList();
+        }
+
+        List<Area> areaList = new ArrayList<Area>(names.size());
+        for (Object obj : names) {
+            Area a = (Area) obj;
+            areaList.add(a);
+        }
+
+        return areaList;
+    }
 }

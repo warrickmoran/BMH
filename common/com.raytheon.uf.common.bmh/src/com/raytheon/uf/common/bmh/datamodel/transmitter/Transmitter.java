@@ -21,8 +21,12 @@ package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -38,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * May 30, 2014  3175     rjpeter     Initial creation
  * Jun 30, 2014  3283     bsteffen    Add some getter/setters.
+ * Jul 17, 2014  3406     mpduff      Added id pk column, named query, removed cascade
  * 
  * </pre>
  * 
@@ -51,10 +56,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 // @NamedQuery(name = "getTransmitterNames", query =
 // "SELECT t.mnemonic FROM Transmitter") })
 @Entity
-@Table(name = "transmitter", schema = "bmh")
+@Table(name = "transmitter", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "mnemonic" }) })
+@SequenceGenerator(initialValue = 1, name = Transmitter.GEN, sequenceName = "transmitter_seq")
 @DynamicSerialize
 public class Transmitter {
+    static final String GEN = "Transmitter Generator";
+
     @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
+    @DynamicSerializeElement
+    protected int id;
+
     @Column(length = 5)
     @DynamicSerializeElement
     private String mnemonic;
@@ -86,6 +98,21 @@ public class Transmitter {
     @Column
     @DynamicSerializeElement
     private int position;
+
+    /**
+     * @return the id
+     */
+    public int getId() {
+        return id;
+    }
+
+    /**
+     * @param id
+     *            the id to set
+     */
+    public void setId(int id) {
+        this.id = id;
+    }
 
     public String getMnemonic() {
         return mnemonic;

@@ -21,15 +21,18 @@ package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
 import java.util.Set;
 
-import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -45,6 +48,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * May 30, 2014  3175     rjpeter     Initial creation
  * Jul 10, 2014  3283     bsteffen    Change transmitters from map to set.
+ * Jul 17, 2014  3406     mpduff      Added id pk column, named query, removed cascade
  * 
  * </pre>
  * 
@@ -52,9 +56,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @Entity
-@Table(name = "area", schema = "bmh")
+@Table(name = "area", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "areaCode" }) })
+@SequenceGenerator(initialValue = 1, name = Area.GEN, sequenceName = "area_seq")
 @DynamicSerialize
 public class Area {
+    static final String GEN = "Area Generator";
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
+    @DynamicSerializeElement
+    protected int areaId;
+
     /**
      * SSXNNN - 6 digit UGC area code
      * 
@@ -64,7 +76,6 @@ public class Area {
      * NNN - county code number
      * </pre>
      */
-    @Id
     @Column(length = 6)
     @DynamicSerializeElement
     private String areaCode;
@@ -73,10 +84,25 @@ public class Area {
     @DynamicSerializeElement
     private String areaName;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(name = "area_tx", schema = "bmh", joinColumns = @JoinColumn(name = "areaCode"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "area_tx", schema = "bmh", joinColumns = @JoinColumn(name = "areaId"), inverseJoinColumns = @JoinColumn(name = "transmitterId"))
     @DynamicSerializeElement
     private Set<Transmitter> transmitters;
+
+    /**
+     * @return the areaId
+     */
+    public int getAreaId() {
+        return areaId;
+    }
+
+    /**
+     * @param areaId
+     *            the areaId to set
+     */
+    public void setAreaId(int areaId) {
+        this.areaId = areaId;
+    }
 
     public String getAreaCode() {
         return areaCode;
