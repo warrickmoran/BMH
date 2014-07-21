@@ -56,6 +56,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
+import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -119,6 +120,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     private LegacyDictionaryConverterDlg dictConverterDlg;
 
     private LdadConfigDlg ldadConfigDlg;
+
+    private BroadcastProgramDlg broadcastProgDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -502,7 +505,13 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         broadcastProgramMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
+                if (broadcastProgDlg == null || broadcastProgDlg.isDisposed()) {
+                    broadcastProgDlg = new BroadcastProgramDlg(getShell(),
+                            dlgsToValidateCloseMap);
+                    broadcastProgDlg.open();
+                } else {
+                    broadcastProgDlg.bringToTop();
+                }
             }
         });
     }
@@ -707,5 +716,6 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                 }
             }
         });
+        checkListDlg.open();
     }
 }

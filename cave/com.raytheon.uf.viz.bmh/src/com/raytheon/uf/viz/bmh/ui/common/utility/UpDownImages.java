@@ -41,6 +41,7 @@ import org.eclipse.swt.widgets.Display;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 7, 2014  #3338      lvenable     Initial creation
+ * Jul 17, 2014  #3174     lvenable     Updated with new arrows, adjustments.
  * 
  * </pre>
  * 
@@ -63,7 +64,7 @@ public class UpDownImages {
 
     /** Enumeration of arrow states. */
     public enum Arrows {
-        DOUBLE_UP, UP, UP_NO_TAIL, DOUBLE_DOWN, DOWN, DOWN_NO_TAIL;
+        DOUBLE_UP, UP, UP_THIN, UP_NO_TAIL, DOUBLE_DOWN, DOWN, DOWN_THIN, DOWN_NO_TAIL;
     };
 
     /**
@@ -115,9 +116,11 @@ public class UpDownImages {
         drawImage(new RGB(0, 0, 1), Arrows.DOUBLE_UP);
         drawImage(new RGB(0, 0, 1), Arrows.UP);
         drawImage(new RGB(0, 0, 1), Arrows.UP_NO_TAIL);
+        drawImage(new RGB(0, 0, 1), Arrows.UP_THIN);
         drawImage(new RGB(0, 0, 1), Arrows.DOWN);
         drawImage(new RGB(0, 0, 1), Arrows.DOUBLE_DOWN);
         drawImage(new RGB(0, 0, 1), Arrows.DOWN_NO_TAIL);
+        drawImage(new RGB(0, 0, 1), Arrows.DOWN_THIN);
     }
 
     /**
@@ -161,7 +164,7 @@ public class UpDownImages {
         } else if (arrow == Arrows.UP_NO_TAIL) {
             gc.setAntialias(SWT.ON);
             gc.setBackground(parentDisplay.getSystemColor(SWT.COLOR_BLACK));
-            int[] upArrow1 = new int[] { 2, 12, 14, 12, 8, 5, 2, 12 };
+            int[] upArrow1 = new int[] { 1, 11, 8, 4, 15, 11, 1, 11 };
             gc.fillPolygon(upArrow1);
         } else if (arrow == Arrows.UP) {
             gc.setAntialias(SWT.ON);
@@ -169,6 +172,12 @@ public class UpDownImages {
             int[] pointArray = new int[] { 8, 1, 15, 8, 11, 8, 11, 15, 6, 15,
                     6, 8, 1, 8, 8, 1 };
             gc.fillPolygon(pointArray);
+        } else if (arrow == Arrows.UP_THIN) {
+            gc.setAntialias(SWT.ON);
+            gc.setLineWidth(2);
+            gc.setBackground(parentDisplay.getSystemColor(SWT.COLOR_BLACK));
+            int[] upArrow1 = new int[] { 1, 11, 8, 4, 15, 11 };
+            gc.drawPolyline(upArrow1);
         } else if (arrow == Arrows.DOWN) {
             gc.setAntialias(SWT.ON);
             gc.setBackground(parentDisplay.getSystemColor(SWT.COLOR_BLACK));
@@ -185,8 +194,14 @@ public class UpDownImages {
         } else if (arrow == Arrows.DOWN_NO_TAIL) {
             gc.setAntialias(SWT.ON);
             gc.setBackground(parentDisplay.getSystemColor(SWT.COLOR_BLACK));
-            int[] upArrow1 = new int[] { 2, 5, 14, 5, 8, 12, 2, 5 };
+            int[] upArrow1 = new int[] { 1, 4, 8, 11, 15, 4, 1, 4 };
             gc.fillPolygon(upArrow1);
+        } else if (arrow == Arrows.DOWN_THIN) {
+            gc.setAntialias(SWT.ON);
+            gc.setLineWidth(2);
+            gc.setBackground(parentDisplay.getSystemColor(SWT.COLOR_BLACK));
+            int[] upArrow1 = new int[] { 1, 5, 8, 12, 15, 5 };
+            gc.drawPolyline(upArrow1);
         }
 
         gc.dispose();

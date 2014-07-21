@@ -99,6 +99,8 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
      * 
      * @param parentShell
      *            Parent shell.
+     * @param dlgMap
+     *            Map to add this dialog to for closing purposes.
      */
     public MessageTypeAssocDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
