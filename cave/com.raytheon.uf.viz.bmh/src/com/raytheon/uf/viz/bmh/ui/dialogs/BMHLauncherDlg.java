@@ -52,6 +52,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
+import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
@@ -126,19 +127,21 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     private SuiteManagerDlg suiteManagerDlg;
 
+    private BroadcastCycleDlg broadcastCycleDlg;
+
     /**
      * This is a map that contains dialog that may require some sort of save
      * action before closing. These dialogs are reported to the user so they can
      * take action to save any changes from open dialogs.
      */
-    private Map<AbstractBMHDialog, String> dlgsToValidateCloseMap = new HashMap<AbstractBMHDialog, String>();
+    private final Map<AbstractBMHDialog, String> dlgsToValidateCloseMap = new HashMap<AbstractBMHDialog, String>();
 
     /**
      * This is a set of dialogs that can be closed normally. This will also
      * contain dialogs that may be created off of the display and would normally
      * remain open if the main dialog is closed.
      */
-    private Set<CaveSWTDialogBase> dialogsSet = new HashSet<CaveSWTDialogBase>();
+    private final Set<CaveSWTDialogBase> dialogsSet = new HashSet<CaveSWTDialogBase>();
 
     /**
      * Constructor.
@@ -389,6 +392,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         broadcastCycleBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
+                launchBroadcastCycle();
             }
         });
         new CustomToolTip(broadcastCycleBtn, "Broadcast Cycle");
@@ -488,7 +492,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         broadcastCycleMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
+                launchBroadcastCycle();
             }
         });
     }
@@ -705,6 +709,16 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             }
         } else {
             dictConverterDlg.bringToTop();
+        }
+    }
+
+    private void launchBroadcastCycle() {
+        if (broadcastCycleDlg == null || broadcastCycleDlg.isDisposed()) {
+            broadcastCycleDlg = new BroadcastCycleDlg(getShell(),
+                    dlgsToValidateCloseMap);
+            broadcastCycleDlg.open();
+        } else {
+            broadcastCycleDlg.bringToTop();
         }
     }
 
