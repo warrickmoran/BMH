@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.mmscomputing.sound;
+package com.raytheon.uf.common.bmh.audio.impl.algorithm;
 
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -27,6 +27,8 @@ import java.io.InputStream;
  * SOURCE:
  * http://thorntonzone.com/manuals/Compression/Fax,%20IBM%20MMR/MMSC/mmsc
  * /uk/co/mmscomputing/sound/
+ * 
+ * License: GNU Lesser General Public License
  * 
  * <pre>
  * 

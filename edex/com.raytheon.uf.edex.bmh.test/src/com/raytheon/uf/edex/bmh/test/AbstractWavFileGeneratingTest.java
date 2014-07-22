@@ -19,15 +19,16 @@
  **/
 package com.raytheon.uf.edex.bmh.test;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileSystems;
 
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.AudioFileFormat.Type;
-import javax.sound.sampled.AudioFormat.Encoding;
+import org.apache.commons.io.FileUtils;
 
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
+import com.raytheon.uf.common.bmh.audio.AudioConversionException;
+import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 
 /**
@@ -44,6 +45,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
  * Jul 1, 2014  3302       bkowal      Improved Exception Handling.
  * Jul 8, 2014  3302       bkowal      Re-factor. Abstract common functionality
  *                                     into a new parent class.
+ * Jul 17, 2014 3383       bkowal      Updated to use the Audio Conversion API.
  * 
  * </pre>
  * 
@@ -108,33 +110,49 @@ public abstract class AbstractWavFileGeneratingTest extends AbstractBMHTester {
         statusHandler.info("Test Output Directory = " + this.outputDirectory);
     }
 
-    protected boolean writeWavData(byte[] audioData, final String outputFileName) {
-        /* Build the full path to the output wav file. */
-        StringBuilder stringBuilder = new StringBuilder(this.outputDirectory);
-        stringBuilder.append(File.separatorChar);
-        stringBuilder.append(outputFileName);
-        stringBuilder.append(WAV_FILE_EXTENSION);
-        File outputWavFile = new File(stringBuilder.toString());
+    protected boolean writeWavData(BMHAudioFormat format, byte[] audioData,
+            final String outputFileName) {
+        File outputWavFile = new File(this.buildOutputFilePath(outputFileName));
 
-        long fileSize = audioData.length;
-        int frameSize = 160;
-        long numFrames = fileSize / frameSize;
-
-        AudioFormat audioFormat = new AudioFormat(Encoding.ULAW, 8000, 8, 1,
-                frameSize, 8000, false);
-        boolean success = true;
         try {
-            AudioInputStream audioInputStream = new AudioInputStream(
-                    new ByteArrayInputStream(audioData), audioFormat, numFrames);
-            AudioSystem.write(audioInputStream, Type.WAVE, outputWavFile);
-            statusHandler
-                    .info("Successfully wrote wav file: " + outputFileName);
-        } catch (Exception e) {
-            statusHandler.error("Failed to write wav file: " + outputFileName
-                    + "!", e);
-            success = false;
+            byte[] destination = AudioConvererterManager.getInstance()
+                    .convertAudio(audioData, format, BMHAudioFormat.WAV);
+
+            FileUtils.writeByteArrayToFile(outputWavFile, destination);
+            statusHandler.info("Successfully wrote wav file: "
+                    + outputWavFile.getAbsolutePath());
+        } catch (IOException | UnsupportedAudioFormatException
+                | AudioConversionException e) {
+            statusHandler.error("Failed to create the wav file: "
+                    + outputWavFile.getAbsolutePath(), e);
+            return false;
         }
 
-        return success;
+        return true;
+    }
+
+    protected boolean writeWavData(File sourceFile, final String outputFileName) {
+        File destinationFile = new File(
+                this.buildOutputFilePath(outputFileName));
+
+        try {
+            AudioConvererterManager.getInstance().convertAudio(sourceFile,
+                    destinationFile);
+            statusHandler.info("Successfully wrote wav file: "
+                    + destinationFile.getAbsolutePath());
+        } catch (UnsupportedAudioFormatException | AudioConversionException e) {
+            statusHandler.error("Failed to create the wav file: "
+                    + destinationFile.getAbsolutePath(), e);
+            return false;
+        }
+
+        return true;
+    }
+
+    private String buildOutputFilePath(final String outputFileName) {
+        return FileSystems
+                .getDefault()
+                .getPath(this.outputDirectory,
+                        outputFileName + WAV_FILE_EXTENSION).toString();
     }
 }

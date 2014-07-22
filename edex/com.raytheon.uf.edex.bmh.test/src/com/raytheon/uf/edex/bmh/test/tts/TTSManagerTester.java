@@ -20,12 +20,10 @@
 package com.raytheon.uf.edex.bmh.test.tts;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConversionException;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
@@ -57,6 +55,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * Jun 24, 2014 3302       bkowal      Updated to use the BroadcastMsg Entity.
  * Jul 1, 2014  3302       bkowal      Updated to use the db when testing.
  * Jul 7, 2014  3302       bkowal      Re-factor: Use the Test Data Util, ...
+ * Jul 17, 2014 3383       bkowal      Updated to use the Audio Conversion API.
  * 
  * </pre>
  * 
@@ -256,18 +255,7 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
         String filename = FilenameUtils.getBaseName(outputUlawFile
                 .getAbsolutePath());
 
-        /* Retrieve the contents of the file. */
-        byte[] data;
-        try {
-            data = FileUtils.readFileToByteArray(outputUlawFile);
-        } catch (IOException e) {
-            statusHandler.error(
-                    "Failed to read ulaw file: "
-                            + outputUlawFile.getAbsolutePath()
-                            + "; skipping message [" + messageID + "]!", e);
-            return;
-        }
-        boolean success = super.writeWavData(data, filename);
+        boolean success = super.writeWavData(outputUlawFile, filename);
 
         if (success) {
             statusHandler.info("Successfully processed message: " + messageID
