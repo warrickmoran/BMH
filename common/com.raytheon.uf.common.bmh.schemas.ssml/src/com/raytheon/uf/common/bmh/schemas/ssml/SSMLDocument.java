@@ -23,6 +23,7 @@ import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 
 import com.raytheon.uf.common.bmh.schemas.ssml.jaxb.SSMLJaxbManager;
+import com.raytheon.uf.common.serialization.MarshalOptions;
 
 /**
  * Represents a SSML Document. Provides a convenient way to initialize the SSML
@@ -96,7 +97,7 @@ public class SSMLDocument {
     public String toSSML() throws SSMLConversionException {
         try {
             return SSMLJaxbManager.getInstance().getJaxbManager()
-                    .marshalToXml(this.rootTag, false);
+                    .marshalToXml(this.rootTag, MarshalOptions.UNFORMATTED);
         } catch (JAXBException e) {
             throw new SSMLConversionException(
                     "JAXB serialization of the SSML has failed!", e);

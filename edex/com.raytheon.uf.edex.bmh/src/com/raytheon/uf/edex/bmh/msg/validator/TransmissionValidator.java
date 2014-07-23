@@ -37,6 +37,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
@@ -122,8 +123,7 @@ public class TransmissionValidator {
         if (expirationTime == null) {
             return false;
         } else {
-            return SimulatedTime.getSystemTime().getMillis() < message
-                    .getExpirationTime().getTimeInMillis();
+            return TimeUtil.newGmtCalendar().after(message.getExpirationTime());
         }
     }
 
@@ -206,7 +206,8 @@ public class TransmissionValidator {
             Program program = programDao.getByID(nameIterator.next());
             Iterator<Suite> suiteIterator = program.getSuites().iterator();
             while (suiteIterator.hasNext() && valid == false) {
-                for (SuiteMessage smessage : suiteIterator.next().getSuiteMessages()) {
+                for (SuiteMessage smessage : suiteIterator.next()
+                        .getSuiteMessages()) {
                     if (smessage.getId().getAfosid()
                             .equals(message.getAfosid())) {
                         valid = true;
