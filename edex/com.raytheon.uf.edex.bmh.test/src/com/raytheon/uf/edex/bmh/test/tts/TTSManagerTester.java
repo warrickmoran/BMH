@@ -20,12 +20,19 @@
 package com.raytheon.uf.edex.bmh.test.tts;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.io.FilenameUtils;
 
+import com.raytheon.uf.common.bmh.audio.AudioConversionException;
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -34,6 +41,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
+import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.test.AbstractWavFileGeneratingTest;
@@ -56,6 +65,9 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * Jul 1, 2014  3302       bkowal      Updated to use the db when testing.
  * Jul 7, 2014  3302       bkowal      Re-factor: Use the Test Data Util, ...
  * Jul 17, 2014 3383       bkowal      Updated to use the Audio Conversion API.
+ * Jul 23, 2014 3424       bkowal      Will now optionally adjust the audio volume
+ *                                     post-TTS generation based on the optional
+ *                                     'tts.volume.adjust' property.
  * 
  * </pre>
  * 
@@ -73,6 +85,10 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
 
     private static final String TTS_DIRECTORY_OUTPUT_PROPERTY = "bmh.tts.test.directory.output";
 
+    private static final String TTS_VOLUME_PROPERTY = "tts.volume.adjust";
+
+    private static final double DEFAULT_TTS_VOLUME = 1.0;
+
     private static final String TTS_TEST_AFOS_ID = "TTSTEST1X";
 
     private static final String TTS_TEST_TRANSMITTER_GROUP = "TTSTESTGROUP";
@@ -85,6 +101,8 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
     private final TtsVoiceDao ttsVoiceDao;
 
     private final TransmitterGroupDao transmitterGroupDao;
+
+    private double configuredTTSVolume;
 
     private static final class INPUT_PROPERTIES {
         public static final String TTS_AFOS_ID_PROPERTY = "tts.afosid";
@@ -111,6 +129,22 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
                 TTS_DIRECTORY_OUTPUT_PROPERTY);
         this.ttsVoiceDao = new TtsVoiceDao();
         this.transmitterGroupDao = new TransmitterGroupDao();
+
+        String ttsVolume = System.getProperty(TTS_VOLUME_PROPERTY, null);
+        if (ttsVolume == null) {
+            this.configuredTTSVolume = DEFAULT_TTS_VOLUME;
+        }
+
+        try {
+            this.configuredTTSVolume = Double.parseDouble(ttsVolume);
+        } catch (NumberFormatException e) {
+            statusHandler
+                    .info("An invalid quantity has been specified for the TTS Volume Adjustment: "
+                            + ttsVolume + "! Using the default ...");
+            this.configuredTTSVolume = DEFAULT_TTS_VOLUME;
+        }
+        statusHandler.info("TTS Volume Adjustment = "
+                + this.configuredTTSVolume);
     }
 
     @Override
@@ -255,7 +289,51 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
         String filename = FilenameUtils.getBaseName(outputUlawFile
                 .getAbsolutePath());
 
-        boolean success = super.writeWavData(outputUlawFile, filename);
+        boolean success = false;
+        if (this.configuredTTSVolume == DEFAULT_TTS_VOLUME) {
+            // No volume adjustments
+
+            success = super.writeWavData(outputUlawFile, filename);
+        } else {
+            Path outputUlawPath = FileSystems.getDefault().getPath(
+                    outputUlawFile.getAbsolutePath());
+
+            byte[] ulawData;
+            try {
+                ulawData = Files.readAllBytes(outputUlawPath);
+            } catch (IOException e) {
+                statusHandler.error(
+                        "Failed to read contents of ulaw output file: "
+                                + outputUlawPath.toString() + "!", e);
+                return;
+            }
+
+            AudioRegulator audioRegulator = null;
+            try {
+                audioRegulator = new AudioRegulator(ulawData);
+            } catch (UnsupportedAudioFormatException | AudioConversionException e) {
+                statusHandler.error("Failed to create an audio regulator!", e);
+                return;
+            }
+
+            statusHandler.info("Current Signal Max for: "
+                    + outputUlawPath.toString() + " = "
+                    + audioRegulator.getSignalMax() + " dB.");
+            byte[] adjustedAudio = null;
+            try {
+                adjustedAudio = audioRegulator
+                        .regulateAudioVolume(this.configuredTTSVolume);
+            } catch (UnsupportedAudioFormatException | AudioConversionException
+                    | AudioOverflowException e) {
+                statusHandler.error(
+                        "Audio Adjustment failed for ulaw output file: "
+                                + outputUlawPath.toString() + "!", e);
+                return;
+            }
+
+            success = super.writeWavData(BMHAudioFormat.ULAW, adjustedAudio,
+                    filename);
+        }
 
         if (success) {
             statusHandler.info("Successfully processed message: " + messageID
