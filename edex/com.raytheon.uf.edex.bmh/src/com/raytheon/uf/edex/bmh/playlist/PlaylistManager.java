@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -158,11 +157,11 @@ public class PlaylistManager {
              * order specified by the suite, this skips any expired messages so
              * they are removed from the list.
              */
-            Date expireTime = playlist.getModTime().getTime();
+            Calendar expireTime = playlist.getModTime();
             Map<String, List<BroadcastMsg>> afosMapping = new HashMap<>();
             for (BroadcastMsg message : messages) {
-                if (message.getInputMessage().getExpirationTime()
-                        .after(expireTime)) {
+                if (expireTime.after(message.getInputMessage()
+                        .getExpirationTime())) {
                     continue;
                 }
                 List<BroadcastMsg> afosMessages = afosMapping.get(message
