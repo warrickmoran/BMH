@@ -10,4 +10,6 @@ Require-Bundle: org.apache.qpid;bundle-version="0.18.0",
  com.raytheon.uf.common.serialization;bundle-version="1.14.0",
  org.slf4j;bundle-version="1.7.5",
  com.raytheon.uf.edex.bmh;bundle-version="1.14.0",
- com.raytheon.uf.edex.bmh.dactransmit;bundle-version="0.14.0"
+ com.raytheon.uf.edex.bmh.dactransmit;bundle-version="0.14.0",
+ com.raytheon.uf.common.jms;bundle-version="1.14.0",
+ com.raytheon.uf.common.bmh;bundle-version="1.14.0"

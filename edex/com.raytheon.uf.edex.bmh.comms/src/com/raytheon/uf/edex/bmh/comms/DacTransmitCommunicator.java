@@ -25,6 +25,7 @@ import java.net.Socket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
@@ -51,17 +52,27 @@ public class DacTransmitCommunicator extends Thread {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
+    private final CommsManager manager;
+
     private final String groupName;
 
     private final Socket socket;
 
     private DacTransmitStatus lastStatus;
 
-    public DacTransmitCommunicator(String groupName, Socket socket) {
+
+    public DacTransmitCommunicator(CommsManager manager, String groupName,
+            Socket socket) {
         super("DacTransmitCommunicator-" + groupName);
+        this.manager = manager;
         this.groupName = groupName;
         this.socket = socket;
     }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
 
 
     @Override
@@ -71,7 +82,11 @@ public class DacTransmitCommunicator extends Thread {
                 Object message = SerializationUtil.transformFromThrift(
                         Object.class, socket.getInputStream());
                 if (message instanceof DacTransmitStatus) {
-                    lastStatus = (DacTransmitStatus) message;
+                    DacTransmitStatus newStatus = (DacTransmitStatus) message;
+                    if (lastStatus == null || !newStatus.equals(lastStatus)) {
+                        manager.dacStatusChanged(this, newStatus);
+                        lastStatus = newStatus;
+                    }
                 } else if (message instanceof DacTransmitShutdown) {
                     disconnect();
                 } else {
@@ -98,6 +113,16 @@ public class DacTransmitCommunicator extends Thread {
         try {
             SerializationUtil.transformToThriftUsingStream(
                     new DacTransmitShutdown(), socket.getOutputStream());
+        } catch (SerializationException | IOException e) {
+            logger.error("Error communicating with DacTransmit: " + groupName,
+                    e);
+        }
+    }
+
+    public void sendPlaylistUpdate(PlaylistUpdateNotification notification) {
+        try {
+            SerializationUtil.transformToThriftUsingStream(notification,
+                    socket.getOutputStream());
         } catch (SerializationException | IOException e) {
             logger.error("Error communicating with DacTransmit: " + groupName,
                     e);

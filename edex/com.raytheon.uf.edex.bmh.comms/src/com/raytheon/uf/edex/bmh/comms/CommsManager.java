@@ -30,14 +30,18 @@ import java.util.Set;
 
 import javax.xml.bind.JAXB;
 
+import org.apache.qpid.client.AMQConnectionFactory;
+import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.jms.notification.JmsNotificationManager;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.config.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.config.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.config.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
 
 /**
  * 
@@ -58,12 +62,14 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
  * @author bsteffen
  * @version 1.0
  */
-public class CommsManager {
+public class CommsManager  {
 
     private static final Logger logger = LoggerFactory
             .getLogger(CommsManager.class);
 
-    private final DACTransmitServer transmitServer;
+    private final DacTransmitServer transmitServer;
+
+    private final JmsNotificationManager notification;
 
     private final CommsConfig config;
 
@@ -77,7 +83,18 @@ public class CommsManager {
         config = JAXB.unmarshal(new File(BMHConstants.getBmhDataDirectory()
                 + File.separator + "conf" + File.separator + "comms.xml"),
                 CommsConfig.class);
-        transmitServer = new DACTransmitServer(config);
+        transmitServer = new DacTransmitServer(this, config);
+        JmsNotificationManager notification = null;
+        try {
+            notification = new JmsNotificationManager(new AMQConnectionFactory(
+                    config.getJmsConnection()));
+        } catch (URLSyntaxException e) {
+            logger.error(
+                    "Error parsing jms connection url, jms will be disabled.",
+                    e);
+        }
+        this.notification = notification;
+        this.notification.connect();
     }
 
     /**
@@ -171,12 +188,29 @@ public class CommsManager {
             p = startCommand.start();
             startedProcesses.put(group, p);
         } catch (IOException e) {
-            logger.error("Unable to start dac transmit for " + group);
+            logger.error("Unable to start dac transmit for " + group, e);
         }
     }
 
     public static void main(String[] args) {
         new CommsManager().run();
+    }
+
+    public void dacStatusChanged(DacTransmitCommunicator communicator,
+            DacTransmitStatus status) {
+        String group = communicator.getGroupName();
+        if (status.isConnectedToDac()) {
+            logger.info(group
+                    + " is now connected to the dac");
+            notification.addQueueObserver("BMH.Playlist." + group,
+                    new PlaylistNotificationObserver(communicator));
+        } else {
+            notification.removeQueueObserver("BMH.Playlist." + group, null,
+                    new PlaylistNotificationObserver(communicator));
+            logger.info(group
+                    + " is now disconnected from the dac");
+
+        }
     }
 
 }
