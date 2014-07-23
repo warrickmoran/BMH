@@ -41,8 +41,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
-import com.raytheon.uf.common.bmh.datamodel.playlist.DACPlaylist;
-import com.raytheon.uf.common.bmh.datamodel.playlist.DACPlaylistMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -87,6 +88,8 @@ public class PlaylistManager {
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(PlaylistManager.class);
 
+    private final File playlistDir;
+
     private PlaylistDao playlistDao = new PlaylistDao();
 
     private ZoneDao zoneDao = new ZoneDao();
@@ -98,6 +101,21 @@ public class PlaylistManager {
     private SAMEStateCodes stateCodes = new SAMEStateCodes();
 
     private SAMEOriginatorMapper originatorMapping = new SAMEOriginatorMapper();
+
+    public PlaylistManager() {
+        playlistDir = new File(BMHConstants.getBmhDataDirectory(), "playlist");
+        if (!playlistDir.exists()) {
+            if (!playlistDir.mkdirs()) {
+                IllegalStateException e = new IllegalStateException(
+                        "Unable to create directory:"
+                                + playlistDir.getAbsolutePath());
+                statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                        e.getLocalizedMessage(), e);
+                throw e;
+
+            }
+        }
+    }
 
     public void newMessage(BroadcastMsg msg) {
         TransmitterGroup group = msg.getTransmitterGroup();
@@ -283,18 +301,16 @@ public class PlaylistManager {
     }
 
     private void writePlaylistFile(Playlist playlist) {
-        DACPlaylist dacList = convertPlaylistForDAC(playlist);
+        DacPlaylist dacList = convertPlaylistForDAC(playlist);
         PlaylistUpdateNotification notif = new PlaylistUpdateNotification(
                 dacList);
-        File playlistDirectory = new File(BMHConstants.getBmhDataDirectory(),
-                "playlist");
-        File playlistFile = new File(playlistDirectory, notif.getPlaylistPath());
-        if (!playlistFile.getParentFile().exists()) {
-            if (!playlistFile.getParentFile().mkdirs()) {
+        File playlistFile = new File(playlistDir, notif.getPlaylistPath());
+        File playlistDir = playlistFile.getParentFile();
+        if (!playlistDir.exists()) {
+            if (!playlistDir.mkdirs()) {
                 statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                         "Unable to write playlist xml, cannot create directory:"
-                                + playlistFile.getParentFile()
-                                        .getAbsolutePath());
+                                + playlistDir.getAbsolutePath());
                 return;
             }
         }
@@ -316,8 +332,8 @@ public class PlaylistManager {
         }
     }
 
-    private DACPlaylist convertPlaylistForDAC(Playlist db) {
-        DACPlaylist dac = new DACPlaylist();
+    private DacPlaylist convertPlaylistForDAC(Playlist db) {
+        DacPlaylist dac = new DacPlaylist();
         Suite suite = db.getSuite();
         dac.setPriority(suite.getSuiteType().ordinal());
         dac.setTransmitterGroup(db.getTransmitterGroup().getName());
@@ -326,61 +342,73 @@ public class PlaylistManager {
         dac.setStart(db.getStartTime());
         dac.setExpired(db.getEndTime());
         dac.setInterrupt(suite.getSuiteType() == SuiteType.INTERRUPT);
-        List<DACPlaylistMessage> messages = new ArrayList<>(db.getMessages()
-                .size());
         for (BroadcastMsg message : db.getMessages()) {
-            messages.add(convertMessageForDAC(message));
+            dac.addMessage(convertMessageForDAC(message));
         }
-        dac.setMessages(messages);
         return dac;
     }
 
-    private DACPlaylistMessage convertMessageForDAC(BroadcastMsg broadcast) {
-        DACPlaylistMessage dac = new DACPlaylistMessage();
-        dac.setBroadcastId(broadcast.getId());
-        dac.setSoundFile(broadcast.getOutputName());
-        InputMessage input = broadcast.getInputMessage();
-        dac.setMessageType(input.getAfosid());
-        dac.setStart(input.getEffectiveTime());
-        dac.setExpire(input.getExpirationTime());
-        dac.setPeriodicity(input.getPeriodicity());
-        dac.setMessageText(input.getContent());
-        dac.setAlertTone(input.getAlertTone());
-        SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
-        builder.setOriginatorMapper(originatorMapping);
-        builder.setStateCodes(stateCodes);
-        builder.setEventFromAfosid(broadcast.getAfosid());
-        for (String ugc : input.getAreaCodeList()) {
-            try {
-                if (ugc.charAt(2) == 'Z') {
-                    Zone z = zoneDao.getByID(ugc);
-                    if (z != null) {
-                        for (String area : z.getAreas().keySet()) {
-                            builder.addAreaFromUGC(area);
+    private DacPlaylistMessageId convertMessageForDAC(BroadcastMsg broadcast) {
+        long id = broadcast.getId();
+        File playlistDir = new File(this.playlistDir, broadcast
+                .getTransmitterGroup().getName());
+        File messageDir = new File(playlistDir, "messages");
+        File messageFile = new File(messageDir, id + ".xml");
+        if (!messageFile.exists()) {
+            DacPlaylistMessage dac = new DacPlaylistMessage();
+            dac.setBroadcastId(id);
+            dac.setSoundFile(broadcast.getOutputName());
+            InputMessage input = broadcast.getInputMessage();
+            dac.setMessageType(input.getAfosid());
+            dac.setStart(input.getEffectiveTime());
+            dac.setExpire(input.getExpirationTime());
+            dac.setPeriodicity(input.getPeriodicity());
+            dac.setMessageText(input.getContent());
+            dac.setAlertTone(input.getAlertTone());
+            SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
+            builder.setOriginatorMapper(originatorMapping);
+            builder.setStateCodes(stateCodes);
+            builder.setEventFromAfosid(broadcast.getAfosid());
+            for (String ugc : input.getAreaCodeList()) {
+                try {
+                    if (ugc.charAt(2) == 'Z') {
+                        Zone z = zoneDao.getByID(ugc);
+                        if (z != null) {
+                            for (String area : z.getAreas().keySet()) {
+                                builder.addAreaFromUGC(area);
+                            }
                         }
+                    } else {
+                        builder.addAreaFromUGC(ugc);
                     }
-                } else {
-                    builder.addAreaFromUGC(ugc);
+                } catch (IllegalStateException e) {
+                    statusHandler
+                            .error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                                    "Cannot add area to SAME tone, same tone will not include all areas.",
+                                    e);
+                    break;
+                } catch (IllegalArgumentException e) {
+                    statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                            "Cannot add area to SAME tone, same tone will not include this areas("
+                                    + ugc + ").", e);
                 }
-            } catch (IllegalStateException e) {
-                statusHandler
-                        .error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                                "Cannot add area to SAME tone, same tone will not include all areas.",
-                                e);
-                break;
-            } catch (IllegalArgumentException e) {
+            }
+            builder.setEffectiveTime(input.getEffectiveTime());
+            builder.setExpireTime(input.getExpirationTime());
+            // TODO this needs to be read from configuration.
+            builder.setNwsIcao("K" + SiteUtil.getSite());
+            dac.setSAMEtone(builder.build().toString());
+            if (!messageDir.exists()) {
+                messageDir.mkdirs();
+            }
+            try {
+                JAXB.marshal(dac, messageFile);
+            } catch (DataBindingException e) {
                 statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                        "Cannot add area to SAME tone, same tone will not include this areas("
-                                + ugc + ").", e);
+                        "Unable to write message file.", e);
             }
         }
-        builder.setEffectiveTime(input.getEffectiveTime());
-        builder.setExpireTime(input.getExpirationTime());
-        // TODO this needs to be read from configuration.
-        builder.setNwsIcao("K" + SiteUtil.getSite());
-        dac.setSAMEtone(builder.build().toString());
-
-        return dac;
+        return new DacPlaylistMessageId(id);
     }
 
 }

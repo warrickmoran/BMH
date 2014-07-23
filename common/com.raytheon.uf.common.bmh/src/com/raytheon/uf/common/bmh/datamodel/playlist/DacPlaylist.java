@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
@@ -51,7 +52,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  */
 @XmlRootElement(name = "bmhPlaylist")
 @XmlAccessorType(XmlAccessType.NONE)
-public class DACPlaylist {
+public class DacPlaylist {
 
     @XmlAttribute
     private String transmitterGroup;
@@ -75,9 +76,9 @@ public class DACPlaylist {
     private boolean interrupt;
 
     @XmlElement(name = "message")
-    private List<DACPlaylistMessage> messages;
+    private List<DacPlaylistMessageId> messages;
 
-    public DACPlaylist() {
+    public DacPlaylist() {
 
     }
 
@@ -153,11 +154,17 @@ public class DACPlaylist {
         this.expired = expired;
     }
 
-    public List<DACPlaylistMessage> getMessages() {
+    public void addMessage(DacPlaylistMessageId message) {
+        if (messages == null) {
+            messages = new ArrayList<>();
+        }
+        messages.add(message);
+    }
+    public List<DacPlaylistMessageId> getMessages() {
         return messages;
     }
 
-    public void setMessages(List<DACPlaylistMessage> messages) {
+    public void setMessages(List<DacPlaylistMessageId> messages) {
         this.messages = messages;
     }
 

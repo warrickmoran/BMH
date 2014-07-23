@@ -31,10 +31,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import javax.xml.bind.JAXB;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.uf.common.bmh.datamodel.playlist.DACPlaylistMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 
 /**
  * Cache for {@code PlaylistMessage} objects. Stores the contents of each audio
@@ -63,17 +66,20 @@ public final class PlaylistMessageCache {
 
     private static final int THREAD_POOL_MAX_SIZE = 3;
 
+    private final Path messageDirectory;
+
     private final ExecutorService cacheThreadPool;
 
-    private final ConcurrentMap<DACPlaylistMessage, AudioFileBuffer> cachedFiles;
+    private final ConcurrentMap<DacPlaylistMessageId, DacPlaylistMessage> cachedMessages;
 
-    private final ConcurrentMap<DACPlaylistMessage, Future<?>> cacheStatus;
+    private final ConcurrentMap<DacPlaylistMessage, AudioFileBuffer> cachedFiles;
 
-    /**
-     * Constructs a new cache instance.
-     */
-    public PlaylistMessageCache() {
+    private final ConcurrentMap<DacPlaylistMessageId, Future<?>> cacheStatus;
+
+    public PlaylistMessageCache(Path messageDirectory) {
+        this.messageDirectory = messageDirectory;
         cacheThreadPool = Executors.newFixedThreadPool(THREAD_POOL_MAX_SIZE);
+        cachedMessages = new ConcurrentHashMap<>();
         cachedFiles = new ConcurrentHashMap<>();
         cacheStatus = new ConcurrentHashMap<>();
     }
@@ -92,8 +98,8 @@ public final class PlaylistMessageCache {
      * @param playlist
      *            List of messages to cache.
      */
-    public void addToCache(final List<DACPlaylistMessage> playlist) {
-        for (DACPlaylistMessage message : playlist) {
+    public void addToCache(final List<DacPlaylistMessageId> playlist) {
+        for (DacPlaylistMessageId message : playlist) {
             addToCache(message);
         }
     }
@@ -104,12 +110,13 @@ public final class PlaylistMessageCache {
      * @param message
      *            Message to cache.
      */
-    public void addToCache(final DACPlaylistMessage message) {
-        if (!cacheStatus.containsKey(message)) {
+    public void addToCache(final DacPlaylistMessageId id) {
+        if (!cacheStatus.containsKey(id)) {
             Runnable cacheFileJob = new Runnable() {
 
                 @Override
                 public void run() {
+                    DacPlaylistMessage message = getMessage(id);
                     Path filePath = FileSystems.getDefault().getPath(
                             message.getSoundFile());
                     try {
@@ -125,7 +132,7 @@ public final class PlaylistMessageCache {
             };
 
             Future<?> jobStatus = cacheThreadPool.submit(cacheFileJob);
-            cacheStatus.put(message, jobStatus);
+            cacheStatus.put(id, jobStatus);
         }
     }
 
@@ -140,8 +147,9 @@ public final class PlaylistMessageCache {
      * @return The audio file's data, or {@code null} if the data isn't in the
      *         cache.
      */
-    public AudioFileBuffer get(final DACPlaylistMessage message) {
-        Future<?> fileStatus = cacheStatus.get(message);
+    public AudioFileBuffer getAudio(final DacPlaylistMessage message) {
+        Future<?> fileStatus = cacheStatus.get(new DacPlaylistMessageId(message
+                .getBroadcastId()));
         if (fileStatus != null) {
             try {
                 fileStatus.get();
@@ -155,5 +163,25 @@ public final class PlaylistMessageCache {
         }
 
         return null;
+    }
+
+    /**
+     * Return the full message fior the given id. If the message has not been
+     * loaded into the cache this will access the filesystem.
+     * 
+     * @param id
+     *            id of a playlist message
+     * @return the full message.
+     */
+    public DacPlaylistMessage getMessage(DacPlaylistMessageId id) {
+        DacPlaylistMessage message = cachedMessages.get(id);
+        if (message == null) {
+            Path messagePath = messageDirectory.resolve(id.getBroadcastId()
+                    + ".xml");
+            message = JAXB.unmarshal(messagePath.toFile(),
+                    DacPlaylistMessage.class);
+            cachedMessages.put(id, message);
+        }
+        return message;
     }
 }

@@ -63,7 +63,7 @@ public class PlaylistUpdateNotification {
     public PlaylistUpdateNotification() {
     }
 
-    public PlaylistUpdateNotification(DACPlaylist playlist) {
+    public PlaylistUpdateNotification(DacPlaylist playlist) {
         this.playlistPath = getFilePath(playlist).toString();
     }
 
@@ -80,7 +80,7 @@ public class PlaylistUpdateNotification {
      * 
      * @see #parseFilePath(CharSequence)
      */
-    public DACPlaylist parseFilepath() {
+    public DacPlaylist parseFilepath() {
         return parseFilePath(playlistPath);
     }
 
@@ -91,7 +91,7 @@ public class PlaylistUpdateNotification {
      *            the playlist to encode
      * @return the path and filename where the playlist should be stored.
      */
-    public static CharSequence getFilePath(DACPlaylist playlist) {
+    public static CharSequence getFilePath(DacPlaylist playlist) {
         StringBuilder result = new StringBuilder();
         result.append(playlist.getTransmitterGroup());
         result.append(File.separatorChar);
@@ -113,20 +113,20 @@ public class PlaylistUpdateNotification {
     }
 
     /**
-     * Creates a {@link DACPlaylist} and populates all fields that can be parsed
+     * Creates a {@link DacPlaylist} and populates all fields that can be parsed
      * from the file path.
      * 
      * @param filename
      *            a filename of the format returned from
-     *            {@link #getFilePath(DACPlaylist)}.
-     * @return a partially populated {@link DACPlaylist}.
-     * @see #getFilePath(DACPlaylist)
+     *            {@link #getFilePath(DacPlaylist)}.
+     * @return a partially populated {@link DacPlaylist}.
+     * @see #getFilePath(DacPlaylist)
      */
-    public static DACPlaylist parseFilePath(CharSequence filename) {
-        DACPlaylist playlist = null;
+    public static DacPlaylist parseFilePath(CharSequence filename) {
+        DacPlaylist playlist = null;
         Matcher m = PATH_PARSE_PATTERN.matcher(filename);
         if (m.find()) {
-            playlist = new DACPlaylist();
+            playlist = new DacPlaylist();
             playlist.setTransmitterGroup(m.group(1));
             playlist.setPriority(Integer.parseInt(m.group(2)));
             playlist.setSuite(m.group(3));
