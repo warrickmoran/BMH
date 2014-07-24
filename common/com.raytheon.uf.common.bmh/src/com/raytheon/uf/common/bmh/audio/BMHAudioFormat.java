@@ -41,35 +41,26 @@ package com.raytheon.uf.common.bmh.audio;
 
 public enum BMHAudioFormat {
     /* The WAV Audio Format. */
-    WAV("wav", "audio/x-wav"),
+    WAV("wav"),
     /* The ULAW Audio Format. */
-    ULAW("ulaw", "application/x-extension-ulaw"),
+    ULAW("ulaw"),
     /* The PCM Audio Format. */
-    PCM("pcm", "application/octet-stream");
+    PCM("pcm");
 
     private final String extension;
-
-    private final String contentType;
 
     /**
      * Constructor
      * 
      * @param extension
      *            the extension associated with the audio format
-     * @param contentType
-     *            the MIME content type associated with the audio format
      */
-    private BMHAudioFormat(final String extension, final String contentType) {
+    private BMHAudioFormat(final String extension) {
         this.extension = extension;
-        this.contentType = contentType;
     }
 
     public String getExtension() {
         return this.extension;
-    }
-
-    public String getContentType() {
-        return this.contentType;
     }
 
     /**

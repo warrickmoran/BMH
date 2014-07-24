@@ -216,35 +216,6 @@ public class AudioConvererterManager {
 
         final Path sourceFilePath = FileSystems.getDefault().getPath(
                 sourceFile.getAbsolutePath());
-        /*
-         * Verify the file extension. TODO: need to determine how accurate this
-         * verification is because it is based on String comparisons.
-         */
-        String contentType = null;
-        try {
-            contentType = Files.probeContentType(sourceFilePath);
-        } catch (IOException e) {
-            throw new AudioConversionException(
-                    "Failed to probe the content type of source file: "
-                            + sourceFilePath.toString() + "!", e);
-        }
-
-        // NULL is a possibility based on the JavaDoc.
-        if (contentType != null) {
-            if (contentType.equals(inputFormat.getContentType()) == false) {
-                StringBuilder exception = new StringBuilder(
-                        "The extension associated with source file: ");
-                exception.append(sourceFilePath.toString());
-                exception
-                        .append(" does not match the contents of the file; expected content type = ");
-                exception.append(inputFormat.getContentType());
-                exception.append("; actual content type = ");
-                exception.append(contentType);
-                exception.append("!");
-
-                throw new AudioConversionException(exception.toString());
-            }
-        }
 
         /* Read the input bytes. */
         byte[] source = null;
