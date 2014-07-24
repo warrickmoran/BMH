@@ -52,6 +52,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2014  #3174     lvenable     Initial creation
+ * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * 
  * </pre>
  * 
@@ -72,15 +73,25 @@ public class AddSuitesDlg extends CaveSWTDialog {
      */
     private List<Control> controlArray = new ArrayList<Control>();
 
+    /** Enumeration of dialog types. */
+    public enum SuiteDialogType {
+        ADD_COPY, COPY_ONLY;
+    };
+
+    /** Type of dialog (Create or Edit). */
+    private SuiteDialogType dialogType = SuiteDialogType.ADD_COPY;
+
     /**
      * Constructor.
      * 
      * @param parentShell
      *            Parent shell.
      */
-    public AddSuitesDlg(Shell parentShell) {
+    public AddSuitesDlg(Shell parentShell, SuiteDialogType dlgType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+
+        this.dialogType = dlgType;
     }
 
     @Override
@@ -105,7 +116,11 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("Add Existing Suites");
+        if (dialogType == SuiteDialogType.ADD_COPY) {
+            setText("Add/Copy Existing Suites");
+        } else if (dialogType == SuiteDialogType.COPY_ONLY) {
+            setText("Copy Existing Suite");
+        }
 
         createOptionControls();
         createSuitesTable();
@@ -122,52 +137,61 @@ public class AddSuitesDlg extends CaveSWTDialog {
         optionsComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
-        GridData gd = new GridData();
-        gd.horizontalSpan = 2;
-        Button useExistingSuiteRdo = new Button(optionsComp, SWT.RADIO);
-        useExistingSuiteRdo.setText("Use Existing Suites");
-        useExistingSuiteRdo.setLayoutData(gd);
-        useExistingSuiteRdo.setSelection(true);
-        useExistingSuiteRdo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                Button rdoBtn = (Button) e.widget;
-                if (rdoBtn.getSelection()) {
-                    enableControls(false);
-                    suiteTable.setMultipleSelection(true);
-                }
-            }
-        });
+        GridData gd;
 
-        gd = new GridData();
-        gd.horizontalSpan = 2;
-        Button copyExistingSuiteRdo = new Button(optionsComp, SWT.RADIO);
-        copyExistingSuiteRdo.setText("Copy an Existing Suite:");
-        copyExistingSuiteRdo.setLayoutData(gd);
-        copyExistingSuiteRdo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                Button rdoBtn = (Button) e.widget;
-                if (rdoBtn.getSelection()) {
-                    enableControls(true);
-                    suiteTable.setMultipleSelection(false);
+        if (dialogType == SuiteDialogType.ADD_COPY) {
+            gd = new GridData();
+            gd.horizontalSpan = 2;
+            Button useExistingSuiteRdo = new Button(optionsComp, SWT.RADIO);
+            useExistingSuiteRdo.setText("Use Existing Suites");
+            useExistingSuiteRdo.setLayoutData(gd);
+            useExistingSuiteRdo.setSelection(true);
+            useExistingSuiteRdo.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    Button rdoBtn = (Button) e.widget;
+                    if (rdoBtn.getSelection()) {
+                        enableControls(false);
+                        suiteTable.setMultipleSelection(true);
+                    }
                 }
-            }
-        });
+            });
 
-        gd = new GridData();
-        gd.horizontalIndent = 20;
+            gd = new GridData();
+            gd.horizontalSpan = 2;
+            Button copyExistingSuiteRdo = new Button(optionsComp, SWT.RADIO);
+            copyExistingSuiteRdo.setText("Copy an Existing Suite:");
+            copyExistingSuiteRdo.setLayoutData(gd);
+            copyExistingSuiteRdo.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    Button rdoBtn = (Button) e.widget;
+                    if (rdoBtn.getSelection()) {
+                        enableControls(true);
+                        suiteTable.setMultipleSelection(false);
+                    }
+                }
+            });
+
+        }
+
         Label suiteNameLbl = new Label(optionsComp, SWT.NONE);
         suiteNameLbl.setText("Enter a Suite Name: ");
-        suiteNameLbl.setLayoutData(gd);
+        if (dialogType == SuiteDialogType.ADD_COPY) {
+            gd = new GridData();
+            gd.horizontalIndent = 20;
+            suiteNameLbl.setLayoutData(gd);
+        }
 
         gd = new GridData(200, SWT.DEFAULT);
         suiteNameTF = new Text(optionsComp, SWT.BORDER);
         suiteNameTF.setLayoutData(gd);
 
-        controlArray.add(suiteNameLbl);
-        controlArray.add(suiteNameTF);
-        enableControls(false);
+        if (dialogType == SuiteDialogType.ADD_COPY) {
+            controlArray.add(suiteNameLbl);
+            controlArray.add(suiteNameTF);
+            enableControls(false);
+        }
     }
 
     /**
@@ -185,6 +209,10 @@ public class AddSuitesDlg extends CaveSWTDialog {
         suiteTable = new AddSuiteTable(suiteGroup, tableStyle, 600, 150);
 
         populateSuiteTable();
+
+        if (dialogType == SuiteDialogType.COPY_ONLY) {
+            suiteTable.setMultipleSelection(false);
+        }
 
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         Button viewBtn = new Button(suiteGroup, SWT.PUSH);

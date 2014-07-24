@@ -55,6 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
 import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -122,6 +123,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     private LdadConfigDlg ldadConfigDlg;
 
     private BroadcastProgramDlg broadcastProgDlg;
+
+    private SuiteManagerDlg suiteManagerDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -522,6 +525,24 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      */
     private void createMessagesMenu() {
         messagesMenu = new Menu(shell, SWT.POP_UP);
+
+        /*
+         * Suite Manager
+         */
+        MenuItem suiteManagerMI = new MenuItem(messagesMenu, SWT.PUSH);
+        suiteManagerMI.setText("Suite Manager...");
+        suiteManagerMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                if (suiteManagerDlg == null || suiteManagerDlg.isDisposed()) {
+                    suiteManagerDlg = new SuiteManagerDlg(getShell(),
+                            dlgsToValidateCloseMap);
+                    suiteManagerDlg.open();
+                } else {
+                    suiteManagerDlg.bringToTop();
+                }
+            }
+        });
 
         /*
          * Message Types

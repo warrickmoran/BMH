@@ -51,6 +51,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 21, 2014  #3174     lvenable     Initial creation
+ * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * 
  * </pre>
  * 
@@ -98,7 +99,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("Add Existing Suites");
+        setText("Suite Information");
 
         createSuiteInfoControls();
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);

@@ -40,6 +40,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.program.AddSuitesDlg.SuiteDialogType;
 import com.raytheon.uf.viz.bmh.ui.program.CreateEditSuiteDlg.DialogType;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
@@ -54,6 +55,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2014  #3174     lvenable     Initial creation
+ * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * 
  * </pre>
  * 
@@ -160,7 +162,7 @@ public class CreateNewProgram extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 CreateEditSuiteDlg csd = new CreateEditSuiteDlg(shell,
-                        DialogType.CREATE);
+                        DialogType.CREATE, false);
                 csd.open();
             }
         });
@@ -172,7 +174,8 @@ public class CreateNewProgram extends CaveSWTDialog {
         addExistingBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                AddSuitesDlg asd = new AddSuitesDlg(getShell());
+                AddSuitesDlg asd = new AddSuitesDlg(getShell(),
+                        SuiteDialogType.ADD_COPY);
                 asd.open();
             }
         });

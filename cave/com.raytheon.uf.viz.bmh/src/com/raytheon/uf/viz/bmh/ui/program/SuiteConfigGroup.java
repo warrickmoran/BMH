@@ -36,6 +36,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.program.AddSuitesDlg.SuiteDialogType;
 import com.raytheon.uf.viz.bmh.ui.program.CreateEditSuiteDlg.DialogType;
 
 /**
@@ -49,6 +50,7 @@ import com.raytheon.uf.viz.bmh.ui.program.CreateEditSuiteDlg.DialogType;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2014  #3174     lvenable     Initial creation
+ * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * 
  * </pre>
  * 
@@ -174,7 +176,7 @@ public class SuiteConfigGroup extends Composite {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
-                        .getShell(), DialogType.CREATE);
+                        .getShell(), DialogType.CREATE, false);
                 csd.open();
             }
         });
@@ -186,7 +188,8 @@ public class SuiteConfigGroup extends Composite {
         addExistingBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                AddSuitesDlg asd = new AddSuitesDlg(getShell());
+                AddSuitesDlg asd = new AddSuitesDlg(getShell(),
+                        SuiteDialogType.ADD_COPY);
                 asd.open();
             }
         });
@@ -199,7 +202,7 @@ public class SuiteConfigGroup extends Composite {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
-                        .getShell(), DialogType.EDIT);
+                        .getShell(), DialogType.EDIT, false);
                 csd.open();
                 // NewEditSuiteDlg nsd = new NewEditSuiteDlg(
                 // parentComp.getShell(), ActionType.EDIT);

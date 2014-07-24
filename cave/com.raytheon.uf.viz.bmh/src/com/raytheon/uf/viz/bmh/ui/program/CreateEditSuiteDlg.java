@@ -60,6 +60,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2014  #3174      lvenable     Initial creation
+ * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * 
  * </pre>
  * 
@@ -104,13 +105,22 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     /** Button used to set the triggers on the message type(s). */
     private Button setTriggersBtn;
 
-    /** Enumeration of record states. */
+    /** Label containing a list of programs. */
+    private Label programListLbl;
+
+    /** Assign program button. */
+    private Button assignProgramBtn;
+
+    /** Enumeration of dialog types. */
     public enum DialogType {
         CREATE, EDIT;
     };
 
     /** Type of dialog (Create or Edit). */
     private DialogType dialogType = DialogType.CREATE;
+
+    /** Show program information flag. */
+    private boolean showProgramControls = true;
 
     /**
      * Constructor.
@@ -120,11 +130,16 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * @param dlgType
      *            Dialog type.
      */
-    public CreateEditSuiteDlg(Shell parentShell, DialogType dlgType) {
+    public CreateEditSuiteDlg(Shell parentShell, DialogType dlgType,
+            boolean showProgramControls) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
         this.dialogType = dlgType;
+        this.showProgramControls = showProgramControls;
+
+        // TODO - need to pass in the program if used with the Broadcast program
+        // dialog.
     }
 
     @Override
@@ -158,6 +173,11 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         upDownImages = new UpDownImages(shell);
 
         createSuiteControls();
+
+        if (showProgramControls) {
+            createProgramControls();
+        }
+
         createSelectedMsgTypeGroup();
         createAddRemoveButtons();
         createAvailMsgTypeGroup();
@@ -196,6 +216,38 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         categoryCbo.setLayoutData(gd);
         populateCategoryCombo();
         categoryCbo.select(0);
+    }
+
+    /**
+     * Create program controls.
+     */
+    private void createProgramControls() {
+        Composite progTransComp = new Composite(shell, SWT.NONE);
+        GridLayout gl = new GridLayout(3, false);
+        progTransComp.setLayout(gl);
+        progTransComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
+                false));
+
+        /*
+         * Program controls.
+         */
+        Label transmitterLbl = new Label(progTransComp, SWT.NONE);
+        transmitterLbl.setText("Assigned Programs: ");
+
+        GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
+        gd.minimumWidth = 350;
+        programListLbl = new Label(progTransComp, SWT.BORDER);
+        programListLbl.setLayoutData(gd);
+        populatePrograms();
+
+        assignProgramBtn = new Button(progTransComp, SWT.PUSH);
+        assignProgramBtn.setText("Assign to Program(s)...");
+        assignProgramBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleChangeProgram();
+            }
+        });
     }
 
     /**
@@ -418,23 +470,58 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * Need to verify the suite name doesn't already exist.
      */
 
-    private void populateCategoryCombo() {
-        categoryCbo.add("General");
-        categoryCbo.add("High");
-        categoryCbo.add("Exclusive");
-    }
-
     /**********************************************************************
      * 
      * TODO: remove dummy code
      * 
      */
 
+    private void handleChangeProgram() {
+        // TODO : Add real code when hooking up
+        CheckListData cld = new CheckListData();
+
+        cld.addDataItem("Program - 1", true);
+        cld.addDataItem("Program - 2", true);
+        cld.addDataItem("Program - 3", true);
+        cld.addDataItem("Program - 4", false);
+        cld.addDataItem("Program - 5", false);
+        cld.addDataItem("Program - 6", false);
+
+        CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
+                "Assign Programs", "Select Programs to add to Suite:", cld,
+                true);
+        checkListDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue != null && returnValue instanceof CheckListData) {
+                    CheckListData listData = (CheckListData) returnValue;
+                    Map<String, Boolean> dataMap = listData.getDataMap();
+                    for (String str : dataMap.keySet()) {
+                        System.out.println("Type = " + str + "\t Selected: "
+                                + dataMap.get(str));
+                    }
+                }
+            }
+        });
+        checkListDlg.open();
+    }
+
+    private void populateCategoryCombo() {
+        categoryCbo.add("General");
+        categoryCbo.add("High");
+        categoryCbo.add("Exclusive");
+    }
+
+    private void populatePrograms() {
+        programListLbl.setText(" Program1, Program2, Program 3");
+        programListLbl.setToolTipText("Program1, Program2, Program 3");
+    }
+
     private void populateMsgTypeSelectedTable() {
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
         TableColumnData tcd = new TableColumnData("Message Type", 150);
         columnNames.add(tcd);
-        tcd = new TableColumnData("Message Title");
+        tcd = new TableColumnData("Message Title", 300);
         columnNames.add(tcd);
         tcd = new TableColumnData("Trigger");
         columnNames.add(tcd);
