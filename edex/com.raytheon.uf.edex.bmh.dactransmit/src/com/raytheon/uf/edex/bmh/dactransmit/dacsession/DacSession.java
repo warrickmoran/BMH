@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
  * Jul 17, 2014  #3399     bsteffen     Add comms manager communication.
  * Jul 16, 2014  #3286     dgilling     Initial event bus implementation, add
  *                                      shutdown() method.
+ * Jul 24, 2014  #3286     dgilling     Fix NullPointerException in 
+ *                                      waitForShutdown().
  * 
  * </pre>
  * 
@@ -85,7 +88,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
 
     private CommsManagerCommunicator commsManager;
 
-    private final Object shutdownSignal;
+    private final Semaphore shutdownSignal;
 
     /**
      * Constructor for the {@code DacSession} class. Reads the input directory
@@ -101,7 +104,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         this.notificationExecutor = Executors.newSingleThreadExecutor();
         this.eventBus = new AsyncEventBus("DAC-Transmit", notificationExecutor);
         this.playlistMgr = new PlaylistScheduler(
-                this.config.getInputDirectory());
+                this.config.getInputDirectory(), this.eventBus);
         this.controlThread = new ControlStatusThread(this.eventBus,
                 this.config.getDacAddress(), this.config.getControlPort());
         this.dataThread = new DataTransmitThread(this.eventBus, playlistMgr,
@@ -112,7 +115,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                 this.config.getTransmitterGroup(), this.eventBus);
         this.newPlaylistObserver = new PlaylistDirectoryObserver(
                 this.config.getInputDirectory(), this.eventBus);
-        this.shutdownSignal = new Object();
+        this.shutdownSignal = new Semaphore(1);
     }
 
     /**
@@ -123,6 +126,12 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
      *             If a transmission error occurs with the DAC.
      */
     public void startPlayback() throws IOException {
+        try {
+            shutdownSignal.acquire();
+        } catch (InterruptedException e) {
+            // don't care
+        }
+
         logger.info("Starting audio playback.");
         logger.info("Session configuration: " + config.toString());
         logger.info("Obtaining sync with DAC.");
@@ -166,20 +175,23 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
 
         isRunning = false;
 
-        shutdownSignal.notifyAll();
+        shutdownSignal.release();
     }
 
     /**
-     * TODO
+     * Blocking method that allows the main thread to wait until the DacSession
+     * has been shutdown.
      */
     public void waitForShutdown() {
         if (isRunning) {
             try {
-                shutdownSignal.wait();
+                shutdownSignal.acquire();
             } catch (InterruptedException e) {
                 logger.error(
                         "DacSession.waitForShutdown() interrupted by another thread.",
                         e);
+            } finally {
+                shutdownSignal.release();
             }
         }
     }
