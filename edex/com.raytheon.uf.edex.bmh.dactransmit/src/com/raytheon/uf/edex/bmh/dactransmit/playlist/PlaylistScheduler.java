@@ -37,8 +37,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.Subscribe;
-import com.raytheon.uf.common.bmh.datamodel.playlist.DACPlaylist;
-import com.raytheon.uf.common.bmh.datamodel.playlist.DACPlaylistMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -81,12 +82,12 @@ public final class PlaylistScheduler implements
                 /*
                  * we're building a "path" string containing
                  * <transmitter_group>/<playlist_filename>, which is what the
-                 * parser requires to figure out the DACPlaylist components.
+                 * parser requires to figure out the DacPlaylist components.
                  */
                 StringBuilder fileString = new StringBuilder(entry.getParent()
                         .getFileName().toString()).append(File.separatorChar)
                         .append(entry.getFileName().toString());
-                DACPlaylist temp = PlaylistUpdateNotification
+                DacPlaylist temp = PlaylistUpdateNotification
                         .parseFilePath(fileString);
                 if (temp != null) {
                     long currentTime = TimeUtil.currentTimeMillis();
@@ -99,10 +100,10 @@ public final class PlaylistScheduler implements
         }
     };
 
-    private static final Comparator<DACPlaylist> PLAYBACK_ORDER = new Comparator<DACPlaylist>() {
+    private static final Comparator<DacPlaylist> PLAYBACK_ORDER = new Comparator<DacPlaylist>() {
 
         @Override
-        public int compare(DACPlaylist o1, DACPlaylist o2) {
+        public int compare(DacPlaylist o1, DacPlaylist o2) {
             int retVal = 0 - Integer
                     .compare(o1.getPriority(), o2.getPriority());
             if (retVal != 0) {
@@ -118,9 +119,9 @@ public final class PlaylistScheduler implements
 
     private final PlaylistMessageCache cache;
 
-    private List<DACPlaylist> currentPlaylists;
+    private List<DacPlaylist> currentPlaylists;
 
-    private List<DACPlaylistMessage> currentMessages;
+    private List<DacPlaylistMessageId> currentMessages;
 
     // TODO?? Create a Queue to handle interrupt messages?
 
@@ -157,8 +158,8 @@ public final class PlaylistScheduler implements
         try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(
                 this.playlistDirectory, PLAYLIST_FILTER)) {
             for (Path entry : dirStream) {
-                DACPlaylist playlist = JAXB.unmarshal(entry.toFile(),
-                        DACPlaylist.class);
+                DacPlaylist playlist = JAXB.unmarshal(entry.toFile(),
+                        DacPlaylist.class);
                 currentPlaylists.add(playlist);
             }
         }
@@ -170,12 +171,12 @@ public final class PlaylistScheduler implements
 
         Collections.sort(currentPlaylists, PLAYBACK_ORDER);
 
-        cache = new PlaylistMessageCache();
-        for (DACPlaylist playlist : currentPlaylists) {
+        cache = new PlaylistMessageCache(inputDirectory.resolve("messages"));
+        for (DacPlaylist playlist : currentPlaylists) {
             cache.addToCache(playlist.getMessages());
         }
 
-        DACPlaylist firstPlaylist = currentPlaylists.get(0);
+        DacPlaylist firstPlaylist = currentPlaylists.get(0);
         logger.debug("Starting with playlist: " + firstPlaylist.toString());
         this.currentMessages = firstPlaylist.getMessages();
 
@@ -196,16 +197,16 @@ public final class PlaylistScheduler implements
      *         file to play.
      */
     public AudioFileBuffer next() {
-        DACPlaylistMessage nextMessage = nextMessage();
+        DacPlaylistMessage nextMessage = nextMessage();
         logger.debug("Switching to message: " + nextMessage.getBroadcastId()
                 + ", " + nextMessage.getMessageType());
-        return cache.get(nextMessage);
+        return cache.getAudio(nextMessage);
     }
 
-    private DACPlaylistMessage nextMessage() {
+    private DacPlaylistMessage nextMessage() {
         // TODO handle interrupts
 
-        DACPlaylistMessage nextMessage = null;
+        DacPlaylistMessage nextMessage = null;
 
         ITimer timer = TimeUtil.getTimer();
         timer.start();
@@ -219,8 +220,8 @@ public final class PlaylistScheduler implements
 
             while ((nextMessage == null)
                     && (messageIndex < currentMessages.size())) {
-                DACPlaylistMessage possibleNext = currentMessages
-                        .get(messageIndex);
+                DacPlaylistMessage possibleNext = cache
+                        .getMessage(currentMessages.get(messageIndex));
                 if (possibleNext.isValid()) {
                     nextMessage = possibleNext;
                 }
@@ -228,17 +229,17 @@ public final class PlaylistScheduler implements
             }
 
             while ((nextMessage == null) && (!currentPlaylists.isEmpty())) {
-                DACPlaylist nextPlaylist = currentPlaylists.get(playlistIndex);
+                DacPlaylist nextPlaylist = currentPlaylists.get(playlistIndex);
                 logger.debug("Switching to playlist: "
                         + nextPlaylist.toString());
-                List<DACPlaylistMessage> nextMessages = nextPlaylist
+                List<DacPlaylistMessageId> nextMessages = nextPlaylist
                         .getMessages();
 
                 int newMessageIdx = 0;
                 while ((nextMessage == null)
                         && (newMessageIdx < nextMessages.size())) {
-                    DACPlaylistMessage possibleNext = nextMessages
-                            .get(newMessageIdx);
+                    DacPlaylistMessage possibleNext = cache
+                            .getMessage(nextMessages.get(newMessageIdx));
                     if (possibleNext.isValid()) {
                         nextMessage = possibleNext;
                         currentMessages = nextMessages;
@@ -252,7 +253,7 @@ public final class PlaylistScheduler implements
                 }
 
                 if (nextMessage == null) {
-                    DACPlaylist purgedPlaylist = currentPlaylists
+                    DacPlaylist purgedPlaylist = currentPlaylists
                             .remove(playlistIndex);
                     logger.info("Puring expired playlist: "
                             + purgedPlaylist.toString());
@@ -276,12 +277,12 @@ public final class PlaylistScheduler implements
     @Override
     @Subscribe
     public void newPlaylistReceived(PlaylistUpdateNotification e) {
-        DACPlaylist newPlaylist = e.parseFilepath();
+        DacPlaylist newPlaylist = e.parseFilepath();
         if (newPlaylist != null) {
             Path playlistPath = playlistDirectory.resolveSibling(e
                     .getPlaylistPath());
             newPlaylist = JAXB.unmarshal(playlistPath.toFile(),
-                    DACPlaylist.class);
+                    DacPlaylist.class);
             cache.addToCache(newPlaylist.getMessages());
             logger.debug("Received new playlist: " + newPlaylist.toString());
 
@@ -295,7 +296,7 @@ public final class PlaylistScheduler implements
                 timer.reset();
                 timer.start();
 
-                DACPlaylist currentPlaylist = currentPlaylists
+                DacPlaylist currentPlaylist = currentPlaylists
                         .get(playlistIndex);
 
                 if ((newPlaylist.getPriority() == currentPlaylist.getPriority())
@@ -303,7 +304,7 @@ public final class PlaylistScheduler implements
                                 .getSuite()))) {
                     logger.debug("New playlist is an update to current playlist.");
 
-                    List<DACPlaylistMessage> newMessages = newPlaylist
+                    List<DacPlaylistMessageId> newMessages = newPlaylist
                             .getMessages();
 
                     int newMessageIdx = -1;

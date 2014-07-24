@@ -17,15 +17,16 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dactransmit.ipc;
+package com.raytheon.uf.common.bmh.datamodel.playlist;
 
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlAttribute;
 
 /**
  * 
- * Message sent from the dac transmit application to the comms manager to
- * indicate the current status of the connection to the dac.
+ * Xml representation of a playlist message that is sent from the playlist
+ * manager to the comms manager.
  * 
  * <pre>
  * 
@@ -33,40 +34,39 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
- * Jul 16, 2014  3399     bsteffen    Initial creation
+ * Jul 01, 2014  3285     bsteffen    Initial creation
+ * Jul 14, 2014  3286     dgilling    Implement hashCode()/equals().
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-@DynamicSerialize
-public class DacTransmitStatus {
+@XmlAccessorType(XmlAccessType.NONE)
+public class DacPlaylistMessageId {
 
-    @DynamicSerializeElement
-    private boolean connectedToDac;
+    @XmlAttribute
+    protected long broadcastId;
 
-    public DacTransmitStatus() {
+    public DacPlaylistMessageId() {
+
     }
 
-    public DacTransmitStatus(boolean connectedToDAC) {
-        this.connectedToDac = connectedToDAC;
+    public DacPlaylistMessageId(long broadcastId) {
+        this.broadcastId = broadcastId;
     }
 
-    public boolean isConnectedToDac() {
-        return connectedToDac;
+    public long getBroadcastId() {
+        return broadcastId;
     }
 
-    public void setConnectedToDac(boolean connectedToDac) {
-        this.connectedToDac = connectedToDac;
+    public void setBroadcastId(long broadcastId) {
+        this.broadcastId = broadcastId;
     }
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (connectedToDac ? 1231 : 1237);
-        return result;
+        return new Long(broadcastId).hashCode();
     }
 
     @Override
@@ -77,8 +77,8 @@ public class DacTransmitStatus {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        DacTransmitStatus other = (DacTransmitStatus) obj;
-        if (connectedToDac != other.connectedToDac)
+        DacPlaylistMessageId other = (DacPlaylistMessageId) obj;
+        if (broadcastId != other.broadcastId)
             return false;
         return true;
     }

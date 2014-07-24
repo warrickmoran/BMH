@@ -36,7 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
-import com.raytheon.uf.common.bmh.datamodel.playlist.DACPlaylist;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
@@ -134,7 +134,7 @@ public class PlaylistDirectoryObserver {
                                 Path newPlaylist = parent.resolve(e.context());
 
                                 String playlistString = newPlaylist.toString();
-                                DACPlaylist playlistObj = PlaylistUpdateNotification
+                                DacPlaylist playlistObj = PlaylistUpdateNotification
                                         .parseFilePath(playlistString);
                                 if (playlistObj != null) {
                                     long currentTime = TimeUtil
