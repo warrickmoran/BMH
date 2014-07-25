@@ -488,8 +488,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         cld.addDataItem("Program - 6", false);
 
         CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
-                "Assign Programs", "Select Programs to add to Suite:", cld,
-                true);
+                "Assign Programs", "Add Suite to Selected Programs:", cld, true);
         checkListDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {

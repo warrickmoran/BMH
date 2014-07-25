@@ -229,12 +229,15 @@ public class ViewSuiteDlg extends CaveSWTDialog {
         columnNames.add(tcd);
         tcd = new TableColumnData("Message Title");
         columnNames.add(tcd);
+        tcd = new TableColumnData("Trigger");
+        columnNames.add(tcd);
         TableData td = new TableData(columnNames);
 
         TableRowData trd = new TableRowData();
 
         trd.addTableCellData(new TableCellData("MessageType - 1"));
         trd.addTableCellData(new TableCellData("MessageType - 1 - Description"));
+        trd.addTableCellData(new TableCellData("Yes"));
 
         td.addDataRow(trd);
 
@@ -242,6 +245,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
 
         trd.addTableCellData(new TableCellData("MessageType - 2"));
         trd.addTableCellData(new TableCellData("MessageType - 2 - Description"));
+        trd.addTableCellData(new TableCellData("No"));
 
         td.addDataRow(trd);
 
