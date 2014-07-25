@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
@@ -174,6 +175,8 @@ public final class CommsManagerCommunicator extends Thread {
              */
             eventBus.post(new ShutdownRequestedEvent());
             disconnect();
+        } else if (message instanceof PlaylistUpdateNotification) {
+            eventBus.post(message);
         } else {
             logger.error("Unrecognized message from comms manager of type "
                     + message.getClass().getSimpleName());

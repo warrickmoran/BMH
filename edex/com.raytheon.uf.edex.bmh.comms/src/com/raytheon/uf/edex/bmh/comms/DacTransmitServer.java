@@ -54,10 +54,12 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * @author bsteffen
  * @version 1.0
  */
-public class DACTransmitServer extends Thread {
+public class DacTransmitServer extends Thread {
 
     private static final Logger logger = LoggerFactory
-            .getLogger(DACTransmitServer.class);
+            .getLogger(DacTransmitServer.class);
+
+    private final CommsManager manager;
 
     /**
      * Map of transmitter group names to the communicator instances that are
@@ -76,11 +78,12 @@ public class DACTransmitServer extends Thread {
      * @param config
      *            the config to use for this server.
      */
-    public DACTransmitServer(CommsConfig config) {
+    public DacTransmitServer(CommsManager manager, CommsConfig config) {
         super("DacTransmitServer");
         communicators = new ConcurrentHashMap<String, List<DacTransmitCommunicator>>(
                 config.getDacs().size() * 4);
         port = config.getIpcPort();
+        this.manager = manager;
 
     }
 
@@ -202,8 +205,8 @@ public class DACTransmitServer extends Thread {
                     .transformFromThrift(DacTransmitRegister.class,
                             socket.getInputStream());
             String group = message.getTransmitterGroup();
-            DacTransmitCommunicator comms = new DacTransmitCommunicator(group,
-                    socket);
+            DacTransmitCommunicator comms = new DacTransmitCommunicator(
+                    manager, group, socket);
             List<DacTransmitCommunicator> communicators = this.communicators
                     .get(group);
             if (communicators == null) {

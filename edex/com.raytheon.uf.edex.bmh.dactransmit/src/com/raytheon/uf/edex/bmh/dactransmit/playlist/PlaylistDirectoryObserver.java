@@ -104,8 +104,10 @@ public class PlaylistDirectoryObserver {
      * playlist events will be generated.
      */
     public void start() {
-        Callable<?> eventDispatchJob = createEventDispatcher();
-        threadPool.submit(eventDispatchJob);
+        if (Boolean.getBoolean("enableDirectoryObserver")) {
+            Callable<?> eventDispatchJob = createEventDispatcher();
+            threadPool.submit(eventDispatchJob);
+        }
     }
 
     /**
