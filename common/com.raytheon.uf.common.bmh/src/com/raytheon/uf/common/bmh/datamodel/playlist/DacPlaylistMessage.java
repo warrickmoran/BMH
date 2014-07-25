@@ -40,6 +40,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 01, 2014  3285     bsteffen    Initial creation
+ * Jul 24, 2014  3286     dgilling    Implement toString().
  * 
  * </pre>
  * 
@@ -83,6 +84,21 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     public DacPlaylistMessage() {
 
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("DACPlaylistMessage [broadcastId=").append(broadcastId)
+                .append(", messageType=").append(messageType)
+                .append(", start=").append(start).append(", expire=")
+                .append(expire).append("]");
+        return builder.toString();
     }
 
     public String getMessageType() {

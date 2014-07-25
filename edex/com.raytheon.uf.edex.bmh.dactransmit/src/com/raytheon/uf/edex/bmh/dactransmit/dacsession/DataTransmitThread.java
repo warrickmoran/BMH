@@ -25,6 +25,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +33,11 @@ import org.slf4j.LoggerFactory;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
+import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IInterruptMessageReceivedHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.AudioFileBuffer;
+import com.raytheon.uf.edex.bmh.dactransmit.playlist.DacMessagePlaybackData;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
@@ -54,6 +58,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Jul 14, 2014  #3286     dgilling     Use logback for logging, integrated
  *                                      PlaylistScheduler to feed audio files.
  * Jul 16, 2014  #3286     dgilling     Use event bus.
+ * Jul 24, 2014  #3286     dgilling     Support interrupt messages.
  * 
  * </pre>
  * 
@@ -62,11 +67,10 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  */
 
 public final class DataTransmitThread extends Thread implements
-        IDacStatusUpdateEventHandler {
+        IDacStatusUpdateEventHandler, IInterruptMessageReceivedHandler {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    // TODO: Does this thread need to send events or only receive??
     private final EventBus eventBus;
 
     private final InetAddress address;
@@ -85,13 +89,17 @@ public final class DataTransmitThread extends Thread implements
 
     private long nextCycleTime;
 
+    private final AtomicInteger interruptsAvailable;
+
+    private boolean playingInterrupt;
+
     /**
      * Constructor for this thread. Attempts to open a {@code DatagramSocket}
      * and connect to DAC IP endpoint specified by IP address and port.
      * 
      * @param eventBus
-     *            Reference back to {@code DacSession} that spawned this thread.
-     *            Needed to retrieve buffer status.
+     *            Reference back to the application-wide {@code EventBus}
+     *            instance for receiving necessary status events.
      * @param playlistMgr
      *            {@code PlaylistManager} reference used to retrieve next file
      *            to send to DAC.
@@ -117,6 +125,8 @@ public final class DataTransmitThread extends Thread implements
         this.keepRunning = true;
         this.nextCycleTime = DataTransmitConstants.INITIAL_CYCLE_TIME;
         this.socket = new DatagramSocket();
+        this.interruptsAvailable = new AtomicInteger(0);
+        this.playingInterrupt = false;
     }
 
     /*
@@ -130,8 +140,17 @@ public final class DataTransmitThread extends Thread implements
             eventBus.register(this);
 
             while (keepRunning) {
-                AudioFileBuffer fileBuffer = playlistMgr.next();
-                while (fileBuffer.hasRemaining()) {
+                if (interruptsAvailable.get() > 0) {
+                    interruptsAvailable.decrementAndGet();
+                }
+                DacMessagePlaybackData playbackData = playlistMgr.next();
+                // we set playing the playingInterrupt flag here in case this is
+                // a startup scenario and we had unplayed interrupts to start.
+                playingInterrupt = playbackData.isInterrupt();
+
+                AudioFileBuffer fileBuffer = playbackData.getAudio();
+                while ((fileBuffer.hasRemaining())
+                        && (playingInterrupt || interruptsAvailable.get() == 0)) {
                     try {
                         byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
                         fileBuffer.get(nextPayload);
@@ -150,6 +169,8 @@ public final class DataTransmitThread extends Thread implements
                         logger.error("Runtime exception thrown.", t);
                     }
                 }
+
+                playingInterrupt = false;
             }
         } finally {
             socket.disconnect();
@@ -216,7 +237,14 @@ public final class DataTransmitThread extends Thread implements
             int packetsToSendUntilNextStatus = Math
                     .abs(differenceFromWatermark) + 5;
             nextCycleTime = 100L / packetsToSendUntilNextStatus;
-            logger.debug("Speeding up cycle time to: " + nextCycleTime);
+            // logger.debug("Speeding up cycle time to: " + nextCycleTime);
         }
+    }
+
+    @Override
+    @Subscribe
+    public void handleInterruptMessage(InterruptMessageReceivedEvent e) {
+        interruptsAvailable.incrementAndGet();
+        logger.info("Received new interrupt: " + e.getPlaylist().toString());
     }
 }

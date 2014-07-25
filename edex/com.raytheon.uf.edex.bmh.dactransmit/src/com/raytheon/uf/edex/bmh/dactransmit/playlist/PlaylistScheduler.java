@@ -26,16 +26,20 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Queue;
 
 import javax.xml.bind.JAXB;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
@@ -43,6 +47,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotificationHandler;
 
 /**
@@ -59,6 +64,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  * Jul 16, 2014  #3286     dgilling     Fix nextMessage() logic, add shutdown(),
  *                                      wire to event bus for playlist 
  *                                      notifications.
+ * Jul 24, 2014  #3286     dgilling     Add support for interrupt messages.
  * 
  * </pre>
  * 
@@ -123,7 +129,11 @@ public final class PlaylistScheduler implements
 
     private List<DacPlaylistMessageId> currentMessages;
 
-    // TODO?? Create a Queue to handle interrupt messages?
+    /**
+     * Unplayed interrupt messages. We use a Queue because the playlist
+     * associated with an interrupt is played only one time and discarded.
+     */
+    private final Queue<DacPlaylist> interrupts;
 
     // TODO: Is this always going to be 0?? If so, this is probably not needed.
     private int playlistIndex;
@@ -136,6 +146,8 @@ public final class PlaylistScheduler implements
 
     private final Object playlistMessgeLock;
 
+    private final EventBus eventBus;
+
     /**
      * Reads the specified directory for valid playlist files (ones that have
      * not already passed their expiration time) and sorts them into playback
@@ -144,12 +156,17 @@ public final class PlaylistScheduler implements
      * 
      * @param inputDirectory
      *            Directory containing playlists.
+     * @param eventBus
+     *            Reference back to the application-wide {@code EventBus}
+     *            instance for posting and receiving necessary status events.
      * @throws IOException
      *             If any I/O errors occur attempting to get the list of
      *             playlist files from the specified directory.
      */
-    public PlaylistScheduler(Path inputDirectory) throws IOException {
+    public PlaylistScheduler(Path inputDirectory, EventBus eventBus)
+            throws IOException {
         this.playlistDirectory = inputDirectory;
+        this.eventBus = eventBus;
 
         this.currentPlaylists = new ArrayList<>();
         this.playlistIndex = 0;
@@ -176,6 +193,20 @@ public final class PlaylistScheduler implements
             cache.addToCache(playlist.getMessages());
         }
 
+        this.interrupts = new ArrayDeque<>();
+        /*
+         * On startup we may have some unplayed interrupts. find them and
+         * transfer them to interrupt queue
+         */
+        for (Iterator<DacPlaylist> iter = currentPlaylists.iterator(); iter
+                .hasNext();) {
+            DacPlaylist playlist = iter.next();
+            if (playlist.isInterrupt()) {
+                this.interrupts.add(playlist);
+                iter.remove();
+            }
+        }
+
         DacPlaylist firstPlaylist = currentPlaylists.get(0);
         logger.debug("Starting with playlist: " + firstPlaylist.toString());
         this.currentMessages = firstPlaylist.getMessages();
@@ -193,20 +224,21 @@ public final class PlaylistScheduler implements
     /**
      * Retrieves the next audio file to play.
      * 
-     * @return {@code AudioFileBuffer} containing the contents of the next audio
+     * @return {@code DacMessagePlaybackData} containing the data about the next
      *         file to play.
      */
-    public AudioFileBuffer next() {
-        DacPlaylistMessage nextMessage = nextMessage();
-        logger.debug("Switching to message: " + nextMessage.getBroadcastId()
-                + ", " + nextMessage.getMessageType());
-        return cache.getAudio(nextMessage);
+    public DacMessagePlaybackData next() {
+        DacMessagePlaybackData nextMessage = nextMessage();
+        logger.debug("Switching to message: "
+                + nextMessage.getMessage().toString());
+        AudioFileBuffer audioData = cache.getAudio(nextMessage.getMessage());
+        nextMessage.setAudio(audioData);
+        return nextMessage;
     }
 
-    private DacPlaylistMessage nextMessage() {
-        // TODO handle interrupts
-
+    private DacMessagePlaybackData nextMessage() {
         DacPlaylistMessage nextMessage = null;
+        boolean isInterrupt = false;
 
         ITimer timer = TimeUtil.getTimer();
         timer.start();
@@ -217,6 +249,28 @@ public final class PlaylistScheduler implements
 
             timer.reset();
             timer.start();
+
+            /*
+             * if we have unplayed INTERRUPT priority messages always play those
+             * first. After completing the INTERRUPT, playback will resume at
+             * the beginning of the highest priority playist.
+             */
+            if (!interrupts.isEmpty()) {
+                DacPlaylist nextPlaylist = interrupts.poll();
+                logger.debug("Switching to playlist: "
+                        + nextPlaylist.toString());
+
+                /*
+                 * By design all interrupt playlists contain a single message to
+                 * play.
+                 */
+                DacPlaylistMessageId messageId = nextPlaylist.getMessages()
+                        .get(0);
+                nextMessage = cache.getMessage(messageId);
+                isInterrupt = true;
+                messageIndex = 0;
+                playlistIndex = 0;
+            }
 
             while ((nextMessage == null)
                     && (messageIndex < currentMessages.size())) {
@@ -271,7 +325,10 @@ public final class PlaylistScheduler implements
             logger.error("Couldn't find any valid playlists or messages to play!!!");
         }
 
-        return nextMessage;
+        DacMessagePlaybackData nextMessageData = new DacMessagePlaybackData();
+        nextMessageData.setMessage(nextMessage);
+        nextMessageData.setInterrupt(isInterrupt);
+        return nextMessageData;
     }
 
     @Override
@@ -295,6 +352,12 @@ public final class PlaylistScheduler implements
 
                 timer.reset();
                 timer.start();
+
+                if (newPlaylist.isInterrupt()) {
+                    interrupts.add(newPlaylist);
+                    eventBus.post(new InterruptMessageReceivedEvent(newPlaylist));
+                    return;
+                }
 
                 DacPlaylist currentPlaylist = currentPlaylists
                         .get(playlistIndex);
