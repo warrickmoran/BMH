@@ -30,12 +30,12 @@ import java.util.Set;
 
 import javax.xml.bind.JAXB;
 
-import org.apache.qpid.client.AMQConnectionFactory;
 import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.uf.common.jms.notification.JmsNotificationManager;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.config.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.config.DacChannelConfig;
@@ -69,7 +69,7 @@ public class CommsManager  {
 
     private final DacTransmitServer transmitServer;
 
-    private final JmsNotificationManager notification;
+    private final JmsCommunicator jms;
 
     private final CommsConfig config;
 
@@ -84,17 +84,16 @@ public class CommsManager  {
                 + File.separator + "conf" + File.separator + "comms.xml"),
                 CommsConfig.class);
         transmitServer = new DacTransmitServer(this, config);
-        JmsNotificationManager notification = null;
+        JmsCommunicator jms = null;
         try {
-            notification = new JmsNotificationManager(new AMQConnectionFactory(
-                    config.getJmsConnection()));
+            jms = new JmsCommunicator(config);
         } catch (URLSyntaxException e) {
             logger.error(
                     "Error parsing jms connection url, jms will be disabled.",
                     e);
         }
-        this.notification = notification;
-        this.notification.connect();
+        this.jms = jms;
+        this.jms.connect();
     }
 
     /**
@@ -202,15 +201,23 @@ public class CommsManager  {
         if (status.isConnectedToDac()) {
             logger.info(group
                     + " is now connected to the dac");
-            notification.addQueueObserver("BMH.Playlist." + group,
+            jms.addQueueObserver("BMH.Playlist." + group,
                     new PlaylistNotificationObserver(communicator));
         } else {
-            notification.removeQueueObserver("BMH.Playlist." + group, null,
+            jms.removeQueueObserver("BMH.Playlist." + group, null,
                     new PlaylistNotificationObserver(communicator));
             logger.info(group
                     + " is now disconnected from the dac");
-
         }
+    }
+
+    public void playlistSwitched(PlaylistSwitchNotification notification){
+        jms.sendStatus(notification);
+    }
+
+    public void messagePlaybackStatusArrived(
+            MessagePlaybackStatusNotification notification) {
+        jms.sendStatus(notification);
     }
 
 }

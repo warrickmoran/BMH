@@ -113,9 +113,14 @@ public enum BMH_CATEGORY {
      */
     XFORM_SSML_GENERATION_FAILED(12),
     /*
-     * An error has occured adding a message to a playlist.
+     * An error has occurred adding a message to a playlist.
      */
     PLAYLIST_MANAGER_ERROR(13),
+    /*
+     * An error has occurred while tracking the status of a transmitter.
+     */
+    TRANSMITTER_STATUS_ERROR(14),
+    
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.

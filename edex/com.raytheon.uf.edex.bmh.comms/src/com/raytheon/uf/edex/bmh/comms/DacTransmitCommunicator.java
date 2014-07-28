@@ -83,31 +83,35 @@ public class DacTransmitCommunicator extends Thread {
             try {
                 Object message = SerializationUtil.transformFromThrift(
                         Object.class, socket.getInputStream());
-                if (message instanceof DacTransmitStatus) {
-                    DacTransmitStatus newStatus = (DacTransmitStatus) message;
-                    if (lastStatus == null || !newStatus.equals(lastStatus)) {
-                        manager.dacStatusChanged(this, newStatus);
-                        lastStatus = newStatus;
-                    }
-                } else if (message instanceof MessagePlaybackStatusNotification) {
-                    // TODO post status back to JMS for GUI's
-                    logger.debug("Received playback status message from DacTransmit: "
-                            + message.toString());
-                } else if (message instanceof PlaylistSwitchNotification) {
-                    // TODO post status back to JMS for GUI's
-                    logger.debug("Received playlist switch message from DacTransmit: "
-                            + message.toString());
-                } else if (message instanceof DacTransmitShutdown) {
-                    disconnect();
-                } else {
-                    logger.error("Unexpected message from dac transmit of type: "
-                            + message.getClass().getSimpleName());
-                }
+                handleMessage(message);
             } catch (SerializationException | IOException e) {
                 logger.error("Error reading message from DacTransmit: "
                         + groupName, e);
                 disconnect();
             }
+        }
+    }
+
+    protected void handleMessage(Object message) {
+        if (message instanceof DacTransmitStatus) {
+            DacTransmitStatus newStatus = (DacTransmitStatus) message;
+            if (lastStatus == null || !newStatus.equals(lastStatus)) {
+                manager.dacStatusChanged(this, newStatus);
+                lastStatus = newStatus;
+            }
+        } else if (message instanceof MessagePlaybackStatusNotification) {
+            MessagePlaybackStatusNotification notification = (MessagePlaybackStatusNotification) message;
+            notification.setTransmitterGroup(groupName);
+            manager.messagePlaybackStatusArrived(notification);
+        } else if (message instanceof PlaylistSwitchNotification) {
+            PlaylistSwitchNotification notification = (PlaylistSwitchNotification) message;
+            notification.setTransmitterGroup(groupName);
+            manager.playlistSwitched(notification);
+        } else if (message instanceof DacTransmitShutdown) {
+            disconnect();
+        } else {
+            logger.error("Unexpected message from dac transmit of type: "
+                    + message.getClass().getSimpleName());
         }
     }
 
