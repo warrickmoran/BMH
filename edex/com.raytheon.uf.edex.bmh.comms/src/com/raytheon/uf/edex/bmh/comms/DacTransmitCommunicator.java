@@ -26,6 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
@@ -42,6 +44,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
+ * Jul 25, 2014  3286     dgilling    Support MessagePlaybackStatusNotification
+ *                                    and PlaylistSwitchNotification messages 
+ *                                    from DacTransmit.
  * 
  * </pre>
  * 
@@ -60,7 +65,6 @@ public class DacTransmitCommunicator extends Thread {
 
     private DacTransmitStatus lastStatus;
 
-
     public DacTransmitCommunicator(CommsManager manager, String groupName,
             Socket socket) {
         super("DacTransmitCommunicator-" + groupName);
@@ -72,8 +76,6 @@ public class DacTransmitCommunicator extends Thread {
     public String getGroupName() {
         return groupName;
     }
-
-
 
     @Override
     public void run() {
@@ -87,6 +89,14 @@ public class DacTransmitCommunicator extends Thread {
                         manager.dacStatusChanged(this, newStatus);
                         lastStatus = newStatus;
                     }
+                } else if (message instanceof MessagePlaybackStatusNotification) {
+                    // TODO post status back to JMS for GUI's
+                    logger.debug("Received playback status message from DacTransmit: "
+                            + message.toString());
+                } else if (message instanceof PlaylistSwitchNotification) {
+                    // TODO post status back to JMS for GUI's
+                    logger.debug("Received playlist switch message from DacTransmit: "
+                            + message.toString());
                 } else if (message instanceof DacTransmitShutdown) {
                     disconnect();
                 } else {

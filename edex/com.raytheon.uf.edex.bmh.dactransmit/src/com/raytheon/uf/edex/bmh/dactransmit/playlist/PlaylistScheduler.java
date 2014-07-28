@@ -45,6 +45,8 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
+import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
@@ -65,6 +67,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  *                                      wire to event bus for playlist 
  *                                      notifications.
  * Jul 24, 2014  #3286     dgilling     Add support for interrupt messages.
+ * Jul 28, 2014  #3286     dgilling     Support sending notifications when
+ *                                      changing playlists.
  * 
  * </pre>
  * 
@@ -207,9 +211,17 @@ public final class PlaylistScheduler implements
             }
         }
 
-        DacPlaylist firstPlaylist = currentPlaylists.get(0);
+        DacPlaylist firstPlaylist = (!this.interrupts.isEmpty()) ? this.interrupts
+                .peek() : currentPlaylists.get(0);
+        if (firstPlaylist.isInterrupt()) {
+            this.currentMessages = Collections.emptyList();
+        } else {
+            this.currentMessages = firstPlaylist.getMessages();
+        }
         logger.debug("Starting with playlist: " + firstPlaylist.toString());
-        this.currentMessages = firstPlaylist.getMessages();
+
+        PlaylistSwitchNotification notify = buildPlaylistNotification(firstPlaylist);
+        this.eventBus.post(notify);
 
         this.playlistMessgeLock = new Object();
     }
@@ -270,6 +282,9 @@ public final class PlaylistScheduler implements
                 isInterrupt = true;
                 messageIndex = 0;
                 playlistIndex = 0;
+
+                PlaylistSwitchNotification notify = buildPlaylistNotification(nextPlaylist);
+                eventBus.post(notify);
             }
 
             while ((nextMessage == null)
@@ -284,8 +299,6 @@ public final class PlaylistScheduler implements
 
             while ((nextMessage == null) && (!currentPlaylists.isEmpty())) {
                 DacPlaylist nextPlaylist = currentPlaylists.get(playlistIndex);
-                logger.debug("Switching to playlist: "
-                        + nextPlaylist.toString());
                 List<DacPlaylistMessageId> nextMessages = nextPlaylist
                         .getMessages();
 
@@ -295,12 +308,18 @@ public final class PlaylistScheduler implements
                     DacPlaylistMessage possibleNext = cache
                             .getMessage(nextMessages.get(newMessageIdx));
                     if (possibleNext.isValid()) {
+                        logger.debug("Switching to playlist: "
+                                + nextPlaylist.toString());
+
                         nextMessage = possibleNext;
                         currentMessages = nextMessages;
                         messageIndex = newMessageIdx + 1;
                         if (messageIndex > currentMessages.size()) {
                             messageIndex = 0;
                         }
+
+                        PlaylistSwitchNotification notify = buildPlaylistNotification(nextPlaylist);
+                        eventBus.post(notify);
                     } else {
                         newMessageIdx++;
                     }
@@ -473,5 +492,23 @@ public final class PlaylistScheduler implements
         }
 
         return retVal;
+    }
+
+    private PlaylistSwitchNotification buildPlaylistNotification(
+            DacPlaylist nextPlaylist) {
+        /*
+         * TODO determine method to get messages. predicted playback times, and
+         * total playback time based on current time and length of each message
+         */
+        List<DacPlaylistMessageId> nextMessages = nextPlaylist.getMessages();
+        List<MessagePlaybackPrediction> messagePredictions = new ArrayList<>(
+                nextMessages.size());
+        for (DacPlaylistMessageId messageId : nextMessages) {
+            messagePredictions.add(new MessagePlaybackPrediction(messageId
+                    .getBroadcastId(), null));
+        }
+
+        return new PlaylistSwitchNotification(nextPlaylist.getSuite(),
+                nextPlaylist.getTransmitterGroup(), messagePredictions, 0);
     }
 }

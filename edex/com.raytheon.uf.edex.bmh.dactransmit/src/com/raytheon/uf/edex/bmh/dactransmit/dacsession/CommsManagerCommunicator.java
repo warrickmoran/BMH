@@ -29,7 +29,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
@@ -50,6 +53,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Jul 22, 2014  3286     dgilling    Connect to event bus.
+ * Jul 25, 2014  3286     dgilling    Support sending message playback updates
+ *                                    to CommsManager.
  * 
  * </pre>
  * 
@@ -84,6 +89,8 @@ public final class CommsManagerCommunicator extends Thread {
 
     @Override
     public void run() {
+        eventBus.register(this);
+
         InputStream inputStream = null;
         while (true) {
             if (socket == null) {
@@ -185,16 +192,30 @@ public final class CommsManagerCommunicator extends Thread {
 
     public void sendConnectionStatus(boolean connected) {
         statusToSend = new DacTransmitStatus(connected);
+        sendMessageToCommsManager(statusToSend);
+    }
+
+    @Subscribe
+    public void sendPlaybackStatus(
+            MessagePlaybackStatusNotification notification) {
+        sendMessageToCommsManager(notification);
+    }
+
+    @Subscribe
+    public void sendPlaylistSwitch(PlaylistSwitchNotification notification) {
+        sendMessageToCommsManager(notification);
+    }
+
+    private void sendMessageToCommsManager(Object message) {
         if (socket != null) {
             synchronized (sendLock) {
                 try {
-                    SerializationUtil.transformToThriftUsingStream(
-                            statusToSend, socket.getOutputStream());
+                    SerializationUtil.transformToThriftUsingStream(message,
+                            socket.getOutputStream());
                 } catch (SerializationException | IOException e) {
                     logger.error("Error communicating with comms manager", e);
                 }
             }
         }
     }
-
 }

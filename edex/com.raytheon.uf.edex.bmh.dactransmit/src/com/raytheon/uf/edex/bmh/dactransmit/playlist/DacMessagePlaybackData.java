@@ -19,7 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
+import java.util.Calendar;
+
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
  * All the necessary data needed by the {@code DataTransmitThread} to play a
@@ -32,6 +36,9 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 24, 2014  #3286     dgilling     Initial creation
+ * Jul 25, 2014  #3286     dgilling     Add additional methods needed for
+ *                                      sending playback updates to 
+ *                                      CommsManager.
  * 
  * </pre>
  * 
@@ -46,6 +53,29 @@ public final class DacMessagePlaybackData {
     private AudioFileBuffer audio;
 
     private boolean interrupt;
+
+    private boolean firstCallToGet = true;
+
+    public MessagePlaybackStatusNotification get(byte[] dst) {
+        MessagePlaybackStatusNotification playbackStatus = null;
+        if (firstCallToGet) {
+            int playCount = message.getPlayCount() + 1;
+            message.setPlayCount(playCount);
+            Calendar transmitTime = TimeUtil.newGmtCalendar();
+            message.setLastTransmitTime(transmitTime);
+            playbackStatus = new MessagePlaybackStatusNotification(
+                    message.getBroadcastId(), transmitTime, playCount, false,
+                    false, null);
+            firstCallToGet = false;
+        }
+
+        audio.get(dst, 0, dst.length);
+        return playbackStatus;
+    }
+
+    public boolean hasRemaining() {
+        return audio.hasRemaining();
+    }
 
     public DacPlaylistMessage getMessage() {
         return message;
