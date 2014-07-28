@@ -21,15 +21,13 @@
 ##
 
 ##############################################################################
-# Start script for BMH DacTransmit application.
+# Start script for BMH CommsManager application.
 #
 #     SOFTWARE HISTORY
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    07/15/14        3388          dgilling       Initial Creation.
-#    07/17/14        3286          dgilling       Add google guava to classpath.
-#    07/28/14        3399          bsteffen       Build CLASSPATH from DEPENDENCIES.
+#    07/28/14        3399          bsteffen       Initial Creation.
 ##############################################################################
 
 path_to_script=`readlink -f $0`
@@ -42,39 +40,18 @@ export EDEX_HOME="${awips_home}/edex"
 export JAVA_HOME="${awips_home}/java"
 
 # set Java into the path
-export PATH=${awips_home}/bin:${JAVA_HOME}/bin
+export PATH=${awips_home}/bin:${JAVA_HOME}/bin:${PATH}
 
-# determine transmitter group name which will be used for logging purposes
-CAPTURE_NEXT_ARG=
-TRANSMITTER_GROUP=
-for arg in $@
-do
-  case $arg in
-    -g) 
-       CAPTURE_NEXT_ARG=true
-       ;;
-    *) 
-       if [ -n "$CAPTURE_NEXT_ARG" ]; then 
-          TRANSMITTER_GROUP="$arg"
-          CAPTURE_NEXT_ARG=
-       fi
-       ;;
-  esac
-done
-export TRANSMITTER_GROUP
+DEPENDENCIES="ch.qos.logback org.slf4j org.geotools javax.measure org.apache.thrift net.sf.cglib org.apache.qpid javax.jms"
 
-DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j com.google.guava org.geotools javax.measure org.apache.thrift net.sf.cglib org"
-
-ENTRY_POINT="com.raytheon.uf.edex.bmh.dactransmit.DacTransmitMain"
+ENTRY_POINT="com.raytheon.uf.edex.bmh.comms.CommsManager"
 CLASSPATH="${EDEX_HOME}/lib/plugins/*"
 for dependency in $DEPENDENCIES; do
   CLASSPATH="${CLASSPATH}:/awips2/edex/lib/dependencies/${dependency}/*"
 done;
 
 JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
-JVM_PROPS="-Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml"
-
-
+JVM_PROPS="-Duser.timezone=GMT"
 
 java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "$@"
 
