@@ -22,9 +22,11 @@ package com.raytheon.uf.viz.bmh.ui.program;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -35,7 +37,9 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -53,6 +57,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2014  #3174     lvenable     Initial creation
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
+ * Jul 27, 2014  #3420     lvenable     Update to use a relationships button.
  * 
  * </pre>
  * 
@@ -66,6 +71,12 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
     /** Suite table. */
     private AddSuiteTable suiteTable;
+
+    /** Relationship image. */
+    private Image relationshipImg;
+
+    /** More information button. */
+    private Button relationshipBtn;
 
     /**
      * Array of controls so actions can be performed on the set that is in the
@@ -112,6 +123,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
     @Override
     protected void disposed() {
+        relationshipImg.dispose();
     }
 
     @Override
@@ -214,11 +226,20 @@ public class AddSuitesDlg extends CaveSWTDialog {
             suiteTable.setMultipleSelection(false);
         }
 
+        /*
+         * Relationship button
+         */
+        ImageDescriptor id;
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
+                "icons/Relationship.png");
+        relationshipImg = id.createImage();
+
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
-        Button viewBtn = new Button(suiteGroup, SWT.PUSH);
-        viewBtn.setText(" View Suite Information... ");
-        viewBtn.setLayoutData(gd);
-        viewBtn.addSelectionListener(new SelectionAdapter() {
+        relationshipBtn = new Button(suiteGroup, SWT.PUSH);
+        relationshipBtn.setImage(relationshipImg);
+        relationshipBtn.setToolTipText("View suite relationships");
+        relationshipBtn.setLayoutData(gd);
+        relationshipBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 ViewSuiteDlg vsd = new ViewSuiteDlg(shell);

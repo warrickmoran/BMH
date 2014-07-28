@@ -23,11 +23,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -36,7 +36,9 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -62,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 24, 2014  #3433     lvenable     Initial creation
+ * Jul 27, 2014  #3420     lvenable     Updated to use relationship button.
  * 
  * </pre>
  * 
@@ -74,13 +77,16 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
     private SuiteTable suiteTable;
 
     /** More information button. */
-    private Button infoBtn;
+    private Button relationshipBtn;
 
     /** Edit suites button. */
     private Button editSuiteBtn;
 
     /** Rename suite button. */
     private Button renameSuiteBtn;
+
+    /** Relationship image. */
+    private Image relationshipImg;
 
     /**
      * Constructor.
@@ -112,6 +118,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
 
     @Override
     protected void disposed() {
+        relationshipImg.dispose();
     }
 
     @Override
@@ -268,19 +275,18 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
         deleteSuiteBtn.setLayoutData(gd);
 
         /*
-         * Info button
+         * Relationship button
          */
-        ImageData imgData = getDisplay().getSystemImage(SWT.ICON_INFORMATION)
-                .getImageData();
-        Image infoImage = new Image(getDisplay(), imgData.scaledTo(24, 24));
+        ImageDescriptor id;
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
+                "icons/Relationship.png");
+        relationshipImg = id.createImage();
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
-        infoBtn = new Button(suiteControlComp, SWT.PUSH);
-        infoBtn.setImage(infoImage);
-        infoBtn.setToolTipText("View message type relationships");
-        infoBtn.setLayoutData(gd);
-
-        infoImage.dispose();
+        relationshipBtn = new Button(suiteControlComp, SWT.PUSH);
+        relationshipBtn.setImage(relationshipImg);
+        relationshipBtn.setToolTipText("View message type relationships");
+        relationshipBtn.setLayoutData(gd);
     }
 
     /**

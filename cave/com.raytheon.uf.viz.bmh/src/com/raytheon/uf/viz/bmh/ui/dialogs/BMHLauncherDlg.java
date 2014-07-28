@@ -47,6 +47,7 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
@@ -58,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.areas.ListeningAreaDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.zones.ListeningZoneDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypesDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
 import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
@@ -79,6 +81,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 08, 2014   3355     mpduff      Implement legacy dictionary converter
  * Jul 15, 2014  #3387     lvenable    Implemented code for the abstract BMH dialog
  * Jul 17, 2014   3406     mpduff      Added Listening area and zone dialogs
+ * Jul 27, 2014  #3420     lvenable    Added Message types dialog.
  * 
  * </pre>
  * 
@@ -86,9 +89,6 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 public class BMHLauncherDlg extends CaveSWTDialog {
-
-    /** Plugin name. */
-    private final String PLUGIN = "com.raytheon.uf.viz.bmh";
 
     /** Transmitter menu. */
     private Menu transmittersMenu;
@@ -126,10 +126,13 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     /** LDAD config dialog */
     private LdadConfigDlg ldadConfigDlg;
 
+    /** Broadcast Program dialog. */
     private BroadcastProgramDlg broadcastProgDlg;
 
+    /** Suite manager dialog. */
     private SuiteManagerDlg suiteManagerDlg;
 
+    /** Broadcast cycle dialog. */
     private BroadcastCycleDlg broadcastCycleDlg;
 
     /** Listening area configuration dialog */
@@ -137,6 +140,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     /** Listening zone configuration dialog */
     protected ListeningZoneDlg listeningZoneDlg;
+
+    /** Message types dialog. */
+    private MessageTypesDlg messageTypesDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -271,6 +277,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         return false;
     }
 
+    /**
+     * Close all of the dialogs that are open.
+     */
     private void closeDialogs() {
         // Force close the dialogs that may need action before closing.
         for (AbstractBMHDialog abd : dlgsToValidateCloseMap.keySet()) {
@@ -393,7 +402,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         GridData gd = new GridData();
         gd.horizontalIndent = 20;
         Button broadcastCycleBtn = new Button(buttonComp, SWT.PUSH);
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(PLUGIN,
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/BroadcastCycle.png");
         broadcastCycleImg = id.createImage();
         broadcastCycleBtn.setImage(broadcastCycleImg);
@@ -410,7 +419,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
          * Weather Message
          */
         Button weatherMessageBtn = new Button(buttonComp, SWT.PUSH);
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(PLUGIN,
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/WeatherMessage.png");
         weatherMessageImg = id.createImage();
         weatherMessageBtn.setImage(weatherMessageImg);
@@ -425,7 +434,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
          * Emergency Override
          */
         Button emergencyBtn = new Button(buttonComp, SWT.PUSH);
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(PLUGIN,
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/EmergencyOverride.png");
         emergencyOverrideImg = id.createImage();
         emergencyBtn.setImage(emergencyOverrideImg);
@@ -579,7 +588,13 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         messageTypesMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
+                if (messageTypesDlg == null || messageTypesDlg.isDisposed()) {
+                    messageTypesDlg = new MessageTypesDlg(getShell(),
+                            dlgsToValidateCloseMap);
+                    messageTypesDlg.open();
+                } else {
+                    messageTypesDlg.bringToTop();
+                }
             }
         });
 

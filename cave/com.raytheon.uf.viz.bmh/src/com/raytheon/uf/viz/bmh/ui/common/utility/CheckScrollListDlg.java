@@ -19,21 +19,13 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.common.utility;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.ScrolledComposite;
-import org.eclipse.swt.events.ControlAdapter;
-import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
@@ -50,6 +42,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 7, 2014  #3360      lvenable     Initial creation
+ * Jul 27, 2014 #3420      lvenable     Refactor to separate the scrolled check boxes to
+ *                                      another class.
  * 
  * </pre>
  * 
@@ -58,17 +52,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 public class CheckScrollListDlg extends CaveSWTDialog {
 
-    /** Scrolled composite. */
-    private ScrolledComposite scrolledComp;
-
-    /** Button composite holding all of the check boxes. */
-    private Composite checkBtnComp;
-
     /** Class containing check list data. */
     private CheckListData checkListData;
-
-    /** Array of checkbox buttons. */
-    private List<Button> checkboxArray = new ArrayList<Button>();
 
     /** Message text that will be displayed above the list of check boxes. */
     private String msgText;
@@ -84,6 +69,9 @@ public class CheckScrollListDlg extends CaveSWTDialog {
      * shown.
      */
     private boolean showSelectControls = false;
+
+    /** Scrolled composite of check box controls. */
+    private CheckScrollListComp checkScrollListComp;
 
     /**
      * Constructor.
@@ -159,9 +147,7 @@ public class CheckScrollListDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-
         createCheckboxControls();
-        createSelectControls();
         createBottomButtons();
     }
 
@@ -170,94 +156,8 @@ public class CheckScrollListDlg extends CaveSWTDialog {
      */
     private void createCheckboxControls() {
 
-        Composite comp = new Composite(shell, SWT.NONE);
-        comp.setLayout(new GridLayout(1, false));
-        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        comp.setLayoutData(gd);
-
-        Label messageLbl = new Label(comp, SWT.NONE);
-        messageLbl.setText(msgText);
-
-        scrolledComp = new ScrolledComposite(comp, SWT.BORDER | SWT.H_SCROLL
-                | SWT.V_SCROLL);
-        GridLayout gl = new GridLayout(1, false);
-        gl.verticalSpacing = 1;
-        scrolledComp.setLayout(gl);
-
-        gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.widthHint = compWidth;
-        gd.heightHint = compHeight;
-        scrolledComp.setLayoutData(gd);
-
-        checkBtnComp = new Composite(scrolledComp, SWT.NONE);
-        checkBtnComp.setLayout(new GridLayout(1, false));
-        checkBtnComp
-                .setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        Map<String, Boolean> dataMap = checkListData.getDataMap();
-
-        for (String str : dataMap.keySet()) {
-            Button checkBox = new Button(checkBtnComp, SWT.CHECK);
-            checkBox.setText(str);
-            checkBox.setSelection(dataMap.get(str));
-            checkboxArray.add(checkBox);
-        }
-
-        scrolledComp.setExpandHorizontal(true);
-        scrolledComp.setExpandVertical(true);
-        scrolledComp.setContent(checkBtnComp);
-        scrolledComp.addControlListener(new ControlAdapter() {
-            public void controlResized(ControlEvent e) {
-                scrolledComp.setMinSize(checkBtnComp.computeSize(SWT.DEFAULT,
-                        SWT.DEFAULT));
-            }
-        });
-        scrolledComp.layout();
-
-    }
-
-    /**
-     * Create the select/unselect controls.
-     */
-    private void createSelectControls() {
-
-        // Determine if the controls should be displayed.
-        if (!showSelectControls) {
-            return;
-        }
-
-        Composite buttonComp = new Composite(shell, SWT.NONE);
-        buttonComp.setLayout(new GridLayout(2, false));
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
-                false));
-
-        int buttonWidth = 90;
-
-        GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
-        Button selectAllBtn = new Button(buttonComp, SWT.PUSH);
-        selectAllBtn.setText(" Select All ");
-        selectAllBtn.setLayoutData(gd);
-        selectAllBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                selectAll(true);
-            }
-        });
-
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
-        Button unselectAllBtn = new Button(buttonComp, SWT.PUSH);
-        unselectAllBtn.setText(" Unselect All ");
-        unselectAllBtn.setLayoutData(gd);
-        unselectAllBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                selectAll(false);
-            }
-        });
-
-        DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
+        checkScrollListComp = new CheckScrollListComp(shell, msgText,
+                checkListData, showSelectControls, compWidth, compHeight);
     }
 
     /**
@@ -298,26 +198,10 @@ public class CheckScrollListDlg extends CaveSWTDialog {
     }
 
     /**
-     * Select or unselect the controls.
-     * 
-     * @param selected
-     *            True to select all controls, false to unselect.
-     */
-    private void selectAll(boolean selected) {
-        for (Button btn : checkboxArray) {
-            btn.setSelection(selected);
-        }
-    }
-
-    /**
      * Handle the OK button action.
      */
     private void handleOkayAction() {
-        CheckListData cld = new CheckListData();
-
-        for (Button btn : checkboxArray) {
-            cld.addDataItem(btn.getText(), btn.getSelection());
-        }
+        CheckListData cld = checkScrollListComp.getCheckedItems();
 
         setReturnValue(cld);
         close();

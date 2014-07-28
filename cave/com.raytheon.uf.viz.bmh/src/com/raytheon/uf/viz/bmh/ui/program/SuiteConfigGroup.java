@@ -51,6 +51,7 @@ import com.raytheon.uf.viz.bmh.ui.program.CreateEditSuiteDlg.DialogType;
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2014  #3174     lvenable     Initial creation
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
+ * Jul 27, 2014  #3420     lvenable     Code clean up.
  * 
  * </pre>
  * 
@@ -204,9 +205,6 @@ public class SuiteConfigGroup extends Composite {
                 CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
                         .getShell(), DialogType.EDIT, false);
                 csd.open();
-                // NewEditSuiteDlg nsd = new NewEditSuiteDlg(
-                // parentComp.getShell(), ActionType.EDIT);
-                // nsd.open();
             }
         });
 

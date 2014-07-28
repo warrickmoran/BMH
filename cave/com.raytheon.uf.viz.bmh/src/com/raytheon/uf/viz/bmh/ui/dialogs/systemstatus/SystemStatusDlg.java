@@ -37,6 +37,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -49,6 +50,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 23, 2014    3349    mpduff      Initial creation
+ * Jul 27, 2014  #3420     lvenable    Replaced plugin variable.
  * 
  * </pre>
  * 
@@ -57,7 +59,6 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 
 public class SystemStatusDlg extends CaveSWTDialog {
-    private static final String PLUGIN = "com.raytheon.uf.viz.bmh";
 
     /** List of transmitters */
     private List<String> transmitters;
@@ -242,23 +243,23 @@ public class SystemStatusDlg extends CaveSWTDialog {
      */
     private void loadImages() {
         ImageDescriptor id;
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(PLUGIN,
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/checked.xbm");
         checkedIcon = id.createImage();
 
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(PLUGIN,
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/xmit_normal.xpm");
         transmitterNormalIcon = id.createImage();
 
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(PLUGIN,
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/alarm_label.xpm");
         alarmIcon = id.createImage();
 
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(PLUGIN,
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/fep_1.xpm");
         processUpIcon = id.createImage();
 
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(PLUGIN,
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/process_up_label.xpm");
         greenArrowUpIcon = id.createImage();
     }
