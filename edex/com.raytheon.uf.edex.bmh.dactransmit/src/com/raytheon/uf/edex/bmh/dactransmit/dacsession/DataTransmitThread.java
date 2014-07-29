@@ -32,11 +32,11 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IInterruptMessageReceivedHandler;
-import com.raytheon.uf.edex.bmh.dactransmit.playlist.AudioFileBuffer;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.DacMessagePlaybackData;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
@@ -59,6 +59,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  *                                      PlaylistScheduler to feed audio files.
  * Jul 16, 2014  #3286     dgilling     Use event bus.
  * Jul 24, 2014  #3286     dgilling     Support interrupt messages.
+ * Jul 25, 2014  #3286     dgilling     Support sending playback status to
+ *                                      CommsManager.
  * 
  * </pre>
  * 
@@ -148,12 +150,17 @@ public final class DataTransmitThread extends Thread implements
                 // a startup scenario and we had unplayed interrupts to start.
                 playingInterrupt = playbackData.isInterrupt();
 
-                AudioFileBuffer fileBuffer = playbackData.getAudio();
-                while ((fileBuffer.hasRemaining())
+                while ((playbackData.hasRemaining())
                         && (playingInterrupt || interruptsAvailable.get() == 0)) {
                     try {
                         byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
-                        fileBuffer.get(nextPayload);
+                        MessagePlaybackStatusNotification playbackStatus = playbackData
+                                .get(nextPayload);
+                        if (playbackStatus != null) {
+                            logger.debug("Posting playback status update: "
+                                    + playbackStatus.toString());
+                            eventBus.post(playbackStatus);
+                        }
 
                         RtpPacketIn rtpPacket = buildRtpPacket(previousPacket,
                                 nextPayload);
