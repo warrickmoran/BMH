@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -36,8 +38,13 @@ import javax.xml.bind.JAXB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
+import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
  * Cache for {@code PlaylistMessage} objects. Stores the contents of each audio
@@ -53,6 +60,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
  * Jul 14, 2014  #3286     dgilling     Use logback for logging, switch to
  *                                      proper playlist objects.
  * Jul 16, 2014  #3286     dgilling     Add shutdown() to take down executor.
+ * Jul 29, 2014  #3286     dgilling     Add getPlaylist().
  * 
  * </pre>
  * 
@@ -78,7 +86,8 @@ public final class PlaylistMessageCache {
 
     public PlaylistMessageCache(Path messageDirectory) {
         this.messageDirectory = messageDirectory;
-        cacheThreadPool = Executors.newFixedThreadPool(THREAD_POOL_MAX_SIZE);
+        cacheThreadPool = Executors.newFixedThreadPool(THREAD_POOL_MAX_SIZE,
+                new NamedThreadFactory("PlaylistMessageCache"));
         cachedMessages = new ConcurrentHashMap<>();
         cachedFiles = new ConcurrentHashMap<>();
         cacheStatus = new ConcurrentHashMap<>();
@@ -166,7 +175,7 @@ public final class PlaylistMessageCache {
     }
 
     /**
-     * Return the full message fior the given id. If the message has not been
+     * Return the full message for the given id. If the message has not been
      * loaded into the cache this will access the filesystem.
      * 
      * @param id
@@ -183,5 +192,70 @@ public final class PlaylistMessageCache {
             cachedMessages.put(id, message);
         }
         return message;
+    }
+
+    /**
+     * Based on the current time and the amount of time it takes to play each
+     * message, and given a playlist, determine the list of messages that will
+     * be played and when they will be played.
+     * 
+     * @param playlist
+     *            {@code DacPlaylist} which will have a list of all possible
+     *            messages that could be played for this playlist.
+     * @return A {@code PlaylistSwitchNotification} containing the list of valid
+     *         messages or messages predicted to be valid when it comes to be
+     *         their turn for playback.
+     */
+    public PlaylistSwitchNotification getPlaylist(DacPlaylist playlist) {
+        List<MessagePlaybackPrediction> messages = new ArrayList<>();
+
+        long playbackStartTime = TimeUtil.currentTimeMillis();
+        long cycleTime = 0;
+        for (DacPlaylistMessageId messageId : playlist.getMessages()) {
+            DacPlaylistMessage message = getMessage(messageId);
+            /*
+             * ignore start/expire times for interrupt playlists, we just want
+             * to play the message.
+             */
+            if ((playlist.isInterrupt())
+                    || (message.isValid(playbackStartTime))) {
+                /*
+                 * TODO: additional calculations needed here for tones, if
+                 * applicable. May not be applicable if this isn't the first
+                 * time we've played the message or we're in a blackout period.
+                 */
+                long playbackTime = fileSizeToPlayTime(messageId);
+                messages.add(new MessagePlaybackPrediction(messageId
+                        .getBroadcastId(), TimeUtil.newGmtCalendar(new Date(
+                        playbackStartTime))));
+                playbackStartTime += playbackTime;
+                cycleTime += playbackTime;
+            }
+        }
+
+        PlaylistSwitchNotification retVal = new PlaylistSwitchNotification(
+                playlist.getSuite(), playlist.getTransmitterGroup(), messages,
+                cycleTime);
+        return retVal;
+    }
+
+    private long fileSizeToPlayTime(DacPlaylistMessageId messageId) {
+        long fileSize = 0;
+        if (cachedFiles.containsKey(messageId)) {
+            fileSize = cachedFiles.get(messageId).capcity();
+        } else {
+            Path audioFile = FileSystems.getDefault().getPath(
+                    cachedMessages.get(messageId).getSoundFile());
+            try {
+                fileSize = Files.size(audioFile);
+            } catch (Exception e) {
+                logger.error("Unable to retrieve file size for file: "
+                        + audioFile.toString(), e);
+            }
+        }
+
+        /* For ULAW encoded files, 160 bytes = 20 ms of playback time. */
+        long playbackTime = fileSize / 160L * 20L;
+        return playbackTime;
     }
 }

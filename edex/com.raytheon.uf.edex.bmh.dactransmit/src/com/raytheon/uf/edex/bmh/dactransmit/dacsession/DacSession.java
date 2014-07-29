@@ -36,6 +36,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEven
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IShutdownRequestEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistDirectoryObserver;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
+import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
  * Manages a transmission session to the DAC. Class pre-buffers all audio data
@@ -58,6 +59,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
  *                                      shutdown() method.
  * Jul 24, 2014  #3286     dgilling     Fix NullPointerException in 
  *                                      waitForShutdown().
+ * Jul 29, 2014  #3286     dgilling     Use NamedThreadFactory.
  * 
  * </pre>
  * 
@@ -101,7 +103,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
      */
     public DacSession(final DacSessionConfig config) throws IOException {
         this.config = config;
-        this.notificationExecutor = Executors.newSingleThreadExecutor();
+        this.notificationExecutor = Executors
+                .newSingleThreadExecutor(new NamedThreadFactory("EventBus"));
         this.eventBus = new AsyncEventBus("DAC-Transmit", notificationExecutor);
         this.playlistMgr = new PlaylistScheduler(
                 this.config.getInputDirectory(), this.eventBus);

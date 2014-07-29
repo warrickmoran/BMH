@@ -37,7 +37,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 2, 2014   #3286    dgilling     Initial creation
+ * Jul 02, 2014  #3286     dgilling     Initial creation
+ * Jul 29, 2014  #3286     dgilling     Add capacity().
  * 
  * </pre>
  * 
@@ -126,6 +127,15 @@ public final class AudioFileBuffer {
      */
     public boolean hasRemaining() {
         return buffer.hasRemaining();
+    }
+
+    /**
+     * Returns this buffer's capacity.
+     * 
+     * @return The capacity of this buffer
+     */
+    public int capcity() {
+        return buffer.capacity();
     }
 
     private static void checkBounds(int off, int len, int size) {

@@ -190,9 +190,21 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      *         {@code false}.
      */
     public boolean isValid() {
-        long currentTime = TimeUtil.currentTimeMillis();
-        return ((currentTime >= start.getTimeInMillis()) && (currentTime <= expire
-                .getTimeInMillis()));
+        return isValid(TimeUtil.currentTimeMillis());
     }
 
+    /**
+     * Determines whether this is within is valid playback period based on the
+     * specified epoch timestamp.
+     * 
+     * @param currentTime
+     *            Time to use in epoch milliseconds.
+     * @return {@code true}, if the message start time is before the specified
+     *         time and the expire time is after the specified time. Else,
+     *         {@code false}.
+     */
+    public boolean isValid(long currentTime) {
+        return ((currentTime >= start.getTimeInMillis()) && (currentTime < expire
+                .getTimeInMillis()));
+    }
 }

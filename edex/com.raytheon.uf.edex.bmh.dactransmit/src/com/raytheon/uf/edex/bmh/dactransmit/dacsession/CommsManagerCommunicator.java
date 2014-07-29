@@ -24,6 +24,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +42,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
+import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
  * 
@@ -55,6 +59,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Jul 22, 2014  3286     dgilling    Connect to event bus.
  * Jul 25, 2014  3286     dgilling    Support sending message playback updates
  *                                    to CommsManager.
+ * Jul 29, 2014  3286     dgilling    Add dedicated ExecutorService for async
+ *                                    post back of status to CommsManager, set
+ *                                    TCP_NODELAY on IPC socket.
  * 
  * </pre>
  * 
@@ -79,12 +86,17 @@ public final class CommsManagerCommunicator extends Thread {
 
     private final EventBus eventBus;
 
+    private final ExecutorService writerThread;
+
     public CommsManagerCommunicator(int port, String transmitterGroup,
             EventBus eventBus) {
         super("CommsManagerReaderThread");
         this.port = port;
         this.transmitterGroup = transmitterGroup;
         this.eventBus = eventBus;
+        this.writerThread = Executors
+                .newSingleThreadExecutor(new NamedThreadFactory(
+                        "CommsManagerWriterThread"));
     }
 
     @Override
@@ -99,6 +111,7 @@ public final class CommsManagerCommunicator extends Thread {
                     try {
                         // TODO is it ALWAYS localhost.
                         socket = new Socket(commsHost, port);
+                        socket.setTcpNoDelay(true);
                         inputStream = socket.getInputStream();
                         outputStream = socket.getOutputStream();
                     } catch (IOException e) {
@@ -206,16 +219,33 @@ public final class CommsManagerCommunicator extends Thread {
         sendMessageToCommsManager(notification);
     }
 
-    private void sendMessageToCommsManager(Object message) {
+    private void sendMessageToCommsManager(final Object message) {
         if (socket != null) {
-            synchronized (sendLock) {
-                try {
-                    SerializationUtil.transformToThriftUsingStream(message,
-                            socket.getOutputStream());
-                } catch (SerializationException | IOException e) {
-                    logger.error("Error communicating with comms manager", e);
+            Runnable notifyTask = new Runnable() {
+
+                @Override
+                public void run() {
+                    synchronized (sendLock) {
+                        try {
+                            SerializationUtil.transformToThriftUsingStream(
+                                    message, socket.getOutputStream());
+                        } catch (SerializationException | IOException e) {
+                            logger.error(
+                                    "Error communicating with comms manager", e);
+                        }
+                    }
                 }
+            };
+
+            try {
+                writerThread.submit(notifyTask);
+            } catch (RejectedExecutionException e) {
+                logger.error("Could not submit notification task to executor.",
+                        e);
             }
+        } else {
+            logger.warn("Received notification that could not be sent to CommsManager: "
+                    + message.toString());
         }
     }
 }
