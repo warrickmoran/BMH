@@ -47,6 +47,7 @@ import org.eclipse.swt.widgets.TableItem;
  * May 28, 2014   3289      mpduff      Initial creation
  * Jul 14, 2014   #3377     lvenable    Added callback updates.
  * Jul 17, 2014   3406      mpduff      Added updateTable method.
+ * Jul 22, 2014   3411      mpduff      Added PIXEL_BUFFER.
  * 
  * </pre>
  * 
@@ -55,6 +56,11 @@ import org.eclipse.swt.widgets.TableItem;
  */
 
 public abstract class TableComp extends Composite {
+
+    /**
+     * Buffer for table width
+     */
+    private static final int PIXEL_BUFFER = 10;
 
     /**
      * The Table object
@@ -235,8 +241,8 @@ public abstract class TableComp extends Composite {
                 ti.setBackground(i, cellData.getBackgroundColor());
                 ti.setForeground(i, cellData.getForegroundColor());
                 if (!((TableColumnData) columns[i].getData()).isPack()) {
-                    columnWidths[i] = Math.max(gc.stringExtent(ti.getText()).x,
-                            columnWidths[i]);
+                    columnWidths[i] = Math.max(gc.stringExtent(ti.getText()).x
+                            + PIXEL_BUFFER, columnWidths[i]);
                 }
             }
         }
@@ -246,8 +252,9 @@ public abstract class TableComp extends Composite {
             TableColumnData tcd = (TableColumnData) tc.getData();
             if (tcd.isPack()) {
                 tc.pack();
+                tc.setWidth(tc.getWidth() + PIXEL_BUFFER);
             } else {
-                tc.setWidth(columnWidths[index] + 25);
+                tc.setWidth(columnWidths[index] + PIXEL_BUFFER);
             }
             index++;
         }
