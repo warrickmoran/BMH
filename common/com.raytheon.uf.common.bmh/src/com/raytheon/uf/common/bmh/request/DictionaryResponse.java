@@ -19,13 +19,14 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
-import com.raytheon.uf.common.bmh.datamodel.language.Word;
+import java.util.List;
+
+import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * Request object for word queries.
+ * Response object for {@link Dictionary} queries.
  * 
  * <pre>
  * 
@@ -33,8 +34,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 03, 2014    3355    mpduff      Initial creation
- * Jul 27, 2014    3407    mpduff      Added delete action
+ * Jul 18, 2014   3407     mpduff      Initial creation
  * 
  * </pre>
  * 
@@ -42,72 +42,47 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class WordRequest implements IServerRequest {
-
-    public enum WordAction {
-        Save, Query, Delete;
-    }
+public class DictionaryResponse {
 
     /**
-     * Word to Save.
+     * Dictionary names
      */
     @DynamicSerializeElement
-    private Word word;
+    private List<String> dictionaryNames;
 
     /**
-     * Action to perform
+     * The requested dictionary
      */
     @DynamicSerializeElement
-    private WordAction action;
+    private Dictionary dictionary;
 
     /**
-     * Dictionary name
+     * @return the dictionaryNames
      */
-    @DynamicSerializeElement
-    private String dictionaryName;
-
-    /**
-     * @return the word
-     */
-    public Word getWord() {
-        return word;
+    public List<String> getDictionaryNames() {
+        return dictionaryNames;
     }
 
     /**
-     * @param word
-     *            the word to set
+     * @param dictionaryNames
+     *            the dictionaryNames to set
      */
-    public void setWord(Word word) {
-        this.word = word;
+    public void setDictionaryNames(List<String> dictionaryNames) {
+        this.dictionaryNames = dictionaryNames;
     }
 
     /**
-     * @return the action
+     * @return the dictionary
      */
-    public WordAction getAction() {
-        return action;
+    public Dictionary getDictionary() {
+        return dictionary;
     }
 
     /**
-     * @param action
-     *            the action to set
+     * @param dictionary
+     *            the dictionary to set
      */
-    public void setAction(WordAction action) {
-        this.action = action;
-    }
-
-    /**
-     * @return the dictionaryName
-     */
-    public String getDictionaryName() {
-        return dictionaryName;
-    }
-
-    /**
-     * @param dictionaryName
-     *            the dictionaryName to set
-     */
-    public void setDictionaryName(String dictionaryName) {
-        this.dictionaryName = dictionaryName;
+    public void setDictionary(Dictionary dictionary) {
+        this.dictionary = dictionary;
     }
 }

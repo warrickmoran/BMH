@@ -19,12 +19,16 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.request.WordRequest;
+import com.raytheon.uf.common.bmh.request.WordResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.WordDao;
+import com.raytheon.uf.edex.database.DataAccessLayerException;
 import com.raytheon.uf.edex.database.query.DatabaseQuery;
 
 /**
@@ -37,6 +41,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 03, 2014   3355     mpduff      Initial creation
+ * Jul 28, 2014   3407     mpduff      Added delete word
  * 
  * </pre>
  * 
@@ -48,24 +53,59 @@ public class WordHandler implements IRequestHandler<WordRequest> {
 
     @Override
     public Object handleRequest(WordRequest request) throws Exception {
-        WordDao dao = new WordDao();
-
         switch (request.getAction()) {
         case Query:
-            DatabaseQuery query = new DatabaseQuery(Word.class);
-            query.addOrder("word", true);
-            List<?> wordReturnList = dao.queryByCriteria(query);
-            request.setWordList((List<Word>) wordReturnList);
-            request.setStatus(true);
-            break;
+            return queryWord(request);
         case Save:
-            dao.saveOrUpdate(request.getWord());
-            request.setStatus(true);
+            return saveWord(request);
+        case Delete:
+            deleteWord(request);
         default:
             break;
 
         }
 
-        return request;
+        WordResponse response = new WordResponse();
+        return response;
+    }
+
+    private WordResponse queryWord(WordRequest request)
+            throws DataAccessLayerException {
+        WordDao dao = new WordDao();
+        WordResponse response = new WordResponse();
+        DatabaseQuery query = new DatabaseQuery(Word.class);
+        query.addOrder("word", true);
+        List<?> wordReturnList = dao.queryByCriteria(query);
+        response.setWordList((List<Word>) wordReturnList);
+
+        return response;
+    }
+
+    private WordResponse saveWord(WordRequest request) {
+        WordDao dao = new WordDao();
+        WordResponse response = new WordResponse();
+        Word word = request.getWord();
+        if (word.getDictionary() == null) {
+            Dictionary d = new Dictionary();
+            d.setName(request.getDictionaryName());
+            word.setDictionary(d);
+        }
+        dao.saveOrUpdate(request.getWord());
+        List<Word> wordList = new ArrayList<Word>();
+        wordList.add(request.getWord());
+        response.setWordList(wordList);
+        return response;
+    }
+
+    private void deleteWord(WordRequest request) {
+        WordDao dao = new WordDao();
+        Word word = request.getWord();
+        if (word.getDictionary() == null) {
+            Dictionary d = new Dictionary();
+            d.setName(request.getDictionaryName());
+            word.setDictionary(d);
+        }
+
+        dao.delete(word);
     }
 }

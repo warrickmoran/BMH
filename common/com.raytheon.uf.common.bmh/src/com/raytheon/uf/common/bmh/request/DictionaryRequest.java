@@ -36,7 +36,8 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 2, 2014    3355     mpduff      Initial creation
+ * Jul 02, 2014    3355    mpduff      Initial creation
+ * Jul 21, 2014    3407    mpduff      Add delete dictionary action
  * 
  * </pre>
  * 
@@ -47,7 +48,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 public class DictionaryRequest implements IServerRequest {
 
     public enum DictionaryAction {
-        Save, ListNames, QueryByName;
+        Save, ListNames, QueryByName, Delete;
     }
 
     @DynamicSerializeElement
@@ -58,19 +59,13 @@ public class DictionaryRequest implements IServerRequest {
 
     /** Name of the dictionary to query for */
     @DynamicSerializeElement
-    private String queryName;
+    private String dictionaryName;
 
     @DynamicSerializeElement
     private Dictionary dictionary;
 
     @DynamicSerializeElement
     private List<String> dictionaryNames;
-
-    /**
-     * Status of action, true for success, false for fail
-     */
-    @DynamicSerializeElement
-    private boolean status = false;
 
     /**
      * @return the dictionaryList
@@ -105,31 +100,16 @@ public class DictionaryRequest implements IServerRequest {
     /**
      * @return the queryName
      */
-    public String getQueryName() {
-        return queryName;
+    public String getDictionaryName() {
+        return dictionaryName;
     }
 
     /**
      * @param queryName
      *            the queryName to set
      */
-    public void setQueryName(String queryName) {
-        this.queryName = queryName;
-    }
-
-    /**
-     * @return the status
-     */
-    public boolean isStatus() {
-        return status;
-    }
-
-    /**
-     * @param status
-     *            the status to set
-     */
-    public void setStatus(boolean status) {
-        this.status = status;
+    public void setDictionaryName(String dictionaryName) {
+        this.dictionaryName = dictionaryName;
     }
 
     /**

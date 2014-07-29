@@ -31,6 +31,7 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * 05/27/2014      3289    mpduff      Initial Version.
+ * 07/28/2014      3407    mpduff      Added remove row method.
  * </pre>
  */
 public class TableData implements ISortColumn {
@@ -151,6 +152,16 @@ public class TableData implements ISortColumn {
         }
 
         return false;
+    }
+
+    /**
+     * Delete a {@link TableRowData}.
+     * 
+     * @param TableRowData
+     *            The row to delete
+     */
+    public boolean deleteRow(TableRowData row) {
+        return tableRows.remove(row);
     }
 
     /**

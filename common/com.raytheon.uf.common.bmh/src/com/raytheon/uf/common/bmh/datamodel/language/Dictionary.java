@@ -50,6 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014 3175       rjpeter     Initial creation
  * Jul 08, 2014 3302       bkowal      Use eager fetching to eliminate session closed
  * Jul 08, 2014 3355       mpduff      Updated mappings between dictionary and words
+ * Jul 29, 2014 3407       mpduff      Removed orphanRemoval from words field, added toString()
  * 
  * </pre>
  * 
@@ -74,7 +75,7 @@ public class Dictionary {
     @DynamicSerializeElement
     private Language language = Language.ENGLISH;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "dictionary", fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "dictionary", fetch = FetchType.EAGER)
     @DynamicSerializeElement
     private Set<Word> words;
 
@@ -139,5 +140,15 @@ public class Dictionary {
         }
 
         return null;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        return "Dictionary [name=" + name + ", language=" + language + "]";
     }
 }

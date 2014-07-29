@@ -21,14 +21,14 @@ package com.raytheon.uf.edex.bmh.handler;
 
 import java.util.List;
 
-import org.springframework.dao.DataAccessException;
-
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest;
+import com.raytheon.uf.common.bmh.request.DictionaryResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
+import com.raytheon.uf.edex.database.DataAccessLayerException;
 import com.raytheon.uf.edex.database.query.DatabaseQuery;
 
 /**
@@ -41,6 +41,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 02, 2014   3355     mpduff      Initial creation
+ * Jul 21, 2014   3407     mpduff      Added delete dictionary action
  * 
  * </pre>
  * 
@@ -54,37 +55,69 @@ public class DictionaryHandler implements IRequestHandler<DictionaryRequest> {
 
     @Override
     public Object handleRequest(DictionaryRequest request) throws Exception {
-        DictionaryDao dao = new DictionaryDao();
+        DictionaryResponse response = new DictionaryResponse();
 
         switch (request.getAction()) {
         case ListNames:
-            List<String> names = dao.getDictionaryNames();
-            request.setDictionaryNames(names);
-            request.setStatus(true);
+            response = getNames(request);
             break;
         case QueryByName:
-            DatabaseQuery query = new DatabaseQuery(Dictionary.class);
-            query.addQueryParam("name", request.getQueryName());
-            List<?> dictReturnList = dao.queryByCriteria(query);
-            if (dictReturnList != null) {
-                request.setDictionary((Dictionary) dictReturnList.get(0));
-                request.setStatus(true);
-            }
+            response = getDictionaryByName(request);
             break;
         case Save:
-            try {
-                dao.saveOrUpdate(request.getDictionary());
-                request.setStatus(true);
-            } catch (DataAccessException e) {
-                statusHandler.error("Error saving dictionary", e);
-                request.setStatus(false);
-            }
+            response = saveDictionary(request);
+            break;
+        case Delete:
+            deleteDictionary(request);
             break;
         default:
             break;
 
         }
 
-        return request;
+        return response;
+    }
+
+    private DictionaryResponse getNames(DictionaryRequest request) {
+        DictionaryDao dao = new DictionaryDao();
+        List<String> names = dao.getDictionaryNames();
+        DictionaryResponse response = new DictionaryResponse();
+        response.setDictionaryNames(names);
+
+        return response;
+    }
+
+    private DictionaryResponse getDictionaryByName(DictionaryRequest request)
+            throws DataAccessLayerException {
+        DictionaryDao dao = new DictionaryDao();
+        DictionaryResponse response = new DictionaryResponse();
+        DatabaseQuery query = new DatabaseQuery(Dictionary.class);
+        query.addQueryParam("name", request.getDictionaryName());
+
+        List<?> dictReturnList;
+        dictReturnList = dao.queryByCriteria(query);
+        if (dictReturnList != null) {
+            response.setDictionary((Dictionary) dictReturnList.get(0));
+        }
+
+        return response;
+    }
+
+    private DictionaryResponse saveDictionary(DictionaryRequest request) {
+        DictionaryResponse response = new DictionaryResponse();
+        DictionaryDao dao = new DictionaryDao();
+        dao.saveOrUpdate(request.getDictionary());
+        response.setDictionary(request.getDictionary());
+
+        return response;
+    }
+
+    private void deleteDictionary(DictionaryRequest request)
+            throws DataAccessLayerException {
+        DictionaryResponse response = getDictionaryByName(request);
+        if (response.getDictionary() != null) {
+            DictionaryDao dao = new DictionaryDao();
+            dao.delete(response.getDictionary());
+        }
     }
 }

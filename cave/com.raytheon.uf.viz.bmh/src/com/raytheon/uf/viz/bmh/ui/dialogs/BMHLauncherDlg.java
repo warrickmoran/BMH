@@ -55,6 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dict.DictionaryManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.areas.ListeningAreaDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.zones.ListeningZoneDlg;
@@ -81,6 +82,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 08, 2014   3355     mpduff      Implement legacy dictionary converter
  * Jul 15, 2014  #3387     lvenable    Implemented code for the abstract BMH dialog
  * Jul 17, 2014   3406     mpduff      Added Listening area and zone dialogs
+ * Jul 21, 2014   3407     mpduff      Added DictionaryManagerDlg
  * Jul 27, 2014  #3420     lvenable    Added Message types dialog.
  * 
  * </pre>
@@ -143,6 +145,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     /** Message types dialog. */
     private MessageTypesDlg messageTypesDlg;
+
+    /** Dictionary Manager Dialog */
+    private DictionaryManagerDlg dictManagerDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -696,6 +701,18 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         });
 
         /*
+         * Dictionary Manager Dialog
+         */
+        MenuItem dictionaryManagerMI = new MenuItem(maintenanceMenu, SWT.PUSH);
+        dictionaryManagerMI.setText("Manage Dictionaries...");
+        dictionaryManagerMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                launchDictionaryManager();
+            }
+        });
+
+        /*
          * Convert Legacy Dictionary
          */
         MenuItem convertDictMI = new MenuItem(maintenanceMenu, SWT.PUSH);
@@ -724,6 +741,19 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         pt = comp.toDisplay(pt);
         menu.setLocation(pt.x, pt.y);
         menu.setVisible(true);
+    }
+
+    /**
+     * Launch the {@link DictionaryManagerDlg}
+     */
+    private void launchDictionaryManager() {
+        if (this.dictManagerDlg == null || this.dictManagerDlg.isDisposed()) {
+            dictManagerDlg = new DictionaryManagerDlg(shell,
+                    this.dlgsToValidateCloseMap);
+            dictManagerDlg.open();
+        } else {
+            dictManagerDlg.bringToTop();
+        }
     }
 
     /**
