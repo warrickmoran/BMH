@@ -56,6 +56,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.NewDictionaryDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.PronunciationBuilderDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter.WordType;
@@ -73,6 +74,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2014     3355   mpduff      Initial creation
+ * Jul 21, 2014     3407   mpduff      Removed unneeded parameter to 
+ *                                     PronunciationBuilderDlg
  * 
  * </pre>
  * 
@@ -609,8 +612,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
                 this.legacyValueLbl.getText());
 
         this.pronunciationBuilderDlg = new PronunciationBuilderDlg(getShell(),
-                wordValueLbl.getText(), phoneme,
-                WordType.getWordType(this.wordTypeCombo.getText()));
+                wordValueLbl.getText(), phoneme);
         neoPhoneme = (String) pronunciationBuilderDlg.open();
         if (neoPhoneme != null) {
             neoValueTxt.setText(neoPhoneme);
@@ -632,13 +634,21 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
      * Save the converted word.
      */
     private void saveWord() {
+        if (dictCombo.getText().length() == 0) {
+            String message = "A destination dictionary must be selected via the\n"
+                    + "\"Save to Dictionary selection\".";
+            DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
+                    "Choose Dictionary", message);
+            return;
+        }
         Word word = new Word();
         word.setWord(selectedWord);
         word.setSubstitute(neoPhoneme);
-        word.setDynamic(false);
+
+        selectedDictionary.getWords().add(word);
 
         try {
-            dictionaryManager.saveWord(word, dictCombo.getText());
+            dictionaryManager.saveDictionary(selectedDictionary);
             for (TableRowData row : tableData.getTableRows()) {
                 if (selectedWord.equalsIgnoreCase(row.getTableCellData().get(1)
                         .getCellText())) {
@@ -680,6 +690,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
             super(parent, tableStyle, true, true);
         }
 
+        @Override
         public void select(int selectedIndex) {
             table.select(selectedIndex);
             table.showSelection();
@@ -698,6 +709,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
             tableSelectionAction(tableItems[0]);
         }
 
+        @Override
         public void updateTable(TableData tableData) {
             table.removeAll();
 

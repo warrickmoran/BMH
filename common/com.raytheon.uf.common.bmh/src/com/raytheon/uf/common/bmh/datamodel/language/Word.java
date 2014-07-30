@@ -44,6 +44,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
  * Jul 03, 2014            mpduff      Add dynamic column and unique constraints.
+ * Jul 29, 2014  3407      mpduff      Removed HashCode and Equals methods, removed dynamic column
  * 
  * </pre>
  * 
@@ -73,10 +74,6 @@ public class Word {
     @Column(columnDefinition = "TEXT", nullable = false)
     @DynamicSerializeElement
     private String substitute;
-
-    @Column
-    @DynamicSerializeElement
-    private boolean dynamic;
 
     /** An identifier used to link this Word to its Dictionary */
     @ManyToOne
@@ -111,15 +108,7 @@ public class Word {
      * @return the dynamic
      */
     public boolean isDynamic() {
-        return dynamic;
-    }
-
-    /**
-     * @param dynamic
-     *            the dynamic to set
-     */
-    public void setDynamic(boolean dynamic) {
-        this.dynamic = dynamic;
+        return word.contains(DYNAMIC_NUMERIC_CHAR);
     }
 
     /**
@@ -140,53 +129,11 @@ public class Word {
     /*
      * (non-Javadoc)
      * 
-     * @see java.lang.Object#hashCode()
+     * @see java.lang.Object#toString()
      */
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (dynamic ? 1231 : 1237);
-        result = prime * result
-                + ((substitute == null) ? 0 : substitute.hashCode());
-        result = prime * result + ((word == null) ? 0 : word.hashCode());
-        return result;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        Word other = (Word) obj;
-        if (dynamic != other.dynamic) {
-            return false;
-        }
-        if (substitute == null) {
-            if (other.substitute != null) {
-                return false;
-            }
-        } else if (!substitute.equals(other.substitute)) {
-            return false;
-        }
-        if (word == null) {
-            if (other.word != null) {
-                return false;
-            }
-        } else if (!word.equals(other.word)) {
-            return false;
-        }
-        return true;
+    public String toString() {
+        return "Word [id=" + id + ", word=" + word + ", substitute="
+                + substitute + ", dictionary=" + dictionary.getName() + "]";
     }
 }

@@ -49,7 +49,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.BuilderComposite.BuilderType;
-import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter.WordType;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyPhonemeParser;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.ParsedPhoneme;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.ParsedPhoneme.ParseType;
@@ -65,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 25, 2014    3355    mpduff      Initial creation
+ * Jul 21, 2014    3407    mpduff      Removed unused variable
  * 
  * </pre>
  * 
@@ -126,8 +126,6 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
      */
     private final List<Button> addBtnList = new ArrayList<Button>();
 
-    private final WordType wordType;
-
     /**
      * Constructor.
      * 
@@ -137,7 +135,7 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
      *            Word
      */
     public PronunciationBuilderDlg(Shell parentShell, String word) {
-        this(parentShell, word, null, null);
+        this(parentShell, word, null);
     }
 
     /**
@@ -153,14 +151,13 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
      *            WordType
      */
     public PronunciationBuilderDlg(Shell parentShell, String word,
-            String phoneme, WordType wordType) {
+            String phoneme) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT);
         this.word = word;
         if (phoneme != null) {
             phoneme = phoneme.trim();
         }
         this.inputPhoneme = phoneme;
-        this.wordType = wordType;
 
         setText("Pronunciation Builder");
         try {

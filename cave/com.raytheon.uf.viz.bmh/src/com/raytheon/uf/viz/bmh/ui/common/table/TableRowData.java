@@ -33,11 +33,15 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * 05/27/2014      3289    mpduff      Initial Version.
+ * 07/29/2014      3407    mpduff      Added data field to store backing object
  * </pre>
  */
 public class TableRowData implements Comparable<TableRowData> {
     /** Unique id */
     private final UUID uuid = UUID.randomUUID();
+
+    /** Data object backing this row */
+    private Object data;
 
     /** Sort callback object */
     private ISortColumn sortCB;
@@ -142,6 +146,21 @@ public class TableRowData implements Comparable<TableRowData> {
         if (index >= 0 && index < rowCells.size()) {
             rowCells.get(index).setDataFromString(data);
         }
+    }
+
+    /**
+     * @return the data
+     */
+    public Object getData() {
+        return data;
+    }
+
+    /**
+     * @param data
+     *            the data to set
+     */
+    public void setData(Object data) {
+        this.data = data;
     }
 
     @Override
