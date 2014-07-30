@@ -29,7 +29,6 @@ import java.nio.file.WatchService;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -39,6 +38,7 @@ import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
  * Watches this DacTransmit application's playlist directory for new playlist to
@@ -52,6 +52,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014  #3286     dgilling     Initial creation
+ * Jul 29, 2014  #3286     dgilling     Use NamedThreadFactory.
  * 
  * </pre>
  * 
@@ -86,13 +87,8 @@ public class PlaylistDirectoryObserver {
             throws IOException {
         this.eventBus = eventBus;
         this.threadPool = Executors
-                .newSingleThreadExecutor(new ThreadFactory() {
-
-                    @Override
-                    public Thread newThread(Runnable r) {
-                        return new Thread(r, "PlaylistDirectoryObserver");
-                    }
-                });
+                .newSingleThreadExecutor(new NamedThreadFactory(
+                        "PlaylistDirectoryObserver"));
         this.watchService = FileSystems.getDefault().newWatchService();
         playlistDirectory.register(this.watchService,
                 StandardWatchEventKinds.ENTRY_CREATE);

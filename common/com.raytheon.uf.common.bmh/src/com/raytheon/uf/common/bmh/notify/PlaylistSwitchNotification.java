@@ -19,8 +19,10 @@
  **/
 package com.raytheon.uf.common.bmh.notify;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -54,8 +56,11 @@ public class PlaylistSwitchNotification {
     @DynamicSerializeElement
     private List<MessagePlaybackPrediction> messages;
 
+    /**
+     * Total time to play all messages in {@code messages}, measured in ms.
+     */
     @DynamicSerializeElement
-    private int playbackCycleTime;
+    private long playbackCycleTime;
 
     public PlaylistSwitchNotification() {
         // empty constructor for serialization support
@@ -63,7 +68,7 @@ public class PlaylistSwitchNotification {
 
     public PlaylistSwitchNotification(String suiteName,
             String transmitterGroup, List<MessagePlaybackPrediction> messages,
-            int playbackCycleTime) {
+            long playbackCycleTime) {
         this.suiteName = suiteName;
         this.transmitterGroup = transmitterGroup;
         this.messages = messages;
@@ -79,6 +84,14 @@ public class PlaylistSwitchNotification {
         builder.append(transmitterGroup);
         builder.append("]");
         return builder.toString();
+    }
+
+    public List<DacPlaylistMessageId> getMessageIds() {
+        List<DacPlaylistMessageId> retVal = new ArrayList<>(messages.size());
+        for (MessagePlaybackPrediction message : messages) {
+            retVal.add(new DacPlaylistMessageId(message.getBroadcastId()));
+        }
+        return retVal;
     }
 
     public String getSuiteName() {
@@ -105,11 +118,11 @@ public class PlaylistSwitchNotification {
         this.messages = messages;
     }
 
-    public int getPlaybackCycleTime() {
+    public long getPlaybackCycleTime() {
         return playbackCycleTime;
     }
 
-    public void setPlaybackCycleTime(int playbackCycleTime) {
+    public void setPlaybackCycleTime(long playbackCycleTime) {
         this.playbackCycleTime = playbackCycleTime;
     }
 }
