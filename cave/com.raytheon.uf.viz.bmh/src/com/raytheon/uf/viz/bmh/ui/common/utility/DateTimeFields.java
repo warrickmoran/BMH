@@ -53,6 +53,8 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 3, 2014    3431     mpduff      Initial creation
+ * Jul 29, 2014  #3420     lvenable    Added capability to enable/disable controls and to
+ *                                     retrieve the data from the controls..
  * 
  * </pre>
  * 
@@ -135,7 +137,9 @@ public class DateTimeFields extends Composite {
      */
     private void init() {
         GridLayout gl = new GridLayout(1, false);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gl.marginHeight = 0;
+        gl.marginWidth = 0;
+        GridData gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
         this.setLayout(gl);
         this.setLayoutData(gd);
 
@@ -332,6 +336,34 @@ public class DateTimeFields extends Composite {
 
         // for debugging
         System.out.println(calendar.getTime());
+    }
+
+    /**
+     * Get the values from the spinner controls. They are mapped to the
+     * DateFieldType.
+     * 
+     * @return Map of DateFieldType to values.
+     */
+    public Map<DateFieldType, Integer> getDateTimeValues() {
+        Map<DateFieldType, Integer> valueMap = new HashMap<DateFieldType, Integer>();
+
+        for (DateFieldType dft : spinners.keySet()) {
+            valueMap.put(dft, spinners.get(dft).getSelection());
+        }
+
+        return valueMap;
+    }
+
+    /**
+     * Enable or disable the spinner controls.
+     * 
+     * @param enable
+     *            True to enable, false to disable.
+     */
+    public void enableControls(boolean enable) {
+        for (DateFieldType dft : spinners.keySet()) {
+            spinners.get(dft).setEnabled(enable);
+        }
     }
 
     public static void main(String[] args) {

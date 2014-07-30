@@ -43,7 +43,10 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.CreateEditMsgTypesDlg.DialogType;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * Main dialog to manage the message types.
@@ -71,6 +74,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
 
     /** Button to edit the selected message type. */
     private Button editBtn;
+
+    /** Button to rename the selected message type. */
+    private Button renameBtn;
 
     /** Button to show the relationship between message types, suites, etc. */
     private Button relationshipBtn;
@@ -146,7 +152,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
          * Create the action buttons for the table.
          */
         Composite buttonComp = new Composite(msgAvailableGrp, SWT.NONE);
-        gl = new GridLayout(4, false);
+        gl = new GridLayout(5, false);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         buttonComp.setLayout(gl);
         buttonComp.setLayoutData(gd);
@@ -155,12 +161,40 @@ public class MessageTypesDlg extends AbstractBMHDialog {
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
         gd.widthHint = buttonWidth;
-        Button addBtn = new Button(buttonComp, SWT.PUSH);
-        addBtn.setText("Add...");
-        addBtn.setLayoutData(gd);
-        addBtn.addSelectionListener(new SelectionAdapter() {
+        Button newBtn = new Button(buttonComp, SWT.PUSH);
+        newBtn.setText("New...");
+        newBtn.setLayoutData(gd);
+        newBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                CreateEditMsgTypesDlg cemd = new CreateEditMsgTypesDlg(shell,
+                        DialogType.CREATE);
+                cemd.open();
+            }
+        });
+
+        gd = new GridData(SWT.CENTER, SWT.CENTER, false, true);
+        gd.widthHint = buttonWidth;
+        renameBtn = new Button(buttonComp, SWT.PUSH);
+        renameBtn.setText("Rename...");
+        renameBtn.setLayoutData(gd);
+        renameBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                InputTextDlg inputDlg = new InputTextDlg(shell,
+                        "Rename Message Type",
+                        "Type in a new message type name:");
+                inputDlg.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        if (returnValue != null
+                                && returnValue instanceof String) {
+                            String name = (String) returnValue;
+                            System.out.println("Name = " + name);
+                        }
+                    }
+                });
+                inputDlg.open();
             }
         });
 
@@ -172,6 +206,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         editBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                CreateEditMsgTypesDlg cemd = new CreateEditMsgTypesDlg(shell,
+                        DialogType.EDIT);
+                cemd.open();
             }
         });
 
@@ -197,6 +234,14 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         relationshipBtn = new Button(buttonComp, SWT.PUSH);
         relationshipBtn.setImage(relationshipImg);
         relationshipBtn.setToolTipText("View message type relationships");
+        relationshipBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                ViewMessageTypeDlg viewMessageTypeInfo = new ViewMessageTypeDlg(
+                        shell);
+                viewMessageTypeInfo.open();
+            }
+        });
     }
 
     /**

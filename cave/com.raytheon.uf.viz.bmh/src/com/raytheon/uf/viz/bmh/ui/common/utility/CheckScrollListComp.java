@@ -54,13 +54,10 @@ import org.eclipse.swt.widgets.Label;
  */
 public class CheckScrollListComp extends Composite {
 
-    /** Parent composite. */
-    private Composite parentComp;
-
     /** Class containing check list data. */
     private CheckListData checkListData;
 
-    /** Array of checkbox buttons. */
+    /** Array of check box buttons. */
     private List<Button> checkboxArray = new ArrayList<Button>();
 
     /** Width of the scrolled composite. */
@@ -105,7 +102,6 @@ public class CheckScrollListComp extends Composite {
             int height) {
         super(parentComp, SWT.NONE);
 
-        this.parentComp = parentComp;
         this.checkListData = checkListData;
 
         this.showSelectControls = showSelectControls;
@@ -208,7 +204,6 @@ public class CheckScrollListComp extends Composite {
             }
         });
 
-        DialogUtility.addSeparator(parentComp.getShell(), SWT.HORIZONTAL);
     }
 
     /**

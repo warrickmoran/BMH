@@ -148,6 +148,7 @@ public class CheckScrollListDlg extends CaveSWTDialog {
     @Override
     protected void initializeComponents(Shell shell) {
         createCheckboxControls();
+        DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
         createBottomButtons();
     }
 
