@@ -34,6 +34,7 @@ import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.jms.notification.JmsNotificationManager;
@@ -52,6 +53,7 @@ import com.raytheon.uf.edex.bmh.comms.config.CommsConfig;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 25, 2014  3399     bsteffen    Initial creation
+ * Jul 31, 2014  3286     dgilling    Wire up DacHardwareStatusNotification.
  * 
  * </pre>
  * 
@@ -80,6 +82,10 @@ public class JmsCommunicator extends JmsNotificationManager {
     }
 
     public void sendStatus(MessagePlaybackStatusNotification notification) {
+        sendStatusInternal(notification);
+    }
+
+    public void sendStatus(DacHardwareStatusNotification notification) {
         sendStatusInternal(notification);
     }
 
@@ -166,5 +172,4 @@ public class JmsCommunicator extends JmsNotificationManager {
             }
         }
     }
-
 }

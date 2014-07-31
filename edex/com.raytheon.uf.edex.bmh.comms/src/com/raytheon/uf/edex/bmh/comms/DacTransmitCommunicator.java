@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
@@ -47,6 +48,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Jul 25, 2014  3286     dgilling    Support MessagePlaybackStatusNotification
  *                                    and PlaylistSwitchNotification messages 
  *                                    from DacTransmit.
+ * Jul 31, 2014  3286     dgilling    Support DacHardwareStatusNotification.
  * 
  * </pre>
  * 
@@ -107,6 +109,10 @@ public class DacTransmitCommunicator extends Thread {
             PlaylistSwitchNotification notification = (PlaylistSwitchNotification) message;
             notification.setTransmitterGroup(groupName);
             manager.playlistSwitched(notification);
+        } else if (message instanceof DacHardwareStatusNotification) {
+            DacHardwareStatusNotification notification = (DacHardwareStatusNotification) message;
+            notification.setTransmitterGroup(groupName);
+            manager.hardwareStatusArrived(notification);
         } else if (message instanceof DacTransmitShutdown) {
             disconnect();
         } else {

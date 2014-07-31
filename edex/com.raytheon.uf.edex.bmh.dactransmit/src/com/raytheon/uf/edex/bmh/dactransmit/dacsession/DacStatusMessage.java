@@ -24,6 +24,9 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.primitives.Ints;
+import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
+import com.raytheon.uf.common.bmh.notify.DacVoiceStatus;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusException;
 
 /**
@@ -46,6 +49,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * ------------ ---------- ----------- --------------------------
  * Jul 01, 2014  #3286     dgilling     Initial creation
  * Jul 14, 2014  #3286     dgilling     Used logback for logging.
+ * Jul 31, 2014  #3286     dgilling     Send DAC status back to CommsManager.
  * 
  * </pre>
  * 
@@ -228,44 +232,164 @@ public final class DacStatusMessage {
     }
 
     /**
-     * Validates this status message against the given {@code DacSessionConfig}.
-     * If any inconsistencies are found, they will be logged.
+     * Validates this status message against the given {@code DacSessionConfig}
+     * and a copy of the previous status message. If any inconsistencies are
+     * found, they will be logged.
      * 
      * @param sessionConfig
      *            The configuration information for this session.
+     * @param previous
+     *            The copy of the last status message received. Any important
+     *            differences between the 2 statuses will cause an error to be
+     *            logged.
+     * @return If significant conditions were found or a change was noted
+     *         between this and the previous state, a
+     *         {@code DacHardwareStatusNotification} will be generated to send
+     *         back to the CommsManager.
      */
-    public void validateStatus(final DacSessionConfig sessionConfig) {
-        if (Double.isNaN(psu1Voltage)) {
-            logger.error("DAC Power Supply 1 is offline.");
+    public DacHardwareStatusNotification validateStatus(
+            final DacSessionConfig sessionConfig,
+            final DacStatusMessage previous) {
+        /*
+         * TODO this code needs configurable thresholds for some of the settings
+         * to determine whether or not errors get logged/status reported back to
+         * CommsManager.
+         */
+
+        boolean reportStatus = false;
+
+        /* Always report the first status message to establish a baseline. */
+        if (previous == null) {
+            reportStatus = true;
         }
 
-        if (Double.isNaN(psu2Voltage)) {
-            logger.error("DAC Power Supply 2 is offline.");
+        if (previous != null) {
+            boolean psu1Okay = !Double.isNaN(psu1Voltage);
+            boolean psu2Okay = !Double.isNaN(psu2Voltage);
+            boolean prevPsu1Okay = !Double.isNaN(previous.psu1Voltage);
+            boolean prevPsu2Okay = !Double.isNaN(previous.psu2Voltage);
+
+            if (psu1Okay != prevPsu1Okay) {
+                if (!psu1Okay) {
+                    logger.error("DAC Power Supply 1 is offline.");
+                } else {
+                    logger.info("DAC Power Supply 1 is back online.");
+                }
+                reportStatus = true;
+            }
+
+            if (psu2Okay != prevPsu2Okay) {
+                if (!psu2Okay) {
+                    logger.error("DAC Power Supply 2 is offline.");
+                } else {
+                    logger.info("DAC Power Supply 2 is back online.");
+                }
+                reportStatus = true;
+            }
+
+            boolean alertPrevBuffer = (previous.bufferSize <= DataTransmitConstants.ALERT_LOW_PACKETS_IN_BUFFER)
+                    || (previous.bufferSize >= DataTransmitConstants.ALERT_HIGH_PACKETS_IN_BUFFER);
+            boolean alertCurrentBuffer = (bufferSize <= DataTransmitConstants.ALERT_LOW_PACKETS_IN_BUFFER)
+                    || (bufferSize >= DataTransmitConstants.ALERT_HIGH_PACKETS_IN_BUFFER);
+            if (alertCurrentBuffer != alertPrevBuffer) {
+                if (!alertCurrentBuffer) {
+                    logger.error("DAC's jitter buffer size is outside acceptable thresholds. Current reading is: "
+                            + bufferSize);
+                } else {
+                    logger.info("DAC's jitter buffer size back within acceptable thresholds.");
+                }
+                reportStatus = true;
+            }
+
+            if (recoverablePacketErrors != previous.recoverablePacketErrors) {
+                int delta = recoverablePacketErrors
+                        - previous.recoverablePacketErrors;
+                logger.warn("Detected "
+                        + delta
+                        + " new recoverable packet errors in this session since the last status update.");
+                reportStatus = true;
+            }
+
+            if (unrecoverablePacketErrors != previous.unrecoverablePacketErrors) {
+                int delta = unrecoverablePacketErrors
+                        - previous.unrecoverablePacketErrors;
+                logger.error("Detected "
+                        + delta
+                        + " new unrecoverable packet errors in this session since the last status update.");
+                reportStatus = true;
+            }
+        } else {
+            if (Double.isNaN(psu1Voltage)) {
+                logger.error("DAC Power Supply 1 is offline.");
+            }
+
+            if (Double.isNaN(psu2Voltage)) {
+                logger.error("DAC Power Supply 2 is offline.");
+            }
+
+            if ((bufferSize <= DataTransmitConstants.ALERT_LOW_PACKETS_IN_BUFFER)
+                    || (bufferSize >= DataTransmitConstants.ALERT_HIGH_PACKETS_IN_BUFFER)) {
+                logger.error("DAC's jitter buffer size is outside acceptable thresholds. Current reading is: "
+                        + bufferSize);
+            }
+
+            if (recoverablePacketErrors > 0) {
+                logger.warn("Detected " + recoverablePacketErrors
+                        + " recoverable packet errors in this session.");
+            }
+
+            if (unrecoverablePacketErrors > 0) {
+                logger.error("Detected " + unrecoverablePacketErrors
+                        + " unrecoverable packet errors in this session.");
+            }
         }
 
         for (Integer channelNumber : sessionConfig.getTransmitters()) {
             int index = channelNumber - 1;
 
-            // TODO: we should check output gain for our destination
-            // transmitters. However, what are the acceptable and unacceptable
-            // threshold of values for that setting?
-
-            if (voiceStatus[index] != DacVoiceStatus.IP_AUDIO) {
-                logger.warn("DAC channel "
-                        + channelNumber
-                        + " doesn't appear to be receiving audio broadcast stream. Reporting voice status of "
-                        + voiceStatus[index]);
+            if (previous != null) {
+                if (voiceStatus[index] != previous.voiceStatus[index]) {
+                    if (voiceStatus[index] == DacVoiceStatus.IP_AUDIO) {
+                        logger.info("DAC channel " + channelNumber
+                                + " has resumed broadcasting IP audio.");
+                    } else {
+                        logger.warn("DAC channel "
+                                + channelNumber
+                                + " appears to have stopped broadcasting IP audio stream. Reporting voice status of "
+                                + voiceStatus[index]);
+                    }
+                    reportStatus = true;
+                }
+            } else {
+                if (voiceStatus[index] != DacVoiceStatus.IP_AUDIO) {
+                    logger.warn("DAC channel "
+                            + channelNumber
+                            + " doesn't appear to be receiving audio broadcast stream. Reporting voice status of "
+                            + voiceStatus[index]);
+                }
             }
         }
 
-        if (recoverablePacketErrors > 0) {
-            logger.warn("Detected " + recoverablePacketErrors
-                    + " recoverable packet errors in this session.");
+        DacHardwareStatusNotification notify = reportStatus ? buildNotification(sessionConfig)
+                : null;
+        return notify;
+    }
+
+    private DacHardwareStatusNotification buildNotification(
+            final DacSessionConfig sessionConfig) {
+        int[] validChannels = Ints.toArray(sessionConfig.getTransmitters());
+
+        double[] gainValues = new double[validChannels.length];
+        DacVoiceStatus[] voiceValues = new DacVoiceStatus[validChannels.length];
+        for (int i = 0; i < validChannels.length; i++) {
+            int index = validChannels[i] - 1;
+            gainValues[i] = outputGain[index];
+            voiceValues[i] = voiceStatus[index];
         }
 
-        if (unrecoverablePacketErrors > 0) {
-            logger.error("Detected " + unrecoverablePacketErrors
-                    + " unrecoverable packet errors in this session.");
-        }
+        return new DacHardwareStatusNotification(
+                sessionConfig.getTransmitterGroup(), psu1Voltage, psu2Voltage,
+                bufferSize, validChannels, gainValues, voiceValues,
+                recoverablePacketErrors, unrecoverablePacketErrors);
     }
 }

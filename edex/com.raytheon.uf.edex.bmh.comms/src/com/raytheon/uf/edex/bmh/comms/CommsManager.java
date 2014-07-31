@@ -34,6 +34,7 @@ import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.edex.bmh.BMHConstants;
@@ -56,13 +57,14 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
+ * Jul 31, 2014  3286     dgilling    Wire up DacHardwareStatusNotification.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class CommsManager  {
+public class CommsManager {
 
     private static final Logger logger = LoggerFactory
             .getLogger(CommsManager.class);
@@ -199,19 +201,17 @@ public class CommsManager  {
             DacTransmitStatus status) {
         String group = communicator.getGroupName();
         if (status.isConnectedToDac()) {
-            logger.info(group
-                    + " is now connected to the dac");
+            logger.info(group + " is now connected to the dac");
             jms.addQueueObserver("BMH.Playlist." + group,
                     new PlaylistNotificationObserver(communicator));
         } else {
             jms.removeQueueObserver("BMH.Playlist." + group, null,
                     new PlaylistNotificationObserver(communicator));
-            logger.info(group
-                    + " is now disconnected from the dac");
+            logger.info(group + " is now disconnected from the dac");
         }
     }
 
-    public void playlistSwitched(PlaylistSwitchNotification notification){
+    public void playlistSwitched(PlaylistSwitchNotification notification) {
         jms.sendStatus(notification);
     }
 
@@ -220,4 +220,7 @@ public class CommsManager  {
         jms.sendStatus(notification);
     }
 
+    public void hardwareStatusArrived(DacHardwareStatusNotification notification) {
+        jms.sendStatus(notification);
+    }
 }
