@@ -316,9 +316,15 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
                 return;
             }
 
-            statusHandler.info("Current Signal Max for: "
-                    + outputUlawPath.toString() + " = "
-                    + audioRegulator.getSignalMax() + " dB.");
+            StringBuilder audioSignalString = new StringBuilder(
+                    "Audio Sample = ");
+            audioSignalString.append(outputUlawPath.toString());
+            audioSignalString.append(". Current signal max is: ");
+            audioSignalString.append(audioRegulator.getSignalMaxDB());
+            audioSignalString.append(" dB; current signal min is: ");
+            audioSignalString.append(audioRegulator.getSignalMinDB());
+            audioSignalString.append(" dB.");
+            statusHandler.info(audioSignalString.toString());
             byte[] adjustedAudio = null;
             try {
                 adjustedAudio = audioRegulator
