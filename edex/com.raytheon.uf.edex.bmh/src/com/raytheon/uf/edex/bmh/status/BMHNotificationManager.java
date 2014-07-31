@@ -20,13 +20,13 @@
 package com.raytheon.uf.edex.bmh.status;
 
 import java.io.File;
-import java.util.Iterator;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
-import java.util.List;
-import java.util.LinkedList;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
@@ -39,7 +39,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BMHConstants;
-import com.raytheon.uf.edex.bmh.status.BMH_ACTION;
 
 /**
  * Reads the notification configuration at startup. Used to lookup what action
@@ -52,6 +51,7 @@ import com.raytheon.uf.edex.bmh.status.BMH_ACTION;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 16, 2014 3291       bkowal      Initial creation
+ * Aug 01, 2014 3283       bsteffen    Change conf dir
  * 
  * </pre>
  * 
@@ -72,7 +72,7 @@ public class BMHNotificationManager {
      * This should be relocated to BMHConstants if other components use the
      * configuration directory.
      */
-    private static final String CONFIGURATION_DIRECTORY = "configuration";
+    private static final String CONFIGURATION_DIRECTORY = "conf";
 
     private static final String NOTIFICATION_PROPERTIES_FILE = "notification.properties";
 
