@@ -32,6 +32,7 @@ import java.util.List;
  * ------------ ---------- ----------- --------------------------
  * 05/27/2014      3289    mpduff      Initial Version.
  * 07/28/2014      3407    mpduff      Added remove row method.
+ * Aug 01, 2014   #3479    lvenable    Added additional capability.
  * </pre>
  */
 public class TableData implements ISortColumn {
@@ -95,6 +96,32 @@ public class TableData implements ISortColumn {
     }
 
     /**
+     * Add a data row to the table
+     * 
+     * @param dataRow
+     *            The row data to add
+     */
+    /**
+     * Add a data row to the table at the specified index.
+     * 
+     * @param dataRow
+     *            The row data to add.
+     * @param index
+     *            Index where the data will be added.
+     */
+    public void addDataRow(TableRowData dataRow, int index) {
+        dataRow.setSortCallback(this);
+
+        if (index < 0) {
+            index = 0;
+        } else if (index > tableRows.size()) {
+            index = tableRows.size();
+        }
+
+        tableRows.add(index, dataRow);
+    }
+
+    /**
      * Get the default values
      * 
      * @return The default values
@@ -123,6 +150,15 @@ public class TableData implements ISortColumn {
     }
 
     /**
+     * Get the number of rows in the table.
+     * 
+     * @return The number of rows.
+     */
+    public int getTableRowCount() {
+        return tableRows.size();
+    }
+
+    /**
      * Get the table row for the provided index
      * 
      * @param index
@@ -143,15 +179,14 @@ public class TableData implements ISortColumn {
      * 
      * @param index
      *            index of the row to delete
-     * @return true if row deleted, false otherwise
+     * @return the delete object from the table
      */
-    public boolean deleteRow(int index) {
-        if (index > 0 && index < tableRows.size() - 1) {
-            tableRows.remove(index);
-            return true;
+    public TableRowData deleteRow(int index) {
+        if (index >= 0 && index < tableRows.size() - 1) {
+            return tableRows.remove(index);
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -159,6 +194,7 @@ public class TableData implements ISortColumn {
      * 
      * @param TableRowData
      *            The row to delete
+     * @return true if row deleted, false otherwise
      */
     public boolean deleteRow(TableRowData row) {
         return tableRows.remove(row);

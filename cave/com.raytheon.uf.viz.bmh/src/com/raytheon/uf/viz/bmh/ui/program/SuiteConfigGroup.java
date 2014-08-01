@@ -29,9 +29,11 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 
+import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -52,6 +54,7 @@ import com.raytheon.uf.viz.bmh.ui.program.CreateEditSuiteDlg.DialogType;
  * Jul 20, 2014  #3174     lvenable     Initial creation
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * Jul 27, 2014  #3420     lvenable     Code clean up.
+ * Aug 01, 2014  #3479      lvenable    Added additional capability and cleaned up code.
  * 
  * </pre>
  * 
@@ -71,6 +74,27 @@ public class SuiteConfigGroup extends Composite {
 
     /** Parent composite. */
     private Composite parentComp;
+
+    /** Edit suite button. */
+    private Button editSuiteBtn;
+
+    /** Delete suite button. */
+    private Button deleteSuiteBtn;
+
+    /** Filter button that allows all items to be displayed. */
+    private Button filterAllRdo;
+
+    /** Filter button to display the General suites. */
+    private Button filterGeneralRdo;
+
+    /** Filter button to display the High suites. */
+    private Button filterHighRdo;
+
+    /** Filter button to display the Exclusive suites. */
+    private Button filterExclusiveRdo;
+
+    /** Array of Suite controls.. */
+    private List<Control> suiteControls = new ArrayList<Control>();
 
     /**
      * Constructor.
@@ -105,6 +129,7 @@ public class SuiteConfigGroup extends Composite {
         createTable();
         createSuiteControls();
 
+        enableControls(suiteTable.hasSelectedItems());
     }
 
     /**
@@ -124,28 +149,64 @@ public class SuiteConfigGroup extends Composite {
 
         gd = new GridData();
         gd.horizontalIndent = indent;
-        Button filterAllRdo = new Button(filterComp, SWT.RADIO);
+        filterAllRdo = new Button(filterComp, SWT.RADIO);
         filterAllRdo.setText("All");
         filterAllRdo.setSelection(true);
         filterAllRdo.setLayoutData(gd);
+        filterAllRdo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (filterAllRdo.getSelection()) {
+                    handleFilterAction();
+                }
+            }
+        });
+        suiteControls.add(filterAllRdo);
 
         gd = new GridData();
         gd.horizontalIndent = indent;
-        Button filterGeneralRdo = new Button(filterComp, SWT.RADIO);
+        filterGeneralRdo = new Button(filterComp, SWT.RADIO);
         filterGeneralRdo.setText("General");
         filterGeneralRdo.setLayoutData(gd);
+        filterGeneralRdo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (filterGeneralRdo.getSelection()) {
+                    handleFilterAction();
+                }
+            }
+        });
+        suiteControls.add(filterGeneralRdo);
 
         gd = new GridData();
         gd.horizontalIndent = indent;
-        Button filterHighRdo = new Button(filterComp, SWT.RADIO);
+        filterHighRdo = new Button(filterComp, SWT.RADIO);
         filterHighRdo.setText("High");
         filterHighRdo.setLayoutData(gd);
+        filterHighRdo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (filterHighRdo.getSelection()) {
+                    handleFilterAction();
+                }
+            }
+        });
+        suiteControls.add(filterHighRdo);
 
         gd = new GridData();
         gd.horizontalIndent = indent;
-        Button filterExclusiveRdo = new Button(filterComp, SWT.RADIO);
+        filterExclusiveRdo = new Button(filterComp, SWT.RADIO);
         filterExclusiveRdo.setText("Exclusive");
         filterExclusiveRdo.setLayoutData(gd);
+        filterExclusiveRdo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (filterExclusiveRdo.getSelection()) {
+                    handleFilterAction();
+                }
+            }
+        });
+        suiteControls.add(filterExclusiveRdo);
 
     }
 
@@ -153,8 +214,20 @@ public class SuiteConfigGroup extends Composite {
      * Create the suite table.
      */
     private void createTable() {
-        suiteTable = new SuiteTable(suiteGroup, 400, 150);
+        int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
+        suiteTable = new SuiteTable(suiteGroup, tableStyle, 400, 150);
         populateSuiteTable();
+
+        suiteTable.setCallbackAction(new ITableActionCB() {
+            @Override
+            public void tableSelectionChange(int selectionCount) {
+                if (selectionCount > 0) {
+                    enableControls(true);
+                } else {
+                    enableControls(false);
+                }
+            }
+        });
     }
 
     /**
@@ -196,7 +269,7 @@ public class SuiteConfigGroup extends Composite {
         });
 
         gd = new GridData(minButtonWidth, SWT.DEFAULT);
-        Button editSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
+        editSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
         editSuiteBtn.setText("Edit...");
         editSuiteBtn.setLayoutData(gd);
         editSuiteBtn.addSelectionListener(new SelectionAdapter() {
@@ -207,11 +280,49 @@ public class SuiteConfigGroup extends Composite {
                 csd.open();
             }
         });
+        suiteControls.add(editSuiteBtn);
 
         gd = new GridData(minButtonWidth, SWT.DEFAULT);
-        Button deleteSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
+        deleteSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
         deleteSuiteBtn.setText("Delete");
         deleteSuiteBtn.setLayoutData(gd);
+        deleteSuiteBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleDeleteAction();
+            }
+        });
+        suiteControls.add(deleteSuiteBtn);
+    }
+
+    /**
+     * Action taken when a table items is removed.
+     */
+    private void handleDeleteAction() {
+
+        // TODO: delete the suite
+        // select an available item
+
+        enableControls(suiteTable.hasSelectedItems());
+    }
+
+    /**
+     * Enable/Disable the suite controls.
+     * 
+     * @param enable
+     *            True to enable, false to disable the controls.
+     */
+    private void enableControls(boolean enable) {
+        for (Control ctrl : suiteControls) {
+            ctrl.setEnabled(enable);
+        }
+    }
+
+    /**
+     * Handle the filter action on the suite table.
+     */
+    private void handleFilterAction() {
+        // TODO : filter the table
     }
 
     /**

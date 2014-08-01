@@ -41,6 +41,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableMoveAction;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
@@ -61,6 +62,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2014  #3174      lvenable     Initial creation
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
+ * Aug 01, 2014  #3479      lvenable    Added additional capability.
  * 
  * </pre>
  * 
@@ -122,6 +124,9 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     /** Show program information flag. */
     private boolean showProgramControls = true;
 
+    /** Table move action that will move items in a table up/down. */
+    private TableMoveAction tableMoveAction;
+
     /**
      * Constructor.
      * 
@@ -182,6 +187,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         createAddRemoveButtons();
         createAvailMsgTypeGroup();
         createBottomButtons();
+
+        tableMoveAction = new TableMoveAction(selectedMsgTypeTable);
     }
 
     /**
@@ -293,6 +300,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         moveUpBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                tableMoveAction.moveUp();
             }
         });
 
@@ -302,6 +310,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         moveDownBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                tableMoveAction.moveDown();
             }
         });
 
@@ -328,7 +337,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         btnComp.setLayout(new GridLayout(2, false));
         btnComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true, false));
 
-        int buttonWidth = 80;
+        int buttonWidth = 90;
         GridData gd;
 
         gd = new GridData(buttonWidth, SWT.DEFAULT);
@@ -526,21 +535,18 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         columnNames.add(tcd);
         TableData td = new TableData(columnNames);
 
-        TableRowData trd = new TableRowData();
+        TableRowData trd;
 
-        trd.addTableCellData(new TableCellData("MessageType - 1"));
-        trd.addTableCellData(new TableCellData("MessageType - 1 - Description"));
-        trd.addTableCellData(new TableCellData("Yes"));
+        for (int i = 0; i < 15; i++) {
+            trd = new TableRowData();
+            trd.addTableCellData(new TableCellData("MessageType - " + i));
+            trd.addTableCellData(new TableCellData("MessageType - " + i
+                    + " - Description"));
+            trd.addTableCellData(new TableCellData("Yes"));
 
-        td.addDataRow(trd);
+            td.addDataRow(trd);
+        }
 
-        trd = new TableRowData();
-
-        trd.addTableCellData(new TableCellData("MessageType - 2"));
-        trd.addTableCellData(new TableCellData("MessageType - 2 - Description"));
-        trd.addTableCellData(new TableCellData("No"));
-
-        td.addDataRow(trd);
         selectedMsgTypeTable.populateTable(td);
 
     }
@@ -555,15 +561,15 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         TableRowData trd = new TableRowData();
 
-        trd.addTableCellData(new TableCellData("MessageType - 3"));
-        trd.addTableCellData(new TableCellData("MessageType - 3 - Description"));
+        trd.addTableCellData(new TableCellData("MessageType - 33"));
+        trd.addTableCellData(new TableCellData("MessageType - 33 - Description"));
 
         td.addDataRow(trd);
 
         trd = new TableRowData();
 
-        trd.addTableCellData(new TableCellData("MessageType - 4"));
-        trd.addTableCellData(new TableCellData("MessageType - 4 - Description"));
+        trd.addTableCellData(new TableCellData("MessageType - 44"));
+        trd.addTableCellData(new TableCellData("MessageType - 44 - Description"));
 
         td.addDataRow(trd);
 

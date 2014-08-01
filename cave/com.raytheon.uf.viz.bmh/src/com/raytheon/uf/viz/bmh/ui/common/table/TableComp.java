@@ -48,6 +48,7 @@ import org.eclipse.swt.widgets.TableItem;
  * Jul 14, 2014   #3377     lvenable    Added callback updates.
  * Jul 17, 2014   3406      mpduff      Added updateTable method.
  * Jul 22, 2014   3411      mpduff      Added PIXEL_BUFFER.
+ * Aug 01, 2014   #3479     lvenable    Added additional capability.
  * 
  * </pre>
  * 
@@ -270,9 +271,17 @@ public abstract class TableComp extends Composite {
      *            Updated TableData
      */
     public void updateTable(TableData tableData) {
-        table.removeAll();
+
         this.tableData = tableData;
 
+        refreshTable();
+    }
+
+    /**
+     * Refresh the table.
+     */
+    public void refreshTable() {
+        table.removeAll();
         if (table.getColumnCount() == 0) {
             this.createColumns();
         }
@@ -325,6 +334,40 @@ public abstract class TableComp extends Composite {
     }
 
     /**
+     * Get the selected indices.
+     * 
+     * @return An array of selected indices.
+     */
+    public int[] getSelectedIndices() {
+        return table.getSelectionIndices();
+    }
+
+    /**
+     * Deselect all the items in the table.
+     */
+    public void deselectAll() {
+        table.deselectAll();
+    }
+
+    /**
+     * Get the tableData associated with this table.
+     * 
+     * @return The table data.
+     */
+    public TableData getTableData() {
+        return tableData;
+    }
+
+    /**
+     * Check if there are selected item(s) in the table.
+     * 
+     * @return True if there are selected item(s), false otherwise.
+     */
+    public boolean hasSelectedItems() {
+        return (table.getSelectionCount() > 0);
+    }
+
+    /**
      * Select the row at the provided index
      * 
      * @param row
@@ -332,6 +375,30 @@ public abstract class TableComp extends Composite {
      */
     public void select(int row) {
         table.select(row);
+    }
+
+    /**
+     * Select the rows that are specified in the index array.
+     * 
+     * @param indexes
+     *            Index array.
+     */
+    public void selectRows(int[] indexes) {
+        table.select(indexes);
+    }
+
+    /**
+     * Show the current selection in the table.
+     */
+    public void showSelection() {
+        // TODO : keep for now. showSelection doesn't really work for List or
+        // Table controls. need to find a better solution
+
+        int[] selTableItems = table.getSelectionIndices();
+        if (selTableItems.length > 0) {
+            table.select(selTableItems[0]);
+            table.showSelection();
+        }
     }
 
     /**

@@ -31,6 +31,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
@@ -55,6 +56,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2014  #3174      lvenable     Initial creation
+ * Aug 01, 2014  #3479      lvenable    Added additional capability for managing the controls.
  * 
  * </pre>
  * 
@@ -84,6 +86,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     /** Message type table. */
     private MsgTypeTable msgTypeTable;
 
+    /** Message Type group prefix text. */
     private final String messgaeTypeGrpPrefix = " Message Types in Suite: ";
 
     /** Label show the assigned transmitters for the selected programs */
@@ -91,6 +94,9 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
     /** Message type group. */
     private Group messageTypeGroup;
+
+    /** List of program controls. */
+    private List<Control> programControls = new ArrayList<Control>();
 
     /**
      * Constructor.
@@ -135,7 +141,11 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         createMessageTypeGroup();
         createBottomButtons();
 
-        programCbo.select(0);
+        if (programCbo.getItemCount() > 0) {
+            programCbo.select(0);
+            enableProgramControls(true);
+        }
+
         updateSuiteGroupText();
     }
 
@@ -168,7 +178,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
         populateProgramCombo();
 
-        int buttonWidth = 80;
+        int buttonWidth = 90;
 
         gd = new GridData();
         gd.widthHint = buttonWidth;
@@ -189,6 +199,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         renameProgramBtn = new Button(progComp, SWT.PUSH);
         renameProgramBtn.setText(" Rename... ");
         renameProgramBtn.setLayoutData(gd);
+        renameProgramBtn.setEnabled(false);
         renameProgramBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -207,17 +218,21 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                 inputDlg.open();
             }
         });
+        programControls.add(renameProgramBtn);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
         deleteProgramBtn = new Button(progComp, SWT.PUSH);
         deleteProgramBtn.setText(" Delete ");
         deleteProgramBtn.setLayoutData(gd);
+        deleteProgramBtn.setEnabled(false);
         deleteProgramBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                deleteProgramAction();
             }
         });
+        programControls.add(deleteProgramBtn);
     }
 
     /**
@@ -244,6 +259,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
         assignTransmitterBtn = new Button(progTransComp, SWT.PUSH);
         assignTransmitterBtn.setText(" Assign Transmitter(s)... ");
+        assignTransmitterBtn.setEnabled(false);
         assignTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -252,6 +268,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                 atd.open();
             }
         });
+        programControls.add(assignTransmitterBtn);
     }
 
     /**
@@ -282,8 +299,13 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      * Update the suite group text with the currently selected program name.
      */
     private void updateSuiteGroupText() {
-        suiteConfigGroup.updateSuiteGroupText(programCbo.getItem(programCbo
-                .getSelectionIndex()));
+        if (programCbo.getItemCount() > 0
+                && programCbo.getSelectionIndex() >= 0) {
+            suiteConfigGroup.updateSuiteGroupText(programCbo.getItem(programCbo
+                    .getSelectionIndex()));
+        } else {
+            suiteConfigGroup.updateSuiteGroupText("N/A");
+        }
     }
 
     /**
@@ -326,6 +348,30 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         Label sepLbl = new Label(comp, SWT.NONE);
         sepLbl.setLayoutData(gd);
         sepLbl.setBackground(getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+    }
+
+    /**
+     * Enable/Disable the program controls.
+     * 
+     * @param enable
+     *            True to enable controls, false to disable.
+     */
+    private void enableProgramControls(boolean enable) {
+        for (Control ctrl : programControls) {
+            ctrl.setEnabled(enable);
+        }
+    }
+
+    /**
+     * Action taken when deleting a program.
+     */
+    private void deleteProgramAction() {
+        // TODO: delete the selected program
+
+        if (programCbo.getItemCount() > 0) {
+            programCbo.select(0);
+            enableProgramControls(true);
+        }
     }
 
     /**
