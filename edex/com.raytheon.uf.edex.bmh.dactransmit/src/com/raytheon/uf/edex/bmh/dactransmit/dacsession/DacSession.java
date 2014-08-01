@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
@@ -60,6 +61,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jul 24, 2014  #3286     dgilling     Fix NullPointerException in 
  *                                      waitForShutdown().
  * Jul 29, 2014  #3286     dgilling     Use NamedThreadFactory.
+ * Jul 31, 2014  #3286     dgilling     Send DacHardwareStatusNotification back
+ *                                      to CommsManager.
  * 
  * </pre>
  * 
@@ -92,6 +95,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
 
     private final Semaphore shutdownSignal;
 
+    private DacStatusMessage previousStatus;
+
     /**
      * Constructor for the {@code DacSession} class. Reads the input directory
      * and buffers all audio files found.
@@ -119,6 +124,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         this.newPlaylistObserver = new PlaylistDirectoryObserver(
                 this.config.getInputDirectory(), this.eventBus);
         this.shutdownSignal = new Semaphore(1);
+        this.previousStatus = null;
     }
 
     /**
@@ -202,11 +208,14 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     @Override
     @Subscribe
     public void receivedDacStatus(DacStatusUpdateEvent e) {
-        // TODO: Is there any messages that come out of validateStatus() that
-        // we should simply make part of the message that goes back to the
-        // CommsManager?
-        e.getStatus().validateStatus(config);
+        DacStatusMessage newStatus = e.getStatus();
+        DacHardwareStatusNotification notify = newStatus.validateStatus(config,
+                previousStatus);
+        previousStatus = newStatus;
         commsManager.sendConnectionStatus(true);
+        if (notify != null) {
+            commsManager.sendDacHardwareStatus(notify);
+        }
     }
 
     /*

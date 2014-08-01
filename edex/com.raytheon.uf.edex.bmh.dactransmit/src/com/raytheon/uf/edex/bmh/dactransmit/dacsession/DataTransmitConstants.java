@@ -31,6 +31,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
  * Jul 08, 2014  #3286     dgilling     Initial creation
  * Jul 14, 2014  #3286     dgilling     Tweaked cycle time constants.
  * Jul 16, 2014  #3286     dgilling     Remove unneeded constants.
+ * Jul 31, 2014  #3286     dgilling     Add alert constants for buffer size.
  * 
  * </pre>
  * 
@@ -44,7 +45,15 @@ public final class DataTransmitConstants {
 
     public static final long INITIAL_CYCLE_TIME = 5; // in MS
 
+    /*
+     * TODO Make these threshold values configurable and use these constants for
+     * defaults.
+     */
     public static final int WATERMARK_PACKETS_IN_BUFFER = 20;
+
+    public static final int ALERT_HIGH_PACKETS_IN_BUFFER = 2 * WATERMARK_PACKETS_IN_BUFFER;
+
+    public static final int ALERT_LOW_PACKETS_IN_BUFFER = WATERMARK_PACKETS_IN_BUFFER / 4;
 
     public static final int SEQUENCE_INCREMENT = 1;
 

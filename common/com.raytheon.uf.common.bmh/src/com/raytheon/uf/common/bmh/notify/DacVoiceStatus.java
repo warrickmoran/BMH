@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
+package com.raytheon.uf.common.bmh.notify;
 
 /**
  * {@code Enum} that describes the current output status of a channel on the
