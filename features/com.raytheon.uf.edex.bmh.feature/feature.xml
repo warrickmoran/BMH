@@ -17,9 +17,12 @@
       [Enter License Description here.]
    </license>
 
+   <includes
+         id="com.raytheon.uf.common.bmh.feature"
+         version="0.0.0"/>
+
    <requires>
       <import feature="com.raytheon.uf.edex.base.feature" version="0.0.0"/>
-      <import feature="com.raytheon.uf.common.bmh.feature" version="0.0.0"/>
    </requires>
 
    <plugin
