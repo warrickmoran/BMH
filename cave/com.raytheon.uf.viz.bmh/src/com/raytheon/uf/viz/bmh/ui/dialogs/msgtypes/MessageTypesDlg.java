@@ -58,6 +58,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 27, 2014  #3420     lvenable     Initial creation
+ * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
  * 
  * </pre>
  * 
@@ -183,7 +184,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             public void widgetSelected(SelectionEvent e) {
                 InputTextDlg inputDlg = new InputTextDlg(shell,
                         "Rename Message Type",
-                        "Type in a new message type name:");
+                        "Type in a new message type name:", null);
                 inputDlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {

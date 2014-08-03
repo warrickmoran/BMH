@@ -46,6 +46,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 7, 2014   #3174     lvenable     Initial creation
+ * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
  * 
  * </pre>
  * 
@@ -63,6 +64,9 @@ public class InputTextDlg extends CaveSWTDialog {
     /** Text to populate the text field with on start up. */
     private String textFieldText = null;
 
+    /** Text validator. */
+    private IInputTextValidator textValidator;
+
     /**
      * Constructor.
      * 
@@ -72,9 +76,12 @@ public class InputTextDlg extends CaveSWTDialog {
      *            Dialog title.
      * @param descriptionTxt
      *            Description text.
+     * @param textValidator
+     *            Text validator.
      */
-    public InputTextDlg(Shell parentShell, String title, String descriptionTxt) {
-        this(parentShell, title, descriptionTxt, null);
+    public InputTextDlg(Shell parentShell, String title, String descriptionTxt,
+            IInputTextValidator textValidator) {
+        this(parentShell, title, descriptionTxt, null, textValidator);
     }
 
     /**
@@ -88,14 +95,17 @@ public class InputTextDlg extends CaveSWTDialog {
      *            Description text.
      * @param tfText
      *            Text to be put in the input text control.
+     * @param textValidator
+     *            Text validator.
      */
     public InputTextDlg(Shell parentShell, String title, String descriptionTxt,
-            String tfText) {
+            String tfText, IInputTextValidator textValidator) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
         this.descriptionTxt = descriptionTxt;
         this.textFieldText = tfText;
+        this.textValidator = textValidator;
 
         setText(title);
     }
@@ -158,7 +168,18 @@ public class InputTextDlg extends CaveSWTDialog {
         okBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (validInput()) {
+                // If the text validator is null then verify there is text in
+                // the input field before returning.
+
+                inputTf.setText(inputTf.getText().trim());
+
+                if (textValidator == null) {
+                    if (validInput()) {
+                        setReturnValue(inputTf.getText());
+                        close();
+                    }
+                } else if (textValidator.validateInputText(shell,
+                        inputTf.getText())) {
                     setReturnValue(inputTf.getText());
                     close();
                 }

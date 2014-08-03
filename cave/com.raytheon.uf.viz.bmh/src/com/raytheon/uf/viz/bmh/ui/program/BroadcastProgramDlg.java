@@ -57,6 +57,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2014  #3174      lvenable     Initial creation
  * Aug 01, 2014  #3479      lvenable    Added additional capability for managing the controls.
+ * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
  * 
  * </pre>
  * 
@@ -203,8 +204,11 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         renameProgramBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+
+                ProgramNameValidator pnv = new ProgramNameValidator();
+
                 InputTextDlg inputDlg = new InputTextDlg(shell,
-                        "Rename Program", "Type in a new program name:");
+                        "Rename Program", "Type in a new program name:", pnv);
                 inputDlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {

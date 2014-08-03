@@ -65,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 24, 2014  #3433     lvenable     Initial creation
  * Jul 27, 2014  #3420     lvenable     Updated to use relationship button.
+ * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
  * 
  * </pre>
  * 
@@ -237,7 +238,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 InputTextDlg inputDlg = new InputTextDlg(shell, "Rename Suite",
-                        "Type in a new suite name:");
+                        "Type in a new suite name:", null);
                 inputDlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
