@@ -58,6 +58,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Jul 31, 2014  3286     dgilling    Wire up DacHardwareStatusNotification.
+ * Aug 04, 2014  2487     bsteffen    Add lineTapServer
  * 
  * </pre>
  * 
@@ -70,6 +71,8 @@ public class CommsManager {
             .getLogger(CommsManager.class);
 
     private final DacTransmitServer transmitServer;
+
+    private final LineTapServer lineTapServer;
 
     private final JmsCommunicator jms;
 
@@ -86,6 +89,7 @@ public class CommsManager {
                 + File.separator + "conf" + File.separator + "comms.xml"),
                 CommsConfig.class);
         transmitServer = new DacTransmitServer(this, config);
+        lineTapServer = new LineTapServer(config);
         JmsCommunicator jms = null;
         try {
             jms = new JmsCommunicator(config);
@@ -103,7 +107,8 @@ public class CommsManager {
      */
     public void run() {
         transmitServer.start();
-        while (transmitServer.isAlive()) {
+        lineTapServer.start();
+        while (transmitServer.isAlive() && lineTapServer.isAlive()) {
             try {
                 /*
                  * Set of all connected groups so any not in configuration can
@@ -181,7 +186,7 @@ public class CommsManager {
         args.add(BMHConstants.getBmhDataDirectory() + File.separator + "data"
                 + File.separator + "playlist" + File.separator + group);
         args.add("-" + DacTransmitArgParser.COMMS_MANAGER_PORT_OPTION_KEY);
-        args.add(Integer.toString(config.getIpcPort()));
+        args.add(Integer.toString(config.getDacTransmitPort()));
         ProcessBuilder startCommand = new ProcessBuilder(args);
         // TODO what to do with IO?
         startCommand.inheritIO();

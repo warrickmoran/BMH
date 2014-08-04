@@ -18,6 +18,7 @@ Require-Bundle: com.raytheon.uf.common.time,
  org.apache.commons.io;bundle-version="2.4.0"
 Export-Package: com.raytheon.uf.common.bmh,
  com.raytheon.uf.common.bmh.audio,
+ com.raytheon.uf.common.bmh.comms,
  com.raytheon.uf.common.bmh.datamodel.language,
  com.raytheon.uf.common.bmh.datamodel.msg,
  com.raytheon.uf.common.bmh.datamodel.playlist,

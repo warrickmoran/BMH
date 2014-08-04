@@ -41,6 +41,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.DisconnectListener;
 
 /**
  * Broadcast cycle dialog.
@@ -52,6 +53,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 2, 2014   3432      mpduff      Initial creation
+ * Aug 04, 2014  2487      bsteffen    Hook up the monitor inline checkbox.
  * 
  * </pre>
  * 
@@ -59,7 +61,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
  * @version 1.0
  */
 
-public class BroadcastCycleDlg extends AbstractBMHDialog {
+public class BroadcastCycleDlg extends AbstractBMHDialog implements
+        DisconnectListener {
 
     private final String TITLE = "Broadcast Cycle";
 
@@ -85,6 +88,15 @@ public class BroadcastCycleDlg extends AbstractBMHDialog {
 
     /** The list of transmitters */
     private org.eclipse.swt.widgets.List transmitterList;
+
+    /** The checkbox to enable inline monitoring. */
+    private Button monitorBtn;
+
+    /**
+     * The thread that is currentler running to monitor the transmission or null
+     * if tis disabled.
+     */
+    private MonitorInlineThread monitorThread;
 
     /** DAC value label */
     private Label dacValueLbl;
@@ -256,9 +268,27 @@ public class BroadcastCycleDlg extends AbstractBMHDialog {
 
         // Monitor inline
         gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
-        Button monitorBtn = new Button(transmitterGrp, SWT.CHECK);
+        monitorBtn = new Button(transmitterGrp, SWT.CHECK);
         monitorBtn.setText("Monitor In-line  ");
         monitorBtn.setLayoutData(gd);
+        monitorBtn.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent se) {
+                if (monitorThread != null) {
+                    monitorThread
+                            .removeDisconnectListener(BroadcastCycleDlg.this);
+                    monitorThread.cancel();
+                    monitorThread = null;
+                }
+                if (monitorBtn.getSelection()) {
+                    monitorThread = new MonitorInlineThread(selectedTransmitter);
+                    monitorThread.addDisconnectListener(BroadcastCycleDlg.this);
+                    monitorThread.start();
+                }
+            }
+
+        });
 
         // Transmitter time zone
         gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
@@ -589,7 +619,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog {
         this.selectedTransmitter = parts[0];
         this.program = parts[1];
         setText(TITLE + ": " + selectedTransmitter);
-
+        // TODO update, cancel, or otherwise handle the monitorThread if it is
+        // running.
     }
 
     private void handleMessageDetails() {
@@ -646,6 +677,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog {
     protected void disposed() {
         super.disposed();
         colorManager.dispose();
+        if (monitorThread != null) {
+            monitorThread.cancel();
+            monitorThread.removeDisconnectListener(this);
+            monitorThread = null;
+        }
     }
 
     @Override
@@ -663,5 +699,27 @@ public class BroadcastCycleDlg extends AbstractBMHDialog {
         }
 
         return t;
+    }
+
+    @Override
+    public void disconnected(Throwable error) {
+        if (error != null) {
+            getDisplay().asyncExec(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (!monitorBtn.isDisposed()) {
+                        monitorBtn.setSelection(false);
+
+                    }
+                    if (monitorThread != null) {
+                        monitorThread
+                                .removeDisconnectListener(BroadcastCycleDlg.this);
+                        monitorThread = null;
+                    }
+                }
+
+            });
+        }
     }
 }

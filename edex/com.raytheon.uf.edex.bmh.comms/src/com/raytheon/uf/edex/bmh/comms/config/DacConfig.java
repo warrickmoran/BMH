@@ -37,6 +37,7 @@ import javax.xml.bind.annotation.XmlElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
+ * Aug 04, 2014  2487     bsteffen    Add receivePort
  * 
  * </pre>
  * 
@@ -49,6 +50,9 @@ public class DacConfig {
     @XmlAttribute
     private String ipAddress;
 
+    @XmlAttribute
+    private int receivePort;
+
     @XmlElement(name = "channel")
     private List<DacChannelConfig> channels;
 
@@ -58,6 +62,14 @@ public class DacConfig {
 
     public void setIpAddress(String ipAddress) {
         this.ipAddress = ipAddress;
+    }
+
+    public int getReceivePort() {
+        return receivePort;
+    }
+
+    public void setReceivePort(int receivePort) {
+        this.receivePort = receivePort;
     }
 
     public List<DacChannelConfig> getChannels() {

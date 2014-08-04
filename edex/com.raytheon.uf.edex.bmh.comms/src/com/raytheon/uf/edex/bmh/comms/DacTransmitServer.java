@@ -48,6 +48,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
+ * Aug 04, 2014  2487     bsteffen    Rename config options.
+ * 
  * 
  * </pre>
  * 
@@ -82,7 +84,7 @@ public class DacTransmitServer extends Thread {
         super("DacTransmitServer");
         communicators = new ConcurrentHashMap<String, List<DacTransmitCommunicator>>(
                 config.getDacs().size() * 4);
-        port = config.getIpcPort();
+        port = config.getDacTransmitPort();
         this.manager = manager;
 
     }
