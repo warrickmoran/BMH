@@ -19,10 +19,10 @@
  **/
 package com.raytheon.uf.edex.bmh.generate.tones;
 
-import java.io.UnsupportedEncodingException;
-import java.util.List;
-import java.util.LinkedList;
+import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
+import java.util.LinkedList;
+import java.util.List;
 
 import com.raytheon.uf.edex.bmh.generate.tones.data.AFSKTone;
 
@@ -37,6 +37,8 @@ import com.raytheon.uf.edex.bmh.generate.tones.data.AFSKTone;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014 3304       bkowal      Initial creation
+ * Aug 04, 2014 3286       dgilling    Fix UnsupportedEncodingException in
+ *                                     encode().
  * 
  * </pre>
  * 
@@ -46,8 +48,6 @@ import com.raytheon.uf.edex.bmh.generate.tones.data.AFSKTone;
 
 public class AFSKToneGenerator {
     private static final double DEFAULT_AMPLITUDE = 8192.0;
-
-    private static final String BYTES_CHARSET = "US-ASCII";
 
     /*
      * The following values are defined on page 6 of the SAME Specification
@@ -90,12 +90,10 @@ public class AFSKToneGenerator {
      *            the SAME message to encode
      * @return the encoded data.
      */
-    public short[] execute(final String sameMessage)
-            throws UnsupportedEncodingException {
-
+    public short[] execute(final String sameMessage) {
         List<short[]> outputList = new LinkedList<short[]>();
         BitSet sameMessageBits = BitSet.valueOf((sameMessage.trim()
-                .getBytes(BYTES_CHARSET)));
+                .getBytes(StandardCharsets.US_ASCII)));
         for (int i = 0; i < sameMessageBits.length(); i++) {
             if (sameMessageBits.get(i)) {
                 outputList.add(this.toneGenerator.encode(this.toneOne));

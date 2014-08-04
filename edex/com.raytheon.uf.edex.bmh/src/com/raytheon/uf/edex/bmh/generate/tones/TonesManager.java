@@ -20,15 +20,14 @@
 package com.raytheon.uf.edex.bmh.generate.tones;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.edex.bmh.generate.tones.data.Tone;
 
@@ -45,6 +44,8 @@ import com.raytheon.uf.edex.bmh.generate.tones.data.Tone;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014 3304       bkowal      Initial creation
+ * Aug 04, 2014 3286       dgilling    Remove unnecessary try-catch block from
+ *                                     generateSAMETone().
  * 
  * </pre>
  * 
@@ -111,13 +112,7 @@ public class TonesManager {
     public static byte[] generateSAMETone(final String SAMEMessage)
             throws ToneGenerationException {
         AFSKToneGenerator toneGenerator = new AFSKToneGenerator();
-        short[] data;
-        try {
-            data = toneGenerator.execute(SAMEMessage);
-        } catch (UnsupportedEncodingException e) {
-            throw new ToneGenerationException(
-                    "Failed to generate a SAME tone!", e);
-        }
+        short[] data = toneGenerator.execute(SAMEMessage);
         if (data.length <= 0) {
             return null;
         }

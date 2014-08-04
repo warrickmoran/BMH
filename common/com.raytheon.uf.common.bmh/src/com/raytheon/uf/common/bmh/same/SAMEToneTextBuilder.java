@@ -59,6 +59,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 03, 2014  3285     bsteffen    Initial creation
+ * Aug 04, 2014  3286     dgilling    Remove automatic addition of EOM
+ *                                    to SAME string.
  * 
  * </pre>
  * 
@@ -68,8 +70,6 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 public class SAMEToneTextBuilder {
 
     private static final String START_CODE = "ZCZC";
-
-    private static final String END_CODE = "NNNN";
 
     private static final String SEP = "-";
 
@@ -344,7 +344,7 @@ public class SAMEToneTextBuilder {
             formatter.format("-%1$tj%1$tH%1$tM", effectiveTime);
         }
         text.append(SEP).append(originatorOffice);
-        text.append(SEP).append(END_CODE);
+        text.append(SEP);
         return text;
     }
 
