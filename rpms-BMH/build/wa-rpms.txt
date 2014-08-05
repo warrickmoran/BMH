@@ -1,1 +1,3 @@
 awips2-bmh-database
+awips2-edex-bmh
+awips2-bmh

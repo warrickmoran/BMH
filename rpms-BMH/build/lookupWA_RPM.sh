@@ -11,6 +11,14 @@ function lookupWA_RPM()
 		export RPM_SPECIFICATION="${2}/Installer.bmh-database"
 		return 0	
 	fi
+	if [ "${1}" = "awips2-edex-bmh" ]; then
+		export RPM_SPECIFICATION="${2}/Installer.edex-bmh"
+		return 0
+	fi
+	if [ "${1}" = "awips2-bmh" ]; then
+		export RPM_SPECIFICATION="${2}/Installer.bmh"
+		return 0
+	fi
 	
 	return 1
 }

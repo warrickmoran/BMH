@@ -9,27 +9,17 @@
 		
 		<echo message="basedir: ${basedir}" />
         
-        <if>
-		    <available file="${basedir}/conf" type="dir" />	
-		    <then>
-		        <copy todir="${bmh.root.directory}/conf" failonerror="true">
-		            <fileset dir="${basedir}/conf">
-		                <include name="**/*" />
-		            </fileset>
-		        </copy>
-		    </then>
-		</if>
+		<copy todir="${bmh.root.directory}/conf" failonerror="true">
+			<fileset dir="${basedir}/conf">
+				<include name="**/*" />
+			</fileset>
+		</copy>
 
-        <if>
-		    <available file="${basedir}/scripts" type="dir" />	
-		    <then>
-		        <copy todir="${bmh.scripts.directory}" failonerror="true">
-		            <fileset dir="${basedir}/scripts">
-		                <include name="**/*" />
-		            </fileset>
-		        </copy>
-		    </then>
-		</if>
+		<copy todir="${bmh.scripts.directory}" failonerror="true">
+			<fileset dir="${basedir}/scripts">
+				<include name="**/*" />
+			</fileset>
+		</copy>
 
 	    <chmod perm="ugo+rx" >
 		    <fileset dir="${bmh.scripts.directory}">
