@@ -51,7 +51,6 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.AreaTableComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
-import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -64,7 +63,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 11, 2014   3406     mpduff      Initial creation
- * 
+ * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * </pre>
  * 
  * @author mpduff
@@ -296,7 +295,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
 
             areaTableData.setSortColumnAndDirection(0, SortDirection.ASCENDING);
             this.areaTableComp.populateTable(areaTableData);
-        } catch (VizException e) {
+        } catch (Exception e) {
             statusHandler.error("Error occurred during Area query.", e);
         }
     }
@@ -353,7 +352,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
      *            The area to edit, or null
      */
     private void createEditArea(Area area) {
-        if (newEditAreaDlg == null || newEditAreaDlg.isDisposed()) {
+        if ((newEditAreaDlg == null) || newEditAreaDlg.isDisposed()) {
             try {
                 List<Transmitter> transmitters = dataManager.getTransmitters();
                 newEditAreaDlg = new NewEditAreaDlg(getShell(), area,
@@ -369,7 +368,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
                                 for (Area area : response.getAreaList()) {
                                     populateNewArea(area);
                                 }
-                            } catch (VizException e) {
+                            } catch (Exception e) {
                                 statusHandler.error(
                                         "Error saving Area: " + a.getAreaCode()
                                                 + " - " + a.getAreaName(), e);
@@ -378,7 +377,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
                     }
                 });
                 newEditAreaDlg.open();
-            } catch (VizException e1) {
+            } catch (Exception e1) {
                 statusHandler.error("Error accessing BMH database", e1);
             }
         } else {
@@ -497,7 +496,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
                 areaTableComp.updateTable(areaTableData);
                 try {
                     dataManager.deleteArea(toDelete);
-                } catch (VizException e) {
+                } catch (Exception e) {
                     statusHandler.error("Error while deleting "
                             + toDelete.getAreaCode() + " - "
                             + toDelete.getAreaName());
@@ -538,7 +537,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
 
     @Override
     public boolean okToClose() {
-        if (newEditAreaDlg == null || newEditAreaDlg.isDisposed()) {
+        if ((newEditAreaDlg == null) || newEditAreaDlg.isDisposed()) {
             return true;
         }
 

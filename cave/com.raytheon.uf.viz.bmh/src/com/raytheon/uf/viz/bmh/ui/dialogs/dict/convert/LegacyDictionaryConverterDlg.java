@@ -61,7 +61,6 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dict.NewDictionaryDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.PronunciationBuilderDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter.WordType;
 import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
-import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -76,7 +75,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 24, 2014     3355   mpduff      Initial creation
  * Jul 21, 2014     3407   mpduff      Removed unneeded parameter to 
  *                                     PronunciationBuilderDlg
- * 
+ * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * </pre>
  * 
  * @author mpduff
@@ -256,7 +255,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
 
             dictCombo.setItems(dictionaryNames
                     .toArray(new String[dictionaryNames.size()]));
-        } catch (VizException e1) {
+        } catch (Exception e1) {
             statusHandler.error("Unable to query for available Dictionaries.",
                     e1);
         }
@@ -516,7 +515,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
                         saveWordBtn.setEnabled(true);
                     }
                     updateConvertStatus();
-                } catch (VizException e) {
+                } catch (Exception e) {
                     statusHandler.error(
                             "Error creating dictionary: " + dict.getName(), e);
                 }
@@ -527,7 +526,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
             try {
                 selectedDictionary = dictionaryManager.getDictionary(dictCombo
                         .getText());
-            } catch (VizException e) {
+            } catch (Exception e) {
                 statusHandler.error(
                         "Error getting dictionary: " + dictCombo.getText(), e);
             }
@@ -595,8 +594,8 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
         legacyValueLbl.setText(legacyPhoneme);
 
         boolean convert = true;
-        if (dictCombo.getText().length() <= 0
-                || this.neoValueTxt.getText().length() == 0) {
+        if ((dictCombo.getText().length() <= 0)
+                || (this.neoValueTxt.getText().length() == 0)) {
             convert = false;
         }
         this.saveWordBtn.setEnabled(convert);
@@ -657,7 +656,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
                     return;
                 }
             }
-        } catch (VizException e) {
+        } catch (Exception e) {
             statusHandler.error("Error saving word: " + selectedWord, e);
         }
     }

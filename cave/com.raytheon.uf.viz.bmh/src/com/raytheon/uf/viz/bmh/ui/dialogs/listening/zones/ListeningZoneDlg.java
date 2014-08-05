@@ -51,7 +51,6 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.AreaTableComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
-import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -64,7 +63,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 11, 2014   3406     mpduff      Initial creation
- * 
+ * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * </pre>
  * 
  * @author mpduff
@@ -296,7 +295,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
 
             zoneTableData.setSortColumnAndDirection(0, SortDirection.ASCENDING);
             this.zoneTableComp.populateTable(zoneTableData);
-        } catch (VizException e) {
+        } catch (Exception e) {
             statusHandler
                     .error("Error getting Zones from the BMH database.", e);
         }
@@ -354,7 +353,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
      *            Zone object to edit, or null if new
      */
     private void createEditZone(Zone zone) {
-        if (newEditZoneDlg == null || newEditZoneDlg.isDisposed()) {
+        if ((newEditZoneDlg == null) || newEditZoneDlg.isDisposed()) {
             try {
                 List<Area> areas = dataManager.getAreas();
                 List<Zone> zones = dataManager.getZones();
@@ -372,7 +371,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
                                 for (Zone zone : response.getZoneList()) {
                                     populateNewZone(zone);
                                 }
-                            } catch (VizException e) {
+                            } catch (Exception e) {
                                 statusHandler.error(
                                         "Error saving Zone, " + z.getZoneName(),
                                         e);
@@ -381,7 +380,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
                     }
                 });
                 newEditZoneDlg.open();
-            } catch (VizException e1) {
+            } catch (Exception e1) {
                 statusHandler.error("Error accessing BMH database", e1);
             }
         } else {
@@ -500,7 +499,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
                 zoneTableComp.updateTable(zoneTableData);
                 try {
                     dataManager.deleteZone(toDelete);
-                } catch (VizException e) {
+                } catch (Exception e) {
                     statusHandler.error("Error deleting Zone "
                             + toDelete.getZoneName());
                 }
@@ -534,7 +533,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
 
     @Override
     public boolean okToClose() {
-        if (newEditZoneDlg == null || newEditZoneDlg.isDisposed()) {
+        if ((newEditZoneDlg == null) || newEditZoneDlg.isDisposed()) {
             return true;
         }
 

@@ -36,7 +36,6 @@ import com.raytheon.uf.common.bmh.request.WordResponse;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
 import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.requests.ThriftClient;
 
 /**
  * Dictionary manager class.
@@ -49,7 +48,8 @@ import com.raytheon.uf.viz.core.requests.ThriftClient;
  * ------------ ---------- ----------- --------------------------
  * Jun 25, 2014    3355    mpduff      Initial creation
  * Jul 21, 2014    3407    mpduff      Added deleteDictionary() and 
- *                                     changed to use response objects
+ *                                     changed to use response objects.
+ * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * </pre>
  * 
  * @author mpduff
@@ -85,13 +85,13 @@ public class DictionaryManager {
      * @throws VizException
      *             on error
      */
-    public List<String> getAllBMHDictionaryNames() throws VizException {
+    public List<String> getAllBMHDictionaryNames() throws Exception {
         DictionaryRequest req = new DictionaryRequest();
         req.setAction(DictionaryAction.ListNames);
-        DictionaryResponse response = (DictionaryResponse) ThriftClient
+        DictionaryResponse response = (DictionaryResponse) BmhUtils
                 .sendRequest(req);
 
-        if (response != null && response.getDictionaryNames() != null) {
+        if ((response != null) && (response.getDictionaryNames() != null)) {
             return response.getDictionaryNames();
         }
 
@@ -117,13 +117,13 @@ public class DictionaryManager {
      * @return The saved Word object
      * @throws VizException
      */
-    public Word saveWord(Word word) throws VizException {
+    public Word saveWord(Word word) throws Exception {
 
         WordRequest req = new WordRequest();
         req.setAction(WordAction.Save);
         req.setWord(word);
         req.setDictionaryName(word.getDictionary().getName());
-        WordResponse response = (WordResponse) ThriftClient.sendRequest(req);
+        WordResponse response = (WordResponse) BmhUtils.sendRequest(req);
         if (response.getWordList().isEmpty()) {
             throw new VizException("An error occurred saving word "
                     + word.getWord());
@@ -140,13 +140,13 @@ public class DictionaryManager {
      *            The Word to delete
      * @throws VizException
      */
-    public void deleteWord(Word word) throws VizException {
+    public void deleteWord(Word word) throws Exception {
         WordRequest request = new WordRequest();
         request.setAction(WordAction.Delete);
         request.setDictionaryName(word.getDictionary().getName());
         request.setWord(word);
 
-        ThriftClient.sendRequest(request);
+        BmhUtils.sendRequest(request);
     }
 
     /**
@@ -158,12 +158,12 @@ public class DictionaryManager {
      * @throws VizException
      */
     public DictionaryResponse saveDictionary(Dictionary dictionary)
-            throws VizException {
+            throws Exception {
         DictionaryRequest req = new DictionaryRequest();
         req.setAction(DictionaryAction.Save);
         req.setDictionary(dictionary);
 
-        return (DictionaryResponse) ThriftClient.sendRequest(req);
+        return (DictionaryResponse) BmhUtils.sendRequest(req);
     }
 
     /**
@@ -174,7 +174,7 @@ public class DictionaryManager {
      * @return
      * @throws VizException
      */
-    public void createDictionary(Dictionary dictionary) throws VizException {
+    public void createDictionary(Dictionary dictionary) throws Exception {
         List<String> names = getAllBMHDictionaryNames();
         if (names.contains(dictionary.getName())) {
             String msg = "A dictionary with that name already exists.\n"
@@ -186,7 +186,7 @@ public class DictionaryManager {
             req.setAction(DictionaryAction.Save);
             req.setDictionary(dictionary);
 
-            ThriftClient.sendRequest(req);
+            BmhUtils.sendRequest(req);
         }
     }
 
@@ -198,11 +198,11 @@ public class DictionaryManager {
      * @return Dictionary or null if no dictionary exists
      * @throws VizException
      */
-    public Dictionary getDictionary(String dictionaryName) throws VizException {
+    public Dictionary getDictionary(String dictionaryName) throws Exception {
         DictionaryRequest req = new DictionaryRequest();
         req.setAction(DictionaryAction.QueryByName);
         req.setDictionaryName(dictionaryName);
-        DictionaryResponse response = (DictionaryResponse) ThriftClient
+        DictionaryResponse response = (DictionaryResponse) BmhUtils
                 .sendRequest(req);
         return response.getDictionary();
     }
@@ -214,10 +214,10 @@ public class DictionaryManager {
      *            Name of the Dictionary to delete
      * @throws VizException
      */
-    public void deleteDictionary(String dictionaryName) throws VizException {
+    public void deleteDictionary(String dictionaryName) throws Exception {
         DictionaryRequest req = new DictionaryRequest();
         req.setAction(DictionaryAction.Delete);
         req.setDictionaryName(dictionaryName);
-        ThriftClient.sendRequest(req);
+        BmhUtils.sendRequest(req);
     }
 }

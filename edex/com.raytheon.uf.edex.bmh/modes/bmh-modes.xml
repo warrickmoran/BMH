@@ -28,9 +28,10 @@
 	</mode>
 	<mode name="bmh">
 	 	<include>^bmh-</include>
+        <exclude>^bmh-request.xml</exclude>
 	</mode>
 	<mode name="request">
-	 	<include>^bmh-</include>
+	 	<include>^bmh-request.xml</include>
 	</mode>
 
 </edexModes>

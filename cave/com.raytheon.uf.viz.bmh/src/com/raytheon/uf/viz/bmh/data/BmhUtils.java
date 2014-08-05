@@ -30,10 +30,10 @@ import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
+import com.raytheon.uf.common.serialization.comm.IServerRequest;
+import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.requests.ThriftClient;
 
 /**
  * BMH Viz utility class.
@@ -45,7 +45,7 @@ import com.raytheon.uf.viz.core.requests.ThriftClient;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 25, 2014    3355    mpduff      Initial creation
- * 
+ * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * </pre>
  * 
  * @author mpduff
@@ -91,9 +91,9 @@ public class BmhUtils {
         TextToSpeechRequest req = new TextToSpeechRequest();
         req.setPhoneme(text);
         try {
-            req = (TextToSpeechRequest) ThriftClient.sendRequest(req);
+            req = (TextToSpeechRequest) BmhUtils.sendRequest(req);
             playSound(req.getByteData(), req.getStatus());
-        } catch (VizException e) {
+        } catch (Exception e) {
             statusHandler.error("Error playing text", e);
         }
     }
@@ -175,5 +175,16 @@ public class BmhUtils {
         sb.append(BmhUtils.SAYAS_CLOSE);
 
         return sb.toString();
+    }
+
+    /**
+     * Sends an {@link IServerRequest} to the BMH jvm for processing.
+     * 
+     * @param request
+     * @return
+     * @throws Exception
+     */
+    public static Object sendRequest(IServerRequest request) throws Exception {
+        return RequestRouter.route(request, "bmh.server");
     }
 }

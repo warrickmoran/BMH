@@ -39,7 +39,6 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.data.DictionaryManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
-import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -53,7 +52,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2014    3407    mpduff      Initial creation
- * 
+ * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * </pre>
  * 
  * @author mpduff
@@ -328,7 +327,7 @@ public class NewEditWordDlg extends CaveSWTDialog {
             DictionaryManager dictionaryManager = new DictionaryManager(
                     new NeoSpeechPhonemeMapping());
             word = dictionaryManager.saveWord(word);
-        } catch (VizException e) {
+        } catch (Exception e) {
             statusHandler.error("Error saving word: " + word.getWord(), e);
             return false;
         }
@@ -342,7 +341,7 @@ public class NewEditWordDlg extends CaveSWTDialog {
      * Launch the {@link PronunciationBuilderDlg}
      */
     private void launchPronunciationBuilder() {
-        if (pronunciationBuilderDlg == null
+        if ((pronunciationBuilderDlg == null)
                 || pronunciationBuilderDlg.isDisposed()) {
             if (phonemeTxt.getText().trim().length() > 0) {
                 pronunciationBuilderDlg = new PronunciationBuilderDlg(

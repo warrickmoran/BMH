@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Plugin
+Bundle-Name: BMH Dialogs
 Bundle-SymbolicName: com.raytheon.uf.viz.bmh;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: com.raytheon.uf.viz.bmh.Activator

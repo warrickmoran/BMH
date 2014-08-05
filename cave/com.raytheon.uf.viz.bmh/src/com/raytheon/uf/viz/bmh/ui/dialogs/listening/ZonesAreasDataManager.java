@@ -43,8 +43,8 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.requests.ThriftClient;
 
 /**
  * Data access class for the Listening Area and Listening Zone dialogs
@@ -56,7 +56,7 @@ import com.raytheon.uf.viz.core.requests.ThriftClient;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014    3406    mpduff      Initial creation
- * 
+ * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * </pre>
  * 
  * @author mpduff
@@ -99,11 +99,11 @@ public class ZonesAreasDataManager {
      * @return List of defined zones
      * @throws VizException
      */
-    public List<Zone> getZones() throws VizException {
+    public List<Zone> getZones() throws Exception {
         ZoneAreaRequest req = new ZoneAreaRequest();
         req.setAction(ZoneAreaAction.GetZones);
 
-        ZoneAreaResponse response = (ZoneAreaResponse) ThriftClient
+        ZoneAreaResponse response = (ZoneAreaResponse) BmhUtils
                 .sendRequest(req);
         return response.getZoneList();
     }
@@ -114,11 +114,11 @@ public class ZonesAreasDataManager {
      * @return List of defined areas
      * @throws VizException
      */
-    public List<Area> getAreas() throws VizException {
+    public List<Area> getAreas() throws Exception {
         ZoneAreaRequest req = new ZoneAreaRequest();
         req.setAction(ZoneAreaAction.GetAreas);
 
-        ZoneAreaResponse response = (ZoneAreaResponse) ThriftClient
+        ZoneAreaResponse response = (ZoneAreaResponse) BmhUtils
                 .sendRequest(req);
         return response.getAreaList();
     }
@@ -129,11 +129,11 @@ public class ZonesAreasDataManager {
      * @return List of defined transmitters
      * @throws VizException
      */
-    public List<Transmitter> getTransmitters() throws VizException {
+    public List<Transmitter> getTransmitters() throws Exception {
         ZoneAreaRequest req = new ZoneAreaRequest();
         req.setAction(ZoneAreaAction.GetTransmitters);
 
-        ZoneAreaResponse response = (ZoneAreaResponse) ThriftClient
+        ZoneAreaResponse response = (ZoneAreaResponse) BmhUtils
                 .sendRequest(req);
         return response.getTransmitterList();
     }
@@ -143,11 +143,11 @@ public class ZonesAreasDataManager {
      * 
      * @throws VizException
      */
-    public ZoneAreaResponse saveZone(Zone z) throws VizException {
+    public ZoneAreaResponse saveZone(Zone z) throws Exception {
         ZoneAreaRequest req = new ZoneAreaRequest();
         req.setAction(ZoneAreaAction.SaveZones);
         req.addZone(z);
-        ZoneAreaResponse response = (ZoneAreaResponse) ThriftClient
+        ZoneAreaResponse response = (ZoneAreaResponse) BmhUtils
                 .sendRequest(req);
 
         return response;
@@ -158,11 +158,11 @@ public class ZonesAreasDataManager {
      * 
      * @throws VizException
      */
-    public ZoneAreaResponse saveArea(Area a) throws VizException {
+    public ZoneAreaResponse saveArea(Area a) throws Exception {
         ZoneAreaRequest req = new ZoneAreaRequest();
         req.setAction(ZoneAreaAction.SaveAreas);
         req.addArea(a);
-        ZoneAreaResponse response = (ZoneAreaResponse) ThriftClient
+        ZoneAreaResponse response = (ZoneAreaResponse) BmhUtils
                 .sendRequest(req);
 
         return response;
@@ -173,11 +173,11 @@ public class ZonesAreasDataManager {
      * 
      * @throws VizException
      */
-    public void deleteArea(Area a) throws VizException {
+    public void deleteArea(Area a) throws Exception {
         ZoneAreaRequest req = new ZoneAreaRequest();
         req.setAction(ZoneAreaAction.DeleteArea);
         req.addArea(a);
-        ThriftClient.sendRequest(req);
+        BmhUtils.sendRequest(req);
     }
 
     /**
@@ -185,11 +185,11 @@ public class ZonesAreasDataManager {
      * 
      * @throws VizException
      */
-    public void deleteZone(Zone z) throws VizException {
+    public void deleteZone(Zone z) throws Exception {
         ZoneAreaRequest req = new ZoneAreaRequest();
         req.setAction(ZoneAreaAction.DeleteZone);
         req.addZone(z);
-        ThriftClient.sendRequest(req);
+        BmhUtils.sendRequest(req);
     }
 
     public Set<String> getStateAbbreviations() {
@@ -199,7 +199,7 @@ public class ZonesAreasDataManager {
                     LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
             File file = pathMgr.getFile(lc, STATE_FILE);
 
-            if (file != null && file.exists()) {
+            if ((file != null) && file.exists()) {
                 try {
                     StatesXML statesXml = (StatesXML) unmarshaller
                             .unmarshal(file);

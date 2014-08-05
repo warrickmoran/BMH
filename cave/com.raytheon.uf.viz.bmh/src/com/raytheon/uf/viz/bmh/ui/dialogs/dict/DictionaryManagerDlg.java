@@ -53,7 +53,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
-import com.raytheon.uf.viz.core.exception.VizException;
 
 /**
  * Main dialog for managing BMH dictionaries.
@@ -65,7 +64,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 18, 2014   3407     mpduff      Initial creation
- * 
+ * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * </pre>
  * 
  * @author mpduff
@@ -278,7 +277,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
         if (dict != null) {
             try {
                 dictionaryManager.createDictionary(dict);
-            } catch (VizException e) {
+            } catch (Exception e) {
                 statusHandler.error(
                         "Error creating dictionary: " + dict.getName(), e);
                 return;
@@ -310,7 +309,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
             tableData.getTableRows().clear();
             dictionaryTableComp.updateTable(tableData);
             dictCombo.select(0);
-        } catch (VizException e) {
+        } catch (Exception e) {
             statusHandler.error("Unable to delete dictionary, " + name, e);
             return;
         }
@@ -324,7 +323,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
         if (!name.equals(SELECT_DICTIONARY)) {
             try {
                 selectedDictionary = dictionaryManager.getDictionary(name);
-            } catch (VizException e) {
+            } catch (Exception e) {
                 statusHandler.error("Error getting dictionary " + name, e);
                 return;
             }
@@ -381,14 +380,14 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
                 dictCombo.select(0);
             } else {
                 int idx = dictCombo.indexOf(name);
-                if (idx >= 0 && idx < dictCombo.getItemCount()) {
+                if ((idx >= 0) && (idx < dictCombo.getItemCount())) {
                     dictCombo.select(idx);
                     dictionarySelectAction();
                 } else {
                     dictCombo.select(0);
                 }
             }
-        } catch (VizException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Unable to access BMH Dictionaries.", e);
         }
     }
@@ -420,7 +419,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
             }
             try {
                 dictionaryManager.deleteWord(toDelete);
-            } catch (VizException e) {
+            } catch (Exception e) {
                 statusHandler.error(
                         "Failed to delete word: " + toDelete.getWord(), e);
                 return;
@@ -514,7 +513,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
 
     @Override
     public boolean okToClose() {
-        if (wordDlg == null || wordDlg.isDisposed()) {
+        if ((wordDlg == null) || wordDlg.isDisposed()) {
             return true;
         }
 

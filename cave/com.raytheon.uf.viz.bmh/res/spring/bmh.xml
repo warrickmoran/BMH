@@ -1,0 +1,14 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
+
+    <!-- Routers for services -->
+    <bean id="bmhRouter" class="com.raytheon.uf.viz.core.requests.ServerRequestRouter">
+        <constructor-arg value="bmh.server" />
+    </bean>
+
+    <bean factory-bean="requestRouterRegistry" factory-method="register">
+        <constructor-arg value="bmh.server" />
+        <constructor-arg ref="bmhRouter" />
+    </bean>
+</beans>
