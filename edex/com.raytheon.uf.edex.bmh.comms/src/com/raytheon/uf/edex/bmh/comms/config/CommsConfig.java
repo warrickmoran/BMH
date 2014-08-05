@@ -38,6 +38,7 @@ import javax.xml.bind.annotation.XmlRootElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
+ * Aug 04, 2014  2487     bsteffen    Rename config options.
  * 
  * </pre>
  * 
@@ -49,7 +50,10 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class CommsConfig {
 
     @XmlAttribute
-    private int ipcPort;
+    private int dacTransmitPort;
+
+    @XmlAttribute
+    private int lineTapPort;
 
     @XmlElement
     private String dacTransmitStarter;
@@ -68,12 +72,20 @@ public class CommsConfig {
         this.dacs = dacs;
     }
 
-    public int getIpcPort() {
-        return ipcPort;
+    public int getDacTransmitPort() {
+        return dacTransmitPort;
     }
 
-    public void setIpcPort(int ipcPort) {
-        this.ipcPort = ipcPort;
+    public void setDacTransmitPort(int dacTransmitPort) {
+        this.dacTransmitPort = dacTransmitPort;
+    }
+
+    public int getLineTapPort() {
+        return lineTapPort;
+    }
+
+    public void setLineTapPort(int lineTapPort) {
+        this.lineTapPort = lineTapPort;
     }
 
     public String getDacTransmitStarter() {

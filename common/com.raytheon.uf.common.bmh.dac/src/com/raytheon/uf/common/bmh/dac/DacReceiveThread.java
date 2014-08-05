@@ -19,17 +19,16 @@
  **/
 package com.raytheon.uf.common.bmh.dac;
 
-import java.security.InvalidParameterException;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.security.InvalidParameterException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.raytheon.uf.common.bmh.dac.data.RTPHeaderStruct;
 import com.raytheon.uf.common.bmh.dac.data.RTPPacketStruct;
@@ -48,6 +47,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014 3374       bkowal      Initial creation
+ * Jul 15, 2014 3487       bsteffen    Add hasSubscribers
  * 
  * </pre>
  * 
@@ -379,6 +379,12 @@ public class DacReceiveThread extends Thread {
         synchronized (this.subscribers) {
             this.subscribers.remove(dacListener);
             statusHandler.info("Removed subscriber: " + dacListener.toString());
+        }
+    }
+
+    public boolean hasSubscribers() {
+        synchronized (subscribers) {
+            return !subscribers.isEmpty();
         }
     }
 }
