@@ -44,7 +44,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
  * Jun 26, 2014 3302       bkowal      Added getters/setters for all data.
- * 
+ * Aug 05, 2014 3175       rjpeter     Fixed serialization.
  * </pre>
  * 
  * @author rjpeter
@@ -78,6 +78,7 @@ public class TransmitterLanguage {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "voiceNumber")
+    @DynamicSerializeElement
     private TtsVoice voice;
 
     /**

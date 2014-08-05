@@ -53,6 +53,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2014    3407    mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
+ * Aug 05, 2014 3175       rjpeter     Fixed saveWord validation.
  * </pre>
  * 
  * @author mpduff
@@ -280,45 +281,63 @@ public class NewEditWordDlg extends CaveSWTDialog {
         word.setSubstitute(phonemeTxt.getText().trim());
         word.setWord(wordTxt.getText());
 
-        String msg = null;
-        int id = 0;
+        boolean isReplace = false;
 
         // check for existing word
         if (word.getId() > 0) {
+            // check if a rename
             for (Word w : dictionary.getWords()) {
                 if (w.getId() == word.getId()) {
                     if (!w.getWord().equalsIgnoreCase(word.getWord())) {
-                        msg = "Are you sure you want to rename " + w.getWord()
-                                + " to " + word.getWord() + "?";
-                        break;
-                    } else {
-                        msg = "The word \"" + word.getWord()
-                                + "\" already exists in the dictionary.\n"
-                                + "Are you sure you want to replace it?";
-                        break;
+                        String msg = "Are you sure you want to rename "
+                                + w.getWord() + " to " + word.getWord() + "?";
+                        int answer = DialogUtility.showMessageBox(getShell(),
+                                SWT.ICON_QUESTION | SWT.YES | SWT.NO,
+                                "Replace Word?", msg);
+                        if (answer == SWT.NO) {
+                            return false;
+                        }
                     }
+                    break;
+                }
+            }
+
+            // check for replace
+            for (Word w : dictionary.getWords()) {
+                if ((w.getId() != word.getId())
+                        && w.getWord().equalsIgnoreCase(word.getWord())) {
+                    String msg = "The word \"" + word.getWord()
+                            + "\" already exists in the dictionary.\n"
+                            + "Are you sure you want to replace it?";
+
+                    int answer = DialogUtility.showMessageBox(getShell(),
+                            SWT.ICON_QUESTION | SWT.YES | SWT.NO,
+                            "Replace Word?", msg);
+                    if (answer == SWT.NO) {
+                        return false;
+                    }
+
+                    // need to update word and delete w
+                    isReplace = true;
                 }
             }
         } else {
             // new word
             for (Word w : dictionary.getWords()) {
                 if (w.getWord().equalsIgnoreCase(word.getWord())) {
-                    msg = "The word \"" + word.getWord()
+                    String msg = "The word \"" + word.getWord()
                             + "\" already exists in the dictionary.\n"
                             + "Are you sure you want to replace it?";
-                    id = w.getId();
-                    break;
+
+                    int answer = DialogUtility.showMessageBox(getShell(),
+                            SWT.ICON_QUESTION | SWT.YES | SWT.NO,
+                            "Replace Word?", msg);
+                    if (answer == SWT.NO) {
+                        return false;
+                    }
+                    word.setId(w.getId());
                 }
             }
-        }
-
-        if (msg != null) {
-            int answer = DialogUtility.showMessageBox(getShell(),
-                    SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Replace Word?", msg);
-            if (answer == SWT.NO) {
-                return false;
-            }
-            word.setId(id);
         }
 
         word.setDictionary(dictionary);
@@ -326,7 +345,11 @@ public class NewEditWordDlg extends CaveSWTDialog {
         try {
             DictionaryManager dictionaryManager = new DictionaryManager(
                     new NeoSpeechPhonemeMapping());
-            word = dictionaryManager.saveWord(word);
+            if (isReplace) {
+                word = dictionaryManager.replaceWord(word);
+            } else {
+                word = dictionaryManager.saveWord(word);
+            }
         } catch (Exception e) {
             statusHandler.error("Error saving word: " + word.getWord(), e);
             return false;

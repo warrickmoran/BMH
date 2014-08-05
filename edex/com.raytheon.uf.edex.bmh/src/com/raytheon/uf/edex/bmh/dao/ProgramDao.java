@@ -46,7 +46,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * @author bsteffen
  * @version 1.0
  */
-public class ProgramDao extends AbstractBMHDao<Program, String> {
+public class ProgramDao extends AbstractBMHDao<Program, Integer> {
 
     public ProgramDao() {
         super(Program.class);

@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 
 /**
@@ -30,8 +34,8 @@ import com.raytheon.uf.common.bmh.datamodel.language.Word;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 03, 2014    3355    mpduff      Initial creation
- * 
+ * Jul 03, 2014    3355    mpduff      Initial creation.
+ * Aug 05, 2014 3175       rjpeter     Added replaceWord.
  * </pre>
  * 
  * @author mpduff
@@ -39,7 +43,23 @@ import com.raytheon.uf.common.bmh.datamodel.language.Word;
  */
 
 public class WordDao extends AbstractBMHDao<Word, String> {
+    protected static final String DELETE_BY_WORD_DICT_QUERY = "delete from Word w where w.word = :word and w.dictionary = :dict";
+
     public WordDao() {
         super(Word.class);
+    }
+
+    public void replaceWord(final Word word) {
+        txTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            public void doInTransactionWithoutResult(TransactionStatus status) {
+                HibernateTemplate ht = getHibernateTemplate();
+                // delete can't be in a named query, use direct hql
+                ht.bulkUpdate(
+                        "delete from Word w where w.word = ? and w.dictionary = ?",
+                        word.getWord(), word.getDictionary());
+                saveOrUpdate(word);
+            }
+        });
     }
 }

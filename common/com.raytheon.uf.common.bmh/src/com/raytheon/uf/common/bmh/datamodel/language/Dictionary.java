@@ -35,7 +35,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
 /**
  * Record for storing a dictionary, which is basically a language and collection
@@ -51,7 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 08, 2014 3302       bkowal      Use eager fetching to eliminate session closed
  * Jul 08, 2014 3355       mpduff      Updated mappings between dictionary and words
  * Jul 29, 2014 3407       mpduff      Removed orphanRemoval from words field, added toString()
- * 
+ * Aug 04, 2014 3175       rjpeter     Added serialization adapter to fix circular reference.
  * </pre>
  * 
  * @author rjpeter
@@ -61,22 +61,20 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Entity
 @Table(name = "dictionary", schema = "bmh")
 @DynamicSerialize
+@DynamicSerializeTypeAdapter(factory = DictionaryAdapter.class)
 public class Dictionary {
 
     public static final String GET_DICTIONARY_NAMES_QUERY = "getDictionaryNames";
 
     @Id
     @Column(length = 20)
-    @DynamicSerializeElement
     private String name = null;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 7, nullable = false)
-    @DynamicSerializeElement
     private Language language = Language.ENGLISH;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "dictionary", fetch = FetchType.EAGER)
-    @DynamicSerializeElement
     private Set<Word> words;
 
     public String getName() {
@@ -104,7 +102,7 @@ public class Dictionary {
 
     public void setWords(Set<Word> words) {
         this.words = words;
-        if (words != null && !words.isEmpty()) {
+        if ((words != null) && !words.isEmpty()) {
             for (Word word : words) {
                 word.setDictionary(this);
             }
