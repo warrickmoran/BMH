@@ -1011,7 +1011,7 @@ public class AsciiFileTranslator {
                         for (MessageType msgType : group.getMessageTypes()) {
                             SuiteMessage suiteMsg = suiteMessages.get(msgType);
                             if (suiteMsg != null) {
-                                suiteMsg.setTrigger(true);
+                                triggers.add(triggerGroup);
                             } else {
                                 badTriggers++;
                                 StringBuilder msg = new StringBuilder(80);
@@ -1034,7 +1034,7 @@ public class AsciiFileTranslator {
                     if (msgType != null) {
                         SuiteMessage suiteMsg = suiteMessages.get(msgType);
                         if (suiteMsg != null) {
-                            suiteMsg.setTrigger(true);
+                            triggers.add(field);
                         } else {
                             badTriggers++;
                             StringBuilder msg = new StringBuilder(80);
@@ -1133,6 +1133,15 @@ public class AsciiFileTranslator {
         // only keep higher priority suites that have triggers
         if (!SuiteType.GENERAL.equals(suite.getType())) {
             if ((triggers == null) || (triggers.size() == 0)) {
+                StringBuilder msg = new StringBuilder(80);
+                msg.append("Suite [")
+                        .append(suite.getName())
+                        .append("] is a ")
+                        .append(suite.getType())
+                        .append(" suite with no triggers.  Suite will not be added to program ["
+                                + program.getName() + "]");
+                handleError(msg, reader.getCurrentLineNumber(),
+                        reader.getSourceFile());
                 return;
             } else {
                 /*
@@ -1548,7 +1557,7 @@ public class AsciiFileTranslator {
             // analyze all files for parsing errors
             try {
                 File dir = new File(
-                        "/R/AWIPS/Systems Engineering/Task Order 22 (Development)/Work Assignments/WA24.1 BMH-NWR/WA24.2/Code/Legacy-CRS-2012DatabaseExport/");
+                        "/R/AWIPS/Systems Engineering/Task Order 22 (Development)/Work Assignments/WA24.1 BMH-NWR/WA24.2/Code/Legacy-CRS-July2014DatabaseExport/");
                 List<File> current = new ArrayList<>();
                 List<File> toCheck = new ArrayList<>();
                 toCheck.add(dir);
