@@ -22,9 +22,12 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
+import javax.persistence.ManyToOne;
+import javax.persistence.MapsId;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * Join object between a Suite and a MessageType. Also contains whether the
@@ -36,8 +39,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
- * 
+ * May 30, 2014 3175       rjpeter     Initial creation.
+ * Aug 05, 2014 3175       rjpeter     Fixed mapping.
  * </pre>
  * 
  * @author rjpeter
@@ -48,12 +51,25 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 @Table(name = "suite_message", schema = "bmh")
 public class SuiteMessage {
     @EmbeddedId
+    @DynamicSerializeElement
     private SuiteMessagePk id;
 
+    @ManyToOne(optional = false)
+    @MapsId("suiteId")
+    // No dynamic serialize due to bi-directional relationship
+    private Suite suite;
+
+    @ManyToOne(optional = false)
+    @MapsId("msgTypeId")
+    @DynamicSerializeElement
+    private MessageType msgType;
+
     @Column(nullable = false)
+    @DynamicSerializeElement
     private boolean trigger;
 
     @Column(nullable = false)
+    @DynamicSerializeElement
     private int position;
 
     public SuiteMessagePk getId() {
@@ -73,35 +89,29 @@ public class SuiteMessage {
     }
 
     public Suite getSuite() {
-        if (id == null) {
-            return null;
-        }
-
-        return id.getSuite();
+        return suite;
     }
 
     public void setSuite(Suite suite) {
+        this.suite = suite;
         if (id == null) {
             id = new SuiteMessagePk();
         }
 
-        id.setSuite(suite);
+        id.setSuiteId(suite != null ? suite.getId() : 0);
     }
 
     public MessageType getMsgType() {
-        if (id == null) {
-            return null;
-        }
-
-        return id.getMsgType();
+        return msgType;
     }
 
     public void setMsgType(MessageType msgType) {
+        this.msgType = msgType;
         if (id == null) {
             id = new SuiteMessagePk();
         }
 
-        id.setMsgType(msgType);
+        id.setMsgTypeId(msgType != null ? msgType.getId() : 0);
     }
 
     public int getPosition() {
@@ -119,23 +129,20 @@ public class SuiteMessage {
      * @return
      */
     public String getAfosid() {
-        if (id == null) {
-            return null;
+        if (msgType != null) {
+            return msgType.getAfosid();
         }
 
-        MessageType mt = id.getMsgType();
-        if (mt == null) {
-            return null;
-        }
-
-        return mt.getAfosid();
+        return null;
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = (prime * result) + ((id == null) ? 0 : id.hashCode());
+        result = (prime * result)
+                + ((msgType == null) ? 0 : msgType.hashCode());
+        result = (prime * result) + ((suite == null) ? 0 : suite.hashCode());
         return result;
     }
 
@@ -151,11 +158,18 @@ public class SuiteMessage {
             return false;
         }
         SuiteMessage other = (SuiteMessage) obj;
-        if (id == null) {
-            if (other.id != null) {
+        if (msgType == null) {
+            if (other.msgType != null) {
                 return false;
             }
-        } else if (!id.equals(other.id)) {
+        } else if (!msgType.equals(other.msgType)) {
+            return false;
+        }
+        if (suite == null) {
+            if (other.suite != null) {
+                return false;
+            }
+        } else if (!suite.equals(other.suite)) {
             return false;
         }
         return true;

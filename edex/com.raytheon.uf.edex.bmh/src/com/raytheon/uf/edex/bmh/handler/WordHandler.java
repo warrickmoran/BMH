@@ -22,7 +22,6 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.request.WordRequest;
 import com.raytheon.uf.common.bmh.request.WordResponse;
@@ -42,7 +41,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * ------------ ---------- ----------- --------------------------
  * Jul 03, 2014   3355     mpduff      Initial creation
  * Jul 28, 2014   3407     mpduff      Added delete word
- * 
+ * Aug 05, 2014   3175     rjpeter     Added replace word.
  * </pre>
  * 
  * @author mpduff
@@ -60,6 +59,8 @@ public class WordHandler implements IRequestHandler<WordRequest> {
             return saveWord(request);
         case Delete:
             deleteWord(request);
+        case Replace:
+            return replaceWord(request);
         default:
             break;
 
@@ -69,6 +70,7 @@ public class WordHandler implements IRequestHandler<WordRequest> {
         return response;
     }
 
+    @SuppressWarnings("unchecked")
     private WordResponse queryWord(WordRequest request)
             throws DataAccessLayerException {
         WordDao dao = new WordDao();
@@ -84,28 +86,26 @@ public class WordHandler implements IRequestHandler<WordRequest> {
     private WordResponse saveWord(WordRequest request) {
         WordDao dao = new WordDao();
         WordResponse response = new WordResponse();
-        Word word = request.getWord();
-        if (word.getDictionary() == null) {
-            Dictionary d = new Dictionary();
-            d.setName(request.getDictionaryName());
-            word.setDictionary(d);
-        }
         dao.saveOrUpdate(request.getWord());
-        List<Word> wordList = new ArrayList<Word>();
+        List<Word> wordList = new ArrayList<Word>(1);
         wordList.add(request.getWord());
+        response.setWordList(wordList);
+        return response;
+    }
+
+    private WordResponse replaceWord(WordRequest request) {
+        WordDao dao = new WordDao();
+        Word word = request.getWord();
+        dao.replaceWord(word);
+        WordResponse response = new WordResponse();
+        List<Word> wordList = new ArrayList<Word>(1);
+        wordList.add(word);
         response.setWordList(wordList);
         return response;
     }
 
     private void deleteWord(WordRequest request) {
         WordDao dao = new WordDao();
-        Word word = request.getWord();
-        if (word.getDictionary() == null) {
-            Dictionary d = new Dictionary();
-            d.setName(request.getDictionaryName());
-            word.setDictionary(d);
-        }
-
-        dao.delete(word);
+        dao.delete(request.getWord());
     }
 }

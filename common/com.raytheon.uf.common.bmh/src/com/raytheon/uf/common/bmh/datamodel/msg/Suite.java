@@ -52,7 +52,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014  3175     rjpeter     Initial creation
  * Jul 10, 2014  3283     bsteffen    Eagerly fetch suites.
  * Jul 17, 2014  3175     rjpeter     Added surrogate key.
- * 
+ * Aug 05, 2014  3175     rjpeter     Fixed Suite mapping.
  * </pre>
  * 
  * @author rjpeter
@@ -84,7 +84,7 @@ public class Suite {
     @DynamicSerializeElement
     private SuiteType type = SuiteType.GENERAL;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "id.suite", fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "suite", fetch = FetchType.EAGER)
     // updating position broken https://hibernate.atlassian.net/browse/HHH-5732
     @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
@@ -121,6 +121,12 @@ public class Suite {
     public void setSuiteMessages(List<SuiteMessage> suiteMessages) {
         this.suiteMessages = suiteMessages;
         updatePositions();
+        // handle bi-directional mapping
+        if (suiteMessages != null) {
+            for (SuiteMessage sm : suiteMessages) {
+                sm.setSuite(this);
+            }
+        }
     }
 
     public void addSuiteMessage(SuiteMessage suiteMessage) {

@@ -65,7 +65,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3175       rjpeter     Initial creation
- * 
+ * Aug 05, 2014 3175       rjpeter     Added set verification of message type in suite.
  * </pre>
  * 
  * @author rjpeter
@@ -872,10 +872,12 @@ public class AsciiFileTranslator {
         Suite suite = null;
         Map<String, MessageType> msgTypes = bmhData.getMsgTypes();
         Map<String, MessageGroupData> msgGroups = ascii.getMessageGroupData();
+        Set<MessageType> msgTypesInSuite = new HashSet<>();
 
         while (reader.hasNextField()) {
             String field = reader.nextField();
             if (field.startsWith(">")) {
+                msgTypesInSuite.clear();
                 suite = new Suite();
                 suite.setName(field.substring(1));
                 rval.put(suite.getName(), suite);
@@ -884,9 +886,12 @@ public class AsciiFileTranslator {
                 MessageGroupData group = msgGroups.get(field);
                 if (group != null) {
                     for (MessageType msgType : group.getMessageTypes()) {
-                        SuiteMessage msg = new SuiteMessage();
-                        suite.addSuiteMessage(msg);
-                        msg.setMsgType(msgType);
+                        if (!msgTypesInSuite.contains(msgType)) {
+                            SuiteMessage msg = new SuiteMessage();
+                            msg.setMsgType(msgType);
+                            suite.addSuiteMessage(msg);
+                            msgTypesInSuite.add(msgType);
+                        }
                     }
                 } else {
                     StringBuilder msg = new StringBuilder(64);
@@ -899,9 +904,12 @@ public class AsciiFileTranslator {
             } else {
                 MessageType msgType = msgTypes.get(field);
                 if (msgType != null) {
-                    SuiteMessage msg = new SuiteMessage();
-                    suite.addSuiteMessage(msg);
-                    msg.setMsgType(msgType);
+                    if (!msgTypesInSuite.contains(msgType)) {
+                        SuiteMessage msg = new SuiteMessage();
+                        msg.setMsgType(msgType);
+                        suite.addSuiteMessage(msg);
+                        msgTypesInSuite.add(msgType);
+                    }
                 } else {
                     StringBuilder msg = new StringBuilder(64);
                     msg.append("Unknown message type [").append(field)

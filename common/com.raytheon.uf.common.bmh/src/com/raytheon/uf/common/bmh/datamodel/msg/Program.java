@@ -77,15 +77,9 @@ public class Program {
 
     protected static final String GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY = "select p FROM Program p inner join p.transmitterGroups tg WHERE tg = :group";
 
-    protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY = "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.suites s inner join s.suiteMessages sm inner join sm.id.msgType mt WHERE mt.afosid = :afosid";
-
-    // protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY =
-    // "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.suites.suiteMessages.id.msgType mt  WHERE mt.afosid = :afosid";
-
-    // protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY =
-    // "SELECT p.transmitterGroups FROM Program p WHERE p.suites.suiteMessages.id.msgType.afosid = :afosid";
-
     public static final String GET_GROUPS_FOR_MSG_TYPE = "getGroupsForMsgType";
+
+    protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY = "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.suites s inner join s.suiteMessages sm inner join sm.msgType mt WHERE mt.afosid = :afosid";
 
     // use surrogate key
     @Id
@@ -105,6 +99,7 @@ public class Program {
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "program_id")
+    @DynamicSerializeElement
     private Set<TransmitterGroup> transmitterGroups;
 
     public int getId() {

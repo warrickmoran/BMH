@@ -31,7 +31,7 @@ import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
 /**
  * Dictionary word, which is basically a substition.
@@ -45,7 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014 3175       rjpeter     Initial creation
  * Jul 03, 2014            mpduff      Add dynamic column and unique constraints.
  * Jul 29, 2014  3407      mpduff      Removed HashCode and Equals methods, removed dynamic column
- * 
+ * Aug 04, 2014 3175       rjpeter     Added serialization adapter to fix circular reference.
  * </pre>
  * 
  * @author rjpeter
@@ -56,6 +56,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         "word", "dictionary" }) })
 @SequenceGenerator(initialValue = 1, name = Word.GEN, sequenceName = "word_seq")
 @DynamicSerialize
+@DynamicSerializeTypeAdapter(factory = WordAdapter.class)
 public class Word {
     static final String GEN = "Word Generator";
 
@@ -64,15 +65,12 @@ public class Word {
     // use surrogate key instead
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
-    @DynamicSerializeElement
     protected int id;
 
     @Column(length = 150)
-    @DynamicSerializeElement
     private String word;
 
     @Column(columnDefinition = "TEXT", nullable = false)
-    @DynamicSerializeElement
     private String substitute;
 
     /** An identifier used to link this Word to its Dictionary */

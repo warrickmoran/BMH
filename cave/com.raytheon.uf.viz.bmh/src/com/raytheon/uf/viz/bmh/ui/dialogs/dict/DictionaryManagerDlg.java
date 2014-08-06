@@ -65,12 +65,12 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * ------------ ---------- ----------- --------------------------
  * Jul 18, 2014   3407     mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
+ * Aug 05, 2014 3175       rjpeter     Reload dictionary on edit word.
  * </pre>
  * 
  * @author mpduff
  * @version 1.0
  */
-
 public class DictionaryManagerDlg extends AbstractBMHDialog {
 
     private final IUFStatusHandler statusHandler = UFStatus
@@ -478,8 +478,11 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
                 // User canceled
                 return;
             }
-            selectedDictionary.getWords().add(word);
-            selectedDictionary.getWords().remove(backingWord);
+            /*
+             * Reload the dictionary. Need to reload here in case user renamed a
+             * word to a word that already existed.
+             */
+            dictionarySelectAction();
             populateTable();
             editWordBtn.setEnabled(false);
             deleteWordBtn.setEnabled(false);

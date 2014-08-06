@@ -22,8 +22,6 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 import java.io.Serializable;
 
 import javax.persistence.Embeddable;
-import javax.persistence.ManyToOne;
-import javax.persistence.PrimaryKeyJoinColumn;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -38,7 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3175       rjpeter     Initial creation
- * 
+ * Aug 05, 2014 3175       rjpeter     Fixed bidirectional mappings.
  * </pre>
  * 
  * @author rjpeter
@@ -49,39 +47,34 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class SuiteMessagePk implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @ManyToOne(optional = false)
-    @PrimaryKeyJoinColumn
     @DynamicSerializeElement
-    private Suite suite;
+    private int suiteId;
 
-    @ManyToOne(optional = false)
-    @PrimaryKeyJoinColumn
     @DynamicSerializeElement
-    private MessageType msgType;
+    private int msgTypeId;
 
-    public Suite getSuite() {
-        return suite;
+    public int getSuiteId() {
+        return suiteId;
     }
 
-    public void setSuite(Suite suite) {
-        this.suite = suite;
+    public void setSuiteId(int suiteId) {
+        this.suiteId = suiteId;
     }
 
-    public MessageType getMsgType() {
-        return msgType;
+    public int getMsgTypeId() {
+        return msgTypeId;
     }
 
-    public void setMsgType(MessageType msgType) {
-        this.msgType = msgType;
+    public void setMsgTypeId(int msgTypeId) {
+        this.msgTypeId = msgTypeId;
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = (prime * result)
-                + ((msgType == null) ? 0 : msgType.hashCode());
-        result = (prime * result) + ((suite == null) ? 0 : suite.hashCode());
+        result = (prime * result) + msgTypeId;
+        result = (prime * result) + suiteId;
         return result;
     }
 
@@ -97,18 +90,10 @@ public class SuiteMessagePk implements Serializable {
             return false;
         }
         SuiteMessagePk other = (SuiteMessagePk) obj;
-        if (msgType == null) {
-            if (other.msgType != null) {
-                return false;
-            }
-        } else if (!msgType.equals(other.msgType)) {
+        if (msgTypeId != other.msgTypeId) {
             return false;
         }
-        if (suite == null) {
-            if (other.suite != null) {
-                return false;
-            }
-        } else if (!suite.equals(other.suite)) {
+        if (suiteId != other.suiteId) {
             return false;
         }
         return true;

@@ -35,7 +35,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * ------------ ---------- ----------- --------------------------
  * Jul 03, 2014    3355    mpduff      Initial creation
  * Jul 27, 2014    3407    mpduff      Added delete action
- * 
+ * Aug 05, 2014    3175    rjpeter     Added replace, removed dictionaryName.
  * </pre>
  * 
  * @author mpduff
@@ -45,7 +45,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 public class WordRequest implements IServerRequest {
 
     public enum WordAction {
-        Save, Query, Delete;
+        Save, Query, Delete, Replace;
     }
 
     /**
@@ -59,12 +59,6 @@ public class WordRequest implements IServerRequest {
      */
     @DynamicSerializeElement
     private WordAction action;
-
-    /**
-     * Dictionary name
-     */
-    @DynamicSerializeElement
-    private String dictionaryName;
 
     /**
      * @return the word
@@ -94,20 +88,5 @@ public class WordRequest implements IServerRequest {
      */
     public void setAction(WordAction action) {
         this.action = action;
-    }
-
-    /**
-     * @return the dictionaryName
-     */
-    public String getDictionaryName() {
-        return dictionaryName;
-    }
-
-    /**
-     * @param dictionaryName
-     *            the dictionaryName to set
-     */
-    public void setDictionaryName(String dictionaryName) {
-        this.dictionaryName = dictionaryName;
     }
 }

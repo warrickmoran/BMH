@@ -28,7 +28,6 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
@@ -152,29 +151,54 @@ public class DatabaseImport {
 
                         if (data != null) {
                             try {
-                                // TODO: IGNORE DICTIONARIES
-                                // DictionaryDao dictDao = new DictionaryDao();
-                                // dictDao.persistAll(data.getDictionaries()
-                                // .values());
-
+                                // validate data stores and can be retrieved
                                 TransmitterGroupDao tgDao = new TransmitterGroupDao();
                                 tgDao.persistAll(data.getTransmitters()
                                         .values());
+                                statusHandler.info("Saved "
+                                        + data.getTransmitters().values()
+                                                .size() + " transmitters");
+                                tgDao.loadAll();
+
                                 TransmitterLanguageDao langDao = new TransmitterLanguageDao();
                                 langDao.persistAll(data
                                         .getTransmitterLanguages());
+                                statusHandler.info("Saved "
+                                        + data.getTransmitterLanguages().size()
+                                        + " transmitter languages");
+                                langDao.loadAll();
                                 AreaDao areaDao = new AreaDao();
                                 areaDao.persistAll(data.getAreas().values());
+                                statusHandler.info("Saved "
+                                        + data.getAreas().values().size()
+                                        + " areas");
+                                areaDao.loadAll();
                                 ZoneDao zoneDao = new ZoneDao();
                                 zoneDao.persistAll(data.getZones().values());
+                                statusHandler.info("Saved "
+                                        + data.getZones().values().size()
+                                        + " zones");
+                                zoneDao.loadAll();
                                 MessageTypeDao msgTypeDao = new MessageTypeDao();
                                 msgTypeDao.persistAll(data.getMsgTypes()
                                         .values());
+                                statusHandler.info("Saved "
+                                        + data.getMsgTypes().values().size()
+                                        + " message types");
+                                msgTypeDao.loadAll();
                                 SuiteDao suiteDao = new SuiteDao();
                                 suiteDao.persistAll(data.getSuites().values());
+                                statusHandler.info("Saved "
+                                        + data.getSuites().values().size()
+                                        + " suites");
+                                suiteDao.loadAll();
                                 ProgramDao programDao = new ProgramDao();
                                 programDao.persistAll(data.getPrograms()
                                         .values());
+                                statusHandler.info("Saved "
+                                        + data.getPrograms().values().size()
+                                        + " programs");
+                                programDao.loadAll();
 
                                 if (!file.renameTo(new File(file
                                         .getAbsolutePath() + ".processed"))) {
@@ -184,7 +208,7 @@ public class DatabaseImport {
                                                             + file.getAbsolutePath()
                                                             + "]");
                                 }
-                            } catch (Exception e) {
+                            } catch (Throwable e) {
                                 statusHandler
                                         .error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
                                                 "Error occurred saving legacy data to database",

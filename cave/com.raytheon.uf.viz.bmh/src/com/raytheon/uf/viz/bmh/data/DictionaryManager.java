@@ -50,6 +50,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Jul 21, 2014    3407    mpduff      Added deleteDictionary() and 
  *                                     changed to use response objects.
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
+ * Aug 05, 2014 3175       rjpeter     Added replaceWord.
  * </pre>
  * 
  * @author mpduff
@@ -122,7 +123,6 @@ public class DictionaryManager {
         WordRequest req = new WordRequest();
         req.setAction(WordAction.Save);
         req.setWord(word);
-        req.setDictionaryName(word.getDictionary().getName());
         WordResponse response = (WordResponse) BmhUtils.sendRequest(req);
         if (response.getWordList().isEmpty()) {
             throw new VizException("An error occurred saving word "
@@ -141,12 +141,33 @@ public class DictionaryManager {
      * @throws VizException
      */
     public void deleteWord(Word word) throws Exception {
-        WordRequest request = new WordRequest();
-        request.setAction(WordAction.Delete);
-        request.setDictionaryName(word.getDictionary().getName());
-        request.setWord(word);
+        WordRequest req = new WordRequest();
+        req.setAction(WordAction.Delete);
+        req.setWord(word);
 
-        BmhUtils.sendRequest(request);
+        BmhUtils.sendRequest(req);
+    }
+
+    /**
+     * Replace the {@link Word} from the {@link Dictionary}
+     * 
+     * @param word
+     *            The Word to delete
+     * @throws VizException
+     */
+    public Word replaceWord(Word word) throws Exception {
+        WordRequest req = new WordRequest();
+        req.setAction(WordAction.Replace);
+        req.setWord(word);
+
+        WordResponse response = (WordResponse) BmhUtils.sendRequest(req);
+        if (response.getWordList().isEmpty()) {
+            throw new VizException("An error occurred saving word "
+                    + word.getWord());
+        }
+        word = response.getWordList().get(0);
+
+        return word;
     }
 
     /**
