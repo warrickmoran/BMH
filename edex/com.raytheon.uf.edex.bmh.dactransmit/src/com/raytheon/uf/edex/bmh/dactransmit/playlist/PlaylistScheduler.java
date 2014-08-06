@@ -30,6 +30,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
@@ -45,6 +46,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -70,6 +72,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  *                                      changing playlists.
  * Jul 29, 2014  #3286     dgilling     Use playback time to predict which
  *                                      messages will be played from a playlist.
+ * Aug 06, 2014  #3286     dgilling     Send more informational 
+ *                                      PlaylistSwitchNotifications, simplify logic
+ *                                      when receiving update to current playlist.
  * 
  * </pre>
  * 
@@ -145,7 +150,10 @@ public final class PlaylistScheduler implements
 
     /**
      * Always points to the index of the next message to play from
-     * currentMessages. Subtract one to get currently playing message.
+     * currentMessages. Subtract one to get currently playing message. If this
+     * value is equal to currentMessages.size(), then the next call to
+     * nextMessage() will cause a playlist switch (which may just be looping
+     * back to the beginning of the current playlist).
      */
     private int messageIndex;
 
@@ -154,11 +162,12 @@ public final class PlaylistScheduler implements
     private final EventBus eventBus;
 
     /**
-     * Since we can't send out this notification in the constructor (because
-     * listeners haven't all been activated), we hold on to the first playlist
-     * switch until we call next() for the first time.
+     * There are some cases where we can't immediately send a playlist switch
+     * notification--on the startup case when the event bus isn't fully ready or
+     * when receiving a new higher priority playlist. In those cases we hold
+     * this notification until the next call to next().
      */
-    private PlaylistSwitchNotification firstPlaylistNotfy;
+    private PlaylistSwitchNotification playlistNotify;
 
     /**
      * Reads the specified directory for valid playlist files (ones that have
@@ -227,11 +236,11 @@ public final class PlaylistScheduler implements
          * time because the listeners will not have all been started yet. Hence,
          * we hold on to it until the first call here.
          */
-        this.firstPlaylistNotfy = cache.getPlaylist(firstPlaylist);
+        this.playlistNotify = buildPlaylistNotification(firstPlaylist);
         if (firstPlaylist.isInterrupt()) {
             this.currentMessages = Collections.emptyList();
         } else {
-            this.currentMessages = this.firstPlaylistNotfy.getMessageIds();
+            this.currentMessages = this.playlistNotify.getPlaylist();
         }
         logger.debug("Starting with playlist: " + firstPlaylist.toString());
 
@@ -252,14 +261,9 @@ public final class PlaylistScheduler implements
      *         file to play.
      */
     public DacMessagePlaybackData next() {
-        /*
-         * We cannot send this notification to the event bus at construction
-         * time because the listeners will not have all been started yet. Hence,
-         * we hold on to it until the first call here.
-         */
-        if (firstPlaylistNotfy != null) {
-            eventBus.post(firstPlaylistNotfy);
-            firstPlaylistNotfy = null;
+        if (playlistNotify != null) {
+            eventBus.post(playlistNotify);
+            playlistNotify = null;
         }
 
         DacMessagePlaybackData nextMessage = nextMessage();
@@ -287,7 +291,7 @@ public final class PlaylistScheduler implements
             /*
              * if we have unplayed INTERRUPT priority messages always play those
              * first. After completing the INTERRUPT, playback will resume at
-             * the beginning of the highest priority playist.
+             * the beginning of the highest priority playlist.
              */
             if (!interrupts.isEmpty()) {
                 DacPlaylist nextPlaylist = interrupts.poll();
@@ -305,8 +309,7 @@ public final class PlaylistScheduler implements
                 messageIndex = 0;
                 playlistIndex = 0;
 
-                PlaylistSwitchNotification notify = cache
-                        .getPlaylist(nextPlaylist);
+                PlaylistSwitchNotification notify = buildPlaylistNotification(nextPlaylist);
                 eventBus.post(notify);
             }
 
@@ -322,27 +325,26 @@ public final class PlaylistScheduler implements
 
             while ((nextMessage == null) && (!currentPlaylists.isEmpty())) {
                 DacPlaylist nextPlaylist = currentPlaylists.get(playlistIndex);
-                PlaylistSwitchNotification notify = cache
-                        .getPlaylist(nextPlaylist);
+                PlaylistSwitchNotification notify = buildPlaylistNotification(nextPlaylist);
                 if (!notify.getMessages().isEmpty()) {
                     logger.debug("Switching to playlist: "
                             + nextPlaylist.toString());
 
                     List<DacPlaylistMessageId> nextMessages = notify
-                            .getMessageIds();
+                            .getPlaylist();
 
                     /*
                      * Since we've switched playlists, this call will return
                      * index 0 from the playlist. Set the messageIndex to 1, so
                      * the next call to this method is set to check the next
-                     * message in the playlist.
+                     * message in the playlist. If this playlist so happens to
+                     * only have a single message, we'll just loop back to the
+                     * beginning at the next call to nextMessage() and generate
+                     * an updated PlaylistSwitchNotification.
                      */
                     nextMessage = cache.getMessage(nextMessages.get(0));
                     currentMessages = nextMessages;
                     messageIndex = 1;
-                    if (messageIndex > currentMessages.size()) {
-                        messageIndex = 0;
-                    }
                     eventBus.post(notify);
                 }
 
@@ -410,60 +412,51 @@ public final class PlaylistScheduler implements
                     List<DacPlaylistMessageId> newMessages = newPlaylist
                             .getMessages();
 
-                    int newMessageIdx = -1;
-                    if (messageIndex == 0) {
-                        newMessageIdx = 0;
-                    } else {
-                        int[] relativeIdxsToCheck = calcSearchOffsets();
-                        for (int index : relativeIdxsToCheck) {
-                            long messageId = currentMessages.get(
-                                    messageIndex + index).getBroadcastId();
-                            for (int i = 0; i < newMessages.size(); i++) {
-                                if (messageId == newMessages.get(i)
-                                        .getBroadcastId()) {
-                                    newMessageIdx = i;
-                                    break;
-                                }
-                            }
-
-                            if (newMessageIdx >= 0) {
-                                /*
-                                 * if the matching message is one we previously
-                                 * played, jump forward to the next message to
-                                 * play the next message we haven't previously
-                                 * played
-                                 */
-                                if (index < 0) {
-                                    newMessageIdx++;
-                                    if (newMessageIdx > newMessages.size()) {
-                                        newMessageIdx = 0;
-                                    }
-                                }
-                                break;
-                            }
-                        }
-
-                        /*
-                         * we searched the entire list and none of the messages
-                         * matched, so let's just give up and start at the
-                         * beginning of this "updated" playlist...
-                         */
-                        if (newMessageIdx < 0) {
-                            newMessageIdx = 0;
+                    int prevMessageIndex = -1;
+                    for (int i = (messageIndex - 1); i >= 0; i--) {
+                        prevMessageIndex = newMessages.indexOf(currentMessages
+                                .get(i));
+                        if (prevMessageIndex >= 0) {
+                            break;
                         }
                     }
 
-                    currentPlaylists.set(playlistIndex, newPlaylist);
-                    currentMessages = newMessages;
-                    messageIndex = newMessageIdx;
-
+                    /*
+                     * We pass prevMessageIndex+1 to buildPlaylistNotification()
+                     * because that is the first index in the updated playlist
+                     * that we want to predict new playback times for. If
+                     * (prevMessageIndex+1) > newPlaylist.getMessages().size()
+                     * then we have no messages to predict new times for and
+                     * buildPlaylistNotification() won't attempt to.
+                     * 
+                     * A reminder about messageIndex: it always points to the
+                     * next message to play from currentMessages and if
+                     * messageIndex = currentMessages.size(), the next call to
+                     * nextMessage() will cause a playlist switch because we've
+                     * run out of messages to play. We do not want to wrap the
+                     * value of messageIndex here because we won't generate the
+                     * playlist switch that the GUIs need to know we're
+                     * beginning a new cycle.
+                     */
+                    PlaylistSwitchNotification notify = buildPlaylistNotification(
+                            newPlaylist, prevMessageIndex + 1);
+                    currentPlaylists.set(0, newPlaylist);
+                    currentMessages = notify.getPlaylist();
+                    messageIndex = prevMessageIndex + 1;
+                    eventBus.post(notify);
                 } else {
                     int compareVal = PLAYBACK_ORDER.compare(newPlaylist,
                             currentPlaylist);
 
                     if (compareVal < 0) {
                         currentPlaylists.add(0, newPlaylist);
-                        currentMessages = newPlaylist.getMessages();
+                        /*
+                         * We must hold this playlist switch until the next call
+                         * to next() because we will continue playing the
+                         * current message from the old playlist until then.
+                         */
+                        playlistNotify = buildPlaylistNotification(newPlaylist);
+                        currentMessages = playlistNotify.getPlaylist();
                         playlistIndex = 0;
                         messageIndex = 0;
                     } else {
@@ -483,35 +476,92 @@ public final class PlaylistScheduler implements
     }
 
     /**
-     * Calculates the relative search indices relative to the current position
-     * to use to find a matching message between 2 playlists. Starts at
-     * currently playing message, then checks the next message to play, then the
-     * previous message to play, and so on until all messages in the playlist
-     * have been checked.
+     * Build a {@code PlaylistSwitchNotification} for the specified playlist.
+     * Playlist will only contain messages predicted to be valid based on
+     * playback time of all previous messages in the playlist and the current
+     * time.
      * 
-     * @return An array containing the search indices, relative to the current
-     *         position in the playlist.
+     * @param playlist
+     *            {@code DacPlaylist} which will have a list of all possible
+     *            messages that could be played for this playlist.
+     * @return A {@code PlaylistSwitchNotification} containing the list of valid
+     *         messages or messages predicted to be valid when it comes to be
+     *         their turn for playback.
      */
-    private int[] calcSearchOffsets() {
-        int size = currentMessages.size();
-        int[] retVal = new int[size];
-        // always start search with message currently playing
-        retVal[0] = -1;
+    private PlaylistSwitchNotification buildPlaylistNotification(
+            DacPlaylist playlist) {
+        return buildPlaylistNotification(playlist, 0);
+    }
 
-        int retValIndex = 1;
-        int posFromCurrent = 1;
+    /**
+     * Build a {@code PlaylistSwitchNotification} for the specified playlist,
+     * and only begin predicting playback times at a specific index for the
+     * messages within that playlist.
+     * 
+     * @param playlist
+     *            {@code DacPlaylist} which will have a list of all possible
+     *            messages that could be played for this playlist.
+     * @param predictStartIndex
+     *            The index within the list to start predicting playback times.
+     *            All messages prior to this index will not receive prediction
+     *            times, but still have all the historical playback information
+     *            (playcounts, last played time, etc.).
+     * @return A {@code PlaylistSwitchNotification} containing the list of valid
+     *         messages or messages predicted to be valid when it comes to be
+     *         their turn for playback.
+     */
+    private PlaylistSwitchNotification buildPlaylistNotification(
+            DacPlaylist playlist, int predictStartIndex) {
+        List<MessagePlaybackPrediction> predictedMessages = new ArrayList<>();
+        List<DacPlaylistMessageId> allMessages = playlist.getMessages();
+        long playbackStartTime = 0;
+        long cycleTime = 0;
 
-        while (retValIndex < size) {
-            if ((messageIndex + (posFromCurrent - 1)) < size) {
-                retVal[retValIndex] = (posFromCurrent - 1);
-                retValIndex++;
-            }
-            if ((messageIndex - (posFromCurrent + 1)) >= 0) {
-                retVal[retValIndex] = 0 - (posFromCurrent + 1);
-                retValIndex++;
+        for (int i = 0; i < predictStartIndex; i++) {
+            DacPlaylistMessageId messageId = allMessages.get(i);
+            DacPlaylistMessage messageData = cache.getMessage(messageId);
+
+            MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
+                    messageId.getBroadcastId(), null, messageData);
+            predictedMessages.add(prediction);
+
+            cycleTime += cache.getPlaybackTime(messageId);
+
+            if (i == (predictStartIndex - 1)) {
+                playbackStartTime = messageData.getLastTransmitTime()
+                        .getTimeInMillis() + cache.getPlaybackTime(messageId);
             }
         }
 
+        if (playbackStartTime < TimeUtil.currentTimeMillis()) {
+            playbackStartTime = TimeUtil.currentTimeMillis();
+        }
+
+        for (int i = predictStartIndex; i < allMessages.size(); i++) {
+            DacPlaylistMessageId messageId = allMessages.get(i);
+            DacPlaylistMessage messageData = cache.getMessage(messageId);
+
+            /*
+             * ignore start/expire times for interrupt playlists, we just want
+             * to play the message.
+             */
+            if ((playlist.isInterrupt())
+                    || (messageData.isValid(playbackStartTime))) {
+                MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
+                        messageId.getBroadcastId(),
+                        TimeUtil.newGmtCalendar(new Date(playbackStartTime)),
+                        messageData);
+                predictedMessages.add(prediction);
+
+                long playbackTime = cache.getPlaybackTime(messageId);
+                cycleTime += playbackTime;
+                playbackStartTime += playbackTime;
+            }
+        }
+
+        PlaylistSwitchNotification retVal = new PlaylistSwitchNotification(
+                playlist.getSuite(), playlist.getTransmitterGroup(),
+                predictedMessages, cycleTime);
         return retVal;
     }
 }

@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.notify;
 
 import java.util.Calendar;
 
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2014  #3286     dgilling     Initial creation
+ * Aug 04, 2014  #3286     dgilling     Added additional fields for GUI.
  * 
  * </pre>
  * 
@@ -51,15 +53,32 @@ public final class MessagePlaybackPrediction {
     private long broadcastId;
 
     @DynamicSerializeElement
-    private Calendar playbackTime;
+    private Calendar nextTransmitTime;
+
+    @DynamicSerializeElement
+    private int playCount;
+
+    @DynamicSerializeElement
+    private Calendar lastTransmitTime;
+
+    @DynamicSerializeElement
+    private boolean playedAlertTone;
+
+    @DynamicSerializeElement
+    private boolean playedSameTone;
 
     public MessagePlaybackPrediction() {
         // for serialization use only
     }
 
-    public MessagePlaybackPrediction(long broadcastId, Calendar playbackTime) {
+    public MessagePlaybackPrediction(long broadcastId, Calendar playbackTime,
+            DacPlaylistMessage message) {
         this.broadcastId = broadcastId;
-        this.playbackTime = playbackTime;
+        this.nextTransmitTime = playbackTime;
+        this.playCount = message.getPlayCount();
+        this.lastTransmitTime = message.getLastTransmitTime();
+        this.playedAlertTone = false;
+        this.playedSameTone = false;
     }
 
     public long getBroadcastId() {
@@ -70,11 +89,43 @@ public final class MessagePlaybackPrediction {
         this.broadcastId = broadcastId;
     }
 
-    public Calendar getPlaybackTime() {
-        return playbackTime;
+    public Calendar getNextTransmitTime() {
+        return nextTransmitTime;
     }
 
-    public void setPlaybackTime(Calendar playbackTime) {
-        this.playbackTime = playbackTime;
+    public void setNextTransmitTime(Calendar nextTransmitTime) {
+        this.nextTransmitTime = nextTransmitTime;
+    }
+
+    public int getPlayCount() {
+        return playCount;
+    }
+
+    public void setPlayCount(int playCount) {
+        this.playCount = playCount;
+    }
+
+    public Calendar getLastTransmitTime() {
+        return lastTransmitTime;
+    }
+
+    public void setLastTransmitTime(Calendar lastTransmitTime) {
+        this.lastTransmitTime = lastTransmitTime;
+    }
+
+    public boolean isPlayedAlertTone() {
+        return playedAlertTone;
+    }
+
+    public void setPlayedAlertTone(boolean playedAlertTone) {
+        this.playedAlertTone = playedAlertTone;
+    }
+
+    public boolean isPlayedSameTone() {
+        return playedSameTone;
+    }
+
+    public void setPlayedSameTone(boolean playedSameTone) {
+        this.playedSameTone = playedSameTone;
     }
 }
