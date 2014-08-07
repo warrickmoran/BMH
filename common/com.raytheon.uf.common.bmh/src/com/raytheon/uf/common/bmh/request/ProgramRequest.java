@@ -24,7 +24,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * Message Type data request object
+ * Request object for Program queries.
  * 
  * <pre>
  * 
@@ -32,35 +32,39 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 22, 2014    3411    mpduff      Initial creation
- * Aug 5, 2014  #3490      lvenable    Updated action
+ * Aug 5, 2014  #3490      lvenable     Initial creation
  * 
  * </pre>
  * 
- * @author mpduff
+ * @author lvenable
  * @version 1.0
  */
 @DynamicSerialize
-public class MessageTypeRequest implements IServerRequest {
-    public enum MessageTypeAction {
-        AllMessageTypes;
+public class ProgramRequest implements IServerRequest {
+
+    public enum ProgramAction {
+        Save, ListNamesIDs, AllPrograms, Delete;
     }
 
     @DynamicSerializeElement
-    private MessageTypeAction action;
+    private ProgramAction action;
 
     /**
-     * @return the action
+     * Get the program action.
+     * 
+     * @return The program action.
      */
-    public MessageTypeAction getAction() {
+    public ProgramAction getAction() {
         return action;
     }
 
     /**
+     * Set the program action.
+     * 
      * @param action
-     *            the action to set
+     *            The program action.
      */
-    public void setAction(MessageTypeAction action) {
+    public void setAction(ProgramAction action) {
         this.action = action;
     }
 }

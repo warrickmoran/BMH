@@ -31,6 +31,8 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
@@ -53,11 +55,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 10, 2014  3283     bsteffen    Eagerly fetch suites.
  * Jul 17, 2014  3175     rjpeter     Added surrogate key.
  * Aug 05, 2014  3175     rjpeter     Fixed Suite mapping.
+ * Aug 06, 2014 #3490     lvenable    Updated to add name/query.
+ * 
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = Suite.GET_SUITE_NAMES_CATS_IDS, query = Suite.GET_SUITE_NAMES_CATS_IDS_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "suite", schema = "bmh")
@@ -66,6 +71,10 @@ public class Suite {
     public enum SuiteType {
         GENERAL, HIGH, EXCLUSIVE, INTERRUPT;
     }
+
+    public static final String GET_SUITE_NAMES_CATS_IDS = "getSuiteNamesCatsIDs";
+
+    protected static final String GET_SUITE_NAMES_CATS_IDS_QUERY = "select name, type, id FROM Suite s";
 
     static final String GEN = "Suite Id Generator";
 

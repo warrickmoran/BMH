@@ -19,38 +19,29 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.plugin.AbstractUIPlugin;
 
-import com.raytheon.uf.viz.bmh.Activator;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
-import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.request.SuiteRequest;
+import com.raytheon.uf.common.bmh.request.SuiteRequest.SuiteAction;
+import com.raytheon.uf.common.bmh.request.SuiteResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
-import com.raytheon.uf.viz.bmh.ui.program.AddSuitesDlg;
-import com.raytheon.uf.viz.bmh.ui.program.AddSuitesDlg.SuiteDialogType;
-import com.raytheon.uf.viz.bmh.ui.program.CreateEditSuiteDlg;
-import com.raytheon.uf.viz.bmh.ui.program.CreateEditSuiteDlg.DialogType;
-import com.raytheon.uf.viz.bmh.ui.program.SuiteTable;
-import com.raytheon.viz.ui.dialogs.ICloseCallback;
+import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup;
+import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
 
 /**
  * 
@@ -65,7 +56,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 24, 2014  #3433     lvenable     Initial creation
  * Jul 27, 2014  #3420     lvenable     Updated to use relationship button.
- * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
+ * Aug 03, 2014  #3479     lvenable    Updated code for validator changes.
+ * Aug 06, 2014  #3490     lvenable    Refactored and moved code to SuiteConfigGroup.
  * 
  * </pre>
  * 
@@ -74,20 +66,15 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  */
 public class SuiteManagerDlg extends AbstractBMHDialog {
 
-    /** Suite table. */
-    private SuiteTable suiteTable;
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(SuiteManagerDlg.class);
 
-    /** More information button. */
-    private Button relationshipBtn;
+    /** List of suites. */
+    private List<Suite> suiteList = null;
 
-    /** Edit suites button. */
-    private Button editSuiteBtn;
-
-    /** Rename suite button. */
-    private Button renameSuiteBtn;
-
-    /** Relationship image. */
-    private Image relationshipImg;
+    /** Group that contains the controls for configuring the suites. */
+    private SuiteConfigGroup suiteConfigGroup;
 
     /**
      * Constructor.
@@ -118,176 +105,33 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
     }
 
     @Override
-    protected void disposed() {
-        relationshipImg.dispose();
-    }
-
-    @Override
     protected void initializeComponents(Shell shell) {
         setText("Suite Manager");
 
-        Group suiteGroup = new Group(shell, SWT.SHADOW_OUT);
-        GridLayout gl = new GridLayout(1, false);
-        suiteGroup.setLayout(gl);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        suiteGroup.setLayoutData(gd);
-        suiteGroup.setText(" Available Suites: ");
-
-        createFilterControls(suiteGroup);
-        createTable(suiteGroup);
-        createSuiteControls(suiteGroup);
+        retrieveDataFromDB();
+        createSuiteTableGroup();
         createBottomButtons();
+
+        suiteConfigGroup.populateSuiteTable(suiteList);
     }
 
     /**
-     * Create the filter controls.
+     * Create the Suite group.
      */
-    private void createFilterControls(Group suiteGroup) {
-        Composite filterComp = new Composite(suiteGroup, SWT.NONE);
-        GridLayout gl = new GridLayout(5, false);
-        filterComp.setLayout(gl);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        filterComp.setLayoutData(gd);
-
-        Label filerLbl = new Label(filterComp, SWT.NONE);
-        filerLbl.setText("Filter Category: ");
-
-        int indent = 10;
-
-        gd = new GridData();
-        gd.horizontalIndent = indent;
-        Button filterAllRdo = new Button(filterComp, SWT.RADIO);
-        filterAllRdo.setText("All");
-        filterAllRdo.setSelection(true);
-        filterAllRdo.setLayoutData(gd);
-
-        gd = new GridData();
-        gd.horizontalIndent = indent;
-        Button filterGeneralRdo = new Button(filterComp, SWT.RADIO);
-        filterGeneralRdo.setText("General");
-        filterGeneralRdo.setLayoutData(gd);
-
-        gd = new GridData();
-        gd.horizontalIndent = indent;
-        Button filterHighRdo = new Button(filterComp, SWT.RADIO);
-        filterHighRdo.setText("High");
-        filterHighRdo.setLayoutData(gd);
-
-        gd = new GridData();
-        gd.horizontalIndent = indent;
-        Button filterExclusiveRdo = new Button(filterComp, SWT.RADIO);
-        filterExclusiveRdo.setText("Exclusive");
-        filterExclusiveRdo.setLayoutData(gd);
-
-    }
-
-    /**
-     * Create the suite table.
-     */
-    private void createTable(Group suiteGroup) {
-        suiteTable = new SuiteTable(suiteGroup, 550, 150);
-        populateSuiteTable();
-    }
-
-    /**
-     * Create suite controls.
-     */
-    private void createSuiteControls(Group suiteGroup) {
-        Composite suiteControlComp = new Composite(suiteGroup, SWT.NONE);
-        GridLayout gl = new GridLayout(6, false);
-        suiteControlComp.setLayout(gl);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        suiteControlComp.setLayoutData(gd);
-
-        int minButtonWidth = 80;
-
-        gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
-        gd.widthHint = minButtonWidth;
-        Button addNewSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
-        addNewSuiteBtn.setText("New...");
-        addNewSuiteBtn.setLayoutData(gd);
-        addNewSuiteBtn.addSelectionListener(new SelectionAdapter() {
+    private void createSuiteTableGroup() {
+        suiteConfigGroup = new SuiteConfigGroup(shell, " Available Suites: ",
+                SuiteGroupType.PROGRAM, 550, 150);
+        suiteConfigGroup.setCallBackAction(new ISuiteSelection() {
             @Override
-            public void widgetSelected(SelectionEvent e) {
-                CreateEditSuiteDlg csd = new CreateEditSuiteDlg(shell,
-                        DialogType.CREATE, true);
-                csd.open();
+            public void suiteSelected(Suite suite) {
+            }
+
+            @Override
+            public void suitesUpdated() {
+                retrieveDataFromDB();
+                suiteConfigGroup.populateSuiteTable(suiteList);
             }
         });
-
-        gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
-        gd.widthHint = minButtonWidth;
-        Button copyBtn = new Button(suiteControlComp, SWT.PUSH);
-        copyBtn.setText(" Copy... ");
-        copyBtn.setLayoutData(gd);
-        copyBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                AddSuitesDlg asd = new AddSuitesDlg(getShell(),
-                        SuiteDialogType.COPY_ONLY);
-                asd.open();
-            }
-        });
-
-        gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
-        gd.widthHint = minButtonWidth;
-        renameSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
-        renameSuiteBtn.setText("Rename...");
-        renameSuiteBtn.setLayoutData(gd);
-        renameSuiteBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                InputTextDlg inputDlg = new InputTextDlg(shell, "Rename Suite",
-                        "Type in a new suite name:", null);
-                inputDlg.setCloseCallback(new ICloseCallback() {
-                    @Override
-                    public void dialogClosed(Object returnValue) {
-                        // TODO: implement code.
-                        // Need to validate the input.
-                        if (returnValue != null
-                                && returnValue instanceof String) {
-                            String name = (String) returnValue;
-                            System.out.println("Suite name = " + name);
-                        }
-                    }
-                });
-                inputDlg.open();
-            }
-        });
-
-        gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
-        gd.widthHint = minButtonWidth;
-        editSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
-        editSuiteBtn.setText("Edit...");
-        editSuiteBtn.setLayoutData(gd);
-        editSuiteBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                CreateEditSuiteDlg csd = new CreateEditSuiteDlg(shell,
-                        DialogType.EDIT, true);
-                csd.open();
-            }
-        });
-
-        gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
-        gd.widthHint = minButtonWidth;
-        Button deleteSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
-        deleteSuiteBtn.setText("Delete");
-        deleteSuiteBtn.setLayoutData(gd);
-
-        /*
-         * Relationship button
-         */
-        ImageDescriptor id;
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
-                "icons/Relationship.png");
-        relationshipImg = id.createImage();
-
-        gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
-        relationshipBtn = new Button(suiteControlComp, SWT.PUSH);
-        relationshipBtn.setImage(relationshipImg);
-        relationshipBtn.setToolTipText("View message type relationships");
-        relationshipBtn.setLayoutData(gd);
     }
 
     /**
@@ -320,36 +164,21 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
         return true;
     }
 
-    /**********************************************************************
-     * 
-     * TODO: remove dummy code
-     * 
+    /**
+     * Retrieve suite data from the database.
      */
+    private void retrieveDataFromDB() {
+        SuiteRequest suiteRequest = new SuiteRequest();
+        suiteRequest.setAction(SuiteAction.AllSuites);
+        SuiteResponse suiteResponse = null;
 
-    private void populateSuiteTable() {
+        try {
+            suiteResponse = (SuiteResponse) BmhUtils.sendRequest(suiteRequest);
+            suiteList = suiteResponse.getSuiteList();
 
-        List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("Suite Name", 200);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Category");
-        columnNames.add(tcd);
-
-        TableData td = new TableData(columnNames);
-
-        TableRowData trd = new TableRowData();
-
-        trd.addTableCellData(new TableCellData("Suite - 1"));
-        trd.addTableCellData(new TableCellData("General"));
-
-        td.addDataRow(trd);
-
-        trd = new TableRowData();
-
-        trd.addTableCellData(new TableCellData("Suite - 2"));
-        trd.addTableCellData(new TableCellData("Exclusive"));
-
-        td.addDataRow(trd);
-
-        suiteTable.populateTable(td);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving suite data from the database: ", e);
+        }
     }
 }

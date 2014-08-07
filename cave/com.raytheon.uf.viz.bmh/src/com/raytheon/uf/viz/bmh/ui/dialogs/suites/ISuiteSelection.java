@@ -17,14 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.request;
+package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
 
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 
 /**
- * Message Type data request object
+ * Interface used when suites are selected/update in a table.
  * 
  * <pre>
  * 
@@ -32,35 +30,26 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 22, 2014    3411    mpduff      Initial creation
- * Aug 5, 2014  #3490      lvenable    Updated action
+ * Aug 6, 2014  #3490      lvenable     Initial creation
  * 
  * </pre>
  * 
- * @author mpduff
+ * @author lvenable
  * @version 1.0
  */
-@DynamicSerialize
-public class MessageTypeRequest implements IServerRequest {
-    public enum MessageTypeAction {
-        AllMessageTypes;
-    }
 
-    @DynamicSerializeElement
-    private MessageTypeAction action;
+public interface ISuiteSelection {
 
     /**
-     * @return the action
+     * Action when a suite is selected.
+     * 
+     * @param suite
+     *            The suite that is selected.
      */
-    public MessageTypeAction getAction() {
-        return action;
-    }
+    public void suiteSelected(Suite suite);
 
     /**
-     * @param action
-     *            the action to set
+     * Action when the suites have been updated.
      */
-    public void setAction(MessageTypeAction action) {
-        this.action = action;
-    }
+    public void suitesUpdated();
 }

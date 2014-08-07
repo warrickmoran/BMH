@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.orm.hibernate3.HibernateTemplate;
@@ -40,6 +42,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * ------------- -------- ----------- --------------------------
  * Jun 25, 2014  3283     bsteffen    Initial creation
  * Jul 17, 2014  3175     rjpeter     Added get methods.
+ * Aug 06, 2014 #3490     lvenable    Updated to get Program information.
  * 
  * </pre>
  * 
@@ -104,5 +107,61 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         }
 
         return null;
+    }
+
+    /**
+     * Get all of the programs and associated data.
+     * 
+     * @return List of programs.
+     */
+    public List<Program> getPrograms() {
+        List<Object> allObjects = this.loadAll();
+        if (allObjects == null) {
+            return Collections.emptyList();
+        }
+
+        List<Program> programList = new ArrayList<Program>(allObjects.size());
+        for (Object obj : allObjects) {
+            Program prog = (Program) obj;
+            programList.add(prog);
+        }
+
+        return programList;
+    }
+
+    /**
+     * Get a list of Program objects that have the program name and IDs
+     * populated.
+     * 
+     * @return A list of Program objects.
+     */
+    public List<Program> getProgramNameIds() {
+
+        List<Program> programList;
+
+        List<Object[]> namesIDs = txTemplate
+                .execute(new TransactionCallback<List<Object[]>>() {
+                    @Override
+                    public List<Object[]> doInTransaction(
+                            TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht
+                                .findByNamedQuery(Program.GET_PROGRAM_NAMES_IDS);
+                    }
+                });
+
+        if (namesIDs == null) {
+            programList = Collections.emptyList();
+        } else {
+            programList = new ArrayList<Program>(namesIDs.size());
+            for (Object[] objArray : namesIDs) {
+                Program p = new Program();
+                p.setName((String) objArray[0]);
+                p.setId((Integer) objArray[1]);
+                programList.add(p);
+            }
+        }
+
+        return programList;
     }
 }

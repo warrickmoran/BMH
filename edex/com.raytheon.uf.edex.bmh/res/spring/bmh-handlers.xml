@@ -9,6 +9,27 @@
 			value="com.raytheon.uf.common.bmh.request.DictionaryRequest" />
 		<constructor-arg ref="dictionaryHandler" />
 	</bean>
+	
+	<bean id="programHandler" class="com.raytheon.uf.edex.bmh.handler.ProgramHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.ProgramRequest" />
+        <constructor-arg ref="programHandler" />
+    </bean>
+    
+    <bean id="suiteHandler" class="com.raytheon.uf.edex.bmh.handler.SuiteHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.SuiteRequest" />
+        <constructor-arg ref="suiteHandler" />
+    </bean>
+    
+    <bean id="messageTypeHandler" class="com.raytheon.uf.edex.bmh.handler.MessageTypeHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.MessageTypeRequest" />
+        <constructor-arg ref="messageTypeHandler" />
+    </bean>
   
 	<bean id="wordHandler" class="com.raytheon.uf.edex.bmh.handler.WordHandler" />
 	<bean factory-bean="handlerRegistry" factory-method="register">

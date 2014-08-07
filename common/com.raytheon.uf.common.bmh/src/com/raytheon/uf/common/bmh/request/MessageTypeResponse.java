@@ -19,6 +19,12 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import java.util.List;
+
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+
 /**
  * Message Type data response object
  * 
@@ -29,13 +35,35 @@ package com.raytheon.uf.common.bmh.request;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 22, 2014    3411    mpduff      Initial creation
+ * Aug 5, 2014  #3490      lvenable    Added code.
  * 
  * </pre>
  * 
  * @author mpduff
  * @version 1.0
  */
-
+@DynamicSerialize
 public class MessageTypeResponse {
 
+    @DynamicSerializeElement
+    private List<MessageType> messageTypeList;
+
+    /**
+     * Get the message type list.
+     * 
+     * @return List of message types.
+     */
+    public List<MessageType> getMessageTypeList() {
+        return messageTypeList;
+    }
+
+    /**
+     * Set the message type list.
+     * 
+     * @param messageTypeList
+     *            The message type list.
+     */
+    public void setMessageTypeList(List<MessageType> messageTypeList) {
+        this.messageTypeList = messageTypeList;
+    }
 }

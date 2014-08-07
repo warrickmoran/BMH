@@ -19,9 +19,13 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.List;
+
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
 import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
+import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 
 /**
  * Message Type Server Request Handler
@@ -33,6 +37,7 @@ import com.raytheon.uf.common.serialization.comm.IRequestHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 22, 2014    3411    mpduff      Initial creation
+ * Aug 5, 2014  #3490      lvenable    Updated to get Message types.
  * 
  * </pre>
  * 
@@ -41,13 +46,14 @@ import com.raytheon.uf.common.serialization.comm.IRequestHandler;
  */
 
 public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
+
     @Override
     public Object handleRequest(MessageTypeRequest request) throws Exception {
-        MessageTypeResponse response = null;
+        MessageTypeResponse response = new MessageTypeResponse();
 
         switch (request.getAction()) {
-        case GetMessageTypeAreaInformation:
-            getMessageTypeAreaInfo(request);
+        case AllMessageTypes:
+            response = getMessageTypes();
             break;
         default:
             break;
@@ -56,11 +62,13 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         return response;
     }
 
-    private MessageTypeResponse getMessageTypeAreaInfo(
-            MessageTypeRequest request) {
+    private MessageTypeResponse getMessageTypes() {
+        MessageTypeDao dao = new MessageTypeDao();
         MessageTypeResponse response = new MessageTypeResponse();
+
+        List<MessageType> messageTypeList = dao.getMessgeTypes();
+        response.setMessageTypeList(messageTypeList);
 
         return response;
     }
-
 }

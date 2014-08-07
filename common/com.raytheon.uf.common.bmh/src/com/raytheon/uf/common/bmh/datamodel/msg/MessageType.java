@@ -19,9 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
@@ -61,6 +59,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
+ * Aug 06, 2014 #3490      lvenable    Added fetch type eagar to fields and changed
+ *                                     same transmitters to a Set.
  * 
  * </pre>
  * 
@@ -138,28 +138,28 @@ public class MessageType {
     @DynamicSerializeElement
     private String toneBlackOutEnd;
 
-    @ManyToMany(cascade = CascadeType.ALL)
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @MapKey(name = "mnemonic")
     @JoinTable(name = "message_same_tx", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
     @DynamicSerializeElement
-    private Map<String, Transmitter> sameTransmitters;
+    private Set<Transmitter> sameTransmitters;
 
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(name = "message_replace", schema = "bmh", joinColumns = @JoinColumn(name = "id", nullable = false, unique = false), inverseJoinColumns = @JoinColumn(name = "replaces_id", nullable = false, unique = false))
     @DynamicSerializeElement
     private Set<MessageType> replacesMsgs;
 
-    @ManyToMany(cascade = CascadeType.ALL)
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_areas", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "areacode"))
     @DynamicSerializeElement
     private Set<Area> defaultAreas;
 
-    @ManyToMany(cascade = CascadeType.ALL)
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_zones", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "zonecode"))
     @DynamicSerializeElement
     private Set<Zone> defaultZones;
 
-    @ManyToMany(cascade = CascadeType.ALL)
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_transmitters", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
     @DynamicSerializeElement
     private Set<TransmitterGroup> defaultTransmitterGroups;
@@ -268,21 +268,21 @@ public class MessageType {
         this.voice = voice;
     }
 
-    public Map<String, Transmitter> getSameTransmitters() {
+    public Set<Transmitter> getSameTransmitters() {
         return sameTransmitters;
     }
 
-    public void setSameTransmitters(Map<String, Transmitter> sameTransmitters) {
+    public void setSameTransmitters(Set<Transmitter> sameTransmitters) {
         this.sameTransmitters = sameTransmitters;
     }
 
     public void addSameTransmitter(Transmitter trans) {
         if (trans != null) {
             if (sameTransmitters == null) {
-                sameTransmitters = new HashMap<>();
+                sameTransmitters = new HashSet<>();
             }
 
-            sameTransmitters.put(trans.getMnemonic(), trans);
+            sameTransmitters.add(trans);
         }
     }
 

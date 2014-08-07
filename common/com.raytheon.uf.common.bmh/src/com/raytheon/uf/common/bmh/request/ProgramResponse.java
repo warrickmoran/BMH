@@ -19,12 +19,14 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import java.util.List;
+
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * Message Type data request object
+ * Response object for {@link Program} queries.
  * 
  * <pre>
  * 
@@ -32,35 +34,34 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 22, 2014    3411    mpduff      Initial creation
- * Aug 5, 2014  #3490      lvenable    Updated action
+ * Aug 5, 2014  #3490      lvenable     Initial creation
  * 
  * </pre>
  * 
- * @author mpduff
+ * @author lvenable
  * @version 1.0
  */
 @DynamicSerialize
-public class MessageTypeRequest implements IServerRequest {
-    public enum MessageTypeAction {
-        AllMessageTypes;
-    }
+public class ProgramResponse {
 
     @DynamicSerializeElement
-    private MessageTypeAction action;
+    private List<Program> programList;
 
     /**
-     * @return the action
+     * Set the list of programs.
+     * 
+     * @param programList
      */
-    public MessageTypeAction getAction() {
-        return action;
+    public void setProgramList(List<Program> programList) {
+        this.programList = programList;
     }
 
     /**
-     * @param action
-     *            the action to set
+     * Get the list of programs.
+     * 
+     * @return The list of programs.
      */
-    public void setAction(MessageTypeAction action) {
-        this.action = action;
+    public List<Program> getProgramList() {
+        return this.programList;
     }
 }

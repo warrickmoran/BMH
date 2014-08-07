@@ -58,6 +58,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014  3175     rjpeter     Initial creation
  * Jul 10, 2014  3283     bsteffen    Eagerly fetch suites.
  * Jul 17, 2014  3175     rjpeter     Added surrogate key.
+ * Aug 06, 2014 #3490     lvenable    Updated to add name/query.
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -65,13 +67,18 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @NamedQueries({
         @NamedQuery(name = Program.GET_PROGRAM_FOR_TRANSMITTER_GROUP, query = Program.GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY),
-        @NamedQuery(name = Program.GET_GROUPS_FOR_MSG_TYPE, query = Program.GET_GROUPS_FOR_MSG_TYPE_QUERY) })
+        @NamedQuery(name = Program.GET_GROUPS_FOR_MSG_TYPE, query = Program.GET_GROUPS_FOR_MSG_TYPE_QUERY),
+        @NamedQuery(name = Program.GET_PROGRAM_NAMES_IDS, query = Program.GET_PROGRAM_NAMES_IDS_QUERY) })
 @Entity
 @Table(name = "program", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = Program.GEN, sequenceName = "program_seq")
 @DynamicSerialize
 public class Program {
     static final String GEN = "Program Id Generator";
+
+    public static final String GET_PROGRAM_NAMES_IDS = "getProgramNamesAndIDs";
+
+    protected static final String GET_PROGRAM_NAMES_IDS_QUERY = "select name, id FROM Program p";
 
     public static final String GET_PROGRAM_FOR_TRANSMITTER_GROUP = "getProgramsForTransmitterGroups";
 

@@ -32,12 +32,20 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
+import com.raytheon.uf.common.bmh.request.MessageTypeRequest.MessageTypeAction;
+import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -57,8 +65,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 27, 2014  #3420     lvenable     Initial creation
- * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
+ * Jul 27, 2014  #3420     lvenable    Initial creation
+ * Aug 03, 2014  #3479     lvenable    Updated code for validator changes.
+ * Aug 5, 2014   #3490     lvenable    Updated to populate table.
  * 
  * </pre>
  * 
@@ -67,23 +76,24 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  */
 public class MessageTypesDlg extends AbstractBMHDialog {
 
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(MessageTypesDlg.class);
+
     /** Table containing the message types that are available. */
     private MsgTypeTable msgAvailTableComp;
 
-    /** Button to delete the selected message types. */
-    private Button deleteBtn;
-
-    /** Button to edit the selected message type. */
-    private Button editBtn;
-
-    /** Button to rename the selected message type. */
-    private Button renameBtn;
-
-    /** Button to show the relationship between message types, suites, etc. */
-    private Button relationshipBtn;
-
     /** Relationship image. */
     private Image relationshipImg;
+
+    /** List of message types. */
+    private List<MessageType> messageTypeList;
+
+    /** Message type table data. */
+    private TableData messageTypeTableData;
+
+    /** Array of Message Type controls.. */
+    private List<Control> msgTypeControls = new ArrayList<Control>();
 
     /**
      * Constructor.
@@ -93,7 +103,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
      */
     public MessageTypesDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "MEssage Types Dialog", parentShell, SWT.DIALOG_TRIM
+        super(dlgMap, "Message Types Dialog", parentShell, SWT.DIALOG_TRIM
                 | SWT.MIN, CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
     }
 
@@ -120,8 +130,12 @@ public class MessageTypesDlg extends AbstractBMHDialog {
     protected void initializeComponents(Shell shell) {
         setText("Message Type Manager");
 
+        retrieveDataFromDB();
+
         createMessageTypesGroup();
         createBottomActionButtons();
+
+        populateMessageTypeTable();
     }
 
     /**
@@ -138,8 +152,6 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
         msgAvailTableComp = new MsgTypeTable(msgAvailableGrp, tableStyle, 600,
                 200);
-
-        populateMsgTypeReplaceTable();
 
         msgAvailTableComp.setCallbackAction(new ITableActionCB() {
             @Override
@@ -176,7 +188,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
 
         gd = new GridData(SWT.CENTER, SWT.CENTER, false, true);
         gd.widthHint = buttonWidth;
-        renameBtn = new Button(buttonComp, SWT.PUSH);
+        Button renameBtn = new Button(buttonComp, SWT.PUSH);
         renameBtn.setText("Rename...");
         renameBtn.setLayoutData(gd);
         renameBtn.addSelectionListener(new SelectionAdapter() {
@@ -198,10 +210,11 @@ public class MessageTypesDlg extends AbstractBMHDialog {
                 inputDlg.open();
             }
         });
+        msgTypeControls.add(renameBtn);
 
         gd = new GridData(SWT.CENTER, SWT.CENTER, false, true);
         gd.widthHint = buttonWidth;
-        editBtn = new Button(buttonComp, SWT.PUSH);
+        Button editBtn = new Button(buttonComp, SWT.PUSH);
         editBtn.setText("Edit...");
         editBtn.setLayoutData(gd);
         editBtn.addSelectionListener(new SelectionAdapter() {
@@ -212,10 +225,11 @@ public class MessageTypesDlg extends AbstractBMHDialog {
                 cemd.open();
             }
         });
+        msgTypeControls.add(editBtn);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, true, true);
         gd.widthHint = buttonWidth;
-        deleteBtn = new Button(buttonComp, SWT.PUSH);
+        Button deleteBtn = new Button(buttonComp, SWT.PUSH);
         deleteBtn.setText("Delete");
         deleteBtn.setLayoutData(gd);
         deleteBtn.addSelectionListener(new SelectionAdapter() {
@@ -223,6 +237,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             public void widgetSelected(SelectionEvent e) {
             }
         });
+        msgTypeControls.add(deleteBtn);
 
         /*
          * Relationship button
@@ -232,7 +247,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
                 "icons/Relationship.png");
         relationshipImg = id.createImage();
 
-        relationshipBtn = new Button(buttonComp, SWT.PUSH);
+        Button relationshipBtn = new Button(buttonComp, SWT.PUSH);
         relationshipBtn.setImage(relationshipImg);
         relationshipBtn.setToolTipText("View message type relationships");
         relationshipBtn.addSelectionListener(new SelectionAdapter() {
@@ -243,6 +258,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
                 viewMessageTypeInfo.open();
             }
         });
+        msgTypeControls.add(relationshipBtn);
     }
 
     /**
@@ -276,9 +292,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
      *            Flag to enable/disable the controls.
      */
     private void enableControls(boolean enable) {
-        editBtn.setEnabled(enable);
-        deleteBtn.setEnabled(enable);
-        relationshipBtn.setEnabled(enable);
+        for (Control ctrl : msgTypeControls) {
+            ctrl.setEnabled(enable);
+        }
     }
 
     /**
@@ -299,34 +315,60 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         return true;
     }
 
-    /**********************************************************************
-     * 
-     * TODO: remove dummy code
-     * 
+    /**
+     * Retrieve the data from the database.
      */
+    private void retrieveDataFromDB() {
+        MessageTypeRequest mtRequest = new MessageTypeRequest();
+        mtRequest.setAction(MessageTypeAction.AllMessageTypes);
+        MessageTypeResponse mtResponse = null;
 
-    private void populateMsgTypeReplaceTable() {
-        List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("Message Type", 150);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Message Title");
-        columnNames.add(tcd);
-        TableData td = new TableData(columnNames);
+        try {
+            mtResponse = (MessageTypeResponse) BmhUtils.sendRequest(mtRequest);
+            messageTypeList = mtResponse.getMessageTypeList();
+        } catch (Exception e) {
+            statusHandler
+                    .error("Error retrieving message type data from the database: ",
+                            e);
+        }
+    }
 
-        TableRowData trd = new TableRowData();
+    /**
+     * Populate the Message Type table.
+     */
+    private void populateMessageTypeTable() {
+        if (msgAvailTableComp.hasTableData() == false) {
+            List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+            TableColumnData tcd = new TableColumnData("Message Type", 150);
+            columnNames.add(tcd);
+            tcd = new TableColumnData("Message Title");
+            columnNames.add(tcd);
+            messageTypeTableData = new TableData(columnNames);
+            populateMessageTypeTableData();
+            msgAvailTableComp.populateTable(messageTypeTableData);
+        } else {
+            messageTypeTableData.deleteAllRows();
+            populateMessageTypeTableData();
+            msgAvailTableComp.updateTable(messageTypeTableData);
+        }
 
-        trd.addTableCellData(new TableCellData("MessageType - 1"));
-        trd.addTableCellData(new TableCellData("MessageType - 1 - Description"));
+        if (msgAvailTableComp.getItemCount() > 0) {
+            msgAvailTableComp.select(0);
+            enableControls(true);
+        } else {
+            enableControls(false);
+        }
+    }
 
-        td.addDataRow(trd);
-
-        trd = new TableRowData();
-
-        trd.addTableCellData(new TableCellData("MessageType - 2"));
-        trd.addTableCellData(new TableCellData("MessageType - 2 - Description"));
-
-        td.addDataRow(trd);
-        msgAvailTableComp.populateTable(td);
-
+    /**
+     * Populate the Message Type table data.
+     */
+    private void populateMessageTypeTableData() {
+        for (MessageType mt : messageTypeList) {
+            TableRowData trd = new TableRowData();
+            trd.addTableCellData(new TableCellData(mt.getAfosid()));
+            trd.addTableCellData(new TableCellData(mt.getTitle()));
+            messageTypeTableData.addDataRow(trd);
+        }
     }
 }

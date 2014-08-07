@@ -49,6 +49,7 @@ import org.eclipse.swt.widgets.TableItem;
  * Jul 17, 2014   3406      mpduff      Added updateTable method.
  * Jul 22, 2014   3411      mpduff      Added PIXEL_BUFFER.
  * Aug 01, 2014   #3479     lvenable    Added additional capability.
+ * Aug 5, 2014    #3490     lvenable    Added convenience methods.
  * 
  * </pre>
  * 
@@ -278,6 +279,28 @@ public abstract class TableComp extends Composite {
     }
 
     /**
+     * Verify if there is table data for this table.
+     * 
+     * @return True if there is table data, false otherwise.
+     */
+    public boolean hasTableData() {
+        if (tableData == null && table.getItemCount() == 0) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get the number of items (rows) in the table.
+     * 
+     * @return The number of items (rows) in the table.
+     */
+    public int getItemCount() {
+        return table.getItemCount();
+    }
+
+    /**
      * Refresh the table.
      */
     public void refreshTable() {
@@ -343,6 +366,15 @@ public abstract class TableComp extends Composite {
     }
 
     /**
+     * Get the selected index (first selection).
+     * 
+     * @return The selected index, -1 if nothing is selected.
+     */
+    public int getSelectedIndex() {
+        return table.getSelectionIndex();
+    }
+
+    /**
      * Deselect all the items in the table.
      */
     public void deselectAll() {
@@ -364,7 +396,11 @@ public abstract class TableComp extends Composite {
      * @return True if there are selected item(s), false otherwise.
      */
     public boolean hasSelectedItems() {
-        return (table.getSelectionCount() > 0);
+        if (table.getItemCount() > 0) {
+            return (table.getSelectionCount() > 0);
+        }
+
+        return false;
     }
 
     /**

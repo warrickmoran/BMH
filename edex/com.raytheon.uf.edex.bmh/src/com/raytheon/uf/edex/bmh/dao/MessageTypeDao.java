@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.orm.hibernate3.HibernateTemplate;
@@ -37,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2014 3302       bkowal      Initial creation
+ * Aug 5, 2014  #3490      lvenable    added getMessageTypes()
  * 
  * </pre>
  * 
@@ -45,8 +48,30 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
  */
 
 public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
+
     public MessageTypeDao() {
         super(MessageType.class);
+    }
+
+    /**
+     * Get a list of fully populate message types.
+     * 
+     * @return List of message types.
+     */
+    public List<MessageType> getMessgeTypes() {
+        List<Object> allObjects = this.loadAll();
+        if (allObjects == null) {
+            return Collections.emptyList();
+        }
+
+        List<MessageType> messageTypeList = new ArrayList<MessageType>(
+                allObjects.size());
+        for (Object obj : allObjects) {
+            MessageType mt = (MessageType) obj;
+            messageTypeList.add(mt);
+        }
+
+        return messageTypeList;
     }
 
     /**

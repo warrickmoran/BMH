@@ -19,12 +19,14 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import java.util.List;
+
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * Message Type data request object
+ * Response object for {@link Suite} queries.
  * 
  * <pre>
  * 
@@ -32,35 +34,35 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 22, 2014    3411    mpduff      Initial creation
- * Aug 5, 2014  #3490      lvenable    Updated action
+ * Aug 5, 2014  #3490      lvenable     Initial creation
  * 
  * </pre>
  * 
- * @author mpduff
+ * @author lvenable
  * @version 1.0
  */
 @DynamicSerialize
-public class MessageTypeRequest implements IServerRequest {
-    public enum MessageTypeAction {
-        AllMessageTypes;
-    }
+public class SuiteResponse {
 
     @DynamicSerializeElement
-    private MessageTypeAction action;
+    private List<Suite> suiteList;
 
     /**
-     * @return the action
+     * Get the list of suites.
+     * 
+     * @return The list of suites.
      */
-    public MessageTypeAction getAction() {
-        return action;
+    public List<Suite> getSuiteList() {
+        return suiteList;
     }
 
     /**
-     * @param action
-     *            the action to set
+     * Set the list of suites.
+     * 
+     * @param suiteList
+     *            The list of suites.
      */
-    public void setAction(MessageTypeAction action) {
-        this.action = action;
+    public void setSuiteList(List<Suite> suiteList) {
+        this.suiteList = suiteList;
     }
 }

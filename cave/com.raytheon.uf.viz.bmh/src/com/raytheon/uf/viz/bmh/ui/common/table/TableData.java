@@ -33,6 +33,8 @@ import java.util.List;
  * 05/27/2014      3289    mpduff      Initial Version.
  * 07/28/2014      3407    mpduff      Added remove row method.
  * Aug 01, 2014   #3479    lvenable    Added additional capability.
+ * Aug 06, 2014   #3490    lvenable    Added a method to delete all of the data.
+ * 
  * </pre>
  */
 public class TableData implements ISortColumn {
@@ -95,12 +97,6 @@ public class TableData implements ISortColumn {
         tableRows.add(dataRow);
     }
 
-    /**
-     * Add a data row to the table
-     * 
-     * @param dataRow
-     *            The row data to add
-     */
     /**
      * Add a data row to the table at the specified index.
      * 
@@ -198,6 +194,13 @@ public class TableData implements ISortColumn {
      */
     public boolean deleteRow(TableRowData row) {
         return tableRows.remove(row);
+    }
+
+    /**
+     * Delete all data rows.
+     */
+    public void deleteAllRows() {
+        tableRows.clear();
     }
 
     /**

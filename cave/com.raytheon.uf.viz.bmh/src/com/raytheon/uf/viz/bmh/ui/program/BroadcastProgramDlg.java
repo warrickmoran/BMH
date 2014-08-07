@@ -22,6 +22,8 @@ package com.raytheon.uf.viz.bmh.ui.program;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -37,6 +39,17 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.request.ProgramRequest;
+import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
+import com.raytheon.uf.common.bmh.request.ProgramResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -44,6 +57,9 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.ISuiteSelection;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
+import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -58,6 +74,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 20, 2014  #3174      lvenable     Initial creation
  * Aug 01, 2014  #3479      lvenable    Added additional capability for managing the controls.
  * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
+ * Aug 06, 2014  #3490      lvenable    Update to populate controls with data from the database.
  * 
  * </pre>
  * 
@@ -65,6 +82,10 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 public class BroadcastProgramDlg extends AbstractBMHDialog {
+
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(SuiteManagerDlg.class);
 
     /** Program combo box. */
     private Combo programCbo;
@@ -98,6 +119,15 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
     /** List of program controls. */
     private List<Control> programControls = new ArrayList<Control>();
+
+    /** List of program and associated data. */
+    private List<Program> programsArray = new ArrayList<Program>();
+
+    /** Message Type table data. */
+    private TableData msgTypeTableData = null;
+
+    /** Suite group text prefix. */
+    private final String suiteGroupTextPrefix = " Suites in Program: ";
 
     /**
      * Constructor.
@@ -135,6 +165,9 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     protected void initializeComponents(Shell shell) {
         setText("Broadcast Program Configuration");
 
+        // Get the Program data.
+        retrieveDataFromDB();
+
         createProgramControls();
         createTransmitterControls();
         addLabelSeparator(shell);
@@ -142,12 +175,11 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         createMessageTypeGroup();
         createBottomButtons();
 
-        if (programCbo.getItemCount() > 0) {
-            programCbo.select(0);
-            enableProgramControls(true);
-        }
-
-        updateSuiteGroupText();
+        /*
+         * Populate the combos and tables
+         */
+        populateProgramCombo();
+        handleProgramChange();
     }
 
     /**
@@ -173,11 +205,9 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         programCbo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                updateSuiteGroupText();
+                handleProgramChange();
             }
         });
-
-        populateProgramCombo();
 
         int buttonWidth = 90;
 
@@ -259,7 +289,6 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         gd.minimumWidth = 300;
         transmitterListLbl = new Label(progTransComp, SWT.BORDER);
         transmitterListLbl.setLayoutData(gd);
-        populateTransmitters();
 
         assignTransmitterBtn = new Button(progTransComp, SWT.PUSH);
         assignTransmitterBtn.setText(" Assign Transmitter(s)... ");
@@ -279,7 +308,20 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      * Create the suite group.
      */
     private void createSuiteGroup() {
-        suiteConfigGroup = new SuiteConfigGroup(shell);
+        suiteConfigGroup = new SuiteConfigGroup(shell, suiteGroupTextPrefix,
+                SuiteGroupType.PROGRAM);
+        suiteConfigGroup.setCallBackAction(new ISuiteSelection() {
+            @Override
+            public void suiteSelected(Suite suite) {
+                populateMsgTypeTable(suite);
+            }
+
+            @Override
+            public void suitesUpdated() {
+                // TODO : if the suites have been updated then need to reload
+                // the data
+            }
+        });
     }
 
     /**
@@ -295,8 +337,6 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         messageTypeGroup.setText(messgaeTypeGrpPrefix);
 
         msgTypeTable = new MsgTypeTable(messageTypeGroup, 400, 150);
-
-        populateMsgTypeTable();
     }
 
     /**
@@ -305,8 +345,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     private void updateSuiteGroupText() {
         if (programCbo.getItemCount() > 0
                 && programCbo.getSelectionIndex() >= 0) {
-            suiteConfigGroup.updateSuiteGroupText(programCbo.getItem(programCbo
-                    .getSelectionIndex()));
+            suiteConfigGroup.updateSuiteGroupText(suiteGroupTextPrefix
+                    + programCbo.getItem(programCbo.getSelectionIndex()));
         } else {
             suiteConfigGroup.updateSuiteGroupText("N/A");
         }
@@ -396,56 +436,143 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         return true;
     }
 
-    /***********************************************************************
-     * 
-     * TODO: REMOVE THESE WHEN DONE
-     * 
-     * */
+    /**
+     * Handle when the program changes.
+     */
+    private void handleProgramChange() {
+        populateTransmitters();
+        populateSuiteTable();
+        populateMsgTypeTable(suiteConfigGroup.getSelectedSuite());
+        updateSuiteGroupText();
+    }
 
+    /**
+     * Retrieve the data from the database.
+     */
+    private void retrieveDataFromDB() {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.AllPrograms);
+        ProgramResponse progResponse = null;
+        try {
+            progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
+
+            programsArray = progResponse.getProgramList();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving program data from the database: ", e);
+        }
+    }
+
+    /**
+     * Populate the program combo box.
+     */
     private void populateProgramCombo() {
-        // for (int i = 0; i < 20; i++) {
-        // programCbo.add("Program_Name_" + i);
-        // }
-        programCbo.add("Sample Program");
-        programCbo.add("Sever Weather");
-        programCbo.add("Lee Test Program");
-        programCbo.add("Omaha Winter Weather");
+        for (Program prog : programsArray) {
+            programCbo.add(prog.getName());
+        }
 
+        if (programCbo.getItemCount() > 0) {
+            programCbo.select(0);
+            enableProgramControls(true);
+        }
     }
 
+    /**
+     * Populate the transmitters.
+     */
     private void populateTransmitters() {
-        transmitterListLbl.setText(" LNK, ESX, SHU, HNK, OMA, GID");
-        transmitterListLbl.setToolTipText(" LNK, ESX, SHU, HNK, OMA, GID");
+        int index = programCbo.getSelectionIndex();
+
+        if (index >= 0) {
+            StringBuilder sb = new StringBuilder(" ");
+            Program prog = programsArray.get(index);
+            Set<TransmitterGroup> transGrp = prog.getTransmitterGroups();
+            for (TransmitterGroup tg : transGrp) {
+                Set<Transmitter> transmitters = tg.getTransmitters();
+                for (Transmitter t : transmitters) {
+                    sb.append(t.getName()).append(" ");
+                }
+            }
+            transmitterListLbl.setText(sb.toString());
+            transmitterListLbl.setToolTipText(sb.toString());
+        }
     }
 
-    private void populateMsgTypeTable() {
+    /**
+     * Populate the suite table.
+     */
+    private void populateSuiteTable() {
+        int index = programCbo.getSelectionIndex();
 
-        List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("Message Type", 150);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Message Title");
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Trigger");
-        columnNames.add(tcd);
+        if (index >= 0) {
+            Program prog = programsArray.get(index);
+            List<Suite> suiteList = prog.getSuites();
+            suiteConfigGroup.populateSuiteTable(suiteList);
+        }
 
-        TableData td = new TableData(columnNames);
+    }
 
-        TableRowData trd = new TableRowData();
+    /**
+     * Populate the message type table.
+     * 
+     * @param suite
+     *            Associated suite.
+     */
+    private void populateMsgTypeTable(Suite suite) {
+        if (suite == null) {
+            if (msgTypeTable.hasTableData() == false) {
+                return;
+            } else {
+                msgTypeTableData.deleteAllRows();
+                msgTypeTable.updateTable(msgTypeTableData);
+                return;
+            }
+        }
 
-        trd.addTableCellData(new TableCellData("MessageType - 1"));
-        trd.addTableCellData(new TableCellData("MessageType - 1 - Description"));
-        trd.addTableCellData(new TableCellData("Yes"));
+        if (msgTypeTable.hasTableData() == false) {
+            List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+            TableColumnData tcd = new TableColumnData("Message Type", 150);
+            columnNames.add(tcd);
+            tcd = new TableColumnData("Message Title");
+            columnNames.add(tcd);
+            tcd = new TableColumnData("Trigger");
+            columnNames.add(tcd);
 
-        td.addDataRow(trd);
+            msgTypeTableData = new TableData(columnNames);
+            populateMsgTypeTableData(suite);
+            msgTypeTable.populateTable(msgTypeTableData);
+        } else {
+            msgTypeTableData.deleteAllRows();
+            populateMsgTypeTableData(suite);
+            msgTypeTable.updateTable(msgTypeTableData);
+        }
+    }
 
-        trd = new TableRowData();
+    /**
+     * Populate the message type table.
+     * 
+     * @param suite
+     *            Suite data containing the message type data.
+     */
+    private void populateMsgTypeTableData(Suite suite) {
 
-        trd.addTableCellData(new TableCellData("MessageType - 2"));
-        trd.addTableCellData(new TableCellData("MessageType - 2 - Description"));
-        trd.addTableCellData(new TableCellData("No"));
+        List<SuiteMessage> suiteMessageArray = suite.getSuiteMessages();
 
-        td.addDataRow(trd);
+        Map<Integer, SuiteMessage> suiteMsgMap = new TreeMap<Integer, SuiteMessage>();
+        for (SuiteMessage sm : suiteMessageArray) {
+            suiteMsgMap.put(sm.getPosition(), sm);
+        }
 
-        msgTypeTable.populateTable(td);
+        for (SuiteMessage sm : suiteMsgMap.values()) {
+
+            TableRowData trd = new TableRowData();
+
+            trd.addTableCellData(new TableCellData(sm.getMsgType().getAfosid()));
+            trd.addTableCellData(new TableCellData(sm.getMsgType().getTitle()));
+            trd.addTableCellData(new TableCellData(sm.isTrigger() ? "Yes"
+                    : "No"));
+
+            msgTypeTableData.addDataRow(trd);
+        }
     }
 }
