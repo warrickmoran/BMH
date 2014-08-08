@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 25, 2014  #3286     dgilling     Initial creation
+ * Aug 06, 2014  #3286     dgilling     Rename getMessageIds() to getPlaylist().
  * 
  * </pre>
  * 
@@ -86,7 +87,7 @@ public class PlaylistSwitchNotification {
         return builder.toString();
     }
 
-    public List<DacPlaylistMessageId> getMessageIds() {
+    public List<DacPlaylistMessageId> getPlaylist() {
         List<DacPlaylistMessageId> retVal = new ArrayList<>(messages.size());
         for (MessagePlaybackPrediction message : messages) {
             retVal.add(new DacPlaylistMessageId(message.getBroadcastId()));

@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -38,12 +36,8 @@ import javax.xml.bind.JAXB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
-import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
-import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
-import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
@@ -61,6 +55,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      proper playlist objects.
  * Jul 16, 2014  #3286     dgilling     Add shutdown() to take down executor.
  * Jul 29, 2014  #3286     dgilling     Add getPlaylist().
+ * Aug 04, 2014  #3286     dgilling     Remove getPlaylist().
  * 
  * </pre>
  * 
@@ -195,54 +190,20 @@ public final class PlaylistMessageCache {
     }
 
     /**
-     * Based on the current time and the amount of time it takes to play each
-     * message, and given a playlist, determine the list of messages that will
-     * be played and when they will be played.
+     * Calculate the playback time of the specified message (including all
+     * tones), based on file size.
      * 
-     * @param playlist
-     *            {@code DacPlaylist} which will have a list of all possible
-     *            messages that could be played for this playlist.
-     * @return A {@code PlaylistSwitchNotification} containing the list of valid
-     *         messages or messages predicted to be valid when it comes to be
-     *         their turn for playback.
+     * @param messageId
+     *            The {@code DacPlaylistMessageId} of the message to get the
+     *            playback time for.
+     * @return The playback time in milliseconds.
      */
-    public PlaylistSwitchNotification getPlaylist(DacPlaylist playlist) {
-        List<MessagePlaybackPrediction> messages = new ArrayList<>();
+    public long getPlaybackTime(DacPlaylistMessageId messageId) {
+        DacPlaylistMessage message = cachedMessages.get(messageId);
 
-        long playbackStartTime = TimeUtil.currentTimeMillis();
-        long cycleTime = 0;
-        for (DacPlaylistMessageId messageId : playlist.getMessages()) {
-            DacPlaylistMessage message = getMessage(messageId);
-            /*
-             * ignore start/expire times for interrupt playlists, we just want
-             * to play the message.
-             */
-            if ((playlist.isInterrupt())
-                    || (message.isValid(playbackStartTime))) {
-                /*
-                 * TODO: additional calculations needed here for tones, if
-                 * applicable. May not be applicable if this isn't the first
-                 * time we've played the message or we're in a blackout period.
-                 */
-                long playbackTime = fileSizeToPlayTime(messageId);
-                messages.add(new MessagePlaybackPrediction(messageId
-                        .getBroadcastId(), TimeUtil.newGmtCalendar(new Date(
-                        playbackStartTime))));
-                playbackStartTime += playbackTime;
-                cycleTime += playbackTime;
-            }
-        }
-
-        PlaylistSwitchNotification retVal = new PlaylistSwitchNotification(
-                playlist.getSuite(), playlist.getTransmitterGroup(), messages,
-                cycleTime);
-        return retVal;
-    }
-
-    private long fileSizeToPlayTime(DacPlaylistMessageId messageId) {
         long fileSize = 0;
-        if (cachedFiles.containsKey(messageId)) {
-            fileSize = cachedFiles.get(messageId).capcity();
+        if (cachedFiles.containsKey(message)) {
+            fileSize = cachedFiles.get(message).capcity();
         } else {
             Path audioFile = FileSystems.getDefault().getPath(
                     cachedMessages.get(messageId).getSoundFile());
@@ -256,6 +217,32 @@ public final class PlaylistMessageCache {
 
         /* For ULAW encoded files, 160 bytes = 20 ms of playback time. */
         long playbackTime = fileSize / 160L * 20L;
+
+        /*
+         * during playback of SAME tones, we have numerous pauses: 2 1-second
+         * pauses between playbeack of the preamble + SAME header, a 5-second
+         * pause before playing back the message data, a 3-second pause after
+         * playing that message, and 2 1-second pauses between playback of the
+         * preamble + closing.
+         */
+        // FIXME uncomment when we support tones playback
+        // if (message.getSAMEtone() != null) {
+        // // TODO find static conversion factor between string length and
+        // // playback time
+        //
+        // playbackTime += (1 + 1 + 5 + 3 + 1 + 1)
+        // * TimeUtil.MILLIS_PER_SECOND;
+        // }
+
+        /*
+         * Alert tone playback is always the same length: 3 second pause
+         * (silence) prior to tone and 10 seconds of the alert tone itself.
+         */
+        // FIXME uncomment code when tone playback is supported
+        // if (message.isAlertTone()) {
+        // playbackTime += (3 + 10) * TimeUtil.MILLIS_PER_SECOND;
+        // }
+
         return playbackTime;
     }
 }
