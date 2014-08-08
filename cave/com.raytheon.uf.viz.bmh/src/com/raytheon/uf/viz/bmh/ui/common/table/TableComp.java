@@ -50,6 +50,9 @@ import org.eclipse.swt.widgets.TableItem;
  * Jul 22, 2014   3411      mpduff      Added PIXEL_BUFFER.
  * Aug 01, 2014   #3479     lvenable    Added additional capability.
  * Aug 5, 2014    #3490     lvenable    Added convenience methods.
+ * Aug 8, 2014    #3490     lvenable    Re-factored populate method.
+ * Aug 8, 2014    #3490     lvenable    Added a populate method to allow
+ *                                      the regeneration of table columns.
  * 
  * </pre>
  * 
@@ -81,6 +84,7 @@ public abstract class TableComp extends Composite {
     /** The TableData object holding all data for the table */
     protected TableData tableData;
 
+    /** Column widths. */
     private int[] columnWidths;
 
     /** Table width hint. */
@@ -221,12 +225,56 @@ public abstract class TableComp extends Composite {
     }
 
     /**
-     * Populate the data table.
+     * Populate the table generating new columns. If columns are already
+     * generated then only the data will be updated. If the columns need to be
+     * regenerated then the method populateTable(TableData tableData, boolean
+     * regenerateColumns) needs to be called.
+     * 
+     * @param tableData
+     *            Table data.
      */
     public void populateTable(TableData tableData) {
+        populateTable(tableData, false);
+    }
+
+    /**
+     * Populate the table with the option of regenerating the columns. This will
+     * allow the table to be reused if the table data and number of columns
+     * change.
+     * 
+     * @param tableData
+     *            Table data.
+     * @param regenerateColumns
+     *            Flag indicating if the columns should be regenerated.
+     */
+    public void populateTable(TableData tableData, boolean regenerateColumns) {
+
+        /*
+         * If there is data in the table then clear the table of the data so it
+         * can be re-populated.
+         */
+        if (hasTableData()) {
+            table.removeAll();
+        }
+
         this.tableData = tableData;
 
-        createColumns();
+        boolean tableColumnsCreated = false;
+
+        /*
+         * Check if the columns need to be regenerate or the number of columns
+         * is zero. If the columns need to be regenerate and there are columns
+         * present then dispose of the columns so they can be recreated.
+         */
+        if (regenerateColumns || table.getColumnCount() == 0) {
+            if (table.getColumnCount() > 0) {
+                for (TableColumn tc : table.getColumns()) {
+                    tc.dispose();
+                }
+            }
+            createColumns();
+            tableColumnsCreated = true;
+        }
 
         GC gc = new GC(table);
         gc.setFont(table.getFont());
@@ -243,39 +291,27 @@ public abstract class TableComp extends Composite {
                 ti.setBackground(i, cellData.getBackgroundColor());
                 ti.setForeground(i, cellData.getForegroundColor());
                 if (!((TableColumnData) columns[i].getData()).isPack()) {
-                    columnWidths[i] = Math.max(gc.stringExtent(ti.getText()).x
+                    columnWidths[i] = Math.max(gc.stringExtent(ti.getText(i)).x
                             + PIXEL_BUFFER, columnWidths[i]);
                 }
             }
         }
 
-        int index = 0;
-        for (TableColumn tc : table.getColumns()) {
-            TableColumnData tcd = (TableColumnData) tc.getData();
-            if (tcd.isPack()) {
-                tc.pack();
-                tc.setWidth(tc.getWidth() + PIXEL_BUFFER);
-            } else {
-                tc.setWidth(columnWidths[index] + PIXEL_BUFFER);
+        if (tableColumnsCreated) {
+            int index = 0;
+            for (TableColumn tc : table.getColumns()) {
+                TableColumnData tcd = (TableColumnData) tc.getData();
+                if (tcd.isPack()) {
+                    tc.pack();
+                    tc.setWidth(tc.getWidth() + PIXEL_BUFFER);
+                } else {
+                    tc.setWidth(columnWidths[index] + PIXEL_BUFFER);
+                }
+                index++;
             }
-            index++;
         }
 
         gc.dispose();
-    }
-
-    /**
-     * Update an already created table with new data. This is a data update
-     * only, the table is not recreated, only repopulated.
-     * 
-     * @param tableData
-     *            Updated TableData
-     */
-    public void updateTable(TableData tableData) {
-
-        this.tableData = tableData;
-
-        refreshTable();
     }
 
     /**
@@ -301,44 +337,33 @@ public abstract class TableComp extends Composite {
     }
 
     /**
-     * Refresh the table.
-     */
-    public void refreshTable() {
-        table.removeAll();
-        if (table.getColumnCount() == 0) {
-            this.createColumns();
-        }
-
-        for (TableRowData rowData : tableData.getTableRows()) {
-            TableItem ti = new TableItem(table, SWT.NONE);
-            ti.setData(rowData);
-            List<TableCellData> cellDataList = rowData.getTableCellData();
-            for (int i = 0; i < cellDataList.size(); i++) {
-                TableCellData cellData = cellDataList.get(i);
-                ti.setText(i, cellData.getDisplayString());
-            }
-        }
-    }
-
-    /**
      * Create the table columns.
      */
     protected void createColumns() {
         columnWidths = new int[tableData.getColumnNames().size()];
         int i = 0;
+
+        GC gc = new GC(table);
+        gc.setFont(table.getFont());
+
         for (TableColumnData tcd : tableData.getColumnNames()) {
             TableColumn tc = new TableColumn(table, SWT.NONE);
             tc.setText(tcd.getText());
             tc.setWidth(tcd.getMinimumWidth());
             tc.setAlignment(tcd.getAlignment());
             tc.setData(tcd);
+
             if (tcd.isPack()) {
                 columnWidths[i] = -1;
             } else {
-                columnWidths[i] = tcd.getMinimumWidth();
+
+                columnWidths[i] = Math.max(gc.stringExtent(tcd.getText()).x
+                        + PIXEL_BUFFER, tcd.getMinimumWidth());
             }
             i++;
         }
+
+        gc.dispose();
     }
 
     /**

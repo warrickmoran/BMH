@@ -64,6 +64,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 11, 2014   3406     mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
+ * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -279,7 +281,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
         TableColumnData tcd = new TableColumnData("Transmitter Mnemonic", 150);
         transmitterColumns.add(tcd);
 
-        tcd = new TableColumnData("Transmitter Name", 150);
+        tcd = new TableColumnData("Transmitter Name");
         transmitterColumns.add(tcd);
 
         transmitterTableData = new TableData(areaColumns);
@@ -320,7 +322,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
                 }
                 transmitterTableData.setSortColumnAndDirection(0,
                         SortDirection.ASCENDING);
-                transmitterTableComp.updateTable(transmitterTableData);
+                transmitterTableComp.populateTable(transmitterTableData);
                 break;
             }
         }
@@ -421,7 +423,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
         row.addTableCellData(cell);
         areaTableData.addDataRow(row);
         areaTableData.sortData();
-        areaTableComp.updateTable(areaTableData);
+        areaTableComp.populateTable(areaTableData);
         areaTableComp.select(areaTableData.getTableRows().indexOf(row));
         areaTableSelectionAction();
         enableZoneButtons(areaTableComp.getSelection().size() > 0);
@@ -434,7 +436,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
         generateTableData();
 
         areaTableData.setSortColumnAndDirection(0, SortDirection.ASCENDING);
-        areaTableComp.updateTable(areaTableData);
+        areaTableComp.populateTable(areaTableData);
     }
 
     /**
@@ -493,7 +495,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
             if (toDelete != null) {
                 areas.remove(toDelete);
                 generateTableData();
-                areaTableComp.updateTable(areaTableData);
+                areaTableComp.populateTable(areaTableData);
                 try {
                     dataManager.deleteArea(toDelete);
                 } catch (Exception e) {

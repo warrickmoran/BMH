@@ -64,6 +64,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 11, 2014   3406     mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
+ * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -321,7 +323,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
                 }
                 areaTableData.setSortColumnAndDirection(0,
                         SortDirection.ASCENDING);
-                areaTableComp.updateTable(areaTableData);
+                areaTableComp.populateTable(areaTableData);
                 break;
             }
         }
@@ -424,7 +426,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
         row.addTableCellData(cell);
         zoneTableData.addDataRow(row);
         zoneTableData.sortData();
-        zoneTableComp.updateTable(zoneTableData);
+        zoneTableComp.populateTable(zoneTableData);
         zoneTableComp.select(zoneTableData.getTableRows().indexOf(row));
         zoneTableSelectionAction();
         enableZoneButtons(zoneTableComp.getSelection().size() > 0);
@@ -437,7 +439,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
         generateTableData();
 
         zoneTableData.setSortColumnAndDirection(0, SortDirection.ASCENDING);
-        zoneTableComp.updateTable(zoneTableData);
+        zoneTableComp.populateTable(zoneTableData);
     }
 
     /**
@@ -496,7 +498,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
             if (toDelete != null) {
                 zones.remove(toDelete);
                 generateTableData();
-                zoneTableComp.updateTable(zoneTableData);
+                zoneTableComp.populateTable(zoneTableData);
                 try {
                     dataManager.deleteZone(toDelete);
                 } catch (Exception e) {

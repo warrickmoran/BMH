@@ -31,6 +31,7 @@ import java.util.Arrays;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 31, 2014  #3479     lvenable     Initial creation
+ * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
  * 
  * </pre>
  * 
@@ -114,7 +115,7 @@ public class TableMoveAction {
             }
         }
 
-        tableComp.updateTable(tableData);
+        tableComp.populateTable(tableData);
         tableComp.deselectAll();
         tableComp.selectRows(selIdxArray);
         tableComp.showSelection();

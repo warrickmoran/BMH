@@ -66,6 +66,8 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * Jul 18, 2014   3407     mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Aug 05, 2014 3175       rjpeter     Reload dictionary on edit word.
+ * Aug 8, 2014    #3490     lvenable   Removed Override on update method.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -550,7 +552,6 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
          * @param tableData
          *            The new TableData
          */
-        @Override
         public void updateTable(TableData tableData) {
             table.removeAll();
 

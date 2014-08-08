@@ -68,6 +68,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 27, 2014  #3420     lvenable    Initial creation
  * Aug 03, 2014  #3479     lvenable    Updated code for validator changes.
  * Aug 5, 2014   #3490     lvenable    Updated to populate table.
+ * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
  * 
  * </pre>
  * 
@@ -344,13 +345,12 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             tcd = new TableColumnData("Message Title");
             columnNames.add(tcd);
             messageTypeTableData = new TableData(columnNames);
-            populateMessageTypeTableData();
-            msgAvailTableComp.populateTable(messageTypeTableData);
         } else {
             messageTypeTableData.deleteAllRows();
-            populateMessageTypeTableData();
-            msgAvailTableComp.updateTable(messageTypeTableData);
         }
+
+        populateMessageTypeTableData();
+        msgAvailTableComp.populateTable(messageTypeTableData);
 
         if (msgAvailTableComp.getItemCount() > 0) {
             msgAvailTableComp.select(0);

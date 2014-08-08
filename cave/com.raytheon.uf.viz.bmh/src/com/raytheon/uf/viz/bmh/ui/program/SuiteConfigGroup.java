@@ -67,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 27, 2014  #3420     lvenable     Code clean up.
  * Aug 01, 2014  #3479     lvenable     Added additional capability and cleaned up code.
  * Aug 06, 2014  #3490     lvenable    Refactored and added additional functionality.
+ * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
  * 
  * </pre>
  * 
@@ -516,13 +517,12 @@ public class SuiteConfigGroup extends Composite {
             columnNames.add(tcd);
 
             suiteTableData = new TableData(columnNames);
-            populateSuiteTableData();
-            suiteTable.populateTable(suiteTableData);
         } else {
             suiteTableData.deleteAllRows();
-            populateSuiteTableData();
-            suiteTable.updateTable(suiteTableData);
         }
+
+        populateSuiteTableData();
+        suiteTable.populateTable(suiteTableData);
 
         if (suiteTable.getItemCount() > 0) {
             suiteTable.select(0);

@@ -32,6 +32,7 @@ import org.eclipse.swt.SWT;
  * ------------ ---------- ----------- --------------------------
  * Jun 03, 2014    3289    mpduff      Initial creation
  * Jul 08, 2014    3355    mpduff      Added constructor with alignment option.
+ * Aug 8, 2014    #3490    lvenable    Init pack to false;
  * 
  * </pre>
  * 
@@ -46,7 +47,7 @@ public class TableColumnData {
     /** Column minimum width */
     private int minimumWidth = 100;
 
-    private boolean pack;
+    private boolean pack = false;
 
     /**
      * Column alignment SWT.LEFT, SWT.CENTER, SWT.RIGHT

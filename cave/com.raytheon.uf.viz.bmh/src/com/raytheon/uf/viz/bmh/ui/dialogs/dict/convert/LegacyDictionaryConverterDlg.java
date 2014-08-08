@@ -76,6 +76,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 21, 2014     3407   mpduff      Removed unneeded parameter to 
  *                                     PronunciationBuilderDlg
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
+ * Aug 8, 2014    #3490     lvenable   Removed Override tag.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -708,7 +710,6 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
             tableSelectionAction(tableItems[0]);
         }
 
-        @Override
         public void updateTable(TableData tableData) {
             table.removeAll();
 

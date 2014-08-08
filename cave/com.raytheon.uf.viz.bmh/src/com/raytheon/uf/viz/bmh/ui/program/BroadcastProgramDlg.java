@@ -75,6 +75,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 01, 2014  #3479      lvenable    Added additional capability for managing the controls.
  * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
  * Aug 06, 2014  #3490      lvenable    Update to populate controls with data from the database.
+ * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
  * 
  * </pre>
  * 
@@ -524,7 +525,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                 return;
             } else {
                 msgTypeTableData.deleteAllRows();
-                msgTypeTable.updateTable(msgTypeTableData);
+                msgTypeTable.populateTable(msgTypeTableData);
                 return;
             }
         }
@@ -539,13 +540,12 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             columnNames.add(tcd);
 
             msgTypeTableData = new TableData(columnNames);
-            populateMsgTypeTableData(suite);
-            msgTypeTable.populateTable(msgTypeTableData);
         } else {
             msgTypeTableData.deleteAllRows();
-            populateMsgTypeTableData(suite);
-            msgTypeTable.updateTable(msgTypeTableData);
         }
+
+        populateMsgTypeTableData(suite);
+        msgTypeTable.populateTable(msgTypeTableData);
     }
 
     /**
