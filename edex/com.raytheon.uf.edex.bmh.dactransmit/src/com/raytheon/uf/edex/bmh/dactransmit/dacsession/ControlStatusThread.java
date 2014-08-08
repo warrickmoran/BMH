@@ -24,7 +24,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 
 import org.slf4j.Logger;
@@ -33,6 +32,8 @@ import org.slf4j.LoggerFactory;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusException;
 
 /**
@@ -52,6 +53,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Jul 14, 2014  #3286     dgilling     Used logback for logging.
  * Jul 16, 2014  #3286     dgilling     Use event bus, force initial sync to
  *                                      get a heartbeat back.
+ * Aug 08, 2014  #3286     dgilling     Better handling for transmit/receive
+ *                                      errors, use sync lost/gained events.
  * 
  * 
  * </pre>
@@ -89,6 +92,12 @@ public class ControlStatusThread extends Thread {
 
     private long lastHeartbeatSent;
 
+    private long lastHeartbeatReceived;
+
+    private int heartbeatsMissed;
+
+    private boolean hasSync;
+
     /**
      * Constructor. Attempts to make a connection to the DAC at the specified
      * address and port.
@@ -111,6 +120,7 @@ public class ControlStatusThread extends Thread {
         this.port = controlPort;
         this.keepRunning = true;
         this.socket = new DatagramSocket();
+        this.heartbeatsMissed = 0;
     }
 
     /*
@@ -123,19 +133,69 @@ public class ControlStatusThread extends Thread {
         try {
             while (keepRunning) {
                 try {
-                    try {
-                        DacStatusMessage currentStatus = receiveHeartbeat(DacSessionConstants.DEFAULT_SYNC_TIMEOUT_PERIOD);
-                        // logger.debug("Current DAC status: " + currentStatus);
-                        eventBus.post(new DacStatusUpdateEvent(currentStatus));
-                    } catch (MalformedDacStatusException e) {
-                        logger.error(
-                                "Invalid status message received from DAC.", e);
-                    } catch (SocketTimeoutException e) {
-                        logger.error("Heartbeat message from DAC hit timeout.",
-                                e);
+                    if (!hasSync) {
+                        RegainSyncEvent notify = performInitialSync(false);
+                        if (notify != null) {
+                            eventBus.post(notify);
+                        }
                     }
 
-                    sendHeartbeat();
+                    /*
+                     * We check sync again, just in case we had to break out of
+                     * performInitialSync() early because the application was
+                     * asked to shutdown.
+                     */
+                    if (hasSync) {
+                        try {
+                            DacStatusMessage currentStatus = receiveHeartbeat(DacSessionConstants.DEFAULT_SYNC_TIMEOUT_PERIOD);
+                            // logger.debug("Current DAC status: " +
+                            // currentStatus);
+                            eventBus.post(new DacStatusUpdateEvent(
+                                    currentStatus));
+                        } catch (MalformedDacStatusException e) {
+                            /*
+                             * To this point every status message that comes
+                             * back from the DAC that doesn't match our expected
+                             * format is the "X----" message it sends when the
+                             * device attempting to communicate with it doesn't
+                             * have a valid sync. Hence we will invalidate our
+                             * sync if we get a malformed status message from
+                             * the DAC.
+                             */
+                            logger.error(
+                                    "Malformed status message received from DAC. Invalidating sync.",
+                                    e);
+                            hasSync = false;
+                            eventBus.post(new LostSyncEvent());
+                        } catch (Exception e) {
+                            logger.warn(
+                                    "Did not receive heartbeat message from DAC.",
+                                    e);
+                            heartbeatsMissed++;
+                            if (heartbeatsMissed >= DacSessionConstants.MISSED_HEARTBEATS_THRESHOLD) {
+                                logger.error("Missed "
+                                        + DacSessionConstants.MISSED_HEARTBEATS_THRESHOLD
+                                        + " consecutive heartbeat messages from DAC. Invalidating sync.");
+                                hasSync = false;
+                                eventBus.post(new LostSyncEvent());
+                            }
+                        }
+
+                        try {
+                            sendHeartbeat();
+                        } catch (Exception e) {
+                            logger.warn(
+                                    "Could not transmit heartbeat message to DAC.",
+                                    e);
+                            if ((TimeUtil.currentTimeMillis() - lastHeartbeatSent) >= DacSessionConstants.COMPLETE_SYNC_LOST_TIME) {
+                                logger.error("Haven't sent a successful heartbeat message to DAC in last "
+                                        + DacSessionConstants.COMPLETE_SYNC_LOST_TIME
+                                        + " ms. Invalidating sync.");
+                                hasSync = false;
+                                eventBus.post(new LostSyncEvent());
+                            }
+                        }
+                    }
                 } catch (Throwable t) {
                     logger.error("Runtime exception thrown.", t);
                 }
@@ -160,13 +220,36 @@ public class ControlStatusThread extends Thread {
 
     /**
      * Makes the initial connection to the DAC to obtain "sync".
+     * 
+     * @return A {@code RegainSyncEvent} that informs the caller that sync was
+     *         obtained or {@code null} if this thread was told to shutdown
+     *         before sync could be obtained.
      */
-    public void performInitialSync() {
-        boolean madeSync = false;
-        while (!madeSync && keepRunning) {
+    public RegainSyncEvent performInitialSync() {
+        return performInitialSync(true);
+    }
+
+    /**
+     * Makes the initial connection to the DAC to obtain "sync".
+     * 
+     * @param clearDacBuffer
+     *            Whether or not to clear the DAC's internal jitter buffer
+     *            before attempting to make the sync.
+     * @return A {@code RegainSyncEvent} that informs the caller that sync was
+     *         obtained or {@code null} if this thread was told to shutdown
+     *         before sync could be obtained.
+     */
+    public RegainSyncEvent performInitialSync(boolean clearDacBuffer) {
+        RegainSyncEvent retVal = null;
+
+        while (!hasSync && keepRunning) {
             try {
-                DatagramPacket packet = buildPacket(CLEAR_BUFFER_MSG);
-                socket.send(packet);
+                DatagramPacket packet;
+
+                if (clearDacBuffer) {
+                    packet = buildPacket(CLEAR_BUFFER_MSG);
+                    socket.send(packet);
+                }
 
                 packet = buildPacket(INITIAL_SYNC_MSG);
                 socket.send(packet);
@@ -174,48 +257,42 @@ public class ControlStatusThread extends Thread {
 
                 // we don't have a valid sync until we start receiving
                 // heartbeats from the DAC
+                long previousTime = lastHeartbeatReceived;
                 receiveHeartbeat(DacSessionConstants.INITIAL_SYNC_TIMEOUT_PERIOD);
-                madeSync = true;
-            } catch (SocketTimeoutException e) {
-                logger.error(
-                        "Attempt to receive initial heartbeat from DAC failed. Re-attempting sync.",
-                        e);
+                retVal = new RegainSyncEvent(lastHeartbeatReceived
+                        - previousTime);
+                hasSync = true;
+                heartbeatsMissed = 0;
             } catch (Throwable t) {
-                logger.error("Failed to make initial sync with DAC.", t);
+                logger.error(
+                        "Attempt to sync with DAC failed. Re-attempting sync.",
+                        t);
             }
         }
+
+        return retVal;
     }
 
     private DacStatusMessage receiveHeartbeat(int timeout)
-            throws MalformedDacStatusException, SocketTimeoutException {
+            throws MalformedDacStatusException, IOException {
         byte[] receiveBuffer = new byte[RECEIVE_BUFFER_SIZE];
         DatagramPacket dacHeartbeat = buildPacket(receiveBuffer);
 
-        DacStatusMessage currentStatus = null;
-        try {
-            socket.setSoTimeout(timeout);
-            socket.receive(dacHeartbeat);
-            int bytesReceived = dacHeartbeat.getLength();
-            currentStatus = new DacStatusMessage(new String(receiveBuffer, 0,
-                    bytesReceived, StandardCharsets.US_ASCII));
-        } catch (IOException e) {
-            logger.error(
-                    "Error while waiting to receive DAC's heartbeat message.",
-                    e);
-        }
+        socket.setSoTimeout(timeout);
+        socket.receive(dacHeartbeat);
+        int bytesReceived = dacHeartbeat.getLength();
+        DacStatusMessage currentStatus = new DacStatusMessage(new String(
+                receiveBuffer, 0, bytesReceived, StandardCharsets.US_ASCII));
+        lastHeartbeatReceived = TimeUtil.currentTimeMillis();
         return currentStatus;
     }
 
-    private void sendHeartbeat() {
+    private void sendHeartbeat() throws IOException {
         long currentTime = TimeUtil.currentTimeMillis();
         if ((currentTime - lastHeartbeatSent) >= MILLIS_BETWEEN_HEARTBEAT) {
-            try {
-                DatagramPacket packet = buildPacket(HEARTBEAT_SYNC_MSG);
-                socket.send(packet);
-                lastHeartbeatSent = currentTime;
-            } catch (IOException e) {
-                logger.error("Could not transmit heartbeat to DAC.", e);
-            }
+            DatagramPacket packet = buildPacket(HEARTBEAT_SYNC_MSG);
+            socket.send(packet);
+            lastHeartbeatSent = currentTime;
         }
     }
 

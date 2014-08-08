@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
+import com.raytheon.uf.common.time.util.TimeUtil;
+
 /**
  * Constants used for data transmission to the DAC.
  * 
@@ -32,6 +34,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
  * Jul 14, 2014  #3286     dgilling     Tweaked cycle time constants.
  * Jul 16, 2014  #3286     dgilling     Remove unneeded constants.
  * Jul 31, 2014  #3286     dgilling     Add alert constants for buffer size.
+ * Aug 08, 2014  #3286     dgilling     Add constants for sync regain.
  * 
  * </pre>
  * 
@@ -54,6 +57,8 @@ public final class DataTransmitConstants {
     public static final int ALERT_HIGH_PACKETS_IN_BUFFER = 2 * WATERMARK_PACKETS_IN_BUFFER;
 
     public static final int ALERT_LOW_PACKETS_IN_BUFFER = WATERMARK_PACKETS_IN_BUFFER / 4;
+
+    public static final long SYNC_DOWNTIME_RESTART_THRESHOLD = 2 * TimeUtil.MILLIS_PER_SECOND;
 
     public static final int SEQUENCE_INCREMENT = 1;
 

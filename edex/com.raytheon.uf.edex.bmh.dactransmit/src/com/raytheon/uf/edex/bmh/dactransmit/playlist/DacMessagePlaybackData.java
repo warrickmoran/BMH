@@ -39,6 +39,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jul 25, 2014  #3286     dgilling     Add additional methods needed for
  *                                      sending playback updates to 
  *                                      CommsManager.
+ * Aug 08, 2014  #3286     dgilling     Add resetAudio().
  * 
  * </pre>
  * 
@@ -75,6 +76,10 @@ public final class DacMessagePlaybackData {
 
     public boolean hasRemaining() {
         return audio.hasRemaining();
+    }
+
+    public void resetAudio() {
+        audio.rewind();
     }
 
     public DacPlaylistMessage getMessage() {

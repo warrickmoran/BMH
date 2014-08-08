@@ -35,6 +35,8 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IInterruptMessageReceivedHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.DacMessagePlaybackData;
@@ -61,6 +63,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Jul 24, 2014  #3286     dgilling     Support interrupt messages.
  * Jul 25, 2014  #3286     dgilling     Support sending playback status to
  *                                      CommsManager.
+ * Aug 08, 2014  #3286     dgilling     Support halting playback when sync is
+ *                                      lost and resuming when sync is regained.
  * 
  * </pre>
  * 
@@ -94,6 +98,10 @@ public final class DataTransmitThread extends Thread implements
     private final AtomicInteger interruptsAvailable;
 
     private boolean playingInterrupt;
+
+    private volatile boolean hasSync;
+
+    private volatile boolean onSyncRestartMessage;
 
     /**
      * Constructor for this thread. Attempts to open a {@code DatagramSocket}
@@ -129,6 +137,8 @@ public final class DataTransmitThread extends Thread implements
         this.socket = new DatagramSocket();
         this.interruptsAvailable = new AtomicInteger(0);
         this.playingInterrupt = false;
+        this.hasSync = true;
+        this.onSyncRestartMessage = false;
     }
 
     /*
@@ -141,7 +151,7 @@ public final class DataTransmitThread extends Thread implements
         try {
             eventBus.register(this);
 
-            while (keepRunning) {
+            OUTER_LOOP: while (keepRunning) {
                 if (interruptsAvailable.get() > 0) {
                     interruptsAvailable.decrementAndGet();
                 }
@@ -153,6 +163,18 @@ public final class DataTransmitThread extends Thread implements
                 while ((playbackData.hasRemaining())
                         && (playingInterrupt || interruptsAvailable.get() == 0)) {
                     try {
+                        while (!hasSync && keepRunning) {
+                            Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
+
+                            if (!keepRunning) {
+                                continue OUTER_LOOP;
+                            }
+
+                            if (hasSync && onSyncRestartMessage) {
+                                playbackData.resetAudio();
+                            }
+                        }
+
                         byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
                         MessagePlaybackStatusNotification playbackStatus = playbackData
                                 .get(nextPayload);
@@ -253,5 +275,23 @@ public final class DataTransmitThread extends Thread implements
     public void handleInterruptMessage(InterruptMessageReceivedEvent e) {
         interruptsAvailable.incrementAndGet();
         logger.info("Received new interrupt: " + e.getPlaylist().toString());
+    }
+
+    @Subscribe
+    public void lostDacSync(LostSyncEvent e) {
+        logger.error("Application has lost sync with the DAC. Terminating data transmission.");
+        hasSync = false;
+    }
+
+    @Subscribe
+    public void regainDacSync(RegainSyncEvent e) {
+        if (e.getDownTime() >= DataTransmitConstants.SYNC_DOWNTIME_RESTART_THRESHOLD) {
+            logger.info("Application has re-gained sync with the DAC. Restarting transmission from beginning of current message.");
+            onSyncRestartMessage = true;
+        } else {
+            logger.info("Application has re-gained sync with the DAC. Resuming transmission.");
+            onSyncRestartMessage = false;
+        }
+        hasSync = true;
     }
 }
