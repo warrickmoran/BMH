@@ -22,7 +22,12 @@ package com.raytheon.uf.edex.bmh.dao;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
  * Dao class for transmitter groups.
@@ -54,5 +59,22 @@ public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
         }
 
         return tList;
+    }
+
+    public Transmitter saveTransmitterDeleteGroup(
+            final Transmitter transmitter,
+            final TransmitterGroup transmitterGroup) {
+        Transmitter xmit = txTemplate
+                .execute(new TransactionCallback<Transmitter>() {
+                    @Override
+                    public Transmitter doInTransaction(TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        ht.saveOrUpdate(transmitter);
+                        ht.delete(transmitterGroup);
+                        return transmitter;
+                    }
+                });
+
+        return xmit;
     }
 }

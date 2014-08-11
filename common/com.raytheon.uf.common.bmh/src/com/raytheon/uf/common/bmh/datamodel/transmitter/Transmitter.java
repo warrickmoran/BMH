@@ -32,7 +32,7 @@ import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
 /**
  * Transmitter information.
@@ -46,6 +46,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014  3175     rjpeter     Initial creation
  * Jun 30, 2014  3283     bsteffen    Add some getter/setters.
  * Jul 17, 2014  3406     mpduff      Added id pk column, named query, removed cascade
+ * Aug 04, 2014  3173     mpduff      Added DAC and Fips, changed to use serialization adapter
  * 
  * </pre>
  * 
@@ -62,12 +63,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Table(name = "transmitter", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "mnemonic" }) })
 @SequenceGenerator(initialValue = 1, name = Transmitter.GEN, sequenceName = "transmitter_seq")
 @DynamicSerialize
+@DynamicSerializeTypeAdapter(factory = TransmitterAdapter.class)
 public class Transmitter {
     static final String GEN = "Transmitter Generator";
-
-    public enum TxStatus {
-        ENABLED, DISABLED
-    };
 
     public enum TxMode {
         PRIMARY, SECONDARY
@@ -75,32 +73,28 @@ public class Transmitter {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
-    @DynamicSerializeElement
     protected int id;
 
     @Column(length = 5)
-    @DynamicSerializeElement
     private String mnemonic;
 
     @Column(length = 40, nullable = false)
-    @DynamicSerializeElement
     private String name;
 
     @Column(precision = 3, nullable = false)
-    @DynamicSerializeElement
     private float frequency;
 
     @Column(length = 10, nullable = false)
-    @DynamicSerializeElement
     private String callSign;
 
     @Column(length = 40, nullable = false)
-    @DynamicSerializeElement
     private String location;
 
     @Column(length = 40, nullable = false)
-    @DynamicSerializeElement
     private String serviceArea;
+
+    @Column(length = 9)
+    private String fipsCode;
 
     /**
      * Bi-directional relationship. Always serialized from the group side.
@@ -109,23 +103,7 @@ public class Transmitter {
     private TransmitterGroup transmitterGroup;
 
     @Column
-    @DynamicSerializeElement
     private int position;
-
-    /**
-     * @return the id
-     */
-    public int getId() {
-        return id;
-    }
-
-    /**
-     * @param id
-     *            the id to set
-     */
-    public void setId(int id) {
-        this.id = id;
-    }
 
     @Enumerated(EnumType.STRING)
     @Column(length = 8, nullable = false)
@@ -134,6 +112,34 @@ public class Transmitter {
     @Enumerated(EnumType.STRING)
     @Column(length = 9, nullable = false)
     private TxMode txMode = TxMode.PRIMARY;
+
+    @Column
+    private Integer dacPort;
+
+    public Transmitter() {
+
+    }
+
+    /**
+     * Copy Constructor.
+     * 
+     * @param t
+     */
+    public Transmitter(Transmitter t) {
+        this.setCallSign(t.getCallSign());
+        this.setDacPort(t.getDacPort());
+        this.setFipsCode(t.getFipsCode());
+        this.setFrequency(t.getFrequency());
+        this.setId(t.getId());
+        this.setLocation(t.getLocation());
+        this.setMnemonic(t.getMnemonic());
+        this.setName(t.getName());
+        this.setPosition(t.getPosition());
+        this.setServiceArea(t.getServiceArea());
+        this.setTransmitterGroup(t.getTransmitterGroup());
+        this.setTxMode(t.getTxMode());
+        this.setTxStatus(t.getTxStatus());
+    }
 
     public String getMnemonic() {
         return mnemonic;
@@ -153,6 +159,21 @@ public class Transmitter {
         } else {
             this.name = "";
         }
+    }
+
+    /**
+     * @return the id
+     */
+    public int getId() {
+        return id;
+    }
+
+    /**
+     * @param id
+     *            the id to set
+     */
+    public void setId(int id) {
+        this.id = id;
     }
 
     public float getFrequency() {
@@ -231,6 +252,36 @@ public class Transmitter {
         this.txMode = txMode;
     }
 
+    /**
+     * @return the fipsCode
+     */
+    public String getFipsCode() {
+        return fipsCode;
+    }
+
+    /**
+     * @param fipsCode
+     *            the fipsCode to set
+     */
+    public void setFipsCode(String fipsCode) {
+        this.fipsCode = fipsCode;
+    }
+
+    /**
+     * @return the dacPort
+     */
+    public Integer getDacPort() {
+        return dacPort;
+    }
+
+    /**
+     * @param dacPort
+     *            the dacPort to set
+     */
+    public void setDacPort(Integer dacPort) {
+        this.dacPort = dacPort;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -260,6 +311,22 @@ public class Transmitter {
             return false;
         }
         return true;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        return "Transmitter [mnemonic=" + mnemonic + ", name=" + name
+                + ", frequency=" + frequency + ", callSign=" + callSign
+                + ", location=" + location + ", serviceArea=" + serviceArea
+                + ", fipsCode=" + fipsCode + ", transmitterGroup="
+                + transmitterGroup + ", position=" + position + ", txStatus="
+                + txStatus + ", txMode=" + txMode + ", dacPort=" + dacPort
+                + "]";
     }
 
 }

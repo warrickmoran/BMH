@@ -19,7 +19,10 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
@@ -38,7 +41,7 @@ import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
 /**
  * Transmitter Group information. A transmitter group of one is usually named
@@ -56,6 +59,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 8, 2014  3302       bkowal      Use eager fetching to eliminate session closed
  *                                     errors with lazy loading.
  * Jul 17, 2014  3406      mpduff      Added id pk column
+ * Aug 04, 2014  3173      mpduff      Changed rcs to dac, added position and convenience methods, using serialization adapter
  * 
  * </pre>
  * 
@@ -67,7 +71,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }) })
 @SequenceGenerator(initialValue = 1, name = TransmitterGroup.GEN, sequenceName = "zone_seq")
 @DynamicSerialize
+@DynamicSerializeTypeAdapter(factory = TransmitterGroupAdapter.class)
 public class TransmitterGroup {
+
     static final String GEN = "Transmitter Group Generator";
 
     public static final String GET_TRANSMITTER_GROUP_FOR_NAME = "getTransmitterGroupForName";
@@ -78,42 +84,33 @@ public class TransmitterGroup {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
-    @DynamicSerializeElement
     protected int id;
 
     /**
      * Alternate key, id only used to allow for ease of rename function.
      */
     @Column(length = NAME_LENGTH)
-    @DynamicSerializeElement
     private String name;
 
     @Embedded
-    @DynamicSerializeElement
     private Tone tone;
 
     @Column
-    @DynamicSerializeElement
-    private Integer rcs;
-
-    @Column
-    @DynamicSerializeElement
-    private Integer rcsPort;
+    private Integer dac;
 
     @Column(length = 15)
-    @DynamicSerializeElement
     private String timeZone;
 
     @Column
-    @DynamicSerializeElement
     private Boolean silenceAlarm;
 
     @Column
-    @DynamicSerializeElement
     private Boolean daylightSaving;
 
+    @Column
+    private int position;
+
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
-    @DynamicSerializeElement
     private Set<Transmitter> transmitters;
 
     /**
@@ -147,20 +144,12 @@ public class TransmitterGroup {
         this.tone = tone;
     }
 
-    public Integer getRcs() {
-        return rcs;
+    public Integer getDac() {
+        return dac;
     }
 
-    public void setRcs(Integer rcs) {
-        this.rcs = rcs;
-    }
-
-    public Integer getRcsPort() {
-        return rcsPort;
-    }
-
-    public void setRcsPort(Integer rcsPort) {
-        this.rcsPort = rcsPort;
+    public void setDac(Integer dac) {
+        this.dac = dac;
     }
 
     public String getTimeZone() {
@@ -187,7 +176,25 @@ public class TransmitterGroup {
         this.daylightSaving = daylightSaving;
     }
 
+    /**
+     * @return the position
+     */
+    public int getPosition() {
+        return position;
+    }
+
+    /**
+     * @param position
+     *            the position to set
+     */
+    public void setPosition(int position) {
+        this.position = position;
+    }
+
     public Set<Transmitter> getTransmitters() {
+        if (transmitters == null) {
+            transmitters = new HashSet<Transmitter>();
+        }
         return transmitters;
     }
 
@@ -211,6 +218,35 @@ public class TransmitterGroup {
 
             transmitters.add(trans);
         }
+    }
+
+    public List<Transmitter> getTransmitterList() {
+        List<Transmitter> transList;
+        if (transmitters == null) {
+            transList = new ArrayList<Transmitter>();
+        } else {
+            transList = new ArrayList<Transmitter>(transmitters.size());
+            for (Transmitter t : transmitters) {
+                transList.add(t);
+            }
+        }
+
+        return transList;
+    }
+
+    /**
+     * Is this a standalone group
+     * 
+     * @return true if is standalone, false otherwise
+     */
+    public boolean isStandalone() {
+        if (transmitters != null && transmitters.size() == 1) {
+            if (getTransmitterList().get(0).getMnemonic().equals(this.name)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override
@@ -241,6 +277,20 @@ public class TransmitterGroup {
             return false;
         }
         return true;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        return "TransmitterGroup [id=" + id + ", name=" + name + ", tone="
+                + tone + ", dac=" + dac + ", timeZone=" + timeZone
+                + ", silenceAlarm=" + silenceAlarm + ", daylightSaving="
+                + daylightSaving + ", position=" + position + ", transmitters="
+                + transmitters + "]";
     }
 
 }

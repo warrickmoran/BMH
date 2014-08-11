@@ -55,6 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.DictionaryManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.areas.ListeningAreaDlg;
@@ -84,6 +85,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 17, 2014   3406     mpduff      Added Listening area and zone dialogs
  * Jul 21, 2014   3407     mpduff      Added DictionaryManagerDlg
  * Jul 27, 2014  #3420     lvenable    Added Message types dialog.
+ * Aug 04, 2014   3173     mpduff      Added Transmitter Config dialog.
  * 
  * </pre>
  * 
@@ -149,6 +151,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     /** Dictionary Manager Dialog */
     private DictionaryManagerDlg dictManagerDlg;
 
+    /** Transmitter configuration dialog */
+    protected TransmitterConfigDlg transmitterConfigDlg;
+    
     /**
      * This is a map that contains dialog that may require some sort of save
      * action before closing. These dialogs are reported to the user so they can
@@ -162,6 +167,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      * remain open if the main dialog is closed.
      */
     private final Set<CaveSWTDialogBase> dialogsSet = new HashSet<CaveSWTDialogBase>();
+
 
     /**
      * Constructor.
@@ -462,11 +468,18 @@ public class BMHLauncherDlg extends CaveSWTDialog {
          * Transmitter
          */
         MenuItem transConfigMI = new MenuItem(transmittersMenu, SWT.PUSH);
-        transConfigMI.setText("Transmitter Conifguration...");
+        transConfigMI.setText("Transmitter Configuration...");
         transConfigMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
+                if (transmitterConfigDlg == null
+                        || transmitterConfigDlg.isDisposed()) {
+                    transmitterConfigDlg = new TransmitterConfigDlg(shell,
+                            dlgsToValidateCloseMap);
+                    transmitterConfigDlg.open();
+                } else {
+                    transmitterConfigDlg.bringToTop();
+                }
             }
         });
 

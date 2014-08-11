@@ -61,4 +61,11 @@
         <constructor-arg ref="zoneAreaHandler" />
     </bean>
 
+    <bean id="transmitterHandler" class="com.raytheon.uf.edex.bmh.handler.TransmitterHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.TransmitterRequest" />
+        <constructor-arg ref="transmitterHandler" />
+    </bean>
+
 </beans>

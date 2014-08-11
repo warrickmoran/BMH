@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.orm.hibernate3.HibernateTemplate;
@@ -37,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2014 3302       bkowal      Initial creation
+ * Aug 04, 2014   3173     mpduff      Added getTransmitterGroups()
  * 
  * </pre>
  * 
@@ -77,5 +80,20 @@ public class TransmitterGroupDao extends
         }
 
         return null;
+    }
+
+    public List<TransmitterGroup> getTransmitterGroups() {
+        List<Object> objList = this.loadAll();
+        if (objList == null || objList.isEmpty()) {
+            // No data
+            return Collections.emptyList();
+        }
+
+        List<TransmitterGroup> tGroup = new ArrayList<TransmitterGroup>();
+        for (Object o : objList) {
+            tGroup.add((TransmitterGroup) o);
+        }
+
+        return tGroup;
     }
 }
