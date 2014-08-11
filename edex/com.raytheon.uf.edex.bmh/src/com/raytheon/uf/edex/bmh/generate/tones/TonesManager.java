@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.generate.tones;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -46,6 +47,8 @@ import com.raytheon.uf.edex.bmh.generate.tones.data.Tone;
  * Jun 20, 2014 3304       bkowal      Initial creation
  * Aug 04, 2014 3286       dgilling    Remove unnecessary try-catch block from
  *                                     generateSAMETone().
+ * Aug 12, 2014 3286       dgilling    Add second generateSAMETone() that 
+ *                                     supports encoding an arbitrary byte string.
  * 
  * </pre>
  * 
@@ -106,13 +109,28 @@ public class TonesManager {
      * @param SAMEMessage
      *            the specified Same Message
      * @return The generated SAME tone in ulaw format
-     * @throws IOException
-     *             when SAME tone generation fails
+     * @throws ToneGenerationException
+     *             If the data could not be encoded into ulaw format.
      */
     public static byte[] generateSAMETone(final String SAMEMessage)
             throws ToneGenerationException {
+        return generateSAMETone(SAMEMessage.trim().getBytes(
+                StandardCharsets.US_ASCII));
+    }
+
+    /**
+     * Generate a SAME tone based on the specified byte string.
+     * 
+     * @param SAMEData
+     *            The byte string to convert into SAME tones.
+     * @return The SAME tones encoded in ulaw format.
+     * @throws ToneGenerationException
+     *             If the data could not be encoded into ulaw format.
+     */
+    public static byte[] generateSAMETone(final byte[] SAMEData)
+            throws ToneGenerationException {
         AFSKToneGenerator toneGenerator = new AFSKToneGenerator();
-        short[] data = toneGenerator.execute(SAMEMessage);
+        short[] data = toneGenerator.execute(SAMEData);
         if (data.length <= 0) {
             return null;
         }

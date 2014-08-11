@@ -50,6 +50,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
 
 /**
@@ -68,7 +69,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Jul 31, 2014  3286     dgilling    Wire up DacHardwareStatusNotification.
  * Aug 04, 2014  3487     bsteffen    Add lineTapServer
  * Aug 12, 2014  3486     bsteffen    Watch for config changes
- * 
+ * Aug 14, 2014  3286     dgilling    Support receiving critical errors from 
+ *                                    DacTransmit.
  * 
  * </pre>
  * 
@@ -272,6 +274,13 @@ public class CommsManager {
 
     public void hardwareStatusArrived(DacHardwareStatusNotification notification) {
         jms.sendStatus(notification);
+    }
+
+    public void errorReceived(DacTransmitCriticalError e, String group) {
+        // TODO send to alertviz via EDEX
+        logger.error(
+                "Critical error received from group: " + group + ": "
+                        + e.getErrorMessage(), e.getThrowable());
     }
 
     public static void main(String[] args) {

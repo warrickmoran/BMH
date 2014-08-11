@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.edex.bmh.generate.tones;
 
-import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -39,6 +38,7 @@ import com.raytheon.uf.edex.bmh.generate.tones.data.AFSKTone;
  * Jun 20, 2014 3304       bkowal      Initial creation
  * Aug 04, 2014 3286       dgilling    Fix UnsupportedEncodingException in
  *                                     encode().
+ * Aug 12, 2014 3286       dgilling    Modify method signature for encode().
  * 
  * </pre>
  * 
@@ -90,10 +90,9 @@ public class AFSKToneGenerator {
      *            the SAME message to encode
      * @return the encoded data.
      */
-    public short[] execute(final String sameMessage) {
+    public short[] execute(final byte[] sameMessage) {
         List<short[]> outputList = new LinkedList<short[]>();
-        BitSet sameMessageBits = BitSet.valueOf((sameMessage.trim()
-                .getBytes(StandardCharsets.US_ASCII)));
+        BitSet sameMessageBits = BitSet.valueOf(sameMessage);
         for (int i = 0; i < sameMessageBits.length(); i++) {
             if (sameMessageBits.get(i)) {
                 outputList.add(this.toneGenerator.encode(this.toneOne));

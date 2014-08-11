@@ -30,6 +30,7 @@
 #    07/15/14        3388          dgilling       Initial Creation.
 #    07/17/14        3286          dgilling       Add google guava to classpath.
 #    07/28/14        3399          bsteffen       Build CLASSPATH from DEPENDENCIES.
+#    08/11/14        3286          dgilling       Remove unneeded dependencies.
 ##############################################################################
 
 path_to_script=`readlink -f $0`
@@ -63,7 +64,7 @@ do
 done
 export TRANSMITTER_GROUP
 
-DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j com.google.guava org.geotools javax.measure org.apache.thrift net.sf.cglib org"
+DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j com.google.guava org.apache.thrift net.sf.cglib"
 
 ENTRY_POINT="com.raytheon.uf.edex.bmh.dactransmit.DacTransmitMain"
 CLASSPATH="${EDEX_HOME}/lib/plugins/*"

@@ -20,9 +20,10 @@
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
 import java.io.IOException;
-import java.nio.file.FileSystems;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -36,9 +37,13 @@ import javax.xml.bind.JAXB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.tones.TonesGenerator;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
+import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
 
 /**
  * Cache for {@code PlaylistMessage} objects. Stores the contents of each audio
@@ -56,6 +61,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jul 16, 2014  #3286     dgilling     Add shutdown() to take down executor.
  * Jul 29, 2014  #3286     dgilling     Add getPlaylist().
  * Aug 04, 2014  #3286     dgilling     Remove getPlaylist().
+ * Aug 12, 2014  #3286     dgilling     Support tones playback.
  * 
  * </pre>
  * 
@@ -69,6 +75,21 @@ public final class PlaylistMessageCache {
 
     private static final int THREAD_POOL_MAX_SIZE = 3;
 
+    private static final long SECONDS_TO_BYTES_CONV_FACTOR = 8000L;
+
+    /**
+     * Estimated file size for SAME tones playback (not including alert tone):
+     * based on 10 seconds of pauses plus an estimated 1 second for tones
+     * playback.
+     */
+    private static final long SAME_TONE_ESTIMATE = 11 * SECONDS_TO_BYTES_CONV_FACTOR;
+
+    /**
+     * Estimated file size for alert tones playback: based on 9 second alert
+     * tone plus 2 second pause prior to tone.
+     */
+    private static final long ALERT_TONE_ESTIMATE = 11 * SECONDS_TO_BYTES_CONV_FACTOR;
+
     private final Path messageDirectory;
 
     private final ExecutorService cacheThreadPool;
@@ -79,13 +100,16 @@ public final class PlaylistMessageCache {
 
     private final ConcurrentMap<DacPlaylistMessageId, Future<?>> cacheStatus;
 
-    public PlaylistMessageCache(Path messageDirectory) {
+    private final EventBus eventBus;
+
+    public PlaylistMessageCache(Path messageDirectory, EventBus eventBus) {
         this.messageDirectory = messageDirectory;
         cacheThreadPool = Executors.newFixedThreadPool(THREAD_POOL_MAX_SIZE,
                 new NamedThreadFactory("PlaylistMessageCache"));
         cachedMessages = new ConcurrentHashMap<>();
         cachedFiles = new ConcurrentHashMap<>();
         cacheStatus = new ConcurrentHashMap<>();
+        this.eventBus = eventBus;
     }
 
     /**
@@ -121,17 +145,53 @@ public final class PlaylistMessageCache {
                 @Override
                 public void run() {
                     DacPlaylistMessage message = getMessage(id);
-                    Path filePath = FileSystems.getDefault().getPath(
-                            message.getSoundFile());
+                    Path filePath = Paths.get(message.getSoundFile());
+
+                    /*
+                     * We really don't want to leave essentially null messages
+                     * in the cache for playback. However for the
+                     * highly-controlled environment of the initial demo
+                     * version, file read errors and tone generation errors
+                     * shouldn't happen.
+                     * 
+                     * FIXME: if caching a message's audio data fails, perform
+                     * retry of some sort.
+                     */
+                    byte[] rawData = new byte[0];
                     try {
-                        byte[] rawData = Files.readAllBytes(filePath);
-                        AudioFileBuffer buffer = new AudioFileBuffer(rawData);
-                        cachedFiles.put(message, buffer);
+                        rawData = Files.readAllBytes(filePath);
                     } catch (IOException e) {
-                        logger.error(
-                                "Failed to buffer file: " + filePath.toString(),
+                        String msg = "Failed to buffer audio file for message: "
+                                + message + ", file: " + filePath;
+                        logger.error(msg, e);
+                        CriticalErrorEvent event = new CriticalErrorEvent(msg,
                                 e);
+                        eventBus.post(event);
                     }
+
+                    ByteBuffer tones = null;
+                    ByteBuffer endOfMessage = null;
+                    if ((message.getSAMEtone() != null)
+                            && (!message.getSAMEtone().isEmpty())) {
+                        try {
+                            endOfMessage = TonesGenerator
+                                    .getEndOfMessageTones();
+                            tones = TonesGenerator.getSAMEAlertTones(
+                                    message.getSAMEtone(),
+                                    message.isAlertTone());
+                        } catch (ToneGenerationException e) {
+                            String msg = "Unable to generate tones for message: "
+                                    + message;
+                            logger.error(msg, e);
+                            CriticalErrorEvent event = new CriticalErrorEvent(
+                                    msg, e);
+                            eventBus.post(event);
+                        }
+                    }
+
+                    AudioFileBuffer buffer = new AudioFileBuffer(rawData,
+                            tones, endOfMessage);
+                    cachedFiles.put(message, buffer);
                 }
             };
 
@@ -200,49 +260,32 @@ public final class PlaylistMessageCache {
      */
     public long getPlaybackTime(DacPlaylistMessageId messageId) {
         DacPlaylistMessage message = cachedMessages.get(messageId);
+        boolean includeTones = ((message.getSAMEtone() != null) && (message
+                .getPlayCount() == 0));
 
         long fileSize = 0;
         if (cachedFiles.containsKey(message)) {
-            fileSize = cachedFiles.get(message).capcity();
+            fileSize = cachedFiles.get(message).capcity(includeTones);
         } else {
-            Path audioFile = FileSystems.getDefault().getPath(
-                    cachedMessages.get(messageId).getSoundFile());
+            Path audioFile = Paths.get(cachedMessages.get(messageId)
+                    .getSoundFile());
             try {
                 fileSize = Files.size(audioFile);
             } catch (Exception e) {
                 logger.error("Unable to retrieve file size for file: "
                         + audioFile.toString(), e);
             }
+
+            if (includeTones) {
+                fileSize += SAME_TONE_ESTIMATE;
+                if (message.isAlertTone()) {
+                    fileSize += ALERT_TONE_ESTIMATE;
+                }
+            }
         }
 
         /* For ULAW encoded files, 160 bytes = 20 ms of playback time. */
         long playbackTime = fileSize / 160L * 20L;
-
-        /*
-         * during playback of SAME tones, we have numerous pauses: 2 1-second
-         * pauses between playbeack of the preamble + SAME header, a 5-second
-         * pause before playing back the message data, a 3-second pause after
-         * playing that message, and 2 1-second pauses between playback of the
-         * preamble + closing.
-         */
-        // FIXME uncomment when we support tones playback
-        // if (message.getSAMEtone() != null) {
-        // // TODO find static conversion factor between string length and
-        // // playback time
-        //
-        // playbackTime += (1 + 1 + 5 + 3 + 1 + 1)
-        // * TimeUtil.MILLIS_PER_SECOND;
-        // }
-
-        /*
-         * Alert tone playback is always the same length: 3 second pause
-         * (silence) prior to tone and 10 seconds of the alert tone itself.
-         */
-        // FIXME uncomment code when tone playback is supported
-        // if (message.isAlertTone()) {
-        // playbackTime += (3 + 10) * TimeUtil.MILLIS_PER_SECOND;
-        // }
-
         return playbackTime;
     }
 }

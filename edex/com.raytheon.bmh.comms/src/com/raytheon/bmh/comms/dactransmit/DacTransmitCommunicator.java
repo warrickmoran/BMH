@@ -34,6 +34,7 @@ import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
 
@@ -53,6 +54,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  *                                    from DacTransmit.
  * Jul 31, 2014  3286     dgilling    Support DacHardwareStatusNotification.
  * Aug 12, 2014  3486     bsteffen    Support ChangeTransmitters
+ * Aug 14, 2014  3286     dgilling    Support DacTransmitCriticalError.
  * 
  * </pre>
  * 
@@ -131,6 +133,9 @@ public class DacTransmitCommunicator extends Thread {
             DacHardwareStatusNotification notification = (DacHardwareStatusNotification) message;
             notification.setTransmitterGroup(groupName);
             manager.hardwareStatusArrived(notification);
+        } else if (message instanceof DacTransmitCriticalError) {
+            DacTransmitCriticalError notification = (DacTransmitCriticalError) message;
+            manager.errorReceived(notification, groupName);
         } else if (message instanceof DacTransmitShutdown) {
             disconnect();
         } else {

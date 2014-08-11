@@ -40,6 +40,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                      sending playback updates to 
  *                                      CommsManager.
  * Aug 08, 2014  #3286     dgilling     Add resetAudio().
+ * Aug 13, 2014  #3286     dgilling     Send status for tones playback.
  * 
  * </pre>
  * 
@@ -64,9 +65,18 @@ public final class DacMessagePlaybackData {
             message.setPlayCount(playCount);
             Calendar transmitTime = TimeUtil.newGmtCalendar();
             message.setLastTransmitTime(transmitTime);
+
+            boolean playedSameTone = message.isPlayedSameTone();
+            boolean playedAlertTone = message.isPlayedAlertTone();
+            if (playCount == 1) {
+                playedSameTone = (message.getSAMEtone() != null && !message
+                        .getSAMEtone().isEmpty());
+                playedAlertTone = (playedSameTone && message.isAlertTone());
+            }
+
             playbackStatus = new MessagePlaybackStatusNotification(
-                    message.getBroadcastId(), transmitTime, playCount, false,
-                    false, null);
+                    message.getBroadcastId(), transmitTime, playCount,
+                    playedSameTone, playedAlertTone, null);
             firstCallToGet = false;
         }
 

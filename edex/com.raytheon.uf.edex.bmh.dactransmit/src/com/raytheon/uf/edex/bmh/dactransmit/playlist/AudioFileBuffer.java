@@ -39,6 +39,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
  * ------------ ---------- ----------- --------------------------
  * Jul 02, 2014  #3286     dgilling     Initial creation
  * Jul 29, 2014  #3286     dgilling     Add capacity().
+ * Aug 12, 2014  #3286     dgilling     Integrate tone playback.
  * 
  * </pre>
  * 
@@ -48,16 +49,44 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
 
 public final class AudioFileBuffer {
 
-    private final ByteBuffer buffer;
+    private final ByteBuffer tonesBuffer;
+
+    private final ByteBuffer messageBuffer;
+
+    private final ByteBuffer endOfMessageBuffer;
+
+    private boolean returnTones;
 
     /**
-     * Creates an {@code AudioFileBuffer} for the given byte array of data.
+     * Creates an {@code AudioFileBuffer} for the given byte array of data. No
+     * tones will ever be played when playing this message.
      * 
      * @param data
      *            Data to wrap as an {@code AudioFileBuffer}.
      */
     public AudioFileBuffer(final byte[] data) {
-        buffer = ByteBuffer.wrap(data).asReadOnlyBuffer();
+        this(data, null, null);
+    }
+
+    /**
+     * Creates an {@code AudioFileBuffer} for the given message and its
+     * specified tones.
+     * 
+     * @param message
+     *            The main audio message to play.
+     * @param tones
+     *            The tones to play prior to playing {@code message}.
+     * @param endOfMessage
+     *            The tones to play after playing {@code message}.
+     */
+    public AudioFileBuffer(final byte[] message, ByteBuffer tones,
+            ByteBuffer endOfMessage) {
+        this.messageBuffer = ByteBuffer.wrap(message).asReadOnlyBuffer();
+        this.tonesBuffer = (tones != null) ? tones.asReadOnlyBuffer()
+                : ByteBuffer.allocate(0).asReadOnlyBuffer();
+        this.endOfMessageBuffer = (endOfMessage != null) ? endOfMessage
+                .asReadOnlyBuffer() : ByteBuffer.allocate(0).asReadOnlyBuffer();
+        this.returnTones = false;
     }
 
     /**
@@ -99,15 +128,32 @@ public final class AudioFileBuffer {
     public void get(byte[] dst, int offset, int length) {
         checkBounds(offset, length, dst.length);
 
-        int bytesFromBuffer = length;
-        if (length > buffer.remaining()) {
-            bytesFromBuffer = buffer.remaining();
+        int bytesRemaining = length;
+        if ((bytesRemaining > 0) && (returnTones)
+                && (tonesBuffer.hasRemaining())) {
+            int bytesToRead = Math.min(bytesRemaining, tonesBuffer.remaining());
+            tonesBuffer.get(dst, offset, bytesToRead);
+            bytesRemaining -= bytesToRead;
         }
 
-        buffer.get(dst, offset, bytesFromBuffer);
-        if (bytesFromBuffer < length) {
-            Arrays.fill(dst, offset + bytesFromBuffer, offset + length,
-                    DacSessionConstants.SILENCE);
+        if ((bytesRemaining > 0) && (messageBuffer.hasRemaining())) {
+            int bytesToRead = Math.min(bytesRemaining,
+                    messageBuffer.remaining());
+            messageBuffer.get(dst, offset, bytesToRead);
+            bytesRemaining -= bytesToRead;
+        }
+
+        if ((bytesRemaining > 0) && (returnTones)
+                && (endOfMessageBuffer.hasRemaining())) {
+            int bytesToRead = Math.min(bytesRemaining,
+                    endOfMessageBuffer.remaining());
+            endOfMessageBuffer.get(dst, offset, bytesToRead);
+            bytesRemaining -= bytesToRead;
+        }
+
+        if (bytesRemaining > 0) {
+            Arrays.fill(dst, offset + (length - bytesRemaining), offset
+                    + length, DacSessionConstants.SILENCE);
         }
     }
 
@@ -115,7 +161,9 @@ public final class AudioFileBuffer {
      * Rewinds this buffer.
      */
     public void rewind() {
-        buffer.rewind();
+        messageBuffer.rewind();
+        tonesBuffer.rewind();
+        endOfMessageBuffer.rewind();
     }
 
     /**
@@ -126,16 +174,39 @@ public final class AudioFileBuffer {
      *         remaining in this buffer.
      */
     public boolean hasRemaining() {
-        return buffer.hasRemaining();
+        return returnTones ? (messageBuffer.hasRemaining()
+                || tonesBuffer.hasRemaining() || endOfMessageBuffer
+                .hasRemaining()) : messageBuffer.hasRemaining();
     }
 
     /**
      * Returns this buffer's capacity.
      * 
+     * @param includeTones
+     *            Whether or not to include the tones data in this calculation.
      * @return The capacity of this buffer
      */
-    public int capcity() {
-        return buffer.capacity();
+    public int capcity(boolean includeTones) {
+        int capacity = messageBuffer.capacity();
+        if (includeTones) {
+            capacity += (tonesBuffer.capacity() + endOfMessageBuffer.capacity());
+        }
+        return capacity;
+    }
+
+    /**
+     * Whether or not to include the tones when retrieving data from this
+     * buffer. This method will only have an effect if called before calling
+     * get() for the first time.
+     * 
+     * @param returnTones
+     *            {@code true} if the tones should be included.
+     */
+    public void setReturnTones(boolean returnTones) {
+        if ((messageBuffer.position() == 0) && (tonesBuffer.position() == 0)
+                && (endOfMessageBuffer.position() == 0)) {
+            this.returnTones = returnTones;
+        }
     }
 
     private static void checkBounds(int off, int len, int size) {

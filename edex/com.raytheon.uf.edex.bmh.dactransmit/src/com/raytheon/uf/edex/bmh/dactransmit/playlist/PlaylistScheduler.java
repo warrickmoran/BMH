@@ -75,6 +75,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  * Aug 06, 2014  #3286     dgilling     Send more informational 
  *                                      PlaylistSwitchNotifications, simplify logic
  *                                      when receiving update to current playlist.
+ * Aug 12, 2014  #3286     dgilling     Support tones playback.
  * 
  * </pre>
  * 
@@ -209,7 +210,8 @@ public final class PlaylistScheduler implements
 
         Collections.sort(currentPlaylists, PLAYBACK_ORDER);
 
-        cache = new PlaylistMessageCache(inputDirectory.resolve("messages"));
+        cache = new PlaylistMessageCache(inputDirectory.resolve("messages"),
+                this.eventBus);
         for (DacPlaylist playlist : currentPlaylists) {
             cache.addToCache(playlist.getMessages());
         }
@@ -266,12 +268,15 @@ public final class PlaylistScheduler implements
             playlistNotify = null;
         }
 
-        DacMessagePlaybackData nextMessage = nextMessage();
-        logger.debug("Switching to message: "
-                + nextMessage.getMessage().toString());
-        AudioFileBuffer audioData = cache.getAudio(nextMessage.getMessage());
-        nextMessage.setAudio(audioData);
-        return nextMessage;
+        DacMessagePlaybackData nextMessageData = nextMessage();
+        DacPlaylistMessage nextMessage = nextMessageData.getMessage();
+        logger.debug("Switching to message: " + nextMessage.toString());
+        AudioFileBuffer audioData = cache.getAudio(nextMessage);
+        boolean playTones = ((nextMessage.getSAMEtone() != null) && (nextMessage
+                .getPlayCount() == 0));
+        audioData.setReturnTones(playTones);
+        nextMessageData.setAudio(audioData);
+        return nextMessageData;
     }
 
     private DacMessagePlaybackData nextMessage() {

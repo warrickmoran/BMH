@@ -40,8 +40,10 @@ import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
@@ -67,6 +69,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                    TCP_NODELAY on IPC socket.
  * Jul 31, 2014  3286     dgilling    Send DacHardwareStatusNotification.
  * Aug 12, 2014  3486     bsteffen    Remove group from registration
+ * Aug 14, 2014  3286     dgilling    Send DacTransmitCriticalError.
  * 
  * </pre>
  * 
@@ -232,6 +235,12 @@ public final class CommsManagerCommunicator extends Thread {
     @Subscribe
     public void sendPlaylistSwitch(PlaylistSwitchNotification notification) {
         sendMessageToCommsManager(notification);
+    }
+
+    @Subscribe
+    public void handleCriticalError(CriticalErrorEvent e) {
+        sendMessageToCommsManager(new DacTransmitCriticalError(
+                e.getErrorMessage(), e.getThrowable()));
     }
 
     private void sendMessageToCommsManager(final Object message) {

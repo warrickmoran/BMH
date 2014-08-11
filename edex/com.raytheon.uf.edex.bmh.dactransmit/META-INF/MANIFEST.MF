@@ -13,6 +13,7 @@ Require-Bundle: org.apache.commons.cli;bundle-version="1.0.0",
  org.slf4j;bundle-version="1.7.5",
  com.raytheon.uf.common.bmh;bundle-version="1.14.0",
  com.raytheon.uf.common.serialization;bundle-version="1.14.0",
- com.google.guava;bundle-version="11.0.2"
+ com.google.guava;bundle-version="11.0.2",
+ com.raytheon.uf.edex.bmh;bundle-version="1.14.0"
 Export-Package: com.raytheon.uf.edex.bmh.dactransmit,
  com.raytheon.uf.edex.bmh.dactransmit.ipc

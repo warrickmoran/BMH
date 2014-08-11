@@ -55,6 +55,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  *                                      get a heartbeat back.
  * Aug 08, 2014  #3286     dgilling     Better handling for transmit/receive
  *                                      errors, use sync lost/gained events.
+ * Aug 13, 2014  #3286     dgilling     Do not clear buffer ever when sync-ing.
  * 
  * 
  * </pre>
@@ -75,9 +76,6 @@ public class ControlStatusThread extends Thread {
             .getBytes(StandardCharsets.US_ASCII);
 
     private static final byte[] HEARTBEAT_SYNC_MSG = "00000"
-            .getBytes(StandardCharsets.US_ASCII);
-
-    private static final byte[] CLEAR_BUFFER_MSG = "5000"
             .getBytes(StandardCharsets.US_ASCII);
 
     private final EventBus eventBus;
@@ -134,7 +132,7 @@ public class ControlStatusThread extends Thread {
             while (keepRunning) {
                 try {
                     if (!hasSync) {
-                        RegainSyncEvent notify = performInitialSync(false);
+                        RegainSyncEvent notify = performInitialSync();
                         if (notify != null) {
                             eventBus.post(notify);
                         }
@@ -226,32 +224,11 @@ public class ControlStatusThread extends Thread {
      *         before sync could be obtained.
      */
     public RegainSyncEvent performInitialSync() {
-        return performInitialSync(true);
-    }
-
-    /**
-     * Makes the initial connection to the DAC to obtain "sync".
-     * 
-     * @param clearDacBuffer
-     *            Whether or not to clear the DAC's internal jitter buffer
-     *            before attempting to make the sync.
-     * @return A {@code RegainSyncEvent} that informs the caller that sync was
-     *         obtained or {@code null} if this thread was told to shutdown
-     *         before sync could be obtained.
-     */
-    public RegainSyncEvent performInitialSync(boolean clearDacBuffer) {
         RegainSyncEvent retVal = null;
 
         while (!hasSync && keepRunning) {
             try {
-                DatagramPacket packet;
-
-                if (clearDacBuffer) {
-                    packet = buildPacket(CLEAR_BUFFER_MSG);
-                    socket.send(packet);
-                }
-
-                packet = buildPacket(INITIAL_SYNC_MSG);
+                DatagramPacket packet = buildPacket(INITIAL_SYNC_MSG);
                 socket.send(packet);
                 lastHeartbeatSent = TimeUtil.currentTimeMillis();
 

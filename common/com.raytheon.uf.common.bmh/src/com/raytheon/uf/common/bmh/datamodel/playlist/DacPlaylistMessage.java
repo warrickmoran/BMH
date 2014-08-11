@@ -41,6 +41,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * ------------- -------- ----------- --------------------------
  * Jul 01, 2014  3285     bsteffen    Initial creation
  * Jul 24, 2014  3286     dgilling    Implement toString().
+ * Aug 13, 2014  3286     dgilling    Add fields for tone playback.
  * 
  * </pre>
  * 
@@ -81,6 +82,12 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     @XmlElement
     private int playCount;
+
+    @XmlElement
+    private boolean playedSameTone;
+
+    @XmlElement
+    private boolean playedAlertTone;
 
     public DacPlaylistMessage() {
 
@@ -179,6 +186,22 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     public void setPlayCount(int playCount) {
         this.playCount = playCount;
+    }
+
+    public boolean isPlayedSameTone() {
+        return playedSameTone;
+    }
+
+    public void setPlayedSameTone(boolean playedSameTone) {
+        this.playedSameTone = playedSameTone;
+    }
+
+    public boolean isPlayedAlertTone() {
+        return playedAlertTone;
+    }
+
+    public void setPlayedAlertTone(boolean playedAlertTone) {
+        this.playedAlertTone = playedAlertTone;
     }
 
     /**
