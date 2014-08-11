@@ -32,6 +32,8 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IShutdownRequestEventHandler;
@@ -63,6 +65,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jul 29, 2014  #3286     dgilling     Use NamedThreadFactory.
  * Jul 31, 2014  #3286     dgilling     Send DacHardwareStatusNotification back
  *                                      to CommsManager.
+ * Aug 08, 2014  #3286     dgilling     Inform CommsManager when sync is lost
+ *                                      or re-gained.
  * 
  * </pre>
  * 
@@ -216,6 +220,16 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         if (notify != null) {
             commsManager.sendDacHardwareStatus(notify);
         }
+    }
+
+    @Subscribe
+    public void lostDacSync(LostSyncEvent e) {
+        commsManager.sendConnectionStatus(false);
+    }
+
+    @Subscribe
+    public void regainDacSync(RegainSyncEvent e) {
+        commsManager.sendConnectionStatus(true);
     }
 
     /*

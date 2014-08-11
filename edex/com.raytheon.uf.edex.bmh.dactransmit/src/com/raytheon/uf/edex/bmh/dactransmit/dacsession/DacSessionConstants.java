@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
+import com.raytheon.uf.common.time.util.TimeUtil;
+
 /**
  * Useful constants for the DacSession and its components.
  * 
@@ -30,6 +32,8 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
  * ------------ ---------- ----------- --------------------------
  * Jul 01, 2014  #3286     dgilling     Initial creation
  * Jul 22, 2014  #3283     dgilling     Add DAC heartbeat constants.
+ * Aug 08, 2014  #3286     dgilling     Add/update constants to support sync
+ *                                      lost and regain events.
  * 
  * </pre>
  * 
@@ -64,7 +68,11 @@ public final class DacSessionConstants {
 
     public static final int INITIAL_SYNC_TIMEOUT_PERIOD = DAC_HEARTBEAT_CYCLE_TIME * 2;
 
-    public static final int DEFAULT_SYNC_TIMEOUT_PERIOD = DAC_HEARTBEAT_CYCLE_TIME * 3;
+    public static final int DEFAULT_SYNC_TIMEOUT_PERIOD = 150;
+
+    public static final int MISSED_HEARTBEATS_THRESHOLD = 3;
+
+    public static final long COMPLETE_SYNC_LOST_TIME = 5 * TimeUtil.MILLIS_PER_SECOND;
 
     private DacSessionConstants() {
         throw new AssertionError(
