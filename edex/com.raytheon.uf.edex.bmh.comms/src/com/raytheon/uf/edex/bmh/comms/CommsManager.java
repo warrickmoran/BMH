@@ -19,14 +19,20 @@
  **/
 package com.raytheon.uf.edex.bmh.comms;
 
-import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXB;
 
@@ -58,7 +64,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Jul 31, 2014  3286     dgilling    Wire up DacHardwareStatusNotification.
- * Aug 04, 2014  2487     bsteffen    Add lineTapServer
+ * Aug 04, 2014  3487     bsteffen    Add lineTapServer
+ * Aug 12, 2014  3486     bsteffen    Watch for config changes
+ * 
  * 
  * </pre>
  * 
@@ -70,24 +78,30 @@ public class CommsManager {
     private static final Logger logger = LoggerFactory
             .getLogger(CommsManager.class);
 
+    private Path configPath;
+
+    private CommsConfig config;
+
     private final DacTransmitServer transmitServer;
 
     private final LineTapServer lineTapServer;
 
     private final JmsCommunicator jms;
 
-    private final CommsConfig config;
-
-    private final Map<String, Process> startedProcesses = new HashMap<>();
+    private final Map<DacTransmitKey, Process> startedProcesses = new HashMap<>();
 
     /**
-     * Create a comms manager, this will fail if there is probelms with the
+     * Create a comms manager, this will fail if there is problems with the
      * config file.
      */
-    public CommsManager() {
-        config = JAXB.unmarshal(new File(BMHConstants.getBmhDataDirectory()
-                + File.separator + "conf" + File.separator + "comms.xml"),
-                CommsConfig.class);
+    public CommsManager() throws IOException {
+        configPath = Paths.get(BMHConstants.getBmhDataDirectory(), "conf",
+                "comms.xml");
+        if (!Files.exists(configPath)) {
+            throw new FileNotFoundException("No config file found in "
+                    + configPath.toString());
+        }
+        config = JAXB.unmarshal(configPath.toFile(), CommsConfig.class);
         transmitServer = new DacTransmitServer(this, config);
         lineTapServer = new LineTapServer(config);
         JmsCommunicator jms = null;
@@ -103,36 +117,62 @@ public class CommsManager {
     }
 
     /**
-     * Run the comms manager, this will potentially run forever.
+     * Run the comms manager, this will watch for changes to the config and also
+     * periodically launch processes for any channels in the config that do not
+     * have a running dac transmit process.
      */
     public void run() {
+        WatchService configWatcher = null;
+        try {
+            configWatcher = configPath.getFileSystem().newWatchService();
+            configPath.getParent().register(configWatcher,
+                    StandardWatchEventKinds.ENTRY_MODIFY);
+        } catch (IOException e) {
+            logger.error(
+                    "Cannot monitor config file, config changes will not take affect.",
+                    e);
+        }
         transmitServer.start();
         lineTapServer.start();
         while (transmitServer.isAlive() && lineTapServer.isAlive()) {
+            WatchKey wkey = null;
             try {
-                /*
-                 * Set of all connected groups so any not in configuration can
-                 * be shut down.
-                 */
-                Set<String> unconfiguredGroups = new HashSet<>(
-                        transmitServer.getConnectedGroups());
+                if (configWatcher == null) {
+                    Thread.sleep(1000);
+                } else {
+                    wkey = configWatcher.poll(1, TimeUnit.SECONDS);
+                }
+            } catch (InterruptedException e) {
+                /* Don't care */
+            }
+            if (wkey != null) {
+                for (WatchEvent<?> e : wkey.pollEvents()) {
+                    try {
+                        Path modFile = (Path) e.context();
+                        modFile = configPath.resolveSibling(modFile);
+                        if (Files.exists(modFile) && Files.exists(configPath)
+                                && Files.isSameFile(configPath, modFile)) {
+                            config = JAXB.unmarshal(configPath.toFile(),
+                                    CommsConfig.class);
+                            transmitServer.reconfigure(config);
+                        }
+                    } catch (Throwable t) {
+                        logger.error("Cannot read new config file", t);
+                    }
+
+                }
+                wkey.reset();
+            }
+            try {
                 for (DacConfig dac : config.getDacs()) {
                     for (DacChannelConfig channel : dac.getChannels()) {
-                        String group = channel.getTransmitterGroup();
-                        DacTransmitCommunicator comms = transmitServer
-                                .getCommunicator(group);
-                        if (comms == null) {
-                            // TODO this is where cluster checks can go.
-                            launchDacTransmit(dac, channel);
-                        } else if (!comms.isConnectedToDac()) {
-                            startedProcesses.remove(group);
-                            logger.error("Cannot connect to DAC for " + group);
+                        DacTransmitKey key = new DacTransmitKey(dac, channel);
+                        if (transmitServer.isConnected(key)) {
+                            startedProcesses.remove(key);
+                        } else {
+                            launchDacTransmit(key, channel);
                         }
-                        unconfiguredGroups.remove(group);
                     }
-                }
-                for (String group : unconfiguredGroups) {
-                    transmitServer.shutdownGroup(group);
                 }
             } catch (Throwable e) {
                 logger.error("Error checking connection status.", e);
@@ -141,17 +181,20 @@ public class CommsManager {
                  * over or reseting some dac transmit application.
                  */
             }
+        }
+        if (configWatcher != null) {
             try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                /* Don't care */
+                configWatcher.close();
+            } catch (IOException e) {
+                logger.error("Unexpected error monitoring config file.", e);
             }
         }
     }
 
-    protected void launchDacTransmit(DacConfig dac, DacChannelConfig channel) {
+    protected void launchDacTransmit(DacTransmitKey key,
+            DacChannelConfig channel) {
         String group = channel.getTransmitterGroup();
-        Process p = startedProcesses.get(group);
+        Process p = startedProcesses.get(key);
         if (p != null) {
             try {
                 int status = p.exitValue();
@@ -167,7 +210,7 @@ public class CommsManager {
         List<String> args = new ArrayList<>();
         args.add(config.getDacTransmitStarter());
         args.add("-" + DacTransmitArgParser.DAC_HOSTNAME_OPTION_KEY);
-        args.add(dac.getIpAddress());
+        args.add(key.getDacAddress());
         args.add("-" + DacTransmitArgParser.DATA_PORT_OPTION_KEY);
         args.add(Integer.toString(channel.getDataPort()));
         if (channel.getControlPort() != null) {
@@ -180,26 +223,18 @@ public class CommsManager {
             radios.append(radio);
         }
         args.add(radios.toString());
-        args.add("-" + DacTransmitArgParser.TRANSMITTER_GROUP_OPTION_KEY);
-        args.add(group);
         args.add("-" + DacTransmitArgParser.INPUT_DIR_OPTION_KEY);
-        args.add(BMHConstants.getBmhDataDirectory() + File.separator + "data"
-                + File.separator + "playlist" + File.separator + group);
+        args.add(channel.getInputDirectory().toString());
         args.add("-" + DacTransmitArgParser.COMMS_MANAGER_PORT_OPTION_KEY);
         args.add(Integer.toString(config.getDacTransmitPort()));
         ProcessBuilder startCommand = new ProcessBuilder(args);
-        // TODO what to do with IO?
         startCommand.inheritIO();
         try {
             p = startCommand.start();
-            startedProcesses.put(group, p);
+            startedProcesses.put(key, p);
         } catch (IOException e) {
             logger.error("Unable to start dac transmit for " + group, e);
         }
-    }
-
-    public static void main(String[] args) {
-        new CommsManager().run();
     }
 
     public void dacStatusChanged(DacTransmitCommunicator communicator,
@@ -228,4 +263,9 @@ public class CommsManager {
     public void hardwareStatusArrived(DacHardwareStatusNotification notification) {
         jms.sendStatus(notification);
     }
+
+    public static void main(String[] args) throws IOException {
+        new CommsManager().run();
+    }
+
 }

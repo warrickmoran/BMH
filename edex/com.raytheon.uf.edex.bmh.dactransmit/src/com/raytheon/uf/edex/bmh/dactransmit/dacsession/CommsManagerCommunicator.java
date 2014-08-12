@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.google.common.primitives.Ints;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
@@ -40,6 +41,7 @@ import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
@@ -64,6 +66,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                    post back of status to CommsManager, set
  *                                    TCP_NODELAY on IPC socket.
  * Jul 31, 2014  3286     dgilling    Send DacHardwareStatusNotification.
+ * Aug 12, 2014  3486     bsteffen    Remove group from registration
  * 
  * </pre>
  * 
@@ -74,11 +77,9 @@ public final class CommsManagerCommunicator extends Thread {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final String transmitterGroup;
-
     private final InetAddress commsHost = InetAddress.getLoopbackAddress();
 
-    private final int port;
+    private final DacSessionConfig config;
 
     private final Object sendLock = new Object();
 
@@ -90,11 +91,11 @@ public final class CommsManagerCommunicator extends Thread {
 
     private final ExecutorService writerThread;
 
-    public CommsManagerCommunicator(int port, String transmitterGroup,
-            EventBus eventBus) {
+    private transient boolean running = true;
+
+    public CommsManagerCommunicator(DacSessionConfig config, EventBus eventBus) {
         super("CommsManagerReaderThread");
-        this.port = port;
-        this.transmitterGroup = transmitterGroup;
+        this.config = config;
         this.eventBus = eventBus;
         this.writerThread = Executors
                 .newSingleThreadExecutor(new NamedThreadFactory(
@@ -106,13 +107,13 @@ public final class CommsManagerCommunicator extends Thread {
         eventBus.register(this);
 
         InputStream inputStream = null;
-        while (true) {
+        while (running) {
             if (socket == null) {
                 OutputStream outputStream = null;
                 synchronized (sendLock) {
                     try {
                         // TODO is it ALWAYS localhost.
-                        socket = new Socket(commsHost, port);
+                        socket = new Socket(commsHost, config.getManagerPort());
                         socket.setTcpNoDelay(true);
                         inputStream = socket.getInputStream();
                         outputStream = socket.getOutputStream();
@@ -122,9 +123,14 @@ public final class CommsManagerCommunicator extends Thread {
                     }
                     if (socket != null) {
                         try {
+
+                            DacTransmitRegister registration = new DacTransmitRegister(
+                                    config.getInputDirectory().toString(),
+                                    config.getDataPort(), config
+                                            .getDacAddress().getHostAddress(),
+                                    Ints.toArray(config.getTransmitters()));
                             SerializationUtil.transformToThriftUsingStream(
-                                    new DacTransmitRegister(transmitterGroup),
-                                    outputStream);
+                                    registration, outputStream);
                             if (statusToSend.isConnectedToDac()) {
                                 SerializationUtil.transformToThriftUsingStream(
                                         statusToSend, outputStream);
@@ -196,8 +202,11 @@ public final class CommsManagerCommunicator extends Thread {
              * thread??
              */
             eventBus.post(new ShutdownRequestedEvent());
+            running = false;
             disconnect();
         } else if (message instanceof PlaylistUpdateNotification) {
+            eventBus.post(message);
+        } else if (message instanceof ChangeTransmitters) {
             eventBus.post(message);
         } else {
             logger.error("Unrecognized message from comms manager of type "

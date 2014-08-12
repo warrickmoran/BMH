@@ -19,9 +19,14 @@
  **/
 package com.raytheon.uf.edex.bmh.comms.config;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
+
+import com.raytheon.uf.edex.bmh.BMHConstants;
 
 /**
  * 
@@ -34,6 +39,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
+ * Aug 12, 2014  3486     bsteffen    Add getInputDirectory
  * 
  * </pre>
  * 
@@ -54,6 +60,11 @@ public class DacChannelConfig {
     
     @XmlAttribute
     private Integer controlPort;
+
+    public Path getInputDirectory() {
+        return Paths.get(BMHConstants.getBmhDataDirectory(), "data",
+                "playlist", transmitterGroup);
+    }
 
     public String getTransmitterGroup() {
         return transmitterGroup;

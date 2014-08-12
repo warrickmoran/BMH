@@ -50,6 +50,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Jul 01, 2014  #3286     dgilling     Initial creation
  * Jul 14, 2014  #3286     dgilling     Used logback for logging.
  * Jul 31, 2014  #3286     dgilling     Send DAC status back to CommsManager.
+ * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
  * 
  * </pre>
  * 
@@ -387,9 +388,8 @@ public final class DacStatusMessage {
             voiceValues[i] = voiceStatus[index];
         }
 
-        return new DacHardwareStatusNotification(
-                sessionConfig.getTransmitterGroup(), psu1Voltage, psu2Voltage,
-                bufferSize, validChannels, gainValues, voiceValues,
-                recoverablePacketErrors, unrecoverablePacketErrors);
+        return new DacHardwareStatusNotification(null, psu1Voltage,
+                psu2Voltage, bufferSize, validChannels, gainValues,
+                voiceValues, recoverablePacketErrors, unrecoverablePacketErrors);
     }
 }

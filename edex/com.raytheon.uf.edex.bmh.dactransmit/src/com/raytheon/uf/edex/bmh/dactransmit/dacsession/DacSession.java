@@ -67,6 +67,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      to CommsManager.
  * Aug 08, 2014  #3286     dgilling     Inform CommsManager when sync is lost
  *                                      or re-gained.
+ * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
  * 
  * </pre>
  * 
@@ -122,9 +123,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         this.dataThread = new DataTransmitThread(this.eventBus, playlistMgr,
                 this.config.getDacAddress(), this.config.getDataPort(),
                 this.config.getTransmitters());
-        this.commsManager = new CommsManagerCommunicator(
-                this.config.getManagerPort(),
-                this.config.getTransmitterGroup(), this.eventBus);
+        this.commsManager = new CommsManagerCommunicator(this.config,
+                this.eventBus);
         this.newPlaylistObserver = new PlaylistDirectoryObserver(
                 this.config.getInputDirectory(), this.eventBus);
         this.shutdownSignal = new Semaphore(1);
@@ -149,16 +149,17 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         logger.info("Session configuration: " + config.toString());
         logger.info("Obtaining sync with DAC.");
 
+        commsManager.start();
+        eventBus.register(this);
+
         controlThread.performInitialSync();
 
         logger.info("Obtained sync with DAC and beginning transmission.");
 
         dataThread.start();
         controlThread.start();
-        commsManager.start();
         newPlaylistObserver.start();
         eventBus.register(playlistMgr);
-        eventBus.register(this);
 
         isRunning = true;
     }

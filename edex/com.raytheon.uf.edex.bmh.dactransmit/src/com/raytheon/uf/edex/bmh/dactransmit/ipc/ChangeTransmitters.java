@@ -24,8 +24,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * 
- * Message sent by the dac transmit application to comms manager on initial
- * connection.
+ * Message sent from comms manager to dac transmit to indicate a different set
+ * of transmitters to send audio to.
  * 
  * <pre>
  * 
@@ -33,8 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
- * Jul 16, 2014  3399     bsteffen    Initial creation
- * Aug 12, 2014  3486     bsteffen    Remove tranmistter group name
+ * Aug 12, 2014  3486     bsteffen    Initial Creation
  * 
  * </pre>
  * 
@@ -42,55 +41,16 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class DacTransmitRegister {
-
-    @DynamicSerializeElement
-    private String inputDirectory;
-
-    @DynamicSerializeElement
-    private int dataPort;
-
-    @DynamicSerializeElement
-    private String dacAddress;
+public class ChangeTransmitters {
 
     @DynamicSerializeElement
     private int[] transmitters;
 
-    public DacTransmitRegister() {
-
+    public ChangeTransmitters() {
     }
-
-    public DacTransmitRegister(String inputDirectory, int dataPort,
-            String dacAddress, int[] transmitters) {
-        super();
-        this.inputDirectory = inputDirectory;
-        this.dataPort = dataPort;
-        this.dacAddress = dacAddress;
+    
+    public ChangeTransmitters(int[] transmitters) {
         this.transmitters = transmitters;
-    }
-
-    public String getInputDirectory() {
-        return inputDirectory;
-    }
-
-    public void setInputDirectory(String inputDirectory) {
-        this.inputDirectory = inputDirectory;
-    }
-
-    public int getDataPort() {
-        return dataPort;
-    }
-
-    public void setDataPort(int dataPort) {
-        this.dataPort = dataPort;
-    }
-
-    public String getDacAddress() {
-        return dacAddress;
-    }
-
-    public void setDacAddress(String dacAddress) {
-        this.dacAddress = dacAddress;
     }
 
     public int[] getTransmitters() {
@@ -100,5 +60,5 @@ public class DacTransmitRegister {
     public void setTransmitters(int[] transmitters) {
         this.transmitters = transmitters;
     }
-
+ 
 }

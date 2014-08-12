@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -35,6 +35,8 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.config.CommsConfig;
+import com.raytheon.uf.edex.bmh.comms.config.DacChannelConfig;
+import com.raytheon.uf.edex.bmh.comms.config.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
 
 /**
@@ -48,8 +50,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
- * Aug 04, 2014  2487     bsteffen    Rename config options.
- * 
+ * Aug 04, 2014  3487     bsteffen    Rename config options.
+ * Aug 12, 2014  3486     bsteffen    Support ChangeTransmitters
  * 
  * </pre>
  * 
@@ -64,13 +66,18 @@ public class DacTransmitServer extends Thread {
     private final CommsManager manager;
 
     /**
-     * Map of transmitter group names to the communicator instances that are
-     * trying to communicate with the dac. Under most normal circumstances there
-     * will be a single communicator in the list. For cases where the comms
-     * manager has been restarted or there are troubles communicating with the
-     * dac there may be more than one.
+     * Map of transmitter keys to the communicator instances that are trying to
+     * communicate with the dac. Under most normal circumstances there will be a
+     * single communicator in the list. For cases where the comms manager has
+     * been restarted or there are troubles communicating with the dac there may
+     * be more than one.
      */
-    private final Map<String, List<DacTransmitCommunicator>> communicators;
+    private final Map<DacTransmitKey, List<DacTransmitCommunicator>> communicators;
+
+    /**
+     * Map of transmitter keys to the configuration for those channels
+     */
+    private Map<DacTransmitKey, DacChannelConfig> channels;
 
     private final int port;
 
@@ -82,16 +89,78 @@ public class DacTransmitServer extends Thread {
      */
     public DacTransmitServer(CommsManager manager, CommsConfig config) {
         super("DacTransmitServer");
-        communicators = new ConcurrentHashMap<String, List<DacTransmitCommunicator>>(
-                config.getDacs().size() * 4);
+        communicators = new ConcurrentHashMap<>(config.getDacs().size() * 4);
         port = config.getDacTransmitPort();
         this.manager = manager;
-
+        readChannels(config);
     }
 
-    /**
-     * 
-     */
+    private void readChannels(CommsConfig config) {
+        Map<DacTransmitKey, DacChannelConfig> channels = new ConcurrentHashMap<>(
+                config.getDacs().size() * 4);
+        for (DacConfig dac : config.getDacs()) {
+            for (DacChannelConfig channel : dac.getChannels()) {
+                channels.put(new DacTransmitKey(dac, channel), channel);
+            }
+        }
+        this.channels = channels;
+    }
+
+
+    public void reconfigure(CommsConfig config) {
+        readChannels(config);
+        for (Entry<DacTransmitKey, List<DacTransmitCommunicator>> entry : communicators
+                .entrySet()) {
+            DacChannelConfig channel = channels.get(entry.getKey());
+            if (channel == null) {
+                for (DacTransmitCommunicator communicator : entry.getValue()) {
+                    communicator.shutdown();
+                }
+            } else {
+                for (DacTransmitCommunicator communicator : entry.getValue()) {
+                    communicator.setRadios(channel.getRadios());
+                }
+            }
+        }
+    }
+
+    public boolean isConnected(DacTransmitKey key) {
+        List<DacTransmitCommunicator> communicators = this.communicators
+                .get(key);
+        if (communicators == null || communicators.isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+
+    public void disconnected(DacTransmitCommunicator communicator) {
+        Iterator<List<DacTransmitCommunicator>> cit = this.communicators
+                .values().iterator();
+        while (cit.hasNext()) {
+            List<DacTransmitCommunicator> communicators = cit.next();
+            if (communicators.remove(communicator)) {
+                if (communicators.isEmpty()) {
+                    cit.remove();
+                }
+                break;
+            }
+        }
+    }
+
+    public void connectedToDac(DacTransmitCommunicator communicator) {
+        for (List<DacTransmitCommunicator> communicators : this.communicators
+                .values()) {
+            if (communicators.contains(communicator)) {
+                for (DacTransmitCommunicator otherComm : communicators) {
+                    if (communicator != otherComm) {
+                        otherComm.shutdown();
+                    }
+                }
+                break;
+            }
+        }
+    }
+
     @Override
     public void run() {
         ServerSocket server = null;
@@ -117,106 +186,43 @@ public class DacTransmitServer extends Thread {
         }
     }
 
-    /**
-     * @return All the group names for dac transmit instances connected to the
-     *         server.
-     */
-    public Set<String> getConnectedGroups() {
-        return communicators.keySet();
-    }
-
-    /**
-     * Get the communicator for the given group
-     * 
-     * @param group
-     *            name of a transmitter group
-     * @return a communicator or null if nothing is connected.
-     */
-    public DacTransmitCommunicator getCommunicator(String group) {
-        List<DacTransmitCommunicator> communicators = this.communicators
-                .get(group);
-        if (communicators == null) {
-            return null;
-        }
-        /*
-         * Try to find a dac transmit instance that is actually connected to the
-         * dac, remove any that have died.
-         */
-        DacTransmitCommunicator connected = null;
-        Iterator<DacTransmitCommunicator> it = communicators.iterator();
-        while (it.hasNext()) {
-            DacTransmitCommunicator comms = it.next();
-            if (!comms.isAlive()) {
-                it.remove();
-            } else if (comms.isConnectedToDac()) {
-                connected = comms;
-                break;
-            }
-        }
-        if (connected == null) {
-            /*
-             * No one is connected to the dac so if any are left return an
-             * arbitrary instance, since all instances are actively trying to
-             * connect and there is no way to guess which one will get it and
-             * who deserves to die.
-             */
-            if (communicators.isEmpty()) {
-                this.communicators.remove(group);
-                return null;
-            } else {
-                return communicators.get(0);
-            }
-        } else if (communicators.size() > 1) {
-            /*
-             * There is a single communicator connected to the DAC, close any
-             * other connections and rturn the connected one.
-             */
-            it = communicators.iterator();
-            while (it.hasNext()) {
-                DacTransmitCommunicator comms = it.next();
-                if (comms != connected) {
-                    it.remove();
-                    comms.shutdown();
-                }
-            }
-
-        }
-        return connected;
-    }
-
-    /**
-     * Shutdown any communicators for the given group.
-     * 
-     * @param group
-     *            the name of a transmitter group.
-     */
-    public void shutdownGroup(String group) {
-        List<DacTransmitCommunicator> communicators = this.communicators
-                .remove(group);
-        if (communicators == null) {
-            return;
-        }
-        for (DacTransmitCommunicator comms : communicators) {
-            comms.shutdown();
-        }
-    }
-
     protected void handleConnection(Socket socket) {
         try {
             DacTransmitRegister message = SerializationUtil
                     .transformFromThrift(DacTransmitRegister.class,
                             socket.getInputStream());
-            String group = message.getTransmitterGroup();
+            DacTransmitKey key = new DacTransmitKey(
+                    message.getInputDirectory(), message.getDataPort(),
+                    message.getDacAddress());
+            DacChannelConfig channel = channels.get(key);
+            boolean keep = true;
+            String group = null;
+            if (channel == null) {
+                keep = false;
+            } else {
+                group = channel.getTransmitterGroup();
+            }
             DacTransmitCommunicator comms = new DacTransmitCommunicator(
-                    manager, group, socket);
+                    manager, this, group, message.getTransmitters(), socket);
             List<DacTransmitCommunicator> communicators = this.communicators
-                    .get(group);
+                    .get(key);
             if (communicators == null) {
                 communicators = new ArrayList<>(1);
-                this.communicators.put(group, communicators);
+                this.communicators.put(key, communicators);
+            } else {
+                for (DacTransmitCommunicator communicator : communicators) {
+                    if (communicator.isConnectedToDac()) {
+                        keep = false;
+                    }
+                }
             }
             communicators.add(comms);
             comms.start();
+            if (keep) {
+                comms.setRadios(channel.getRadios());
+            } else {
+                comms.shutdown();
+            }
         } catch (IOException | SerializationException e) {
             try {
                 socket.close();

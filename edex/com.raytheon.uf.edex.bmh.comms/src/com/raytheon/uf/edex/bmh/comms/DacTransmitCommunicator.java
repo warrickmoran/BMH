@@ -21,6 +21,7 @@ package com.raytheon.uf.edex.bmh.comms;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,7 @@ import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
 
@@ -49,6 +51,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  *                                    and PlaylistSwitchNotification messages 
  *                                    from DacTransmit.
  * Jul 31, 2014  3286     dgilling    Support DacHardwareStatusNotification.
+ * Aug 12, 2014  3486     bsteffen    Support ChangeTransmitters
  * 
  * </pre>
  * 
@@ -59,19 +62,29 @@ public class DacTransmitCommunicator extends Thread {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
+    private final Object sendLock = new Object();
+
     private final CommsManager manager;
+
+    private final DacTransmitServer server;
 
     private final String groupName;
 
     private final Socket socket;
 
+    private int[] radios;
+
     private DacTransmitStatus lastStatus;
 
-    public DacTransmitCommunicator(CommsManager manager, String groupName,
-            Socket socket) {
+    public DacTransmitCommunicator(CommsManager manager,
+            DacTransmitServer server, String groupName,
+            int[] radios, Socket socket) {
         super("DacTransmitCommunicator-" + groupName);
         this.manager = manager;
+        this.server = server;
         this.groupName = groupName;
+        Arrays.sort(radios);
+        this.radios = radios;
         this.socket = socket;
     }
 
@@ -98,8 +111,12 @@ public class DacTransmitCommunicator extends Thread {
         if (message instanceof DacTransmitStatus) {
             DacTransmitStatus newStatus = (DacTransmitStatus) message;
             if (lastStatus == null || !newStatus.equals(lastStatus)) {
+                if (newStatus.isConnectedToDac()) {
+                    server.connectedToDac(this);
+                }
                 manager.dacStatusChanged(this, newStatus);
                 lastStatus = newStatus;
+
             }
         } else if (message instanceof MessagePlaybackStatusNotification) {
             MessagePlaybackStatusNotification notification = (MessagePlaybackStatusNotification) message;
@@ -130,22 +147,30 @@ public class DacTransmitCommunicator extends Thread {
     }
 
     public void shutdown() {
-        try {
-            SerializationUtil.transformToThriftUsingStream(
-                    new DacTransmitShutdown(), socket.getOutputStream());
-        } catch (SerializationException | IOException e) {
-            logger.error("Error communicating with DacTransmit: " + groupName,
-                    e);
+        send(new DacTransmitShutdown());
+    }
+
+    public void setRadios(int[] radios) {
+        Arrays.sort(radios);
+        if (!Arrays.equals(radios, this.radios)) {
+            send(new ChangeTransmitters(radios));
+            this.radios = radios;
         }
     }
 
     public void sendPlaylistUpdate(PlaylistUpdateNotification notification) {
-        try {
-            SerializationUtil.transformToThriftUsingStream(notification,
-                    socket.getOutputStream());
-        } catch (SerializationException | IOException e) {
-            logger.error("Error communicating with DacTransmit: " + groupName,
-                    e);
+        send(notification);
+    }
+
+    private void send(Object toSend) {
+        synchronized (sendLock) {
+            try {
+                SerializationUtil.transformToThriftUsingStream(toSend,
+                        socket.getOutputStream());
+            } catch (SerializationException | IOException e) {
+                logger.error("Error communicating with DacTransmit: "
+                        + groupName, e);
+            }
         }
     }
 
@@ -154,8 +179,9 @@ public class DacTransmitCommunicator extends Thread {
             if (socket != null) {
                 socket.close();
             }
-        } catch (IOException ignorable) {
-            logger.error("Error disconnecting from comms manager");
+        } catch (IOException e) {
+            logger.error("Error disconnecting from comms manager", e);
         }
+        server.disconnected(this);
     }
 }

@@ -36,6 +36,7 @@ import java.util.Collection;
  * Jul 01, 2014  #3286     dgilling     Initial creation
  * Jul 14, 2014  #3286     dgilling     Added transmitter group.
  * Jul 17, 2014  #3399     bsteffen     Add comms manager port argument.
+ * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
  * 
  * </pre>
  * 
@@ -55,25 +56,22 @@ public final class DacSessionConfig {
 
     private final Collection<Integer> transmitters;
 
-    private final String transmitterGroup;
-
     private final Path inputDirectory;
 
     private final int managerPort;
 
     public DacSessionConfig(boolean printHelp) {
-        this(printHelp, null, -1, -1, null, null, null, -1);
+        this(printHelp, null, -1, -1, null, null, -1);
     }
 
     public DacSessionConfig(boolean printHelp, InetAddress dacAddress,
             int dataPort, int controlPort, Collection<Integer> transmitters,
-            String transmitterGroup, Path inputDirectory, int managerPort) {
+            Path inputDirectory, int managerPort) {
         this.printHelp = printHelp;
         this.dacAddress = dacAddress;
         this.dataPort = dataPort;
         this.controlPort = controlPort;
         this.transmitters = transmitters;
-        this.transmitterGroup = transmitterGroup;
         this.inputDirectory = inputDirectory;
         this.managerPort = managerPort;
     }
@@ -87,9 +85,8 @@ public final class DacSessionConfig {
     public String toString() {
         return "DacSessionConfig [dacAddress=" + dacAddress + ", dataPort="
                 + dataPort + ", controlPort=" + controlPort + ", transmitters="
-                + transmitters + ", transmitterGroup=" + transmitterGroup
-                + ", inputDirectory=" + inputDirectory + ", managerPort="
-                + managerPort + "]";
+                + transmitters + ", inputDirectory=" + inputDirectory
+                + ", managerPort=" + managerPort + "]";
     }
 
     public boolean isPrintHelp() {
@@ -110,10 +107,6 @@ public final class DacSessionConfig {
 
     public Collection<Integer> getTransmitters() {
         return transmitters;
-    }
-
-    public String getTransmitterGroup() {
-        return transmitterGroup;
     }
 
     public Path getInputDirectory() {

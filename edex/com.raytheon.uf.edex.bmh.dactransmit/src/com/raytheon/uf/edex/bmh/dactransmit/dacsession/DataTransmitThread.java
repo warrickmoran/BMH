@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.google.common.primitives.Ints;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
@@ -39,6 +40,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IInterruptMessageReceivedHandler;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.DacMessagePlaybackData;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
@@ -65,7 +67,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  *                                      CommsManager.
  * Aug 08, 2014  #3286     dgilling     Support halting playback when sync is
  *                                      lost and resuming when sync is regained.
- * 
+ * Aug 12, 2014  #3486     bsteffen     Allow changing transmitters
+ *
  * </pre>
  * 
  * @author dgilling
@@ -83,7 +86,7 @@ public final class DataTransmitThread extends Thread implements
 
     private final int port;
 
-    private final Collection<Integer> transmitters;
+    private Collection<Integer> transmitters;
 
     private final DatagramSocket socket;
 
@@ -230,7 +233,8 @@ public final class DataTransmitThread extends Thread implements
                     .incrementSequenceNum(
                             DataTransmitConstants.SEQUENCE_INCREMENT)
                     .incrementTimestamp(
-                            DataTransmitConstants.TIMESTAMP_INCREMENT);
+                            DataTransmitConstants.TIMESTAMP_INCREMENT)
+                    .setTransmitters(transmitters);
         } else {
             factory = factory.setCurrentPayload(nextPayload)
                     .setSequenceNumber(0).setTimestamp(0)
@@ -294,4 +298,10 @@ public final class DataTransmitThread extends Thread implements
         }
         hasSync = true;
     }
+
+    @Subscribe
+    public void changeTransmitters(ChangeTransmitters changeEvent) {
+        transmitters = Ints.asList(changeEvent.getTransmitters());
+    }
+
 }
