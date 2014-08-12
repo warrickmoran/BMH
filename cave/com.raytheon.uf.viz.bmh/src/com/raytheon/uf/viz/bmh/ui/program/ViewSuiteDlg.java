@@ -21,6 +21,8 @@ package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -33,6 +35,15 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.request.ProgramRequest;
+import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
+import com.raytheon.uf.common.bmh.request.ProgramResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -52,6 +63,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jul 21, 2014  #3174     lvenable     Initial creation
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
+ * Aug 12, 2014  #3490     lvenable     Update to use data from the database.
  * 
  * </pre>
  * 
@@ -59,6 +71,19 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * @version 1.0
  */
 public class ViewSuiteDlg extends CaveSWTDialog {
+
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(ViewSuiteDlg.class);
+
+    /** List of program and associated data. */
+    private List<Program> allProgramsArray = new ArrayList<Program>();
+
+    /** Programs associated with the message type. */
+    List<Program> assocProgs = new ArrayList<Program>();
+
+    /** The selected suite to view the information. */
+    private Suite selectedSuite = null;
 
     /** Program table. */
     private ProgramTable programTable;
@@ -71,10 +96,14 @@ public class ViewSuiteDlg extends CaveSWTDialog {
      * 
      * @param parentShell
      *            Parent shell.
+     * @param selectedSuite
+     *            The selected suite.
      */
-    public ViewSuiteDlg(Shell parentShell) {
+    public ViewSuiteDlg(Shell parentShell, Suite selectedSuite) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+
+        this.selectedSuite = selectedSuite;
     }
 
     @Override
@@ -101,11 +130,16 @@ public class ViewSuiteDlg extends CaveSWTDialog {
     protected void initializeComponents(Shell shell) {
         setText("Suite Information");
 
+        retrieveDataFromDB();
+
         createSuiteInfoControls();
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
         createProgramControls();
         createMessageTypeControls();
         createBottomButton();
+
+        populateAssocProgramsTable();
+        populateAssocMsgTypesTable();
     }
 
     /**
@@ -122,7 +156,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
 
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Label suiteNameLbl = new Label(suiteInfoComp, SWT.NONE);
-        suiteNameLbl.setText("Omaha_Suite");
+        suiteNameLbl.setText(selectedSuite.getName());
         suiteNameLbl.setLayoutData(gd);
 
         Label categoryLbl = new Label(suiteInfoComp, SWT.NONE);
@@ -130,7 +164,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Label suiteCategoryLbl = new Label(suiteInfoComp, SWT.NONE);
-        suiteCategoryLbl.setText("Exclusive");
+        suiteCategoryLbl.setText(selectedSuite.getType().name());
         suiteCategoryLbl.setLayoutData(gd);
     }
 
@@ -147,7 +181,6 @@ public class ViewSuiteDlg extends CaveSWTDialog {
         nameLbl.setText("Associated Programs:");
 
         programTable = new ProgramTable(controlComp, 500, 100);
-        populateProgramTable();
     }
 
     /**
@@ -166,7 +199,6 @@ public class ViewSuiteDlg extends CaveSWTDialog {
         nameLbl.setLayoutData(gd);
 
         msgTypeTable = new MsgTypeTable(controlComp, 500, 100);
-        populateMsgTypeTable();
     }
 
     /**
@@ -190,40 +222,76 @@ public class ViewSuiteDlg extends CaveSWTDialog {
         });
     }
 
-    /**********************************************************************
-     * 
-     * TODO: remove dummy code
-     * 
+    /**
+     * Retrieve the data from the database.
      */
+    private void retrieveDataFromDB() {
 
-    private void populateProgramTable() {
+        /*
+         * TODO: Query should be written to retrieve the data for this specific
+         * suite since you are already going to the db, no reason to do client
+         * side filtering.
+         */
 
+        // All Programs with suite information.
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.ProgramSuites);
+        ProgramResponse progResponse = null;
+        try {
+            progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
+            allProgramsArray = progResponse.getProgramList();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving program data from the database: ", e);
+        }
+
+        findAssociatedPrograms();
+    }
+
+    /**
+     * Loop through all of the programs and find the ones that contain the
+     * associated suites that contain the message type.
+     */
+    private void findAssociatedPrograms() {
+        for (Program p : allProgramsArray) {
+            List<Suite> suitesInProgram = p.getSuites();
+            for (Suite progSuite : suitesInProgram) {
+                // If a Suite is found, add the program and continue to the
+                // next program.
+                if (progSuite.getId() == selectedSuite.getId()) {
+                    assocProgs.add(p);
+                    break;
+                }
+
+            }
+        }
+    }
+
+    /**
+     * Populate the programs table.
+     */
+    private void populateAssocProgramsTable() {
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("Program Name", 150);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Title");
+        TableColumnData tcd = new TableColumnData("Program Name");
         columnNames.add(tcd);
 
         TableData td = new TableData(columnNames);
 
-        TableRowData trd = new TableRowData();
+        for (Program p : assocProgs) {
+            TableRowData trd = new TableRowData();
 
-        trd.addTableCellData(new TableCellData("Program - 1"));
-        trd.addTableCellData(new TableCellData("Sample Program 1"));
-
-        td.addDataRow(trd);
-
-        trd = new TableRowData();
-
-        trd.addTableCellData(new TableCellData("Program - 2"));
-        trd.addTableCellData(new TableCellData("Sample Program 2"));
-
-        td.addDataRow(trd);
+            trd.addTableCellData(new TableCellData(p.getName()));
+            td.addDataRow(trd);
+        }
 
         programTable.populateTable(td);
     }
 
-    private void populateMsgTypeTable() {
+    /**
+     * Populate the associated message types table.
+     */
+    private void populateAssocMsgTypesTable() {
+
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
         TableColumnData tcd = new TableColumnData("Message Type", 150);
         columnNames.add(tcd);
@@ -231,24 +299,26 @@ public class ViewSuiteDlg extends CaveSWTDialog {
         columnNames.add(tcd);
         tcd = new TableColumnData("Trigger");
         columnNames.add(tcd);
-        TableData td = new TableData(columnNames);
+        TableData msgTypeTableData = new TableData(columnNames);
 
-        TableRowData trd = new TableRowData();
+        List<SuiteMessage> suiteMessageArray = selectedSuite.getSuiteMessages();
 
-        trd.addTableCellData(new TableCellData("MessageType - 1"));
-        trd.addTableCellData(new TableCellData("MessageType - 1 - Description"));
-        trd.addTableCellData(new TableCellData("Yes"));
+        Map<Integer, SuiteMessage> suiteMsgMap = new TreeMap<Integer, SuiteMessage>();
+        for (SuiteMessage sm : suiteMessageArray) {
+            suiteMsgMap.put(sm.getPosition(), sm);
+        }
 
-        td.addDataRow(trd);
+        for (SuiteMessage sm : suiteMsgMap.values()) {
+            TableRowData trd = new TableRowData();
 
-        trd = new TableRowData();
+            trd.addTableCellData(new TableCellData(sm.getMsgType().getAfosid()));
+            trd.addTableCellData(new TableCellData(sm.getMsgType().getTitle()));
+            trd.addTableCellData(new TableCellData(sm.isTrigger() ? "Yes"
+                    : "No"));
 
-        trd.addTableCellData(new TableCellData("MessageType - 2"));
-        trd.addTableCellData(new TableCellData("MessageType - 2 - Description"));
-        trd.addTableCellData(new TableCellData("No"));
+            msgTypeTableData.addDataRow(trd);
+        }
 
-        td.addDataRow(trd);
-
-        msgTypeTable.populateTable(td);
+        msgTypeTable.populateTable(msgTypeTableData);
     }
 }

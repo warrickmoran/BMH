@@ -19,10 +19,9 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.common.utility;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -54,7 +53,8 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  * ------------ ---------- ----------- --------------------------
  * Jun 3, 2014    3431     mpduff      Initial creation
  * Jul 29, 2014  #3420     lvenable    Added capability to enable/disable controls and to
- *                                     retrieve the data from the controls..
+ *                                     retrieve the data from the controls.
+ * Aug 12, 2014  #3490     lvenable    Refactored code and added more functionality.
  * 
  * </pre>
  * 
@@ -76,10 +76,11 @@ public class DateTimeFields extends Composite {
      */
     private final Map<DateFieldType, Spinner> spinners = new HashMap<DateFieldType, Spinner>();
 
-    /**
-     * {@link List} of {@link DateFieldType}
-     */
-    private final List<DateFieldType> fieldList;
+    /** Map of DateTimeFields and assigned values. */
+    private final Map<DateFieldType, Integer> fieldValuesMap;
+
+    /** Map of Date/Time field types and the associated calendar type. */
+    private Map<DateFieldType, Integer> dfTypeToCalMap;
 
     /**
      * Default to current time
@@ -111,8 +112,8 @@ public class DateTimeFields extends Composite {
      * 
      * @param parent
      *            Parent composite
-     * @param fieldList
-     *            List of field types to display
+     * @param fieldValuesMap
+     *            Map of field types and assigned values.
      * @param setToday
      *            set current time flag
      * @param showCalendarIcon
@@ -120,11 +121,11 @@ public class DateTimeFields extends Composite {
      * @param displayAsPeriodicity
      *            display as periodicity flag
      */
-    public DateTimeFields(Composite parent, List<DateFieldType> fieldList,
-            boolean setToday, boolean showCalendarIcon,
-            boolean displayAsPeriodicity) {
+    public DateTimeFields(Composite parent,
+            Map<DateFieldType, Integer> fieldValuesMap, boolean setToday,
+            boolean showCalendarIcon, boolean displayAsPeriodicity) {
         super(parent, SWT.NONE);
-        this.fieldList = fieldList;
+        this.fieldValuesMap = fieldValuesMap;
         this.setToday = setToday;
         this.showCalendarIcon = showCalendarIcon;
         this.displayAsPeriodicity = displayAsPeriodicity;
@@ -136,6 +137,8 @@ public class DateTimeFields extends Composite {
      * Initialize the gui
      */
     private void init() {
+        populateDataFieldToCalendar();
+
         GridLayout gl = new GridLayout(1, false);
         gl.marginHeight = 0;
         gl.marginWidth = 0;
@@ -144,9 +147,9 @@ public class DateTimeFields extends Composite {
         this.setLayoutData(gd);
 
         if (showCalendarIcon) {
-            gl = new GridLayout(fieldList.size() + 1, false);
+            gl = new GridLayout(fieldValuesMap.size() + 1, false);
         } else {
-            gl = new GridLayout(fieldList.size(), false);
+            gl = new GridLayout(fieldValuesMap.size(), false);
         }
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
         Composite fieldComp = new Composite(this, SWT.NONE);
@@ -157,6 +160,8 @@ public class DateTimeFields extends Composite {
 
         if (setToday) {
             setToCurrentTime();
+        } else {
+            setToSpecifiedTime();
         }
 
         if (showCalendarIcon) {
@@ -183,17 +188,17 @@ public class DateTimeFields extends Composite {
      *            The parent composite for the spinners
      */
     private void createSpinners(Composite c) {
-        for (DateFieldType type : fieldList) {
-            Spinner s = new Spinner(c, SWT.BORDER);
+        for (DateFieldType type : fieldValuesMap.keySet()) {
+            Spinner spnr = new Spinner(c, SWT.BORDER);
             if (type == DateFieldType.YEAR) {
-                s.setLayoutData(new GridData(33, SWT.DEFAULT));
-                s.setTextLimit(4);
+                spnr.setLayoutData(new GridData(33, SWT.DEFAULT));
+                spnr.setTextLimit(4);
             } else {
-                s.setLayoutData(new GridData(17, SWT.DEFAULT));
-                s.setTextLimit(2);
+                spnr.setLayoutData(new GridData(17, SWT.DEFAULT));
+                spnr.setTextLimit(2);
             }
-            s.setData(type);
-            s.addSelectionListener(new SelectionAdapter() {
+            spnr.setData(type);
+            spnr.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
                     Spinner src = (Spinner) e.getSource();
@@ -201,27 +206,30 @@ public class DateTimeFields extends Composite {
                 }
             });
 
-            spinners.put(type, s);
+            spinners.put(type, spnr);
+
             switch (type) {
             case HOUR:
             case MINUTE:
             case SECOND:
-                s.setMinimum(0);
-                s.setMaximum(59);
+                spnr.setMinimum(0);
+                spnr.setMaximum(59);
                 break;
             case YEAR:
-                s.setMaximum(2200);
+                spnr.setMaximum(2200);
                 break;
             case MONTH:
-                s.setMaximum(12);
-                s.setMinimum(1);
+                spnr.setMaximum(12);
+                spnr.setMinimum(1);
                 break;
             case DAY:
-                s.setMinimum(1);
+
                 if (displayAsPeriodicity) {
-                    s.setMaximum(99);
+                    spnr.setMinimum(0);
+                    spnr.setMaximum(99);
                 } else {
-                    s.setMaximum(31);
+                    spnr.setMinimum(1);
+                    spnr.setMaximum(31);
                 }
                 break;
             }
@@ -234,29 +242,41 @@ public class DateTimeFields extends Composite {
     private void setToCurrentTime() {
         calendar = TimeUtil.newGmtCalendar();
 
-        if (spinners.containsKey(DateFieldType.YEAR)) {
-            spinners.get(DateFieldType.YEAR).setSelection(
-                    calendar.get(Calendar.YEAR));
+        for (DateFieldType dft : DateFieldType.values()) {
+            if (spinners.containsKey(dft)) {
+                if (displayAsPeriodicity && dft == DateFieldType.DAY) {
+                    spinners.get(dft).setSelection(0);
+                } else {
+                    spinners.get(dft).setSelection(
+                            calendar.get(dfTypeToCalMap.get(dft)));
+                }
+            }
         }
-        if (spinners.containsKey(DateFieldType.MONTH)) {
-            spinners.get(DateFieldType.MONTH).setSelection(
-                    calendar.get(Calendar.MONTH) + 1);
-        }
-        if (spinners.containsKey(DateFieldType.DAY)) {
-            spinners.get(DateFieldType.DAY).setSelection(
-                    calendar.get(Calendar.DAY_OF_MONTH));
-        }
-        if (spinners.containsKey(DateFieldType.HOUR)) {
-            spinners.get(DateFieldType.HOUR).setSelection(
-                    calendar.get(Calendar.HOUR_OF_DAY));
-        }
-        if (spinners.containsKey(DateFieldType.MINUTE)) {
-            spinners.get(DateFieldType.MINUTE).setSelection(
-                    calendar.get(Calendar.MINUTE));
-        }
-        if (spinners.containsKey(DateFieldType.SECOND)) {
-            spinners.get(DateFieldType.SECOND).setSelection(
-                    calendar.get(Calendar.SECOND));
+    }
+
+    /**
+     * Set the fields to the specified time provided for the field type.
+     */
+    private void setToSpecifiedTime() {
+        calendar = TimeUtil.newGmtCalendar();
+
+        for (DateFieldType dft : DateFieldType.values()) {
+            if (spinners.containsKey(dft)) {
+                if (fieldValuesMap.get(dft) != null) {
+                    spinners.get(dft).setSelection(fieldValuesMap.get(dft));
+                } else {
+
+                    if (displayAsPeriodicity && dft == DateFieldType.DAY) {
+                        spinners.get(dft).setSelection(0);
+                    } else {
+                        spinners.get(dft).setSelection(
+                                calendar.get(dfTypeToCalMap.get(dft)));
+                    }
+
+                    spinners.get(dft).setSelection(
+                            calendar.get(dfTypeToCalMap.get(dft)));
+                }
+            }
         }
     }
 
@@ -285,11 +305,11 @@ public class DateTimeFields extends Composite {
      *            The selected Spinner
      */
     private void spinnerSelectionAction(Spinner spinner) {
-        for (DateFieldType type : fieldList) {
+        for (DateFieldType type : fieldValuesMap.keySet()) {
             switch (type) {
             case DAY:
                 if (this.displayAsPeriodicity
-                        || !fieldList.contains(DateFieldType.MONTH)) {
+                        || !fieldValuesMap.containsKey(DateFieldType.MONTH)) {
                     calendar.set(Calendar.DAY_OF_MONTH, spinners.get(type)
                             .getSelection());
                 } else {
@@ -333,9 +353,6 @@ public class DateTimeFields extends Composite {
                 break;
             }
         }
-
-        // for debugging
-        System.out.println(calendar.getTime());
     }
 
     /**
@@ -366,18 +383,33 @@ public class DateTimeFields extends Composite {
         }
     }
 
+    /**
+     * Map the Date/Time field to the calendar field.
+     */
+    private void populateDataFieldToCalendar() {
+        dfTypeToCalMap = new HashMap<DateFieldType, Integer>();
+
+        dfTypeToCalMap.put(DateFieldType.YEAR, Calendar.YEAR);
+        dfTypeToCalMap.put(DateFieldType.MONTH, Calendar.MONTH);
+        dfTypeToCalMap.put(DateFieldType.DAY, Calendar.DAY_OF_MONTH);
+        dfTypeToCalMap.put(DateFieldType.HOUR, Calendar.HOUR_OF_DAY);
+        dfTypeToCalMap.put(DateFieldType.MINUTE, Calendar.MINUTE);
+        dfTypeToCalMap.put(DateFieldType.SECOND, Calendar.SECOND);
+    }
+
     public static void main(String[] args) {
         Display display = new Display();
         Shell shell = new Shell(display);
         shell.setLayout(new GridLayout());
-        List<DateFieldType> fieldList = new ArrayList<DateFieldType>();
-        // fieldList.add(DateFieldType.YEAR);
-        // fieldList.add(DateFieldType.MONTH);
-        fieldList.add(DateFieldType.DAY);
-        fieldList.add(DateFieldType.HOUR);
-        fieldList.add(DateFieldType.MINUTE);
-        fieldList.add(DateFieldType.SECOND);
-        new DateTimeFields(shell, fieldList, true, false, true);
+        Map<DateFieldType, Integer> tmpFieldMap = new LinkedHashMap<DateFieldType, Integer>();
+        tmpFieldMap.put(DateFieldType.YEAR, 1969);
+        tmpFieldMap.put(DateFieldType.MONTH, 2);
+        tmpFieldMap.put(DateFieldType.DAY, 3);
+        tmpFieldMap.put(DateFieldType.HOUR, 4);
+        tmpFieldMap.put(DateFieldType.MINUTE, 5);
+        tmpFieldMap.put(DateFieldType.SECOND, 6);
+
+        new DateTimeFields(shell, tmpFieldMap, false, false, false);
 
         shell.pack();
         shell.open();

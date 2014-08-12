@@ -22,12 +22,16 @@ package com.raytheon.uf.edex.bmh.dao;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import org.springframework.orm.hibernate3.HibernateTemplate;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
@@ -43,6 +47,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Jun 25, 2014  3283     bsteffen    Initial creation
  * Jul 17, 2014  3175     rjpeter     Added get methods.
  * Aug 06, 2014 #3490     lvenable    Updated to get Program information.
+ * Aug 12, 2014 #3490     lvenable    Refactored to make a getProgramByQuery() method that
+ *                                    will used the query passed it to retrieve the data.
  * 
  * </pre>
  * 
@@ -130,36 +136,115 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
     }
 
     /**
-     * Get a list of Program objects that have the program name and IDs
-     * populated.
+     * Get a list of programs populated with program name and a list of suites
+     * that contain suite name, type, and ID.
      * 
-     * @return A list of Program objects.
+     * @return A list of programs.
      */
-    public List<Program> getProgramNameIds() {
+    public List<Program> getProgramSuites() {
+        List<Object[]> objectList = getProgramByQuery(Program.GET_PROGRAM_SUITES);
 
-        List<Program> programList;
+        if (objectList == null) {
+            return Collections.emptyList();
+        }
 
-        List<Object[]> namesIDs = txTemplate
+        List<Program> programList = createProgramSuites(objectList);
+
+        return programList;
+    }
+
+    /**
+     * Get a list of programs populated with program name and IDs.
+     * 
+     * @return A list of programs populated with program name and IDs.
+     */
+    public List<Program> getProgramNameIDs() {
+        List<Object[]> objectList = getProgramByQuery(Program.GET_PROGRAM_NAMES_IDS);
+
+        if (objectList == null) {
+            return Collections.emptyList();
+        }
+
+        List<Program> programList = createProgramNameIDs(objectList);
+
+        return programList;
+    }
+
+    /**
+     * Get a list of objects associated with the query passed in.
+     * 
+     * @return A list of objects.
+     */
+    private List<Object[]> getProgramByQuery(final String programQuery) {
+
+        List<Object[]> objectList = txTemplate
                 .execute(new TransactionCallback<List<Object[]>>() {
                     @Override
                     public List<Object[]> doInTransaction(
                             TransactionStatus status) {
                         HibernateTemplate ht = getHibernateTemplate();
-                        return ht
-                                .findByNamedQuery(Program.GET_PROGRAM_NAMES_IDS);
+                        return ht.findByNamedQuery(programQuery);
                     }
                 });
 
-        if (namesIDs == null) {
-            programList = Collections.emptyList();
-        } else {
-            programList = new ArrayList<Program>(namesIDs.size());
-            for (Object[] objArray : namesIDs) {
-                Program p = new Program();
-                p.setName((String) objArray[0]);
-                p.setId((Integer) objArray[1]);
-                programList.add(p);
+        return objectList;
+    }
+
+    /**
+     * Get a list of programs populated with program name and a list of suites
+     * that contain suite name, type, and ID.
+     * 
+     * @param objectList
+     *            Object list.
+     * @return A list of programs.
+     */
+    private List<Program> createProgramSuites(List<Object[]> objectList) {
+
+        Map<String, Program> existingProgram = new TreeMap<String, Program>();
+        Program program = null;
+
+        for (Object[] objArray : objectList) {
+            String programName = (String) objArray[0];
+            String suiteName = (String) objArray[1];
+            SuiteType suiteType = (SuiteType) objArray[2];
+            int suiteID = (Integer) objArray[3];
+
+            program = existingProgram.get(programName);
+
+            if (program == null) {
+                program = new Program();
+                program.setName(programName);
+                existingProgram.put(programName, program);
             }
+
+            Suite suite = new Suite();
+            suite.setName(suiteName);
+            suite.setType(suiteType);
+            suite.setId(suiteID);
+
+            program.addSuite(suite);
+        }
+
+        List<Program> programList = new ArrayList<Program>(
+                existingProgram.values());
+
+        return programList;
+    }
+
+    /**
+     * Get a list of programs populated with program name and IDs.
+     * 
+     * @param objectList
+     *            Object list.
+     * @return A list of programs populated with program name and IDs.
+     */
+    private List<Program> createProgramNameIDs(List<Object[]> objectList) {
+        List<Program> programList = new ArrayList<Program>(objectList.size());
+        for (Object[] objArray : objectList) {
+            Program p = new Program();
+            p.setName((String) objArray[0]);
+            p.setId((Integer) objArray[1]);
+            programList.add(p);
         }
 
         return programList;

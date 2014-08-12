@@ -61,6 +61,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014 3175       rjpeter     Initial creation
  * Aug 06, 2014 #3490      lvenable    Added fetch type eagar to fields and changed
  *                                     same transmitters to a Set.
+ * Aug 12, 2014 #3490      lvenable    Added wxr and enable tone blackout fields.
  * 
  * </pre>
  * 
@@ -129,6 +130,14 @@ public class MessageType {
     @JoinColumn(name = "voice")
     @DynamicSerializeElement
     private TtsVoice voice;
+
+    @Column(nullable = false)
+    @DynamicSerializeElement
+    private boolean wxr = true;
+
+    @Column(nullable = false)
+    @DynamicSerializeElement
+    private boolean toneBlackoutEnabled;
 
     @Column(length = 6)
     @DynamicSerializeElement
@@ -226,6 +235,22 @@ public class MessageType {
 
     public void setDesignation(Designation designation) {
         this.designation = designation;
+    }
+
+    public boolean isWxr() {
+        return wxr;
+    }
+
+    public void setWxr(boolean wxr) {
+        this.wxr = wxr;
+    }
+
+    public boolean isToneBlackoutEnabled() {
+        return toneBlackoutEnabled;
+    }
+
+    public void setToneBlackoutEnabled(boolean toneBlackoutEnabled) {
+        this.toneBlackoutEnabled = toneBlackoutEnabled;
     }
 
     public String getToneBlackOutStart() {

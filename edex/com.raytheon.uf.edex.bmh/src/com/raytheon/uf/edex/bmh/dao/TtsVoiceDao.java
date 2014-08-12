@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 
 /**
@@ -31,6 +35,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 1, 2014  3302       bkowal      Initial creation
+ * Aug 11, 2014 #3490      lvenable    Updated to get Voice information.
  * 
  * </pre>
  * 
@@ -42,5 +47,25 @@ public class TtsVoiceDao extends AbstractBMHDao<TtsVoice, Integer> {
 
     public TtsVoiceDao() {
         super(TtsVoice.class);
+    }
+
+    /**
+     * Get all of the available voices.
+     * 
+     * @return List of voices.
+     */
+    public List<TtsVoice> getVoices() {
+        List<Object> allObjects = this.loadAll();
+        if (allObjects == null) {
+            return Collections.emptyList();
+        }
+
+        List<TtsVoice> voiceList = new ArrayList<TtsVoice>(allObjects.size());
+        for (Object obj : allObjects) {
+            TtsVoice voice = (TtsVoice) obj;
+            voiceList.add(voice);
+        }
+
+        return voiceList;
     }
 }

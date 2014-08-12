@@ -68,7 +68,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 27, 2014  #3420     lvenable    Initial creation
  * Aug 03, 2014  #3479     lvenable    Updated code for validator changes.
  * Aug 5, 2014   #3490     lvenable    Updated to populate table.
- * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
+ * Aug 8, 2014   #3490     lvenable    Updated populate table method call.
+ * Aug 12, 2014  #3490     lvenable    Added relationship code and convenience methods.
  * 
  * </pre>
  * 
@@ -105,7 +106,8 @@ public class MessageTypesDlg extends AbstractBMHDialog {
     public MessageTypesDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
         super(dlgMap, "Message Types Dialog", parentShell, SWT.DIALOG_TRIM
-                | SWT.MIN, CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                | CAVE.MODE_INDEPENDENT);
     }
 
     @Override
@@ -128,6 +130,11 @@ public class MessageTypesDlg extends AbstractBMHDialog {
     }
 
     @Override
+    protected void opened() {
+        shell.setMinimumSize(shell.getSize());
+    }
+
+    @Override
     protected void initializeComponents(Shell shell) {
         setText("Message Type Manager");
 
@@ -146,7 +153,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         Group msgAvailableGrp = new Group(shell, SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         msgAvailableGrp.setLayout(gl);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         msgAvailableGrp.setLayoutData(gd);
         msgAvailableGrp.setText(" All Message Types: ");
 
@@ -195,6 +202,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         renameBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                // TODO : need to add real code.
                 InputTextDlg inputDlg = new InputTextDlg(shell,
                         "Rename Message Type",
                         "Type in a new message type name:", null);
@@ -221,8 +229,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         editBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                // TODO : need to handle saving changes.
                 CreateEditMsgTypesDlg cemd = new CreateEditMsgTypesDlg(shell,
-                        DialogType.EDIT);
+                        DialogType.EDIT, getSelectedMessageType());
                 cemd.open();
             }
         });
@@ -236,6 +245,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         deleteBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                // TODO : add delete code.
             }
         });
         msgTypeControls.add(deleteBtn);
@@ -254,8 +264,15 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         relationshipBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                int selectedIndex = msgAvailTableComp.getSelectedIndex();
+
+                if (selectedIndex < 0) {
+                    return;
+                }
+
+                MessageType msgType = messageTypeList.get(selectedIndex);
                 ViewMessageTypeDlg viewMessageTypeInfo = new ViewMessageTypeDlg(
-                        shell);
+                        shell, msgType);
                 viewMessageTypeInfo.open();
             }
         });
@@ -332,6 +349,19 @@ public class MessageTypesDlg extends AbstractBMHDialog {
                     .error("Error retrieving message type data from the database: ",
                             e);
         }
+    }
+
+    /**
+     * Get the message type selected in the table.
+     * 
+     * @return The message type.
+     */
+    private MessageType getSelectedMessageType() {
+        if (msgAvailTableComp.getSelectedIndex() >= 0) {
+            return messageTypeList.get(msgAvailTableComp.getSelectedIndex());
+        }
+
+        return null;
     }
 
     /**

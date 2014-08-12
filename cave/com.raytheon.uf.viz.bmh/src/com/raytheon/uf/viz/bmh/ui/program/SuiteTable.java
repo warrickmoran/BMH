@@ -23,6 +23,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.TableItem;
 
 import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
 
@@ -36,6 +37,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2014  #3174     lvenable     Initial creation
+ * Aug 12, 2014  #3490      lvenable    Add multiple selection capability.
  * 
  * </pre>
  * 
@@ -43,6 +45,9 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
  * @version 1.0
  */
 public class SuiteTable extends TableComp {
+
+    /** Flag indicating if multiple items can be selected in a table. */
+    private boolean multipleSelection = false;
 
     /**
      * Constructor.
@@ -84,8 +89,31 @@ public class SuiteTable extends TableComp {
 
     @Override
     protected void handleTableSelection(SelectionEvent e) {
+        if (multipleSelection == false) {
+            TableItem ti = (TableItem) e.item;
+
+            table.deselectAll();
+            table.setSelection(ti);
+        }
+
         if (callbackAction != null) {
             callbackAction.tableSelectionChange(table.getSelectionCount());
+        }
+    }
+
+    /**
+     * Set if the table can have multiple selections.
+     * 
+     * @param multipleSelection
+     *            True to have multiple selection, false for single selection.
+     */
+    public void setMultipleSelection(boolean multipleSelection) {
+        this.multipleSelection = multipleSelection;
+
+        if (table.getSelectionCount() > 0) {
+            int[] indexes = table.getSelectionIndices();
+            table.deselectAll();
+            table.select(indexes[0]);
         }
     }
 }

@@ -19,12 +19,14 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import java.util.List;
+
+import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * Request object for Program queries.
+ * Response object for {@link TtsVoice} queries.
  * 
  * <pre>
  * 
@@ -32,8 +34,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 5, 2014  #3490      lvenable     Initial creation
- * Aug 12, 2014 #3490      lvenable     Added ProgramSuites action.
+ * Aug 11, 2014 #3490      lvenable     Initial creation
  * 
  * </pre>
  * 
@@ -41,31 +42,16 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class ProgramRequest implements IServerRequest {
-
-    public enum ProgramAction {
-        Save, ListNamesIDs, AllPrograms, ProgramSuites, Delete;
-    }
+public class TtsVoiceResponse {
 
     @DynamicSerializeElement
-    private ProgramAction action;
+    private List<TtsVoice> ttsVoiceList;
 
-    /**
-     * Get the program action.
-     * 
-     * @return The program action.
-     */
-    public ProgramAction getAction() {
-        return action;
+    public List<TtsVoice> getTtsVoiceList() {
+        return ttsVoiceList;
     }
 
-    /**
-     * Set the program action.
-     * 
-     * @param action
-     *            The program action.
-     */
-    public void setAction(ProgramAction action) {
-        this.action = action;
+    public void setTtsVoiceList(List<TtsVoice> ttsVoiceList) {
+        this.ttsVoiceList = ttsVoiceList;
     }
 }

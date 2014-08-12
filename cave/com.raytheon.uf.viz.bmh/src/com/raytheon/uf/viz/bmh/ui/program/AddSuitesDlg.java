@@ -22,28 +22,28 @@ package com.raytheon.uf.viz.bmh.ui.program;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
-import org.eclipse.ui.plugin.AbstractUIPlugin;
 
-import com.raytheon.uf.viz.bmh.Activator;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.request.SuiteRequest;
+import com.raytheon.uf.common.bmh.request.SuiteRequest.SuiteAction;
+import com.raytheon.uf.common.bmh.request.SuiteResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.ISuiteSelection;
+import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -58,6 +58,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 16, 2014  #3174     lvenable     Initial creation
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * Jul 27, 2014  #3420     lvenable     Update to use a relationships button.
+ * Aug 12, 2014  #3490     lvenable     Updated to use the suite config group and
+ *                                      hooked up data from the database.
  * 
  * </pre>
  * 
@@ -66,17 +68,15 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 public class AddSuitesDlg extends CaveSWTDialog {
 
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(AddSuitesDlg.class);
+
     /** Suite name text field. */
     private Text suiteNameTF;
 
-    /** Suite table. */
-    private AddSuiteTable suiteTable;
-
-    /** Relationship image. */
-    private Image relationshipImg;
-
-    /** More information button. */
-    private Button relationshipBtn;
+    /** List of suites. */
+    private List<Suite> suiteList = null;
 
     /**
      * Array of controls so actions can be performed on the set that is in the
@@ -91,6 +91,9 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
     /** Type of dialog (Create or Edit). */
     private SuiteDialogType dialogType = SuiteDialogType.ADD_COPY;
+
+    /** Group that contains the controls for configuring the suites. */
+    private SuiteConfigGroup suiteConfigGroup;
 
     /**
      * Constructor.
@@ -122,11 +125,6 @@ public class AddSuitesDlg extends CaveSWTDialog {
     }
 
     @Override
-    protected void disposed() {
-        relationshipImg.dispose();
-    }
-
-    @Override
     protected void initializeComponents(Shell shell) {
         if (dialogType == SuiteDialogType.ADD_COPY) {
             setText("Add/Copy Existing Suites");
@@ -134,9 +132,13 @@ public class AddSuitesDlg extends CaveSWTDialog {
             setText("Copy Existing Suite");
         }
 
+        retrieveDataFromDB();
+
         createOptionControls();
         createSuitesTable();
         createBottomButtons();
+
+        suiteConfigGroup.populateSuiteTable(suiteList);
     }
 
     /**
@@ -164,7 +166,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
                     Button rdoBtn = (Button) e.widget;
                     if (rdoBtn.getSelection()) {
                         enableControls(false);
-                        suiteTable.setMultipleSelection(true);
+                        suiteConfigGroup.setMultipleSelection(true);
                     }
                 }
             });
@@ -180,7 +182,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
                     Button rdoBtn = (Button) e.widget;
                     if (rdoBtn.getSelection()) {
                         enableControls(true);
-                        suiteTable.setMultipleSelection(false);
+                        suiteConfigGroup.setMultipleSelection(false);
                     }
                 }
             });
@@ -210,40 +212,20 @@ public class AddSuitesDlg extends CaveSWTDialog {
      * Create the suites table.
      */
     private void createSuitesTable() {
-        Group suiteGroup = new Group(shell, SWT.SHADOW_OUT);
-        GridLayout gl = new GridLayout(1, false);
-        suiteGroup.setLayout(gl);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        suiteGroup.setLayoutData(gd);
-        suiteGroup.setText(" Select Suite to Add: ");
 
-        int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.MULTI;
-        suiteTable = new AddSuiteTable(suiteGroup, tableStyle, 600, 150);
-
-        populateSuiteTable();
-
-        if (dialogType == SuiteDialogType.COPY_ONLY) {
-            suiteTable.setMultipleSelection(false);
-        }
-
-        /*
-         * Relationship button
-         */
-        ImageDescriptor id;
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
-                "icons/Relationship.png");
-        relationshipImg = id.createImage();
-
-        gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
-        relationshipBtn = new Button(suiteGroup, SWT.PUSH);
-        relationshipBtn.setImage(relationshipImg);
-        relationshipBtn.setToolTipText("View suite relationships");
-        relationshipBtn.setLayoutData(gd);
-        relationshipBtn.addSelectionListener(new SelectionAdapter() {
+        suiteConfigGroup = new SuiteConfigGroup(shell,
+                "  Select Suite to Add: ", SuiteGroupType.ADD_COPY_EXITING,
+                null, 550, 150);
+        suiteConfigGroup.setMultipleSelection(true);
+        suiteConfigGroup.setCallBackAction(new ISuiteSelection() {
             @Override
-            public void widgetSelected(SelectionEvent e) {
-                ViewSuiteDlg vsd = new ViewSuiteDlg(shell);
-                vsd.open();
+            public void suiteSelected(Suite suite) {
+                // TODO : look at adding code if needed for this method
+            }
+
+            @Override
+            public void suitesUpdated() {
+                // TODO : look at adding code if needed for this method
             }
         });
     }
@@ -296,36 +278,21 @@ public class AddSuitesDlg extends CaveSWTDialog {
         }
     }
 
-    /**********************************************************************
-     * 
-     * TODO: remove dummy code
-     * 
+    /**
+     * Retrieve suite data from the database.
      */
+    private void retrieveDataFromDB() {
+        SuiteRequest suiteRequest = new SuiteRequest();
+        suiteRequest.setAction(SuiteAction.AllSuites);
+        SuiteResponse suiteResponse = null;
 
-    private void populateSuiteTable() {
+        try {
+            suiteResponse = (SuiteResponse) BmhUtils.sendRequest(suiteRequest);
+            suiteList = suiteResponse.getSuiteList();
 
-        List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("Suite Name", 200);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Category");
-        columnNames.add(tcd);
-
-        TableData td = new TableData(columnNames);
-
-        TableRowData trd = new TableRowData();
-
-        trd.addTableCellData(new TableCellData("Suite - 1"));
-        trd.addTableCellData(new TableCellData("General"));
-
-        td.addDataRow(trd);
-
-        trd = new TableRowData();
-
-        trd.addTableCellData(new TableCellData("Suite - 2"));
-        trd.addTableCellData(new TableCellData("Exclusive"));
-
-        td.addDataRow(trd);
-
-        suiteTable.populateTable(td);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving suite data from the database: ", e);
+        }
     }
 }

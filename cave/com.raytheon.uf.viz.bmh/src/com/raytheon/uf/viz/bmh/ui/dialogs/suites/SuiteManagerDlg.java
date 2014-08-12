@@ -58,6 +58,7 @@ import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
  * Jul 27, 2014  #3420     lvenable     Updated to use relationship button.
  * Aug 03, 2014  #3479     lvenable    Updated code for validator changes.
  * Aug 06, 2014  #3490     lvenable    Refactored and moved code to SuiteConfigGroup.
+ * Aug 12, 2014  #3490     lvenable    Updated code to use database data.
  * 
  * </pre>
  * 
@@ -87,7 +88,8 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
     public SuiteManagerDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
         super(dlgMap, "Suite Manager Dialog", parentShell, SWT.DIALOG_TRIM
-                | SWT.MIN, CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                | CAVE.MODE_INDEPENDENT);
     }
 
     @Override
@@ -102,6 +104,11 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
     protected Object constructShellLayoutData() {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         return gd;
+    }
+
+    @Override
+    protected void opened() {
+        shell.setMinimumSize(shell.getSize());
     }
 
     @Override
@@ -120,7 +127,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
      */
     private void createSuiteTableGroup() {
         suiteConfigGroup = new SuiteConfigGroup(shell, " Available Suites: ",
-                SuiteGroupType.PROGRAM, 550, 150);
+                SuiteGroupType.SUITE_MGR, null, 550, 150);
         suiteConfigGroup.setCallBackAction(new ISuiteSelection() {
             @Override
             public void suiteSelected(Suite suite) {

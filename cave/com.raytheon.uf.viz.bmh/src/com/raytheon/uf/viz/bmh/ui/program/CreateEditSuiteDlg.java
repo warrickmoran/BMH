@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.program;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -37,6 +38,20 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
+import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
+import com.raytheon.uf.common.bmh.request.MessageTypeRequest.MessageTypeAction;
+import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
+import com.raytheon.uf.common.bmh.request.ProgramRequest;
+import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
+import com.raytheon.uf.common.bmh.request.ProgramResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -63,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 20, 2014  #3174      lvenable     Initial creation
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * Aug 01, 2014  #3479      lvenable    Added additional capability.
+ * Aug 12, 2014  #3490      lvenable    Updated to use data from the database.
  * 
  * </pre>
  * 
@@ -70,6 +86,22 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 public class CreateEditSuiteDlg extends CaveSWTDialog {
+
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(CreateEditSuiteDlg.class);
+
+    /** List of all message types. */
+    private List<MessageType> allMsgTypesList;
+
+    /** List of all message types. */
+    private List<SuiteMessage> msgTypesInSuiteList = new ArrayList<SuiteMessage>();
+
+    /** Message type table data. */
+    private TableData selectedMsgTypeTableData;
+
+    /** Message type table data. */
+    private TableData availMsgTypeTableData;
 
     /** Save button. */
     private Button createSaveBtn;
@@ -127,6 +159,18 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     /** Table move action that will move items in a table up/down. */
     private TableMoveAction tableMoveAction;
 
+    /** The selected program for this suite. */
+    private Program selectedProgram = null;
+
+    /** The selected suite (for editing) */
+    private Suite selectedSuite = null;
+
+    /** List of program and associated data. */
+    private List<Program> programsArray = new ArrayList<Program>();
+
+    /** List of assigned program for this suite. */
+    private List<Program> assignedPrograms = new ArrayList<Program>();
+
     /**
      * Constructor.
      * 
@@ -134,17 +178,40 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      *            Parent shell.
      * @param dlgType
      *            Dialog type.
+     * @param showProgramControls
+     *            Flag indicating if the program controls should be shown.
+     * @param selectedSuite
+     *            The selected suite.
      */
     public CreateEditSuiteDlg(Shell parentShell, DialogType dlgType,
-            boolean showProgramControls) {
+            boolean showProgramControls, Suite selectedSuite) {
+        this(parentShell, dlgType, showProgramControls, null, selectedSuite);
+    }
+
+    /**
+     * 
+     * @param parentShell
+     *            Parent shell.
+     * @param dlgType
+     *            Dialog type.
+     * @param showProgramControls
+     *            Flag indicating if the program controls should be shown.
+     * @param selectedProgram
+     *            The selected program for this suite.
+     * @param selectedSuite
+     *            The selected suite.
+     */
+    public CreateEditSuiteDlg(Shell parentShell, DialogType dlgType,
+            boolean showProgramControls, Program selectedProgram,
+            Suite selectedSuite) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
         this.dialogType = dlgType;
         this.showProgramControls = showProgramControls;
 
-        // TODO - need to pass in the program if used with the Broadcast program
-        // dialog.
+        this.selectedProgram = selectedProgram;
+        this.selectedSuite = selectedSuite;
     }
 
     @Override
@@ -175,6 +242,9 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             setText("Edit Suite");
         }
 
+        retrieveProgramDataFromDB();
+        retrieveAllMsgTypesFromDB();
+
         upDownImages = new UpDownImages(shell);
 
         createSuiteControls();
@@ -189,6 +259,12 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         createBottomButtons();
 
         tableMoveAction = new TableMoveAction(selectedMsgTypeTable);
+
+        populateAssignedPrograms();
+        populateMsgTypesInSuiteList();
+        populateSelectedMsgTypesTable();
+        populateAvailableMessageTypeTable();
+        enableDisableAddRemoveBtns();
     }
 
     /**
@@ -210,7 +286,9 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         } else if (dialogType == DialogType.EDIT) {
             suiteNameLbl = new Label(suiteComp, SWT.NONE);
             suiteNameLbl.setLayoutData(gd);
-            suiteNameLbl.setText("LincolnSuite");
+            if (selectedSuite != null) {
+                suiteNameLbl.setText(selectedSuite.getName());
+            }
         }
 
         Label categoryLbl = new Label(suiteComp, SWT.NONE);
@@ -222,7 +300,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                 | SWT.BORDER | SWT.READ_ONLY);
         categoryCbo.setLayoutData(gd);
         populateCategoryCombo();
-        categoryCbo.select(0);
     }
 
     /**
@@ -245,7 +322,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         gd.minimumWidth = 350;
         programListLbl = new Label(progTransComp, SWT.BORDER);
         programListLbl.setLayoutData(gd);
-        populatePrograms();
 
         assignProgramBtn = new Button(progTransComp, SWT.PUSH);
         assignProgramBtn.setText("Assign to Program(s)...");
@@ -271,16 +347,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         selectedMsgTypeTable = new MsgTypeTable(msgReplaceGrp, 550, 150);
 
-        populateMsgTypeSelectedTable();
-
         selectedMsgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {
-                if (selectionCount > 0) {
-                    removeMsgTypesBtn.setEnabled(true);
-                } else {
-                    removeMsgTypesBtn.setEnabled(false);
-                }
+                enableDisableAddRemoveBtns();
             }
         });
 
@@ -374,8 +444,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         columnNames.add("Message Title");
         availableMsgTypeTable = new MsgTypeTable(availMsgGrp, 550, 150);
 
-        populateMsgTypeAvailTable();
-
         availableMsgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {
@@ -429,6 +497,14 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     }
 
     /**
+     * Enable/Disable the Add and Remove buttons.
+     */
+    private void enableDisableAddRemoveBtns() {
+        addMsgTypesBtn.setEnabled(availableMsgTypeTable.hasSelectedItems());
+        removeMsgTypesBtn.setEnabled(selectedMsgTypeTable.hasSelectedItems());
+    }
+
+    /**
      * Display the set triggers dialog.
      */
     private void displaySetTiggersDlg() {
@@ -442,6 +518,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             cld.addDataItem("MessageType:" + i, checked);
         }
 
+        // TODO : need to add functionality
         CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
                 "Trigger Selection", "Select Message Type to Trigger:", cld,
                 true);
@@ -473,11 +550,179 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         close();
     }
 
-    /*
-     * TODO: LIST OF ITEMS TO DO WHEN HOOKING UP...
-     * 
-     * Need to verify the suite name doesn't already exist.
+    /**
+     * Populate the category combo control.
      */
+    private void populateCategoryCombo() {
+        for (SuiteType suiteType : SuiteType.values()) {
+            if (suiteType != SuiteType.INTERRUPT) {
+                categoryCbo.add(suiteType.name());
+            }
+        }
+
+        if (selectedSuite != null) {
+            int index = categoryCbo.indexOf(selectedSuite.getType().name());
+            categoryCbo.select(index);
+        } else {
+            categoryCbo.select(0);
+        }
+    }
+
+    /**
+     * Populate the assign programs.
+     */
+    private void populateAssignedPrograms() {
+
+        if (!showProgramControls) {
+            return;
+        }
+
+        if (selectedProgram == null && selectedSuite != null) {
+            for (Program p : programsArray) {
+                List<Suite> suitesInProgram = p.getSuites();
+                for (Suite s : suitesInProgram) {
+                    if (s.getId() == selectedSuite.getId()) {
+                        assignedPrograms.add(p);
+                    }
+                }
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (Program p : assignedPrograms) {
+            sb.append(p.getName()).append(" ");
+        }
+
+        if (sb.length() > 0) {
+            programListLbl.setText(sb.toString());
+            programListLbl.setToolTipText(sb.toString());
+        }
+    }
+
+    /**
+     * Retrieve the data from the database.
+     */
+    private void retrieveProgramDataFromDB() {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.ProgramSuites);
+        ProgramResponse progResponse = null;
+        try {
+            progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
+
+            programsArray = progResponse.getProgramList();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving program data from the database: ", e);
+        }
+    }
+
+    /**
+     * Retrieve the data from the database.
+     */
+    private void retrieveAllMsgTypesFromDB() {
+        MessageTypeRequest mtRequest = new MessageTypeRequest();
+        mtRequest.setAction(MessageTypeAction.AllMessageTypes);
+        MessageTypeResponse mtResponse = null;
+
+        try {
+            mtResponse = (MessageTypeResponse) BmhUtils.sendRequest(mtRequest);
+            allMsgTypesList = mtResponse.getMessageTypeList();
+        } catch (Exception e) {
+            statusHandler
+                    .error("Error retrieving message type data from the database: ",
+                            e);
+        }
+    }
+
+    /**
+     * Get the message types from the selected suite and put them in a list.
+     */
+    private void populateMsgTypesInSuiteList() {
+        if (selectedSuite != null) {
+            List<SuiteMessage> suiteMessageArray = selectedSuite
+                    .getSuiteMessages();
+            Map<Integer, SuiteMessage> suiteMsgMap = new TreeMap<Integer, SuiteMessage>();
+            for (SuiteMessage sm : suiteMessageArray) {
+                suiteMsgMap.put(sm.getPosition(), sm);
+            }
+
+            msgTypesInSuiteList.addAll(suiteMsgMap.values());
+        }
+    }
+
+    /**
+     * Populate the selected message types table. These are the message type
+     * associated with the suite.
+     */
+    private void populateSelectedMsgTypesTable() {
+        if (selectedMsgTypeTable.hasTableData() == false) {
+            List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+            TableColumnData tcd = new TableColumnData("Message Type", 150);
+            columnNames.add(tcd);
+            tcd = new TableColumnData("Message Title");
+            columnNames.add(tcd);
+            tcd = new TableColumnData("Trigger");
+            columnNames.add(tcd);
+            selectedMsgTypeTableData = new TableData(columnNames);
+        } else {
+            selectedMsgTypeTableData.deleteAllRows();
+        }
+
+        populateSelectedMessageTypeTableData();
+        selectedMsgTypeTable.populateTable(selectedMsgTypeTableData);
+
+        if (selectedMsgTypeTable.getItemCount() > 0) {
+            selectedMsgTypeTable.select(0);
+        }
+    }
+
+    /**
+     * Populate the selected message type data. This will be used to populate
+     * the table.
+     */
+    private void populateSelectedMessageTypeTableData() {
+        for (SuiteMessage sm : msgTypesInSuiteList) {
+            TableRowData trd = new TableRowData();
+
+            trd.addTableCellData(new TableCellData(sm.getMsgType().getAfosid()));
+            trd.addTableCellData(new TableCellData(sm.getMsgType().getTitle()));
+            trd.addTableCellData(new TableCellData(sm.isTrigger() ? "Yes"
+                    : "No"));
+
+            selectedMsgTypeTableData.addDataRow(trd);
+        }
+    }
+
+    /**
+     * Populate the Message Type table.
+     */
+    private void populateAvailableMessageTypeTable() {
+        if (availableMsgTypeTable.hasTableData() == false) {
+            List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+            TableColumnData tcd = new TableColumnData("Message Type", 150);
+            columnNames.add(tcd);
+            tcd = new TableColumnData("Message Title");
+            columnNames.add(tcd);
+            availMsgTypeTableData = new TableData(columnNames);
+        } else {
+            availMsgTypeTableData.deleteAllRows();
+        }
+
+        populateAvailableMessageTypeTableData();
+        availableMsgTypeTable.populateTable(availMsgTypeTableData);
+    }
+
+    /**
+     * Populate the Message Type table data.
+     */
+    private void populateAvailableMessageTypeTableData() {
+        for (MessageType mt : allMsgTypesList) {
+            TableRowData trd = new TableRowData();
+            trd.addTableCellData(new TableCellData(mt.getAfosid()));
+            trd.addTableCellData(new TableCellData(mt.getTitle()));
+            availMsgTypeTableData.addDataRow(trd);
+        }
+    }
 
     /**********************************************************************
      * 
@@ -512,67 +757,5 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             }
         });
         checkListDlg.open();
-    }
-
-    private void populateCategoryCombo() {
-        categoryCbo.add("General");
-        categoryCbo.add("High");
-        categoryCbo.add("Exclusive");
-    }
-
-    private void populatePrograms() {
-        programListLbl.setText(" Program1, Program2, Program 3");
-        programListLbl.setToolTipText("Program1, Program2, Program 3");
-    }
-
-    private void populateMsgTypeSelectedTable() {
-        List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("Message Type", 150);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Message Title", 300);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Trigger");
-        columnNames.add(tcd);
-        TableData td = new TableData(columnNames);
-
-        TableRowData trd;
-
-        for (int i = 0; i < 15; i++) {
-            trd = new TableRowData();
-            trd.addTableCellData(new TableCellData("MessageType - " + i));
-            trd.addTableCellData(new TableCellData("MessageType - " + i
-                    + " - Description"));
-            trd.addTableCellData(new TableCellData("Yes"));
-
-            td.addDataRow(trd);
-        }
-
-        selectedMsgTypeTable.populateTable(td);
-
-    }
-
-    private void populateMsgTypeAvailTable() {
-        List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("Message Type", 150);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Message Title");
-        columnNames.add(tcd);
-        TableData td = new TableData(columnNames);
-
-        TableRowData trd = new TableRowData();
-
-        trd.addTableCellData(new TableCellData("MessageType - 33"));
-        trd.addTableCellData(new TableCellData("MessageType - 33 - Description"));
-
-        td.addDataRow(trd);
-
-        trd = new TableRowData();
-
-        trd.addTableCellData(new TableCellData("MessageType - 44"));
-        trd.addTableCellData(new TableCellData("MessageType - 44 - Description"));
-
-        td.addDataRow(trd);
-
-        availableMsgTypeTable.populateTable(td);
     }
 }

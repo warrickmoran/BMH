@@ -33,6 +33,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 5, 2014  #3490      lvenable     Initial creation
+ * Aug 12, 2014 #3490      lvenable     Added SuitesMsgTypes action.
  * 
  * </pre>
  * 
@@ -43,7 +44,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 public class SuiteRequest implements IServerRequest {
 
     public enum SuiteAction {
-        Save, ListSuitesCats, AllSuites, Delete;
+        Save, ListSuitesCats, AllSuites, SuitesMsgTypes, Delete;
     }
 
     @DynamicSerializeElement
