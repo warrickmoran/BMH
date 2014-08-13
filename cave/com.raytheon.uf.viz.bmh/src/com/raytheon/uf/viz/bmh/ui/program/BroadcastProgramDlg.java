@@ -58,7 +58,6 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.ISuiteSelection;
-import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -75,7 +74,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 01, 2014  #3479      lvenable    Added additional capability for managing the controls.
  * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
  * Aug 06, 2014  #3490      lvenable    Update to populate controls with data from the database.
- * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
+ * Aug 8,  2014  #3490      lvenable    Updated populate table method call.
+ * Aug 12, 2014  #3490      lvenable    Updated to use data from the database.
  * 
  * </pre>
  * 
@@ -86,7 +86,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(SuiteManagerDlg.class);
+            .getHandler(BroadcastProgramDlg.class);
 
     /** Program combo box. */
     private Combo programCbo;
@@ -130,6 +130,9 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     /** Suite group text prefix. */
     private final String suiteGroupTextPrefix = " Suites in Program: ";
 
+    /** The selected program. */
+    private Program selectedProgram = null;
+
     /**
      * Constructor.
      * 
@@ -159,15 +162,11 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     }
 
     @Override
-    protected void disposed() {
-    }
-
-    @Override
     protected void initializeComponents(Shell shell) {
         setText("Broadcast Program Configuration");
 
         // Get the Program data.
-        retrieveDataFromDB();
+        retrieveProgramDataFromDB();
 
         createProgramControls();
         createTransmitterControls();
@@ -310,7 +309,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      */
     private void createSuiteGroup() {
         suiteConfigGroup = new SuiteConfigGroup(shell, suiteGroupTextPrefix,
-                SuiteGroupType.PROGRAM);
+                SuiteGroupType.BROADCAST_PROGRAM, selectedProgram);
         suiteConfigGroup.setCallBackAction(new ISuiteSelection() {
             @Override
             public void suiteSelected(Suite suite) {
@@ -445,12 +444,13 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         populateSuiteTable();
         populateMsgTypeTable(suiteConfigGroup.getSelectedSuite());
         updateSuiteGroupText();
+        updateSelectedProgram();
     }
 
     /**
      * Retrieve the data from the database.
      */
-    private void retrieveDataFromDB() {
+    private void retrieveProgramDataFromDB() {
         ProgramRequest pr = new ProgramRequest();
         pr.setAction(ProgramAction.AllPrograms);
         ProgramResponse progResponse = null;
@@ -475,6 +475,16 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         if (programCbo.getItemCount() > 0) {
             programCbo.select(0);
             enableProgramControls(true);
+            updateSelectedProgram();
+        }
+    }
+
+    /**
+     * Update the selected program when the table selection changes.
+     */
+    private void updateSelectedProgram() {
+        if (programCbo.getSelectionIndex() >= 0) {
+            selectedProgram = programsArray.get(programCbo.getSelectionIndex());
         }
     }
 
@@ -510,7 +520,6 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             List<Suite> suiteList = prog.getSuites();
             suiteConfigGroup.populateSuiteTable(suiteList);
         }
-
     }
 
     /**

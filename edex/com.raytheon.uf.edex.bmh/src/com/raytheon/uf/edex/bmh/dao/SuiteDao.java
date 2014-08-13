@@ -22,13 +22,17 @@ package com.raytheon.uf.edex.bmh.dao;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import org.springframework.orm.hibernate3.HibernateTemplate;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
+import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 
 /**
  * 
@@ -42,6 +46,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
  * ------------- -------- ----------- --------------------------
  * Jul 14, 2014           rjpeter     Initial creation
  * Aug 06, 2014 #3490     lvenable    Updated to get Suite information.
+ * Aug 12, 2014 #3490     lvenable    Refactored to make a getSuiteByQuery() method that
+ *                                    will used the query passed it to retrieve the data.
  * 
  * </pre>
  * 
@@ -75,37 +81,114 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
     }
 
     /**
-     * Get a list of Suite objects that have the suite names and categories.
+     * Get a list of suites containing the names, types, and IDs.
      * 
-     * @return A list of Program objects.
+     * @return List of suites.
      */
-    public List<Suite> getSuiteNameCategories() {
+    public List<Suite> getSuiteNamesCatIds() {
+        List<Object[]> objectList = getSuiteByQuery(Suite.GET_SUITE_NAMES_CATS_IDS);
 
-        List<Suite> suiteList;
+        if (objectList == null) {
+            return Collections.emptyList();
+        }
 
-        List<Object[]> namesCats = txTemplate
+        List<Suite> suiteList = createSuiteNamesCatIds(objectList);
+        return suiteList;
+    }
+
+    /**
+     * Get a list of suites and message types
+     * 
+     * @return List of suites.
+     */
+    public List<Suite> getSuiteMsgTypes() {
+        List<Object[]> objectList = getSuiteByQuery(Suite.GET_SUITE_MSG_TYPES);
+
+        if (objectList == null) {
+            return Collections.emptyList();
+        }
+
+        List<Suite> suiteList = createSuiteMsgTypes(objectList);
+        return suiteList;
+    }
+
+    /**
+     * Get a list of objects associated with the query passed in.
+     * 
+     * @return A list of objects.
+     */
+    private List<Object[]> getSuiteByQuery(final String suiteQuery) {
+
+        List<Object[]> objectList = txTemplate
                 .execute(new TransactionCallback<List<Object[]>>() {
                     @Override
                     public List<Object[]> doInTransaction(
                             TransactionStatus status) {
                         HibernateTemplate ht = getHibernateTemplate();
-                        return ht
-                                .findByNamedQuery(Suite.GET_SUITE_NAMES_CATS_IDS);
+                        return ht.findByNamedQuery(suiteQuery);
                     }
                 });
 
-        if (namesCats == null) {
-            suiteList = Collections.emptyList();
-        } else {
-            suiteList = new ArrayList<Suite>(namesCats.size());
-            for (Object[] objArray : namesCats) {
-                Suite p = new Suite();
-                p.setName((String) objArray[0]);
-                p.setType((SuiteType) objArray[1]);
-                p.setId((Integer) objArray[2]);
-                suiteList.add(p);
-            }
+        return objectList;
+    }
+
+    /**
+     * Get a list of suites containing the name, type, and id.
+     * 
+     * @param objectList
+     *            Object list.
+     * @return List of suites.
+     */
+    private List<Suite> createSuiteNamesCatIds(List<Object[]> objectList) {
+        List<Suite> suiteList = new ArrayList<Suite>(objectList.size());
+        for (Object[] objArray : objectList) {
+            Suite p = new Suite();
+            p.setName((String) objArray[0]);
+            p.setType((SuiteType) objArray[1]);
+            p.setId((Integer) objArray[2]);
+            suiteList.add(p);
         }
+        return suiteList;
+    }
+
+    /**
+     * Get a list of suites containing the name, type, and id and a list of
+     * message types.
+     * 
+     * @param objectList
+     *            Object list.
+     * @return List of suites.
+     */
+    private List<Suite> createSuiteMsgTypes(List<Object[]> objectList) {
+
+        Map<Integer, Suite> existingSuites = new TreeMap<Integer, Suite>();
+        Suite suite = null;
+
+        for (Object[] objArray : objectList) {
+
+            int suiteId = (Integer) objArray[0];
+            String suiteName = (String) objArray[1];
+            SuiteType suiteType = (SuiteType) objArray[2];
+            String msgTypeAfosId = (String) objArray[3];
+
+            suite = existingSuites.get(suiteId);
+
+            if (suite == null) {
+                suite = new Suite();
+                suite.setId(suiteId);
+                suite.setName(suiteName);
+                suite.setType(suiteType);
+                existingSuites.put(suiteId, suite);
+            }
+
+            SuiteMessage sm = new SuiteMessage();
+            MessageType mt = new MessageType();
+            mt.setAfosid(msgTypeAfosId);
+            sm.setMsgType(mt);
+            suite.addSuiteMessage(sm);
+        }
+
+        List<Suite> suiteList = new ArrayList<Suite>(objectList.size());
 
         return suiteList;
     }

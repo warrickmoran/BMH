@@ -56,6 +56,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2014  #3174     lvenable     Initial creation
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
+ * Aug 12, 2014  #3490      lvenable    Updated method call.
  * 
  * </pre>
  * 
@@ -162,7 +163,7 @@ public class CreateNewProgram extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 CreateEditSuiteDlg csd = new CreateEditSuiteDlg(shell,
-                        DialogType.CREATE, false);
+                        DialogType.CREATE, false, null);
                 csd.open();
             }
         });
@@ -222,6 +223,8 @@ public class CreateNewProgram extends CaveSWTDialog {
      * TODO: remove dummy code
      * 
      */
+
+    // TODO: remove when bringing in selected suites from other dialogs.
 
     private void populateSelectedSuiteTable() {
 

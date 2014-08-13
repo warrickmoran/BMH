@@ -38,6 +38,7 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.viz.bmh.Activator;
@@ -66,8 +67,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * Jul 27, 2014  #3420     lvenable     Code clean up.
  * Aug 01, 2014  #3479     lvenable     Added additional capability and cleaned up code.
- * Aug 06, 2014  #3490     lvenable    Refactored and added additional functionality.
- * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
+ * Aug 06, 2014  #3490     lvenable     Refactored and added additional functionality.
+ * Aug 12, 2014  #3490     lvenable     Updated populate table method call and added additional
+ *                                      functionality so this class could be used in multiple places.
  * 
  * </pre>
  * 
@@ -97,6 +99,9 @@ public class SuiteConfigGroup extends Composite {
     /** List of suite data. */
     private List<Suite> suiteList;
 
+    /** List of suite data. */
+    private List<Suite> filteredSuiteList = new ArrayList<Suite>();
+
     /** Selection callback. */
     private ISuiteSelection suiteSelectionCB;
 
@@ -105,11 +110,11 @@ public class SuiteConfigGroup extends Composite {
 
     /** Enumeration of suite group types. */
     public enum SuiteGroupType {
-        PROGRAM, SUITE;
+        BROADCAST_PROGRAM, SUITE_MGR, ADD_COPY_EXITING;
     };
 
     /** Suite group type. */
-    private SuiteGroupType suiteGroupType = SuiteGroupType.SUITE;
+    private SuiteGroupType suiteGroupType = SuiteGroupType.SUITE_MGR;
 
     /** Suite category type. */
     private SuiteType suiteCatType = null;
@@ -120,6 +125,15 @@ public class SuiteConfigGroup extends Composite {
     /** Table height. */
     private int tableHeight = 0;
 
+    /** The selected program associated with the suites. Can be a null value. */
+    private Program selectedProgram = null;
+
+    /**
+     * The selected suite in the table. If there are multiple items selected
+     * then it will be the first suite selected.
+     */
+    private Suite selectedSuite = null;
+
     /**
      * Constructor.
      * 
@@ -129,10 +143,13 @@ public class SuiteConfigGroup extends Composite {
      *            Text to display in the group.
      * @param suiteGroupType
      *            Type that the suite group is used for.
+     * @param selectedProgram
+     *            Program associated with the suites. Can be null.
      */
     public SuiteConfigGroup(Composite parentComp, String suiteGroupText,
-            SuiteGroupType suiteGroupType) {
-        this(parentComp, suiteGroupText, suiteGroupType, 400, 150);
+            SuiteGroupType suiteGroupType, Program selectedProgram) {
+        this(parentComp, suiteGroupText, suiteGroupType, selectedProgram, 400,
+                150);
     }
 
     /**
@@ -144,13 +161,16 @@ public class SuiteConfigGroup extends Composite {
      *            Text to display in the group.
      * @param suiteGroupType
      *            Type that the suite group is used for.
+     * @param selectedProgram
+     *            Program associated with the suites. Can be null.
      * @param tableWidth
      *            Table width.
      * @param tableHeight
      *            Table height.
      */
     public SuiteConfigGroup(Composite parentComp, String suiteGroupText,
-            SuiteGroupType suiteGroupType, int tableWidth, int tableHeight) {
+            SuiteGroupType suiteGroupType, Program selectedProgram,
+            int tableWidth, int tableHeight) {
         super(parentComp, SWT.NONE);
 
         this.parentComp = parentComp;
@@ -158,6 +178,7 @@ public class SuiteConfigGroup extends Composite {
         this.suiteGroupType = suiteGroupType;
         this.tableWidth = tableWidth;
         this.tableHeight = tableHeight;
+        this.selectedProgram = selectedProgram;
 
         init();
     }
@@ -178,13 +199,13 @@ public class SuiteConfigGroup extends Composite {
     private void init() {
         GridLayout gl = new GridLayout(1, false);
         this.setLayout(gl);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         this.setLayoutData(gd);
 
         suiteGroup = new Group(this, SWT.SHADOW_OUT);
         gl = new GridLayout(1, false);
         suiteGroup.setLayout(gl);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         suiteGroup.setLayoutData(gd);
         suiteGroup.setText(suiteGroupText);
 
@@ -272,10 +293,10 @@ public class SuiteConfigGroup extends Composite {
      * Create the suite table.
      */
     private void createTable() {
-        int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
+        int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.MULTI;
         suiteTable = new SuiteTable(suiteGroup, tableStyle, tableWidth,
                 tableHeight);
-
+        suiteTable.setMultipleSelection(false);
         suiteTable.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {
@@ -289,6 +310,7 @@ public class SuiteConfigGroup extends Composite {
                     enableControls(false);
                     suiteSelectionCB.suiteSelected(null);
                 }
+                updateSelectedSuite();
             }
         });
     }
@@ -299,37 +321,52 @@ public class SuiteConfigGroup extends Composite {
     private void createSuiteControls() {
 
         int numberOfColumns = 0;
-        final boolean programControls;
-        if (suiteGroupType == SuiteGroupType.PROGRAM) {
-            programControls = true;
+
+        /*
+         * If the suite group type is BROADCAST_PROGRAM then show the following
+         * controls: New, Add Existing, Edit, and Delete.
+         * 
+         * If the suite group type is SUITE_MGR then show the following
+         * controls: New, Copy, Rename, Edit, Delete, and Relationship.
+         * 
+         * If the suite group type is ADD_COPY_EXITING then only show the
+         * Relationship button.
+         */
+        if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM) {
             numberOfColumns = 4;
-        } else {
-            programControls = false;
+        } else if (suiteGroupType == SuiteGroupType.SUITE_MGR) {
             numberOfColumns = 6;
+        } else if (suiteGroupType == SuiteGroupType.ADD_COPY_EXITING) {
+            numberOfColumns = 1;
         }
 
         Composite suiteControlComp = new Composite(suiteGroup, SWT.NONE);
         GridLayout gl = new GridLayout(numberOfColumns, false);
         suiteControlComp.setLayout(gl);
-        GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         suiteControlComp.setLayoutData(gd);
 
         int minButtonWidth = 80;
 
-        gd = new GridData(minButtonWidth, SWT.DEFAULT);
-        Button addNewSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
-        addNewSuiteBtn.setText("New...");
-        addNewSuiteBtn.setLayoutData(gd);
-        addNewSuiteBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
-                        .getShell(), DialogType.CREATE, programControls);
-                csd.open();
-            }
-        });
+        if (suiteGroupType != SuiteGroupType.ADD_COPY_EXITING) {
+            gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
+            gd.widthHint = minButtonWidth;
+            Button addNewSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
+            addNewSuiteBtn.setText("New...");
+            addNewSuiteBtn.setLayoutData(gd);
+            addNewSuiteBtn.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    boolean showProgramControls = (suiteGroupType == SuiteGroupType.SUITE_MGR);
+                    CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
+                            .getShell(), DialogType.CREATE,
+                            showProgramControls, null);
+                    csd.open();
+                }
+            });
+        }
 
-        if (suiteGroupType == SuiteGroupType.PROGRAM) {
+        if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM) {
             gd = new GridData();
             gd.minimumWidth = minButtonWidth;
             Button addExistingBtn = new Button(suiteControlComp, SWT.PUSH);
@@ -343,7 +380,7 @@ public class SuiteConfigGroup extends Composite {
                 }
             });
             suiteControls.add(addExistingBtn);
-        } else {
+        } else if (suiteGroupType == SuiteGroupType.SUITE_MGR) {
             gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
             gd.widthHint = minButtonWidth;
             Button copyBtn = new Button(suiteControlComp, SWT.PUSH);
@@ -388,33 +425,41 @@ public class SuiteConfigGroup extends Composite {
             suiteControls.add(renameSuiteBtn);
         }
 
-        gd = new GridData(minButtonWidth, SWT.DEFAULT);
-        Button editSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
-        editSuiteBtn.setText("Edit...");
-        editSuiteBtn.setLayoutData(gd);
-        editSuiteBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
-                        .getShell(), DialogType.EDIT, programControls);
-                csd.open();
-            }
-        });
-        suiteControls.add(editSuiteBtn);
+        if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
+                || suiteGroupType == SuiteGroupType.SUITE_MGR) {
+            gd = new GridData(minButtonWidth, SWT.DEFAULT);
+            Button editSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
+            editSuiteBtn.setText("Edit...");
+            editSuiteBtn.setLayoutData(gd);
+            editSuiteBtn.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    boolean showProgramControls = (suiteGroupType == SuiteGroupType.SUITE_MGR);
+                    CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
+                            .getShell(), DialogType.EDIT, showProgramControls,
+                            selectedProgram, selectedSuite);
+                    csd.open();
+                }
+            });
+            suiteControls.add(editSuiteBtn);
 
-        gd = new GridData(minButtonWidth, SWT.DEFAULT);
-        Button deleteSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
-        deleteSuiteBtn.setText("Delete");
-        deleteSuiteBtn.setLayoutData(gd);
-        deleteSuiteBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                handleDeleteAction();
-            }
-        });
-        suiteControls.add(deleteSuiteBtn);
+            // gd = new GridData(minButtonWidth, SWT.DEFAULT);
+            gd = new GridData(SWT.LEFT, SWT.CENTER, true, true);
+            gd.widthHint = minButtonWidth;
+            Button deleteSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
+            deleteSuiteBtn.setText("Delete");
+            deleteSuiteBtn.setLayoutData(gd);
+            deleteSuiteBtn.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    handleDeleteAction();
+                }
+            });
+            suiteControls.add(deleteSuiteBtn);
+        }
 
-        if (suiteGroupType == SuiteGroupType.SUITE) {
+        if (suiteGroupType == SuiteGroupType.SUITE_MGR
+                || suiteGroupType == SuiteGroupType.ADD_COPY_EXITING) {
             /*
              * Relationship button
              */
@@ -423,18 +468,30 @@ public class SuiteConfigGroup extends Composite {
                     Activator.PLUGIN_ID, "icons/Relationship.png");
             relationshipImg = id.createImage();
 
-            gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
             Button relationshipBtn = new Button(suiteControlComp, SWT.PUSH);
             relationshipBtn.setImage(relationshipImg);
-            relationshipBtn.setToolTipText("View message type relationships");
-            relationshipBtn.setLayoutData(gd);
+            relationshipBtn.setToolTipText("View Suite relationships");
             relationshipBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    ViewSuiteDlg vsd = new ViewSuiteDlg(parentComp.getShell());
+                    int selectedIndex = suiteTable.getSelectedIndex();
+
+                    if (selectedIndex < 0) {
+                        return;
+                    }
+
+                    Suite selectSuite = filteredSuiteList.get(selectedIndex);
+                    ViewSuiteDlg vsd = new ViewSuiteDlg(parentComp.getShell(),
+                            selectSuite);
                     vsd.open();
                 }
             });
+
+            if (suiteGroupType == SuiteGroupType.ADD_COPY_EXITING) {
+                gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+                relationshipBtn.setLayoutData(gd);
+            }
+
             suiteControls.add(relationshipBtn);
         }
     }
@@ -505,9 +562,49 @@ public class SuiteConfigGroup extends Composite {
     }
 
     /**
+     * Update what suite has been selected.
+     */
+    private void updateSelectedSuite() {
+        if (suiteTable.getSelectedIndex() >= 0) {
+            selectedSuite = suiteList.get(suiteTable.getSelectedIndex());
+        }
+    }
+
+    /**
+     * Set the table to be multiple selection (true) or single selection
+     * (false). This will only work if the table is initialized with a style of
+     * SWT.MULTI.
+     * 
+     * @param multipleSelection
+     *            True for multiple selection, false for single.
+     */
+    public void setMultipleSelection(boolean multipleSelection) {
+        suiteTable.setMultipleSelection(multipleSelection);
+    }
+
+    /**
+     * Get the selected suites in the table.
+     * 
+     * @return List of selected suites.
+     */
+    public List<Suite> getSelectedSuites() {
+        List<Suite> selectedSuites = new ArrayList<Suite>();
+
+        int[] indices = suiteTable.getSelectedIndices();
+
+        if (indices.length > 0) {
+            for (Suite s : filteredSuiteList) {
+                selectedSuites.add(s);
+            }
+        }
+
+        return selectedSuites;
+    }
+
+    /**
      * Populate the Suite table.
      */
-    public void populateSuiteTable() {
+    private void populateSuiteTable() {
 
         if (suiteTable.hasTableData() == false) {
             List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
@@ -526,6 +623,7 @@ public class SuiteConfigGroup extends Composite {
 
         if (suiteTable.getItemCount() > 0) {
             suiteTable.select(0);
+            updateSelectedSuite();
         }
         enableSuiteControls();
     }
@@ -534,8 +632,10 @@ public class SuiteConfigGroup extends Composite {
      * Populate the suite table data.
      */
     private void populateSuiteTableData() {
+        filteredSuiteList.clear();
         for (Suite suite : suiteList) {
             if (suiteCatType == null || suite.getType() == suiteCatType) {
+                filteredSuiteList.add(suite);
                 TableRowData trd = new TableRowData();
 
                 trd.addTableCellData(new TableCellData(suite.getName()));

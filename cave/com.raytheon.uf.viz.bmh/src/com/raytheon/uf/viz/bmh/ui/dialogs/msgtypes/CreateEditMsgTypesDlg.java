@@ -20,7 +20,9 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
@@ -39,7 +41,16 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
+import com.raytheon.uf.common.bmh.request.TtsVoiceRequest.TtsVoiceAction;
+import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListComp;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
@@ -58,6 +69,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014  #3420     lvenable     Initial creation
+ * Aug 12, 2014  #3490     lvenable    Initial hook up of dialog to display selected values
+ *                                     for the provided message type.
  * 
  * </pre>
  * 
@@ -65,6 +78,10 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * @version 1.0
  */
 public class CreateEditMsgTypesDlg extends CaveSWTDialog {
+
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(CreateEditMsgTypesDlg.class);
 
     /** Message type text field. */
     private Text msgTypeTF;
@@ -81,7 +98,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
     /** Designation combo box. */
     private Combo designationCbo;
 
-    /** Emergency Override chack box. */
+    /** Emergency Override check box. */
     private Button eoChk;
 
     /** Duration date/time fields. */
@@ -92,9 +109,6 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
     /** Alert check box. */
     private Button alertChk;
-
-    /** LDAD transfer check box. */
-    private Button ldadTransferChk;
 
     /** Confirm check box. */
     private Button confirmChk;
@@ -137,8 +151,14 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
     /** Type of dialog (Create or Edit). */
     private DialogType dialogType = DialogType.CREATE;
 
+    /** Selected message type. */
+    private MessageType selectedMsgType = null;
+
+    /** List of available voices. */
+    private List<TtsVoice> voiceList;
+
     /**
-     * Constructor.
+     * Constructor that will default selected message type to null.
      * 
      * @param parentShell
      *            Parent shell.
@@ -146,10 +166,27 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      *            Dialog type.
      */
     public CreateEditMsgTypesDlg(Shell parentShell, DialogType dialogType) {
+        this(parentShell, dialogType, null);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param parentShell
+     *            Parent shell.
+     * @param dialogType
+     *            Dialog type.
+     * @param selectedMsgType
+     *            Selected message type. If null then default values will be
+     *            used.
+     */
+    public CreateEditMsgTypesDlg(Shell parentShell, DialogType dialogType,
+            MessageType selectedMsgType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
         this.dialogType = dialogType;
+        this.selectedMsgType = selectedMsgType;
     }
 
     @Override
@@ -181,6 +218,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             setText("Edit Message Type");
         }
 
+        retrieveVoicesFromDB();
+
         createMainControlComposite();
         createAreaAndRelationshipControls();
         createBottomButtons();
@@ -211,8 +250,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         genDefaultComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
-        createGeneralGoupControls(genDefaultComp);
-        createDefaultGoupControls(genDefaultComp);
+        createGeneralGroupControls(genDefaultComp);
+        createDefaultGroupControls(genDefaultComp);
     }
 
     /**
@@ -221,7 +260,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      * @param genDefaultComp
      *            General/Default composite.
      */
-    private void createGeneralGoupControls(Composite genDefaultComp) {
+    private void createGeneralGroupControls(Composite genDefaultComp) {
 
         Group generalGroup = new Group(genDefaultComp, SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(2, false);
@@ -251,8 +290,9 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             msgTypeLbl = new Label(generalGroup, SWT.NONE);
             msgTypeLbl.setLayoutData(gd);
 
-            // TODO: set the message type label
-            msgTypeLbl.setText("Message Type - 1");
+            if (selectedMsgType != null) {
+                msgTypeLbl.setText(selectedMsgType.getAfosid());
+            }
         }
 
         /*
@@ -267,6 +307,10 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         gd.widthHint = controlWidth;
         msgTypeTitleTF = new Text(generalGroup, SWT.BORDER);
         msgTypeTitleTF.setLayoutData(gd);
+
+        if (dialogType == DialogType.EDIT && selectedMsgType != null) {
+            msgTypeTitleTF.setText(selectedMsgType.getTitle());
+        }
 
         /*
          * Voice
@@ -305,6 +349,9 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         eoChk = new Button(generalGroup, SWT.CHECK);
         eoChk.setText("Emergency Override");
 
+        if (dialogType == DialogType.EDIT && selectedMsgType != null) {
+            eoChk.setSelection(selectedMsgType.isEmergencyOverride());
+        }
     }
 
     /**
@@ -313,7 +360,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      * @param genDefaultComp
      *            General/Default composite.
      */
-    private void createDefaultGoupControls(Composite genDefaultComp) {
+    private void createDefaultGroupControls(Composite genDefaultComp) {
 
         Group defaultsGroup = new Group(genDefaultComp, SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(2, false);
@@ -335,16 +382,34 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         durationLbl.setText("Duration (DDHHMM): ");
         durationLbl.setLayoutData(gd);
 
-        durationDTF = new DateTimeFields(defaultsGroup, fieldTypes, true,
-                false, true);
+        Map<DateFieldType, Integer> durMap = null;
+        String durDateTimeStr = null;
+
+        if (selectedMsgType != null) {
+            durDateTimeStr = selectedMsgType.getDuration();
+        }
+
+        durMap = generateDayHourMinuteMap(durDateTimeStr);
+
+        durationDTF = new DateTimeFields(defaultsGroup, durMap, false, false,
+                true);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
         Label periodicityLbl = new Label(defaultsGroup, SWT.RIGHT);
         periodicityLbl.setText("Periodicity (DDHHMM): ");
         periodicityLbl.setLayoutData(gd);
 
-        periodicityDTF = new DateTimeFields(defaultsGroup, fieldTypes, true,
-                false, true);
+        Map<DateFieldType, Integer> periodicityMap = null;
+        String periodicityDateTimeStr = null;
+
+        if (selectedMsgType != null) {
+            periodicityDateTimeStr = selectedMsgType.getPeriodicity();
+        }
+
+        periodicityMap = generateDayHourMinuteMap(periodicityDateTimeStr);
+
+        periodicityDTF = new DateTimeFields(defaultsGroup, periodicityMap,
+                false, false, true);
 
         /*
          * Check box controls
@@ -361,19 +426,21 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         alertChk = new Button(checkBoxComp, SWT.CHECK);
         alertChk.setText("Alert");
 
-        ldadTransferChk = new Button(checkBoxComp, SWT.CHECK);
-        ldadTransferChk.setText("LDAD Transfer");
-
         confirmChk = new Button(checkBoxComp, SWT.CHECK);
         confirmChk.setText("Confirm");
 
         interruptChk = new Button(checkBoxComp, SWT.CHECK);
         interruptChk.setText("Interrupt");
 
+        if (selectedMsgType != null) {
+            alertChk.setSelection(selectedMsgType.isAlert());
+            confirmChk.setSelection(selectedMsgType.isConfirm());
+            interruptChk.setSelection(selectedMsgType.isInterrupt());
+        }
+
         /*
          * Radio controls
          */
-
         Composite radioComp = new Composite(defaultsGroup, SWT.NONE);
         gl = new GridLayout(3, false);
         gl.marginWidth = 0;
@@ -400,8 +467,17 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         gd.horizontalIndent = 10;
         wxrRdo = new Button(radioComp, SWT.RADIO);
         wxrRdo.setText("WXR");
-        wxrRdo.setSelection(true);
         wxrRdo.setLayoutData(gd);
+
+        if (selectedMsgType != null) {
+            if (selectedMsgType.isWxr()) {
+                wxrRdo.setSelection(true);
+            } else {
+                civRdo.setSelection(true);
+            }
+        } else {
+            wxrRdo.setSelection(true);
+        }
 
         /*
          * Blackout controls.
@@ -439,8 +515,19 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         blackoutStartLbl.setText("Black Out Start (HHMM)");
         blackoutStartLbl.setLayoutData(gd);
 
-        blackoutStartDTF = new DateTimeFields(blackoutComp, blackoutFieldTypes,
-                false, false, true);
+        // Create the map of values for the blackout start date/time field
+        // controls.
+        Map<DateFieldType, Integer> boStartMap = null;
+        String boStartDateTimeStr = null;
+
+        if (selectedMsgType != null) {
+            boStartDateTimeStr = selectedMsgType.getToneBlackOutStart();
+        }
+
+        boStartMap = generateHourMinuteMap(boStartDateTimeStr);
+
+        blackoutStartDTF = new DateTimeFields(blackoutComp, boStartMap, false,
+                false, false);
 
         gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
         gd.horizontalIndent = 45;
@@ -448,8 +535,19 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         blackoutEndLbl.setText("Black Out End (HHMM)");
         blackoutEndLbl.setLayoutData(gd);
 
-        blackoutEndDTF = new DateTimeFields(blackoutComp, blackoutFieldTypes,
-                false, false, true);
+        // Create the map of values for the blackout end date/time field
+        // controls.
+        Map<DateFieldType, Integer> boEndMap = null;
+        String boEndDateTimeStr = null;
+
+        if (selectedMsgType != null) {
+            boEndDateTimeStr = selectedMsgType.getToneBlackOutEnd();
+        }
+
+        boEndMap = generateHourMinuteMap(boEndDateTimeStr);
+
+        blackoutEndDTF = new DateTimeFields(blackoutComp, boEndMap, false,
+                false, false);
 
         enableBlackoutControls(enableBlackoutChk.getSelection());
     }
@@ -488,7 +586,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             }
         });
 
-        if (dialogType == DialogType.EDIT) {
+        if (dialogType == DialogType.EDIT && selectedMsgType != null) {
             gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
             ImageDescriptor id;
             id = AbstractUIPlugin.imageDescriptorFromPlugin(
@@ -503,7 +601,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
                     ViewMessageTypeDlg viewMessageTypeInfo = new ViewMessageTypeDlg(
-                            shell);
+                            shell, selectedMsgType);
                     viewMessageTypeInfo.open();
                 }
             });
@@ -539,9 +637,9 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (dialogType == DialogType.CREATE) {
-                    // create action
+                    // TODO : create action code needed
                 } else if (dialogType == DialogType.EDIT) {
-                    // save action
+                    // TODO : save save action code needed
                 }
                 close();
             }
@@ -579,7 +677,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      */
     private CheckListData getTransmitterList() {
 
-        // TODO : add real code.
+        // TODO : add real code when Mike's transmitter code is available..
         CheckListData cld = new CheckListData();
         boolean checked = true;
         for (int i = 0; i < 30; i++) {
@@ -597,9 +695,25 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      * Populate the Voices combo box.
      */
     private void populateVoicesCombo() {
-        // TODO : get real voices
-        voiceCbo.add("Julie");
-        voiceCbo.select(0);
+
+        // If there are no voices then just return.
+        if (voiceList.isEmpty()) {
+            return;
+        }
+
+        for (TtsVoice voice : voiceList) {
+            voiceCbo.add(voice.getVoiceName());
+        }
+
+        // If the selected message is null or the dialog is a create dialog then
+        // set the selection to 0.
+        if (selectedMsgType == null || dialogType == DialogType.CREATE) {
+            voiceCbo.select(0);
+            return;
+        }
+
+        int index = voiceCbo.indexOf(selectedMsgType.getVoice().getVoiceName());
+        voiceCbo.select(index);
     }
 
     /**
@@ -607,16 +721,117 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      */
     private void populateDesignationCombo() {
 
-        // TODO : is this information that is in the database?
-        designationCbo.add("Station ID");
-        designationCbo.add("Forecast");
-        designationCbo.add("Observation");
-        designationCbo.add("Outlook");
-        designationCbo.add("Watch");
-        designationCbo.add("Warning");
-        designationCbo.add("Advisory");
-        designationCbo.add("Time Announcement");
-        designationCbo.add("Other");
-        designationCbo.select(0);
+        for (Designation des : Designation.values()) {
+            designationCbo.add(des.name());
+        }
+
+        // If the selected message is null or the dialog is a create dialog then
+        // set the selection to 0.
+        if (selectedMsgType == null || dialogType == DialogType.CREATE) {
+            designationCbo.select(0);
+            return;
+        }
+
+        int index = designationCbo.indexOf(selectedMsgType.getDesignation()
+                .name());
+        designationCbo.select(index);
+    }
+
+    /**
+     * Retrieve the voices from the DB.
+     */
+    private void retrieveVoicesFromDB() {
+        TtsVoiceRequest voiceRequest = new TtsVoiceRequest();
+        voiceRequest.setAction(TtsVoiceAction.AllVoices);
+        TtsVoiceResponse voiceResponse = null;
+
+        try {
+            voiceResponse = (TtsVoiceResponse) BmhUtils
+                    .sendRequest(voiceRequest);
+            voiceList = voiceResponse.getTtsVoiceList();
+        } catch (Exception e) {
+            statusHandler.error("Error retrieving voices from the database: ",
+                    e);
+        }
+    }
+
+    /**
+     * Generate a Map of DateFieldType Day/Hour/Minute keys with values pulled
+     * from the provided string.
+     * 
+     * @param dateTimeStr
+     *            Date/Time string (DDHHMM).
+     * @return Map of DateFieldTypes and the associated values.
+     */
+    private Map<DateFieldType, Integer> generateDayHourMinuteMap(
+            String dateTimeStr) {
+        Map<DateFieldType, Integer> durmap = new LinkedHashMap<DateFieldType, Integer>();
+
+        if (dateTimeStr == null || dateTimeStr.length() != 6) {
+            durmap.put(DateFieldType.DAY, 0);
+            durmap.put(DateFieldType.HOUR, 0);
+            durmap.put(DateFieldType.MINUTE, 0);
+        } else {
+            int[] dtArray = splitDateTimeString(dateTimeStr);
+            durmap.put(DateFieldType.DAY, dtArray[0]);
+            durmap.put(DateFieldType.HOUR, dtArray[1]);
+            durmap.put(DateFieldType.MINUTE, dtArray[2]);
+        }
+
+        return durmap;
+    }
+
+    /**
+     * Generate a Map of DateFieldType Hour/Minute keys with values pulled from
+     * the provided string.
+     * 
+     * @param timeStr
+     *            Time string (HHMM).
+     * @return Map of DateFieldTypes and the associated values.
+     */
+    private Map<DateFieldType, Integer> generateHourMinuteMap(String timeStr) {
+        Map<DateFieldType, Integer> durmap = new LinkedHashMap<DateFieldType, Integer>();
+
+        if (timeStr == null || timeStr.length() != 4) {
+            durmap.put(DateFieldType.HOUR, 0);
+            durmap.put(DateFieldType.MINUTE, 0);
+        } else {
+            int[] dtArray = splitDateTimeString(timeStr);
+            durmap.put(DateFieldType.HOUR, dtArray[0]);
+            durmap.put(DateFieldType.MINUTE, dtArray[1]);
+        }
+
+        return durmap;
+    }
+
+    /**
+     * This method will split the date/time string into an array of integers for
+     * each element in the array.
+     * 
+     * If the string passed in is 013422, the return int array will contain 3
+     * elements: 1, 34, 22
+     * 
+     * @param dateTimeStr
+     *            Date/Time string.
+     * @return Array of numbers.
+     */
+    private int[] splitDateTimeString(String dateTimeStr) {
+        int arraySize = dateTimeStr.length() / 2;
+        int[] intArray = new int[arraySize];
+
+        int idx = 0;
+        for (int i = 0; i < arraySize; i++) {
+            String subStr = dateTimeStr.substring(idx, idx + 2);
+
+            try {
+                intArray[i] = Integer.valueOf(subStr);
+            } catch (NumberFormatException nfe) {
+                intArray[i] = 0;
+            }
+
+            idx += 2;
+        }
+
+        return intArray;
     }
 }

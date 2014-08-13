@@ -24,7 +24,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * Request object for Program queries.
+ * Request object for Voice queries.
  * 
  * <pre>
  * 
@@ -32,8 +32,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 5, 2014  #3490      lvenable     Initial creation
- * Aug 12, 2014 #3490      lvenable     Added ProgramSuites action.
+ * Aug 11, 2014 #3490      lvenable     Initial creation
  * 
  * </pre>
  * 
@@ -41,31 +40,20 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class ProgramRequest implements IServerRequest {
+public class TtsVoiceRequest implements IServerRequest {
 
-    public enum ProgramAction {
-        Save, ListNamesIDs, AllPrograms, ProgramSuites, Delete;
+    public enum TtsVoiceAction {
+        AllVoices;
     }
 
     @DynamicSerializeElement
-    private ProgramAction action;
+    private TtsVoiceAction action;
 
-    /**
-     * Get the program action.
-     * 
-     * @return The program action.
-     */
-    public ProgramAction getAction() {
+    public TtsVoiceAction getAction() {
         return action;
     }
 
-    /**
-     * Set the program action.
-     * 
-     * @param action
-     *            The program action.
-     */
-    public void setAction(ProgramAction action) {
+    public void setAction(TtsVoiceAction action) {
         this.action = action;
     }
 }

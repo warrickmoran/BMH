@@ -25,8 +25,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.request.SuiteRequest;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.edex.bmh.dao.SuiteDao;
 
 /**
@@ -39,6 +37,7 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 5, 2014  #3490      lvenable     Initial creation
+ * Aug 12, 2014 #3490     lvenable     Refactored to make a query convenience method.
  * 
  * </pre>
  * 
@@ -48,9 +47,6 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
 
 public class SuiteHandler implements IRequestHandler<SuiteRequest> {
 
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(ProgramHandler.class);
-
     @Override
     public Object handleRequest(SuiteRequest request) throws Exception {
 
@@ -58,7 +54,10 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
 
         switch (request.getAction()) {
         case ListSuitesCats:
-            suiteResponse = getNamesCategories();
+            suiteResponse = getSuitesNameCatIDs();
+            break;
+        case SuitesMsgTypes:
+            suiteResponse = getSuitesMessageTypes();
             break;
         case AllSuites:
             suiteResponse = getSuites();
@@ -71,15 +70,35 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
     }
 
     /**
-     * Get a list of suite with the name and type populated.
+     * Get suites with name, type, and IDs.
      * 
-     * @return Suite response.
+     * @param suiteQuery
+     *            Suite query.
+     * @return List of suites with name, type, and IDs.
      */
-    private SuiteResponse getNamesCategories() {
+    private SuiteResponse getSuitesNameCatIDs() {
         SuiteDao dao = new SuiteDao();
         SuiteResponse response = new SuiteResponse();
 
-        List<Suite> suiteList = dao.getSuiteNameCategories();
+        List<Suite> suiteList = dao.getSuiteNamesCatIds();
+
+        response.setSuiteList(suiteList);
+
+        return response;
+    }
+
+    /**
+     * Get Suite with message types.
+     * 
+     * @param suiteQuery
+     *            Suite suery.
+     * @return List of suites with message types.
+     */
+    private SuiteResponse getSuitesMessageTypes() {
+        SuiteDao dao = new SuiteDao();
+        SuiteResponse response = new SuiteResponse();
+
+        List<Suite> suiteList = dao.getSuiteMsgTypes();
 
         response.setSuiteList(suiteList);
 

@@ -25,8 +25,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 
 /**
@@ -39,6 +37,7 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 5, 2014   #3490     lvenable     Initial creation
+ * Aug 12, 2014 #3490     lvenable     Refactored to make a query convenience method.
  * 
  * </pre>
  * 
@@ -48,9 +47,6 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 
 public class ProgramHandler implements IRequestHandler<ProgramRequest> {
 
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(ProgramHandler.class);
-
     @Override
     public Object handleRequest(ProgramRequest request) throws Exception {
 
@@ -58,7 +54,10 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
 
         switch (request.getAction()) {
         case ListNamesIDs:
-            programResponse = getNamesIDs();
+            programResponse = getProgramNameIDs();
+            break;
+        case ProgramSuites:
+            programResponse = getProgramSuites();
             break;
         case AllPrograms:
             programResponse = getPrograms();
@@ -71,15 +70,34 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
     }
 
     /**
-     * Get a list of programs with the name and IDs populated.
+     * Get a list of Program name and IDs.
      * 
-     * @return List of programs with the name and IDs populated.
+     * @param programQuery
+     *            Query string.
+     * @return List of Program name and IDs.
      */
-    private ProgramResponse getNamesIDs() {
+    private ProgramResponse getProgramNameIDs() {
         ProgramDao dao = new ProgramDao();
         ProgramResponse response = new ProgramResponse();
 
-        List<Program> programList = dao.getProgramNameIds();
+        List<Program> programList = dao.getProgramNameIDs();
+        response.setProgramList(programList);
+
+        return response;
+    }
+
+    /**
+     * Get a list of Program and Suite list.
+     * 
+     * @param programQuery
+     *            Query string.
+     * @return List of Program and Suites.
+     */
+    private ProgramResponse getProgramSuites() {
+        ProgramDao dao = new ProgramDao();
+        ProgramResponse response = new ProgramResponse();
+
+        List<Program> programList = dao.getProgramSuites();
         response.setProgramList(programList);
 
         return response;

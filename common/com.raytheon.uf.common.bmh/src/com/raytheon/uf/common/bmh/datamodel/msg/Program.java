@@ -59,6 +59,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 10, 2014  3283     bsteffen    Eagerly fetch suites.
  * Jul 17, 2014  3175     rjpeter     Added surrogate key.
  * Aug 06, 2014 #3490     lvenable    Updated to add name/query.
+ * Aug 12, 2014 #3490     lvenable    Updated to add name/query for getting Programs/Suites.
  * 
  * </pre>
  * 
@@ -68,7 +69,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({
         @NamedQuery(name = Program.GET_PROGRAM_FOR_TRANSMITTER_GROUP, query = Program.GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY),
         @NamedQuery(name = Program.GET_GROUPS_FOR_MSG_TYPE, query = Program.GET_GROUPS_FOR_MSG_TYPE_QUERY),
-        @NamedQuery(name = Program.GET_PROGRAM_NAMES_IDS, query = Program.GET_PROGRAM_NAMES_IDS_QUERY) })
+        @NamedQuery(name = Program.GET_PROGRAM_NAMES_IDS, query = Program.GET_PROGRAM_NAMES_IDS_QUERY),
+        @NamedQuery(name = Program.GET_PROGRAM_SUITES, query = Program.GET_PROGRAM_SUITES_QUERY) })
 @Entity
 @Table(name = "program", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = Program.GEN, sequenceName = "program_seq")
@@ -87,6 +89,10 @@ public class Program {
     public static final String GET_GROUPS_FOR_MSG_TYPE = "getGroupsForMsgType";
 
     protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY = "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.suites s inner join s.suiteMessages sm inner join sm.msgType mt WHERE mt.afosid = :afosid";
+
+    public static final String GET_PROGRAM_SUITES = "getProgramsAndSuites";
+
+    protected static final String GET_PROGRAM_SUITES_QUERY = "SELECT p.name, s.name, s.type, s.id FROM Program p inner join p.suites s";
 
     // use surrogate key
     @Id
