@@ -17,10 +17,11 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.comms.config;
+package com.raytheon.uf.edex.bmh.comms;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -98,5 +99,44 @@ public class DacChannelConfig {
         this.controlPort = controlPort;
     }
 
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result
+                + ((controlPort == null) ? 0 : controlPort.hashCode());
+        result = prime * result + dataPort;
+        result = prime * result + Arrays.hashCode(radios);
+        result = prime
+                * result
+                + ((transmitterGroup == null) ? 0 : transmitterGroup.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        DacChannelConfig other = (DacChannelConfig) obj;
+        if (controlPort == null) {
+            if (other.controlPort != null)
+                return false;
+        } else if (!controlPort.equals(other.controlPort))
+            return false;
+        if (dataPort != other.dataPort)
+            return false;
+        if (!Arrays.equals(radios, other.radios))
+            return false;
+        if (transmitterGroup == null) {
+            if (other.transmitterGroup != null)
+                return false;
+        } else if (!transmitterGroup.equals(other.transmitterGroup))
+            return false;
+        return true;
+    }
 
 }

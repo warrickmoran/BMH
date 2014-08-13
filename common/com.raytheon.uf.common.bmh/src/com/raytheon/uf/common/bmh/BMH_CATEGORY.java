@@ -120,7 +120,10 @@ public enum BMH_CATEGORY {
      * An error has occurred while tracking the status of a transmitter.
      */
     TRANSMITTER_STATUS_ERROR(14),
-    
+    /*
+     * An error has occurred while configuring the comms manager.
+     */
+    COMMS_CONFIGURATOR_ERROR(15),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.

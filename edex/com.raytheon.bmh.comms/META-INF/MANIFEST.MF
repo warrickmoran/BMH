@@ -1,7 +1,8 @@
 Manifest-Version: 1.0
+Main-Class: com.raytheon.bmh.comms.CommsManager
 Bundle-ManifestVersion: 2
 Bundle-Name: Comms Management
-Bundle-SymbolicName: com.raytheon.uf.edex.bmh.comms
+Bundle-SymbolicName: com.raytheon.bmh.comms
 Bundle-Version: 0.14.0.qualifier
 Bundle-Vendor: RAYTHEON
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7

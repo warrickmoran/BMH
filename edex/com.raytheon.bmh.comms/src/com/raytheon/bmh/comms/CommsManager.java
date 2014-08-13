@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.comms;
+package com.raytheon.bmh.comms;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -40,13 +40,18 @@ import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.bmh.comms.dactransmit.DacTransmitCommunicator;
+import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
+import com.raytheon.bmh.comms.jms.JmsCommunicator;
+import com.raytheon.bmh.comms.jms.PlaylistNotificationObserver;
+import com.raytheon.bmh.comms.linetap.LineTapServer;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.edex.bmh.BMHConstants;
-import com.raytheon.uf.edex.bmh.comms.config.CommsConfig;
-import com.raytheon.uf.edex.bmh.comms.config.DacChannelConfig;
-import com.raytheon.uf.edex.bmh.comms.config.DacConfig;
+import com.raytheon.uf.edex.bmh.comms.CommsConfig;
+import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
+import com.raytheon.uf.edex.bmh.comms.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
 

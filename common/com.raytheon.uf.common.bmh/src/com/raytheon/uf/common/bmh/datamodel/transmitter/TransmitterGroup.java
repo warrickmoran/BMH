@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,6 +41,7 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxStatus;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
@@ -60,6 +62,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  *                                     errors with lazy loading.
  * Jul 17, 2014  3406      mpduff      Added id pk column
  * Aug 04, 2014  3173      mpduff      Changed rcs to dac, added position and convenience methods, using serialization adapter
+ * Aug 13, 2014  3486      bsteffen    Add getEnabledTransmitters
  * 
  * </pre>
  * 
@@ -194,6 +197,18 @@ public class TransmitterGroup {
     public Set<Transmitter> getTransmitters() {
         if (transmitters == null) {
             transmitters = new HashSet<Transmitter>();
+        }
+        return transmitters;
+    }
+
+    public Set<Transmitter> getEnabledTransmitters() {
+        Set<Transmitter> transmitters = getTransmitters();
+        transmitters = new HashSet<>(transmitters);
+        Iterator<Transmitter> it = transmitters.iterator();
+        while (it.hasNext()) {
+            if (it.next().getTxStatus() == TxStatus.DISABLED) {
+                it.remove();
+            }
         }
         return transmitters;
     }

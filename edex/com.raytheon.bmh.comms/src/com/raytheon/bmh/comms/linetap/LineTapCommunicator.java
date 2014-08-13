@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.comms;
+package com.raytheon.bmh.comms.linetap;
 
 import java.io.IOException;
 import java.net.Socket;

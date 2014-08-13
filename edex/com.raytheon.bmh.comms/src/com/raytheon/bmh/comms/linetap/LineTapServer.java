@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.comms;
+package com.raytheon.bmh.comms.linetap;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -33,9 +33,9 @@ import com.raytheon.uf.common.bmh.comms.LineTapRequest;
 import com.raytheon.uf.common.bmh.dac.DacReceiveThread;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
-import com.raytheon.uf.edex.bmh.comms.config.CommsConfig;
-import com.raytheon.uf.edex.bmh.comms.config.DacChannelConfig;
-import com.raytheon.uf.edex.bmh.comms.config.DacConfig;
+import com.raytheon.uf.edex.bmh.comms.CommsConfig;
+import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
+import com.raytheon.uf.edex.bmh.comms.DacConfig;
 
 /**
  * 

@@ -17,10 +17,11 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.comms;
+package com.raytheon.bmh.comms;
 
-import com.raytheon.uf.edex.bmh.comms.config.DacChannelConfig;
-import com.raytheon.uf.edex.bmh.comms.config.DacConfig;
+import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
+import com.raytheon.uf.edex.bmh.comms.DacConfig;
+
 
 /**
  * 
@@ -40,7 +41,7 @@ import com.raytheon.uf.edex.bmh.comms.config.DacConfig;
  * @author bsteffen
  * @version 1.0
  */
-final class DacTransmitKey {
+public class DacTransmitKey {
     private final String inputDirectory;
 
     private final int dataPort;

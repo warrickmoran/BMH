@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.comms.config;
+package com.raytheon.uf.edex.bmh.comms;
 
 import java.util.List;
 
@@ -25,10 +25,11 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
 
 /**
  * 
- * Config for a single dac.
+ * Basic confic object for comms manager.
  * 
  * <pre>
  * 
@@ -37,47 +38,70 @@ import javax.xml.bind.annotation.XmlElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
- * Aug 04, 2014  2487     bsteffen    Add receivePort
+ * Aug 04, 2014  2487     bsteffen    Rename config options.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
+@XmlRootElement(name = "dacs")
 @XmlAccessorType(XmlAccessType.NONE)
-public class DacConfig {
+public class CommsConfig {
 
     @XmlAttribute
-    private String ipAddress;
+    private int dacTransmitPort = 58259;
 
     @XmlAttribute
-    private int receivePort;
+    private int lineTapPort = 58260;
 
-    @XmlElement(name = "channel")
-    private List<DacChannelConfig> channels;
+    @XmlElement
+    private String dacTransmitStarter;
 
-    public String getIpAddress() {
-        return ipAddress;
+    @XmlElement
+    private String jmsConnection;
+
+    @XmlElement(name = "dac")
+    private List<DacConfig> dacs;
+
+    public List<DacConfig> getDacs() {
+        return dacs;
     }
 
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
+    public void setDacs(List<DacConfig> dacs) {
+        this.dacs = dacs;
     }
 
-    public int getReceivePort() {
-        return receivePort;
+    public int getDacTransmitPort() {
+        return dacTransmitPort;
     }
 
-    public void setReceivePort(int receivePort) {
-        this.receivePort = receivePort;
+    public void setDacTransmitPort(int dacTransmitPort) {
+        this.dacTransmitPort = dacTransmitPort;
     }
 
-    public List<DacChannelConfig> getChannels() {
-        return channels;
+    public int getLineTapPort() {
+        return lineTapPort;
     }
 
-    public void setChannels(List<DacChannelConfig> channels) {
-        this.channels = channels;
+    public void setLineTapPort(int lineTapPort) {
+        this.lineTapPort = lineTapPort;
+    }
+
+    public String getDacTransmitStarter() {
+        return dacTransmitStarter;
+    }
+
+    public void setDacTransmitStarter(String dacTransmitStarter) {
+        this.dacTransmitStarter = dacTransmitStarter;
+    }
+
+    public String getJmsConnection() {
+        return jmsConnection;
+    }
+
+    public void setJmsConnection(String jmsConnection) {
+        this.jmsConnection = jmsConnection;
     }
 
 }
