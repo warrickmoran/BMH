@@ -19,11 +19,9 @@
  **/
 package com.raytheon.bmh.comms;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
@@ -48,7 +46,6 @@ import com.raytheon.bmh.comms.linetap.LineTapServer;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
-import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
@@ -91,7 +88,7 @@ public class CommsManager {
 
     private final LineTapServer lineTapServer;
 
-    private final JmsCommunicator jms;
+    private JmsCommunicator jms;
 
     private final Map<DacTransmitKey, Process> startedProcesses = new HashMap<>();
 
@@ -99,26 +96,29 @@ public class CommsManager {
      * Create a comms manager, this will fail if there is problems with the
      * config file.
      */
-    public CommsManager() throws IOException {
-        configPath = Paths.get(BMHConstants.getBmhDataDirectory(), "conf",
-                "comms.xml");
-        if (!Files.exists(configPath)) {
-            throw new FileNotFoundException("No config file found in "
-                    + configPath.toString());
+    public CommsManager() {
+        configPath = CommsConfig.getDefaultPath();
+        if (Files.exists(configPath)) {
+            config = JAXB.unmarshal(configPath.toFile(), CommsConfig.class);
+        } else {
+            logger.error("No config found, using default values.");
+            config = new CommsConfig();
+            JAXB.marshal(config, configPath.toFile());
         }
-        config = JAXB.unmarshal(configPath.toFile(), CommsConfig.class);
         transmitServer = new DacTransmitServer(this, config);
         lineTapServer = new LineTapServer(config);
-        JmsCommunicator jms = null;
+        startJms();
+    }
+
+    private void startJms() {
         try {
             jms = new JmsCommunicator(config);
+            jms.connect();
         } catch (URLSyntaxException e) {
             logger.error(
                     "Error parsing jms connection url, jms will be disabled.",
                     e);
         }
-        this.jms = jms;
-        this.jms.connect();
     }
 
     /**
@@ -160,6 +160,11 @@ public class CommsManager {
                             config = JAXB.unmarshal(configPath.toFile(),
                                     CommsConfig.class);
                             transmitServer.reconfigure(config);
+                            // TODO if JMS address changed or if any ports
+                            // changed then reset them.
+                            if (jms == null) {
+                                startJms();
+                            }
                         }
                     } catch (Throwable t) {
                         logger.error("Cannot read new config file", t);
@@ -269,7 +274,7 @@ public class CommsManager {
         jms.sendStatus(notification);
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         new CommsManager().run();
     }
 

@@ -63,7 +63,7 @@ public class DacChannelConfig {
     private Integer controlPort;
 
     public Path getInputDirectory() {
-        return Paths.get(BMHConstants.getBmhDataDirectory(), "data",
+        return Paths.get(BMHConstants.getBmhDataDirectory(),
                 "playlist", transmitterGroup);
     }
 

@@ -23,8 +23,8 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +61,7 @@ public class LineTapServer extends Thread {
 
     private final int port;
 
-    private final List<DacConfig> dacs;
+    private final Set<DacConfig> dacs;
 
     private Map<Integer, DacReceiveThread> receivers = new HashMap<>();
 

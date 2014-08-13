@@ -19,13 +19,17 @@
  **/
 package com.raytheon.uf.edex.bmh.comms;
 
-import java.util.List;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Set;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
+
+import com.raytheon.uf.edex.bmh.BMHConstants;
 
 /**
  * 
@@ -56,19 +60,19 @@ public class CommsConfig {
     private int lineTapPort = 58260;
 
     @XmlElement
-    private String dacTransmitStarter;
+    private String dacTransmitStarter = "/awips2/bmh/bin/dactransmit.sh";
 
     @XmlElement
     private String jmsConnection;
 
     @XmlElement(name = "dac")
-    private List<DacConfig> dacs;
+    private Set<DacConfig> dacs;
 
-    public List<DacConfig> getDacs() {
+    public Set<DacConfig> getDacs() {
         return dacs;
     }
 
-    public void setDacs(List<DacConfig> dacs) {
+    public void setDacs(Set<DacConfig> dacs) {
         this.dacs = dacs;
     }
 
@@ -104,4 +108,55 @@ public class CommsConfig {
         this.jmsConnection = jmsConnection;
     }
 
+    public static Path getDefaultPath() {
+        return Paths.get(BMHConstants.getBmhDataDirectory())
+                .resolveSibling("conf").resolve("comms.xml");
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + dacTransmitPort;
+        result = prime
+                * result
+                + ((dacTransmitStarter == null) ? 0 : dacTransmitStarter
+                        .hashCode());
+        result = prime * result + ((dacs == null) ? 0 : dacs.hashCode());
+        result = prime * result
+                + ((jmsConnection == null) ? 0 : jmsConnection.hashCode());
+        result = prime * result + lineTapPort;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        CommsConfig other = (CommsConfig) obj;
+        if (dacTransmitPort != other.dacTransmitPort)
+            return false;
+        if (dacTransmitStarter == null) {
+            if (other.dacTransmitStarter != null)
+                return false;
+        } else if (!dacTransmitStarter.equals(other.dacTransmitStarter))
+            return false;
+        if (dacs == null) {
+            if (other.dacs != null)
+                return false;
+        } else if (!dacs.equals(other.dacs))
+            return false;
+        if (jmsConnection == null) {
+            if (other.jmsConnection != null)
+                return false;
+        } else if (!jmsConnection.equals(other.jmsConnection))
+            return false;
+        if (lineTapPort != other.lineTapPort)
+            return false;
+        return true;
+    }
 }
