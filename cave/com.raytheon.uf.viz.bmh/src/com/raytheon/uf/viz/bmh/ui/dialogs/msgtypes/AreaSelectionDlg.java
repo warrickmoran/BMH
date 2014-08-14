@@ -20,6 +20,10 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
@@ -36,6 +40,14 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.AreaNameComparator;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterNameComparator;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.ZoneNameComparator;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
@@ -54,6 +66,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 21, 2014   3411     mpduff      Initial creation
+ * Aug 13, 2014   3411     mpduff      Populate with data
  * 
  * </pre>
  * 
@@ -62,8 +75,16 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 
 public class AreaSelectionDlg extends CaveSWTDialog {
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(AreaSelectionDlg.class);
 
-    private final int LIST_WIDTH = 100;
+    private final String TRANSMITTER = "Transmitter";
+
+    private final String AREA = "AREA";
+
+    private final String ZONE = "ZONE";
+
+    private final int LIST_WIDTH = 125;
 
     private final int LIST_HEIGHT_125 = 125;
 
@@ -97,9 +118,48 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     private TableData tableData;
 
     /**
-     * The affected tranmitter list
+     * The affected transmitter list
      */
-    private List transList;
+    private List affectedTransmitterList;
+
+    /**
+     * List of transmitters in Transmitter tab
+     */
+    private List xmitList;
+
+    /**
+     * Data backing this dialog
+     */
+    private AreaSelectionData data;
+
+    /**
+     * Zone list in zone tab
+     */
+    private List zoneList;
+
+    /**
+     * List of Transmitter objects
+     */
+    private java.util.List<Transmitter> transmitterObjectList;
+
+    /**
+     * List of Zone objects
+     */
+    private java.util.List<Zone> zoneObjectList;
+
+    /**
+     * List of Area objects
+     */
+    private java.util.List<Area> areaObjectList;
+
+    /** List of areas for the selected transmitter */
+    private List transmitterAreaList;
+
+    /** List of areas for the selected zone */
+    private List zoneAreaList;
+
+    /** List of all areas */
+    private List areaList;
 
     /**
      * Constructor.
@@ -140,6 +200,9 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         createBottomButtons();
 
         createColumns();
+
+        gatherData();
+        populateTabs();
         populateTable();
     }
 
@@ -191,10 +254,14 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.heightHint = LIST_HEIGHT_125;
         gd.widthHint = LIST_WIDTH;
-        List xmitList = new List(comp, SWT.MULTI | SWT.BORDER | SWT.V_SCROLL);
+        xmitList = new List(comp, SWT.MULTI | SWT.BORDER | SWT.V_SCROLL);
         xmitList.setLayoutData(gd);
-        // TODO - remove
-        xmitList.setItems(new String[] { "Trans1", "Trans2", "Trans3" });
+        xmitList.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                populateAreasForTransmitter();
+            }
+        });
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.verticalAlignment = SWT.CENTER;
@@ -208,6 +275,12 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         xmitMoveBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH, SWT.DEFAULT));
         xmitMoveBtn
                 .setToolTipText("Move selected Transmitter(s) to the Selected Table");
+        xmitMoveBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                moveTransmitter(false);
+            }
+        });
 
         Button xmitMoveAllBtn = new Button(moveComp, SWT.PUSH);
         xmitMoveAllBtn.setText(">>");
@@ -215,6 +288,12 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 SWT.DEFAULT));
         xmitMoveAllBtn
                 .setToolTipText("Move all Transmitters to the Selected Table");
+        xmitMoveAllBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                moveTransmitter(true);
+            }
+        });
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
         gd.horizontalSpan = 2;
@@ -231,10 +310,9 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.heightHint = LIST_HEIGHT_150;
         gd.widthHint = LIST_WIDTH;
-        List areaList = new List(comp, SWT.MULTI | SWT.BORDER | SWT.V_SCROLL);
-        areaList.setLayoutData(gd);
-        // TODO - remove
-        areaList.setItems(new String[] { "Area1", "Area2", "Area3" });
+        transmitterAreaList = new List(comp, SWT.MULTI | SWT.BORDER
+                | SWT.V_SCROLL | SWT.H_SCROLL);
+        transmitterAreaList.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.verticalAlignment = SWT.CENTER;
@@ -248,13 +326,24 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         areaMoveBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH, SWT.DEFAULT));
         areaMoveBtn
                 .setToolTipText("Move selected Area(s) to the Selected Table");
+        areaMoveBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                moveTransmitterArea(false);
+            }
+        });
 
         Button areaMoveAllBtn = new Button(moveComp2, SWT.PUSH);
         areaMoveAllBtn.setText(">>");
         areaMoveAllBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH,
                 SWT.DEFAULT));
         areaMoveAllBtn.setToolTipText("Move all Areas to the Selected Table");
-
+        areaMoveAllBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                moveTransmitterArea(true);
+            }
+        });
     }
 
     /**
@@ -281,10 +370,15 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.heightHint = LIST_HEIGHT_125;
         gd.widthHint = LIST_WIDTH;
-        List zoneList = new List(comp, SWT.MULTI | SWT.BORDER | SWT.V_SCROLL);
+        zoneList = new List(comp, SWT.MULTI | SWT.BORDER | SWT.V_SCROLL
+                | SWT.H_SCROLL);
         zoneList.setLayoutData(gd);
-        // TODO - remove
-        zoneList.setItems(new String[] { "Zone1", "Zone2", "Zone3" });
+        zoneList.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                populateAreasForZone();
+            }
+        });
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.verticalAlignment = SWT.CENTER;
@@ -298,12 +392,24 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         zoneMoveBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH, SWT.DEFAULT));
         zoneMoveBtn
                 .setToolTipText("Move selected Zone(s) to the Selected Table");
+        zoneMoveBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                moveZone(false);
+            }
+        });
 
         Button zoneMoveAllBtn = new Button(moveComp, SWT.PUSH);
         zoneMoveAllBtn.setText(">>");
         zoneMoveAllBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH,
                 SWT.DEFAULT));
         zoneMoveAllBtn.setToolTipText("Move all Zones to the Selected Table");
+        zoneMoveAllBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                moveZone(true);
+            }
+        });
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
         gd.horizontalSpan = 2;
@@ -320,10 +426,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.heightHint = LIST_HEIGHT_150;
         gd.widthHint = LIST_WIDTH;
-        List areaList = new List(comp, SWT.MULTI | SWT.BORDER | SWT.V_SCROLL);
-        areaList.setLayoutData(gd);
-        // TODO - remove
-        areaList.setItems(new String[] { "Area1", "Area2", "Area3" });
+        zoneAreaList = new List(comp, SWT.MULTI | SWT.BORDER | SWT.V_SCROLL);
+        zoneAreaList.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.verticalAlignment = SWT.CENTER;
@@ -337,12 +441,25 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         areaMoveBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH, SWT.DEFAULT));
         areaMoveBtn
                 .setToolTipText("Move selected Area(s) to the Selected Table");
+        areaMoveBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                moveZoneArea(false);
+            }
+        });
 
         Button areaMoveAllBtn = new Button(moveComp2, SWT.PUSH);
         areaMoveAllBtn.setText(">>");
         areaMoveAllBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH,
                 SWT.DEFAULT));
         areaMoveAllBtn.setToolTipText("Move all Areas to the Selected Table");
+        areaMoveAllBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                moveZoneArea(true);
+            }
+        });
+
     }
 
     /**
@@ -369,10 +486,9 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.heightHint = LIST_HEIGHT_125;
         gd.widthHint = LIST_WIDTH;
-        List areaList = new List(comp, SWT.MULTI | SWT.BORDER | SWT.V_SCROLL);
+        areaList = new List(comp, SWT.MULTI | SWT.BORDER | SWT.V_SCROLL
+                | SWT.H_SCROLL);
         areaList.setLayoutData(gd);
-        // TODO - remove
-        areaList.setItems(new String[] { "Area1", "Area2", "Area3" });
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.verticalAlignment = SWT.CENTER;
@@ -386,12 +502,24 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         areaMoveBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH, SWT.DEFAULT));
         areaMoveBtn
                 .setToolTipText("Move selected Area(s) to the Selected Table");
+        areaMoveBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                moveArea(false);
+            }
+        });
 
         Button areaMoveAllBtn = new Button(moveComp, SWT.PUSH);
         areaMoveAllBtn.setText(">>");
         areaMoveAllBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH,
                 SWT.DEFAULT));
         areaMoveAllBtn.setToolTipText("Move all Areas to the Selected Table");
+        areaMoveAllBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                moveArea(true);
+            }
+        });
     }
 
     /**
@@ -426,6 +554,12 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
         Button removeBtn = new Button(comp, SWT.PUSH);
         removeBtn.setText(" Remove Selected ");
+        removeBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                removeSelectedItemsFromTable();
+            }
+        });
     }
 
     /**
@@ -446,11 +580,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.widthHint = 75;
 
-        transList = new List(comp, SWT.BORDER);
-        transList.setLayoutData(gd);
-
-        transList.add("OMA");
-        transList.add("LNK");
+        affectedTransmitterList = new List(comp, SWT.BORDER);
+        affectedTransmitterList.setLayoutData(gd);
     }
 
     /**
@@ -474,7 +605,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         okBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-
+                // TODO Implement this
+                close();
             }
         });
 
@@ -493,39 +625,61 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     }
 
     /**
+     * Populate the tabs with data
+     */
+    private void populateTabs() {
+        if (data == null) {
+            gatherData();
+        }
+
+        this.transmitterObjectList = data.getTransmitterList();
+        Collections
+                .sort(transmitterObjectList, new TransmitterNameComparator());
+        java.util.List<String> transmitterNameList = new ArrayList<>(
+                transmitterObjectList.size());
+        for (Transmitter t : transmitterObjectList) {
+            transmitterNameList.add(t.getName());
+        }
+
+        xmitList.setItems(transmitterNameList.toArray(new String[0]));
+        if (xmitList.getItemCount() > 0) {
+            xmitList.select(0);
+            populateAreasForTransmitter();
+        }
+
+        this.zoneObjectList = data.getZoneList();
+        Collections.sort(zoneObjectList, new ZoneNameComparator());
+        java.util.List<String> zoneNameList = new ArrayList<>(
+                zoneObjectList.size());
+        for (Zone z : zoneObjectList) {
+            zoneNameList.add(z.getZoneName());
+        }
+
+        zoneList.setItems(zoneNameList.toArray(new String[0]));
+        if (zoneList.getItemCount() > 0) {
+            zoneList.select(0);
+            populateAreasForZone();
+        }
+
+        this.areaObjectList = data.getAreaList();
+        Collections.sort(areaObjectList, new AreaNameComparator());
+        String[] areaNames = new String[areaObjectList.size()];
+        int idx = 0;
+        for (Area a : areaObjectList) {
+            areaNames[idx] = a.getAreaName();
+            idx++;
+        }
+
+        areaList.setItems(areaNames);
+        if (areaList.getItemCount() > 0) {
+            areaList.select(0);
+        }
+    }
+
+    /**
      * Populate the table
      */
     private void populateTable() {
-        tableData = new TableData(columns);
-
-        // TODO get data and populate if data are available
-        TableRowData row = new TableRowData();
-        TableCellData cell = new TableCellData("OMA");
-        row.addTableCellData(cell);
-        cell = new TableCellData("Omaha Transmitter");
-        row.addTableCellData(cell);
-        cell = new TableCellData("Transmitter");
-        row.addTableCellData(cell);
-        tableData.addDataRow(row);
-
-        row = new TableRowData();
-        cell = new TableCellData("NEC125");
-        row.addTableCellData(cell);
-        cell = new TableCellData("Douglas County");
-        row.addTableCellData(cell);
-        cell = new TableCellData("Area");
-        row.addTableCellData(cell);
-        tableData.addDataRow(row);
-
-        row = new TableRowData();
-        cell = new TableCellData("IAZ698");
-        row.addTableCellData(cell);
-        cell = new TableCellData("SW Iowa");
-        row.addTableCellData(cell);
-        cell = new TableCellData("Zone");
-        row.addTableCellData(cell);
-        tableData.addDataRow(row);
-
         this.tableComp.populateTable(tableData);
 
     }
@@ -555,26 +709,329 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         tc.setPack(true);
         columns.add(tc);
 
+        tableData = new TableData(columns);
+    }
+
+    /**
+     * Populate the area list of the transmitter tab
+     */
+    private void populateAreasForTransmitter() {
+        int[] indices = xmitList.getSelectionIndices();
+        java.util.List<Area> areas = new ArrayList<Area>();
+        for (int i : indices) {
+            Transmitter t = this.transmitterObjectList.get(i);
+            areas.addAll(data.getAreasForTransmitter(t));
+        }
+
+        String[] areaNames = new String[areas.size()];
+
+        for (int i = 0; i < areas.size(); i++) {
+            areaNames[i] = areas.get(i).getAreaName();
+        }
+
+        Arrays.sort(areaNames);
+
+        this.transmitterAreaList.setItems(areaNames);
+    }
+
+    /**
+     * Populate the area list for the zone tab
+     */
+    private void populateAreasForZone() {
+        int[] indices = zoneList.getSelectionIndices();
+        java.util.List<Area> areas = new ArrayList<Area>();
+        for (int i : indices) {
+            Zone z = this.zoneObjectList.get(i);
+            areas.addAll(z.getAreas());
+        }
+
+        String[] areaNames = new String[areas.size()];
+
+        for (int i = 0; i < areas.size(); i++) {
+            areaNames[i] = areas.get(i).getAreaName();
+        }
+
+        this.zoneAreaList.setItems(areaNames);
+    }
+
+    /**
+     * Populate the data object.
+     */
+    private void gatherData() {
+        data = new AreaSelectionData();
+        try {
+            data.populate();
+        } catch (Exception e) {
+            statusHandler.error("Error accessing BMH database", e);
+        }
+    }
+
+    /**
+     * Move Transmitter to the selected table
+     * 
+     * @param moveAll
+     *            true moves all, false moves selection
+     */
+    private void moveTransmitter(boolean moveAll) {
+        if (moveAll) {
+            for (Transmitter t : transmitterObjectList) {
+                addTransmitterRow(t);
+            }
+        } else {
+            int[] indices = xmitList.getSelectionIndices();
+            for (int i : indices) {
+                addTransmitterRow(transmitterObjectList.get(i));
+            }
+        }
+
+        updateAffectedTransmitters();
+        populateTable();
+    }
+
+    /**
+     * Move Transmitter's Area to the selected table
+     * 
+     * @param moveAll
+     *            true moves all, false moves selection
+     */
+    private void moveTransmitterArea(boolean moveAll) {
+        if (moveAll) {
+            for (String areaName : transmitterAreaList.getItems()) {
+                Area area = data.getAreaByName(areaName);
+                if (area != null) {
+                    addAreaRow(area);
+                }
+            }
+        } else {
+            int[] indices = transmitterAreaList.getSelectionIndices();
+            for (int i : indices) {
+                Area area = data.getAreaByName(transmitterAreaList.getItem(i));
+                if (area != null) {
+                    addAreaRow(area);
+                }
+            }
+        }
+
+        updateAffectedTransmitters();
+        populateTable();
+    }
+
+    /**
+     * Move Zone to the selected table
+     * 
+     * @param moveAll
+     *            true moves all, false moves selection
+     */
+    private void moveZone(boolean moveAll) {
+        if (moveAll) {
+            for (Zone z : zoneObjectList) {
+                addZoneRow(z);
+            }
+        } else {
+            int[] indices = zoneList.getSelectionIndices();
+            for (int i : indices) {
+                addZoneRow(zoneObjectList.get(i));
+            }
+        }
+
+        updateAffectedTransmitters();
+        populateTable();
+    }
+
+    /**
+     * Move Zone's Area to the selected table
+     * 
+     * @param moveAll
+     *            true moves all, false moves selection
+     */
+    private void moveZoneArea(boolean moveAll) {
+        if (moveAll) {
+            for (String areaName : zoneAreaList.getItems()) {
+                addAreaRow(data.getAreaByName(areaName));
+            }
+        } else {
+            int[] indices = zoneAreaList.getSelectionIndices();
+            for (int i : indices) {
+                addAreaRow(data.getAreaByName(zoneAreaList.getItem(i)));
+            }
+        }
+
+        updateAffectedTransmitters();
+        populateTable();
+    }
+
+    /**
+     * Move Area to the selected table
+     * 
+     * @param moveAll
+     *            true moves all, false moves selection
+     */
+    private void moveArea(boolean moveAll) {
+        if (moveAll) {
+            for (String areaName : areaList.getItems()) {
+                addAreaRow(data.getAreaByName(areaName));
+            }
+        } else {
+            int[] indices = areaList.getSelectionIndices();
+            for (int i : indices) {
+                addAreaRow(data.getAreaByName(areaList.getItem(i)));
+            }
+        }
+
+        updateAffectedTransmitters();
+        populateTable();
+
+    }
+
+    /**
+     * Add a Transmitter row to the table
+     * 
+     * @param t
+     *            The Transmitter to add
+     */
+    private void addTransmitterRow(Transmitter t) {
+        for (TableRowData trd : tableData.getTableRows()) {
+            if (trd.getData() instanceof Transmitter) {
+                if (((Transmitter) trd.getData()).equals(t)) {
+                    return;
+                }
+            }
+        }
+
+        TableRowData row = new TableRowData();
+        TableCellData cell = new TableCellData(t.getMnemonic());
+        row.addTableCellData(cell);
+        cell = new TableCellData(t.getName());
+        row.addTableCellData(cell);
+        cell = new TableCellData(TRANSMITTER);
+        row.addTableCellData(cell);
+
+        row.setData(t);
+        tableData.addDataRow(row);
+    }
+
+    /**
+     * Add an Area row to the table
+     * 
+     * @param a
+     *            The Area to add
+     */
+    private void addAreaRow(Area a) {
+        for (TableRowData trd : tableData.getTableRows()) {
+            if (trd.getData() instanceof Area) {
+                if (((Area) trd.getData()).equals(a)) {
+                    return;
+                }
+            }
+        }
+
+        TableRowData row = new TableRowData();
+        TableCellData cell = new TableCellData(String.valueOf(a.getAreaId()));
+        row.addTableCellData(cell);
+        cell = new TableCellData(a.getAreaName());
+        row.addTableCellData(cell);
+        cell = new TableCellData(AREA);
+        row.addTableCellData(cell);
+
+        row.setData(a);
+        tableData.addDataRow(row);
+    }
+
+    /**
+     * Add a Zone row to the table
+     * 
+     * @param z
+     *            The Zone to add
+     */
+    private void addZoneRow(Zone z) {
+        for (TableRowData trd : tableData.getTableRows()) {
+            if (trd.getData() instanceof Zone) {
+                if (((Zone) trd.getData()).equals(z)) {
+                    return;
+                }
+            }
+        }
+
+        TableRowData row = new TableRowData();
+        TableCellData cell = new TableCellData(String.valueOf(z.getZoneCode()));
+        row.addTableCellData(cell);
+        cell = new TableCellData(z.getZoneName());
+        row.addTableCellData(cell);
+        cell = new TableCellData(ZONE);
+        row.addTableCellData(cell);
+
+        row.setData(z);
+        tableData.addDataRow(row);
+    }
+
+    /**
+     * Remove selected items from the selected table.
+     */
+    private void removeSelectedItemsFromTable() {
+        java.util.List<TableRowData> tableSelection = tableComp.getSelection();
+        for (TableRowData trd : tableSelection) {
+            tableData.deleteRow(trd);
+        }
+
+        updateAffectedTransmitters();
+        populateTable();
+    }
+
+    /**
+     * Update the list of affected transmitters
+     */
+    private void updateAffectedTransmitters() {
+        java.util.List<TableRowData> selectedRows = tableData.getTableRows();
+        Set<Transmitter> listOfAffectedTransmitters = new HashSet<Transmitter>();
+        for (TableRowData trd : selectedRows) {
+            Object o = trd.getData();
+            if (o instanceof Transmitter) {
+                listOfAffectedTransmitters.add((Transmitter) o);
+            } else if (o instanceof Area) {
+                Area a = (Area) o;
+                listOfAffectedTransmitters.addAll(a.getTransmitters());
+            } else if (o instanceof Zone) {
+                Zone z = (Zone) o;
+                for (Area a : z.getAreas()) {
+                    listOfAffectedTransmitters.addAll(a.getTransmitters());
+                }
+            }
+        }
+
+        affectedTransmitterList.removeAll();
+
+        // Populate list control with Affected Transmitters
+        String[] transmitterNames = new String[listOfAffectedTransmitters
+                .size()];
+
+        int idx = 0;
+        for (Transmitter t : listOfAffectedTransmitters) {
+            transmitterNames[idx] = t.getMnemonic();
+            idx++;
+        }
+
+        Arrays.sort(transmitterNames);
+        affectedTransmitterList.setItems(transmitterNames);
     }
 
     /**
      * Selected Table Comp
      */
     private class SelectedTableComp extends TableComp {
-
+        // TODO Candidate to be replaced by a generic TableComp class
         public SelectedTableComp(Composite parent, int tableStyle) {
             super(parent, tableStyle, true, true);
         }
 
         @Override
         protected void handleTableMouseClick(MouseEvent event) {
-            // TODO Auto-generated method stub
+            // no op
 
         }
 
         @Override
         protected void handleTableSelection(SelectionEvent e) {
-            // TODO Auto-generated method stub
+            // no op
 
         }
     }
