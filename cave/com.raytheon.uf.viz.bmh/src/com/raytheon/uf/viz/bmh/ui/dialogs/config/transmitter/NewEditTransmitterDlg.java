@@ -83,6 +83,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private final String STATUS_PREFIX = "     Transmitter is ";
 
+    private final ITransmitterStatusChange statusChange;
+
     /** Status Group */
     private Group statusGrp;
 
@@ -159,6 +161,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private Transmitter previousTransmitter;
 
+    private Label statusLbl;
+
+    private Label modeLbl;
+
     /**
      * Edit Transmitter constructor.
      * 
@@ -175,13 +181,14 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      */
     public NewEditTransmitterDlg(Shell parentShell, Transmitter transmitter,
             TransmitterGroup group, TransmitterEditType type,
-            ICloseCallback callback) {
+            ICloseCallback callback, ITransmitterStatusChange statusChange) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
                 | CAVE.DO_NOT_BLOCK);
         this.type = type;
         this.transmitter = transmitter;
         this.group = group;
         this.callback = callback;
+        this.statusChange = statusChange;
         dataManager = new TransmitterDataManager();
 
         switch (type) {
@@ -208,8 +215,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      * @param parentShell
      */
     public NewEditTransmitterDlg(Shell parentShell, TransmitterEditType type,
-            ICloseCallback callback) {
-        this(parentShell, null, null, type, callback);
+            ICloseCallback callback, ITransmitterStatusChange statusChange) {
+        this(parentShell, null, null, type, callback, statusChange);
     }
 
     @Override
@@ -272,8 +279,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         statusIconLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        Label statusLbl = new Label(top, SWT.NONE);
-        statusLbl.setText(STATUS_PREFIX + TxStatus.DISABLED.name());
+        gd.widthHint = 200;
+        statusLbl = new Label(top, SWT.NONE);
         statusLbl.setLayoutData(gd);
 
         gl = new GridLayout(2, false);
@@ -290,13 +297,20 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         enableTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO add confirmation
-                System.out.println("Enable Transmitter...");
-                // statusGrp.setText(STATUS_PREFIX + selectedTransmitter
-                // + " Enabled");
-                notImplemented();
+                // TODO trigger changes
+                int answer = DialogUtility.showMessageBox(getShell(),
+                        SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
+                        "Enable Transmitter",
+                        "Are you sure you want to enable Transmitter "
+                                + transmitter.getMnemonic() + "?");
+                if (answer == SWT.NO) {
+                    return;
+                }
+
+                setTransmitterStatus(TxStatus.ENABLED);
             }
         });
+        transmitterControlList.add(enableTransmitterBtn);
 
         disableTransmitterBtn = new Button(bottom, SWT.PUSH);
         disableTransmitterBtn.setText("Disable Transmitter");
@@ -304,11 +318,20 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         disableTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO add confirmation
-                System.out.println("Disable Transmitter...");
-                notImplemented();
+                // TODO trigger changes
+                int answer = DialogUtility.showMessageBox(getShell(),
+                        SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
+                        "Enable Transmitter",
+                        "Are you sure you want to disable Transmitter "
+                                + transmitter.getMnemonic() + "?");
+                if (answer == SWT.NO) {
+                    return;
+                }
+
+                setTransmitterStatus(TxStatus.DISABLED);
             }
         });
+        transmitterControlList.add(disableTransmitterBtn);
 
         // Mode Group
         gl = new GridLayout(1, false);
@@ -330,8 +353,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         modeIconLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        Label modeLbl = new Label(modeTop, SWT.NONE);
-        modeLbl.setText(STATUS_PREFIX + TxMode.PRIMARY.name());
+        gd.widthHint = 200;
+        modeLbl = new Label(modeTop, SWT.NONE);
         modeLbl.setLayoutData(gd);
 
         gl = new GridLayout(2, false);
@@ -347,11 +370,21 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         primaryTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO add confirmation
-                System.out.println("Primary Transmitter...");
-                notImplemented();
+                // TODO trigger changes
+                int answer = DialogUtility.showMessageBox(getShell(),
+                        SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
+                        "Transmitter Mode",
+                        "Are you sure you want to set Transmitter "
+                                + transmitter.getMnemonic() + " as "
+                                + TxMode.PRIMARY.name() + "?");
+                if (answer == SWT.NO) {
+                    return;
+                }
+
+                setTransmitterMode(TxMode.PRIMARY);
             }
         });
+        transmitterControlList.add(primaryTransmitterBtn);
 
         secondaryTransmitterBtn = new Button(modeBottom, SWT.PUSH);
         secondaryTransmitterBtn.setText("Set As Secondary");
@@ -359,11 +392,21 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         secondaryTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO add confirmation
-                System.out.println("Secondary Transmitter...");
-                notImplemented();
+                // TODO trigger changes
+                int answer = DialogUtility.showMessageBox(getShell(),
+                        SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
+                        "Transmitter Mode",
+                        "Are you sure you want to set Transmitter "
+                                + transmitter.getMnemonic() + " as "
+                                + TxMode.SECONDARY.name() + "?");
+                if (answer == SWT.NO) {
+                    return;
+                }
+
+                setTransmitterMode(TxMode.SECONDARY);
             }
         });
+        transmitterControlList.add(secondaryTransmitterBtn);
     }
 
     /**
@@ -694,6 +737,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             if (transmitter.getFipsCode() != null) {
                 fipsTxt.setText(transmitter.getFipsCode());
             }
+
+            statusLbl.setText(this.STATUS_PREFIX
+                    + transmitter.getTxStatus().name());
+            modeLbl.setText(this.STATUS_PREFIX + transmitter.getTxMode().name());
 
             // Enable/Disable controls
             enableTransmitterControls(enabled);
@@ -1100,6 +1147,28 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         }
 
         return valid;
+    }
+
+    private void setTransmitterStatus(TxStatus status) {
+        transmitter.setTxStatus(status);
+        try {
+            transmitter = dataManager.saveTransmitter(transmitter);
+            this.statusLbl.setText(STATUS_PREFIX + status.name());
+            statusChange.statusChanged();
+        } catch (Exception e) {
+            statusHandler.error("Error saving Transmitter status change", e);
+        }
+    }
+
+    private void setTransmitterMode(TxMode mode) {
+        transmitter.setTxMode(mode);
+        try {
+            transmitter = dataManager.saveTransmitter(transmitter);
+            this.modeLbl.setText(STATUS_PREFIX + mode.name());
+            statusChange.statusChanged();
+        } catch (Exception e) {
+            statusHandler.error("Error saving Transmitter mode change", e);
+        }
     }
 
     /**

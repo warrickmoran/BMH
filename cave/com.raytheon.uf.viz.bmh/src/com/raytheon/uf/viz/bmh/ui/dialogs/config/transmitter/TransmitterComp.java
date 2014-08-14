@@ -74,7 +74,8 @@ import com.raytheon.viz.ui.dialogs.ListSelectionDlg.ReturnArray;
  * @version 1.0
  */
 
-public class TransmitterComp extends Composite {
+public class TransmitterComp extends Composite implements
+        ITransmitterStatusChange {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(TransmitterComp.class);
 
@@ -335,7 +336,7 @@ public class TransmitterComp extends Composite {
 
         if (newTransmitter) {
             newEditDlg = new NewEditTransmitterDlg(getShell(),
-                    TransmitterEditType.NEW_TRANSMITTER, callback);
+                    TransmitterEditType.NEW_TRANSMITTER, callback, this);
         } else {
             TreeItem selectedItem = tree.getSelection()[0];
             Transmitter t = null;
@@ -354,7 +355,7 @@ public class TransmitterComp extends Composite {
             }
 
             newEditDlg = new NewEditTransmitterDlg(getShell(), t, group,
-                    TransmitterEditType.EDIT_TRANSMITTER, callback);
+                    TransmitterEditType.EDIT_TRANSMITTER, callback, this);
         }
         newEditDlg.open();
     }
@@ -380,12 +381,12 @@ public class TransmitterComp extends Composite {
 
         if (newGroup) {
             newEditDlg = new NewEditTransmitterDlg(getShell(),
-                    TransmitterEditType.NEW_TRANSMITTER_GROUP, callback);
+                    TransmitterEditType.NEW_TRANSMITTER_GROUP, callback, this);
         } else {
             TreeItem selectedItem = tree.getSelection()[0];
             TransmitterGroup group = (TransmitterGroup) selectedItem.getData();
             newEditDlg = new NewEditTransmitterDlg(getShell(), null, group,
-                    TransmitterEditType.EDIT_TRANSMITTER_GROUP, callback);
+                    TransmitterEditType.EDIT_TRANSMITTER_GROUP, callback, this);
         }
 
         newEditDlg.open();
@@ -622,15 +623,16 @@ public class TransmitterComp extends Composite {
         String[] names = nameList.toArray(new String[0]);
         ListSelectionDlg dlg = new ListSelectionDlg(getShell(), names, true,
                 ReturnArray.ARRAY_STRING_ITEMS, "Select", "Destination Group",
-                "Select the destination group", new ICloseCallback() {
-                    @Override
-                    public void dialogClosed(Object returnValue) {
-                        if (returnValue != null) {
-                            String[] results = (String[]) returnValue;
-                            moveToGroup(results[0]);
-                        }
-                    }
-                });
+                "Select the destination group");
+        dlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue != null) {
+                    String[] results = (String[]) returnValue;
+                    moveToGroup(results[0]);
+                }
+            }
+        });
         dlg.open();
     }
 
@@ -828,5 +830,10 @@ public class TransmitterComp extends Composite {
      */
     public boolean okToClose() {
         return newEditDlg == null || newEditDlg.isDisposed();
+    }
+
+    @Override
+    public void statusChanged() {
+        populateTree();
     }
 }
