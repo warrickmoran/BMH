@@ -52,6 +52,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014  3175     rjpeter     Initial creation
  * Jul 10, 2014  3283     bsteffen    Change transmitters from map to set.
  * Jul 17, 2014  3406     mpduff      Added id pk column, named query, removed cascade
+ * Aug 14, 2014  3411     mpduff      Add areaName to unique constraint
  * 
  * </pre>
  * 
@@ -60,7 +61,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @NamedQueries({ @NamedQuery(name = Area.GET_AREA_FOR_CODE, query = Area.GET_AREA_FOR_CODE_QUERY) })
 @Entity
-@Table(name = "area", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "areaCode" }) })
+@Table(name = "area", schema = "bmh", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "areaCode" }),
+        @UniqueConstraint(columnNames = { "areaName" }) })
 @SequenceGenerator(initialValue = 1, name = Area.GEN, sequenceName = "area_seq")
 @DynamicSerialize
 public class Area {

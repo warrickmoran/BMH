@@ -51,6 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
  * Jul 17, 2014  3406      mpduff      Added id pk column, named query, removed cascade
+ * Aug 14, 2014  3411      mpduff      Added zoneName to unique constraint
  * 
  * </pre>
  * 
@@ -59,7 +60,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @NamedQueries({ @NamedQuery(name = Zone.GET_ZONE_FOR_CODE, query = Zone.GET_ZONE_FOR_CODE_QUERY) })
 @Entity
-@Table(name = "zone", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "zoneCode" }) })
+@Table(name = "zone", schema = "bmh", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "zoneCode" }),
+        @UniqueConstraint(columnNames = { "zoneName" }) })
 @SequenceGenerator(initialValue = 1, name = Zone.GEN, sequenceName = "zone_seq")
 @DynamicSerialize
 public class Zone {
