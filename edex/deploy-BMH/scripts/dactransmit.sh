@@ -72,7 +72,7 @@ for dependency in $DEPENDENCIES; do
 done;
 
 JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
-JVM_PROPS="-Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml"
+JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml"
 
 
 

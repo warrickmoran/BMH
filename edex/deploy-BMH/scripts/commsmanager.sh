@@ -30,6 +30,8 @@
 #    07/28/14        3399          bsteffen       Initial Creation.
 ##############################################################################
 
+export BMH_DATA=/awips2/bmh/data
+
 path_to_script=`readlink -f $0`
 dir=$(dirname $path_to_script)
 
@@ -42,16 +44,16 @@ export JAVA_HOME="${awips_home}/java"
 # set Java into the path
 export PATH=${awips_home}/bin:${JAVA_HOME}/bin:${PATH}
 
-DEPENDENCIES="ch.qos.logback org.slf4j org.geotools javax.measure org.apache.thrift net.sf.cglib org.apache.qpid javax.jms"
+DEPENDENCIES="ch.qos.logback org.slf4j org.apache.thrift net.sf.cglib org.apache.qpid javax.jms"
 
-ENTRY_POINT="com.raytheon.uf.edex.bmh.comms.CommsManager"
+ENTRY_POINT="com.raytheon.bmh.comms.CommsManager"
 CLASSPATH="${EDEX_HOME}/lib/plugins/*"
 for dependency in $DEPENDENCIES; do
   CLASSPATH="${CLASSPATH}:/awips2/edex/lib/dependencies/${dependency}/*"
 done;
 
 JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
-JVM_PROPS="-Duser.timezone=GMT"
+JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT"
 
 java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "$@"
 

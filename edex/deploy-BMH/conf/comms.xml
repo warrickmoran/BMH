@@ -1,6 +1,6 @@
 <dacs dacTransmitPort="58259" lineTapPort="58260">
   <dacTransmitStarter>/awips2/bmh/bin/dactransmit.sh</dacTransmitStarter>
-  <jmsConnection>amqp://guest:guest@localhost/edex?brokerlist='tcp://localhost:5672?connecttimeout='5000'&amp;heartbeat='0''&amp;maxprefetch='10'&amp;sync_publish='all'&amp;failover='nofailover'&amp;sync_ack='true'</jmsConnection>
+  <jmsConnection>amqp://guest:guest@commsmanager/edex?brokerlist='tcp://localhost:5672?connecttimeout='5000'&amp;heartbeat='0''&amp;maxprefetch='10'&amp;sync_publish='all'&amp;failover='nofailover'&amp;sync_ack='true'</jmsConnection>
   <dac ipAddress="147.18.136.46" receivePort="21000">
     <channel transmitterGroup="Group1" radios="1" dataPort="21002"/>
   </dac>

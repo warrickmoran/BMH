@@ -70,6 +70,19 @@ public final class BMHConstants {
         return BMH_DATA_DIRECTORY;
     }
 
+    public static String getJmsConnectionString(String id) {
+        StringBuilder stringBuilder = new StringBuilder("amqp://guest:guest@");
+        stringBuilder.append(id);
+        stringBuilder.append("/");
+        stringBuilder.append(System.getenv("JMS_VIRTUALHOST"));
+        stringBuilder.append("?brokerlist='");
+        stringBuilder.append(System.getenv("JMS_SERVER"));
+        stringBuilder
+                .append("?connecttimeout='5000'&heartbeat='0''&maxprefetch='10'&sync_publish='all'&failover='nofailover'&sync_ack='true'");
+
+        return stringBuilder.toString();
+    }
+
     private static String getDataDirectory() {
         String bmhDataDirectory = System.getenv(BMH_DATA_ENV_VAR);
         if (bmhDataDirectory == null) {
