@@ -41,7 +41,6 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxStatus;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
