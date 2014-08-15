@@ -100,8 +100,10 @@ public class CommsConfigurator {
             config.setDacTransmitPort(prevConfig.getDacTransmitPort());
             config.setLineTapPort(prevConfig.getLineTapPort());
             config.setDacTransmitStarter(prevConfig.getDacTransmitStarter());
-            for (DacConfig dconf : prevConfig.getDacs()) {
-                prevDacMap.put(dconf.getIpAddress(), dconf);
+            if (prevConfig.getDacs() != null) {
+                for (DacConfig dconf : prevConfig.getDacs()) {
+                    prevDacMap.put(dconf.getIpAddress(), dconf);
+                }
             }
         }
         assignPorts(dacs, dacMap, prevDacMap);
