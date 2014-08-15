@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXB;
@@ -86,17 +87,17 @@ public class CommsManager {
 
     private CommsConfig config;
 
-    private final DacTransmitServer transmitServer;
+    private DacTransmitServer transmitServer;
 
-    private final LineTapServer lineTapServer;
+    private LineTapServer lineTapServer;
 
     private JmsCommunicator jms;
 
     private final Map<DacTransmitKey, Process> startedProcesses = new HashMap<>();
 
     /**
-     * Create a comms manager, this will fail if there is problems with the
-     * config file.
+     * Create a comms manager, this will fail if there are problems starting
+     * servers.
      */
     public CommsManager() {
         configPath = CommsConfig.getDefaultPath();
@@ -107,15 +108,20 @@ public class CommsManager {
             config = new CommsConfig();
             JAXB.marshal(config, configPath.toFile());
         }
-        transmitServer = new DacTransmitServer(this, config);
-        lineTapServer = new LineTapServer(config);
-        startJms();
-    }
-
-    private void startJms() {
+        try {
+            transmitServer = new DacTransmitServer(this, config);
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Unable to start dac transmit server.", e);
+        }
+        try {
+            lineTapServer = new LineTapServer(config);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to start line tap server.",
+                    e);
+        }
         try {
             jms = new JmsCommunicator(config);
-            jms.connect();
         } catch (URLSyntaxException e) {
             logger.error(
                     "Error parsing jms connection url, jms will be disabled.",
@@ -141,6 +147,7 @@ public class CommsManager {
         }
         transmitServer.start();
         lineTapServer.start();
+        jms.connect();
         while (transmitServer.isAlive() && lineTapServer.isAlive()) {
             WatchKey wkey = null;
             try {
@@ -159,14 +166,10 @@ public class CommsManager {
                         modFile = configPath.resolveSibling(modFile);
                         if (Files.exists(modFile) && Files.exists(configPath)
                                 && Files.isSameFile(configPath, modFile)) {
-                            config = JAXB.unmarshal(configPath.toFile(),
+                            CommsConfig config = JAXB.unmarshal(
+                                    configPath.toFile(),
                                     CommsConfig.class);
-                            transmitServer.reconfigure(config);
-                            // TODO if JMS address changed or if any ports
-                            // changed then reset them.
-                            if (jms == null) {
-                                startJms();
-                            }
+                            reconfigure(config);
                         }
                     } catch (Throwable t) {
                         logger.error("Cannot read new config file", t);
@@ -176,13 +179,16 @@ public class CommsManager {
                 wkey.reset();
             }
             try {
-                for (DacConfig dac : config.getDacs()) {
-                    for (DacChannelConfig channel : dac.getChannels()) {
-                        DacTransmitKey key = new DacTransmitKey(dac, channel);
-                        if (transmitServer.isConnected(key)) {
-                            startedProcesses.remove(key);
-                        } else {
-                            launchDacTransmit(key, channel);
+                if (config.getDacs() != null) {
+                    for (DacConfig dac : config.getDacs()) {
+                        for (DacChannelConfig channel : dac.getChannels()) {
+                            DacTransmitKey key = new DacTransmitKey(dac,
+                                    channel);
+                            if (transmitServer.isConnected(key)) {
+                                startedProcesses.remove(key);
+                            } else {
+                                launchDacTransmit(key, channel);
+                            }
                         }
                     }
                 }
@@ -200,6 +206,58 @@ public class CommsManager {
             } catch (IOException e) {
                 logger.error("Unexpected error monitoring config file.", e);
             }
+        }
+    }
+
+    public void reconfigure(CommsConfig newConfig) {
+        if (newConfig.equals(this.config)) {
+            return;
+        }
+        if (newConfig.getDacTransmitPort() != config.getDacTransmitPort()) {
+            try {
+                transmitServer.changePort(newConfig.getDacTransmitPort());
+            } catch (IOException e) {
+                logger.error("Unable to switch dac transmit server port, port will remain: "
+                        + config.getDacTransmitPort());
+                newConfig.setDacTransmitPort(config.getDacTransmitPort());
+            }
+        }
+        if (newConfig.getLineTapPort() != config.getLineTapPort()) {
+            try {
+                lineTapServer.changePort(newConfig.getLineTapPort());
+            } catch (IOException e) {
+                logger.error("Unable to switch line tap server port, port will remain: "
+                        + config.getDacTransmitPort());
+                newConfig.setLineTapPort(config.getLineTapPort());
+            }
+        }
+        if (jms != null
+                && !config.getJmsConnection().equals(
+                        newConfig.getJmsConnection())) {
+            jms.disconnect();
+            jms = null;
+        }
+        this.config = newConfig;
+        transmitServer.reconfigure(config);
+        lineTapServer.reconfigure(config);
+        if (jms == null) {
+            try {
+                jms = new JmsCommunicator(config);
+                jms.connect();
+            } catch (URLSyntaxException e) {
+                logger.error(
+                        "Error parsing jms connection url, jms will be disabled.",
+                        e);
+            }
+        }
+        for (Entry<DacTransmitKey, Process> e : startedProcesses.entrySet()) {
+            /*
+             * Destroy any processes we have started that have not connected
+             * since they may have bad config values.
+             */
+            logger.debug("Stopping unconnected process for "
+                    + e.getKey().getInputDirectory());
+            e.getValue().destroy();
         }
     }
 

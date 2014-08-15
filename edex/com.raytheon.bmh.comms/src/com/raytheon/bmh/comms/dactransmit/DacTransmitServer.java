@@ -20,18 +20,17 @@
 package com.raytheon.bmh.comms.dactransmit;
 
 import java.io.IOException;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.uf.common.serialization.SerializationException;
@@ -60,10 +59,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * @author bsteffen
  * @version 1.0
  */
-public class DacTransmitServer extends Thread {
-
-    private static final Logger logger = LoggerFactory
-            .getLogger(DacTransmitServer.class);
+public class DacTransmitServer extends AbstractServerThread {
 
     private final CommsManager manager;
 
@@ -79,35 +75,42 @@ public class DacTransmitServer extends Thread {
     /**
      * Map of transmitter keys to the configuration for those channels
      */
-    private Map<DacTransmitKey, DacChannelConfig> channels;
-
-    private final int port;
+    private volatile Map<DacTransmitKey, DacChannelConfig> channels;
 
     /**
      * Create a server for listening to dac transmit applications.
      * 
      * @param config
      *            the config to use for this server.
+     * @throws IOException
      */
-    public DacTransmitServer(CommsManager manager, CommsConfig config) {
-        super("DacTransmitServer");
-        communicators = new ConcurrentHashMap<>(config.getDacs().size() * 4);
-        port = config.getDacTransmitPort();
+    public DacTransmitServer(CommsManager manager, CommsConfig config)
+            throws IOException {
+        super(config.getDacTransmitPort());
+        int mapSize = 0;
+        if (config.getDacs() != null) {
+            mapSize = config.getDacs().size() * 4;
+        }
+        communicators = new ConcurrentHashMap<>(mapSize);
         this.manager = manager;
         readChannels(config);
     }
 
     private void readChannels(CommsConfig config) {
-        Map<DacTransmitKey, DacChannelConfig> channels = new ConcurrentHashMap<>(
-                config.getDacs().size() * 4);
-        for (DacConfig dac : config.getDacs()) {
-            for (DacChannelConfig channel : dac.getChannels()) {
-                channels.put(new DacTransmitKey(dac, channel), channel);
+        Set<DacConfig> dacs = config.getDacs();
+        if (dacs == null) {
+            this.channels = new HashMap<DacTransmitKey, DacChannelConfig>(0);
+        } else {
+            Map<DacTransmitKey, DacChannelConfig> channels = new ConcurrentHashMap<>(
+                    dacs.size() * 4);
+            for (DacConfig dac : config.getDacs()) {
+                for (DacChannelConfig channel : dac.getChannels()) {
+                    channels.put(new DacTransmitKey(dac, channel), channel);
+                }
             }
+            this.channels = channels;
         }
-        this.channels = channels;
     }
-
 
     public void reconfigure(CommsConfig config) {
         readChannels(config);
@@ -163,76 +166,58 @@ public class DacTransmitServer extends Thread {
         }
     }
 
+    /**
+     * Shutdown all dac transmit communications as well as the server. This
+     * should only be called for cluster failover.
+     */
     @Override
-    public void run() {
-        ServerSocket server = null;
-        try {
-            server = new ServerSocket(port);
-        } catch (IOException e) {
-            logger.error("Failed to start dac transmit server", e);
-            return;
-        }
-
-        while (!server.isClosed()) {
-            try {
-                Socket socket = server.accept();
-                handleConnection(socket);
-            } catch (Throwable e) {
-                logger.error("Unexpected error accepting a connection", e);
+    public void shutdown() {
+        super.shutdown();
+        for (List<DacTransmitCommunicator> communicators : this.communicators
+                .values()) {
+            for (DacTransmitCommunicator communicator : communicators) {
+                communicator.shutdown();
             }
-        }
-        try {
-            server.close();
-        } catch (IOException e) {
-            logger.error(e.getLocalizedMessage(), e);
         }
     }
 
-    protected void handleConnection(Socket socket) {
-        try {
-            DacTransmitRegister message = SerializationUtil
-                    .transformFromThrift(DacTransmitRegister.class,
-                            socket.getInputStream());
-            DacTransmitKey key = new DacTransmitKey(
-                    message.getInputDirectory(), message.getDataPort(),
-                    message.getDacAddress());
-            DacChannelConfig channel = channels.get(key);
-            boolean keep = true;
-            String group = null;
-            if (channel == null) {
-                keep = false;
-            } else {
-                group = channel.getTransmitterGroup();
-            }
-            DacTransmitCommunicator comms = new DacTransmitCommunicator(
-                    manager, this, group, message.getTransmitters(), socket);
-            List<DacTransmitCommunicator> communicators = this.communicators
-                    .get(key);
-            if (communicators == null) {
-                communicators = new ArrayList<>(1);
-                this.communicators.put(key, communicators);
-            } else {
-                for (DacTransmitCommunicator communicator : communicators) {
-                    if (communicator.isConnectedToDac()) {
-                        keep = false;
-                    }
+    @Override
+    protected void handleConnection(Socket socket)
+            throws SerializationException, IOException {
+        DacTransmitRegister message = SerializationUtil.transformFromThrift(
+                DacTransmitRegister.class, socket.getInputStream());
+        DacTransmitKey key = new DacTransmitKey(message.getInputDirectory(),
+                message.getDataPort(), message.getDacAddress());
+        DacChannelConfig channel = channels.get(key);
+        boolean keep = true;
+        String group = null;
+        if (channel == null) {
+            keep = false;
+        } else {
+            group = channel.getTransmitterGroup();
+        }
+        DacTransmitCommunicator comms = new DacTransmitCommunicator(manager,
+                this, group, message.getTransmitters(), socket);
+        List<DacTransmitCommunicator> communicators = this.communicators
+                .get(key);
+        if (communicators == null) {
+            communicators = new ArrayList<>(1);
+            this.communicators.put(key, communicators);
+        } else {
+            for (DacTransmitCommunicator communicator : communicators) {
+                if (communicator.isConnectedToDac()) {
+                    keep = false;
                 }
             }
-            communicators.add(comms);
-            comms.start();
-            if (keep) {
-                comms.setRadios(channel.getRadios());
-            } else {
-                comms.shutdown();
-            }
-        } catch (IOException | SerializationException e) {
-            try {
-                socket.close();
-            } catch (IOException ignorable) {
-                logger.error("Error closing message to dac transmit");
-            }
-            logger.error("Error accepting client", e);
         }
+        communicators.add(comms);
+        comms.start();
+        if (keep) {
+            comms.setRadios(channel.getRadios());
+        } else {
+            comms.shutdown();
+        }
+
     }
 
 }
