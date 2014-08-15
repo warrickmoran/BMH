@@ -92,7 +92,7 @@ public class Suite {
     @DynamicSerializeElement
     protected int id;
 
-    @Column(length = 20, unique = true, nullable = false)
+    @Column(length = 40, unique = true, nullable = false)
     @DynamicSerializeElement
     private String name;
 

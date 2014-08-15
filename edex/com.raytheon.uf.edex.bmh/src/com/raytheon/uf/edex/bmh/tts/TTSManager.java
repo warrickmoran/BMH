@@ -276,8 +276,8 @@ public class TTSManager implements IContextStateProcessor {
              * did the connection fail due to an issue that could potentially be
              * intermittent?
              */
-            if (returnValue != TTS_RETURN_VALUE.TTS_CONNECT_ERROR
-                    && returnValue != TTS_RETURN_VALUE.TTS_SOCKET_ERROR) {
+            if ((returnValue != TTS_RETURN_VALUE.TTS_CONNECT_ERROR)
+                    && (returnValue != TTS_RETURN_VALUE.TTS_SOCKET_ERROR)) {
                 retry = false;
             } else {
                 StringBuilder stringBuilder = new StringBuilder(
@@ -418,9 +418,15 @@ public class TTSManager implements IContextStateProcessor {
         }
 
         if (success) {
+            int totalBytes = 0;
+            for (byte[] data : convertedData) {
+                totalBytes += data.length;
+            }
             statusHandler
                     .info("Text-to-Speech Transformation completed successfully for message: "
-                            + message.getId() + ".");
+                            + message.getId()
+                            + ".  Length for playback = "
+                            + (((totalBytes / 160) * 20) / 1000) + " seconds");
             /* Write the output file. */
             File outputFile = this.determineOutputFile(message.getId(), message
                     .getInputMessage().getAfosid(), message.getVoice());

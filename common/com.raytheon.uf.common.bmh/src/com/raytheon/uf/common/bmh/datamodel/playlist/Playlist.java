@@ -24,6 +24,7 @@ import java.util.List;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -55,7 +56,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 30, 2014  3285     bsteffen    Initial creation
- * 
+ * Aug 15, 2014  3515     rjpeter     Add eager fetch.
  * </pre>
  * 
  * @author bsteffen
@@ -99,7 +100,7 @@ public class Playlist {
     @Column
     private Calendar endTime;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(schema = "bmh", name = "playlist_messages", joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "message_id", referencedColumnName = "id"), uniqueConstraints = @UniqueConstraint(columnNames = {
             "playlist_id", "message_position" }))
     @OrderColumn(name = "message_position", nullable = false)
