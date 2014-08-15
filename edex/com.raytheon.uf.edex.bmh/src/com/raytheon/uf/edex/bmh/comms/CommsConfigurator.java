@@ -109,13 +109,13 @@ public class CommsConfigurator {
         assignPorts(dacs, dacMap, prevDacMap);
         config.setJmsConnection(BMHConstants
                 .getJmsConnectionString("commsmanager"));
+        config.setDacs(new HashSet<>(dacMap.values()));
 
         if (!prevConfig.equals(config)) {
             if (dacMap.isEmpty()) {
                 statusHandler.warn(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
                         "Writing comms conf file with no dacs.");
             }
-            config.setDacs(new HashSet<>(dacMap.values()));
             try {
                 JAXB.marshal(config, configPath.toFile());
             } catch (DataBindingException e) {
