@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * ------------ ---------- ----------- --------------------------
  * Aug 5, 2014  #3490      lvenable     Initial creation
  * Aug 12, 2014 #3490      lvenable     Added ProgramSuites action.
+ * Aug 15, 2014 #3490      lvenable     Added Program with getters & setters.
  * 
  * </pre>
  * 
@@ -49,6 +51,9 @@ public class ProgramRequest implements IServerRequest {
 
     @DynamicSerializeElement
     private ProgramAction action;
+
+    @DynamicSerializeElement
+    private Program program;
 
     /**
      * Get the program action.
@@ -68,4 +73,13 @@ public class ProgramRequest implements IServerRequest {
     public void setAction(ProgramAction action) {
         this.action = action;
     }
+
+    public Program getProgram() {
+        return program;
+    }
+
+    public void setProgram(Program program) {
+        this.program = program;
+    }
+
 }

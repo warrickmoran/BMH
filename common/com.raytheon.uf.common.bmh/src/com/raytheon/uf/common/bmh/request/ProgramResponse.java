@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
@@ -35,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 5, 2014  #3490      lvenable     Initial creation
+ * Aug 17, 2014 #3490     lvenable      Added addProgram method.
  * 
  * </pre>
  * 
@@ -63,5 +65,18 @@ public class ProgramResponse {
      */
     public List<Program> getProgramList() {
         return this.programList;
+    }
+
+    /**
+     * Add a program to the list.
+     * 
+     * @param p
+     *            Program.
+     */
+    public void addProgram(Program p) {
+        if (programList == null) {
+            programList = new ArrayList<Program>(1);
+        }
+        programList.add(p);
     }
 }

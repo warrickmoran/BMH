@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,6 +48,10 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
@@ -56,6 +61,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterConfigDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.DictionaryManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.areas.ListeningAreaDlg;
@@ -86,6 +92,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 21, 2014   3407     mpduff      Added DictionaryManagerDlg
  * Jul 27, 2014  #3420     lvenable    Added Message types dialog.
  * Aug 04, 2014   3173     mpduff      Added Transmitter Config dialog.
+ * Aug 17, 2014  #3490     lvenable    Updated for disable silence alarm.
  * 
  * </pre>
  * 
@@ -93,6 +100,10 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 public class BMHLauncherDlg extends CaveSWTDialog {
+
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(BMHLauncherDlg.class);
 
     /** Transmitter menu. */
     private Menu transmittersMenu;
@@ -153,7 +164,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     /** Transmitter configuration dialog */
     protected TransmitterConfigDlg transmitterConfigDlg;
-    
+
     /**
      * This is a map that contains dialog that may require some sort of save
      * action before closing. These dialogs are reported to the user so they can
@@ -167,7 +178,6 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      * remain open if the main dialog is closed.
      */
     private final Set<CaveSWTDialogBase> dialogsSet = new HashSet<CaveSWTDialogBase>();
-
 
     /**
      * Constructor.
@@ -805,17 +815,33 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     private void handleDisableSilenceAlarm() {
 
-        // TODO - REMOVE DUMMY CODE
+        // TODO: Need to determine the silence alarms so we can check the
+        // transmitters
+
+        /*
+         * Create the list of transmitters to be used with the
+         * CheckScrollListDlg
+         */
         CheckListData cld = new CheckListData();
-        boolean checked = true;
-        for (int i = 0; i < 30; i++) {
-            checked = true;
-            if (i % 2 == 0) {
-                checked = false;
-            }
-            cld.addDataItem("Transmitter:" + i, checked);
+        TransmitterDataManager tdm = new TransmitterDataManager();
+        List<Transmitter> transmitters = null;
+
+        try {
+            transmitters = tdm.getTransmitters();
+            Collections.sort(transmitters, new TransmitterMnemonicComparator());
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving transmitter data from the database: ", e);
+            return;
         }
 
+        for (Transmitter t : transmitters) {
+            cld.addDataItem(t.getMnemonic(), false);
+        }
+
+        /*
+         * Create the check list dialog with the list of transmitters.
+         */
         CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
                 "Disable Silence Alarm", "Select Transmitter to Disable:", cld,
                 true);

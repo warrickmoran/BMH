@@ -26,6 +26,8 @@ import javax.persistence.ManyToOne;
 import javax.persistence.MapsId;
 import javax.persistence.Table;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -41,6 +43,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation.
  * Aug 05, 2014 3175       rjpeter     Fixed mapping.
+ * Aug 17, 2014 #3490     lvenable    Added batch size.
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -49,6 +53,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Entity
 @DynamicSerialize
 @Table(name = "suite_message", schema = "bmh")
+@BatchSize(size = 100)
 public class SuiteMessage {
     @EmbeddedId
     @DynamicSerializeElement

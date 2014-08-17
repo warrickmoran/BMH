@@ -34,6 +34,7 @@ import java.util.List;
  * 07/28/2014      3407    mpduff      Added remove row method.
  * Aug 01, 2014   #3479    lvenable    Added additional capability.
  * Aug 06, 2014   #3490    lvenable    Added a method to delete all of the data.
+ * Aug 15, 2014   #3490    lvenable    Added ability to replace a row of data.
  * 
  * </pre>
  */
@@ -115,6 +116,28 @@ public class TableData implements ISortColumn {
         }
 
         tableRows.add(index, dataRow);
+    }
+
+    /**
+     * Replace the data at the specified index in the array. If the index is out
+     * side the range then either the first element or the last element will be
+     * replaced.
+     * 
+     * @param dataRow
+     *            New data row.
+     * @param index
+     *            Index where the data will be replaced.
+     */
+    public void replaceDataRow(TableRowData dataRow, int index) {
+        dataRow.setSortCallback(this);
+
+        if (index < 0) {
+            index = 0;
+        } else if (index > tableRows.size()) {
+            index = tableRows.size() - 1;
+        }
+
+        tableRows.set(index, dataRow);
     }
 
     /**

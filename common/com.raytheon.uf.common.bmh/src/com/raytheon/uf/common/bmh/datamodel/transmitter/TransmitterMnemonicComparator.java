@@ -17,12 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
+package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
-import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import java.util.Comparator;
 
 /**
- * Interface used when suites are selected/update in a table.
+ * Comparator for Transmitters sorting by mnemonic value
  * 
  * <pre>
  * 
@@ -30,8 +30,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 6, 2014  #3490      lvenable     Initial creation
- * Aug 15, 2014  #3490     lvenable     Added delete method
+ * Aug 17, 2014  #3490     lvenable     Initial creation
  * 
  * </pre>
  * 
@@ -39,23 +38,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
  * @version 1.0
  */
 
-public interface ISuiteSelection {
-
-    /**
-     * Action when a suite is selected.
-     * 
-     * @param suite
-     *            The suite that is selected.
-     */
-    public void suiteSelected(Suite suite);
-
-    /**
-     * Action when the suites have been updated.
-     */
-    public void suitesUpdated();
-
-    /**
-     * Action when a suite has been deleted.
-     */
-    public void deleteSuite(Suite suite);
+public class TransmitterMnemonicComparator implements Comparator<Transmitter> {
+    @Override
+    public int compare(Transmitter t1, Transmitter t2) {
+        return t1.getMnemonic().compareTo(t2.getMnemonic());
+    }
 }

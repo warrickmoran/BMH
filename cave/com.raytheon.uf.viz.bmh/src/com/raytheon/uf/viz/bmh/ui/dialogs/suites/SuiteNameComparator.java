@@ -19,10 +19,12 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
 
+import java.util.Comparator;
+
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 
 /**
- * Interface used when suites are selected/update in a table.
+ * Comparator for Suite sorting by name.
  * 
  * <pre>
  * 
@@ -30,8 +32,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 6, 2014  #3490      lvenable     Initial creation
- * Aug 15, 2014  #3490     lvenable     Added delete method
+ * Aug 15, 2014 #3490      lvenable     Initial creation
  * 
  * </pre>
  * 
@@ -39,23 +40,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
  * @version 1.0
  */
 
-public interface ISuiteSelection {
-
-    /**
-     * Action when a suite is selected.
-     * 
-     * @param suite
-     *            The suite that is selected.
-     */
-    public void suiteSelected(Suite suite);
-
-    /**
-     * Action when the suites have been updated.
-     */
-    public void suitesUpdated();
-
-    /**
-     * Action when a suite has been deleted.
-     */
-    public void deleteSuite(Suite suite);
+public class SuiteNameComparator implements Comparator<Suite> {
+    @Override
+    public int compare(Suite s1, Suite s2) {
+        return s1.getName().compareTo(s2.getName());
+    }
 }

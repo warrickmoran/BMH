@@ -53,6 +53,7 @@ import org.eclipse.swt.widgets.TableItem;
  * Aug 8, 2014    #3490     lvenable    Re-factored populate method.
  * Aug 8, 2014    #3490     lvenable    Added a populate method to allow
  *                                      the regeneration of table columns.
+ * Aug 15, 2014   #3490     lvenable    Added replace table method.
  * 
  * </pre>
  * 
@@ -312,6 +313,64 @@ public abstract class TableComp extends Composite {
         }
 
         gc.dispose();
+    }
+
+    /**
+     * Replace/Overwrite the data in the table with the data passed in. For
+     * large amounts of data this will keep the position where the table is
+     * scrolled and won't have to guess where the selected item is located since
+     * the showSelection don't work properly.
+     * 
+     * @param tableData
+     *            Table data used to re-populate the table items.
+     */
+    public void replaceTableItems(TableData tableData) {
+        int tableDataSize = tableData.getTableRowCount();
+        int tableSize = table.getItemCount();
+        int selectedIndex = table.getSelectionIndex();
+
+        if (tableSize > tableDataSize) {
+            for (int i = 0; i < (tableSize - tableDataSize); i++) {
+                table.remove(0);
+            }
+        } else if (tableDataSize > tableSize) {
+            for (int i = 0; i < (tableDataSize - tableSize); i++) {
+                new TableItem(table, SWT.NONE);
+            }
+        }
+
+        TableColumn[] columns = table.getColumns();
+        int index = 0;
+        GC gc = new GC(table);
+        gc.setFont(table.getFont());
+
+        for (TableRowData rowData : tableData.getTableRows()) {
+            List<TableCellData> cellDataList = rowData.getTableCellData();
+            TableItem ti = table.getItem(index);
+            ti.setData(rowData);
+            for (int i = 0; i < cellDataList.size(); i++) {
+                TableCellData cellData = cellDataList.get(i);
+                ti.setText(i, cellData.getDisplayString());
+                ti.setBackground(i, cellData.getBackgroundColor());
+                ti.setForeground(i, cellData.getForegroundColor());
+                if (!((TableColumnData) columns[i].getData()).isPack()) {
+                    columnWidths[i] = Math.max(gc.stringExtent(ti.getText(i)).x
+                            + PIXEL_BUFFER, columnWidths[i]);
+                }
+            }
+            ++index;
+        }
+        gc.dispose();
+
+        table.deselectAll();
+
+        if (selectedIndex < 0) {
+            selectedIndex = 0;
+        } else if (selectedIndex > table.getItemCount() - 1) {
+            selectedIndex = table.getItemCount() - 1;
+        }
+
+        table.select(selectedIndex);
     }
 
     /**

@@ -37,7 +37,8 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 5, 2014   #3490     lvenable     Initial creation
- * Aug 12, 2014 #3490     lvenable     Refactored to make a query convenience method.
+ * Aug 12, 2014 #3490      lvenable     Refactored to make a query convenience method.
+ * Aug 17, 2014 #3490      lvenable     Added save and delete.
  * 
  * </pre>
  * 
@@ -62,6 +63,12 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
         case AllPrograms:
             programResponse = getPrograms();
             break;
+        case Delete:
+            deleteProgram(request);
+            break;
+        case Save:
+            programResponse = saveProgram(request);
+            break;
         default:
             break;
         }
@@ -72,8 +79,6 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
     /**
      * Get a list of Program name and IDs.
      * 
-     * @param programQuery
-     *            Query string.
      * @return List of Program name and IDs.
      */
     private ProgramResponse getProgramNameIDs() {
@@ -89,8 +94,6 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
     /**
      * Get a list of Program and Suite list.
      * 
-     * @param programQuery
-     *            Query string.
      * @return List of Program and Suites.
      */
     private ProgramResponse getProgramSuites() {
@@ -114,6 +117,36 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
 
         List<Program> progList = dao.getPrograms();
         response.setProgramList(progList);
+
+        return response;
+    }
+
+    /**
+     * Delete the specified program.
+     * 
+     * @param request
+     *            Program request.
+     */
+    private void deleteProgram(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao();
+        if (request.getProgram() != null) {
+            dao.delete(request.getProgram());
+        }
+    }
+
+    /**
+     * Save the specified program.
+     * 
+     * @param request
+     *            Program request.
+     */
+    private ProgramResponse saveProgram(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao();
+        ProgramResponse response = new ProgramResponse();
+        if (request.getProgram() != null) {
+            dao.saveOrUpdate(request.getProgram());
+            response.addProgram(request.getProgram());
+        }
 
         return response;
     }

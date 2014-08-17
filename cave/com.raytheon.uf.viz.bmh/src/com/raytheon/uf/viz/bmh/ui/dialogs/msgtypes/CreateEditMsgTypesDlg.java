@@ -20,9 +20,11 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
@@ -44,6 +46,8 @@ import org.eclipse.ui.plugin.AbstractUIPlugin;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest.TtsVoiceAction;
 import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
@@ -56,6 +60,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListComp;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -68,9 +73,11 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 30, 2014  #3420     lvenable     Initial creation
+ * Jul 30, 2014  #3420     lvenable    Initial creation
  * Aug 12, 2014  #3490     lvenable    Initial hook up of dialog to display selected values
  *                                     for the provided message type.
+ * Aug 15, 2014  #3490     lvenable    Hooked up transmitters and selected the SAME transmitters
+ *                                     if in edit mode.
  * 
  * </pre>
  * 
@@ -560,7 +567,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      */
     private void createSAMETranmitterControl(Composite mainComp) {
 
-        CheckListData cld = getTransmitterList();
+        CheckListData cld = createTransmitterListData();
 
         sameTransmitters = new CheckScrollListComp(mainComp,
                 "SAME Transmitters: ", cld, true, 125, 300);
@@ -675,17 +682,36 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      * 
      * @return Object containing the list of SAME transmitters.
      */
-    private CheckListData getTransmitterList() {
+    private CheckListData createTransmitterListData() {
 
-        // TODO : add real code when Mike's transmitter code is available..
         CheckListData cld = new CheckListData();
-        boolean checked = true;
-        for (int i = 0; i < 30; i++) {
-            checked = true;
-            if (i % 2 == 0) {
-                checked = false;
+
+        TransmitterDataManager tdm = new TransmitterDataManager();
+        List<Transmitter> transmitters = null;
+
+        try {
+            transmitters = tdm.getTransmitters();
+
+            if (transmitters == null) {
+                return cld;
             }
-            cld.addDataItem("Transmitter:" + i, checked);
+
+            Collections.sort(transmitters, new TransmitterMnemonicComparator());
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving transmitter data from the database: ", e);
+            return cld;
+        }
+
+        if (dialogType == DialogType.EDIT && selectedMsgType != null) {
+            Set<Transmitter> transSet = selectedMsgType.getSameTransmitters();
+            for (Transmitter t : transmitters) {
+                cld.addDataItem(t.getMnemonic(), transSet.contains(t));
+            }
+        } else {
+            for (Transmitter t : transmitters) {
+                cld.addDataItem(t.getMnemonic(), false);
+            }
         }
 
         return cld;

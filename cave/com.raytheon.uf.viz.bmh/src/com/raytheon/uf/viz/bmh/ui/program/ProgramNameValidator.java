@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.program;
 
+import java.util.Set;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Shell;
 
@@ -35,6 +37,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 3, 2014  #3479      lvenable     Initial creation
+ * Aug 15, 2014  #3490     lvenable     Updated to allow checking against existing names.
  * 
  * </pre>
  * 
@@ -44,6 +47,19 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
 
 public class ProgramNameValidator implements IInputTextValidator {
 
+    private Set<String> existingNames = null;
+
+    /**
+     * Constructor.
+     */
+    public ProgramNameValidator() {
+
+    }
+
+    public ProgramNameValidator(Set<String> existingNames) {
+        this.existingNames = existingNames;
+    }
+
     @Override
     public boolean validateInputText(Shell parentShell, String text) {
 
@@ -52,6 +68,17 @@ public class ProgramNameValidator implements IInputTextValidator {
 
             sb.append("The Program name must be at least one character, be aplhanumeric, and can ");
             sb.append("contain blank spaces, periods, dashes, or underscores.");
+
+            DialogUtility.showMessageBox(parentShell,
+                    SWT.ICON_WARNING | SWT.OK, "Invalid Name", sb.toString());
+
+            return false;
+        }
+
+        if (existingNames != null && existingNames.contains(text)) {
+            StringBuilder sb = new StringBuilder();
+
+            sb.append("The Program name already exists.  Please enter another name.");
 
             DialogUtility.showMessageBox(parentShell,
                     SWT.ICON_WARNING | SWT.OK, "Invalid Name", sb.toString());

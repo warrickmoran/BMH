@@ -22,7 +22,8 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 
 /**
- * Interface used when suites are selected/update in a table.
+ * Adapter class that can be used in place of ISuiteSelection. This will allow
+ * only the method(s) needed to be used.
  * 
  * <pre>
  * 
@@ -30,8 +31,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 6, 2014  #3490      lvenable     Initial creation
- * Aug 15, 2014  #3490     lvenable     Added delete method
+ * Aug 15, 2014 #3490      lvenable     Initial creation
  * 
  * </pre>
  * 
@@ -39,23 +39,18 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
  * @version 1.0
  */
 
-public interface ISuiteSelection {
+public abstract class SuiteActionAdapter implements ISuiteSelection {
 
-    /**
-     * Action when a suite is selected.
-     * 
-     * @param suite
-     *            The suite that is selected.
-     */
-    public void suiteSelected(Suite suite);
+    @Override
+    public void suiteSelected(Suite suite) {
+    }
 
-    /**
-     * Action when the suites have been updated.
-     */
-    public void suitesUpdated();
+    @Override
+    public void suitesUpdated() {
+    }
 
-    /**
-     * Action when a suite has been deleted.
-     */
-    public void deleteSuite(Suite suite);
+    @Override
+    public void deleteSuite(Suite suite) {
+    }
+
 }

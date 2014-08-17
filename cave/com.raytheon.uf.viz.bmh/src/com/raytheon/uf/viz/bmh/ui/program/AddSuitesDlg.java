@@ -36,13 +36,11 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
-import com.raytheon.uf.common.bmh.request.SuiteRequest;
-import com.raytheon.uf.common.bmh.request.SuiteRequest.SuiteAction;
-import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.ISuiteSelection;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteNameComparator;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
@@ -60,6 +58,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 27, 2014  #3420     lvenable     Update to use a relationships button.
  * Aug 12, 2014  #3490     lvenable     Updated to use the suite config group and
  *                                      hooked up data from the database.
+ * Aug 15, 2014  #3490     lvenable     Sort the list of suites.
  * 
  * </pre>
  * 
@@ -138,7 +137,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
         createSuitesTable();
         createBottomButtons();
 
-        suiteConfigGroup.populateSuiteTable(suiteList);
+        suiteConfigGroup.populateSuiteTable(suiteList, false);
     }
 
     /**
@@ -227,6 +226,11 @@ public class AddSuitesDlg extends CaveSWTDialog {
             public void suitesUpdated() {
                 // TODO : look at adding code if needed for this method
             }
+
+            @Override
+            public void deleteSuite(Suite suite) {
+                // TODO : look at adding code if needed for this method
+            }
         });
     }
 
@@ -282,14 +286,9 @@ public class AddSuitesDlg extends CaveSWTDialog {
      * Retrieve suite data from the database.
      */
     private void retrieveDataFromDB() {
-        SuiteRequest suiteRequest = new SuiteRequest();
-        suiteRequest.setAction(SuiteAction.AllSuites);
-        SuiteResponse suiteResponse = null;
-
         try {
-            suiteResponse = (SuiteResponse) BmhUtils.sendRequest(suiteRequest);
-            suiteList = suiteResponse.getSuiteList();
-
+            SuiteDataManager suiteDataMgr = new SuiteDataManager();
+            suiteList = suiteDataMgr.getAllSuites(new SuiteNameComparator());
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving suite data from the database: ", e);

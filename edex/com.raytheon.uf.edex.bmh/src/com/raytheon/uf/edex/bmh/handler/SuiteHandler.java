@@ -38,6 +38,7 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * ------------ ---------- ----------- --------------------------
  * Aug 5, 2014  #3490      lvenable     Initial creation
  * Aug 12, 2014 #3490     lvenable     Refactored to make a query convenience method.
+ * Aug 12, 2014 #3490     lvenable     Added delete.
  * 
  * </pre>
  * 
@@ -62,6 +63,9 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
         case AllSuites:
             suiteResponse = getSuites();
             break;
+        case Delete:
+            deleteSuite(request);
+            break;
         default:
             break;
         }
@@ -72,8 +76,6 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
     /**
      * Get suites with name, type, and IDs.
      * 
-     * @param suiteQuery
-     *            Suite query.
      * @return List of suites with name, type, and IDs.
      */
     private SuiteResponse getSuitesNameCatIDs() {
@@ -90,8 +92,6 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
     /**
      * Get Suite with message types.
      * 
-     * @param suiteQuery
-     *            Suite suery.
      * @return List of suites with message types.
      */
     private SuiteResponse getSuitesMessageTypes() {
@@ -118,5 +118,18 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
         response.setSuiteList(suiteList);
 
         return response;
+    }
+
+    /**
+     * Delete the specified suite.
+     * 
+     * @param suiteRequest
+     *            Suite request.
+     */
+    private void deleteSuite(SuiteRequest suiteRequest) {
+        SuiteDao dao = new SuiteDao();
+        if (suiteRequest != null) {
+            dao.delete(suiteRequest.getSuite());
+        }
     }
 }

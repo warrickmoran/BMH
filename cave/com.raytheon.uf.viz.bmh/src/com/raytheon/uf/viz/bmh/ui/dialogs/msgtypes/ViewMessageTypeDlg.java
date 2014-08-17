@@ -38,20 +38,15 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
-import com.raytheon.uf.common.bmh.request.ProgramRequest;
-import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
-import com.raytheon.uf.common.bmh.request.ProgramResponse;
-import com.raytheon.uf.common.bmh.request.SuiteRequest;
-import com.raytheon.uf.common.bmh.request.SuiteRequest.SuiteAction;
-import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
+import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramTable;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteTable;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -68,6 +63,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jul 29, 2014  #3420     lvenable     Initial creation
  * Aug 12, 2014  #3490     lvenable    Updated to view message type relationships.
+ * Aug 15, 2014  #3490     lvenable    Updated to use Program and Suite data managers.
  * 
  * </pre>
  * 
@@ -88,12 +84,6 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
 
     /** The selected message type. */
     private MessageType msgType;
-
-    /** List of program and associated data. */
-    private List<Program> allProgramsArray;
-
-    /** List of program and associated data. */
-    private List<Suite> allSuitesArray;
 
     /** Programs associated with the message type. */
     List<Program> assocProgs = new ArrayList<Program>();
@@ -236,13 +226,11 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
     private void retrieveDataFromDB() {
 
         // Programs and Suites
-        ProgramRequest pr = new ProgramRequest();
-        pr.setAction(ProgramAction.ProgramSuites);
-        ProgramResponse progResponse = null;
-        try {
-            progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
+        ProgramDataManager pdm = new ProgramDataManager();
+        List<Program> allProgramsArray = null;
 
-            allProgramsArray = progResponse.getProgramList();
+        try {
+            allProgramsArray = pdm.getProgramSuites();
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving program data from the database: ", e);
@@ -250,13 +238,11 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
         }
 
         // Suites and Message Types
-        SuiteRequest suiteRequest = new SuiteRequest();
-        suiteRequest.setAction(SuiteAction.SuitesMsgTypes);
-        SuiteResponse suiteResponse = null;
+        SuiteDataManager sdm = new SuiteDataManager();
+        List<Suite> allSuitesArray = null;
 
         try {
-            suiteResponse = (SuiteResponse) BmhUtils.sendRequest(suiteRequest);
-            allSuitesArray = suiteResponse.getSuiteList();
+            allSuitesArray = sdm.getSuitesMsgTypes();
 
         } catch (Exception e) {
             statusHandler.error(
@@ -264,7 +250,7 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
             allSuitesArray = Collections.emptyList();
         }
 
-        findAssocProgsSuites();
+        findAssocProgsSuites(allSuitesArray, allProgramsArray);
     }
 
     /**
@@ -315,8 +301,14 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
      * Find the all of the suites that contain the message type and then find
      * all of the programs that contain the suites that were found. This has to
      * be done separately because suites may not be associated to a program.
+     * 
+     * @param allSuitesArray
+     *            List of suites.
+     * @param allProgramsArray
+     *            List of programs.
      */
-    private void findAssocProgsSuites() {
+    private void findAssocProgsSuites(List<Suite> allSuitesArray,
+            List<Program> allProgramsArray) {
         // TODO : All of this could be done at the database to just return you
         // the programs and suites that this message belongs to. Just need to
         // pass the messageType to the first query and get exactly what you
