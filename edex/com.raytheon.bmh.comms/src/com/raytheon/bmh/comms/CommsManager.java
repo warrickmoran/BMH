@@ -298,6 +298,7 @@ public class CommsManager {
         args.add("-" + DacTransmitArgParser.COMMS_MANAGER_PORT_OPTION_KEY);
         args.add(Integer.toString(config.getDacTransmitPort()));
         ProcessBuilder startCommand = new ProcessBuilder(args);
+        startCommand.environment().put("TRANSMITTER_GROUP", group);
         startCommand.inheritIO();
         try {
             p = startCommand.start();

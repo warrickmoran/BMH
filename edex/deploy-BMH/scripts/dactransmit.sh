@@ -45,25 +45,6 @@ export JAVA_HOME="${awips_home}/java"
 # set Java into the path
 export PATH=${awips_home}/bin:${JAVA_HOME}/bin
 
-# determine transmitter group name which will be used for logging purposes
-CAPTURE_NEXT_ARG=
-TRANSMITTER_GROUP=
-for arg in $@
-do
-  case $arg in
-    -g) 
-       CAPTURE_NEXT_ARG=true
-       ;;
-    *) 
-       if [ -n "$CAPTURE_NEXT_ARG" ]; then 
-          TRANSMITTER_GROUP="$arg"
-          CAPTURE_NEXT_ARG=
-       fi
-       ;;
-  esac
-done
-export TRANSMITTER_GROUP
-
 DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j com.google.guava org.apache.thrift net.sf.cglib"
 
 ENTRY_POINT="com.raytheon.uf.edex.bmh.dactransmit.DacTransmitMain"
