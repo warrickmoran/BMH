@@ -36,6 +36,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * ------------- -------- ----------- --------------------------
  * Jul 01, 2014  3285     bsteffen    Initial creation
  * Jul 14, 2014  3286     dgilling    Implement hashCode()/equals().
+ * Aug 18, 2014  3540     dgilling    Implement toString().
  * 
  * </pre>
  * 
@@ -65,21 +66,34 @@ public class DacPlaylistMessageId {
     }
 
     @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("DacPlaylistMessageId [broadcastId=");
+        builder.append(broadcastId);
+        builder.append("]");
+        return builder.toString();
+    }
+
+    @Override
     public int hashCode() {
         return new Long(broadcastId).hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         DacPlaylistMessageId other = (DacPlaylistMessageId) obj;
-        if (broadcastId != other.broadcastId)
+        if (broadcastId != other.broadcastId) {
             return false;
+        }
         return true;
     }
 
