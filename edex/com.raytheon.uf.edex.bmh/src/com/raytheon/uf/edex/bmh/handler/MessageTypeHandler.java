@@ -38,6 +38,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * ------------ ---------- ----------- --------------------------
  * Jul 22, 2014    3411    mpduff      Initial creation
  * Aug 5, 2014  #3490      lvenable    Updated to get Message types.
+ * Aug 17, 2014 #3490      lvenable    Updated for deleting.
  * 
  * </pre>
  * 
@@ -55,6 +56,9 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         case AllMessageTypes:
             response = getMessageTypes();
             break;
+        case Delete:
+            deleteMessageType(request);
+            break;
         default:
             break;
         }
@@ -62,6 +66,11 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         return response;
     }
 
+    /**
+     * Get all of the message types fully populated.
+     * 
+     * @return Message Type Response.
+     */
     private MessageTypeResponse getMessageTypes() {
         MessageTypeDao dao = new MessageTypeDao();
         MessageTypeResponse response = new MessageTypeResponse();
@@ -70,5 +79,18 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         response.setMessageTypeList(messageTypeList);
 
         return response;
+    }
+
+    /**
+     * Delete the specified message type.
+     * 
+     * @param request
+     *            Message type request.
+     */
+    private void deleteMessageType(MessageTypeRequest request) {
+        MessageTypeDao dao = new MessageTypeDao();
+        if (request != null) {
+            dao.delete(request.getMessageType());
+        }
     }
 }

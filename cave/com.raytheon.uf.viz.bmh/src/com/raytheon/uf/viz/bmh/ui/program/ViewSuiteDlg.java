@@ -38,12 +38,8 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
-import com.raytheon.uf.common.bmh.request.ProgramRequest;
-import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
-import com.raytheon.uf.common.bmh.request.ProgramResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -64,6 +60,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 21, 2014  #3174     lvenable     Initial creation
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * Aug 12, 2014  #3490     lvenable     Update to use data from the database.
+ * Aug 15, 2014  #3490     lvenable     Reworked to use the data manager.
  * 
  * </pre>
  * 
@@ -75,9 +72,6 @@ public class ViewSuiteDlg extends CaveSWTDialog {
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ViewSuiteDlg.class);
-
-    /** List of program and associated data. */
-    private List<Program> allProgramsArray = new ArrayList<Program>();
 
     /** Programs associated with the message type. */
     List<Program> assocProgs = new ArrayList<Program>();
@@ -234,25 +228,24 @@ public class ViewSuiteDlg extends CaveSWTDialog {
          */
 
         // All Programs with suite information.
-        ProgramRequest pr = new ProgramRequest();
-        pr.setAction(ProgramAction.ProgramSuites);
-        ProgramResponse progResponse = null;
+        List<Program> allProgramsArray = null;
+        ProgramDataManager pdm = new ProgramDataManager();
+
         try {
-            progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
-            allProgramsArray = progResponse.getProgramList();
+            allProgramsArray = pdm.getProgramSuites();
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving program data from the database: ", e);
         }
 
-        findAssociatedPrograms();
+        findAssociatedPrograms(allProgramsArray);
     }
 
     /**
      * Loop through all of the programs and find the ones that contain the
      * associated suites that contain the message type.
      */
-    private void findAssociatedPrograms() {
+    private void findAssociatedPrograms(List<Program> allProgramsArray) {
         for (Program p : allProgramsArray) {
             List<Suite> suitesInProgram = p.getSuites();
             for (Suite progSuite : suitesInProgram) {

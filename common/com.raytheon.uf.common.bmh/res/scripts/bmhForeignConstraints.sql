@@ -48,6 +48,19 @@ alter table bmh.playlist_messages add constraint fk86d39d1946dde881
     foreign key (message_id) references bmh.broadcast_msg (id) on delete cascade;
 
 /**
+ * Program/Suites join table cascade delete
+ **/
+alter table bmh.program_suites drop constraint fke33dca9687a7814c;
+alter table bmh.program_suites add constraint fke33dca9687a7814c
+    foreign key (suite_id) references bmh.suite(id) on delete cascade;
+/**
+ * Message Type to Suite Message
+ **/
+alter table bmh.suite_message drop constraint fkb09b85c09c6dfa92;
+alter table bmh.suite_message add constraint fkb09b85c09c6dfa92
+    foreign key (msgtype_id) references bmh.message_type(id) on delete cascade;
+
+/**
  * Area/Zone join table cascade delete
  **/
 alter table bmh.area_tx drop constraint fkd381bb7657342f33;

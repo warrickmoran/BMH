@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -60,6 +59,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 17, 2014  3175     rjpeter     Added surrogate key.
  * Aug 06, 2014 #3490     lvenable    Updated to add name/query.
  * Aug 12, 2014 #3490     lvenable    Updated to add name/query for getting Programs/Suites.
+ * Aug 15, 2014 #3490     lvenable    Removed cascade type all.
  * 
  * </pre>
  * 
@@ -104,13 +104,13 @@ public class Program {
     @DynamicSerializeElement
     private String name;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "program_suites", schema = "bmh", joinColumns = { @JoinColumn(name = "program_id") }, inverseJoinColumns = { @JoinColumn(name = "suite_id") })
     @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
     private List<Suite> suites;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(fetch = FetchType.EAGER)
     @JoinColumn(name = "program_id")
     @DynamicSerializeElement
     private Set<TransmitterGroup> transmitterGroups;

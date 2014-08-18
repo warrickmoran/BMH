@@ -39,18 +39,15 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
-import com.raytheon.uf.common.bmh.request.MessageTypeRequest.MessageTypeAction;
-import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
-import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.CreateEditMsgTypesDlg.DialogType;
@@ -70,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 5, 2014   #3490     lvenable    Updated to populate table.
  * Aug 8, 2014   #3490     lvenable    Updated populate table method call.
  * Aug 12, 2014  #3490     lvenable    Added relationship code and convenience methods.
+ * Aug 15, 2014  #3490     lvenable    Sort the list of message types.
  * 
  * </pre>
  * 
@@ -96,6 +94,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
 
     /** Array of Message Type controls.. */
     private List<Control> msgTypeControls = new ArrayList<Control>();
+
+    /** Message Data Type Manager */
+    private MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
 
     /**
      * Constructor.
@@ -143,7 +144,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         createMessageTypesGroup();
         createBottomActionButtons();
 
-        populateMessageTypeTable();
+        populateMessageTypeTable(false);
     }
 
     /**
@@ -245,7 +246,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         deleteBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO : add delete code.
+                handleDeleteMessageType();
             }
         });
         msgTypeControls.add(deleteBtn);
@@ -337,13 +338,10 @@ public class MessageTypesDlg extends AbstractBMHDialog {
      * Retrieve the data from the database.
      */
     private void retrieveDataFromDB() {
-        MessageTypeRequest mtRequest = new MessageTypeRequest();
-        mtRequest.setAction(MessageTypeAction.AllMessageTypes);
-        MessageTypeResponse mtResponse = null;
 
         try {
-            mtResponse = (MessageTypeResponse) BmhUtils.sendRequest(mtRequest);
-            messageTypeList = mtResponse.getMessageTypeList();
+            messageTypeList = msgTypeDataMgr
+                    .getMessageTypes(new MsgTypeAfosComparator());
         } catch (Exception e) {
             statusHandler
                     .error("Error retrieving message type data from the database: ",
@@ -364,10 +362,50 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         return null;
     }
 
+    private void handleDeleteMessageType() {
+
+        /*
+         * TODO : Need to consult richard on the error from the database. I
+         * think it has to do with the cascade all but I want to make sure I
+         * don't break anything.
+         */
+
+        int index = msgAvailTableComp.getSelectedIndex();
+        if (index < 0) {
+            return;
+        }
+        MessageType mt = messageTypeList.get(index);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Do you wish to delete message type ").append(mt.getAfosid())
+                .append("?");
+        int result = DialogUtility.showMessageBox(getParent().getShell(),
+                SWT.ICON_WARNING | SWT.OK | SWT.CANCEL, "Confirm Delete",
+                sb.toString());
+
+        if (result == SWT.CANCEL) {
+            return;
+        }
+
+        try {
+            msgTypeDataMgr.deleteMessageType(mt);
+        } catch (Exception e) {
+            statusHandler
+                    .error("Error retrieving message type data from the database: ",
+                            e);
+        }
+
+        retrieveDataFromDB();
+        populateMessageTypeTable(true);
+    }
+
     /**
      * Populate the Message Type table.
+     * 
+     * @param replaceTableItems
+     *            True to replace the existing items in the table, false to
+     *            completely rebuild the table.
      */
-    private void populateMessageTypeTable() {
+    private void populateMessageTypeTable(boolean replaceTableItems) {
         if (msgAvailTableComp.hasTableData() == false) {
             List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
             TableColumnData tcd = new TableColumnData("Message Type", 150);
@@ -380,10 +418,14 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         }
 
         populateMessageTypeTableData();
-        msgAvailTableComp.populateTable(messageTypeTableData);
+
+        if (replaceTableItems) {
+            msgAvailTableComp.replaceTableItems(messageTypeTableData);
+        } else {
+            msgAvailTableComp.populateTable(messageTypeTableData);
+        }
 
         if (msgAvailTableComp.getItemCount() > 0) {
-            msgAvailTableComp.select(0);
             enableControls(true);
         } else {
             enableControls(false);

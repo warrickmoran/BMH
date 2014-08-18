@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.persistence.CascadeType;
@@ -37,6 +38,8 @@ import javax.persistence.OneToMany;
 import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+
+import org.hibernate.annotations.BatchSize;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -58,6 +61,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 06, 2014 #3490     lvenable    Updated to add name/query.
  * Aug 12, 2014 #3490     lvenable    Updated to add name/query for getting 
  *                                    message types.
+ * Aug 17, 2014 #3490     lvenable    Added batch size, fixed issue in setSuiteMessages().
  * 
  * </pre>
  * 
@@ -71,6 +75,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 @Table(name = "suite", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = Suite.GEN, sequenceName = "suite_seq")
+@BatchSize(size = 100)
 public class Suite {
     public enum SuiteType {
         GENERAL, HIGH, EXCLUSIVE, INTERRUPT;
@@ -137,9 +142,18 @@ public class Suite {
 
     public void setSuiteMessages(List<SuiteMessage> suiteMessages) {
         this.suiteMessages = suiteMessages;
-        updatePositions();
-        // handle bi-directional mapping
+
         if (suiteMessages != null) {
+
+            Iterator<SuiteMessage> smi = suiteMessages.iterator();
+            while (smi.hasNext()) {
+                if (smi.next() == null) {
+                    smi.remove();
+                }
+            }
+
+            updatePositions();
+
             for (SuiteMessage sm : suiteMessages) {
                 sm.setSuite(this);
             }

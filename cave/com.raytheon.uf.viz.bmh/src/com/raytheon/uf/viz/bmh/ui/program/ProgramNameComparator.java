@@ -17,12 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
+package com.raytheon.uf.viz.bmh.ui.program;
 
-import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import java.util.Comparator;
+
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 
 /**
- * Interface used when suites are selected/update in a table.
+ * Comparator for Program sorting by name.
  * 
  * <pre>
  * 
@@ -30,8 +32,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 6, 2014  #3490      lvenable     Initial creation
- * Aug 15, 2014  #3490     lvenable     Added delete method
+ * Aug 15, 2014  #3490     lvenable     Initial creation
  * 
  * </pre>
  * 
@@ -39,23 +40,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
  * @version 1.0
  */
 
-public interface ISuiteSelection {
-
-    /**
-     * Action when a suite is selected.
-     * 
-     * @param suite
-     *            The suite that is selected.
-     */
-    public void suiteSelected(Suite suite);
-
-    /**
-     * Action when the suites have been updated.
-     */
-    public void suitesUpdated();
-
-    /**
-     * Action when a suite has been deleted.
-     */
-    public void deleteSuite(Suite suite);
+public class ProgramNameComparator implements Comparator<Program> {
+    @Override
+    public int compare(Program p1, Program p2) {
+        return p1.getName().compareTo(p2.getName());
+    }
 }

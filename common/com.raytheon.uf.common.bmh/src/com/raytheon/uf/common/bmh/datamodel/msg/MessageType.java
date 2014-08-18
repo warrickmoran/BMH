@@ -22,7 +22,6 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -38,6 +37,8 @@ import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+
+import org.hibernate.annotations.BatchSize;
 
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
@@ -62,6 +63,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 06, 2014 #3490      lvenable    Added fetch type eagar to fields and changed
  *                                     same transmitters to a Set.
  * Aug 12, 2014 #3490      lvenable    Added wxr and enable tone blackout fields.
+ * Aug 17, 2014 #3490      lvenable    Added batch size, removed cascade all.
  * 
  * </pre>
  * 
@@ -73,6 +75,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 @Table(name = "message_type", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = MessageType.GEN, sequenceName = "message_type_seq")
+@BatchSize(size = 100)
 public class MessageType {
     public enum Designation {
         StationID, Forecast, Observation, Outlook, Watch, Warning, Advisory, TimeAnnouncement, Other
@@ -147,28 +150,28 @@ public class MessageType {
     @DynamicSerializeElement
     private String toneBlackOutEnd;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.EAGER)
     @MapKey(name = "mnemonic")
     @JoinTable(name = "message_same_tx", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
     @DynamicSerializeElement
     private Set<Transmitter> sameTransmitters;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_replace", schema = "bmh", joinColumns = @JoinColumn(name = "id", nullable = false, unique = false), inverseJoinColumns = @JoinColumn(name = "replaces_id", nullable = false, unique = false))
     @DynamicSerializeElement
     private Set<MessageType> replacesMsgs;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_areas", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "areacode"))
     @DynamicSerializeElement
     private Set<Area> defaultAreas;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_zones", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "zonecode"))
     @DynamicSerializeElement
     private Set<Zone> defaultZones;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_transmitters", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
     @DynamicSerializeElement
     private Set<TransmitterGroup> defaultTransmitterGroups;

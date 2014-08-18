@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * ------------ ---------- ----------- --------------------------
  * Jul 22, 2014    3411    mpduff      Initial creation
  * Aug 5, 2014  #3490      lvenable    Updated action
+ * Aug 17, 2014  #3490      lvenable    Updated action and added messageType.
  * 
  * </pre>
  * 
@@ -43,11 +45,14 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 @DynamicSerialize
 public class MessageTypeRequest implements IServerRequest {
     public enum MessageTypeAction {
-        AllMessageTypes;
+        AllMessageTypes, Delete, Save;
     }
 
     @DynamicSerializeElement
     private MessageTypeAction action;
+
+    @DynamicSerializeElement
+    private MessageType messageType;
 
     /**
      * @return the action
@@ -62,5 +67,13 @@ public class MessageTypeRequest implements IServerRequest {
      */
     public void setAction(MessageTypeAction action) {
         this.action = action;
+    }
+
+    public MessageType getMessageType() {
+        return messageType;
+    }
+
+    public void setMessageType(MessageType messageType) {
+        this.messageType = messageType;
     }
 }

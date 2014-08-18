@@ -43,15 +43,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
-import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
-import com.raytheon.uf.common.bmh.request.MessageTypeRequest.MessageTypeAction;
-import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
-import com.raytheon.uf.common.bmh.request.ProgramRequest;
-import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
-import com.raytheon.uf.common.bmh.request.ProgramResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -62,6 +55,8 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -79,6 +74,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * Aug 01, 2014  #3479      lvenable    Added additional capability.
  * Aug 12, 2014  #3490      lvenable    Updated to use data from the database.
+ * Aug 15, 2014  #3490     lvenable     Sort the list of message types, use data manager.
  * 
  * </pre>
  * 
@@ -603,13 +599,11 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * Retrieve the data from the database.
      */
     private void retrieveProgramDataFromDB() {
-        ProgramRequest pr = new ProgramRequest();
-        pr.setAction(ProgramAction.ProgramSuites);
-        ProgramResponse progResponse = null;
-        try {
-            progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
 
-            programsArray = progResponse.getProgramList();
+        ProgramDataManager pdm = new ProgramDataManager();
+
+        try {
+            programsArray = pdm.getProgramSuites();
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving program data from the database: ", e);
@@ -617,16 +611,15 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     }
 
     /**
-     * Retrieve the data from the database.
+     * Retrieve the message type data from the database.
      */
     private void retrieveAllMsgTypesFromDB() {
-        MessageTypeRequest mtRequest = new MessageTypeRequest();
-        mtRequest.setAction(MessageTypeAction.AllMessageTypes);
-        MessageTypeResponse mtResponse = null;
+
+        MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
 
         try {
-            mtResponse = (MessageTypeResponse) BmhUtils.sendRequest(mtRequest);
-            allMsgTypesList = mtResponse.getMessageTypeList();
+            allMsgTypesList = msgTypeDataMgr
+                    .getMessageTypes(new MsgTypeAfosComparator());
         } catch (Exception e) {
             statusHandler
                     .error("Error retrieving message type data from the database: ",

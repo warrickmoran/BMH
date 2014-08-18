@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -32,14 +33,13 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
-import com.raytheon.uf.common.bmh.request.SuiteRequest;
-import com.raytheon.uf.common.bmh.request.SuiteRequest.SuiteAction;
-import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
 
@@ -59,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
  * Aug 03, 2014  #3479     lvenable    Updated code for validator changes.
  * Aug 06, 2014  #3490     lvenable    Refactored and moved code to SuiteConfigGroup.
  * Aug 12, 2014  #3490     lvenable    Updated code to use database data.
+ * Aug 15, 2014  #3490     lvenable     Sort the list of suites, use suite data manager.
  * 
  * </pre>
  * 
@@ -76,6 +77,9 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
 
     /** Group that contains the controls for configuring the suites. */
     private SuiteConfigGroup suiteConfigGroup;
+
+    /** Suite data manger. */
+    private SuiteDataManager suiteDataMgr = new SuiteDataManager();;
 
     /**
      * Constructor.
@@ -119,7 +123,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
         createSuiteTableGroup();
         createBottomButtons();
 
-        suiteConfigGroup.populateSuiteTable(suiteList);
+        suiteConfigGroup.populateSuiteTable(suiteList, false);
     }
 
     /**
@@ -136,7 +140,12 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
             @Override
             public void suitesUpdated() {
                 retrieveDataFromDB();
-                suiteConfigGroup.populateSuiteTable(suiteList);
+                suiteConfigGroup.populateSuiteTable(suiteList, true);
+            }
+
+            @Override
+            public void deleteSuite(Suite suite) {
+                handleDeleteSuite(suite);
             }
         });
     }
@@ -175,17 +184,93 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
      * Retrieve suite data from the database.
      */
     private void retrieveDataFromDB() {
-        SuiteRequest suiteRequest = new SuiteRequest();
-        suiteRequest.setAction(SuiteAction.AllSuites);
-        SuiteResponse suiteResponse = null;
-
         try {
-            suiteResponse = (SuiteResponse) BmhUtils.sendRequest(suiteRequest);
-            suiteList = suiteResponse.getSuiteList();
-
+            suiteList = suiteDataMgr.getAllSuites(new SuiteNameComparator());
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving suite data from the database: ", e);
         }
+    }
+
+    public void handleDeleteSuite(Suite suite) {
+        // Safety check in case the selected suite is null;
+        if (suite == null) {
+            return;
+        }
+
+        String assocProgsStr = findAssociatedPrograms(suite);
+
+        StringBuilder sb = new StringBuilder();
+        if (assocProgsStr != null) {
+            sb.append("The suite is contained in the following programs:\n\n");
+            sb.append(assocProgsStr);
+        }
+
+        sb.append("\nDo you wish to delete suite ").append(suite.getName())
+                .append("?");
+
+        int result = DialogUtility.showMessageBox(getParent().getShell(),
+                SWT.ICON_WARNING | SWT.OK | SWT.CANCEL, "Confirm Delete",
+                sb.toString());
+
+        if (result == SWT.CANCEL) {
+            return;
+        }
+
+        try {
+            suiteDataMgr.deleteSuite(suite);
+        } catch (Exception e) {
+            statusHandler.error("Error deleting suite " + suite.getName()
+                    + " from the database: ", e);
+        }
+
+        retrieveDataFromDB();
+        suiteConfigGroup.populateSuiteTable(suiteList, true);
+    }
+
+    /**
+     * Find all of the programs associates with the suite passed in.
+     * 
+     * @param suite
+     *            Suite used to find matching programs.
+     * @return String of matching programs.
+     */
+    private String findAssociatedPrograms(Suite suite) {
+
+        List<Program> allProgramsArray = new ArrayList<Program>();
+        ProgramDataManager pdm = new ProgramDataManager();
+
+        try {
+            allProgramsArray = pdm.getProgramSuites();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving program data from the database: ", e);
+            return null;
+        }
+
+        List<Program> assocProgs = new ArrayList<Program>();
+
+        for (Program p : allProgramsArray) {
+            List<Suite> suitesInProgram = p.getSuites();
+            for (Suite progSuite : suitesInProgram) {
+                // If a Suite is found, add the program and continue to the
+                // next program.
+                if (progSuite.getId() == suite.getId()) {
+                    assocProgs.add(p);
+                    break;
+                }
+            }
+        }
+
+        if (assocProgs.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (Program p : assocProgs) {
+            sb.append(p.getName()).append("\n");
+        }
+
+        return sb.toString();
     }
 }

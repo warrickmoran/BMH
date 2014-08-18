@@ -70,6 +70,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 06, 2014  #3490     lvenable     Refactored and added additional functionality.
  * Aug 12, 2014  #3490     lvenable     Updated populate table method call and added additional
  *                                      functionality so this class could be used in multiple places.
+ * Aug 15, 2014  #3490     lvenable     Reworked to use updated interface and allow the suite table to
+ *                                      re-populate without rebuilding the table.
  * 
  * </pre>
  * 
@@ -97,7 +99,7 @@ public class SuiteConfigGroup extends Composite {
     private TableData suiteTableData = null;
 
     /** List of suite data. */
-    private List<Suite> suiteList;
+    private List<Suite> suiteList = null;
 
     /** List of suite data. */
     private List<Suite> filteredSuiteList = new ArrayList<Suite>();
@@ -246,7 +248,7 @@ public class SuiteConfigGroup extends Composite {
                 } else {
                     suiteCatType = null;
                 }
-                populateSuiteTable();
+                populateSuiteTable(false);
             }
         };
 
@@ -452,7 +454,9 @@ public class SuiteConfigGroup extends Composite {
             deleteSuiteBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    handleDeleteAction();
+                    if (selectedSuite != null) {
+                        suiteSelectionCB.deleteSuite(selectedSuite);
+                    }
                 }
             });
             suiteControls.add(deleteSuiteBtn);
@@ -494,17 +498,6 @@ public class SuiteConfigGroup extends Composite {
 
             suiteControls.add(relationshipBtn);
         }
-    }
-
-    /**
-     * Action taken when a table items is removed.
-     */
-    private void handleDeleteAction() {
-
-        // TODO: delete the suite
-        // select an available item
-
-        enableControls(suiteTable.hasSelectedItems());
     }
 
     /**
@@ -551,14 +544,25 @@ public class SuiteConfigGroup extends Composite {
     }
 
     /**
-     * Populate the suite table using the list of suites.
+     * Select the suite in the table based on suite ID. If the suite ID is not
+     * found then select the first suite.
      * 
-     * @param suiteList
-     *            List of suites.
+     * @param suiteId
+     *            suite ID.
      */
-    public void populateSuiteTable(List<Suite> suiteList) {
-        this.suiteList = suiteList;
-        populateSuiteTable();
+    public void selectSuiteInTable(int suiteId) {
+        suiteTable.deselectAll();
+
+        int index = 0;
+        for (Suite s : filteredSuiteList) {
+            if (s.getId() == suiteId) {
+                suiteTable.select(index);
+                return;
+            }
+            ++index;
+        }
+
+        suiteTable.select(0);
     }
 
     /**
@@ -567,6 +571,8 @@ public class SuiteConfigGroup extends Composite {
     private void updateSelectedSuite() {
         if (suiteTable.getSelectedIndex() >= 0) {
             selectedSuite = suiteList.get(suiteTable.getSelectedIndex());
+        } else {
+            selectedSuite = null;
         }
     }
 
@@ -602,9 +608,21 @@ public class SuiteConfigGroup extends Composite {
     }
 
     /**
+     * Populate the suite table using the list of suites.
+     * 
+     * @param suiteList
+     *            List of suites.
+     */
+    public void populateSuiteTable(List<Suite> suiteList,
+            boolean replaceTableItems) {
+        this.suiteList = suiteList;
+        populateSuiteTable(replaceTableItems);
+    }
+
+    /**
      * Populate the Suite table.
      */
-    private void populateSuiteTable() {
+    private void populateSuiteTable(boolean replaceTableItems) {
 
         if (suiteTable.hasTableData() == false) {
             List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
@@ -619,10 +637,17 @@ public class SuiteConfigGroup extends Composite {
         }
 
         populateSuiteTableData();
-        suiteTable.populateTable(suiteTableData);
+
+        if (replaceTableItems) {
+            suiteTable.replaceTableItems(suiteTableData);
+        } else {
+            suiteTable.populateTable(suiteTableData);
+        }
 
         if (suiteTable.getItemCount() > 0) {
-            suiteTable.select(0);
+            if (!replaceTableItems) {
+                suiteTable.select(0);
+            }
             updateSelectedSuite();
         }
         enableSuiteControls();

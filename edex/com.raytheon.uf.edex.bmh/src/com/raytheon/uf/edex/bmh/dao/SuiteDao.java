@@ -48,6 +48,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
  * Aug 06, 2014 #3490     lvenable    Updated to get Suite information.
  * Aug 12, 2014 #3490     lvenable    Refactored to make a getSuiteByQuery() method that
  *                                    will used the query passed it to retrieve the data.
+ * Aug 17, 2014 #3490     lvenable    Fixed empty list error in createSuiteMsgTypes().
  * 
  * </pre>
  * 
@@ -188,7 +189,7 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
             suite.addSuiteMessage(sm);
         }
 
-        List<Suite> suiteList = new ArrayList<Suite>(objectList.size());
+        List<Suite> suiteList = new ArrayList<Suite>(existingSuites.values());
 
         return suiteList;
     }

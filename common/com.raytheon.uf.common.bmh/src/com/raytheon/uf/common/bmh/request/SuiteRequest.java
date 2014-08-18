@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * ------------ ---------- ----------- --------------------------
  * Aug 5, 2014  #3490      lvenable     Initial creation
  * Aug 12, 2014 #3490      lvenable     Added SuitesMsgTypes action.
+ * Aug 17, 2014 #3490      lvenable     Added suite and getter/setters.
  * 
  * </pre>
  * 
@@ -49,6 +51,9 @@ public class SuiteRequest implements IServerRequest {
 
     @DynamicSerializeElement
     private SuiteAction action;
+
+    @DynamicSerializeElement
+    private Suite suite;
 
     /**
      * Get the suite action.
@@ -67,5 +72,13 @@ public class SuiteRequest implements IServerRequest {
      */
     public void setAction(SuiteAction action) {
         this.action = action;
+    }
+
+    public Suite getSuite() {
+        return suite;
+    }
+
+    public void setSuite(Suite suite) {
+        this.suite = suite;
     }
 }
