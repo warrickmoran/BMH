@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
 
+import java.util.Set;
+
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 
 /**
@@ -32,6 +34,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
  * ------------ ---------- ----------- --------------------------
  * Aug 6, 2014  #3490      lvenable     Initial creation
  * Aug 15, 2014  #3490     lvenable     Added delete method
+ * Aug 18, 2014  #3490     lvenable     Added rename, copy, get names methods.
  * 
  * </pre>
  * 
@@ -58,4 +61,19 @@ public interface ISuiteSelection {
      * Action when a suite has been deleted.
      */
     public void deleteSuite(Suite suite);
+
+    /**
+     * Action when a suite has been renamed.
+     */
+    public void renameSuite(Suite suite);
+
+    /**
+     * Action when a suite has been copied.
+     */
+    public void copySuite(Suite suite);
+
+    /**
+     * Get the existing suite names.
+     */
+    public Set<String> getSuiteNames();
 }

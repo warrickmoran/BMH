@@ -20,7 +20,9 @@
 package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
@@ -47,7 +49,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
-import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.ISuiteSelection;
 import com.raytheon.uf.viz.bmh.ui.program.AddSuitesDlg.SuiteDialogType;
 import com.raytheon.uf.viz.bmh.ui.program.CreateEditSuiteDlg.DialogType;
@@ -72,6 +73,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      functionality so this class could be used in multiple places.
  * Aug 15, 2014  #3490     lvenable     Reworked to use updated interface and allow the suite table to
  *                                      re-populate without rebuilding the table.
+ * Aug 18, 2014  #3490     lvenable     Added callback calls for actions on the suites.
  * 
  * </pre>
  * 
@@ -360,9 +362,31 @@ public class SuiteConfigGroup extends Composite {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
                     boolean showProgramControls = (suiteGroupType == SuiteGroupType.SUITE_MGR);
+
+                    Set<String> existingNames = null;
+
+                    if (suiteSelectionCB != null) {
+                        existingNames = suiteSelectionCB.getSuiteNames();
+                    } else {
+                        existingNames = new HashSet<String>();
+                    }
+
                     CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
                             .getShell(), DialogType.CREATE,
-                            showProgramControls, null);
+                            showProgramControls, null, existingNames);
+                    csd.setCloseCallback(new ICloseCallback() {
+                        @Override
+                        public void dialogClosed(Object returnValue) {
+                            if (returnValue != null
+                                    && returnValue instanceof Boolean) {
+                                if ((Boolean) returnValue) {
+                                    if (selectedSuite != null) {
+                                        suiteSelectionCB.suitesUpdated();
+                                    }
+                                }
+                            }
+                        }
+                    });
                     csd.open();
                 }
             });
@@ -391,9 +415,12 @@ public class SuiteConfigGroup extends Composite {
             copyBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    AddSuitesDlg asd = new AddSuitesDlg(getShell(),
-                            SuiteDialogType.COPY_ONLY);
-                    asd.open();
+                    if (selectedSuite != null) {
+                        suiteSelectionCB.copySuite(selectedSuite);
+                    }
+                    // AddSuitesDlg asd = new AddSuitesDlg(getShell(),
+                    // SuiteDialogType.COPY_ONLY);
+                    // asd.open();
                 }
             });
             suiteControls.add(copyBtn);
@@ -406,22 +433,9 @@ public class SuiteConfigGroup extends Composite {
             renameSuiteBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    InputTextDlg inputDlg = new InputTextDlg(parentComp
-                            .getShell(), "Rename Suite",
-                            "Type in a new suite name:", null);
-                    inputDlg.setCloseCallback(new ICloseCallback() {
-                        @Override
-                        public void dialogClosed(Object returnValue) {
-                            // TODO: implement code.
-                            // Need to validate the input.
-                            if (returnValue != null
-                                    && returnValue instanceof String) {
-                                String name = (String) returnValue;
-                                System.out.println("Suite name = " + name);
-                            }
-                        }
-                    });
-                    inputDlg.open();
+                    if (selectedSuite != null) {
+                        suiteSelectionCB.renameSuite(selectedSuite);
+                    }
                 }
             });
             suiteControls.add(renameSuiteBtn);
@@ -439,7 +453,22 @@ public class SuiteConfigGroup extends Composite {
                     boolean showProgramControls = (suiteGroupType == SuiteGroupType.SUITE_MGR);
                     CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
                             .getShell(), DialogType.EDIT, showProgramControls,
-                            selectedProgram, selectedSuite);
+                            selectedProgram, selectedSuite, null);
+
+                    csd.setCloseCallback(new ICloseCallback() {
+                        @Override
+                        public void dialogClosed(Object returnValue) {
+                            if (returnValue != null
+                                    && returnValue instanceof Boolean) {
+                                if ((Boolean) returnValue) {
+                                    if (selectedSuite != null) {
+                                        suiteSelectionCB.suitesUpdated();
+                                    }
+                                }
+                            }
+                        }
+                    });
+
                     csd.open();
                 }
             });
@@ -522,7 +551,7 @@ public class SuiteConfigGroup extends Composite {
             return null;
         }
 
-        return suiteList.get(suiteTable.getSelectedIndex());
+        return filteredSuiteList.get(suiteTable.getSelectedIndex());
     }
 
     /**

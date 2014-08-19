@@ -38,7 +38,7 @@ import org.eclipse.swt.widgets.Text;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.bmh.ui.dialogs.suites.ISuiteSelection;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteActionAdapter;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteNameComparator;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
@@ -59,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 12, 2014  #3490     lvenable     Updated to use the suite config group and
  *                                      hooked up data from the database.
  * Aug 15, 2014  #3490     lvenable     Sort the list of suites.
+ * Aug 18, 2014  #3490     lvenable     Updated code changes and added TODO reminders.
  * 
  * </pre>
  * 
@@ -87,6 +88,8 @@ public class AddSuitesDlg extends CaveSWTDialog {
     public enum SuiteDialogType {
         ADD_COPY, COPY_ONLY;
     };
+
+    // TODO : remove COPY_ONLY
 
     /** Type of dialog (Create or Edit). */
     private SuiteDialogType dialogType = SuiteDialogType.ADD_COPY;
@@ -216,7 +219,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
                 "  Select Suite to Add: ", SuiteGroupType.ADD_COPY_EXITING,
                 null, 550, 150);
         suiteConfigGroup.setMultipleSelection(true);
-        suiteConfigGroup.setCallBackAction(new ISuiteSelection() {
+        suiteConfigGroup.setCallBackAction(new SuiteActionAdapter() {
             @Override
             public void suiteSelected(Suite suite) {
                 // TODO : look at adding code if needed for this method
@@ -230,6 +233,12 @@ public class AddSuitesDlg extends CaveSWTDialog {
             @Override
             public void deleteSuite(Suite suite) {
                 // TODO : look at adding code if needed for this method
+            }
+
+            @Override
+            public void renameSuite(Suite suite) {
+                // TODO : look at adding code if needed for this method
+
             }
         });
     }
