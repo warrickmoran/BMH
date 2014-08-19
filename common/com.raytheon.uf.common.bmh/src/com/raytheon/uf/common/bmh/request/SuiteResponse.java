@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
@@ -35,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 5, 2014  #3490      lvenable     Initial creation
+ * Aug 18,2014  #3490      lvenable     Added addSuite() method.
  * 
  * </pre>
  * 
@@ -64,5 +66,12 @@ public class SuiteResponse {
      */
     public void setSuiteList(List<Suite> suiteList) {
         this.suiteList = suiteList;
+    }
+
+    public void addSuite(Suite s) {
+        if (suiteList == null) {
+            suiteList = new ArrayList<Suite>(1);
+        }
+        suiteList.add(s);
     }
 }

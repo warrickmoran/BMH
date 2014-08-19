@@ -39,6 +39,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 17, 2014 #3490      lvenable     Initial creation
+ * Aug 18, 2014 #3490      lvenable     Added save action.
  * 
  * </pre>
  * 
@@ -105,5 +106,24 @@ public class SuiteDataManager {
         sr.setSuite(selectedSuite);
 
         BmhUtils.sendRequest(sr);
+    }
+
+    /**
+     * Save the suite.
+     * 
+     * @param selectedSuite
+     *            Suite to save.
+     * @return Suite response.
+     * @throws Exception
+     */
+    public SuiteResponse saveSuite(Suite selectedSuite) throws Exception {
+        SuiteRequest sr = new SuiteRequest();
+        sr.setAction(SuiteAction.Save);
+        sr.setSuite(selectedSuite);
+        SuiteResponse suiteResponse = null;
+
+        suiteResponse = (SuiteResponse) BmhUtils.sendRequest(sr);
+
+        return suiteResponse;
     }
 }

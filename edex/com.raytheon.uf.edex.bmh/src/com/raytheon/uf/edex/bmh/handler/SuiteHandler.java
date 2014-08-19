@@ -39,6 +39,7 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * Aug 5, 2014  #3490      lvenable     Initial creation
  * Aug 12, 2014 #3490     lvenable     Refactored to make a query convenience method.
  * Aug 12, 2014 #3490     lvenable     Added delete.
+ * Aug 18, 2014 #3490     lvenable     Added save.
  * 
  * </pre>
  * 
@@ -65,6 +66,9 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
             break;
         case Delete:
             deleteSuite(request);
+            break;
+        case Save:
+            suiteResponse = saveSuite(request);
             break;
         default:
             break;
@@ -131,5 +135,23 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
         if (suiteRequest != null) {
             dao.delete(suiteRequest.getSuite());
         }
+    }
+
+    /**
+     * Save suite.
+     * 
+     * @param request
+     *            Suite request.
+     * @return Suite response.
+     */
+    private SuiteResponse saveSuite(SuiteRequest request) {
+        SuiteDao dao = new SuiteDao();
+        SuiteResponse suiteResponse = new SuiteResponse();
+        if (request.getSuite() != null) {
+            dao.saveOrUpdate(request.getSuite());
+            suiteResponse.addSuite(request.getSuite());
+        }
+
+        return suiteResponse;
     }
 }

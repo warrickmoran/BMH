@@ -20,6 +20,8 @@
 package com.raytheon.uf.viz.bmh.ui.common.table;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Class used to reorder multiple items in a table.
@@ -31,7 +33,8 @@ import java.util.Arrays;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 31, 2014  #3479     lvenable     Initial creation
- * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
+ * Aug 08, 2014  #3490     lvenable    Updated populate table method call.
+ * Aug 18, 2014  #3490     lvenable    Updated to sort the actual list of data.
  * 
  * </pre>
  * 
@@ -54,28 +57,30 @@ public class TableMoveAction {
     }
 
     /**
-     * Move the selected item "up" in the list.
-     */
-    public void moveUp() {
-        move(true);
-    }
-
-    /**
-     * Move the selected items "down" in the list.
-     */
-    public void moveDown() {
-        move(false);
-    }
-
-    /**
-     * Move the items in the table up or down based on the flag passed in.
+     * Move up.
      * 
-     * @param up
-     *            True to move the items up, false to move them down.
+     * @param dataArray
+     *            List to resort.
+     * @return List of selected indices.
      */
-    private void move(boolean up) {
+    public int[] moveUp(List<?> dataArray) {
+        return move(true, dataArray);
+    }
+
+    /**
+     * Move down.
+     * 
+     * @param dataArray
+     *            List to resort.
+     * @return List of selected indices.
+     */
+    public int[] moveDown(List<?> dataArray) {
+        return move(false, dataArray);
+    }
+
+    private int[] move(boolean up, List<?> dataArray) {
         if (!tableComp.hasSelectedItems()) {
-            return;
+            return null;
         }
 
         TableData tableData = tableComp.getTableData();
@@ -92,8 +97,7 @@ public class TableMoveAction {
                 if (selBoolArray[i] == true && selBoolArray[i - 1] == false) {
                     selBoolArray[i] = false;
                     selBoolArray[i - 1] = true;
-                    TableRowData trd = tableData.deleteRow(i - 1);
-                    tableData.addDataRow(trd, i);
+                    Collections.swap(dataArray, i - 1, i);
                 }
             }
         } else {
@@ -101,8 +105,7 @@ public class TableMoveAction {
                 if (selBoolArray[i] == false && selBoolArray[i - 1] == true) {
                     selBoolArray[i] = true;
                     selBoolArray[i - 1] = false;
-                    TableRowData trd = tableData.deleteRow(i - 1);
-                    tableData.addDataRow(trd, i);
+                    Collections.swap(dataArray, i - 1, i);
                 }
             }
         }
@@ -115,9 +118,6 @@ public class TableMoveAction {
             }
         }
 
-        tableComp.populateTable(tableData);
-        tableComp.deselectAll();
-        tableComp.selectRows(selIdxArray);
-        tableComp.showSelection();
+        return selIdxArray;
     }
 }

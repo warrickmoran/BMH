@@ -20,8 +20,10 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -38,10 +40,12 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * 
@@ -60,6 +64,7 @@ import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
  * Aug 06, 2014  #3490     lvenable    Refactored and moved code to SuiteConfigGroup.
  * Aug 12, 2014  #3490     lvenable    Updated code to use database data.
  * Aug 15, 2014  #3490     lvenable     Sort the list of suites, use suite data manager.
+ * Aug 15, 2014  #3490     lvenable     Added copy, rename, other capabilities.
  * 
  * </pre>
  * 
@@ -79,7 +84,9 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
     private SuiteConfigGroup suiteConfigGroup;
 
     /** Suite data manger. */
-    private SuiteDataManager suiteDataMgr = new SuiteDataManager();;
+    private SuiteDataManager suiteDataMgr = new SuiteDataManager();
+
+    private Set<String> suiteNames = new HashSet<String>();
 
     /**
      * Constructor.
@@ -132,7 +139,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
     private void createSuiteTableGroup() {
         suiteConfigGroup = new SuiteConfigGroup(shell, " Available Suites: ",
                 SuiteGroupType.SUITE_MGR, null, 550, 150);
-        suiteConfigGroup.setCallBackAction(new ISuiteSelection() {
+        suiteConfigGroup.setCallBackAction(new SuiteActionAdapter() {
             @Override
             public void suiteSelected(Suite suite) {
             }
@@ -146,6 +153,47 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
             @Override
             public void deleteSuite(Suite suite) {
                 handleDeleteSuite(suite);
+            }
+
+            @Override
+            public void renameSuite(Suite suite) {
+                SuiteNameValidator snv = new SuiteNameValidator(suiteNames);
+
+                InputTextDlg inputDlg = new InputTextDlg(shell, "Rename Suite",
+                        "Type in a new suite name: ", suite.getName(), snv);
+                inputDlg.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        if (returnValue != null
+                                && returnValue instanceof String) {
+                            handleSuiteRename((String) returnValue);
+                        }
+                    }
+                });
+                inputDlg.open();
+            }
+
+            @Override
+            public void copySuite(Suite suite) {
+                SuiteNameValidator snv = new SuiteNameValidator(suiteNames);
+
+                InputTextDlg inputDlg = new InputTextDlg(shell, "Copy Suite",
+                        "Type in a new suite name: ", suite.getName(), snv);
+                inputDlg.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        if (returnValue != null
+                                && returnValue instanceof String) {
+                            handleSuiteCopy((String) returnValue);
+                        }
+                    }
+                });
+                inputDlg.open();
+            }
+
+            @Override
+            public Set<String> getSuiteNames() {
+                return suiteNames;
             }
         });
     }
@@ -186,13 +234,60 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
     private void retrieveDataFromDB() {
         try {
             suiteList = suiteDataMgr.getAllSuites(new SuiteNameComparator());
+
+            suiteNames.clear();
+            for (Suite s : suiteList) {
+                suiteNames.add(s.getName());
+            }
+
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving suite data from the database: ", e);
         }
     }
 
-    public void handleDeleteSuite(Suite suite) {
+    private void handleSuiteCopy(String name) {
+        Suite selectedSuite = suiteConfigGroup.getSelectedSuite();
+
+        if (selectedSuite == null) {
+            return;
+        }
+
+        selectedSuite.setId(0);
+        selectedSuite.setName(name);
+        try {
+            suiteDataMgr.saveSuite(selectedSuite);
+        } catch (Exception e) {
+            statusHandler.error("Error renaming the suite: ", e);
+        }
+
+        // TODO : need to scroll to the renamed suite. SWT showSelected doesn't
+        // work so look at coming up with a fix.
+        retrieveDataFromDB();
+        suiteConfigGroup.populateSuiteTable(suiteList, false);
+    }
+
+    private void handleSuiteRename(String name) {
+        Suite selectedSuite = suiteConfigGroup.getSelectedSuite();
+
+        if (selectedSuite == null) {
+            return;
+        }
+
+        selectedSuite.setName(name);
+        try {
+            suiteDataMgr.saveSuite(selectedSuite);
+        } catch (Exception e) {
+            statusHandler.error("Error renaming the suite: ", e);
+        }
+
+        // TODO : need to scroll to the renamed suite. SWT showSelected doesn't
+        // work so look at coming up with a fix.
+        retrieveDataFromDB();
+        suiteConfigGroup.populateSuiteTable(suiteList, false);
+    }
+
+    private void handleDeleteSuite(Suite suite) {
         // Safety check in case the selected suite is null;
         if (suite == null) {
             return;

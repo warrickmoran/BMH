@@ -41,7 +41,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.program.AddSuitesDlg.SuiteDialogType;
-import com.raytheon.uf.viz.bmh.ui.program.CreateEditSuiteDlg.DialogType;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -162,9 +161,11 @@ public class CreateNewProgram extends CaveSWTDialog {
         addNewSuiteBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                CreateEditSuiteDlg csd = new CreateEditSuiteDlg(shell,
-                        DialogType.CREATE, false, null);
-                csd.open();
+                // TODO : disabled until ready to use since there are changed
+                // that need to be made.
+                // CreateEditSuiteDlg csd = new CreateEditSuiteDlg(shell,
+                // DialogType.CREATE, false, null);
+                // csd.open();
             }
         });
 
