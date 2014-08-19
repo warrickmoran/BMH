@@ -202,8 +202,8 @@ public class CommsConfigurator {
                     for (DacChannelConfig prevChannel : prevConfig
                             .getChannels()) {
                         if (group.equals(prevChannel.getTransmitterGroup())) {
-                            int port = prevChannel.getDataPort();
-                            if (availablePorts.remove(port) != null) {
+                            Integer port = prevChannel.getDataPort();
+                            if (availablePorts.remove(port) == true) {
                                 channel.setDataPort(port);
                             }
                             break;
