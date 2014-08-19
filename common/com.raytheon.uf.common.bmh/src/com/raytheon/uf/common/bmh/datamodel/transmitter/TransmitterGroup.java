@@ -62,6 +62,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Jul 17, 2014  3406      mpduff      Added id pk column
  * Aug 04, 2014  3173      mpduff      Changed rcs to dac, added position and convenience methods, using serialization adapter
  * Aug 13, 2014  3486      bsteffen    Add getEnabledTransmitters
+ * Aug 18, 2014  3532      bkowal      Added adjustAudioMinDB and adjustAudioMaxDB
+ * 
  * 
  * </pre>
  * 
@@ -111,6 +113,16 @@ public class TransmitterGroup {
 
     @Column
     private int position;
+
+    /*
+     * TODO: defaults? we may at least need defaults for the import of legacy
+     * information?
+     */
+    @Column(nullable = false)
+    private double adjustAudioMinDB = -11.0;
+
+    @Column(nullable = false)
+    private double adjustAudioMaxDB = -9.0;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
     private Set<Transmitter> transmitters;
@@ -191,6 +203,36 @@ public class TransmitterGroup {
      */
     public void setPosition(int position) {
         this.position = position;
+    }
+
+    /**
+     * @return the adjustAudioMinDB
+     */
+    public double getAdjustAudioMinDB() {
+        return adjustAudioMinDB;
+    }
+
+    /**
+     * @param adjustAudioMinDB
+     *            the adjustAudioMinDB to set
+     */
+    public void setAdjustAudioMinDB(double adjustAudioMinDB) {
+        this.adjustAudioMinDB = adjustAudioMinDB;
+    }
+
+    /**
+     * @return the adjustAudioMaxDB
+     */
+    public double getAdjustAudioMaxDB() {
+        return adjustAudioMaxDB;
+    }
+
+    /**
+     * @param adjustAudioMaxDB
+     *            the adjustAudioMaxDB to set
+     */
+    public void setAdjustAudioMaxDB(double adjustAudioMaxDB) {
+        this.adjustAudioMaxDB = adjustAudioMaxDB;
     }
 
     public Set<Transmitter> getTransmitters() {
@@ -300,11 +342,31 @@ public class TransmitterGroup {
      */
     @Override
     public String toString() {
-        return "TransmitterGroup [id=" + id + ", name=" + name + ", tone="
-                + tone + ", dac=" + dac + ", timeZone=" + timeZone
-                + ", silenceAlarm=" + silenceAlarm + ", daylightSaving="
-                + daylightSaving + ", position=" + position + ", transmitters="
-                + transmitters + "]";
+        StringBuilder stringBuilder = new StringBuilder("TransmitterGroup [id=");
+        stringBuilder.append(this.id);
+        stringBuilder.append(", name=");
+        stringBuilder.append(this.name);
+        stringBuilder.append(", tone=");
+        stringBuilder.append(this.tone);
+        stringBuilder.append(", dac=");
+        stringBuilder.append(this.dac);
+        stringBuilder.append(", timeZone=");
+        stringBuilder.append(this.timeZone);
+        stringBuilder.append(", silenceAlarm=");
+        stringBuilder.append(this.silenceAlarm);
+        stringBuilder.append(", daylightSaving=");
+        stringBuilder.append(this.daylightSaving);
+        stringBuilder.append(", position=");
+        stringBuilder.append(this.position);
+        stringBuilder.append(", adjustAudioMinDB=");
+        stringBuilder.append(this.adjustAudioMinDB);
+        stringBuilder.append(", adjustAudioMaxDB=");
+        stringBuilder.append(this.adjustAudioMaxDB);
+        stringBuilder.append(", transmitters=");
+        stringBuilder.append(this.transmitters);
+        stringBuilder.append("]");
+
+        return stringBuilder.toString();
     }
 
 }

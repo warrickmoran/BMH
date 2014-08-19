@@ -42,6 +42,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelRange;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
@@ -70,6 +71,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jul 31, 2014  3286     dgilling    Send DacHardwareStatusNotification.
  * Aug 12, 2014  3486     bsteffen    Remove group from registration
  * Aug 14, 2014  3286     dgilling    Send DacTransmitCriticalError.
+ * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange.
  * 
  * </pre>
  * 
@@ -131,7 +133,9 @@ public final class CommsManagerCommunicator extends Thread {
                                     config.getInputDirectory().toString(),
                                     config.getDataPort(), config
                                             .getDacAddress().getHostAddress(),
-                                    Ints.toArray(config.getTransmitters()));
+                                    Ints.toArray(config.getTransmitters()),
+                                    config.getDbRange().getMinimumDouble(),
+                                    config.getDbRange().getMaximumDouble());
                             SerializationUtil.transformToThriftUsingStream(
                                     registration, outputStream);
                             if (statusToSend.isConnectedToDac()) {
@@ -210,6 +214,8 @@ public final class CommsManagerCommunicator extends Thread {
         } else if (message instanceof PlaylistUpdateNotification) {
             eventBus.post(message);
         } else if (message instanceof ChangeTransmitters) {
+            eventBus.post(message);
+        } else if (message instanceof ChangeDecibelRange) {
             eventBus.post(message);
         } else {
             logger.error("Unrecognized message from comms manager of type "

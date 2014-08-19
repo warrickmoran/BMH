@@ -9,13 +9,15 @@
 		
 		<echo message="basedir: ${basedir}" />
         
-		<copy todir="${bmh.root.directory}/conf" failonerror="true">
+		<copy todir="${bmh.root.directory}/conf" failonerror="true" 
+		overwrite="${esb.overwrite}">
 			<fileset dir="${basedir}/conf">
 				<include name="**/*" />
 			</fileset>
 		</copy>
 
-		<copy todir="${bmh.scripts.directory}" failonerror="true">
+		<copy todir="${bmh.scripts.directory}" failonerror="true"
+		overwrite="${esb.overwrite}">
 			<fileset dir="${basedir}/scripts">
 				<include name="**/*" />
 			</fileset>

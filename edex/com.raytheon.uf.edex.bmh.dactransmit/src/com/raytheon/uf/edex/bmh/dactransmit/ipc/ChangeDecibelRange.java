@@ -23,91 +23,43 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * 
- * Message sent by the dac transmit application to comms manager on initial
- * connection.
+ * Message sent from comms manager to dac transmit to indicate a different
+ * decibel range.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date          Ticket#  Engineer    Description
- * ------------- -------- ----------- --------------------------
- * Jul 16, 2014  3399     bsteffen    Initial creation
- * Aug 12, 2014  3486     bsteffen    Remove tranmistter group name
- * Aug 18, 2014  3532     bkowal      Support transmitter decibel range
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * Aug 18, 2014 3532       bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author bkowal
  * @version 1.0
  */
 @DynamicSerialize
-public class DacTransmitRegister {
+public class ChangeDecibelRange {
 
-    @DynamicSerializeElement
-    private String inputDirectory;
-
-    @DynamicSerializeElement
-    private int dataPort;
-
-    @DynamicSerializeElement
-    private String dacAddress;
-
-    @DynamicSerializeElement
-    private int[] transmitters;
-
+    /*
+     * The new decibel range to use.
+     */
     @DynamicSerializeElement
     private double dbMin;
 
     @DynamicSerializeElement
     private double dbMax;
 
-    public DacTransmitRegister() {
-
+    /**
+     * Constructor.
+     */
+    public ChangeDecibelRange() {
     }
 
-    public DacTransmitRegister(String inputDirectory, int dataPort,
-            String dacAddress, int[] transmitters, double dbMin, double dbMax) {
-        super();
-        this.inputDirectory = inputDirectory;
-        this.dataPort = dataPort;
-        this.dacAddress = dacAddress;
-        this.transmitters = transmitters;
+    public ChangeDecibelRange(double dbMin, double dbMax) {
         this.dbMin = dbMin;
         this.dbMax = dbMax;
-    }
-
-    public String getInputDirectory() {
-        return inputDirectory;
-    }
-
-    public void setInputDirectory(String inputDirectory) {
-        this.inputDirectory = inputDirectory;
-    }
-
-    public int getDataPort() {
-        return dataPort;
-    }
-
-    public void setDataPort(int dataPort) {
-        this.dataPort = dataPort;
-    }
-
-    public String getDacAddress() {
-        return dacAddress;
-    }
-
-    public void setDacAddress(String dacAddress) {
-        this.dacAddress = dacAddress;
-    }
-
-    public int[] getTransmitters() {
-        return transmitters;
-    }
-
-    public void setTransmitters(int[] transmitters) {
-        this.transmitters = transmitters;
     }
 
     /**
@@ -139,5 +91,4 @@ public class DacTransmitRegister {
     public void setDbMax(double dbMax) {
         this.dbMax = dbMax;
     }
-
 }

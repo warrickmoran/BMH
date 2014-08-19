@@ -68,6 +68,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Aug 08, 2014  #3286     dgilling     Inform CommsManager when sync is lost
  *                                      or re-gained.
  * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
+ * Aug 18, 2014  #3532     bkowal       Add transmitter decibel range
  * 
  * </pre>
  * 
@@ -117,7 +118,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                 .newSingleThreadExecutor(new NamedThreadFactory("EventBus"));
         this.eventBus = new AsyncEventBus("DAC-Transmit", notificationExecutor);
         this.playlistMgr = new PlaylistScheduler(
-                this.config.getInputDirectory(), this.eventBus);
+                this.config.getInputDirectory(), this.eventBus,
+                this.config.getDbRange());
         this.controlThread = new ControlStatusThread(this.eventBus,
                 this.config.getDacAddress(), this.config.getControlPort());
         this.dataThread = new DataTransmitThread(this.eventBus, playlistMgr,

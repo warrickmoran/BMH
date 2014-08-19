@@ -41,6 +41,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Aug 12, 2014  3486     bsteffen    Add getInputDirectory
+ * Aug 18, 2014  3532     bkowal      Added transmitter decibel range
  * 
  * </pre>
  * 
@@ -54,17 +55,23 @@ public class DacChannelConfig {
     private String transmitterGroup;
 
     @XmlAttribute
+    private double dbRangeMin;
+
+    @XmlAttribute
+    private double dbRangeMax;
+
+    @XmlAttribute
     private int[] radios;
-    
+
     @XmlAttribute
     private int dataPort;
-    
+
     @XmlAttribute
     private Integer controlPort;
 
     public Path getInputDirectory() {
-        return Paths.get(BMHConstants.getBmhDataDirectory(),
-                "playlist", transmitterGroup);
+        return Paths.get(BMHConstants.getBmhDataDirectory(), "playlist",
+                transmitterGroup);
     }
 
     public String getTransmitterGroup() {
@@ -73,6 +80,36 @@ public class DacChannelConfig {
 
     public void setTransmitterGroup(String transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    /**
+     * @return the dbRangeMin
+     */
+    public double getDbRangeMin() {
+        return dbRangeMin;
+    }
+
+    /**
+     * @param dbRangeMin
+     *            the dbRangeMin to set
+     */
+    public void setDbRangeMin(double dbRangeMin) {
+        this.dbRangeMin = dbRangeMin;
+    }
+
+    /**
+     * @return the dbRangeMax
+     */
+    public double getDbRangeMax() {
+        return dbRangeMax;
+    }
+
+    /**
+     * @param dbRangeMax
+     *            the dbRangeMax to set
+     */
+    public void setDbRangeMax(double dbRangeMax) {
+        this.dbRangeMax = dbRangeMax;
     }
 
     public int[] getRadios() {

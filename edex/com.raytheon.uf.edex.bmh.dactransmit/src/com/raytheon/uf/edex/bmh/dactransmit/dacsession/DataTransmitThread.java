@@ -68,7 +68,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Aug 08, 2014  #3286     dgilling     Support halting playback when sync is
  *                                      lost and resuming when sync is regained.
  * Aug 12, 2014  #3486     bsteffen     Allow changing transmitters
- *
+ * Aug 18, 2014  #3532     bkowal       Add transmitter decibel range. Adjust the
+ *                                      audio before transmitting it.
+ * 
  * </pre>
  * 
  * @author dgilling
@@ -179,6 +181,7 @@ public final class DataTransmitThread extends Thread implements
                         }
 
                         byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
+
                         MessagePlaybackStatusNotification playbackStatus = playbackData
                                 .get(nextPayload);
                         if (playbackStatus != null) {
@@ -303,5 +306,4 @@ public final class DataTransmitThread extends Thread implements
     public void changeTransmitters(ChangeTransmitters changeEvent) {
         transmitters = Ints.asList(changeEvent.getTransmitters());
     }
-
 }

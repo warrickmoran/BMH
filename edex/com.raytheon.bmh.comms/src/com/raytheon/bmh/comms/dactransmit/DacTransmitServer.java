@@ -53,6 +53,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Aug 04, 2014  3487     bsteffen    Rename config options.
  * Aug 12, 2014  3486     bsteffen    Support ChangeTransmitters
+ * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange
  * 
  * </pre>
  * 
@@ -124,6 +125,7 @@ public class DacTransmitServer extends AbstractServerThread {
             } else {
                 for (DacTransmitCommunicator communicator : entry.getValue()) {
                     communicator.setRadios(channel.getRadios());
+
                 }
             }
         }
@@ -197,7 +199,8 @@ public class DacTransmitServer extends AbstractServerThread {
             group = channel.getTransmitterGroup();
         }
         DacTransmitCommunicator comms = new DacTransmitCommunicator(manager,
-                this, group, message.getTransmitters(), socket);
+                this, group, message.getTransmitters(), socket,
+                message.getDbMin(), message.getDbMax());
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(key);
         if (communicators == null) {
@@ -214,6 +217,8 @@ public class DacTransmitServer extends AbstractServerThread {
         comms.start();
         if (keep) {
             comms.setRadios(channel.getRadios());
+            comms.setTransmitterDBRange(channel.getDbRangeMin(),
+                    channel.getDbRangeMax());
         } else {
             comms.shutdown();
         }

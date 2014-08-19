@@ -19,31 +19,36 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXB;
 
+import org.apache.commons.lang.math.DoubleRange;
+import org.apache.commons.lang.math.Range;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
-import com.raytheon.uf.edex.bmh.dactransmit.tones.TonesGenerator;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelRange;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
-import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
 
 /**
  * Cache for {@code PlaylistMessage} objects. Stores the contents of each audio
@@ -62,6 +67,10 @@ import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
  * Jul 29, 2014  #3286     dgilling     Add getPlaylist().
  * Aug 04, 2014  #3286     dgilling     Remove getPlaylist().
  * Aug 12, 2014  #3286     dgilling     Support tones playback.
+ * Aug 19, 2014  #3532     bkowal       The raw audio data will now be attenuated or
+ *                                      amplified based on the transmitter decibel range
+ *                                      before it is cached. Initial implementation of
+ *                                      prioritization.
  * 
  * </pre>
  * 
@@ -73,7 +82,20 @@ public final class PlaylistMessageCache {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
+    private static final int THREAD_POOL_CORE_SIZE = 3;
+
     private static final int THREAD_POOL_MAX_SIZE = 3;
+
+    // TODO: we may need additional priorities.
+    private static final int PRIORITY_LOW = 2;
+
+    private static final int PRIORITY_NORMAL = 40;
+
+    /*
+     * Note: the current implementation does not allow a task with a higher
+     * priority to preempt a task that has already started with a lower priority
+     * when all of the available threads are in use.
+     */
 
     private static final long SECONDS_TO_BYTES_CONV_FACTOR = 8000L;
 
@@ -98,18 +120,26 @@ public final class PlaylistMessageCache {
 
     private final ConcurrentMap<DacPlaylistMessage, AudioFileBuffer> cachedFiles;
 
-    private final ConcurrentMap<DacPlaylistMessageId, Future<?>> cacheStatus;
+    private final ConcurrentMap<DacPlaylistMessageId, Future<AudioFileBuffer>> cacheStatus;
 
     private final EventBus eventBus;
 
-    public PlaylistMessageCache(Path messageDirectory, EventBus eventBus) {
+    private Range dbRange;
+
+    public PlaylistMessageCache(Path messageDirectory, EventBus eventBus,
+            Range dbRange) {
         this.messageDirectory = messageDirectory;
-        cacheThreadPool = Executors.newFixedThreadPool(THREAD_POOL_MAX_SIZE,
-                new NamedThreadFactory("PlaylistMessageCache"));
+        ThreadFactory threadFactory = new NamedThreadFactory(
+                "PlaylistMessageCache");
+        BlockingQueue<Runnable> workQueue = new PriorityBlockingQueue<Runnable>();
+        cacheThreadPool = new ThreadPoolExecutor(THREAD_POOL_CORE_SIZE,
+                THREAD_POOL_MAX_SIZE, 60, TimeUnit.SECONDS, workQueue,
+                threadFactory);
         cachedMessages = new ConcurrentHashMap<>();
         cachedFiles = new ConcurrentHashMap<>();
         cacheStatus = new ConcurrentHashMap<>();
         this.eventBus = eventBus;
+        this.dbRange = dbRange;
     }
 
     /**
@@ -126,9 +156,9 @@ public final class PlaylistMessageCache {
      * @param playlist
      *            List of messages to cache.
      */
-    public void addToCache(final List<DacPlaylistMessageId> playlist) {
+    public void retrieveAudio(final List<DacPlaylistMessageId> playlist) {
         for (DacPlaylistMessageId message : playlist) {
-            addToCache(message);
+            retrieveAudio(message);
         }
     }
 
@@ -138,66 +168,30 @@ public final class PlaylistMessageCache {
      * @param message
      *            Message to cache.
      */
-    public void addToCache(final DacPlaylistMessageId id) {
+    public void retrieveAudio(final DacPlaylistMessageId id) {
         if (!cacheStatus.containsKey(id)) {
-            Runnable cacheFileJob = new Runnable() {
-
-                @Override
-                public void run() {
-                    DacPlaylistMessage message = getMessage(id);
-                    Path filePath = Paths.get(message.getSoundFile());
-
-                    /*
-                     * We really don't want to leave essentially null messages
-                     * in the cache for playback. However for the
-                     * highly-controlled environment of the initial demo
-                     * version, file read errors and tone generation errors
-                     * shouldn't happen.
-                     * 
-                     * FIXME: if caching a message's audio data fails, perform
-                     * retry of some sort.
-                     */
-                    byte[] rawData = new byte[0];
-                    try {
-                        rawData = Files.readAllBytes(filePath);
-                    } catch (IOException e) {
-                        String msg = "Failed to buffer audio file for message: "
-                                + message + ", file: " + filePath;
-                        logger.error(msg, e);
-                        CriticalErrorEvent event = new CriticalErrorEvent(msg,
-                                e);
-                        eventBus.post(event);
-                    }
-
-                    ByteBuffer tones = null;
-                    ByteBuffer endOfMessage = null;
-                    if ((message.getSAMEtone() != null)
-                            && (!message.getSAMEtone().isEmpty())) {
-                        try {
-                            endOfMessage = TonesGenerator
-                                    .getEndOfMessageTones();
-                            tones = TonesGenerator.getSAMEAlertTones(
-                                    message.getSAMEtone(),
-                                    message.isAlertTone());
-                        } catch (ToneGenerationException e) {
-                            String msg = "Unable to generate tones for message: "
-                                    + message;
-                            logger.error(msg, e);
-                            CriticalErrorEvent event = new CriticalErrorEvent(
-                                    msg, e);
-                            eventBus.post(event);
-                        }
-                    }
-
-                    AudioFileBuffer buffer = new AudioFileBuffer(rawData,
-                            tones, endOfMessage);
-                    cachedFiles.put(message, buffer);
-                }
-            };
-
-            Future<?> jobStatus = cacheThreadPool.submit(cacheFileJob);
+            Future<AudioFileBuffer> jobStatus = this.scheduleFileRetrieval(
+                    PRIORITY_NORMAL, id);
             cacheStatus.put(id, jobStatus);
         }
+    }
+
+    /**
+     * Schedules an audio file retrieval
+     * 
+     * @param priority
+     *            indicates the importance of the retrieval
+     * @param id
+     *            identifies the audio file to retrieve
+     * @return the results of an asynchronous computation; used to track the job
+     *         status.
+     */
+    private Future<AudioFileBuffer> scheduleFileRetrieval(final int priority,
+            final DacPlaylistMessageId id) {
+        Callable<AudioFileBuffer> retrieveAudioJob = new RetrieveAudioJob(
+                priority, this.dbRange, this.getMessage(id));
+
+        return cacheThreadPool.submit(retrieveAudioJob);
     }
 
     /**
@@ -212,18 +206,37 @@ public final class PlaylistMessageCache {
      *         cache.
      */
     public AudioFileBuffer getAudio(final DacPlaylistMessage message) {
-        Future<?> fileStatus = cacheStatus.get(new DacPlaylistMessageId(message
-                .getBroadcastId()));
+        Future<AudioFileBuffer> fileStatus = cacheStatus
+                .get(new DacPlaylistMessageId(message.getBroadcastId()));
         if (fileStatus != null) {
-            try {
-                fileStatus.get();
-                AudioFileBuffer buffer = cachedFiles.get(message);
-                buffer.rewind();
-                return buffer;
-            } catch (InterruptedException | ExecutionException e) {
-                logger.error("Exception thrown waiting on cache status for "
-                        + message, e);
+            AudioFileBuffer buffer = cachedFiles.get(message);
+            if (buffer == null) {
+                try {
+                    /*
+                     * TODO: slightly increase the priority of the task that we
+                     * are waiting for?
+                     */
+                    buffer = fileStatus.get();
+                    cachedFiles.put(message, buffer);
+                } catch (InterruptedException e) {
+                    logger.error(
+                            "Exception thrown waiting on cache status for "
+                                    + message, e);
+                } catch (ExecutionException e) {
+                    /*
+                     * TODO: handle failed data retrieval.
+                     */
+                    logger.error(e.getMessage(), e.getCause());
+                    CriticalErrorEvent event = new CriticalErrorEvent(
+                            e.getMessage(), e.getCause());
+                    this.eventBus.post(event);
+                }
             }
+
+            if (buffer != null) {
+                buffer.rewind();
+            }
+            return buffer;
         }
 
         return null;
@@ -287,5 +300,22 @@ public final class PlaylistMessageCache {
         /* For ULAW encoded files, 160 bytes = 20 ms of playback time. */
         long playbackTime = fileSize / 160L * 20L;
         return playbackTime;
+    }
+
+    @Subscribe
+    public void changeDecibelRange(ChangeDecibelRange changeEvent) {
+        this.dbRange = new DoubleRange(changeEvent.getDbMin(),
+                changeEvent.getDbMax());
+
+        for (DacPlaylistMessage message : cachedFiles.keySet()) {
+            DacPlaylistMessageId messageId = new DacPlaylistMessageId(
+                    message.getBroadcastId());
+            Future<AudioFileBuffer> jobStatus = this.scheduleFileRetrieval(
+                    PRIORITY_LOW, messageId);
+            cacheStatus.replace(messageId, jobStatus);
+        }
+
+        logger.info("Updated transmitter decibel range to: "
+                + this.dbRange.toString());
     }
 }

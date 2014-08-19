@@ -55,6 +55,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Aug 04, 2014  3486     bsteffen    Initial creation
+ * Aug 18, 2014  3532     bkowal      Include the transmitter decibel range in
+ *                                    the configuration.
  * 
  * </pre>
  * 
@@ -112,7 +114,7 @@ public class CommsConfigurator {
         if (!dacMap.isEmpty()) {
             config.setDacs(new HashSet<>(dacMap.values()));
         }
-        if (!prevConfig.equals(config)) {
+        if (prevConfig == null || !prevConfig.equals(config)) {
             if (dacMap.isEmpty()) {
                 statusHandler.warn(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
                         "Writing comms conf file with no dacs.");
@@ -164,6 +166,9 @@ public class CommsConfigurator {
             }
             DacChannelConfig channel = new DacChannelConfig();
             channel.setTransmitterGroup(group.getName());
+            channel.setDbRangeMin(group.getAdjustAudioMinDB());
+            channel.setDbRangeMax(group.getAdjustAudioMaxDB());
+
             int[] radios = new int[transmitters.size()];
             int rindex = 0;
             for (Transmitter transmitter : transmitters) {

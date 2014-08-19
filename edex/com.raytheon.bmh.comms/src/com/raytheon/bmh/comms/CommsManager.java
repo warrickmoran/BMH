@@ -72,6 +72,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Aug 12, 2014  3486     bsteffen    Watch for config changes
  * Aug 14, 2014  3286     dgilling    Support receiving critical errors from 
  *                                    DacTransmit.
+ * Aug 18, 2014  3532     bkowal      Pass the supported decibel range as an
+ *                                    argument to the Dac Transmitter.
  * 
  * </pre>
  * 
@@ -297,6 +299,10 @@ public class CommsManager {
         args.add(channel.getInputDirectory().toString());
         args.add("-" + DacTransmitArgParser.COMMS_MANAGER_PORT_OPTION_KEY);
         args.add(Integer.toString(config.getDacTransmitPort()));
+        args.add("-" + DacTransmitArgParser.TRANSMISSION_DB_RANGE_KEY);
+        args.add(Double.toString(channel.getDbRangeMin()) + ":"
+                + channel.getDbRangeMax());
+
         ProcessBuilder startCommand = new ProcessBuilder(args);
         startCommand.environment().put("TRANSMITTER_GROUP", group);
         startCommand.inheritIO();

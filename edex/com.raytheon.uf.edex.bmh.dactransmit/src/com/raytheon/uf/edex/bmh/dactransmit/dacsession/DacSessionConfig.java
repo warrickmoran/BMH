@@ -23,6 +23,8 @@ import java.net.InetAddress;
 import java.nio.file.Path;
 import java.util.Collection;
 
+import org.apache.commons.lang.math.Range;
+
 /**
  * Configuration parameters for a DacSession object. Defines all the necessary
  * parameters to construct a DacSession so it can transmit data.
@@ -37,6 +39,7 @@ import java.util.Collection;
  * Jul 14, 2014  #3286     dgilling     Added transmitter group.
  * Jul 17, 2014  #3399     bsteffen     Add comms manager port argument.
  * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
+ * Aug 18, 2014  #3532     bkowal       Add transmitter decibel range.
  * 
  * </pre>
  * 
@@ -60,13 +63,15 @@ public final class DacSessionConfig {
 
     private final int managerPort;
 
+    private final Range dbRange;
+
     public DacSessionConfig(boolean printHelp) {
-        this(printHelp, null, -1, -1, null, null, -1);
+        this(printHelp, null, -1, -1, null, null, -1, null);
     }
 
     public DacSessionConfig(boolean printHelp, InetAddress dacAddress,
             int dataPort, int controlPort, Collection<Integer> transmitters,
-            Path inputDirectory, int managerPort) {
+            Path inputDirectory, int managerPort, Range dbRange) {
         this.printHelp = printHelp;
         this.dacAddress = dacAddress;
         this.dataPort = dataPort;
@@ -74,6 +79,7 @@ public final class DacSessionConfig {
         this.transmitters = transmitters;
         this.inputDirectory = inputDirectory;
         this.managerPort = managerPort;
+        this.dbRange = dbRange;
     }
 
     /*
@@ -83,10 +89,26 @@ public final class DacSessionConfig {
      */
     @Override
     public String toString() {
-        return "DacSessionConfig [dacAddress=" + dacAddress + ", dataPort="
-                + dataPort + ", controlPort=" + controlPort + ", transmitters="
-                + transmitters + ", inputDirectory=" + inputDirectory
-                + ", managerPort=" + managerPort + "]";
+        StringBuilder stringBuilder = new StringBuilder(
+                "DacSessionConfig [dacAddress=");
+        stringBuilder.append(this.dacAddress);
+        stringBuilder.append(", dataPort=");
+        stringBuilder.append(this.dataPort);
+        stringBuilder.append(", controlPort=");
+        stringBuilder.append(this.controlPort);
+        stringBuilder.append(", transmitters=");
+        stringBuilder.append(this.transmitters);
+        stringBuilder.append(", inputDirectory=");
+        stringBuilder.append(this.inputDirectory);
+        stringBuilder.append(", managerPort=");
+        stringBuilder.append(this.managerPort);
+        if (this.dbRange != null) {
+            stringBuilder.append(", dbRange=");
+            stringBuilder.append(dbRange.toString());
+        }
+        stringBuilder.append("]");
+
+        return stringBuilder.toString();
     }
 
     public boolean isPrintHelp() {
@@ -117,4 +139,10 @@ public final class DacSessionConfig {
         return managerPort;
     }
 
+    /**
+     * @return the dbRange
+     */
+    public Range getDbRange() {
+        return dbRange;
+    }
 }

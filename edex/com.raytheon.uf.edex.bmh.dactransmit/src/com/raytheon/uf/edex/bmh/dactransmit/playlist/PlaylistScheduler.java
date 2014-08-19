@@ -41,6 +41,7 @@ import java.util.Queue;
 import javax.xml.bind.JAXB;
 
 import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.commons.lang.math.Range;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,6 +82,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  *                                      when receiving update to current playlist.
  * Aug 12, 2014  #3286     dgilling     Support tones playback.
  * Aug 18, 2014  #3540     dgilling     Support periodic messsages.
+ * Aug 19, 2014  #3532     bkowal       Provide the supported transmitter decibel range
+ *                                      to the audio cache.
  * 
  * </pre>
  * 
@@ -186,12 +189,15 @@ public final class PlaylistScheduler implements
      * @param eventBus
      *            Reference back to the application-wide {@code EventBus}
      *            instance for posting and receiving necessary status events.
+     * @param dbRange
+     *            The minimum and maximum levels of audio allowed by the
+     *            destination transmitter in decibels.
      * @throws IOException
      *             If any I/O errors occur attempting to get the list of
      *             playlist files from the specified directory.
      */
-    public PlaylistScheduler(Path inputDirectory, EventBus eventBus)
-            throws IOException {
+    public PlaylistScheduler(Path inputDirectory, EventBus eventBus,
+            Range dbRange) throws IOException {
         this.playlistDirectory = inputDirectory;
         this.eventBus = eventBus;
 
@@ -216,9 +222,9 @@ public final class PlaylistScheduler implements
         Collections.sort(currentPlaylists, PLAYBACK_ORDER);
 
         cache = new PlaylistMessageCache(inputDirectory.resolve("messages"),
-                this.eventBus);
+                this.eventBus, dbRange);
         for (DacPlaylist playlist : currentPlaylists) {
-            cache.addToCache(playlist.getMessages());
+            cache.retrieveAudio(playlist.getMessages());
         }
 
         this.interrupts = new ArrayDeque<>();
@@ -392,7 +398,7 @@ public final class PlaylistScheduler implements
                     .getPlaylistPath());
             newPlaylist = JAXB.unmarshal(playlistPath.toFile(),
                     DacPlaylist.class);
-            cache.addToCache(newPlaylist.getMessages());
+            cache.retrieveAudio(newPlaylist.getMessages());
             logger.debug("Received new playlist: " + newPlaylist.toString());
 
             ITimer timer = TimeUtil.getTimer();

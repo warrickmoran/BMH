@@ -36,6 +36,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang.math.DoubleRange;
+import org.apache.commons.lang.math.Range;
 
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 
@@ -54,6 +56,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * Jul 14, 2014  #3286     dgilling     Add transmitter group argument.
  * Jul 17, 2014  #3399     bsteffen     Add comms manager port argument.
  * Aug 12, 2014  #3486     bsteffen     Remove group argument
+ * Aug 18, 2014  #3532     bkowal       Added transmitter decibel range argument
  * 
  * </pre>
  * 
@@ -63,7 +66,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 
 public final class DacTransmitArgParser {
 
-    private static final String USAGE_STATEMENT = "DacTransmit [--help] -d hostname -p port -c port -t channel -g groupname -i directory -m port";
+    private static final String USAGE_STATEMENT = "DacTransmit [--help] -d hostname -p port -c port -t channel -i directory -m port -r min:max";
 
     private static final String HELP_OPTION_KEY = "help";
 
@@ -78,6 +81,8 @@ public final class DacTransmitArgParser {
     public static final char INPUT_DIR_OPTION_KEY = 'i';
 
     public static final char COMMS_MANAGER_PORT_OPTION_KEY = 'm';
+
+    public static final char TRANSMISSION_DB_RANGE_KEY = 'r';
 
     private final Options programOptions;
 
@@ -154,8 +159,8 @@ public final class DacTransmitArgParser {
         int managerPort = -1;
         if (cmd.hasOption(COMMS_MANAGER_PORT_OPTION_KEY)) {
             try {
-            managerPort = Integer.parseInt(cmd
-                    .getOptionValue(COMMS_MANAGER_PORT_OPTION_KEY));
+                managerPort = Integer.parseInt(cmd
+                        .getOptionValue(COMMS_MANAGER_PORT_OPTION_KEY));
             } catch (NumberFormatException e) {
                 throw new ParseException(
                         cmd.getOptionValue(COMMS_MANAGER_PORT_OPTION_KEY)
@@ -165,9 +170,31 @@ public final class DacTransmitArgParser {
             throw new ParseException("Required option -m not provided.");
         }
 
+        double dbRangeMin = 0.;
+        double dbRangeMax = 0.;
+        if (cmd.hasOption(TRANSMISSION_DB_RANGE_KEY)) {
+            String dbRange = cmd.getOptionValue(TRANSMISSION_DB_RANGE_KEY);
+            String[] dbRanges = dbRange.split(":");
+            if (dbRanges.length != 2) {
+                throw new ParseException(
+                        "Invalid data specified for the -r option. Expected two decimal values separated by a colon.");
+            }
+            try {
+                dbRangeMin = Double.valueOf(dbRanges[0].trim());
+                dbRangeMax = Double.valueOf(dbRanges[1].trim());
+            } catch (NumberFormatException e) {
+                throw new ParseException("Failed to parse the -r option: "
+                        + e.getLocalizedMessage());
+            }
+        } else {
+            throw new ParseException("Required option -r not provided.");
+        }
+
+        final Range dbRange = new DoubleRange(dbRangeMin, dbRangeMax);
+
         DacSessionConfig config = new DacSessionConfig(false, dacAddress,
-                dataPort, controlPort, transmitters,
-                inputDirectory, managerPort);
+                dataPort, controlPort, transmitters, inputDirectory,
+                managerPort, dbRange);
         return config;
     }
 
@@ -179,7 +206,8 @@ public final class DacTransmitArgParser {
                 "print this message.");
         Option dacAddress = OptionBuilder
                 .withDescription("Hostname/IPv4 address to send audio to.")
-                .hasArg().withArgName("address").create(DAC_HOSTNAME_OPTION_KEY);
+                .hasArg().withArgName("address")
+                .create(DAC_HOSTNAME_OPTION_KEY);
         Option dataPort = OptionBuilder
                 .withDescription("UDP port for the DAC's data channel.")
                 .hasArg().withArgName("port").withType(Number.class)
@@ -202,6 +230,11 @@ public final class DacTransmitArgParser {
                         "TCP/IP port for communicating with the Comms Manager")
                 .hasArg().withArgName("port").withType(Number.class)
                 .create(COMMS_MANAGER_PORT_OPTION_KEY);
+        Option dbRange = OptionBuilder
+                .withDescription(
+                        "Minimum and maximum ranges of the audio (in decibels) allowed by the transmitter.")
+                .hasArg().withArgName("range")
+                .create(TRANSMISSION_DB_RANGE_KEY);
 
         options.addOption(help);
         options.addOption(dacAddress);
@@ -210,6 +243,7 @@ public final class DacTransmitArgParser {
         options.addOption(transmitter);
         options.addOption(inputDirectory);
         options.addOption(managerPort);
+        options.addOption(dbRange);
         return options;
     }
 
