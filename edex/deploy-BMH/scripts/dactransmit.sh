@@ -31,6 +31,7 @@
 #    07/17/14        3286          dgilling       Add google guava to classpath.
 #    07/28/14        3399          bsteffen       Build CLASSPATH from DEPENDENCIES.
 #    08/11/14        3286          dgilling       Remove unneeded dependencies.
+#    08/18/14        3286          dgilling       Add org.apache.commons.lang.
 ##############################################################################
 
 path_to_script=`readlink -f $0`
@@ -45,7 +46,7 @@ export JAVA_HOME="${awips_home}/java"
 # set Java into the path
 export PATH=${awips_home}/bin:${JAVA_HOME}/bin
 
-DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j com.google.guava org.apache.thrift net.sf.cglib"
+DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j com.google.guava org.apache.thrift net.sf.cglib org.apache.commons.lang"
 
 ENTRY_POINT="com.raytheon.uf.edex.bmh.dactransmit.DacTransmitMain"
 CLASSPATH="${EDEX_HOME}/lib/plugins/*"

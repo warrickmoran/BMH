@@ -42,6 +42,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jul 01, 2014  3285     bsteffen    Initial creation
  * Jul 24, 2014  3286     dgilling    Implement toString().
  * Aug 13, 2014  3286     dgilling    Add fields for tone playback.
+ * Aug 18, 2014  3540     dgilling    Add getPlaybackInterval().
  * 
  * </pre>
  * 
@@ -229,5 +230,24 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     public boolean isValid(long currentTime) {
         return ((currentTime >= start.getTimeInMillis()) && (currentTime < expire
                 .getTimeInMillis()));
+    }
+
+    /**
+     * If this message has a valid "periodicity" setting, this method calculates
+     * the time (in ms) that should ellapse between plays of this message based
+     * on the periodicity setting (format is DDHHmm).
+     * 
+     * @return Number of milliseconds between plays, or, -1 if this message does
+     *         not have a valid periodicity setting.
+     */
+    public long getPlaybackInterval() {
+        if ((periodicity != null) && (!periodicity.isEmpty())) {
+            int days = Integer.parseInt(this.periodicity.substring(0, 2));
+            int hours = Integer.parseInt(this.periodicity.substring(2, 4));
+            int minutes = Integer.parseInt(this.periodicity.substring(4, 6));
+            return (minutes + (60 * (hours + (24 * days))))
+                    * TimeUtil.MILLIS_PER_MINUTE;
+        }
+        return -1;
     }
 }

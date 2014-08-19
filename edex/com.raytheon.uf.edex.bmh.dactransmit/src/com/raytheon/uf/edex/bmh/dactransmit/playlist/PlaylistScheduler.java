@@ -31,12 +31,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 
 import javax.xml.bind.JAXB;
 
+import org.apache.commons.lang.mutable.MutableLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,6 +80,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  *                                      PlaylistSwitchNotifications, simplify logic
  *                                      when receiving update to current playlist.
  * Aug 12, 2014  #3286     dgilling     Support tones playback.
+ * Aug 18, 2014  #3540     dgilling     Support periodic messsages.
  * 
  * </pre>
  * 
@@ -522,6 +527,10 @@ public final class PlaylistScheduler implements
         long playbackStartTime = 0;
         long cycleTime = 0;
 
+        /*
+         * Anything that happened previously in the playlist will be reported
+         * just as it occurred.
+         */
         for (int i = 0; i < predictStartIndex; i++) {
             DacPlaylistMessageId messageId = allMessages.get(i);
             DacPlaylistMessage messageData = cache.getMessage(messageId);
@@ -542,6 +551,24 @@ public final class PlaylistScheduler implements
             playbackStartTime = TimeUtil.currentTimeMillis();
         }
 
+        /*
+         * Determine if we have any periodic messages in the playlist that need
+         * to be scheduled outside of the typical playlist order.
+         */
+        Map<DacPlaylistMessageId, MutableLong> periodicMessages = new HashMap<>();
+        for (int i = predictStartIndex; i < allMessages.size(); i++) {
+            DacPlaylistMessageId messageId = allMessages.get(i);
+            DacPlaylistMessage messageData = cache.getMessage(messageId);
+
+            if ((messageData.getPeriodicity() != null)
+                    && (!messageData.getPeriodicity().isEmpty())
+                    && (messageData.getPlayCount() >= 1)) {
+                long nextPlayTime = messageData.getLastTransmitTime()
+                        .getTimeInMillis() + messageData.getPlaybackInterval();
+                periodicMessages.put(messageId, new MutableLong(nextPlayTime));
+            }
+        }
+
         for (int i = predictStartIndex; i < allMessages.size(); i++) {
             DacPlaylistMessageId messageId = allMessages.get(i);
             DacPlaylistMessage messageData = cache.getMessage(messageId);
@@ -550,8 +577,9 @@ public final class PlaylistScheduler implements
              * ignore start/expire times for interrupt playlists, we just want
              * to play the message.
              */
-            if ((playlist.isInterrupt())
-                    || (messageData.isValid(playbackStartTime))) {
+            if ((playlist.isInterrupt() || messageData
+                    .isValid(playbackStartTime))
+                    && (!periodicMessages.containsKey(messageId))) {
                 MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
                         messageId.getBroadcastId(),
                         TimeUtil.newGmtCalendar(new Date(playbackStartTime)),
@@ -561,6 +589,38 @@ public final class PlaylistScheduler implements
                 long playbackTime = cache.getPlaybackTime(messageId);
                 cycleTime += playbackTime;
                 playbackStartTime += playbackTime;
+            }
+
+            for (Entry<DacPlaylistMessageId, MutableLong> entry : periodicMessages
+                    .entrySet()) {
+                DacPlaylistMessageId periodicMessageId = entry.getKey();
+                DacPlaylistMessage periodicMessage = cache
+                        .getMessage(periodicMessageId);
+                MutableLong nextPlaybackTime = entry.getValue();
+
+                if (periodicMessage.isValid(playbackStartTime)
+                        && nextPlaybackTime.longValue() <= playbackStartTime) {
+                    logger.debug("Scheduling periodic message ["
+                            + periodicMessageId + "].");
+
+                    MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
+                            periodicMessageId.getBroadcastId(),
+                            TimeUtil.newGmtCalendar(new Date(playbackStartTime)),
+                            periodicMessage);
+                    predictedMessages.add(prediction);
+
+                    long playbackTime = cache
+                            .getPlaybackTime(periodicMessageId);
+                    cycleTime += playbackTime;
+                    playbackStartTime += playbackTime;
+
+                    /*
+                     * Now that we've scheduled the message, we jump the next
+                     * play time way into the future so it doesn't get scheduled
+                     * again.
+                     */
+                    nextPlaybackTime.setValue(Long.MAX_VALUE);
+                }
             }
         }
 
