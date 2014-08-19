@@ -109,8 +109,9 @@ public class CommsConfigurator {
         assignPorts(dacs, dacMap, prevDacMap);
         config.setJmsConnection(BMHConstants
                 .getJmsConnectionString("commsmanager"));
-        config.setDacs(new HashSet<>(dacMap.values()));
-
+        if (!dacMap.isEmpty()) {
+            config.setDacs(new HashSet<>(dacMap.values()));
+        }
         if (!prevConfig.equals(config)) {
             if (dacMap.isEmpty()) {
                 statusHandler.warn(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,

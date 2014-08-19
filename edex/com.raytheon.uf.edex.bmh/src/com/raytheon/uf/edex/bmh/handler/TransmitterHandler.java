@@ -24,11 +24,14 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.notify.ConfigurationNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
+import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
  * Thrift handler for {@link Transmitter} and {@link TransmitterGroup} objects
@@ -40,6 +43,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014   3173     mpduff      Initial creation
+ * Aug 19, 2014   3486     bsteffen    Send change notification over jms.
  * 
  * </pre>
  * 
@@ -80,7 +84,18 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
         default:
             break;
         }
-
+        switch (request.getAction()) {
+        case SaveTransmitter:
+        case SaveGroup:
+        case DeleteTransmitter:
+        case DeleteTransmitterGroup:
+        case SaveGroupList:
+        case SaveTransmitterDeleteGroup:
+            EDEXUtil.getMessageProducer().sendAsyncUri(
+                    "jms-durable:topic:BMH.Config",
+                            SerializationUtil
+                                    .transformToThrift(new ConfigurationNotification()));
+        }
         return response;
     }
 
