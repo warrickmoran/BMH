@@ -128,13 +128,14 @@ public class TableData implements ISortColumn {
      * @param index
      *            Index where the data will be replaced.
      */
-    public void replaceDataRow(TableRowData dataRow, int index) {
+    public void replaceDataRow(TableRowData dataRow, int index)
+            throws IllegalArgumentException {
         dataRow.setSortCallback(this);
 
-        if (index < 0) {
-            index = 0;
-        } else if (index > tableRows.size()) {
-            index = tableRows.size() - 1;
+        if (index < 0 || index > tableRows.size() - 1) {
+            throw new IllegalArgumentException(
+                    "Cannot replace data row.  Index is outside the range of the data array.  Index = "
+                            + index);
         }
 
         tableRows.set(index, dataRow);

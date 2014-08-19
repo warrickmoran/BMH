@@ -362,13 +362,10 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         return null;
     }
 
+    /**
+     * Handle deleting the message type.
+     */
     private void handleDeleteMessageType() {
-
-        /*
-         * TODO : Need to consult richard on the error from the database. I
-         * think it has to do with the cascade all but I want to make sure I
-         * don't break anything.
-         */
 
         int index = msgAvailTableComp.getSelectedIndex();
         if (index < 0) {

@@ -332,7 +332,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
      */
     private String findAssociatedPrograms(Suite suite) {
 
-        List<Program> allProgramsArray = new ArrayList<Program>();
+        List<Program> allProgramsArray = null;
         ProgramDataManager pdm = new ProgramDataManager();
 
         try {
