@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -408,8 +409,9 @@ public class AsciiFileTranslator {
      */
     private void parseTransmitterData(AsciiFileParser reader)
             throws ParseException, IOException {
-        Map<String, TransmitterGroup> map = new HashMap<>(16, 1);
+        Map<String, TransmitterGroup> map = new LinkedHashMap<>(16, 1);
         List<TransmitterLanguage> langs = new ArrayList<>();
+        int position = 0;
 
         while (reader.hasNextField()) {
             TransmitterGroup group = new TransmitterGroup();
@@ -496,6 +498,7 @@ public class AsciiFileTranslator {
             tone.setAmplitude(parseInt(reader));
 
             if (isTransmitter) {
+                group.setPosition(position++);
                 map.put(mnemonic, group);
             }
         }
