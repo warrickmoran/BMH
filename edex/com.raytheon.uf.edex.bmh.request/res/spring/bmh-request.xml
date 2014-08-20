@@ -8,4 +8,9 @@
         <constructor-arg value="http://${bmh.host}:${bmh.thrift.service.port}/services" />
     </bean>
 
+    <bean factory-bean="serverLocationRegistry" factory-method="register">
+        <constructor-arg value="bmh.comms.manager" />
+        <constructor-arg value="tcp://${bmh.host}:${bmh.comms.manager.port}/" />
+    </bean>
+
 </beans>

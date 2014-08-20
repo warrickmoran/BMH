@@ -22,8 +22,9 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.bmh.dac.IDacListener;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.core.VizServers;
 
 /**
  * 
@@ -58,13 +60,6 @@ public class MonitorInlineThread extends Thread {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(MonitorInlineThread.class);
 
-    // TODO read this from a config file and figure out clustering.
-    private static final InetAddress commsAddress = InetAddress
-            .getLoopbackAddress();
-
-    // TODO read this from a config file
-    private static final int commsPort = 58260;
-
     private final String transmitterGroup;
 
     private volatile boolean running = true;
@@ -78,7 +73,28 @@ public class MonitorInlineThread extends Thread {
 
     @Override
     public void run() {
-        try (Socket socket = new Socket(commsAddress, commsPort)) {
+        String commsLoc = VizServers.getInstance().getServerLocation(
+                "bmh.comms.manager");
+        if (commsLoc == null) {
+            Exception e = new IllegalStateException(
+                    "No address for comms maanger, unable to monitor "
+                            + transmitterGroup);
+            statusHandler.error(e.getLocalizedMessage(), e);
+            disconnect(e);
+            return;
+        }
+        URI commsURI = null;
+        try {
+            commsURI = new URI(commsLoc);
+        } catch (URISyntaxException e) {
+            statusHandler.error(
+                    "Invalid address for comms maanger, unable to monitor "
+                            + transmitterGroup, e);
+            disconnect(e);
+            return;
+        }
+
+        try (Socket socket = new Socket(commsURI.getHost(), commsURI.getPort())) {
             socket.setTcpNoDelay(true);
             InputStream inputStream = socket.getInputStream();
             OutputStream outputStream = socket.getOutputStream();
@@ -98,7 +114,7 @@ public class MonitorInlineThread extends Thread {
                     new LineTapDisconnect(), outputStream);
             disconnect(null);
         } catch (Throwable e) {
-            statusHandler.error("Unexpected error while monitoring + "
+            statusHandler.error("Unexpected error while monitoring "
                     + transmitterGroup, e);
             disconnect(e);
         }
