@@ -19,11 +19,13 @@
  **/
 package com.raytheon.uf.common.bmh.legacy.ascii;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
@@ -42,6 +44,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3175       rjpeter     Initial creation
+ * Aug 19, 2014 3411       mpduff      Handle {@link MessageTypeReplacement}
  * 
  * </pre>
  * 
@@ -64,6 +67,8 @@ public class BmhData {
     private Map<String, Suite> suites;
 
     private Map<String, Program> programs;
+
+    private List<MessageTypeReplacement> replaceList;
 
     public Map<String, Dictionary> getDictionaries() {
         return dictionaries;
@@ -128,6 +133,34 @@ public class BmhData {
 
     public void setPrograms(Map<String, Program> programs) {
         this.programs = programs;
+    }
+
+    /**
+     * @return the replaceList
+     */
+    public List<MessageTypeReplacement> getReplaceList() {
+        return replaceList;
+    }
+
+    /**
+     * @param replaceList
+     *            the replaceList to set
+     */
+    public void setReplaceList(List<MessageTypeReplacement> replaceList) {
+        this.replaceList = replaceList;
+    }
+
+    /**
+     * Add a replacement message.
+     * 
+     * @param replacement
+     */
+    public void addReplacementMsg(MessageTypeReplacement replacement) {
+        if (replaceList == null) {
+            replaceList = new ArrayList<>();
+        }
+
+        replaceList.add(replacement);
     }
 
 }

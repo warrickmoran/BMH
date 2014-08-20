@@ -36,6 +36,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
+import com.raytheon.uf.edex.bmh.dao.MessageTypeReplacementDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.SuiteDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
@@ -56,6 +57,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3175       rjpeter     Initial creation
+ * Aug 19, 2014 3411       mpduff      Add handling for MessageTypeReplacement
  * 
  * </pre>
  * 
@@ -234,6 +236,13 @@ public class DatabaseImport {
                                         + data.getMsgTypes().values().size()
                                         + " message types");
                                 msgTypeDao.loadAll();
+                                MessageTypeReplacementDao msgTypeReplacementDao = new MessageTypeReplacementDao();
+                                msgTypeReplacementDao.persistAll(data
+                                        .getReplaceList());
+                                statusHandler.info("Saved "
+                                        + data.getReplaceList().size()
+                                        + " replacement message types");
+                                msgTypeReplacementDao.loadAll();
                                 SuiteDao suiteDao = new SuiteDao();
                                 suiteDao.persistAll(data.getSuites().values());
                                 statusHandler.info("Saved "

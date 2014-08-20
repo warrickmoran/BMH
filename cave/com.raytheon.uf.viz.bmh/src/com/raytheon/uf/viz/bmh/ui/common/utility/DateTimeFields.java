@@ -55,6 +55,7 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  * Jul 29, 2014  #3420     lvenable    Added capability to enable/disable controls and to
  *                                     retrieve the data from the controls.
  * Aug 12, 2014  #3490     lvenable    Refactored code and added more functionality.
+ * Aug 15, 2014   3411     mpduff      Add getFormattedValue()
  * 
  * </pre>
  * 
@@ -74,7 +75,7 @@ public class DateTimeFields extends Composite {
     /**
      * Map of {@link DateFieldType} -> {@link Spinner}
      */
-    private final Map<DateFieldType, Spinner> spinners = new HashMap<DateFieldType, Spinner>();
+    private final Map<DateFieldType, Spinner> spinners = new LinkedHashMap<DateFieldType, Spinner>();
 
     /** Map of DateTimeFields and assigned values. */
     private final Map<DateFieldType, Integer> fieldValuesMap;
@@ -210,6 +211,9 @@ public class DateTimeFields extends Composite {
 
             switch (type) {
             case HOUR:
+                spnr.setMinimum(0);
+                spnr.setMaximum(23);
+                break;
             case MINUTE:
             case SECOND:
                 spnr.setMinimum(0);
@@ -372,6 +376,23 @@ public class DateTimeFields extends Composite {
     }
 
     /**
+     * Get the spinners formatted as appended, 2 digit values
+     * 
+     * @return
+     */
+    public String getFormattedValue() {
+        StringBuilder sb = new StringBuilder();
+        for (DateFieldType dft : spinners.keySet()) {
+            int selection = spinners.get(dft).getSelection();
+            if (selection < 10) {
+                sb.append("0");
+            }
+            sb.append(selection);
+        }
+        return sb.toString();
+    }
+
+    /**
      * Enable or disable the spinner controls.
      * 
      * @param enable
@@ -409,8 +430,9 @@ public class DateTimeFields extends Composite {
         tmpFieldMap.put(DateFieldType.MINUTE, 5);
         tmpFieldMap.put(DateFieldType.SECOND, 6);
 
-        new DateTimeFields(shell, tmpFieldMap, false, false, false);
-
+        DateTimeFields dtf = new DateTimeFields(shell, tmpFieldMap, false,
+                false, false);
+        System.out.println(dtf.getFormattedValue());
         shell.pack();
         shell.open();
         while (!shell.isDisposed()) {

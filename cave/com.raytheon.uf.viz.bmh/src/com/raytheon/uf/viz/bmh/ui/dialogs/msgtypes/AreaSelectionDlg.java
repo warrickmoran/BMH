@@ -605,7 +605,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         okBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO Implement this
+                populateReturnObject();
                 close();
             }
         });
@@ -1012,6 +1012,29 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
         Arrays.sort(transmitterNames);
         affectedTransmitterList.setItems(transmitterNames);
+    }
+
+    /**
+     * Populate and return the selected data.
+     */
+    private void populateReturnObject() {
+        AreaSelectionSaveData saveData = new AreaSelectionSaveData();
+        java.util.List<TableRowData> rows = tableData.getTableRows();
+        for (TableRowData row : rows) {
+            Object data = row.getData();
+            if (data instanceof Area) {
+                saveData.addArea((Area) data);
+            } else if (data instanceof Zone) {
+                saveData.addZone((Zone) data);
+            } else if (data instanceof Transmitter) {
+                saveData.addTransmitter((Transmitter) data);
+            } else {
+                throw new IllegalArgumentException("Invalid data type: "
+                        + data.getClass());
+            }
+        }
+
+        setReturnValue(saveData);
     }
 
     /**

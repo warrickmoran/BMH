@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -48,6 +49,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.CreateEditMsgTypesDlg.DialogType;
@@ -68,6 +70,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 8, 2014   #3490     lvenable    Updated populate table method call.
  * Aug 12, 2014  #3490     lvenable    Added relationship code and convenience methods.
  * Aug 15, 2014  #3490     lvenable    Sort the list of message types.
+ * Aug 18, 2014   3411     mpduff      Add validation.
  * 
  * </pre>
  * 
@@ -93,10 +96,14 @@ public class MessageTypesDlg extends AbstractBMHDialog {
     private TableData messageTypeTableData;
 
     /** Array of Message Type controls.. */
-    private List<Control> msgTypeControls = new ArrayList<Control>();
+    private final List<Control> msgTypeControls = new ArrayList<Control>();
 
     /** Message Data Type Manager */
-    private MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
+    private final MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
+
+    protected InputTextDlg inputDlg;
+
+    protected CreateEditMsgTypesDlg cemd;
 
     /**
      * Constructor.
@@ -190,7 +197,20 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 CreateEditMsgTypesDlg cemd = new CreateEditMsgTypesDlg(shell,
-                        DialogType.CREATE);
+                        DialogType.CREATE, messageTypeList);
+                cemd.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        if (returnValue == null) {
+                            return;
+                        }
+                        MessageType mt = (MessageType) returnValue;
+                        messageTypeList.add(mt);
+                        Collections.sort(messageTypeList,
+                                new MsgTypeAfosComparator());
+                        populateMessageTypeTable(true);
+                    }
+                });
                 cemd.open();
             }
         });
@@ -203,21 +223,30 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         renameBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO : need to add real code.
-                InputTextDlg inputDlg = new InputTextDlg(shell,
-                        "Rename Message Type",
-                        "Type in a new message type name:", null);
-                inputDlg.setCloseCallback(new ICloseCallback() {
-                    @Override
-                    public void dialogClosed(Object returnValue) {
-                        if (returnValue != null
-                                && returnValue instanceof String) {
-                            String name = (String) returnValue;
-                            System.out.println("Name = " + name);
+                if (inputDlg == null || inputDlg.isDisposed()) {
+                    inputDlg = new InputTextDlg(shell, "Rename Message Type",
+                            "Type in a new message type name:",
+                            new IInputTextValidator() {
+                                @Override
+                                public boolean validateInputText(Shell shell,
+                                        String text) {
+                                    return isValid(text);
+                                }
+                            });
+                    inputDlg.setCloseCallback(new ICloseCallback() {
+                        @Override
+                        public void dialogClosed(Object returnValue) {
+                            if (returnValue != null
+                                    && returnValue instanceof String) {
+                                String name = (String) returnValue;
+                                renameMessageType(name);
+                            }
                         }
-                    }
-                });
-                inputDlg.open();
+                    });
+                    inputDlg.open();
+                } else {
+                    inputDlg.bringToTop();
+                }
             }
         });
         msgTypeControls.add(renameBtn);
@@ -230,10 +259,13 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         editBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO : need to handle saving changes.
-                CreateEditMsgTypesDlg cemd = new CreateEditMsgTypesDlg(shell,
-                        DialogType.EDIT, getSelectedMessageType());
-                cemd.open();
+                if (cemd == null || cemd.isDisposed()) {
+                    cemd = new CreateEditMsgTypesDlg(shell, DialogType.EDIT,
+                            messageTypeList, getSelectedMessageType());
+                    cemd.open();
+                } else {
+                    cemd.bringToTop();
+                }
             }
         });
         msgTypeControls.add(editBtn);
@@ -325,13 +357,12 @@ public class MessageTypesDlg extends AbstractBMHDialog {
      */
     @Override
     public boolean okToClose() {
-        /*
-         * TODO:
-         * 
-         * Need to put in code to check/validate if the dialog can close (need
-         * to save before closing, etc).
-         */
-        return true;
+        if (cemd != null && !cemd.isDisposed() && inputDlg != null
+                && !inputDlg.isDisposed()) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -393,6 +424,61 @@ public class MessageTypesDlg extends AbstractBMHDialog {
 
         retrieveDataFromDB();
         populateMessageTypeTable(true);
+    }
+
+    private void renameMessageType(String newName) {
+        int index = msgAvailTableComp.getSelectedIndex();
+        if (index < 0) {
+            return;
+        }
+        MessageType mt = messageTypeList.get(index);
+        try {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Do you wish to rename message type ")
+                    .append(mt.getAfosid()).append(" to ").append(newName)
+                    .append("?");
+            int result = DialogUtility.showMessageBox(getParent().getShell(),
+                    SWT.ICON_WARNING | SWT.OK | SWT.CANCEL, "Confirm Rename",
+                    sb.toString());
+
+            if (result == SWT.CANCEL) {
+                return;
+            }
+
+            mt.setAfosid(newName);
+            msgTypeDataMgr.saveMessageType(mt);
+        } catch (Exception e) {
+            statusHandler
+                    .error("Error retrieving message type data from the database: ",
+                            e);
+        }
+
+        retrieveDataFromDB();
+        populateMessageTypeTable(true);
+    }
+
+    private boolean isValid(String newName) {
+        boolean valid = MessageTypeUtils.validateAfosId(newName);
+        if (valid) {
+            valid = MessageTypeUtils.isUnique(newName, messageTypeList);
+            if (!valid) {
+                String message = "Invalid name/AfosID.\n\n" + newName
+                        + " is already being used.\n\n" + "Enter another name";
+
+                DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
+                        "Invalid Name", message);
+                return false;
+
+            }
+        } else {
+            String message = "Invalid name/AfosID.\n\nMust be 7-9 alphanumeric characters "
+                    + "with no spaces or special characters.";
+            DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
+                    "Invalid Name", message);
+            return false;
+        }
+
+        return true;
     }
 
     /**
