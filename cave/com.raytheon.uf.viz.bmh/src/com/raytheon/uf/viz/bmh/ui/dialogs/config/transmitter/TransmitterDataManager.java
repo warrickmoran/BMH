@@ -21,8 +21,12 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.request.ProgramRequest;
+import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
+import com.raytheon.uf.common.bmh.request.ProgramResponse;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest.TransmitterRequestAction;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
@@ -38,6 +42,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014    3173    mpduff      Initial creation
+ * Aug 18, 2014    3173    mpduff      Added getPrograms()
  * 
  * </pre>
  * 
@@ -185,5 +190,14 @@ public class TransmitterDataManager {
                 .sendRequest(request);
 
         return response.getTransmitter();
+    }
+
+    public List<Program> getPrograms() throws Exception {
+        ProgramRequest req = new ProgramRequest();
+        req.setAction(ProgramAction.AllPrograms);
+
+        ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(req);
+
+        return response.getProgramList();
     }
 }

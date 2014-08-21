@@ -53,8 +53,6 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DetailsDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.NewEditTransmitterDlg.TransmitterEditType;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
-import com.raytheon.viz.ui.dialogs.ListSelectionDlg;
-import com.raytheon.viz.ui.dialogs.ListSelectionDlg.ReturnArray;
 
 /**
  * Class holding the Tree/table view of the transmitter groups and the
@@ -67,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.ListSelectionDlg.ReturnArray;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014    3173    mpduff      Initial creation
+ * Aug 18, 2014    3173    mpduff      Remove "Move To Group" menu item.
  * 
  * </pre>
  * 
@@ -217,14 +216,6 @@ public class TransmitterComp extends Composite implements
                 }
             });
 
-            MenuItem moveToGroupItem = new MenuItem(menu, SWT.PUSH);
-            moveToGroupItem.setText("Move To Group...");
-            moveToGroupItem.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    moveToGroupAction();
-                }
-            });
             MenuItem reorderMenuItem = new MenuItem(menu, SWT.PUSH);
             reorderMenuItem.setText("Order Transmitters...");
             reorderMenuItem.addSelectionListener(new SelectionAdapter() {
@@ -595,109 +586,6 @@ public class TransmitterComp extends Composite implements
             TreeColumn col = new TreeColumn(tree, column.getAlignment());
             col.setText(column.getText());
             col.setWidth(column.getColWidth());
-        }
-    }
-
-    /**
-     * Move Transmitter to group menu action, launches the dialog
-     */
-    private void moveToGroupAction() {
-        List<String> nameList = new ArrayList<String>();
-        for (int i = 0; i < groups.size(); i++) {
-            TransmitterGroup group = groups.get(i);
-            if (!group.isStandalone()) {
-                nameList.add(group.getName());
-            }
-        }
-
-        TreeItem item = tree.getSelection()[0];
-        TransmitterGroup tg = null;
-        if (item.getData() instanceof TransmitterGroup) {
-            tg = (TransmitterGroup) item.getData();
-        } else {
-            Transmitter t = (Transmitter) item.getData();
-            tg = t.getTransmitterGroup();
-        }
-        nameList.remove(tg.getName());
-
-        String[] names = nameList.toArray(new String[0]);
-        ListSelectionDlg dlg = new ListSelectionDlg(getShell(), names, true,
-                ReturnArray.ARRAY_STRING_ITEMS, "Select", "Destination Group",
-                "Select the destination group");
-        dlg.setCloseCallback(new ICloseCallback() {
-            @Override
-            public void dialogClosed(Object returnValue) {
-                if (returnValue != null) {
-                    String[] results = (String[]) returnValue;
-                    moveToGroup(results[0]);
-                }
-            }
-        });
-        dlg.open();
-    }
-
-    /**
-     * Move the selected transmitter to the destinationGroup.
-     * 
-     * @param destinationGroup
-     *            The Group to move to
-     */
-    private void moveToGroup(String destinationGroup) {
-        TreeItem selectedItem = tree.getSelection()[0];
-        Transmitter t = null;
-        TransmitterGroup toDelete = null;
-
-        if (selectedItem.getData() instanceof TransmitterGroup) {
-            TransmitterGroup tg = (TransmitterGroup) selectedItem.getData();
-            if (tg.isStandalone()) {
-                t = tg.getTransmitterList().get(0);
-                toDelete = tg;
-            }
-        } else if (selectedItem.getData() instanceof Transmitter) {
-            t = (Transmitter) selectedItem.getData();
-        }
-
-        for (TransmitterGroup tg : groups) {
-            if (tg.getName().equals(destinationGroup)) {
-                if (tg.getTransmitterList().size() > 0) {
-                    // A FIPS code is required for each transmitter in the group
-                    if (t.getFipsCode() == null
-                            || t.getFipsCode().length() == 0) {
-                        DialogUtility.showMessageBox(getShell(),
-                                SWT.ICON_WARNING | SWT.OK,
-                                "FIPS Code Required",
-                                "A FIPS code is required for all transmitters "
-                                        + "in a group of 2 or more.");
-                        return;
-                    }
-                }
-
-                // Check port numbers
-                for (Transmitter trans : tg.getTransmitters()) {
-                    if (trans.getDacPort() == t.getDacPort()) {
-                        // TODO look into the move to group functionality.
-                        // DialogUtility
-                        // .showMessageBox(getShell(), SWT.ICON_WARNING
-                        // | SWT.YES | SWT.NO, "Port Conflict",
-                        // "This port number is already in use in the group " +
-                        // tg.getName() + ".  ");
-                    }
-                }
-                t.setTransmitterGroup(tg);
-                try {
-                    if (toDelete != null) {
-                        toDelete.setTransmitters(null);
-                        dataManager.saveTransmitterDeleteGroup(t, toDelete);
-                    } else {
-                        dataManager.saveTransmitter(t);
-                    }
-                    populateTree();
-                } catch (Exception e) {
-                    statusHandler.error(
-                            "Error saving Transmitter " + t.getName(), e);
-                }
-                break;
-            }
         }
     }
 

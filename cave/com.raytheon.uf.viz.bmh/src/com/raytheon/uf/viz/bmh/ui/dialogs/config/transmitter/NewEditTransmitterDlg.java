@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -40,6 +41,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -48,6 +50,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.program.ProgramNameComparator;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -61,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 29, 2014     3173   mpduff      Initial creation
+ * Aug 18, 2014     3173   mpduff      Add Program selection
  * 
  * </pre>
  * 
@@ -164,6 +168,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     private Label statusLbl;
 
     private Label modeLbl;
+
+    private Combo programCombo;
 
     /**
      * Edit Transmitter constructor.
@@ -441,7 +447,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 false));
 
         // For new transmitter need to have a combo box to select the group
-        if (type == TransmitterEditType.NEW_TRANSMITTER) {
+        if (type == TransmitterEditType.NEW_TRANSMITTER
+                || type == TransmitterEditType.EDIT_TRANSMITTER) {
             grpNameCbo = new Combo(leftComp, SWT.BORDER | SWT.READ_ONLY);
             grpNameCbo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
                     false));
@@ -453,7 +460,14 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             });
             grpNameCbo.setItems(getGroupNames());
             grpNameCbo.add(STANDALONE, 0);
-            grpNameCbo.select(0);
+            if (type == TransmitterEditType.NEW_TRANSMITTER) {
+                grpNameCbo.select(0);
+            } else {
+                int idx = grpNameCbo.indexOf(group.getName());
+                if (idx >= 0) {
+                    grpNameCbo.select(idx);
+                }
+            }
         } else if (type == TransmitterEditType.NEW_TRANSMITTER_GROUP) {
             grpNameValueTxt = new Text(leftComp, SWT.BORDER);
             grpNameValueTxt.setLayoutData(new GridData(SWT.FILL, SWT.CENTER,
@@ -498,6 +512,16 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         dacPortCbo.setItems(new String[] { "1", "2", "3", "4" });
         dacPortCbo.select(0);
 
+        Label progLbl = new Label(leftComp, SWT.NONE);
+        progLbl.setText("Program:");
+        progLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+
+        programCombo = new Combo(leftComp, SWT.BORDER);
+        programCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
+                false));
+        populateProgramCombo();
+        groupControlList.add(programCombo);
+
         Label timeZoneLbl = new Label(rightComp, SWT.NONE);
         timeZoneLbl.setText("Time Zone: ");
         timeZoneLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false,
@@ -525,17 +549,11 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         groupControlList.add(noDstChk);
 
         // Blank labels
-        Label spacer = new Label(leftComp, SWT.NONE);
+        Label spacer = new Label(rightComp, SWT.NONE);
         spacer.setText("");
 
-        Label spacer2 = new Label(leftComp, SWT.NONE);
+        Label spacer2 = new Label(rightComp, SWT.NONE);
         spacer2.setText("");
-
-        Label spacer3 = new Label(rightComp, SWT.NONE);
-        spacer3.setText("");
-
-        Label spacer4 = new Label(rightComp, SWT.NONE);
-        spacer4.setText("");
 
         // Individual transmitter settings
         Label nameLbl = new Label(leftComp, SWT.NONE);
@@ -773,6 +791,32 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         return new String[0];
     }
 
+    private void populateProgramCombo() {
+        try {
+            List<Program> programList = dataManager.getPrograms();
+            Collections.sort(programList, new ProgramNameComparator());
+
+            String[] programs = new String[programList.size()];
+            int select = 0;
+            int i = 0;
+            for (Program p : programList) {
+                programs[i] = p.getName();
+                if (p.getTransmitterGroups().contains(this.group)) {
+                    select = i;
+                }
+                i++;
+            }
+
+            programCombo.setData(programList);
+            programCombo.setItems(programs);
+            programCombo.add("None", 0);
+            // TODO - Fix selection of existing program.
+            programCombo.select(select + 1);
+        } catch (Exception e) {
+            statusHandler.error("Error retrieving Program data", e);
+        }
+    }
+
     /**
      * Action handler for group name selection.
      */
@@ -858,6 +902,9 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 }
             }
 
+            // TODO Fix validation on transmitter group program change
+            // This causes vaildation failure because a group with that
+            // that name already exists
             if (TransmitterEditType.NEW_TRANSMITTER_GROUP == type
                     || TransmitterEditType.EDIT_TRANSMITTER_GROUP == type
                     || saveGroup) {
@@ -877,6 +924,13 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     group.setTimeZone(this.timeZoneCbo.getText());
                     group.setSilenceAlarm(this.disableSilenceChk.getSelection());
                     group.setDaylightSaving(this.noDstChk.getSelection());
+                    Object obj = programCombo.getData();
+                    if (obj != null && (obj instanceof List<?>)) {
+                        List<Program> progList = (List<Program>) obj;
+                        Program p = progList.get(programCombo
+                                .getSelectionIndex() - 1);
+                        p.getTransmitterGroups().add(group);
+                    }
 
                     try {
                         if (transmitter != null) {
@@ -1099,11 +1153,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         }
 
         String grpName = null;
-        if (type == TransmitterEditType.EDIT_TRANSMITTER) {
-            grpName = grpNameValueLbl.getText();
-        } else {
-            grpName = grpNameCbo.getText();
-        }
+        grpName = grpNameCbo.getText();
 
         if (grpName.equals(mnemonicTxt.getText().trim())) {
             if (group.getTransmitters().size() > 1) {
