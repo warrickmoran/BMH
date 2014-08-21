@@ -4,7 +4,8 @@
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
   
 	<!-- tts manager -->
-	<bean id="ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager" />
+	<bean id="ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager" 
+		destroy-method="dispose" />
 	
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
 		<constructor-arg ref="bmh-tts" />

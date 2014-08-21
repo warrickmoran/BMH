@@ -28,6 +28,7 @@ import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.tts.TTSInterface;
 import com.raytheon.uf.edex.bmh.tts.TTSManager;
 import com.raytheon.uf.edex.bmh.tts.TTSReturn;
+import com.raytheon.uf.edex.bmh.tts.TimeLockedTTSInterface;
 
 /**
  * Handle the CAVE text to speech requests.
@@ -39,6 +40,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSReturn;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 16, 2014    3355    mpduff      Initial creation
+ * Aug 20, 2014    3538    bkowal      Use TTS Connection Pooling.
  * 
  * </pre>
  * 
@@ -56,7 +58,18 @@ public class TextToSpeechHandler implements
 
     @Override
     public Object handleRequest(TextToSpeechRequest request) throws Exception {
-        TTSInterface ttsInterface = ttsManager.getInterface();
+        TimeLockedTTSInterface timeLock = ttsManager.getConnectionManager()
+                .requestConnection();
+        if (timeLock == null) {
+            /*
+             * TODO: not enough connections available. Should CAVE retry? If so,
+             * how long should CAVE retry?
+             */
+            request.setByteData(null);
+            request.setStatus("No TTS connections are available!");
+            return request;
+        }
+        TTSInterface ttsInterface = timeLock.getInterface();
         TTSReturn output = ttsInterface.transformSSMLToAudio(
                 request.getPhoneme(), request.getVoice(),
                 TTS_FORMAT.TTS_FORMAT_MULAW, true);
@@ -77,6 +90,8 @@ public class TextToSpeechHandler implements
             request.setByteData(outputStream.toByteArray());
         }
 
+        ttsManager.getConnectionManager().returnConnection(timeLock,
+                request.getByteData().length);
         request.setStatus(status.getDescription());
 
         return request;

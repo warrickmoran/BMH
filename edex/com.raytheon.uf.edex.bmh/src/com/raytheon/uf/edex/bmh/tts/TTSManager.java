@@ -26,6 +26,8 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -57,6 +59,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jun 24, 2014 3302       bkowal      Updated to use the BroadcastMsg Entity. Eliminated the
  *                                     use of *DataRecord.
  * Jul 1, 2014  3302       bkowal      Fixed log message.
+ * Aug 20, 2014 3538       bkowal      Use TTS Connection Pooling. Implement Monitoring.
+ *                                     Truly verify TTS Synthesis is available.
  * 
  * </pre>
  * 
@@ -64,9 +68,11 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * @version 1.0
  */
 
-public class TTSManager implements IContextStateProcessor {
+public class TTSManager implements IContextStateProcessor, Runnable {
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(TTSManager.class);
+
+    private static final int CORE_POOL_SIZE = 1;
 
     /* Output root subdirectory */
     private static final String AUDIO_DATA_DIRECTORY = "audio";
@@ -85,9 +91,17 @@ public class TTSManager implements IContextStateProcessor {
     private static final String DEFAULT_TTS_FILE_EXTENSION = ".ulaw";
 
     /* Configuration Property Name Constants */
+    private static final String TTS_THREADS = "bmh.tts.threads";
+
+    private static final String TTS_HEARTBEAT = "bmh.tts.heartbeat";
+
     private static final String TTS_SERVER_PROPERTY = "bmh.tts.server";
 
     private static final String TTS_PORT_PROPERTY = "bmh.tts.port";
+
+    private static final String TTS_STATUS_PORT_PROPERTY = "bmh.tts.status.port";
+
+    private static final String TTS_VOICE_VALIDATE_PROPERTY = "bmh.tts.voice.validate";
 
     private static final String TTS_CONNECT_TIMEOUT_PROPERTY = "bmh.tts.connect-timeout";
 
@@ -100,9 +114,17 @@ public class TTSManager implements IContextStateProcessor {
     /* Configuration */
     private String bmhDataDirectory;
 
+    private int ttsThreads;
+
+    private long ttsHeartbeat;
+
     private String ttsServer;
 
     private int ttsPort;
+
+    private int ttsStatusPort;
+
+    private Integer ttsValidationVoice;
 
     private int ttsConnectionTimeout;
 
@@ -111,6 +133,10 @@ public class TTSManager implements IContextStateProcessor {
     private long ttsRetryDelay;
 
     private final boolean disabled;
+
+    private TTSConnectionManager connectionManager;
+
+    private ScheduledThreadPoolExecutor heartbeatMonitor;
 
     public TTSManager() {
         this.disabled = Boolean.getBoolean(TTS_DISABLED_PROPERTY);
@@ -184,8 +210,15 @@ public class TTSManager implements IContextStateProcessor {
                 + File.separatorChar + AUDIO_DATA_DIRECTORY);
 
         /* Attempt to retrieve the server and port from the System properties */
+        Integer ttsThreadInteger = Integer.getInteger(TTS_THREADS, null);
+        Long ttsHeartbeatLong = Long.getLong(TTS_HEARTBEAT, null);
+
         this.ttsServer = System.getProperty(TTS_SERVER_PROPERTY, null);
         Integer portInteger = Integer.getInteger(TTS_PORT_PROPERTY, null);
+        Integer statusPortInteger = Integer.getInteger(
+                TTS_STATUS_PORT_PROPERTY, null);
+        this.ttsValidationVoice = Integer.getInteger(
+                TTS_VOICE_VALIDATE_PROPERTY, null);
         Integer timeoutInteger = Integer.getInteger(
                 TTS_CONNECT_TIMEOUT_PROPERTY, null);
         Integer retryInteger = Integer.getInteger(TTS_RETRY_THRESHOLD_PROPERTY,
@@ -193,6 +226,15 @@ public class TTSManager implements IContextStateProcessor {
         Long delayLong = Long.getLong(TTS_RETRY_DELAY_PROPERTY, null);
 
         /* Verify that the configuration was successfully retrieved. */
+        if (ttsThreadInteger == null) {
+            throw new TTSConfigurationException(
+                    "Failed to retrieve the TTS Available Thread Count from configuration!");
+        }
+        if (ttsHeartbeatLong == null) {
+            throw new TTSConfigurationException(
+                    "Failed to retrieve the TTS Heartbeat Interval from configuration!");
+        }
+
         if (this.ttsServer == null) {
             throw new TTSConfigurationException(
                     "Failed to retrieve the TTS Server from configuration!");
@@ -200,6 +242,10 @@ public class TTSManager implements IContextStateProcessor {
         if (portInteger == null) {
             throw new TTSConfigurationException(
                     "Failed to retrieve the TTS Port from configuration!");
+        }
+        if (statusPortInteger == null) {
+            throw new TTSConfigurationException(
+                    "Failed to retrieve the TTS Status Port from configuration!");
         }
         if (timeoutInteger == null) {
             throw new TTSConfigurationException(
@@ -214,14 +260,25 @@ public class TTSManager implements IContextStateProcessor {
                     "Failed to retrieve the TTS Retry Delay from configuration!");
         }
 
-        /* TTS Port is numeric. */
+        this.ttsThreads = ttsThreadInteger;
+        this.ttsHeartbeat = ttsHeartbeatLong;
+
         this.ttsPort = portInteger;
-        /* TTS Timeout is numeric. */
+        this.ttsStatusPort = statusPortInteger;
         this.ttsConnectionTimeout = timeoutInteger;
-        /* TTS Retry Threshold is numeric. */
         this.ttsRetryThreshold = retryInteger;
-        /* TTS Retry Delay is numeric. */
         this.ttsRetryDelay = delayLong;
+
+        /* Ensure that the thread count is > 0 */
+        if (this.ttsThreads <= 0) {
+            throw new TTSConfigurationException(
+                    "TTS Available Thread Count must be > 0!");
+        }
+        /* Ensure that the heartbeat interval is > 0 */
+        if (this.ttsHeartbeat <= 0) {
+            throw new TTSConfigurationException(
+                    "TTS Heartbeat Interval must be > 0!");
+        }
 
         /* Ensure that the TTS Retry Delay is >= 0 */
         if (this.ttsRetryDelay < 0) {
@@ -233,14 +290,57 @@ public class TTSManager implements IContextStateProcessor {
                     "TTS Connection Timeout must be >= 0!");
         }
 
-        this.validate();
+        this.connectionManager = new TTSConnectionManager(this.ttsThreads,
+                this.ttsServer, this.ttsPort, this.ttsConnectionTimeout);
+        if (this.ttsValidationVoice != null) {
+            statusHandler
+                    .info("TTS Voice "
+                            + this.ttsValidationVoice
+                            + " will be used to verify that the TTS synthesis capability is available.");
+        }
+        /*
+         * Perform both checks during the initialization validation.
+         */
+        this.validateAvailability();
+        this.validateSynthesis();
+
+        statusHandler.info("TTS Available Thread Count is " + this.ttsThreads);
+        statusHandler.info("TTS Heartbeat Interval is " + this.ttsHeartbeat);
         statusHandler.info("TTS Connection Timeout is: " + timeoutInteger
                 + " ms");
         statusHandler.info("BMH Audio Directory is: " + this.bmhDataDirectory);
         statusHandler.info("TTS Retry Threshold is: " + this.ttsRetryThreshold);
         statusHandler
                 .info("TTS Retry Delays is: " + this.ttsRetryDelay + " ms");
+        statusHandler.info("Starting TTS Server Monitor ...");
+        this.heartbeatMonitor = new ScheduledThreadPoolExecutor(CORE_POOL_SIZE);
+        this.heartbeatMonitor.scheduleAtFixedRate(this, this.ttsHeartbeat,
+                this.ttsHeartbeat, TimeUnit.MILLISECONDS);
         statusHandler.info("Initialization Successful!");
+    }
+
+    public void dispose() {
+        if (this.heartbeatMonitor != null) {
+            statusHandler.info("Stopping TTS Server Monitor ...");
+            this.heartbeatMonitor.shutdownNow();
+        }
+    }
+
+    private void validateAvailability() throws TTSConfigurationException,
+            IOException {
+        int attempt = 0;
+        boolean retry = true;
+        while (retry) {
+            ++attempt;
+            TTS_RETURN_VALUE returnValue = TTSInterface
+                    .validateTTSAvailability(this.ttsServer, this.ttsStatusPort);
+
+            retry = this.checkRetry(attempt, returnValue);
+        }
+
+        statusHandler.info("Verified the availability of the TTS Server at "
+                + this.ttsServer + " (Status Port = " + this.ttsStatusPort
+                + ").");
     }
 
     /**
@@ -251,50 +351,65 @@ public class TTSManager implements IContextStateProcessor {
      * @throws TTSConfigurationException
      * @throws IOException
      */
-    private void validate() throws TTSConfigurationException, IOException {
+    private void validateSynthesis() throws TTSConfigurationException,
+            IOException {
+        if (this.ttsValidationVoice == null) {
+            statusHandler
+                    .info("A validation voice has not been specified. Please check the configuration. Skipping synthesis validation ...");
+            return;
+        }
+
         int attempt = 0;
         boolean retry = true;
 
-        TTSInterface ttsInterface = this.getInterface();
+        // Currently assuming that a connection will always be available during
+        // startup.
+        TimeLockedTTSInterface timeLock = this.connectionManager
+                .requestConnection();
+        if (timeLock == null) {
+            throw new TTSConfigurationException(
+                    "Unable to acquire a connection to the TTS Server!");
+        }
         while (retry) {
             ++attempt;
+            TTSReturn ttsReturn = timeLock.getInterface()
+                    .validateTTSAvailableForSynthesis(this.ttsValidationVoice,
+                            TTS_DEFAULT_FORMAT);
 
-            TTS_RETURN_VALUE returnValue = ttsInterface
-                    .validateTTSIsAvailable();
-
-            /* check the return code. */
-
-            /* did the connection fail due to bad configuration? */
-            if (returnValue == TTS_RETURN_VALUE.TTS_HOSTNAME_ERROR) {
-                throw new TTSConfigurationException(
-                        "Failed to connect to the TTS Server; "
-                                + this.getTTSErrorLogStatement(returnValue)
-                                + "!");
-            }
-
-            /*
-             * did the connection fail due to an issue that could potentially be
-             * intermittent?
-             */
-            if ((returnValue != TTS_RETURN_VALUE.TTS_CONNECT_ERROR)
-                    && (returnValue != TTS_RETURN_VALUE.TTS_SOCKET_ERROR)) {
-                retry = false;
-            } else {
-                StringBuilder stringBuilder = new StringBuilder(
-                        "Connection Attempt (");
-                stringBuilder.append(attempt);
-                stringBuilder.append(") to the TTS Server has failed! ");
-                stringBuilder.append(this.getTTSErrorLogStatement(returnValue));
-                stringBuilder.append(". Retrying ...");
-                statusHandler.warn(returnValue.getAssociatedBMHCategory(),
-                        stringBuilder.toString());
-
-                this.sleepDelayTime();
+            retry = this.checkRetry(attempt, ttsReturn.getReturnValue());
+            if (retry == false) {
+                /*
+                 * Lock the interface for the audio duration and return it to
+                 * the pool.
+                 */
+                this.connectionManager.returnConnection(timeLock,
+                        ttsReturn.getVoiceData().length);
             }
         }
 
-        statusHandler.info("Successfully connected to the TTS Server at "
-                + this.ttsServer + " running on Port " + this.ttsPort + ".");
+        statusHandler.info("Verified the TTS Server at " + this.ttsServer
+                + " running on Port " + this.ttsPort
+                + " is capable of synthesis.");
+    }
+
+    private boolean checkRetry(int attempt, TTS_RETURN_VALUE returnValue) {
+        if (returnValue == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
+            return false;
+        }
+
+        StringBuilder stringBuilder = new StringBuilder("Connection Attempt (");
+        stringBuilder.append(attempt);
+        stringBuilder.append(") to the TTS Server ");
+        stringBuilder.append(this.ttsServer);
+        stringBuilder.append(" has failed! ");
+        stringBuilder.append(this.getTTSErrorLogStatement(returnValue));
+        stringBuilder.append(". Retrying ...");
+        statusHandler.warn(returnValue.getAssociatedBMHCategory(),
+                stringBuilder.toString());
+
+        this.sleepDelayTime();
+
+        return true;
     }
 
     /**
@@ -331,14 +446,29 @@ public class TTSManager implements IContextStateProcessor {
         boolean success = false;
         IOException ioException = null;
 
-        TTSInterface ttsInterface = this.getInterface();
+        TimeLockedTTSInterface timeLock = null;
+        while (timeLock == null) {
+            timeLock = this.connectionManager.requestConnection();
+            /*
+             * Wait for a connection. Should there be a limit to how long the
+             * wait will be?
+             */
+            if (timeLock == null) {
+                statusHandler.info("Waiting for TTS Connection. [Message ID = "
+                        + message.getId() + "]");
+                this.sleepDelayTime();
+            }
+        }
+
+        statusHandler.info("Using TTS Connection " + timeLock.getIdentifier()
+                + ". [Message ID = " + message.getId() + "]");
 
         while (true) {
             ++attempt;
 
             /* Attempt the Conversion */
             try {
-                ttsReturn = ttsInterface.transformSSMLToAudio(
+                ttsReturn = timeLock.getInterface().transformSSMLToAudio(
                         message.getSsml(), message.getVoice().getVoiceNumber(),
                         TTS_DEFAULT_FORMAT, getFirstFrame);
             } catch (IOException e1) {
@@ -381,6 +511,7 @@ public class TTSManager implements IContextStateProcessor {
             }
 
             if (this.retry(ttsReturn.getReturnValue()) == false) {
+                this.connectionManager.returnConnection(timeLock, 0);
                 /* Absolute Failure */
                 break;
             }
@@ -392,6 +523,7 @@ public class TTSManager implements IContextStateProcessor {
                  * maximum retry count reached; halt text-to-speech
                  * transformation attempts
                  */
+                this.connectionManager.returnConnection(timeLock, 0);
                 break;
             } else {
                 String logMessage = "Text-to-Speech Transformation was unsuccessful for message: "
@@ -425,8 +557,10 @@ public class TTSManager implements IContextStateProcessor {
             statusHandler
                     .info("Text-to-Speech Transformation completed successfully for message: "
                             + message.getId()
-                            + ".  Length for playback = "
+                            + ".  Length of playback = "
                             + (((totalBytes / 160) * 20) / 1000) + " seconds");
+            /* Return the connection. */
+            this.connectionManager.returnConnection(timeLock, totalBytes);
             /* Write the output file. */
             File outputFile = this.determineOutputFile(message.getId(), message
                     .getInputMessage().getAfosid(), message.getVoice());
@@ -590,13 +724,6 @@ public class TTSManager implements IContextStateProcessor {
         }
     }
 
-    public TTSInterface getInterface() {
-        TTSInterface ttsInterface = new TTSInterface(this.ttsServer,
-                this.ttsPort, this.ttsConnectionTimeout);
-
-        return ttsInterface;
-    }
-
     private String getTTSErrorLogStatement(TTS_RETURN_VALUE returnValue) {
         StringBuilder stringBuilder = new StringBuilder("TTS ERROR = ");
         stringBuilder.append(returnValue.getDescription());
@@ -605,5 +732,21 @@ public class TTSManager implements IContextStateProcessor {
         stringBuilder.append(")");
 
         return stringBuilder.toString();
+    }
+
+    @Override
+    public void run() {
+        try {
+            this.validateAvailability();
+        } catch (TTSConfigurationException | IOException e) {
+            statusHandler
+                    .error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
+                            "Failed to determine the current status of the TTS Server!",
+                            e);
+        }
+    }
+
+    public TTSConnectionManager getConnectionManager() {
+        return connectionManager;
     }
 }

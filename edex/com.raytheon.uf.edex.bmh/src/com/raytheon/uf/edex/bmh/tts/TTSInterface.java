@@ -38,6 +38,9 @@ import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2014 3228       bkowal      Initial creation
  * Jun 26, 2014 3302       bkowal      Eliminated the use of *DataRecord
+ * Aug 20, 2014 3538       bkowal      Improved data synthesis verification. Added
+ *                                     a method that will verify that the TTS Server
+ *                                     is operational.
  * 
  * </pre>
  * 
@@ -46,7 +49,6 @@ import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
  */
 
 public class TTSInterface {
-
     /* TTS NeoSpeech API Constants */
     // Whether or not the first frame of the voice output is being requested
     private static final int BFIRST = 1;
@@ -74,6 +76,29 @@ public class TTSInterface {
         this.ttsapi = this.getAPI();
     }
 
+    public static TTS_RETURN_VALUE validateTTSAvailability(
+            final String hostname, final int statusPort) throws IOException {
+        final libttsapi ttsapi = new libttsapi();
+        int returnCode = ttsapi.ttsRequestStatus(hostname, statusPort);
+
+        /*
+         * The return codes associated with the tts status request are slightly
+         * different than the return codes associated with other types of tts
+         * requests. So, the return codes need to be translated to what is used
+         * throughout the TTS Management Capability.
+         */
+        switch (returnCode) {
+        case libttsapi.TTS_SERVICE_OFF:
+        case libttsapi.TTS_SERVICE_PAUSED:
+            return TTS_RETURN_VALUE.TTS_RESULT_ERROR;
+        case libttsapi.TTS_SERVICE_ON:
+            return TTS_RETURN_VALUE.TTS_RESULT_SUCCESS;
+        default:
+            // indicates < 0; one of the standard TTS error codes
+            return TTS_RETURN_VALUE.lookup(returnCode);
+        }
+    }
+
     /**
      * Attempt to connect to the TTS Server to verify that it is running and
      * available. This method does not care about the result of the
@@ -81,13 +106,20 @@ public class TTSInterface {
      * 
      * @return the result of the attempt.
      */
-    public TTS_RETURN_VALUE validateTTSIsAvailable() throws IOException {
+    public TTSReturn validateTTSAvailableForSynthesis(int voice,
+            TTS_FORMAT format) throws IOException {
         final String testMessage = "TEST";
 
         int returnCode = this.ttsapi.ttsRequestBuffer(this.ttsServer,
-                this.ttsPort, testMessage, 0, 0, BFIRST, BALL);
+                this.ttsPort, testMessage, voice, format.getCode(), BFIRST,
+                BALL);
+        TTS_RETURN_VALUE returnValue = TTS_RETURN_VALUE.lookup(returnCode);
+        TTSReturn ttsReturn = new TTSReturn(returnValue);
+        if (returnValue == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
+            ttsReturn.setVoiceData(ttsapi.szVoiceData);
+        }
 
-        return TTS_RETURN_VALUE.lookup(returnCode);
+        return ttsReturn;
     }
 
     /**
