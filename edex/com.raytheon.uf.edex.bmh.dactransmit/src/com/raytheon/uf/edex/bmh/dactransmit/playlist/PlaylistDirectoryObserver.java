@@ -128,6 +128,10 @@ public class PlaylistDirectoryObserver {
                         for (WatchEvent<?> event : key.pollEvents()) {
                             if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
                                 @SuppressWarnings("unchecked")
+                                /*
+                                 * FIXME: update this code after new playlist
+                                 * file name/path format has been determined.
+                                 */
                                 WatchEvent<Path> e = (WatchEvent<Path>) event;
                                 Path newPlaylist = parent.resolve(e.context());
 

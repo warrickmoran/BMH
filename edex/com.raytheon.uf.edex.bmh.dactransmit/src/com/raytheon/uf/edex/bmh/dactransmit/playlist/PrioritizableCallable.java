@@ -39,12 +39,12 @@ import java.util.concurrent.Callable;
  * @version 1.0
  */
 
-public interface PrioritizableRunnable extends Callable<AudioFileBuffer>,
-        Comparable<PrioritizableRunnable> {
+public interface PrioritizableCallable<T> extends Callable<T> {
+
     /**
      * Returns the priority associated with the task.
      * 
      * @return the priority associated with the task.
      */
-    public Integer getPriority();
+    Integer getPriority();
 }
