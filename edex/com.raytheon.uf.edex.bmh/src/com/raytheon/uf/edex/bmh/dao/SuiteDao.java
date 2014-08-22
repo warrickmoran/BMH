@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.dao;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -197,34 +198,67 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
     }
 
     /**
-     * Save/Update.
+     * Overrides persist so that calls for Suite are properly handled.
+     */
+    @Override
+    public void persist(final Object obj) {
+        if (obj instanceof Suite) {
+            saveOrUpdate((Suite) obj);
+        } else {
+            super.persist(obj);
+        }
+    }
+
+    /**
+     * Overrides persistAll so that calls for Suite are properly handled.
+     */
+    @Override
+    public void persistAll(final Collection<? extends Object> objs) {
+        txTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            public void doInTransactionWithoutResult(TransactionStatus status) {
+                HibernateTemplate ht = getHibernateTemplate();
+                for (Object obj : objs) {
+                    if (obj instanceof Suite) {
+                        saveOrUpdateSuite(ht, (Suite) obj);
+                    } else {
+                        ht.saveOrUpdate(obj);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Handle saveOrUpdate specifically for a suite.
      * 
      * @param suite
-     *            Suite to save/update.
      */
     public void saveOrUpdate(final Suite suite) {
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             public void doInTransactionWithoutResult(TransactionStatus status) {
                 HibernateTemplate ht = getHibernateTemplate();
-
-                // work around to orphanRemoval not working correctly in
-                // bidirectional relationship
-                if (suite.getId() != 0) {
-                    ht.bulkUpdate(
-                            "delete from SuiteMessage where suite_id = ?",
-                            suite.getId());
-                    ht.update(suite);
-                } else {
-                    ht.save(suite);
-                }
-
-                if (suite.getSuiteMessages() != null) {
-                    for (SuiteMessage sm : suite.getSuiteMessages()) {
-                        ht.save(sm);
-                    }
-                }
+                saveOrUpdateSuite(ht, suite);
             }
         });
+    }
+
+    private void saveOrUpdateSuite(HibernateTemplate ht, final Suite suite) {
+        // work around to orphanRemoval not working correctly in
+        // bidirectional relationship
+        if (suite.getId() != 0) {
+            ht.bulkUpdate("delete from SuiteMessage where suite_id = ?",
+                            suite.getId());
+            ht.update(suite);
+        } else {
+            ht.save(suite);
+        }
+
+        if (suite.getSuiteMessages() != null) {
+            for (SuiteMessage sm : suite.getSuiteMessages()) {
+                ht.save(sm);
+            }
+        }
     }
 }
