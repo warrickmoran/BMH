@@ -38,7 +38,8 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 17, 2014  #3490     lvenable     Initial creation
+ * Aug 17, 2014  #3490     lvenable    Initial creation
+ * Aug 18, 2014   3411     mpduff      Added saveMessageType()
  * 
  * </pre>
  * 
@@ -71,6 +72,9 @@ public class MessageTypeDataManager {
             Collections.sort(messageTypeList, comparator);
         }
 
+        if (messageTypeList == null) {
+            messageTypeList = Collections.emptyList();
+        }
         return messageTypeList;
     }
 
@@ -87,5 +91,25 @@ public class MessageTypeDataManager {
         mtRequest.setMessageType(msgType);
 
         BmhUtils.sendRequest(mtRequest);
+    }
+
+    /**
+     * Save the {@link MessageType}
+     * 
+     * @param selectedMsgType
+     *            to save
+     * @return saved Object
+     * @throws Exception
+     */
+    public MessageType saveMessageType(MessageType selectedMsgType)
+            throws Exception {
+        MessageTypeRequest req = new MessageTypeRequest();
+        req.setMessageType(selectedMsgType);
+        req.setAction(MessageTypeAction.Save);
+
+        MessageTypeResponse response = (MessageTypeResponse) BmhUtils
+                .sendRequest(req);
+
+        return response.getMessageTypeList().get(0);
     }
 }

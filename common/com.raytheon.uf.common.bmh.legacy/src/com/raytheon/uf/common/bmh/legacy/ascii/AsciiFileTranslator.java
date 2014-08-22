@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
@@ -67,6 +68,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3175       rjpeter     Initial creation
  * Aug 05, 2014 3175       rjpeter     Added set verification of message type in suite.
+ * Aug 19, 2014 3411       mpduff      Implement {@link MessageTypeReplacement}
  * </pre>
  * 
  * @author rjpeter
@@ -794,7 +796,11 @@ public class AsciiFileTranslator {
                             reader.getSourceFile());
                 }
 
-                current.addReplaceMsg(replaces);
+                MessageTypeReplacement replacement = new MessageTypeReplacement();
+                replacement.setMsgType(current);
+                replacement.setReplaceMsgType(replaces);
+
+                bmhData.addReplacementMsg(replacement);
             }
         }
     }

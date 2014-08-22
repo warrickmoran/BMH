@@ -22,6 +22,7 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -35,6 +36,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.MapKey;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
+import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
@@ -64,6 +66,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                     same transmitters to a Set.
  * Aug 12, 2014 #3490      lvenable    Added wxr and enable tone blackout fields.
  * Aug 17, 2014 #3490      lvenable    Added batch size, removed cascade all.
+ * Aug 18, 2014  3411      mpduff      Added {@link MessageTypeReplacement}
  * 
  * </pre>
  * 
@@ -156,10 +159,9 @@ public class MessageType {
     @DynamicSerializeElement
     private Set<Transmitter> sameTransmitters;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "message_replace", schema = "bmh", joinColumns = @JoinColumn(name = "id", nullable = false, unique = false), inverseJoinColumns = @JoinColumn(name = "replaces_id", nullable = false, unique = false))
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "msgType", cascade = CascadeType.ALL)
     @DynamicSerializeElement
-    private Set<MessageType> replacesMsgs;
+    private Set<MessageTypeReplacement> replacementMsgs;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_areas", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "areacode"))
@@ -314,21 +316,34 @@ public class MessageType {
         }
     }
 
-    public Set<MessageType> getReplacesMsgs() {
-        return replacesMsgs;
+    public Set<MessageTypeReplacement> getReplacementMsgs() {
+        return replacementMsgs;
     }
 
-    public void setReplacesMsgs(Set<MessageType> replacesMsgs) {
-        this.replacesMsgs = replacesMsgs;
+    /**
+     * @param replacementMsgs
+     *            the replacementMsgs to set
+     */
+    public void setReplacementMsgs(Set<MessageTypeReplacement> replacementMsgs) {
+        this.replacementMsgs = replacementMsgs;
+
+        if (replacementMsgs != null) {
+            for (MessageTypeReplacement mtr : replacementMsgs) {
+                mtr.setMsgType(this);
+            }
+        }
     }
 
-    public void addReplaceMsg(MessageType replaceMsg) {
+    public void addReplacementMsg(MessageTypeReplacement replaceMsg) {
         if (replaceMsg != null) {
-            if (replacesMsgs == null) {
-                replacesMsgs = new HashSet<>();
+            if (replacementMsgs == null) {
+                replacementMsgs = new HashSet<>();
             }
 
-            replacesMsgs.add(replaceMsg);
+            if (replaceMsg != null) {
+                replaceMsg.setMsgType(this);
+                replacementMsgs.add(replaceMsg);
+            }
         }
     }
 
@@ -417,4 +432,13 @@ public class MessageType {
         return true;
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        return "MessageType [afosid=" + afosid + ", title=" + title + "]";
+    }
 }

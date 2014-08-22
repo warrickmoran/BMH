@@ -21,11 +21,13 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -62,6 +64,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * Dialog that is used to create a new message type or edit and exiting message
@@ -78,6 +81,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     for the provided message type.
  * Aug 15, 2014  #3490     lvenable    Hooked up transmitters and selected the SAME transmitters
  *                                     if in edit mode.
+ * Aug 18, 2014   3411     mpduff      Implement New and Edit.
  * 
  * </pre>
  * 
@@ -164,6 +168,12 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
     /** List of available voices. */
     private List<TtsVoice> voiceList;
 
+    private final List<MessageType> messageTypeList;
+
+    private final Map<String, Transmitter> transmitterMap = new HashMap<>();
+
+    private AreaSelectionSaveData areaData;
+
     /**
      * Constructor that will default selected message type to null.
      * 
@@ -172,8 +182,9 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      * @param dialogType
      *            Dialog type.
      */
-    public CreateEditMsgTypesDlg(Shell parentShell, DialogType dialogType) {
-        this(parentShell, dialogType, null);
+    public CreateEditMsgTypesDlg(Shell parentShell, DialogType dialogType,
+            List<MessageType> messageTypeList) {
+        this(parentShell, dialogType, messageTypeList, null);
     }
 
     /**
@@ -188,12 +199,13 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      *            used.
      */
     public CreateEditMsgTypesDlg(Shell parentShell, DialogType dialogType,
-            MessageType selectedMsgType) {
+            List<MessageType> messageTypeList, MessageType selectedMsgType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
         this.dialogType = dialogType;
         this.selectedMsgType = selectedMsgType;
+        this.messageTypeList = messageTypeList;
     }
 
     @Override
@@ -589,7 +601,14 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         areaSelectionBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-
+                AreaSelectionDlg dlg = new AreaSelectionDlg(getShell());
+                dlg.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        areaData = (AreaSelectionSaveData) returnValue;
+                    }
+                });
+                dlg.open();
             }
         });
 
@@ -643,19 +662,17 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         createSaveBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (dialogType == DialogType.CREATE) {
-                    // TODO : create action code needed
-                } else if (dialogType == DialogType.EDIT) {
-                    // TODO : save save action code needed
+                if (save(dialogType)) {
+                    setReturnValue(selectedMsgType);
+                    close();
                 }
-                close();
             }
         });
 
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
         Button closeBtn = new Button(buttonComp, SWT.PUSH);
-        closeBtn.setText(" Close ");
+        closeBtn.setText(" Cancel ");
         closeBtn.setLayoutData(gd);
         closeBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -663,6 +680,131 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                 close();
             }
         });
+    }
+
+    private boolean save(DialogType type) {
+        boolean valid = true;
+        StringBuilder msg = new StringBuilder(
+                "Please correct the following problems:\n\n");
+        if (dialogType == DialogType.CREATE) {
+            // Validate afosId for correctness and uniqueness if new
+            boolean validAfos = MessageTypeUtils.validateAfosId(msgTypeTF
+                    .getText().toUpperCase());
+            if (!validAfos) {
+                String message = "Invalid name/AfosID.\n\nMust be 7-9 alphanumeric characters "
+                        + "with no spaces or special characters.";
+                DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
+                        "Invalid Name", message);
+                return false;
+            }
+
+            if (!MessageTypeUtils.isUnique(msgTypeTF.getText().toUpperCase()
+                    .trim(), messageTypeList)) {
+                String message = "Invalid name/AfosID.\n\n"
+                        + msgTypeTF.getText().trim()
+                        + " is already being used.\n\n" + "Enter another name";
+
+                DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
+                        "Invalid Name", message);
+                return false;
+
+            }
+        }
+
+        String title = msgTypeTitleTF.getText().trim();
+        if (StringUtils.isEmpty(title)) {
+            msg.append("Title cannot be blank\n");
+            valid = false;
+        }
+
+        String duration = this.durationDTF.getFormattedValue();
+        if (duration.length() != 6) {
+            msg.append("Duration is invalid\n");
+            valid = false;
+        }
+
+        String periodicity = this.periodicityDTF.getFormattedValue();
+        if (periodicity.length() != 6) {
+            msg.append("Periodicity is invalid\n");
+            valid = false;
+        }
+
+        if (enableBlackoutChk.getSelection()) {
+            String blackoutStart = blackoutStartDTF.getFormattedValue();
+            if (blackoutStart.length() != 4) {
+                msg.append("Blackout Start is invalid\n");
+                valid = false;
+            }
+
+            String blackoutEnd = blackoutEndDTF.getFormattedValue();
+            if (blackoutEnd.length() != 4) {
+                msg.append("Blackout End is invalid\n");
+                valid = false;
+            }
+        }
+
+        if (!valid) {
+            DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
+                    "Invalid Values", msg.toString());
+        }
+
+        // Valid, save the data
+        if (selectedMsgType == null) {
+            selectedMsgType = new MessageType();
+        }
+
+        if (dialogType == DialogType.CREATE) {
+            selectedMsgType.setAfosid(msgTypeTF.getText().toUpperCase().trim());
+        }
+        selectedMsgType.setAlert(alertChk.getSelection());
+        selectedMsgType.setConfirm(confirmChk.getSelection());
+        selectedMsgType.setDesignation(Designation.valueOf(this.designationCbo
+                .getText()));
+        selectedMsgType.setDuration(duration);
+        selectedMsgType.setEmergencyOverride(eoChk.getSelection());
+        selectedMsgType.setInterrupt(interruptChk.getSelection());
+        selectedMsgType.setPeriodicity(periodicity);
+        selectedMsgType.setTitle(msgTypeTitleTF.getText().trim());
+        selectedMsgType
+                .setToneBlackoutEnabled(enableBlackoutChk.getSelection());
+        if (enableBlackoutChk.getSelection()) {
+            String blackoutStart = blackoutStartDTF.getFormattedValue();
+            String blackoutEnd = blackoutEndDTF.getFormattedValue();
+            selectedMsgType.setToneBlackOutEnd(blackoutEnd);
+            selectedMsgType.setToneBlackOutStart(blackoutStart);
+        }
+
+        CheckListData sameData = sameTransmitters.getCheckedItems();
+        if (selectedMsgType.getSameTransmitters() != null) {
+            selectedMsgType.getSameTransmitters().clear();
+        }
+        for (String xmit : sameData.getCheckedItems()) {
+            selectedMsgType.addSameTransmitter(transmitterMap.get(xmit));
+        }
+
+        String voiceName = voiceCbo.getText();
+        for (TtsVoice voice : voiceList) {
+            if (voiceName.equals(voice.getVoiceName())) {
+                selectedMsgType.setVoice(voice);
+                break;
+            }
+        }
+
+        selectedMsgType.setWxr(wxrRdo.getSelection());
+
+        if (areaData != null) {
+            selectedMsgType.setDefaultAreas(areaData.getAreas());
+            selectedMsgType.setDefaultZones(areaData.getZones());
+        }
+        MessageTypeDataManager dm = new MessageTypeDataManager();
+        try {
+            selectedMsgType = dm.saveMessageType(selectedMsgType);
+        } catch (Exception e) {
+            statusHandler.error("Error saving Message", e);
+            valid = false;
+        }
+
+        return valid;
     }
 
     /**
@@ -705,12 +847,21 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
         if (dialogType == DialogType.EDIT && selectedMsgType != null) {
             Set<Transmitter> transSet = selectedMsgType.getSameTransmitters();
-            for (Transmitter t : transmitters) {
-                cld.addDataItem(t.getMnemonic(), transSet.contains(t));
+            if (transSet != null) {
+                for (Transmitter t : transmitters) {
+                    cld.addDataItem(t.getMnemonic(), transSet.contains(t));
+                    transmitterMap.put(t.getMnemonic(), t);
+                }
+            } else {
+                for (Transmitter t : transmitters) {
+                    cld.addDataItem(t.getMnemonic(), false);
+                    transmitterMap.put(t.getMnemonic(), t);
+                }
             }
         } else {
             for (Transmitter t : transmitters) {
                 cld.addDataItem(t.getMnemonic(), false);
+                transmitterMap.put(t.getMnemonic(), t);
             }
         }
 

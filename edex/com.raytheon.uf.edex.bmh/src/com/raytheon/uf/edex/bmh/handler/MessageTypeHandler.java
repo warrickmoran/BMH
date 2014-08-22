@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -39,6 +40,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * Jul 22, 2014    3411    mpduff      Initial creation
  * Aug 5, 2014  #3490      lvenable    Updated to get Message types.
  * Aug 17, 2014 #3490      lvenable    Updated for deleting.
+ * Aug 18, 2014  3411      mpduff      Added SaveMessageType
  * 
  * </pre>
  * 
@@ -59,6 +61,8 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         case Delete:
             deleteMessageType(request);
             break;
+        case Save:
+            response = saveMessageType(request);
         default:
             break;
         }
@@ -92,5 +96,19 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         if (request != null) {
             dao.delete(request.getMessageType());
         }
+    }
+
+    private MessageTypeResponse saveMessageType(MessageTypeRequest request) {
+        MessageTypeDao dao = new MessageTypeDao();
+        if (request != null) {
+            dao.saveOrUpdate(request.getMessageType());
+        }
+
+        MessageTypeResponse response = new MessageTypeResponse();
+        List<MessageType> list = new ArrayList<>(1);
+        list.add(request.getMessageType());
+        response.setMessageTypeList(list);
+
+        return response;
     }
 }

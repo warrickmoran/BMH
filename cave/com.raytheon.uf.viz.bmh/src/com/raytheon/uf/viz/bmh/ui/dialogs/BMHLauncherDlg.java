@@ -93,6 +93,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 27, 2014  #3420     lvenable    Added Message types dialog.
  * Aug 04, 2014   3173     mpduff      Added Transmitter Config dialog.
  * Aug 17, 2014  #3490     lvenable    Updated for disable silence alarm.
+ * Aug 20, 2014   3411     mpduff      Added bringToTop for message dialog
  * 
  * </pre>
  * 
@@ -638,6 +639,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                     msgTypeAssocDlg = new MessageTypeAssocDlg(getShell(),
                             dlgsToValidateCloseMap);
                     msgTypeAssocDlg.open();
+                } else {
+                    msgTypeAssocDlg.bringToTop();
                 }
             }
         });
