@@ -133,7 +133,7 @@ public class PlaylistManager {
             playlist.setModTime(TimeUtil.newGmtCalendar());
             playlist.setStartTime(msg.getInputMessage().getEffectiveTime());
             playlist.setEndTime(msg.getInputMessage().getExpirationTime());
-            writePlaylistFile(playlist);
+            writePlaylistFile(playlist, playlist.getStartTime());
         }
 
         for (Suite suite : program.getSuites()) {
@@ -161,7 +161,7 @@ public class PlaylistManager {
                 if (suite.getType() == SuiteType.GENERAL) {
                     playlist.setMessages(Collections.<BroadcastMsg> emptyList());
                 } else if (trigger) {
-                    playlist.setMessages(loadExistingMessages(suite));
+                    playlist.setMessages(loadExistingMessages(suite, group));
                 } else {
                     return;
                 }
@@ -176,10 +176,10 @@ public class PlaylistManager {
              * order specified by the suite, this skips any expired messages so
              * they are removed from the list.
              */
-            Calendar expireTime = playlist.getModTime();
+            Calendar currentTime = playlist.getModTime();
             Map<String, List<BroadcastMsg>> afosMapping = new HashMap<>();
             for (BroadcastMsg message : messages) {
-                if (expireTime.after(message.getInputMessage()
+                if (currentTime.after(message.getInputMessage()
                         .getExpirationTime())) {
                     continue;
                 }
@@ -198,6 +198,8 @@ public class PlaylistManager {
              * messages.
              */
             Calendar startTime = null;
+            Calendar latestTrigger = null;
+            List<Calendar> futureTriggers = new ArrayList<>(1);
             Calendar endTime = null;
             messages.clear();
             for (SuiteMessage smessage : suite.getSuiteMessages()) {
@@ -216,19 +218,53 @@ public class PlaylistManager {
                                     || startTime.after(messageStart)) {
                                 startTime = messageStart;
                             }
+                            if (messageStart.before(currentTime)) {
+                                if (latestTrigger == null
+                                        || latestTrigger.before(messageStart)) {
+                                    latestTrigger = messageStart;
+                                }
+                            } else {
+                                futureTriggers.add(messageStart);
+                            }
                             if ((endTime == null) || endTime.before(messageEnd)) {
                                 endTime = messageEnd;
                             }
+
                         }
                     }
                 }
+            }
+            if (latestTrigger == null && !futureTriggers.isEmpty()) {
+                latestTrigger = startTime;
+                futureTriggers.remove(latestTrigger);
             }
             if (startTime != null) {
                 playlist.setStartTime(startTime);
                 playlist.setEndTime(endTime);
                 playlist.setMessages(messages);
                 playlistDao.persist(playlist);
-                writePlaylistFile(playlist);
+                if (futureTriggers.isEmpty()
+                        || suite.getType() == SuiteType.GENERAL) {
+                    writePlaylistFile(playlist, latestTrigger);
+                } else {
+                    /*
+                     * If there are multiple triggers, need to write one file
+                     * per trigger.
+                     */
+                    Collections.sort(futureTriggers);
+                    playlist.setEndTime(futureTriggers.get(0));
+                    writePlaylistFile(playlist, latestTrigger);
+                    for (int i = 0; i < futureTriggers.size() - 1; i += 1) {
+                        playlist.setStartTime(futureTriggers.get(i));
+                        playlist.setEndTime(futureTriggers.get(i + 1));
+                        writePlaylistFile(playlist, futureTriggers.get(i));
+                    }
+                    playlist.setStartTime(futureTriggers.get(futureTriggers
+                            .size() - 1));
+                    playlist.setEndTime(endTime);
+                    writePlaylistFile(playlist, playlist.getStartTime());
+                }
+
             }
         } finally {
             ClusterLockUtils.deleteLock(ct.getId().getName(), ct.getId()
@@ -240,15 +276,22 @@ public class PlaylistManager {
      * Get any messages which should be in the list but aren't triggers.
      * 
      * @param suite
+     * @param group
      * @return all non-trigger messages for that suite.
      */
-    private List<BroadcastMsg> loadExistingMessages(Suite suite) {
+    private List<BroadcastMsg> loadExistingMessages(Suite suite,
+            TransmitterGroup group) {
         List<BroadcastMsg> messages = new ArrayList<>();
         for (SuiteMessage smessage : suite.getSuiteMessages()) {
             if (!smessage.isTrigger()) {
-                // TODO filter by expiration date in dao.
-                messages.addAll(messageDao.getMessagesByAfosid(smessage
-                        .getAfosid()));
+                // TODO filter by expiration date in dao and transmitter group
+                // on retrieval
+                for (BroadcastMsg message : messageDao
+                        .getMessagesByAfosid(smessage.getAfosid())) {
+                    if (message.getTransmitterGroup().equals(group)) {
+                        messages.add(message);
+                    }
+                }
             }
         }
         Collections.sort(messages, new Comparator<BroadcastMsg>() {
@@ -301,8 +344,9 @@ public class PlaylistManager {
 
     }
 
-    private void writePlaylistFile(Playlist playlist) {
+    private void writePlaylistFile(Playlist playlist, Calendar latestTriggerTime) {
         DacPlaylist dacList = convertPlaylistForDAC(playlist);
+        dacList.setLatestTrigger(latestTriggerTime);
         PlaylistUpdateNotification notif = new PlaylistUpdateNotification(
                 dacList);
         File playlistFile = new File(playlistDir, notif.getPlaylistPath());

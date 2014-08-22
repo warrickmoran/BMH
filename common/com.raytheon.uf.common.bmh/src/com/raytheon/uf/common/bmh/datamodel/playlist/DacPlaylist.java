@@ -72,6 +72,9 @@ public class DacPlaylist {
     @XmlAttribute(name = "expired")
     private Calendar expired;
 
+    @XmlAttribute
+    private Calendar latestTrigger;
+
     @XmlAttribute(name = "interrupt")
     private boolean interrupt;
 
@@ -152,6 +155,14 @@ public class DacPlaylist {
 
     public void setExpired(Calendar expired) {
         this.expired = expired;
+    }
+
+    public Calendar getLatestTrigger() {
+        return latestTrigger;
+    }
+
+    public void setLatestTrigger(Calendar latestTrigger) {
+        this.latestTrigger = latestTrigger;
     }
 
     public void addMessage(DacPlaylistMessageId message) {
