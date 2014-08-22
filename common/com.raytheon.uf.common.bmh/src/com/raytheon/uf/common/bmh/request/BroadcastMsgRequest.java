@@ -19,15 +19,12 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * Message Type data response object
+ * Broadcast message request object.
  * 
  * <pre>
  * 
@@ -35,9 +32,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 22, 2014    3411    mpduff      Initial creation
- * Aug  5, 2014  #3490     lvenable    Added code.
- * Aug 15, 2014    3432    mpduff      Added addMessageType.
+ * Aug 15, 2014    3432    mpduff      Initial creation
  * 
  * </pre>
  * 
@@ -45,40 +40,44 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class MessageTypeResponse {
+public class BroadcastMsgRequest implements IServerRequest {
+    public enum BroadcastMessageAction {
+        GET_MESSAGE_BY_ID
+    }
 
     @DynamicSerializeElement
-    private List<MessageType> messageTypeList;
+    private BroadcastMessageAction action;
+
+    @DynamicSerializeElement
+    private Long broadcastMessageId;
 
     /**
-     * Get the message type list.
-     * 
-     * @return List of message types.
+     * @return the broadcastMessageId
      */
-    public List<MessageType> getMessageTypeList() {
-        return messageTypeList;
+    public Long getBroadcastMessageId() {
+        return broadcastMessageId;
     }
 
     /**
-     * Set the message type list.
-     * 
-     * @param messageTypeList
-     *            The message type list.
+     * @param broadcastMessageId
+     *            the broadcastMessageId to set
      */
-    public void setMessageTypeList(List<MessageType> messageTypeList) {
-        this.messageTypeList = messageTypeList;
+    public void setBroadcastMessageId(Long broadcastMessageId) {
+        this.broadcastMessageId = broadcastMessageId;
     }
 
     /**
-     * Add a {@link MessageType} to this object.
-     * 
-     * @param m
+     * @return the action
      */
-    public void addMessageType(MessageType m) {
-        if (messageTypeList == null) {
-            this.messageTypeList = new ArrayList<>();
-        }
+    public BroadcastMessageAction getAction() {
+        return action;
+    }
 
-        messageTypeList.add(m);
+    /**
+     * @param action
+     *            the action to set
+     */
+    public void setAction(BroadcastMessageAction action) {
+        this.action = action;
     }
 }

@@ -41,6 +41,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * Aug 5, 2014  #3490      lvenable    Updated to get Message types.
  * Aug 17, 2014 #3490      lvenable    Updated for deleting.
  * Aug 18, 2014  3411      mpduff      Added SaveMessageType
+ * Aug 20, 2014  3432      mpduff      Added get by afosid and pk id
  * 
  * </pre>
  * 
@@ -63,6 +64,13 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
             break;
         case Save:
             response = saveMessageType(request);
+            break;
+        case GetByAfosId:
+            response = getByAfosId(request);
+            break;
+        case GetByPkId:
+            response = getByPkId(request);
+            break;
         default:
             break;
         }
@@ -108,6 +116,28 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         List<MessageType> list = new ArrayList<>(1);
         list.add(request.getMessageType());
         response.setMessageTypeList(list);
+
+        return response;
+    }
+
+    private MessageTypeResponse getByAfosId(MessageTypeRequest request) {
+        MessageTypeResponse response = new MessageTypeResponse();
+        MessageTypeDao dao = new MessageTypeDao();
+        MessageType mt = dao.getByAfosId(request.getAfosId());
+        List<MessageType> list = new ArrayList<>(1);
+        if (mt != null) {
+            list.add(mt);
+        }
+        response.setMessageTypeList(list);
+
+        return response;
+    }
+
+    private MessageTypeResponse getByPkId(MessageTypeRequest request) {
+        MessageTypeResponse response = new MessageTypeResponse();
+        MessageTypeDao dao = new MessageTypeDao();
+        MessageType m = dao.getByID((int) request.getPkId());
+        response.addMessageType(m);
 
         return response;
     }

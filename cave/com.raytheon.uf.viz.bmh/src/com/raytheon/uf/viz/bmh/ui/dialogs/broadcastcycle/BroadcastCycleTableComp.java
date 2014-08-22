@@ -19,17 +19,17 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
-import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
-import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.TableItem;
 
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
@@ -46,6 +46,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 3, 2014    3432     mpduff      Initial creation
+ * Aug 14, 2014   3432     mpduff      Additional capabilities
  * 
  * </pre>
  * 
@@ -55,9 +56,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 
 public class BroadcastCycleTableComp extends TableComp {
 
-    private Menu popupMenu;
-
-    private int tableIndex;
+    private int selectedTableIndex;
 
     public BroadcastCycleTableComp(Composite parent, int tableStyle,
             boolean displayLines, boolean displayHeader) {
@@ -68,61 +67,7 @@ public class BroadcastCycleTableComp extends TableComp {
     @Override
     protected void handleTableMouseClick(MouseEvent event) {
         if (event.button == 1) {
-            System.out.println("Populate Message Text Box");
-            return;
-        } else if (event.button == 3) {
-
-            if (popupMenu != null) {
-                popupMenu.dispose();
-            }
-
-            final boolean menuItemsEnabled = table.getSelectionIndices().length > 0;
-
-            popupMenu = new Menu(table);
-
-            MenuItem detailsItem = new MenuItem(popupMenu, SWT.PUSH);
-            detailsItem.setText("Message Details...   ");
-            detailsItem.setEnabled(menuItemsEnabled);
-            detailsItem.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    System.out.println("Details");
-                }
-            });
-
-            MenuItem periodicMsgItem = new MenuItem(popupMenu, SWT.PUSH);
-            periodicMsgItem.setText("Periodic Messages...");
-            periodicMsgItem.setEnabled(menuItemsEnabled);
-            periodicMsgItem.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    System.out.println("Periodic Messages...");
-                }
-            });
-
-            MenuItem copyMsgItem = new MenuItem(popupMenu, SWT.PUSH);
-            copyMsgItem.setText("Copy Message...");
-            copyMsgItem.setEnabled(menuItemsEnabled);
-            copyMsgItem.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    System.out.println("Copy Message...");
-                }
-            });
-
-            MenuItem expDelItem = new MenuItem(popupMenu, SWT.PUSH);
-            expDelItem.setText("Expire/Delete");
-            expDelItem.setEnabled(menuItemsEnabled);
-            expDelItem.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    System.out.println("Expire/Delete");
-                }
-            });
-
-            table.setMenu(popupMenu);
-
-            popupMenu.setVisible(true);
+            callbackAction.tableSelectionChange(table.getSelectionCount());
         }
     }
 
@@ -130,7 +75,8 @@ public class BroadcastCycleTableComp extends TableComp {
     protected void handleTableSelection(SelectionEvent event) {
         if ((table.getSelectionIndex() >= 0)
                 && (table.getSelectionIndex() < table.getItemCount())) {
-            tableIndex = table.getSelectionIndex();
+            // Draw the blue outline
+            selectedTableIndex = table.getSelectionIndex();
             table.deselectAll();
             table.redraw();
         }
@@ -157,31 +103,43 @@ public class BroadcastCycleTableComp extends TableComp {
         }
     }
 
+    /**
+     * Draws the blue outline
+     * 
+     * @param event
+     */
     private void paintAction(Event event) {
         table.deselectAll();
-        if ((tableIndex >= 0) && (tableIndex < table.getItemCount())) {
+        if ((selectedTableIndex >= 0)
+                && (selectedTableIndex < table.getItemCount())) {
             event.gc.setForeground(getShell().getDisplay().getSystemColor(
                     SWT.COLOR_BLUE));
             event.gc.setLineWidth(3);
-            TableItem item = table.getItem(tableIndex);
+            TableItem item = table.getItem(selectedTableIndex);
             Rectangle rect = item.getBounds();
             Rectangle tableRect = table.getBounds();
-            event.gc.drawRectangle(rect.x - 1, rect.y - 1,
-                    tableRect.width - 25, rect.height);
+            event.gc.drawRectangle(rect.x - 5, rect.y - 1, tableRect.width - 4,
+                    rect.height);
+        }
+    }
+
+    /**
+     * Have to override this since we deselect all and draw a blue outline
+     * around the table row.
+     * 
+     * @return List<TableRowData> selected items
+     */
+    @Override
+    public List<TableRowData> getSelection() {
+        if (!(table.getItemCount() > 0) && !(table.getSelectionCount() > 0)) {
+            return Collections.emptyList();
         }
 
-        BroadcastCycleColorManager cm = new BroadcastCycleColorManager(
-                Display.getCurrent());
+        TableItem item = table.getItem(selectedTableIndex);
+        TableRowData row = (TableRowData) item.getData();
+        List<TableRowData> rowList = new ArrayList<TableRowData>(1);
+        rowList.add(row);
 
-        // Update colors for transmit time
-        boolean first = true;
-        for (TableItem item : table.getItems()) {
-            if (first) {
-                item.setBackground(0, cm.getActualTransmitTimeColor());
-                first = false;
-            } else {
-                item.setBackground(0, cm.getPredictedTransmitTimeColor());
-            }
-        }
+        return rowList;
     }
 }

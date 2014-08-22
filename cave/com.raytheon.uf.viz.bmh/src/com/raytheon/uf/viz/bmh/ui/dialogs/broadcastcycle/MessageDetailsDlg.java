@@ -19,7 +19,9 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
@@ -37,9 +39,20 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -51,7 +64,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 4, 2014     3432       mpduff     Initial creation
+ * Jun 04, 2014    3432       mpduff    Initial creation
+ * Aug 14, 2014    3432       mpduff    Remaining capabilities
  * 
  * </pre>
  * 
@@ -60,20 +74,27 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 
 public class MessageDetailsDlg extends CaveSWTDialog {
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(MessageDetailsDlg.class);
+
+    // TODO - look at making this an enumeration
     private final String[] COMBO_VALUES = { "Broadcast Areas", "Programs",
             "Suites", "Transmitters" };
+
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat(
+            "yyyy MM dd HH:mm");
 
     /**
      * The Stack Layout.
      */
     private final StackLayout stackLayout = new StackLayout();
 
-    private BroadcastAreaTableComp broadcastAreaTableComp;
-
     /**
      * The Stack Composite.
      */
     private Composite stackComp;
+
+    private BroadcastAreaTableComp broadcastAreaTableComp;
 
     private TransmitterTableComp transmitterTableComp;
 
@@ -81,12 +102,21 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
     private ProgramTableComp programTableComp;
 
-    public MessageDetailsDlg(Shell parent) {
+    /** MessageType for the details */
+    private final MessageType messageType;
 
+    private final BroadcastCycleDataManager dataManager;
+
+    private final BroadcastMsg broadcastMsg;
+
+    public MessageDetailsDlg(Shell parent, MessageType mType,
+            BroadcastMsg broadcastMsg) {
         super(parent, SWT.DIALOG_TRIM, CAVE.INDEPENDENT_SHELL
                 | CAVE.PERSPECTIVE_INDEPENDENT);
-
+        this.messageType = mType;
+        this.broadcastMsg = broadcastMsg;
         setText("Message Details/Information");
+        dataManager = new BroadcastCycleDataManager();
     }
 
     @Override
@@ -146,8 +176,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label typeValueLbl = new Label(comp, SWT.NONE);
-        // typeValueLbl.setText(message.getType());
-        typeValueLbl.setText("Message Type");
+        typeValueLbl.setText(messageType.getAfosid());
         typeValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -157,8 +186,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label titleValueLbl = new Label(comp, SWT.NONE);
-        // titleValueLbl.setText(message.getTitle());
-        titleValueLbl.setText("Message Title");
+        titleValueLbl.setText(messageType.getTitle());
         titleValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -168,7 +196,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label dispositionValueLbl = new Label(comp, SWT.NONE);
-        // dispositionValueLbl.setText(message.getDisposition());
+        // TODO dispositionValueLbl.setText(message.getDisposition());
         dispositionValueLbl.setText("Message Disposition");
         dispositionValueLbl.setLayoutData(gd);
 
@@ -179,8 +207,11 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label periodicityValueLbl = new Label(comp, SWT.NONE);
+        // TODO
         // periodicityValueLbl.setText(message.getPeriodicity().toString());
-        periodicityValueLbl.setText("02:12:00:00");
+        String periodicity = getPeriodicity();
+
+        periodicityValueLbl.setText(periodicity);
         periodicityValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -190,8 +221,13 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label timeZoneValueLbl = new Label(comp, SWT.NONE);
-        // timeZoneValueLbl.setText(message.getTimeZone().getID());
-        timeZoneValueLbl.setText("GMT");
+
+        Iterator<TransmitterGroup> iter = messageType
+                .getDefaultTransmitterGroups().iterator();
+        if (iter.hasNext()) {
+            timeZoneValueLbl.setText(iter.next().getTimeZone());
+        }
+
         timeZoneValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -201,8 +237,11 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label createTimeValueLbl = new Label(comp, SWT.NONE);
-        // createTimeValueLbl.setText(message.getCreateTimeString());
-        createTimeValueLbl.setText("Create time string");
+        if (broadcastMsg != null) {
+            String creationDate = dateFormat.format(broadcastMsg
+                    .getCreationDate().getTime());
+            createTimeValueLbl.setText(creationDate);
+        }
         createTimeValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -212,8 +251,11 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label effectiveTimeValueLbl = new Label(comp, SWT.NONE);
-        // effectiveTimeValueLbl.setText(message.getEffectiveTimeString());
-        effectiveTimeValueLbl.setText("Effective time string");
+        if (broadcastMsg != null) {
+            String effectiveDate = dateFormat.format(broadcastMsg
+                    .getInputMessage().getEffectiveTime().getTime());
+            effectiveTimeValueLbl.setText(effectiveDate);
+        }
         effectiveTimeValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -223,37 +265,31 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label expirationTimeValueLbl = new Label(comp, SWT.NONE);
-        // expirationTimeValueLbl.setText(message.getExpirationTimeString());
-        expirationTimeValueLbl.setText("Expiration time string");
+        if (broadcastMsg != null) {
+            String expDate = dateFormat.format(broadcastMsg.getInputMessage()
+                    .getExpirationTime().getTime());
+            expirationTimeValueLbl.setText(expDate);
+        }
         expirationTimeValueLbl.setLayoutData(gd);
     }
 
     private void buildStackLayout(Composite comp) {
-        GridData gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+        GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         Combo combo = new Combo(comp, SWT.NONE);
         combo.setLayoutData(gd);
         combo.setItems(COMBO_VALUES);
-        combo.select(0);
         combo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // COMBO_VALUES = { "Broadcast Areas", "Programs",
-                // "Suites", "Transmitters" };
                 String selection = ((Combo) e.getSource()).getText();
-                if (selection.equals(COMBO_VALUES[0])) {
-                    stackLayout.topControl = broadcastAreaTableComp;
-                } else if (selection.equals(COMBO_VALUES[1])) {
-                    stackLayout.topControl = programTableComp;
-                } else if (selection.equals(COMBO_VALUES[2])) {
-                    stackLayout.topControl = suiteTableComp;
-                } else if (selection.equals(COMBO_VALUES[3])) {
-                    stackLayout.topControl = transmitterTableComp;
-                }
-                stackComp.layout();
+                handleTypeSelection(selection);
             }
         });
+        combo.select(0);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.heightHint = 140;
+        gd.widthHint = 325;
         GridLayout gl = new GridLayout(1, false);
         stackComp = new Composite(comp, SWT.NONE);
         stackComp.setLayout(stackLayout);
@@ -267,8 +303,6 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         broadcastAreaTableComp.setLayout(gl);
         broadcastAreaTableComp.setLayoutData(gd);
 
-        populateBroadcastAreaTable();
-
         // Transmitters - name/program
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gl = new GridLayout(1, false);
@@ -276,8 +310,6 @@ public class MessageDetailsDlg extends CaveSWTDialog {
                 | SWT.V_SCROLL);
         transmitterTableComp.setLayout(gl);
         transmitterTableComp.setLayoutData(gd);
-
-        populateTransmitterTable();
 
         // Suites containing this message
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -287,8 +319,6 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         suiteTableComp.setLayout(gl);
         suiteTableComp.setLayoutData(gd);
 
-        populateSuiteTable();
-
         // Programs containing this message
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gl = new GridLayout(1, false);
@@ -297,8 +327,12 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         programTableComp.setLayout(gl);
         programTableComp.setLayoutData(gd);
 
-        populateProgramTable();
-
+        try {
+            // Here for initial load
+            populateBroadcastAreaTable();
+        } catch (Exception e1) {
+            statusHandler.error("Error Populating Areas", e1);
+        }
         stackLayout.topControl = broadcastAreaTableComp;
     }
 
@@ -313,57 +347,171 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         Text text = new Text(shell, SWT.BORDER | SWT.V_SCROLL);
         text.setLayoutData(gd);
         text.setLayoutData(gd);
-        // text.setText(message.getMessageText());
-        text.setText("Message text here");
+        if (broadcastMsg != null) {
+            String msgText = broadcastMsg.getInputMessage().getContent();
+            text.setText(msgText);
+        }
     }
 
-    private void populateBroadcastAreaTable() {
+    private void populateBroadcastAreaTable() throws Exception {
+        TableData broadcastAreaTableData = getBroadcastAreaTableData();
+
+        List<Area> areaList = dataManager.getAreasForMessageType(messageType);
+        for (Area a : areaList) {
+            TableRowData row = new TableRowData();
+            TableCellData cell = new TableCellData(a.getAreaCode());
+            row.addTableCellData(cell);
+            cell = new TableCellData(a.getAreaName());
+            row.addTableCellData(cell);
+            broadcastAreaTableData.addDataRow(row);
+        }
+
+        broadcastAreaTableComp.populateTable(broadcastAreaTableData);
+    }
+
+    private TableData getBroadcastAreaTableData() {
         List<TableColumnData> columns = new ArrayList<TableColumnData>(2);
         TableColumnData tcd = new TableColumnData("Area Code", 75);
-        TableColumnData tcd2 = new TableColumnData("Broadcast Area");
+        TableColumnData tcd2 = new TableColumnData("Area Name");
         columns.add(tcd);
         columns.add(tcd2);
 
-        // TODO get real data
-        TableData td = new TableData(columns);
+        TableData broadcastAreaTableData = new TableData(columns);
 
-        broadcastAreaTableComp.populateTable(td);
+        return broadcastAreaTableData;
     }
 
-    private void populateTransmitterTable() {
+    private void populateTransmitterTable() throws Exception {
+        TableData transmittertableData = getTransmitterTableData();
+
+        List<Transmitter> transmitterList = dataManager
+                .getTransmitterForMessageType(messageType);
+
+        for (Transmitter t : transmitterList) {
+            TableRowData row = new TableRowData();
+            TableCellData cell = new TableCellData(t.getName());
+            row.addTableCellData(cell);
+            cell = new TableCellData(t.getMnemonic());
+            row.addTableCellData(cell);
+            transmittertableData.addDataRow(row);
+        }
+        transmitterTableComp.populateTable(transmittertableData);
+    }
+
+    private TableData getTransmitterTableData() {
         List<TableColumnData> columns = new ArrayList<TableColumnData>(2);
         TableColumnData tcd = new TableColumnData("Name", 75);
-        TableColumnData tcd2 = new TableColumnData("Program");
+        TableColumnData tcd2 = new TableColumnData("ID");
         columns.add(tcd);
         columns.add(tcd2);
 
-        // TODO
-        TableData td = new TableData(columns);
-        transmitterTableComp.populateTable(td);
+        TableData transmittertableData = new TableData(columns);
+
+        return transmittertableData;
     }
 
-    private void populateSuiteTable() {
+    private void populateSuiteTable() throws Exception {
+        TableData suiteTableData = getSuiteTableData();
+
+        List<Suite> suiteList = dataManager
+                .getSuitesForMessageType(messageType);
+
+        for (Suite s : suiteList) {
+            TableRowData row = new TableRowData();
+            TableCellData cell = new TableCellData(s.getName());
+            row.addTableCellData(cell);
+            cell = new TableCellData(s.getType().name());
+            row.addTableCellData(cell);
+            suiteTableData.addDataRow(row);
+        }
+
+        suiteTableComp.populateTable(suiteTableData);
+    }
+
+    private TableData getSuiteTableData() {
         List<TableColumnData> columns = new ArrayList<TableColumnData>(2);
-        TableColumnData tcd = new TableColumnData("Name", 75);
+        TableColumnData tcd = new TableColumnData("Name", 150);
         TableColumnData tcd2 = new TableColumnData("Category");
         columns.add(tcd);
         columns.add(tcd2);
 
-        // TODO
-        TableData td = new TableData(columns);
-        suiteTableComp.populateTable(td);
+        TableData suiteTableData = new TableData(columns);
+        return suiteTableData;
     }
 
-    private void populateProgramTable() {
+    private void populateProgramTable() throws Exception {
+        TableData programTableData = getProgramTableData();
+
+        List<Program> programList = dataManager
+                .getProgramsForMessageType(messageType);
+
+        for (Program p : programList) {
+            TableRowData row = new TableRowData();
+            TableCellData cell = new TableCellData(p.getName());
+            row.addTableCellData(cell);
+            programTableData.addDataRow(row);
+        }
+
+        programTableComp.populateTable(programTableData);
+    }
+
+    private TableData getProgramTableData() {
         List<TableColumnData> columns = new ArrayList<TableColumnData>(2);
         TableColumnData tcd = new TableColumnData("Name", 75);
         columns.add(tcd);
 
-        // TODO
-        TableData td = new TableData(columns);
-        programTableComp.populateTable(td);
+        TableData programTableData = new TableData(columns);
+        return programTableData;
     }
 
+    private String getPeriodicity() {
+        String periodicity = messageType.getPeriodicity();
+        final String COLON = ":";
+        StringBuilder sb = new StringBuilder();
+        sb.append(periodicity.substring(0, 2)).append(COLON);
+        sb.append(periodicity.substring(2, 4)).append(COLON);
+        sb.append(periodicity.substring(4, 6));
+
+        return sb.toString();
+    }
+
+    /**
+     * @param selection
+     */
+    private void handleTypeSelection(String selection) {
+        if (selection.equals(COMBO_VALUES[0])) {
+            try {
+                populateBroadcastAreaTable();
+                stackLayout.topControl = broadcastAreaTableComp;
+            } catch (Exception e1) {
+                statusHandler.error("Error Populating Areas", e1);
+            }
+        } else if (selection.equals(COMBO_VALUES[1])) {
+            try {
+                populateProgramTable();
+                stackLayout.topControl = programTableComp;
+            } catch (Exception e1) {
+                statusHandler.error("Error Populating Programs", e1);
+            }
+        } else if (selection.equals(COMBO_VALUES[2])) {
+            try {
+                populateSuiteTable();
+                stackLayout.topControl = suiteTableComp;
+            } catch (Exception e1) {
+                statusHandler.error("Error Populating Suites", e1);
+            }
+        } else if (selection.equals(COMBO_VALUES[3])) {
+            try {
+                populateTransmitterTable();
+                stackLayout.topControl = transmitterTableComp;
+            } catch (Exception e1) {
+                statusHandler.error("Error Populating Transmitters", e1);
+            }
+        }
+        stackComp.layout();
+    }
+
+    // TODO candidate for replacement by generic TableComp
     private class BroadcastAreaTableComp extends TableComp {
 
         public BroadcastAreaTableComp(Composite parent, int tableStyle) {
@@ -381,6 +529,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         }
     }
 
+    // TODO candidate for replacement by generic TableComp
     private class TransmitterTableComp extends TableComp {
 
         public TransmitterTableComp(Composite parent, int tableStyle) {
@@ -398,6 +547,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         }
     }
 
+    // TODO candidate for replacement by generic TableComp
     private class SuiteTableComp extends TableComp {
 
         public SuiteTableComp(Composite parent, int tableStyle) {
@@ -415,6 +565,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         }
     }
 
+    // TODO candidate for replacement by generic TableComp
     private class ProgramTableComp extends TableComp {
 
         public ProgramTableComp(Composite parent, int tableStyle) {

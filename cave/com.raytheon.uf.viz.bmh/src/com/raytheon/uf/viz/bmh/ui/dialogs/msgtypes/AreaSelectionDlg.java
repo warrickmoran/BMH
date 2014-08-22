@@ -67,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jul 21, 2014   3411     mpduff      Initial creation
  * Aug 13, 2014   3411     mpduff      Populate with data
+ * Aug 18, 2014   3432     mpduff      Removed areaObject field
  * 
  * </pre>
  * 
@@ -146,11 +147,6 @@ public class AreaSelectionDlg extends CaveSWTDialog {
      * List of Zone objects
      */
     private java.util.List<Zone> zoneObjectList;
-
-    /**
-     * List of Area objects
-     */
-    private java.util.List<Area> areaObjectList;
 
     /** List of areas for the selected transmitter */
     private List transmitterAreaList;
@@ -661,7 +657,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
             populateAreasForZone();
         }
 
-        this.areaObjectList = data.getAreaList();
+        java.util.List<Area> areaObjectList = data.getAreaList();
         Collections.sort(areaObjectList, new AreaNameComparator());
         String[] areaNames = new String[areaObjectList.size()];
         int idx = 0;

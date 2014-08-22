@@ -39,6 +39,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 13, 2014    3411    mpduff      Initial creation
+ * Aug 18, 2014    3432    mpduff      More implementation.
  * 
  * </pre>
  * 
@@ -47,8 +48,6 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
  */
 
 public class AreaSelectionData {
-    private List<Area> areaList;
-
     private List<Zone> zoneList;
 
     private List<Transmitter> transmitterList;
@@ -63,15 +62,7 @@ public class AreaSelectionData {
      * @return the areaList
      */
     public List<Area> getAreaList() {
-        return areaList;
-    }
-
-    /**
-     * @param areaList
-     *            the areaList to set
-     */
-    public void setAreaList(List<Area> areaList) {
-        this.areaList = areaList;
+        return new ArrayList<Area>(areaNameMap.values());
     }
 
     /**
@@ -117,7 +108,7 @@ public class AreaSelectionData {
      * @throws Exception
      */
     public void populate() throws Exception {
-        this.areaList = dataManager.getAreas();
+        List<Area> areaList = dataManager.getAreas();
         this.zoneList = dataManager.getZones();
         this.transmitterList = dataManager.getTransmitters();
 

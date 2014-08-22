@@ -19,9 +19,15 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -37,11 +43,30 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
-import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterPositionComparator;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.jms.notification.INotificationObserver;
+import com.raytheon.uf.common.jms.notification.NotificationException;
+import com.raytheon.uf.common.jms.notification.NotificationMessage;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.DisconnectListener;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 
 /**
  * Broadcast cycle dialog.
@@ -54,6 +79,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.Dis
  * ------------ ---------- ----------- --------------------------
  * Jun 2, 2014   3432      mpduff      Initial creation
  * Aug 04, 2014  2487      bsteffen    Hook up the monitor inline checkbox.
+ * Aug 14, 2014  3432      mpduff      Hook up details dialog
  * 
  * </pre>
  * 
@@ -62,23 +88,26 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.Dis
  */
 
 public class BroadcastCycleDlg extends AbstractBMHDialog implements
-        DisconnectListener {
+        DisconnectListener, INotificationObserver {
+    private final String NA = "N/A";
+
+    private final SimpleDateFormat timeFormatter = new SimpleDateFormat("mm:ss");
+
+    private final String BMH_DAC_STATUS = "BMH.DAC.Status";
 
     private final String TITLE = "Broadcast Cycle";
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(BroadcastCycleDlg.class);
 
     /** Table Data */
     private TableData tableData;
 
-    /** The selected transmitter */
-    // TODO remove this default value
-    private String selectedTransmitter = "Trans0";
+    /** Transmitter name -> Transmitter map */
+    private final Map<String, Transmitter> transmitterNameMap = new HashMap<>();;
 
-    /** The program */
-    // TODO this needs to be set by use selection
-    private String program;
-
-    /** Selected suite */
-    private String selectedSuite;
+    /** A Program Object */
+    private Program programObj;
 
     /** The data manager */
     private final BroadcastCycleDataManager dataManager;
@@ -93,8 +122,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private Button monitorBtn;
 
     /**
-     * The thread that is currentler running to monitor the transmission or null
-     * if tis disabled.
+     * The thread that is currently running to monitor the transmission or null
+     * if is disabled.
      */
     private MonitorInlineThread monitorThread;
 
@@ -128,6 +157,27 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     /** Message details dialog */
     private MessageDetailsDlg detailsDlg;
 
+    /** Selected transmitter */
+    private Label transmitterNameLbl;
+
+    /** The selected transmitter object */
+    private Transmitter selectedTransmitterObject;
+
+    /** Time Zone value label */
+    private Label timeZoneValueLbl;
+
+    /** Playlist data object */
+    private final PlaylistData playListData;
+
+    /** Message text area */
+    private Text messageTextArea;
+
+    /** The currently selected transmitter */
+    private String selectedTransmitterGrp;
+
+    /** Cycle duration value label */
+    private Label cycleDurValueLbl;
+
     /**
      * Constructor.
      * 
@@ -141,6 +191,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT);
         this.dataManager = new BroadcastCycleDataManager();
         setText(TITLE);
+
+        playListData = new PlaylistData(getColumns(), getDisplay());
     }
 
     @Override
@@ -191,9 +243,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         createTable(broadcastComp);
         createMessageText(broadcastComp);
         createBottomButtons(broadcastComp);
-        populateTableData();
+        populateTransmitters();
 
-        this.transmitterList.setItems(getTestTransmitters());
+        // TODO connect to topic
+        NotificationManagerJob.addObserver(BMH_DAC_STATUS, this);
     }
 
     private void createMenus() {
@@ -239,6 +292,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         transmitterList = new org.eclipse.swt.widgets.List(transGrp,
                 SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE | SWT.BORDER);
         transmitterList.setLayoutData(gd);
+        transmitterList.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                updateOnTransmitterChange();
+            }
+        });
     }
 
     private void createUpperSection(Composite comp) {
@@ -262,9 +321,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         tranNameLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-        Label tranNameValueLbl = new Label(nameComp, SWT.NONE);
-        tranNameValueLbl.setText(selectedTransmitter);
-        tranNameValueLbl.setLayoutData(gd);
+        gd.widthHint = 55;
+        transmitterNameLbl = new Label(nameComp, SWT.NONE);
+        transmitterNameLbl.setLayoutData(gd);
 
         // Monitor inline
         gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
@@ -282,12 +341,20 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     monitorThread = null;
                 }
                 if (monitorBtn.getSelection()) {
-                    monitorThread = new MonitorInlineThread(selectedTransmitter);
+                    String tName = transmitterList.getSelection()[0];
+                    tName = tName.split("-")[0];
+                    System.out.println(tName.trim());
+
+                    Transmitter selectedTransmitter = transmitterNameMap
+                            .get(tName.trim());
+                    // TODO This might need to be transmitter group, see
+                    // MonitorInlineThread api
+                    monitorThread = new MonitorInlineThread(selectedTransmitter
+                            .getMnemonic());
                     monitorThread.addDisconnectListener(BroadcastCycleDlg.this);
                     monitorThread.start();
                 }
             }
-
         });
 
         // Transmitter time zone
@@ -303,8 +370,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         timeZoneLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        Label timeZoneValueLbl = new Label(tzComp, SWT.NONE);
-        timeZoneValueLbl.setText("UTC");
+        gd.widthHint = 125;
+        timeZoneValueLbl = new Label(tzComp, SWT.NONE);
         timeZoneValueLbl.setLayoutData(gd);
 
         // Transmitter DAC
@@ -320,8 +387,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         dacLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
+        gd.widthHint = 50;
         dacValueLbl = new Label(dacComp, SWT.NONE);
-        dacValueLbl.setText("2");
         dacValueLbl.setLayoutData(gd);
 
         // Transmitter port
@@ -337,8 +404,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         portLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
+        gd.widthHint = 50;
         portValueLbl = new Label(portComp, SWT.NONE);
-        portValueLbl.setText("3");
         portValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
@@ -376,9 +443,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         progLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
+        gd.widthHint = 155;
         progValueLbl = new Label(leftProgSuiteComp, SWT.NONE);
         progValueLbl.setLayoutData(gd);
-        progValueLbl.setText("Program Name");
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, false);
         Label suiteLbl = new Label(leftProgSuiteComp, SWT.NONE);
@@ -413,9 +480,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         cycleDurLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
-        Label cycleDurValueLbl = new Label(rightComp, SWT.NONE);
-        cycleDurValueLbl.setText("TBD");
+        gd.widthHint = 75;
+        cycleDurValueLbl = new Label(rightComp, SWT.NONE);
         cycleDurValueLbl.setLayoutData(gd);
+        cycleDurValueLbl.setText(NA);
 
         // Change suite button
         gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
@@ -536,6 +604,15 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 | SWT.SINGLE, true, true);
         tableComp.setLayout(gl);
         tableComp.setLayoutData(gd);
+        tableComp.setCallbackAction(new ITableActionCB() {
+            @Override
+            public void tableSelectionChange(int selectionCount) {
+                handleTableSelection();
+            }
+        });
+        this.tableData = new TableData(getColumns());
+        tableData.setSortColumnAndDirection(0, SortDirection.ASCENDING);
+        tableComp.populateTable(tableData);
     }
 
     private void createMessageText(Composite comp) {
@@ -546,16 +623,36 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.heightHint = 90;
-        Text text = new Text(comp, SWT.BORDER | SWT.V_SCROLL);
-        text.setLayoutData(gd);
-        text.setLayoutData(gd);
+        messageTextArea = new Text(comp, SWT.BORDER | SWT.V_SCROLL);
+        messageTextArea.setLayoutData(gd);
+        messageTextArea.setLayoutData(gd);
     }
 
-    private void populateTableData() {
-        tableData = dataManager.getTableData(selectedTransmitter, program,
-                selectedSuite, SuiteType.HIGH);
+    /**
+     * Populate the transmitter list box
+     */
+    private void populateTransmitters() {
+        try {
+            List<Transmitter> transmitterObjectList = dataManager
+                    .getTransmitterList();
+            Collections.sort(transmitterObjectList,
+                    new TransmitterPositionComparator());
+            String[] tNames = new String[transmitterObjectList.size()];
+            int idx = 0;
+            for (Transmitter t : transmitterObjectList) {
+                tNames[idx] = t.getMnemonic() + " - " + t.getName();
+                idx++;
+                transmitterNameMap.put(t.getMnemonic(), t);
+            }
 
-        tableComp.populateTable(tableData);
+            transmitterList.setItems(tNames);
+        } catch (Exception e) {
+            statusHandler.error("Error accessing BMH database.", e);
+        }
+        if (transmitterList.getItemCount() > 0) {
+            transmitterList.select(0);
+            updateOnTransmitterChange();
+        }
     }
 
     private void createBottomButtons(Composite comp) {
@@ -612,26 +709,100 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         });
     }
 
-    private void updateTransmitter() {
+    /**
+     * Create the column objects for the Broadcast Cycle table.
+     * 
+     * @return List of {@link TableColumnData}
+     */
+    private List<TableColumnData> getColumns() {
+        List<TableColumnData> columns = new ArrayList<>(8);
+        columns.add(new TableColumnData("Transmit Time", 125));
+        columns.add(new TableColumnData("Message Id", 100));
+        columns.add(new TableColumnData("Message Title", 225));
+        columns.add(new TableColumnData("MRD"));
+        columns.add(new TableColumnData("Expiration Time", 125));
+        columns.add(new TableColumnData("Alert"));
+        columns.add(new TableColumnData("SAME"));
+        columns.add(new TableColumnData("Play Count"));
+
+        return columns;
+    }
+
+    /**
+     * Called when user selects another Transmitter
+     */
+    private void updateOnTransmitterChange() {
         String selection = transmitterList.getItem(transmitterList
                 .getSelectionIndex());
         String[] parts = selection.split(" - ");
-        this.selectedTransmitter = parts[0];
-        this.program = parts[1];
-        setText(TITLE + ": " + selectedTransmitter);
-        // TODO update, cancel, or otherwise handle the monitorThread if it is
-        // running.
+        selectedTransmitterGrp = parts[0];
+        setText(TITLE + ": " + selectedTransmitterGrp);
+        transmitterNameLbl.setText(selectedTransmitterGrp);
+
+        selectedTransmitterObject = transmitterNameMap
+                .get(selectedTransmitterGrp);
+
+        this.timeZoneValueLbl.setText(selectedTransmitterObject
+                .getTransmitterGroup().getTimeZone());
+
+        String dacPort = String.valueOf(selectedTransmitterObject.getDacPort());
+        if (selectedTransmitterObject.getDacPort() == null) {
+            dacPort = NA;
+        }
+        this.portValueLbl.setText(dacPort);
+
+        TransmitterGroup tg = selectedTransmitterObject.getTransmitterGroup();
+        String dac = String.valueOf(tg.getDac());
+        if (tg.getDac() == null) {
+            dac = NA;
+
+        }
+        this.dacValueLbl.setText(dac);
+        timeZoneValueLbl.setText(tg.getTimeZone());
+
+        try {
+            programObj = dataManager.getProgramForTransmitterGroup(tg);
+            if (programObj != null) {
+                progValueLbl.setText(programObj.getName());
+            }
+        } catch (Exception e) {
+            statusHandler.error("Error accessing BMH database", e);
+        }
+
+        messageTextArea.setText("");
+        tableData = playListData.getUpdatedTableData(selectedTransmitterGrp);
+        tableComp.populateTable(tableData);
     }
 
+    /**
+     * Handler for Message Details button
+     */
     private void handleMessageDetails() {
         if (detailsDlg == null || detailsDlg.isDisposed()) {
-            detailsDlg = new MessageDetailsDlg(getShell());
-            detailsDlg.open();
+            try {
+                TableRowData selection = tableComp.getSelection().get(0);
+                BroadcastCycleTableDataEntry dataEntry = (BroadcastCycleTableDataEntry) selection
+                        .getData();
+                String afosId = selection.getTableCellData().get(1)
+                        .getCellText();
+                MessageType messageType = dataManager.getMessageType(afosId);
+                BroadcastMsg broadcastMsg = dataManager
+                        .getBroadcastMessage(dataEntry.getBroadcastId());
+
+                detailsDlg = new MessageDetailsDlg(getShell(), messageType,
+                        broadcastMsg);
+                detailsDlg.open();
+            } catch (Exception e) {
+                statusHandler.error("ERROR accessing BMH Database", e);
+            }
         } else {
             detailsDlg.bringToTop();
         }
     }
 
+    /**
+     * Handler for periodic message button
+     */
     private void handlePeriodicAction() {
         if (periodicMsgDlg == null || periodicMsgDlg.isDisposed()) {
             periodicMsgDlg = new PeriodicMessagesDlg(getShell());
@@ -642,16 +813,21 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     }
 
     private void handleCopyAction() {
-        System.out.println("Copy Action...");
+        // TODO
+        DialogUtility.notImplemented(getShell());
     }
 
     private void handleExpireAction() {
-        System.out.println("Expire Action...");
+        // TODO
+        DialogUtility.notImplemented(getShell());
     }
 
+    /**
+     * Suite change handler
+     */
     private void handleChangeSuiteAction() {
         String[] selection = null;
-        List<Suite> suiteList = dataManager.getSuites(selectedTransmitter);
+        List<Suite> suiteList = programObj.getSuites();
         if (changeSuiteDlg == null || changeSuiteDlg.isDisposed()) {
             changeSuiteDlg = new SuiteListDlg(getShell(), suiteList);
             selection = (String[]) changeSuiteDlg.open();
@@ -665,11 +841,33 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         updateSuiteData(selection);
     }
 
+    /**
+     * Update suite data
+     * 
+     * @param data
+     *            The data to update
+     */
     private void updateSuiteData(String[] data) {
         if (data[0] != null && data[0].length() > 0) {
             this.suiteValueLbl.setText(data[0]);
             this.suiteCatValueLbl.setText(data[1]);
             this.leftProgSuiteComp.layout();
+            // TODO - Add action to change the suite, currently only updates the
+            // gui
+        }
+    }
+
+    /**
+     * Display the message text
+     */
+    private void handleTableSelection() {
+        List<TableRowData> selectionList = tableComp.getSelection();
+        if (CollectionUtils.isNotEmpty(selectionList)) {
+            TableRowData trd = selectionList.get(0);
+            BroadcastCycleTableDataEntry entry = (BroadcastCycleTableDataEntry) trd
+                    .getData();
+            String content = entry.getInputMsg().getContent();
+            this.messageTextArea.setText(content);
         }
     }
 
@@ -682,23 +880,13 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             monitorThread.removeDisconnectListener(this);
             monitorThread = null;
         }
+        NotificationManagerJob.removeObserver(BMH_DAC_STATUS, this);
     }
 
     @Override
     public boolean okToClose() {
         // TODO fix this
         return true;
-    }
-
-    // TODO Delete this method
-    private String[] getTestTransmitters() {
-        String[] t = new String[23];
-
-        for (int i = 0; i < 23; i++) {
-            t[i] = "Trans" + i + " - Transmitter" + i;
-        }
-
-        return t;
     }
 
     @Override
@@ -710,7 +898,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 public void run() {
                     if (!monitorBtn.isDisposed()) {
                         monitorBtn.setSelection(false);
-
                     }
                     if (monitorThread != null) {
                         monitorThread
@@ -718,8 +905,70 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         monitorThread = null;
                     }
                 }
-
             });
         }
+    }
+
+    @Override
+    public void notificationArrived(NotificationMessage[] messages) {
+        for (NotificationMessage message : messages) {
+            try {
+                Object o = message.getMessagePayload();
+                if (o instanceof PlaylistSwitchNotification) {
+                    PlaylistSwitchNotification notification = (PlaylistSwitchNotification) o;
+                    playListData.handlePLaylistSwitchNotification(notification);
+                    if (notification.getTransmitterGroup().equals(
+                            selectedTransmitterGrp)) {
+                        tableData = playListData
+                                .getUpdatedTableData(notification
+                                        .getTransmitterGroup());
+                        updateTable(tableData);
+                        updateCycleDuration(notification.getPlaybackCycleTime());
+                    }
+                } else if (o instanceof MessagePlaybackStatusNotification) {
+                    MessagePlaybackStatusNotification notification = (MessagePlaybackStatusNotification) o;
+                    playListData.handlePLaybackStatusNotification(notification);
+                    if (notification.getTransmitterGroup().equals(
+                            selectedTransmitterGrp)) {
+                        tableData = playListData
+                                .getUpdatedTableData(notification
+                                        .getTransmitterGroup());
+                        updateTable(tableData);
+                    }
+                }
+            } catch (NotificationException e) {
+                statusHandler.error("Error processing update notification", e);
+            }
+        }
+    }
+
+    /**
+     * Update the cycle play time.
+     * 
+     * @param cycleDuration
+     */
+    private void updateCycleDuration(final long cycleDuration) {
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                String time = timeFormatter.format(new Date(cycleDuration));
+                cycleDurValueLbl.setText(time);
+            }
+        });
+    }
+
+    /**
+     * Update the table.
+     * 
+     * @param tableData
+     *            The updated TableData
+     */
+    private void updateTable(final TableData tableData) {
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                tableComp.populateTable(tableData);
+            }
+        });
     }
 }

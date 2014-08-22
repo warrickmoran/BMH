@@ -19,20 +19,42 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
+import java.util.Set;
 
-import org.eclipse.swt.widgets.Display;
-
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
-import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
+import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
-import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest;
+import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest.BroadcastMessageAction;
+import com.raytheon.uf.common.bmh.request.BroadcastMsgResponse;
+import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
+import com.raytheon.uf.common.bmh.request.MessageTypeRequest.MessageTypeAction;
+import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
+import com.raytheon.uf.common.bmh.request.PlaylistRequest;
+import com.raytheon.uf.common.bmh.request.PlaylistRequest.PlaylistAction;
+import com.raytheon.uf.common.bmh.request.PlaylistResponse;
+import com.raytheon.uf.common.bmh.request.ProgramRequest;
+import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
+import com.raytheon.uf.common.bmh.request.ProgramResponse;
+import com.raytheon.uf.common.bmh.request.SuiteRequest;
+import com.raytheon.uf.common.bmh.request.SuiteRequest.SuiteAction;
+import com.raytheon.uf.common.bmh.request.SuiteResponse;
+import com.raytheon.uf.common.bmh.request.TransmitterRequest;
+import com.raytheon.uf.common.bmh.request.TransmitterRequest.TransmitterRequestAction;
+import com.raytheon.uf.common.bmh.request.TransmitterResponse;
+import com.raytheon.uf.common.bmh.request.ZoneAreaRequest;
+import com.raytheon.uf.common.bmh.request.ZoneAreaRequest.ZoneAreaAction;
+import com.raytheon.uf.common.bmh.request.ZoneAreaResponse;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -47,7 +69,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 3, 2014    3432     mpduff      Initial creation
+ * Jun 03, 2014    3432    mpduff      Initial creation
+ * Aug 14, 2014    3432    mpduff      Implementing more methods.
  * 
  * </pre>
  * 
@@ -56,127 +79,96 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  */
 
 public class BroadcastCycleDataManager {
-
-    public static final String DATE_FORMAT = "MM/dd/yyyy HH:mm:ss";
-
-    public List<Transmitter> transmitterList;
-
-    public Map<String, List<Suite>> suites = new HashMap<String, List<Suite>>();
-
     /**
      * Constructor
      */
     public BroadcastCycleDataManager() {
-        generateTestData();
+
     }
 
     /**
      * Get the list of transmitters
      * 
      * @return
+     * @throws Exception
      */
-    public List<Transmitter> getTransmitterList() {
-        return transmitterList;
-    }
+    public List<Transmitter> getTransmitterList() throws Exception {
+        TransmitterRequest request = new TransmitterRequest();
+        request.setAction(TransmitterRequestAction.GetTransmitters);
 
-    /**
-     * Set the list of transmitters
-     * 
-     * @param transmitterList
-     */
-    public void setTransmitterList(List<Transmitter> transmitterList) {
-        this.transmitterList = transmitterList;
-    }
-
-    /**
-     * Get the names of the transmitters.
-     * 
-     * @return
-     */
-    public String[] getTransmitterNames() {
-        List<String> transmitters = new ArrayList<String>(
-                transmitterList.size());
-
-        for (Transmitter t : transmitterList) {
-            transmitters.add(t.getMnemonic() + " - " + t.getName());
-        }
-        return transmitters.toArray(new String[transmitters.size()]);
-    }
-
-    /**
-     * Get the suites for the specified transmitter
-     * 
-     * @param transmitter
-     * @return
-     */
-    public List<Suite> getSuites(String transmitter) {
-        return suites.get(transmitter);
-    }
-
-    /**
-     * Get the Broadcast cycle dialog's main table data
-     * 
-     * @param transmitter
-     *            The transmitter
-     * @param program
-     *            The program
-     * @param suite
-     *            The suite
-     * @param suiteType
-     *            The suiteType
-     * @return The populated TableData
-     */
-    public TableData getTableData(String transmitter, String program,
-            String suite, SuiteType suiteType) {
-        List<TableColumnData> columns = createColumns();
-
-        TableData data = new TableData(columns);
-        List<TableRowData> rows = getTestRows(columns);
-
-        for (TableRowData row : rows) {
-            data.addDataRow(row);
-
-        }
-        return data;
-    }
-
-    /**
-     * Create the column objects for the Broadcast Cycle dialog.
-     * 
-     * @return List of {@link TableColumnData}
-     */
-    private List<TableColumnData> createColumns() {
-        List<TableColumnData> columns = new ArrayList<TableColumnData>(8);
-        columns.add(new TableColumnData("Transmit Time"));
-        columns.add(new TableColumnData("Message Type"));
-        columns.add(new TableColumnData("MessageID"));
-        columns.add(new TableColumnData("MRD"));
-        columns.add(new TableColumnData("Expiration Time"));
-        columns.add(new TableColumnData("Alert"));
-        columns.add(new TableColumnData("SAME"));
-        columns.add(new TableColumnData("Play Count"));
-
-        return columns;
+        TransmitterResponse response = (TransmitterResponse) BmhUtils
+                .sendRequest(request);
+        return response.getTransmitterList();
     }
 
     /**
      * Get the periodic message table data
      * 
      * @return The TableData
+     * @throws Exception
      */
-    public TableData getPeriodicMessageTableData() {
+    public TableData getPeriodicMessageTableData() throws Exception {
         List<TableColumnData> columns = createPeriodicMessageColumns();
-
         TableData data = new TableData(columns);
-        List<TableRowData> rows = getTestPeriodicRows(columns);
 
-        for (TableRowData row : rows) {
-            data.addDataRow(row);
+        PlaylistRequest req = new PlaylistRequest();
+        req.setAction(PlaylistAction.GET_PLAYLIST_BY_SUITE_GROUP);
+        PlaylistResponse response = (PlaylistResponse) BmhUtils
+                .sendRequest(req);
 
+        Playlist playlist = response.getPlaylist();
+
+        if (playlist == null) {
+            return data;
         }
+
+        // TODO fix with simulator data
+        for (BroadcastMsg msg : playlist.getMessages()) {
+            if (msg.getInputMessage().isPeriodic()) {
+                TableRowData rowData = new TableRowData();
+                TableCellData cell = new TableCellData("Last Played Time");
+                rowData.addTableCellData(cell);
+
+                cell = new TableCellData("Next Predicted Broadcast");
+                rowData.addTableCellData(cell);
+
+                cell = new TableCellData(msg.getInputMessage().getAfosid());
+                rowData.addTableCellData(cell);
+
+                cell = new TableCellData("Message ID???");
+                rowData.addTableCellData(cell);
+                data.addDataRow(rowData);
+            }
+        }
+
         return data;
     }
 
+    /**
+     * Get the {@link Program} associated with the provided
+     * {@link TransmitterGroup}
+     * 
+     * @param group
+     *            The TransmitterGroup
+     * @return The associated Program
+     * @throws Exception
+     */
+    public Program getProgramForTransmitterGroup(TransmitterGroup group)
+            throws Exception {
+        ProgramRequest req = new ProgramRequest();
+        req.setAction(ProgramAction.GetProgramForTransmitterGroup);
+        req.setTransmitterGroup(group);
+
+        ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(req);
+
+        return response.getProgramList().get(0);
+    }
+
+    /**
+     * Create columns for the Periodic Message dialog.
+     * 
+     * @return
+     */
     private List<TableColumnData> createPeriodicMessageColumns() {
         List<TableColumnData> columns = new ArrayList<TableColumnData>(4);
         columns.add(new TableColumnData("Last Broadcast Time"));
@@ -187,144 +179,183 @@ public class BroadcastCycleDataManager {
         return columns;
     }
 
-    /*
-     * TODO Test Data - Remove
+    /**
+     * Get the {@link MessageType} object for the associated afosId
+     * 
+     * @param afosId
+     *            The afosId
+     * @return The MessageType
+     * @throws Exception
      */
-    private void generateTestData() {
-        Suite generalSuite = new Suite();
-        generalSuite.setType(SuiteType.GENERAL);
-        generalSuite.setName("Suite General");
+    public MessageType getMessageType(String afosId) throws Exception {
+        MessageTypeRequest req = new MessageTypeRequest();
+        req.setAction(MessageTypeAction.GetByAfosId);
+        req.setAfosId(afosId);
 
-        Suite exclusiveSuite = new Suite();
-        exclusiveSuite.setType(SuiteType.EXCLUSIVE);
-        exclusiveSuite.setName("Suite Exclusive");
+        MessageTypeResponse response = (MessageTypeResponse) BmhUtils
+                .sendRequest(req);
 
-        Suite highSuite = new Suite();
-        highSuite.setType(SuiteType.HIGH);
-        highSuite.setName("Suite High");
+        List<MessageType> list = response.getMessageTypeList();
+        if (list != null && list.size() > 0) {
+            return list.get(0);
+        }
 
-        List<Suite> suiteList = new ArrayList<Suite>();
-        suiteList.add(generalSuite);
-        suiteList.add(highSuite);
-        suiteList.add(exclusiveSuite);
-
-        transmitterList = new ArrayList<Transmitter>();
-        Transmitter t = new Transmitter();
-        t.setName("Albion");
-        t.setMnemonic("ALB");
-        transmitterList.add(t);
-        suites.put(t.getMnemonic(), suiteList);
-
-        t = new Transmitter();
-        t.setName("Beatrice");
-        t.setMnemonic("BIE");
-        transmitterList.add(t);
-        suites.put(t.getMnemonic(), suiteList);
-
-        t = new Transmitter();
-        t.setName("Fremont");
-        t.setMnemonic("FRE");
-        transmitterList.add(t);
-        suites.put(t.getMnemonic(), suiteList);
-
-        t = new Transmitter();
-        t.setName("Lincoln");
-        t.setMnemonic("LNK");
-        transmitterList.add(t);
-        suites.put(t.getMnemonic(), suiteList);
-
-        t = new Transmitter();
-        t.setName("Omaha");
-        t.setMnemonic("OMA");
-        transmitterList.add(t);
-        suites.put(t.getMnemonic(), suiteList);
+        return null;
     }
 
-    private List<TableRowData> getTestRows(List<TableColumnData> columns) {
-        BroadcastCycleColorManager cm = new BroadcastCycleColorManager(
-                Display.getCurrent());
-        SimpleDateFormat sdf = new SimpleDateFormat(
-                BroadcastCycleDataManager.DATE_FORMAT);
-        List<TableRowData> rows = new ArrayList<TableRowData>();
-        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
-        Calendar expCal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
-        expCal.set(Calendar.SECOND, 0);
-        expCal.set(Calendar.MINUTE, 0);
-        expCal.add(Calendar.HOUR_OF_DAY, 6);
-        for (int i = 0; i < 10; i++) {// Rows
-            TableRowData rowData = new TableRowData();
-            TableCellData cell1 = new TableCellData(sdf.format(cal.getTime()));
-            rowData.addTableCellData(cell1);
+    /**
+     * Get the {@link BroadcastMsg} for the associated Broadcast Message Id.
+     * 
+     * @param broadcastMessageId
+     *            The broadcastMessageId
+     * @return The BroadcastMsg
+     * @throws Exception
+     */
+    public BroadcastMsg getBroadcastMessage(long broadcastMessageId)
+            throws Exception {
+        BroadcastMsgRequest req = new BroadcastMsgRequest();
+        req.setAction(BroadcastMessageAction.GET_MESSAGE_BY_ID);
+        req.setBroadcastMessageId(broadcastMessageId);
 
-            TableCellData cell2 = new TableCellData("Message Type");
-            rowData.addTableCellData(cell2);
-            if ((i > 0) && (i < 3)) {
-                cell2.setBackgroundColor(cm.getInterruptColor());
-            } else if ((i == 5) || (i == 7)) {
-                cell2.setBackgroundColor(cm.getReplaceColor());
-            } else if ((i == 4) || (i == 9)) {
-                cell2.setBackgroundColor(cm.getPeriodicColor());
+        BroadcastMsgResponse response = (BroadcastMsgResponse) BmhUtils
+                .sendRequest(req);
+
+        List<BroadcastMsg> msgList = response.getMessageList();
+        if (msgList != null && !msgList.isEmpty()) {
+            return msgList.get(0);
+        }
+
+        return null;
+    }
+
+    /**
+     * Get transmitters playing this {@link MessageType}
+     * 
+     * @param messageType
+     *            The MessageType
+     * 
+     * @return List of Transmitters playing the MessageType
+     * @throws Exception
+     */
+    public List<Transmitter> getTransmitterForMessageType(
+            MessageType messageType) throws Exception {
+        List<Transmitter> transList = new ArrayList<>();
+        ProgramRequest pRequest = new ProgramRequest();
+        pRequest.setAction(ProgramAction.AllPrograms);
+        ProgramResponse pResponse = (ProgramResponse) BmhUtils
+                .sendRequest(pRequest);
+        List<Program> programList = pResponse.getProgramList();
+
+        List<Program> assocProgs = new ArrayList<>();
+        ProgramFor: for (Program p : programList) {
+            List<Suite> suitesInProgram = p.getSuites();
+            for (Suite progSuite : suitesInProgram) {
+                for (SuiteMessage sm : progSuite.getSuiteMessages()) {
+                    if (messageType.getAfosid().equals(sm.getAfosid())) {
+                        assocProgs.add(p);
+                        continue ProgramFor;
+                    }
+                }
             }
-
-            TableCellData cell3 = new TableCellData("Message ID Text");
-            rowData.addTableCellData(cell3);
-
-            TableCellData cell4 = new TableCellData("123");
-            rowData.addTableCellData(cell4);
-
-            TableCellData cell5 = new TableCellData(
-                    sdf.format(expCal.getTime()));
-            rowData.addTableCellData(cell5);
-
-            TableCellData cell6 = new TableCellData("NONE");
-            rowData.addTableCellData(cell6);
-
-            TableCellData cell7 = new TableCellData("NONE");
-            rowData.addTableCellData(cell7);
-
-            TableCellData cell8 = new TableCellData(cal.get(Calendar.MINUTE),
-                    null);
-            rowData.addTableCellData(cell8);
-
-            rows.add(rowData);
-            cal.add(Calendar.SECOND, 360 * 15);
-            expCal.add(Calendar.SECOND, 360 * 15);
         }
 
-        return rows;
+        for (Program p : assocProgs) {
+            for (TransmitterGroup tg : p.getTransmitterGroups()) {
+                transList.addAll(tg.getTransmitters());
+            }
+        }
+
+        return transList;
     }
 
-    // columns.add(new TableColumnData("Last Broadcast Time"));
-    // columns.add(new TableColumnData("Next Predicted Broadcast"));
-    // columns.add(new TableColumnData("Message Type"));
-    // columns.add(new TableColumnData("Message ID"));
+    /**
+     * Get {@link Area}s for the provided {@link MessageType}
+     * 
+     * @param messageType
+     *            The MessageType
+     * @return The Area
+     * @throws Exception
+     */
+    public List<Area> getAreasForMessageType(MessageType messageType)
+            throws Exception {
+        List<Transmitter> transmitterList = getTransmitterForMessageType(messageType);
 
-    private List<TableRowData> getTestPeriodicRows(List<TableColumnData> columns) {
-        List<TableRowData> rows = new ArrayList<TableRowData>();
-        SimpleDateFormat sdf = new SimpleDateFormat(
-                BroadcastCycleDataManager.DATE_FORMAT);
+        ZoneAreaRequest req = new ZoneAreaRequest();
+        req.setAction(ZoneAreaAction.GetAreas);
+        ZoneAreaResponse response = (ZoneAreaResponse) BmhUtils
+                .sendRequest(req);
+        List<Area> areaList = response.getAreaList();
 
-        Calendar cal = TimeUtil.newGmtCalendar();
-        cal.add(Calendar.MINUTE, -3);
+        Set<Area> returnList = new HashSet<>();
 
-        for (int i = 0; i < 5; i++) {
-            TableRowData rowData = new TableRowData();
-            TableCellData cell = new TableCellData(sdf.format(cal.getTime()));
-            rowData.addTableCellData(cell);
-
-            cal.add(Calendar.SECOND, 68);
-            TableCellData cell2 = new TableCellData(sdf.format(cal.getTime()));
-            rowData.addTableCellData(cell2);
-
-            TableCellData cell3 = new TableCellData("Message Type " + i);
-            rowData.addTableCellData(cell3);
-
-            TableCellData cell4 = new TableCellData("Message ID " + i);
-            rowData.addTableCellData(cell4);
-
-            rows.add(rowData);
+        for (Transmitter t : transmitterList) {
+            for (Area a : areaList) {
+                if (a.getTransmitters().contains(t)) {
+                    returnList.add(a);
+                }
+            }
         }
 
-        return rows;
+        return new ArrayList<Area>(returnList);
+    }
+
+    /**
+     * Get the {@link Program}s associated with the {@link MessageType}
+     * 
+     * @param messageType
+     *            The MessageType
+     * @return The list of associated Programs
+     * @throws Exception
+     */
+    public List<Program> getProgramsForMessageType(MessageType messageType)
+            throws Exception {
+        ProgramRequest pRequest = new ProgramRequest();
+        pRequest.setAction(ProgramAction.AllPrograms);
+        ProgramResponse pResponse = (ProgramResponse) BmhUtils
+                .sendRequest(pRequest);
+        List<Program> programList = pResponse.getProgramList();
+
+        List<Program> assocProgs = new ArrayList<>();
+        ProgramFor: for (Program p : programList) {
+            List<Suite> suitesInProgram = p.getSuites();
+            for (Suite progSuite : suitesInProgram) {
+                for (SuiteMessage sm : progSuite.getSuiteMessages()) {
+                    if (messageType.getAfosid().equals(sm.getAfosid())) {
+                        assocProgs.add(p);
+                        continue ProgramFor;
+                    }
+                }
+            }
+        }
+
+        return assocProgs;
+    }
+
+    /**
+     * Get the {@link Suite}s associated with the provided {@link MessageType}
+     * 
+     * @param messageType
+     * @return
+     * @throws Exception
+     */
+    public List<Suite> getSuitesForMessageType(MessageType messageType)
+            throws Exception {
+        SuiteRequest req = new SuiteRequest();
+        req.setAction(SuiteAction.AllSuites);
+
+        List<Suite> assocSuites = new ArrayList<>();
+
+        SuiteResponse response = (SuiteResponse) BmhUtils.sendRequest(req);
+        List<Suite> suiteList = response.getSuiteList();
+        for (Suite s : suiteList) {
+            for (SuiteMessage sm : s.getSuiteMessages()) {
+                if (messageType.getAfosid().equals(sm.getAfosid())) {
+                    assocSuites.add(s);
+                    break;
+                }
+            }
+        }
+
+        return assocSuites;
     }
 }

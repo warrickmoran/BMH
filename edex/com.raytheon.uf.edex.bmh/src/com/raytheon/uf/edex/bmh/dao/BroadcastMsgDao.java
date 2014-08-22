@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.orm.hibernate3.HibernateTemplate;
@@ -38,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
  * ------------- -------- ----------- --------------------------
  * Jun 26, 2014  3302     bkowal      Initial creation
  * Jul 10, 2014  3285     bsteffen    Add getMessagesByAfosid()
+ * Aug 20, 2014  3432     mpduff      Added getMessageByBroadcastId, fixed GetMesageByAfosid
  * 
  * </pre>
  * 
@@ -51,7 +53,7 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
         super(BroadcastMsg.class);
     }
 
-    public List<BroadcastMsg> getMessagesByAfosid(final String afosid){
+    public List<BroadcastMsg> getMessagesByAfosid(final String afosid) {
         List<?> messages = txTemplate
                 .execute(new TransactionCallback<List<?>>() {
                     @Override
@@ -59,12 +61,22 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
                         HibernateTemplate ht = getHibernateTemplate();
                         return ht.findByNamedQueryAndNamedParam(
                                 BroadcastMsg.GET_MSGS_BY_AFOS_ID,
-                                new String[] {"afosid" },
+                                new String[] { "afosID" },
                                 new String[] { afosid });
                     }
                 });
         @SuppressWarnings("unchecked")
         List<BroadcastMsg> result = (List<BroadcastMsg>) messages;
         return result;
+    }
+
+    public List<BroadcastMsg> getMessageByBroadcastId(Long broadcastMessageId) {
+        List<Object> objList = this.loadAll();
+        List<BroadcastMsg> results = new ArrayList<>();
+        for (Object o : objList) {
+            results.add((BroadcastMsg) o);
+        }
+
+        return results;
     }
 }
