@@ -74,6 +74,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 15, 2014  #3490     lvenable     Reworked to use updated interface and allow the suite table to
  *                                      re-populate without rebuilding the table.
  * Aug 18, 2014  #3490     lvenable     Added callback calls for actions on the suites.
+ * Aug 21, 2014  #3490     lvenable     Added capability when creating new programs.
  * 
  * </pre>
  * 
@@ -114,7 +115,7 @@ public class SuiteConfigGroup extends Composite {
 
     /** Enumeration of suite group types. */
     public enum SuiteGroupType {
-        BROADCAST_PROGRAM, SUITE_MGR, ADD_COPY_EXITING;
+        BROADCAST_PROGRAM, NEW_PROGRAM, SUITE_MGR, ADD_COPY_EXITING;
     };
 
     /** Suite group type. */
@@ -338,8 +339,11 @@ public class SuiteConfigGroup extends Composite {
          */
         if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM) {
             numberOfColumns = 4;
+        } else if (suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
+            numberOfColumns = 3;
         } else if (suiteGroupType == SuiteGroupType.SUITE_MGR) {
             numberOfColumns = 6;
+
         } else if (suiteGroupType == SuiteGroupType.ADD_COPY_EXITING) {
             numberOfColumns = 1;
         }
@@ -377,11 +381,18 @@ public class SuiteConfigGroup extends Composite {
                     csd.setCloseCallback(new ICloseCallback() {
                         @Override
                         public void dialogClosed(Object returnValue) {
+
                             if (returnValue != null
-                                    && returnValue instanceof Boolean) {
-                                if ((Boolean) returnValue) {
+                                    && returnValue instanceof Suite) {
+                                if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
+                                        || suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
+                                    List<Suite> array = new ArrayList<Suite>();
+                                    array.add((Suite) returnValue);
+                                    suiteSelectionCB.addedSuites(array);
+                                } else if (suiteGroupType == SuiteGroupType.SUITE_MGR) {
                                     if (selectedSuite != null) {
-                                        suiteSelectionCB.suitesUpdated();
+                                        suiteSelectionCB
+                                                .suitesUpdated((Suite) returnValue);
                                     }
                                 }
                             }
@@ -392,7 +403,8 @@ public class SuiteConfigGroup extends Composite {
             });
         }
 
-        if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM) {
+        if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
+                || suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
             gd = new GridData();
             gd.minimumWidth = minButtonWidth;
             Button addExistingBtn = new Button(suiteControlComp, SWT.PUSH);
@@ -400,12 +412,35 @@ public class SuiteConfigGroup extends Composite {
             addExistingBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
+                    Set<String> existingNames = null;
+
+                    if (suiteSelectionCB != null) {
+                        existingNames = suiteSelectionCB.getSuiteNames();
+                    } else {
+                        existingNames = new HashSet<String>();
+                    }
+
                     AddSuitesDlg asd = new AddSuitesDlg(getShell(),
-                            SuiteDialogType.ADD_COPY);
+                            SuiteDialogType.ADD_COPY, existingNames);
+                    asd.setCloseCallback(new ICloseCallback() {
+                        @Override
+                        public void dialogClosed(Object returnValue) {
+                            if (returnValue != null
+                                    && returnValue instanceof List<?>) {
+
+                                if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
+                                        || suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
+                                    suiteSelectionCB
+                                            .addedSuites((List<Suite>) returnValue);
+                                }
+                            }
+                        }
+
+                    });
                     asd.open();
                 }
             });
-            suiteControls.add(addExistingBtn);
+            // suiteControls.add(addExistingBtn);
         } else if (suiteGroupType == SuiteGroupType.SUITE_MGR) {
             gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
             gd.widthHint = minButtonWidth;
@@ -418,9 +453,6 @@ public class SuiteConfigGroup extends Composite {
                     if (selectedSuite != null) {
                         suiteSelectionCB.copySuite(selectedSuite);
                     }
-                    // AddSuitesDlg asd = new AddSuitesDlg(getShell(),
-                    // SuiteDialogType.COPY_ONLY);
-                    // asd.open();
                 }
             });
             suiteControls.add(copyBtn);
@@ -458,11 +490,22 @@ public class SuiteConfigGroup extends Composite {
                     csd.setCloseCallback(new ICloseCallback() {
                         @Override
                         public void dialogClosed(Object returnValue) {
+
                             if (returnValue != null
-                                    && returnValue instanceof Boolean) {
-                                if ((Boolean) returnValue) {
+                                    && returnValue instanceof Suite) {
+
+                                if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM) {
+                                    // List<Suite> array = new
+                                    // ArrayList<Suite>();
+                                    // array.add((Suite) returnValue);
+                                    // suiteSelectionCB.addedSuites(array);
+                                    selectedSuite = (Suite) returnValue;
+                                    suiteSelectionCB
+                                            .suitesUpdated((Suite) returnValue);
+                                } else if (suiteGroupType == SuiteGroupType.SUITE_MGR) {
                                     if (selectedSuite != null) {
-                                        suiteSelectionCB.suitesUpdated();
+                                        suiteSelectionCB
+                                                .suitesUpdated((Suite) returnValue);
                                     }
                                 }
                             }
@@ -473,7 +516,11 @@ public class SuiteConfigGroup extends Composite {
                 }
             });
             suiteControls.add(editSuiteBtn);
+        }
 
+        if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
+                || suiteGroupType == SuiteGroupType.SUITE_MGR
+                || suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
             // gd = new GridData(minButtonWidth, SWT.DEFAULT);
             gd = new GridData(SWT.LEFT, SWT.CENTER, true, true);
             gd.widthHint = minButtonWidth;
@@ -627,13 +674,29 @@ public class SuiteConfigGroup extends Composite {
 
         int[] indices = suiteTable.getSelectedIndices();
 
-        if (indices.length > 0) {
-            for (Suite s : filteredSuiteList) {
-                selectedSuites.add(s);
-            }
+        for (int i = 0; i < indices.length; i++) {
+            selectedSuites.add(filteredSuiteList.get(indices[i]));
         }
 
         return selectedSuites;
+    }
+
+    /**
+     * Initialize the tables columns. This is used for situations when the table
+     * starts off empty and the columns need to be present. This can only be
+     * done once.
+     */
+    public void initializeTableColumns() {
+        if (suiteTable.hasTableData() == false) {
+            List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+            TableColumnData tcd = new TableColumnData("Suite Name", 150);
+            columnNames.add(tcd);
+            tcd = new TableColumnData("Category");
+            columnNames.add(tcd);
+
+            suiteTableData = new TableData(columnNames);
+            suiteTable.populateTable(suiteTableData);
+        }
     }
 
     /**

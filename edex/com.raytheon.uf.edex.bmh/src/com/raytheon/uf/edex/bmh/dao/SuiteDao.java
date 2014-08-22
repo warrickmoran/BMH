@@ -28,6 +28,7 @@ import java.util.TreeMap;
 import org.springframework.orm.hibernate3.HibernateTemplate;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
@@ -49,6 +50,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
  * Aug 12, 2014 #3490     lvenable    Refactored to make a getSuiteByQuery() method that
  *                                    will used the query passed it to retrieve the data.
  * Aug 17, 2014 #3490     lvenable    Fixed empty list error in createSuiteMsgTypes().
+ * Aug 21, 2014 #3490     lvenable    Added code from Richard to fix a hibernate issue for save/update.
  * 
  * </pre>
  * 
@@ -192,5 +194,37 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
         List<Suite> suiteList = new ArrayList<Suite>(existingSuites.values());
 
         return suiteList;
+    }
+
+    /**
+     * Save/Update.
+     * 
+     * @param suite
+     *            Suite to save/update.
+     */
+    public void saveOrUpdate(final Suite suite) {
+        txTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            public void doInTransactionWithoutResult(TransactionStatus status) {
+                HibernateTemplate ht = getHibernateTemplate();
+
+                // work around to orphanRemoval not working correctly in
+                // bidirectional relationship
+                if (suite.getId() != 0) {
+                    ht.bulkUpdate(
+                            "delete from SuiteMessage where suite_id = ?",
+                            suite.getId());
+                    ht.update(suite);
+                } else {
+                    ht.save(suite);
+                }
+
+                if (suite.getSuiteMessages() != null) {
+                    for (SuiteMessage sm : suite.getSuiteMessages()) {
+                        ht.save(sm);
+                    }
+                }
+            }
+        });
     }
 }

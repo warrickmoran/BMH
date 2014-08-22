@@ -57,6 +57,8 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteActionAdapter;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteNameComparator;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -76,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 8,  2014  #3490      lvenable    Updated populate table method call.
  * Aug 12, 2014  #3490      lvenable    Updated to use data from the database.
  * Aug 15, 2014  #3490      lvenable    Updated to use data managers, added rename capability.
+ * Aug 21, 2014  #3490      lvenable    Updated for program changes.
  * 
  * </pre>
  * 
@@ -139,6 +142,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     /** Program data manager. */
     private ProgramDataManager programDataMgr = new ProgramDataManager();
 
+    private Set<String> existingProgramNames = new HashSet<String>();
+
     /**
      * Constructor.
      * 
@@ -150,7 +155,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     public BroadcastProgramDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
         super(dlgMap, "Broadcast Program Dialog", parentShell, SWT.DIALOG_TRIM
-                | SWT.MIN, CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                | CAVE.MODE_INDEPENDENT);
     }
 
     @Override
@@ -165,6 +171,11 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     protected Object constructShellLayoutData() {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         return gd;
+    }
+
+    @Override
+    protected void opened() {
+        shell.setMinimumSize(shell.getSize());
     }
 
     @Override
@@ -227,7 +238,17 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         newProgramBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                CreateNewProgram cnp = new CreateNewProgram(shell);
+                CreateNewProgram cnp = new CreateNewProgram(shell,
+                        existingProgramNames);
+                cnp.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        if (returnValue != null
+                                && returnValue instanceof String) {
+                            handleNewProgram((String) returnValue);
+                        }
+                    }
+                });
                 cnp.open();
             }
         });
@@ -330,15 +351,70 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             }
 
             @Override
-            public void suitesUpdated() {
+            public void addedSuites(List<Suite> suiteList) {
+                handleSuitesAdded(suiteList);
+            }
 
+            @Override
+            public void suitesUpdated(Suite suite) {
+                handleSuitesUpdated(suite);
             }
 
             @Override
             public void deleteSuite(Suite suite) {
                 handleSuiteDeleted(suite);
             }
+
+            @Override
+            public Set<String> getSuiteNames() {
+                Set<String> suiteNames = new HashSet<String>();
+                try {
+                    SuiteDataManager suiteDataMgr = new SuiteDataManager();
+                    List<Suite> suiteList = suiteDataMgr
+                            .getAllSuites(new SuiteNameComparator());
+
+                    for (Suite s : suiteList) {
+                        suiteNames.add(s.getName());
+                    }
+
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "Error retrieving suite data from the database: ",
+                            e);
+                }
+                return suiteNames;
+            }
         });
+    }
+
+    private void handleSuitesAdded(List<Suite> suiteList) {
+
+        int suiteID = Integer.MIN_VALUE;
+
+        for (Suite s : suiteList) {
+            if (suiteID == Integer.MIN_VALUE) {
+                suiteID = s.getId();
+            }
+            selectedProgram.addSuite(s);
+        }
+
+        try {
+            programDataMgr.saveProgram(selectedProgram);
+        } catch (Exception e) {
+            statusHandler.error("Error adding suite(s) to program "
+                    + selectedProgram.getName(), e);
+        }
+
+        retrieveProgramDataFromDB();
+        populateProgramCombo(true);
+        populateSuiteTable(true);
+
+        populateMsgTypeTable(suiteConfigGroup.getSelectedSuite());
+        updateSuiteGroupText();
+
+        if (suiteID != Integer.MIN_VALUE) {
+            suiteConfigGroup.selectSuiteInTable(suiteID);
+        }
     }
 
     /**
@@ -483,6 +559,15 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         handleProgramChange();
     }
 
+    private void handleNewProgram(String programName) {
+        retrieveProgramDataFromDB();
+        populateProgramCombo(programName);
+        populateSuiteTable(true);
+
+        populateMsgTypeTable(suiteConfigGroup.getSelectedSuite());
+        updateSuiteGroupText();
+    }
+
     /**
      * Method to check if the dialog can close.
      * 
@@ -550,19 +635,31 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     }
 
     // TODO : will be used later
-    // private void handleSuitesUpdated() {
-    //
-    // int selectedSuiteID = Integer.MIN_VALUE;
-    // Suite selectedSuiteInTable = suiteConfigGroup.getSelectedSuite();
-    // if (selectedSuiteInTable != null) {
-    // selectedSuiteID = suiteConfigGroup.getSelectedSuite().getId();
-    // }
-    //
-    // retrieveProgramDataFromDB();
-    // populateProgramCombo(true);
-    // handleProgramChange();
-    // suiteConfigGroup.selectSuiteInTable(selectedSuiteID);
-    // }
+    private void handleSuitesUpdated(Suite suite) {
+
+        List<Suite> progSuites = selectedProgram.getSuites();
+
+        for (int i = 0; i < progSuites.size(); i++) {
+            if (progSuites.get(i).getId() == suite.getId()) {
+                progSuites.set(i, suite);
+
+                try {
+                    programDataMgr.saveProgram(selectedProgram);
+                } catch (Exception e) {
+                    statusHandler.error("Error saving the program: ", e);
+                }
+
+            }
+        }
+
+        retrieveProgramDataFromDB();
+        populateProgramCombo(true);
+        populateSuiteTable(true);
+
+        populateMsgTypeTable(suiteConfigGroup.getSelectedSuite());
+        updateSuiteGroupText();
+        suiteConfigGroup.selectSuiteInTable(suite.getId());
+    }
 
     /**
      * Handle when the program changes.
@@ -649,8 +746,10 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             programCbo.removeAll();
         }
 
+        existingProgramNames.clear();
         for (Program prog : programsArray) {
             programCbo.add(prog.getName());
+            existingProgramNames.add(prog.getName());
         }
 
         enableProgramControls(false);
@@ -740,7 +839,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
             TableColumnData tcd = new TableColumnData("Message Type", 150);
             columnNames.add(tcd);
-            tcd = new TableColumnData("Message Title");
+            tcd = new TableColumnData("Message Title", 250);
             columnNames.add(tcd);
             tcd = new TableColumnData("Trigger");
             columnNames.add(tcd);

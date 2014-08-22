@@ -45,6 +45,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
@@ -81,6 +82,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 12, 2014  #3490      lvenable    Updated to use data from the database.
  * Aug 15, 2014  #3490     lvenable     Sort the list of message types, use data manager.
  * Aug 18, 2014  #3490     lvenable     Added save, create, add, remove, sort capabilities.
+ * Aug 21, 2014  #3490     lvenable     Updated suite capabilities.
  * 
  * </pre>
  * 
@@ -337,7 +339,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         assignProgramBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                handleChangeProgram();
+                // TODO : update program functionality
+                // handleChangeProgram();
             }
         });
     }
@@ -591,20 +594,25 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             return;
         }
 
-        selectedSuite.setType(suiteType);
-
         SuiteDataManager sdm = new SuiteDataManager();
+
+        selectedSuite.setType(suiteType);
         selectedSuite.setSuiteMessages(msgTypesInSuiteList);
 
+        Suite savedSuite = null;
         try {
-            sdm.saveSuite(selectedSuite);
+            SuiteResponse suiteReponse = sdm.saveSuite(selectedSuite);
+            if (suiteReponse.getSuiteList().isEmpty()) {
+                return;
+            }
+            savedSuite = suiteReponse.getSuiteList().get(0);
         } catch (Exception e) {
             statusHandler.error(
                     "Error saving the suite: " + selectedSuite.getName(), e);
             return;
         }
 
-        setReturnValue(new Boolean(true));
+        setReturnValue(savedSuite);
         close();
     }
 
@@ -612,8 +620,13 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * Handle the create/save action.
      */
     private void handleCreateAction() {
+
         SuiteNameValidator snv = new SuiteNameValidator(existingSuiteNames);
+
         String suiteName = suiteNameTF.getText().trim();
+
+        System.out.println(">" + suiteName + "<");
+
         if (!snv.validateInputText(shell, suiteName)) {
             return;
         }
@@ -634,15 +647,20 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         SuiteDataManager sdm = new SuiteDataManager();
 
+        Suite savedSuite = null;
         try {
-            sdm.saveSuite(suite);
+            SuiteResponse suiteReponse = sdm.saveSuite(suite);
+            if (suiteReponse.getSuiteList().isEmpty()) {
+                return;
+            }
+            savedSuite = suiteReponse.getSuiteList().get(0);
         } catch (Exception e) {
             statusHandler.error("Error creating the suite: " + suite.getName(),
                     e);
             return;
         }
 
-        setReturnValue(new Boolean(true));
+        setReturnValue(savedSuite);
         close();
     }
 
@@ -928,40 +946,5 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             trd.addTableCellData(new TableCellData(mt.getTitle()));
             availMsgTypeTableData.addDataRow(trd);
         }
-    }
-
-    /**********************************************************************
-     * 
-     * TODO: remove dummy code
-     * 
-     */
-
-    private void handleChangeProgram() {
-        // TODO : Add real code when hooking up
-        CheckListData cld = new CheckListData();
-
-        cld.addDataItem("Program - 1", true);
-        cld.addDataItem("Program - 2", true);
-        cld.addDataItem("Program - 3", true);
-        cld.addDataItem("Program - 4", false);
-        cld.addDataItem("Program - 5", false);
-        cld.addDataItem("Program - 6", false);
-
-        CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
-                "Assign Programs", "Add Suite to Selected Programs:", cld, true);
-        checkListDlg.setCloseCallback(new ICloseCallback() {
-            @Override
-            public void dialogClosed(Object returnValue) {
-                if (returnValue != null && returnValue instanceof CheckListData) {
-                    CheckListData listData = (CheckListData) returnValue;
-                    Map<String, Boolean> dataMap = listData.getDataMap();
-                    for (String str : dataMap.keySet()) {
-                        System.out.println("Type = " + str + "\t Selected: "
-                                + dataMap.get(str));
-                    }
-                }
-            }
-        });
-        checkListDlg.open();
     }
 }

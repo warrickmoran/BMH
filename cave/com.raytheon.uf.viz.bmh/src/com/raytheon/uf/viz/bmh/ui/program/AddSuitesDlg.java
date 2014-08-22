@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -41,6 +42,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteActionAdapter;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteNameComparator;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteNameValidator;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
@@ -60,6 +62,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      hooked up data from the database.
  * Aug 15, 2014  #3490     lvenable     Sort the list of suites.
  * Aug 18, 2014  #3490     lvenable     Updated code changes and added TODO reminders.
+ * Aug 21, 2014  #3490     lvenable     Updated code to save data to database.
  * 
  * </pre>
  * 
@@ -89,7 +92,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
         ADD_COPY, COPY_ONLY;
     };
 
-    // TODO : remove COPY_ONLY
+    // TODO : investigate if COPY_ONLY is needed otherwise remove the enum.
 
     /** Type of dialog (Create or Edit). */
     private SuiteDialogType dialogType = SuiteDialogType.ADD_COPY;
@@ -97,17 +100,28 @@ public class AddSuitesDlg extends CaveSWTDialog {
     /** Group that contains the controls for configuring the suites. */
     private SuiteConfigGroup suiteConfigGroup;
 
+    /** Add button. */
+    private Button addBtn;
+
+    /** Flag indicating if the suite is existing or a copy. */
+    private boolean useExisting = true;
+
+    /** Set of exiting names. */
+    private Set<String> existingNames = null;
+
     /**
      * Constructor.
      * 
      * @param parentShell
      *            Parent shell.
      */
-    public AddSuitesDlg(Shell parentShell, SuiteDialogType dlgType) {
+    public AddSuitesDlg(Shell parentShell, SuiteDialogType dlgType,
+            Set<String> existingNames) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
         this.dialogType = dlgType;
+        this.existingNames = existingNames;
     }
 
     @Override
@@ -141,6 +155,8 @@ public class AddSuitesDlg extends CaveSWTDialog {
         createBottomButtons();
 
         suiteConfigGroup.populateSuiteTable(suiteList, false);
+
+        addBtn.setEnabled(suiteConfigGroup.getSelectedSuite() != null);
     }
 
     /**
@@ -167,6 +183,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
                 public void widgetSelected(SelectionEvent e) {
                     Button rdoBtn = (Button) e.widget;
                     if (rdoBtn.getSelection()) {
+                        useExisting = true;
                         enableControls(false);
                         suiteConfigGroup.setMultipleSelection(true);
                     }
@@ -183,6 +200,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
                 public void widgetSelected(SelectionEvent e) {
                     Button rdoBtn = (Button) e.widget;
                     if (rdoBtn.getSelection()) {
+                        useExisting = false;
                         enableControls(true);
                         suiteConfigGroup.setMultipleSelection(false);
                     }
@@ -220,25 +238,10 @@ public class AddSuitesDlg extends CaveSWTDialog {
                 null, 550, 150);
         suiteConfigGroup.setMultipleSelection(true);
         suiteConfigGroup.setCallBackAction(new SuiteActionAdapter() {
+
             @Override
             public void suiteSelected(Suite suite) {
-                // TODO : look at adding code if needed for this method
-            }
-
-            @Override
-            public void suitesUpdated() {
-                // TODO : look at adding code if needed for this method
-            }
-
-            @Override
-            public void deleteSuite(Suite suite) {
-                // TODO : look at adding code if needed for this method
-            }
-
-            @Override
-            public void renameSuite(Suite suite) {
-                // TODO : look at adding code if needed for this method
-
+                addBtn.setEnabled(suite != null);
             }
         });
     }
@@ -256,13 +259,13 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
         GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        Button addBtn = new Button(buttonComp, SWT.PUSH);
+        addBtn = new Button(buttonComp, SWT.PUSH);
         addBtn.setText(" Add ");
         addBtn.setLayoutData(gd);
         addBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                close();
+                handleAddSuites();
             }
         });
 
@@ -274,6 +277,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                setReturnValue(null);
                 close();
             }
         });
@@ -289,6 +293,49 @@ public class AddSuitesDlg extends CaveSWTDialog {
         for (Control ctrl : controlArray) {
             ctrl.setEnabled(enableFlag);
         }
+    }
+
+    private void handleAddSuites() {
+        List<Suite> selectedSuites = suiteConfigGroup.getSelectedSuites();
+
+        // Safety check.
+        if (selectedSuites.isEmpty()) {
+            return;
+        }
+
+        if (useExisting) {
+            if (!selectedSuites.isEmpty()) {
+                setReturnValue(selectedSuites);
+            } else {
+                setReturnValue(null);
+            }
+        } else {
+            Suite copySuite = selectedSuites.get(0);
+
+            if (copySuite == null) {
+                return;
+            }
+
+            SuiteNameValidator snv = new SuiteNameValidator(existingNames);
+            if (!snv.validateInputText(shell, suiteNameTF.getText().trim())) {
+                return;
+            }
+
+            SuiteDataManager suiteDataMgr = new SuiteDataManager();
+            copySuite.setId(0);
+            copySuite.setName(suiteNameTF.getText().trim());
+            try {
+                suiteDataMgr.saveSuite(copySuite);
+            } catch (Exception e) {
+                statusHandler.error("Error renaming the suite: ", e);
+            }
+
+            List<Suite> copySuites = new ArrayList<Suite>(1);
+            copySuites.add(copySuite);
+            setReturnValue(copySuites);
+        }
+
+        close();
     }
 
     /**

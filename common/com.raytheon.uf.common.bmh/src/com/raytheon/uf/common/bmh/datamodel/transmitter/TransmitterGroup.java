@@ -63,6 +63,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Aug 04, 2014  3173      mpduff      Changed rcs to dac, added position and convenience methods, using serialization adapter
  * Aug 13, 2014  3486      bsteffen    Add getEnabledTransmitters
  * Aug 18, 2014  3532      bkowal      Added adjustAudioMinDB and adjustAudioMaxDB
+ * Aug 21, 2014  3486      lvenable   Initialized silence alram to false.
  * 
  * 
  * </pre>
@@ -106,7 +107,7 @@ public class TransmitterGroup {
     private String timeZone;
 
     @Column
-    private Boolean silenceAlarm;
+    private Boolean silenceAlarm = false;
 
     @Column
     private Boolean daylightSaving;

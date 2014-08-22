@@ -20,7 +20,6 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,8 +47,7 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
@@ -94,6 +92,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 04, 2014   3173     mpduff      Added Transmitter Config dialog.
  * Aug 17, 2014  #3490     lvenable    Updated for disable silence alarm.
  * Aug 20, 2014   3411     mpduff      Added bringToTop for message dialog
+ * Aug 21, 2014  #3490     lvenable    Updated disable silence alarm to use transmitter group.
  * 
  * </pre>
  * 
@@ -827,19 +826,18 @@ public class BMHLauncherDlg extends CaveSWTDialog {
          */
         CheckListData cld = new CheckListData();
         TransmitterDataManager tdm = new TransmitterDataManager();
-        List<Transmitter> transmitters = null;
+        List<TransmitterGroup> transmitterGrps = null;
 
         try {
-            transmitters = tdm.getTransmitters();
-            Collections.sort(transmitters, new TransmitterMnemonicComparator());
+            transmitterGrps = tdm.getTransmitterGroups();
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving transmitter data from the database: ", e);
             return;
         }
 
-        for (Transmitter t : transmitters) {
-            cld.addDataItem(t.getMnemonic(), false);
+        for (TransmitterGroup tg : transmitterGrps) {
+            cld.addDataItem(tg.getName(), tg.getSilenceAlarm());
         }
 
         /*
@@ -853,14 +851,48 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             public void dialogClosed(Object returnValue) {
                 if (returnValue != null && returnValue instanceof CheckListData) {
                     CheckListData listData = (CheckListData) returnValue;
-                    Map<String, Boolean> dataMap = listData.getDataMap();
-                    for (String str : dataMap.keySet()) {
-                        System.out.println("Type = " + str + "\t Selected: "
-                                + dataMap.get(str));
-                    }
+                    handleTransmitterGroupUpdate(listData.getDataMap());
+
+                    // for (String str : dataMap.keySet()) {
+                    // System.out.println("Type = " + str + "\t Selected: "
+                    // + dataMap.get(str));
+                    // }
+
                 }
             }
         });
         checkListDlg.open();
+    }
+
+    private void handleTransmitterGroupUpdate(Map<String, Boolean> dataMap) {
+
+        if (dataMap.isEmpty()) {
+            return;
+        }
+
+        TransmitterDataManager tdm = new TransmitterDataManager();
+        List<TransmitterGroup> transmitterGrps = null;
+
+        try {
+            transmitterGrps = tdm.getTransmitterGroups();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving transmitter data from the database: ", e);
+            return;
+        }
+
+        for (TransmitterGroup tg : transmitterGrps) {
+            if (dataMap.containsKey(tg.getName())) {
+                tg.setSilenceAlarm(dataMap.get(tg.getName()));
+
+                try {
+                    tdm.saveTransmitterGroup(tg);
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "Error saving updated transmitter group "
+                                    + tg.getName() + " to the database: ", e);
+                }
+            }
+        }
     }
 }

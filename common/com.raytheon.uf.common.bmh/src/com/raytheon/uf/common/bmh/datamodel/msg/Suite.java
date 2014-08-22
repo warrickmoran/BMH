@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
@@ -62,6 +61,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 12, 2014 #3490     lvenable    Updated to add name/query for getting 
  *                                    message types.
  * Aug 17, 2014 #3490     lvenable    Added batch size, fixed issue in setSuiteMessages().
+ * Aug 21, 2014 #3490     lvenable    Remove cascade all.
  * 
  * </pre>
  * 
@@ -106,7 +106,7 @@ public class Suite {
     @DynamicSerializeElement
     private SuiteType type = SuiteType.GENERAL;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "suite", fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "suite", fetch = FetchType.EAGER)
     // updating position broken https://hibernate.atlassian.net/browse/HHH-5732
     @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement

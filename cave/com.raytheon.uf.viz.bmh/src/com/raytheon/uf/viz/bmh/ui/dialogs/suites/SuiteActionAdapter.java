@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
 
+import java.util.List;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
@@ -35,6 +36,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
  * ------------ ---------- ----------- --------------------------
  * Aug 15, 2014 #3490      lvenable     Initial creation
  * Aug 18, 2014 #3490      lvenable     Added methods that were added to the interface.
+ * Aug 21, 2014 #3490      lvenable     Added addedSuites();
  * 
  * </pre>
  * 
@@ -49,7 +51,7 @@ public abstract class SuiteActionAdapter implements ISuiteSelection {
     }
 
     @Override
-    public void suitesUpdated() {
+    public void suitesUpdated(Suite suite) {
     }
 
     @Override
@@ -63,6 +65,11 @@ public abstract class SuiteActionAdapter implements ISuiteSelection {
 
     @Override
     public void copySuite(Suite suite) {
+
+    }
+
+    @Override
+    public void addedSuites(List<Suite> suiteList) {
 
     }
 

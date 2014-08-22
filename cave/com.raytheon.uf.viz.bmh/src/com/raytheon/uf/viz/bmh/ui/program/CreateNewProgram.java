@@ -20,7 +20,9 @@
 package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -29,18 +31,19 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
-import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
-import com.raytheon.uf.viz.bmh.ui.program.AddSuitesDlg.SuiteDialogType;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteActionAdapter;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
+import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -56,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 20, 2014  #3174     lvenable     Initial creation
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * Aug 12, 2014  #3490      lvenable    Updated method call.
+ * Aug 21, 2014  #3490      lvenable    Added database capability.
  * 
  * </pre>
  * 
@@ -64,14 +68,22 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 public class CreateNewProgram extends CaveSWTDialog {
 
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(CreateNewProgram.class);
+
     /** Save button. */
     private Button saveBtn;
 
-    /** Table of selected suites. */
-    private SuiteTable selectedSuiteTable;
+    /** Group that contains the controls for configuring the suites. */
+    private SuiteConfigGroup suiteConfigGroup;
 
     /** Program text field. */
     private Text programTF;
+
+    private Set<String> existingProgramNames = null;
+
+    private List<Suite> addedSuitesList = new ArrayList<Suite>();
 
     /**
      * Constructor.
@@ -79,9 +91,11 @@ public class CreateNewProgram extends CaveSWTDialog {
      * @param parentShell
      *            Parent shell.
      */
-    public CreateNewProgram(Shell parentShell) {
+    public CreateNewProgram(Shell parentShell, Set<String> existingProgramNames) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+
+        this.existingProgramNames = existingProgramNames;
     }
 
     @Override
@@ -137,48 +151,45 @@ public class CreateNewProgram extends CaveSWTDialog {
      * Create the group containing the selected suites table and controls.
      */
     private void createSelectedSuitesGroup() {
-        Group selectedSuitesGrp = new Group(shell, SWT.SHADOW_OUT);
-        GridLayout gl = new GridLayout(1, false);
-        selectedSuitesGrp.setLayout(gl);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        selectedSuitesGrp.setLayoutData(gd);
-        selectedSuitesGrp.setText(" Selected Suites: ");
 
-        selectedSuiteTable = new SuiteTable(selectedSuitesGrp, 550, 150);
+        suiteConfigGroup = new SuiteConfigGroup(shell, " Selected Suites: ",
+                SuiteGroupType.NEW_PROGRAM, null);
+        suiteConfigGroup.initializeTableColumns();
+        suiteConfigGroup.setCallBackAction(new SuiteActionAdapter() {
 
-        populateSelectedSuiteTable();
-
-        Composite btnComp = new Composite(selectedSuitesGrp, SWT.NONE);
-        btnComp.setLayout(new GridLayout(2, false));
-        btnComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true, false));
-
-        int minButtonWidth = 80;
-
-        gd = new GridData(minButtonWidth, SWT.DEFAULT);
-        Button addNewSuiteBtn = new Button(btnComp, SWT.PUSH);
-        addNewSuiteBtn.setText("New...");
-        addNewSuiteBtn.setLayoutData(gd);
-        addNewSuiteBtn.addSelectionListener(new SelectionAdapter() {
             @Override
-            public void widgetSelected(SelectionEvent e) {
-                // TODO : disabled until ready to use since there are changed
-                // that need to be made.
-                // CreateEditSuiteDlg csd = new CreateEditSuiteDlg(shell,
-                // DialogType.CREATE, false, null);
-                // csd.open();
+            public void deleteSuite(Suite suite) {
+                handleDeleteSuite(suite);
             }
-        });
 
-        gd = new GridData();
-        gd.minimumWidth = minButtonWidth;
-        Button addExistingBtn = new Button(btnComp, SWT.PUSH);
-        addExistingBtn.setText("Add Existing...");
-        addExistingBtn.addSelectionListener(new SelectionAdapter() {
             @Override
-            public void widgetSelected(SelectionEvent e) {
-                AddSuitesDlg asd = new AddSuitesDlg(getShell(),
-                        SuiteDialogType.ADD_COPY);
-                asd.open();
+            public void addedSuites(List<Suite> suiteList) {
+                handleSuitesAdded(suiteList);
+            }
+
+            @Override
+            public Set<String> getSuiteNames() {
+                Set<String> suiteNames = new HashSet<String>();
+
+                try {
+                    // TODO: Need a query to get the suite names for better
+                    // performance.
+
+                    SuiteDataManager sdm = new SuiteDataManager();
+                    List<Suite> suiteList = sdm.getSuitesMsgTypes();
+
+                    for (Suite s : suiteList) {
+                        suiteNames.add(s.getName());
+                    }
+
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "Error retrieving suite data from the database: ",
+                            e);
+                    return suiteNames;
+                }
+
+                return suiteNames;
             }
         });
     }
@@ -202,7 +213,8 @@ public class CreateNewProgram extends CaveSWTDialog {
         saveBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                close();
+                handleSaveProgram();
+
             }
         });
 
@@ -214,43 +226,62 @@ public class CreateNewProgram extends CaveSWTDialog {
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                setReturnValue(null);
                 close();
             }
         });
     }
 
-    /**********************************************************************
-     * 
-     * TODO: remove dummy code
-     * 
-     */
+    private void handleSuitesAdded(List<Suite> suiteList) {
+        addedSuitesList.addAll(suiteList);
+        suiteConfigGroup.populateSuiteTable(addedSuitesList, false);
+    }
 
-    // TODO: remove when bringing in selected suites from other dialogs.
+    private void handleDeleteSuite(Suite suite) {
+        for (int i = 0; i < addedSuitesList.size(); i++) {
+            if (addedSuitesList.get(i).getId() == suite.getId()) {
+                addedSuitesList.remove(i);
+                break;
+            }
+        }
 
-    private void populateSelectedSuiteTable() {
+        suiteConfigGroup.populateSuiteTable(addedSuitesList, false);
+    }
 
-        List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("Suite Name", 150);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Category");
-        columnNames.add(tcd);
+    private void handleSaveProgram() {
 
-        TableData td = new TableData(columnNames);
+        if (addedSuitesList.isEmpty()) {
+            DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
+                    "No Suites Added",
+                    "No suites have been added to the program.");
+            return;
+        }
 
-        TableRowData trd = new TableRowData();
+        ProgramNameValidator pnv = new ProgramNameValidator(
+                existingProgramNames);
 
-        trd.addTableCellData(new TableCellData("Suite - 1"));
-        trd.addTableCellData(new TableCellData("General"));
+        if (!pnv.validateInputText(shell, programTF.getText().trim())) {
+            return;
+        }
 
-        td.addDataRow(trd);
+        Program newProgram = new Program();
+        newProgram.setName(programTF.getText().trim());
+        newProgram.setSuites(addedSuitesList);
 
-        trd = new TableRowData();
+        ProgramDataManager pdm = new ProgramDataManager();
+        try {
+            pdm.saveProgram(newProgram);
+        } catch (Exception e) {
+            statusHandler.error("Error saving program " + newProgram.getName()
+                    + " to the database: ", e);
 
-        trd.addTableCellData(new TableCellData("Suite - 2"));
-        trd.addTableCellData(new TableCellData("Exclusive"));
+            // TODO : do we really want to return here? Need to think about how
+            // to handle this.
+            return;
+        }
 
-        td.addDataRow(trd);
+        setReturnValue(programTF.getText().trim());
 
-        selectedSuiteTable.populateTable(td);
+        close();
     }
 }

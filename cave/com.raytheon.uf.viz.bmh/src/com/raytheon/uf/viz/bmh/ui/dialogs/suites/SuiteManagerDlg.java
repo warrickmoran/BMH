@@ -65,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 12, 2014  #3490     lvenable    Updated code to use database data.
  * Aug 15, 2014  #3490     lvenable     Sort the list of suites, use suite data manager.
  * Aug 15, 2014  #3490     lvenable     Added copy, rename, other capabilities.
+ * Aug 15, 2014  #3490     lvenable     Added existing names.
  * 
  * </pre>
  * 
@@ -86,6 +87,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
     /** Suite data manger. */
     private SuiteDataManager suiteDataMgr = new SuiteDataManager();
 
+    /** Set of existing suite names. */
     private Set<String> suiteNames = new HashSet<String>();
 
     /**
@@ -145,7 +147,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
             }
 
             @Override
-            public void suitesUpdated() {
+            public void suitesUpdated(Suite suite) {
                 retrieveDataFromDB();
                 suiteConfigGroup.populateSuiteTable(suiteList, true);
             }
