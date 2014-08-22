@@ -21,8 +21,10 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
@@ -49,7 +51,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
-import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.CreateEditMsgTypesDlg.DialogType;
@@ -71,6 +72,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 12, 2014  #3490     lvenable    Added relationship code and convenience methods.
  * Aug 15, 2014  #3490     lvenable    Sort the list of message types.
  * Aug 18, 2014   3411     mpduff      Add validation.
+ * Aug 22, 2014   3411     lvenable    Update rename and made some tweaks.
  * 
  * </pre>
  * 
@@ -101,9 +103,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
     /** Message Data Type Manager */
     private final MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
 
-    protected InputTextDlg inputDlg;
+    // protected InputTextDlg inputDlg;
 
-    protected CreateEditMsgTypesDlg cemd;
+    private Set<String> existingNames = new HashSet<String>();
 
     /**
      * Constructor.
@@ -223,30 +225,25 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         renameBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (inputDlg == null || inputDlg.isDisposed()) {
-                    inputDlg = new InputTextDlg(shell, "Rename Message Type",
-                            "Type in a new message type name:",
-                            new IInputTextValidator() {
-                                @Override
-                                public boolean validateInputText(Shell shell,
-                                        String text) {
-                                    return isValid(text);
-                                }
-                            });
-                    inputDlg.setCloseCallback(new ICloseCallback() {
-                        @Override
-                        public void dialogClosed(Object returnValue) {
-                            if (returnValue != null
-                                    && returnValue instanceof String) {
-                                String name = (String) returnValue;
-                                renameMessageType(name);
-                            }
+
+                MessgaeTypeAfosValidator mtValidator = new MessgaeTypeAfosValidator(
+                        existingNames);
+
+                InputTextDlg inputDlg = new InputTextDlg(shell,
+                        "Rename Message Type",
+                        "Type in a new message type name:", mtValidator, true);
+                inputDlg.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        if (returnValue != null
+                                && returnValue instanceof String) {
+                            String name = (String) returnValue;
+                            renameMessageType(name);
                         }
-                    });
-                    inputDlg.open();
-                } else {
-                    inputDlg.bringToTop();
-                }
+                    }
+                });
+
+                inputDlg.open();
             }
         });
         msgTypeControls.add(renameBtn);
@@ -259,13 +256,10 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         editBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (cemd == null || cemd.isDisposed()) {
-                    cemd = new CreateEditMsgTypesDlg(shell, DialogType.EDIT,
-                            messageTypeList, getSelectedMessageType());
-                    cemd.open();
-                } else {
-                    cemd.bringToTop();
-                }
+                CreateEditMsgTypesDlg cemd = new CreateEditMsgTypesDlg(shell,
+                        DialogType.EDIT, messageTypeList,
+                        getSelectedMessageType());
+                cemd.open();
             }
         });
         msgTypeControls.add(editBtn);
@@ -357,8 +351,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
      */
     @Override
     public boolean okToClose() {
-        if (cemd != null && !cemd.isDisposed() && inputDlg != null
-                && !inputDlg.isDisposed()) {
+        if (isDisposed()) {
             return true;
         }
 
@@ -377,6 +370,12 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             statusHandler
                     .error("Error retrieving message type data from the database: ",
                             e);
+        }
+
+        existingNames.clear();
+
+        for (MessageType mt : messageTypeList) {
+            existingNames.add(mt.getAfosid());
         }
     }
 

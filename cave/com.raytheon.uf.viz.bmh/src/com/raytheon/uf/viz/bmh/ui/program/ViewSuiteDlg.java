@@ -61,6 +61,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * Aug 12, 2014  #3490     lvenable     Update to use data from the database.
  * Aug 15, 2014  #3490     lvenable     Reworked to use the data manager.
+ * Aug 22, 2014  #3490     lvenable     Added resize and minimum size.
  * 
  * </pre>
  * 
@@ -94,7 +95,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
      *            The selected suite.
      */
     public ViewSuiteDlg(Shell parentShell, Suite selectedSuite) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
+        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL | SWT.RESIZE,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
         this.selectedSuite = selectedSuite;
@@ -118,6 +119,11 @@ public class ViewSuiteDlg extends CaveSWTDialog {
 
     @Override
     protected void disposed() {
+    }
+
+    @Override
+    protected void opened() {
+        shell.setMinimumSize(shell.getSize());
     }
 
     @Override
@@ -168,11 +174,13 @@ public class ViewSuiteDlg extends CaveSWTDialog {
     private void createProgramControls() {
         Composite controlComp = new Composite(shell, SWT.NONE);
         controlComp.setLayout(new GridLayout(1, false));
-        controlComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
-                false));
+        controlComp.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
+        GridData gd = new GridData();
+        gd.horizontalIndent = 5;
         Label nameLbl = new Label(controlComp, SWT.NONE);
         nameLbl.setText("Associated Programs:");
+        nameLbl.setLayoutData(gd);
 
         programTable = new ProgramTable(controlComp, 500, 100);
     }
@@ -183,11 +191,11 @@ public class ViewSuiteDlg extends CaveSWTDialog {
     private void createMessageTypeControls() {
         Composite controlComp = new Composite(shell, SWT.NONE);
         controlComp.setLayout(new GridLayout(1, false));
-        controlComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
-                false));
+        controlComp.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         GridData gd = new GridData();
         gd.verticalIndent = 10;
+        gd.horizontalIndent = 5;
         Label nameLbl = new Label(controlComp, SWT.NONE);
         nameLbl.setText("Associated Message Types:");
         nameLbl.setLayoutData(gd);

@@ -83,6 +83,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 15, 2014  #3490     lvenable     Sort the list of message types, use data manager.
  * Aug 18, 2014  #3490     lvenable     Added save, create, add, remove, sort capabilities.
  * Aug 21, 2014  #3490     lvenable     Updated suite capabilities.
+ * Aug 22, 2014  #3490     lvenable     Updated controls that disable/enable.
  * 
  * </pre>
  * 
@@ -275,7 +276,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         populateMsgTypesInSuiteList();
         populateSelectedMsgTypesTable(false);
         populateAvailableMessageTypeTable();
-        enableDisableAddRemoveBtns();
+        enableDisableAddRemoveTriggerBtns();
     }
 
     /**
@@ -362,7 +363,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         selectedMsgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {
-                enableDisableAddRemoveBtns();
+                enableDisableAddRemoveTriggerBtns();
             }
         });
 
@@ -542,9 +543,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     /**
      * Enable/Disable the Add and Remove buttons.
      */
-    private void enableDisableAddRemoveBtns() {
+    private void enableDisableAddRemoveTriggerBtns() {
         addMsgTypesBtn.setEnabled(availableMsgTypeTable.hasSelectedItems());
         removeMsgTypesBtn.setEnabled(selectedMsgTypeTable.hasSelectedItems());
+        setTriggersBtn.setEnabled(selectedMsgTypeTable.hasSelectedItems());
     }
 
     /**
@@ -695,6 +697,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         }
 
         populateSelectedMsgTypesTable(true);
+        enableDisableAddRemoveTriggerBtns();
     }
 
     /**
@@ -712,6 +715,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         }
 
         populateSelectedMsgTypesTable(true);
+        enableDisableAddRemoveTriggerBtns();
     }
 
     /**

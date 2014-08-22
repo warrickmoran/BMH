@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
+package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.Set;
 
@@ -28,7 +28,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
 
 /**
- * Validator to validate the suite name.
+ * Validator to validate the message type name.
  * 
  * <pre>
  * 
@@ -36,8 +36,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 18, 2014  #3490     lvenable     Initial creation
- * Aug 22, 2014  #3490     lvenable     Tweaked message.
+ * Aug 22, 2014  #3490     lvenable     Initial creation
  * 
  * </pre>
  * 
@@ -45,7 +44,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * @version 1.0
  */
 
-public class SuiteNameValidator implements IInputTextValidator {
+public class MessgaeTypeAfosValidator implements IInputTextValidator {
 
     /**
      * Set of existing names.
@@ -55,7 +54,7 @@ public class SuiteNameValidator implements IInputTextValidator {
     /**
      * Constructor.
      */
-    public SuiteNameValidator() {
+    public MessgaeTypeAfosValidator() {
 
     }
 
@@ -65,18 +64,16 @@ public class SuiteNameValidator implements IInputTextValidator {
      * @param existingNames
      *            Existing names to check against.
      */
-    public SuiteNameValidator(Set<String> existingNames) {
+    public MessgaeTypeAfosValidator(Set<String> existingNames) {
         this.existingNames = existingNames;
     }
 
     @Override
     public boolean validateInputText(Shell parentShell, String text) {
-
-        if (text.matches("[\\sA-Za-z0-9._-]+") == false) {
+        if (text.matches("[A-Z0-9]+") == false) {
             StringBuilder sb = new StringBuilder();
 
-            sb.append("The Suite name must be at least one character, be aplhanumeric, and can ");
-            sb.append("contain blank spaces, periods, dashes, or underscores.");
+            sb.append("The Message Type name must be 7-9 characters, capital letters or numbers.");
 
             DialogUtility.showMessageBox(parentShell,
                     SWT.ICON_WARNING | SWT.OK, "Invalid Name", sb.toString());
@@ -87,7 +84,7 @@ public class SuiteNameValidator implements IInputTextValidator {
         if (existingNames != null && existingNames.contains(text)) {
             StringBuilder sb = new StringBuilder();
 
-            sb.append("The Suite name already exists.  Please enter another name.");
+            sb.append("The Message Type name already exists.  Please enter another name.");
 
             DialogUtility.showMessageBox(parentShell,
                     SWT.ICON_WARNING | SWT.OK, "Existing Name", sb.toString());

@@ -64,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 29, 2014  #3420     lvenable     Initial creation
  * Aug 12, 2014  #3490     lvenable    Updated to view message type relationships.
  * Aug 15, 2014  #3490     lvenable    Updated to use Program and Suite data managers.
+ * Aug 22, 2014  #3490     lvenable    Added resize and minimum size.
  * 
  * </pre>
  * 
@@ -98,7 +99,7 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
      *            Parent shell.
      */
     public ViewMessageTypeDlg(Shell parentShell, MessageType msgType) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
+        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL | SWT.RESIZE,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
         this.msgType = msgType;
@@ -122,6 +123,11 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
 
     @Override
     protected void disposed() {
+    }
+
+    @Override
+    protected void opened() {
+        shell.setMinimumSize(shell.getSize());
     }
 
     @Override
@@ -175,8 +181,11 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
         controlComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
+        GridData gd = new GridData();
+        gd.horizontalIndent = 5;
         Label nameLbl = new Label(controlComp, SWT.NONE);
         nameLbl.setText("Associated Programs:");
+        nameLbl.setLayoutData(gd);
 
         programTable = new ProgramTable(controlComp, 500, 100);
     }
@@ -192,6 +201,7 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
 
         GridData gd = new GridData();
         gd.verticalIndent = 10;
+        gd.horizontalIndent = 5;
         Label nameLbl = new Label(controlComp, SWT.NONE);
         nameLbl.setText("Associated Suites:");
         nameLbl.setLayoutData(gd);

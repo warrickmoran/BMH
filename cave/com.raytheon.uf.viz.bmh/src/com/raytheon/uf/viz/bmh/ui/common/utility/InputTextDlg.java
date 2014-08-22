@@ -47,6 +47,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jul 7, 2014   #3174     lvenable     Initial creation
  * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
+ * Aug 22, 2014  #3490      lvenable    Updated code to handle making code all-caps.
  * 
  * </pre>
  * 
@@ -67,6 +68,8 @@ public class InputTextDlg extends CaveSWTDialog {
     /** Text validator. */
     private IInputTextValidator textValidator;
 
+    private boolean upcaseText;
+
     /**
      * Constructor.
      * 
@@ -80,8 +83,9 @@ public class InputTextDlg extends CaveSWTDialog {
      *            Text validator.
      */
     public InputTextDlg(Shell parentShell, String title, String descriptionTxt,
-            IInputTextValidator textValidator) {
-        this(parentShell, title, descriptionTxt, null, textValidator);
+            IInputTextValidator textValidator, boolean upcaseText) {
+        this(parentShell, title, descriptionTxt, null, textValidator,
+                upcaseText);
     }
 
     /**
@@ -99,7 +103,7 @@ public class InputTextDlg extends CaveSWTDialog {
      *            Text validator.
      */
     public InputTextDlg(Shell parentShell, String title, String descriptionTxt,
-            String tfText, IInputTextValidator textValidator) {
+            String tfText, IInputTextValidator textValidator, boolean upcaseText) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
@@ -170,8 +174,13 @@ public class InputTextDlg extends CaveSWTDialog {
             public void widgetSelected(SelectionEvent e) {
                 // If the text validator is null then verify there is text in
                 // the input field before returning.
+                String inputText = inputTf.getText().trim();
 
-                inputTf.setText(inputTf.getText().trim());
+                if (upcaseText) {
+                    inputText = inputText.toUpperCase();
+                }
+
+                inputTf.setText(inputText);
 
                 if (textValidator == null) {
                     if (validInput()) {

@@ -79,6 +79,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 12, 2014  #3490      lvenable    Updated to use data from the database.
  * Aug 15, 2014  #3490      lvenable    Updated to use data managers, added rename capability.
  * Aug 21, 2014  #3490      lvenable    Updated for program changes.
+ * Aug 22, 2014  #3490      lvenable    Added input dialog flag.
  * 
  * </pre>
  * 
@@ -272,7 +273,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                         programNames);
 
                 InputTextDlg inputDlg = new InputTextDlg(shell,
-                        "Rename Program", "Type in a new program name:", pnv);
+                        "Rename Program", "Type in a new program name:", pnv,
+                        false);
                 inputDlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {

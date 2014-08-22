@@ -66,6 +66,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 15, 2014  #3490     lvenable     Sort the list of suites, use suite data manager.
  * Aug 15, 2014  #3490     lvenable     Added copy, rename, other capabilities.
  * Aug 15, 2014  #3490     lvenable     Added existing names.
+ * Aug 22, 2014  #3490     lvenable     Added input dialog flag.
  * 
  * </pre>
  * 
@@ -162,7 +163,8 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
                 SuiteNameValidator snv = new SuiteNameValidator(suiteNames);
 
                 InputTextDlg inputDlg = new InputTextDlg(shell, "Rename Suite",
-                        "Type in a new suite name: ", suite.getName(), snv);
+                        "Type in a new suite name: ", suite.getName(), snv,
+                        false);
                 inputDlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
@@ -180,7 +182,8 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
                 SuiteNameValidator snv = new SuiteNameValidator(suiteNames);
 
                 InputTextDlg inputDlg = new InputTextDlg(shell, "Copy Suite",
-                        "Type in a new suite name: ", suite.getName(), snv);
+                        "Type in a new suite name: ", suite.getName(), snv,
+                        false);
                 inputDlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
