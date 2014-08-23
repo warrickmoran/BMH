@@ -20,7 +20,9 @@
 package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -31,13 +33,19 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
-import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -50,6 +58,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2014  #3174     lvenable     Initial creation
+ * Aug 23, 2014  #3490     lvenable     Hook up transmitter data.
  * 
  * </pre>
  * 
@@ -58,11 +67,24 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 public class AddTransmittersDlg extends CaveSWTDialog {
 
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(AddTransmittersDlg.class);
+
     /** Program name. */
     private String programName;
 
     /** Table listing the available transmitters. */
     private TransmitterTable tableComp;
+
+    /** List of transmitter groups. */
+    private List<TransmitterGroup> transmitterGrps = null;
+
+    /** Map of transmitter group name (key) and program name (value). */
+    private Map<String, String> transGrpProgramMap = null;
+
+    /** List of selected transmitters. */
+    private List<TransmitterGroup> selectedTransmitters = new ArrayList<TransmitterGroup>();
 
     /**
      * Constructor.
@@ -72,11 +94,13 @@ public class AddTransmittersDlg extends CaveSWTDialog {
      * @param programName
      *            Program name.
      */
-    public AddTransmittersDlg(Shell parentShell, String programName) {
+    public AddTransmittersDlg(Shell parentShell, String programName,
+            Map<String, String> transGrpProgramMap) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
                 | CAVE.MODE_INDEPENDENT);
 
         this.programName = programName;
+        this.transGrpProgramMap = transGrpProgramMap;
     }
 
     @Override
@@ -103,6 +127,8 @@ public class AddTransmittersDlg extends CaveSWTDialog {
     protected void initializeComponents(Shell shell) {
         setText("Add Transmitters");
 
+        retrieveTransmitterData();
+
         createTransmitterTable();
         createBottomButtons();
     }
@@ -111,11 +137,14 @@ public class AddTransmittersDlg extends CaveSWTDialog {
      * Create the transmitter table.
      */
     private void createTransmitterTable() {
+        GridData gd = new GridData();
+        gd.horizontalIndent = 5;
         Label selectLbl = new Label(shell, SWT.NONE);
         selectLbl.setText("Select transmitter(s) to add to progam "
                 + programName + ": ");
+        selectLbl.setLayoutData(gd);
 
-        tableComp = new TransmitterTable(shell, 400, 150);
+        tableComp = new TransmitterTable(shell, 650, 150);
 
         populateTransmitterTable();
     }
@@ -140,6 +169,7 @@ public class AddTransmittersDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (confirmMessage()) {
+                    setReturnValue(selectedTransmitters);
                     close();
                 }
             }
@@ -165,52 +195,104 @@ public class AddTransmittersDlg extends CaveSWTDialog {
      * @return True to add the transmitters.
      */
     private boolean confirmMessage() {
+        int[] indices = tableComp.getSelectedIndices();
 
-        // TODO: change to use the message box in the utility class once it
-        // passes review.
-        MessageBox mb = new MessageBox(shell, SWT.ICON_QUESTION | SWT.OK
-                | SWT.CANCEL);
-        mb.setText("Adding");
-        mb.setMessage("Transmitters added to " + programName
-                + " will remove the transmitters from their current program.");
-        int rv = mb.open();
+        selectedTransmitters.clear();
 
-        if (rv == SWT.CANCEL) {
-            return false;
+        for (int i = 0; i < indices.length; i++) {
+            selectedTransmitters.add(transmitterGrps.get(indices[i]));
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (TransmitterGroup tg : selectedTransmitters) {
+            if (transGrpProgramMap.containsKey(tg.getName())) {
+                sb.append(tg.getName()).append("\n");
+            }
+        }
+
+        if (sb.length() > 0) {
+
+            sb.insert(0,
+                    "The following transmitters/groups have assigned programs:\n\n");
+            sb.append("\nDo you wish to continue assigning the program "
+                    + programName + "to these transmitters/groups?");
+
+            int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
+                    | SWT.OK | SWT.CANCEL, "Replace Program", sb.toString());
+
+            if (result == SWT.CANCEL) {
+                return false;
+            }
         }
 
         return true;
     }
 
-    /**********************************************************************
-     * 
-     * TODO: remove dummy code
-     * 
+    /**
+     * Get the transmitter group data from the database.
      */
+    private void retrieveTransmitterData() {
+        TransmitterDataManager tdm = new TransmitterDataManager();
 
+        try {
+            transmitterGrps = tdm.getTransmitterGroups();
+
+            Collections.sort(transmitterGrps,
+                    new TransmitterGroupPositionComparator());
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving transmitter data from the database: ", e);
+            return;
+        }
+    }
+
+    /**
+     * Populate the transmitter/group table.
+     */
     private void populateTransmitterTable() {
 
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("Transmitter", 150);
+        TableColumnData tcd = new TableColumnData("Group/Transmitter", 130);
         columnNames.add(tcd);
-        tcd = new TableColumnData("Current Program");
+        tcd = new TableColumnData("Transmitter(s)", 250);
         columnNames.add(tcd);
-        TableData td = new TableData(columnNames);
+        tcd = new TableColumnData("Assigned Program");
+        columnNames.add(tcd);
+        TableData transGrpTableData = new TableData(columnNames);
 
-        TableRowData trd = new TableRowData();
+        for (TransmitterGroup tg : transmitterGrps) {
 
-        trd.addTableCellData(new TableCellData("Trans - 1"));
-        trd.addTableCellData(new TableCellData("Program - 1"));
+            // If the program is the current program selected then don't put it
+            // in the list.
+            if (programName.equals(transGrpProgramMap.get(tg.getName()))) {
+                continue;
+            }
 
-        td.addDataRow(trd);
+            TableRowData trd = new TableRowData();
 
-        trd = new TableRowData();
+            trd.addTableCellData(new TableCellData(tg.getName()));
 
-        trd.addTableCellData(new TableCellData("Trans - 2"));
-        trd.addTableCellData(new TableCellData("Program - 2"));
+            List<Transmitter> transList = tg.getTransmitterList();
+            StringBuilder sb = new StringBuilder();
+            for (Transmitter t : transList) {
+                if (sb.length() > 0) {
+                    sb.append(", ");
+                }
+                sb.append(t.getName());
+            }
 
-        td.addDataRow(trd);
-        tableComp.populateTable(td);
+            trd.addTableCellData(new TableCellData(sb.toString()));
 
+            if (transGrpProgramMap.containsKey(tg.getName())) {
+                trd.addTableCellData(new TableCellData(transGrpProgramMap
+                        .get(tg.getName())));
+            } else {
+                trd.addTableCellData(new TableCellData("No Assigned Program"));
+            }
+
+            transGrpTableData.addDataRow(trd);
+        }
+
+        tableComp.populateTable(transGrpTableData);
     }
 }

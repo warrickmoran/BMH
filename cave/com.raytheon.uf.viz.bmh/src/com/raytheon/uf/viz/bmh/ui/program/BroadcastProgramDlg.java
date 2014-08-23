@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
@@ -80,6 +82,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 15, 2014  #3490      lvenable    Updated to use data managers, added rename capability.
  * Aug 21, 2014  #3490      lvenable    Updated for program changes.
  * Aug 22, 2014  #3490      lvenable    Added input dialog flag.
+ * Aug 23, 2014  #3490      lvenable    Added capability for add transmitters.
  * 
  * </pre>
  * 
@@ -143,7 +146,11 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     /** Program data manager. */
     private ProgramDataManager programDataMgr = new ProgramDataManager();
 
+    /** Set of existing program names. */
     private Set<String> existingProgramNames = new HashSet<String>();
+
+    /** Custom tool tip. */
+    private CustomToolTip transmitterToolTip = null;
 
     /**
      * Constructor.
@@ -331,8 +338,32 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         assignTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                Map<String, String> transGrpProgramMap = new HashMap<String, String>();
+
+                for (Program p : programsArray) {
+                    for (TransmitterGroup tg : p.getTransmitterGroups()) {
+                        if (transGrpProgramMap.containsKey(tg.getName())) {
+                            continue;
+                        }
+                        transGrpProgramMap.put(tg.getName(), p.getName());
+                    }
+                }
+
                 AddTransmittersDlg atd = new AddTransmittersDlg(shell,
-                        programCbo.getItem(programCbo.getSelectionIndex()));
+                        programCbo.getItem(programCbo.getSelectionIndex()),
+                        transGrpProgramMap);
+                atd.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        if (returnValue != null
+                                && returnValue instanceof List<?>) {
+
+                            List<TransmitterGroup> selectedTransmitters = (List<TransmitterGroup>) returnValue;
+
+                            handleAddTransmitters(selectedTransmitters);
+                        }
+                    }
+                });
                 atd.open();
             }
         });
@@ -417,6 +448,35 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         if (suiteID != Integer.MIN_VALUE) {
             suiteConfigGroup.selectSuiteInTable(suiteID);
         }
+    }
+
+    /**
+     * Handle adding transmitters/groups to the program.
+     * 
+     * @param selectedTransmitters
+     *            List of transmitter groups.
+     */
+    private void handleAddTransmitters(
+            List<TransmitterGroup> selectedTransmitters) {
+
+        for (TransmitterGroup tg : selectedTransmitters) {
+            selectedProgram.addTransmitterGroup(tg);
+        }
+
+        try {
+            programDataMgr.saveProgram(selectedProgram);
+        } catch (Exception e) {
+            statusHandler.error("Error adding suite(s) to program "
+                    + selectedProgram.getName(), e);
+        }
+
+        retrieveProgramDataFromDB();
+        populateProgramCombo(true);
+        populateTransmitters();
+        populateSuiteTable(true);
+
+        populateMsgTypeTable(suiteConfigGroup.getSelectedSuite());
+        updateSuiteGroupText();
     }
 
     /**
@@ -792,18 +852,32 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
         if (index >= 0) {
             transmitterList.clear();
-            StringBuilder sb = new StringBuilder(" ");
+            StringBuilder sb = new StringBuilder();
+            StringBuilder sbToolTip = new StringBuilder();
             Program prog = programsArray.get(index);
             Set<TransmitterGroup> transGrp = prog.getTransmitterGroups();
             for (TransmitterGroup tg : transGrp) {
+                sbToolTip.append(tg.getName()).append(": ");
                 Set<Transmitter> transmitters = tg.getTransmitters();
                 for (Transmitter t : transmitters) {
-                    sb.append(t.getName()).append(" ");
                     transmitterList.add(t);
+                    sbToolTip.append(t.getName());
                 }
+                if (sb.length() > 0) {
+                    sb.append(", ");
+                }
+                sb.append(tg.getName());
+                sbToolTip.append("\n");
             }
             transmitterListLbl.setText(sb.toString());
-            transmitterListLbl.setToolTipText(sb.toString());
+
+            if (transmitterToolTip == null) {
+                transmitterToolTip = new CustomToolTip(transmitterListLbl,
+                        sbToolTip.toString());
+            } else {
+                transmitterToolTip.setText(sbToolTip.toString());
+            }
+
         }
     }
 

@@ -852,12 +852,6 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                 if (returnValue != null && returnValue instanceof CheckListData) {
                     CheckListData listData = (CheckListData) returnValue;
                     handleTransmitterGroupUpdate(listData.getDataMap());
-
-                    // for (String str : dataMap.keySet()) {
-                    // System.out.println("Type = " + str + "\t Selected: "
-                    // + dataMap.get(str));
-                    // }
-
                 }
             }
         });

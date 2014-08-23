@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.common.utility;
 
+import java.awt.Toolkit;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseTrackAdapter;
@@ -47,6 +49,8 @@ import org.eclipse.swt.widgets.Shell;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 01, 2014 #3338      lvenable     Initial creation
+ * Aug 23, 2014 #3490      lvenable     Add a fix for finding the total screen width of
+ *                                      multiple monitors.
  * 
  * </pre>
  * 
@@ -103,8 +107,10 @@ public class CustomToolTip {
         this.tipControl = tipControl;
         this.tipText = tipText;
 
+        int screenRes = Toolkit.getDefaultToolkit().getScreenSize().width;
+
         tipFontData = new FontData("Monospace", 10, SWT.NORMAL);
-        screenWidth = this.display.getPrimaryMonitor().getBounds().width;
+        screenWidth = screenRes;
         screenHeight = this.display.getPrimaryMonitor().getBounds().height;
 
         setupMouseListeners();
