@@ -54,6 +54,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 28, 2014    3407    mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Aug 05, 2014 3175       rjpeter     Fixed saveWord validation.
+ * Aug 23, 2014    3432    mpduff      Changed to Primary_modal
  * </pre>
  * 
  * @author mpduff
@@ -93,7 +94,7 @@ public class NewEditWordDlg extends CaveSWTDialog {
      *            The dictionary where this word will be added
      */
     public NewEditWordDlg(Shell parentShell, Word word, Dictionary dictionary) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.APPLICATION_MODAL,
+        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
 
         if (word == null) {

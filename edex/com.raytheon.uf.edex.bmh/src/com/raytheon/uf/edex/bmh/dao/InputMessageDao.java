@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.orm.hibernate3.HibernateTemplate;
@@ -38,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
+ * Aug 15, 2014  3432     mpduff      Added getPeriodicMessages
  * 
  * </pre>
  * 
@@ -95,4 +98,26 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
         return false;
     }
 
+    /**
+     * Get a list of Periodic messages
+     * 
+     * @return
+     */
+    public List<InputMessage> getPeriodicMessages() {
+        // TODO optimize this query
+        List<Object> allObjects = this.loadAll();
+        if (allObjects == null) {
+            return Collections.emptyList();
+        }
+
+        List<InputMessage> messageList = new ArrayList<InputMessage>();
+        for (Object obj : allObjects) {
+            InputMessage msg = (InputMessage) obj;
+            if (msg.isPeriodic()) {
+                messageList.add(msg);
+            }
+        }
+
+        return messageList;
+    }
 }

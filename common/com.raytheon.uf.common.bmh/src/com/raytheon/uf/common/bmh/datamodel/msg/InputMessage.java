@@ -51,6 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 16, 2014  3283     bsteffen    Initial creation
+ * Aug 14, 2014  3432     mpduff      Added isPeriodic method
  * 
  * </pre>
  * 
@@ -412,6 +413,22 @@ public class InputMessage {
 
     public void setValidHeader(boolean validHeader) {
         this.validHeader = validHeader;
+    }
+
+    /**
+     * Check if this message is periodic or not.
+     * 
+     * @return true if periodic, false if not
+     */
+    public boolean isPeriodic() {
+        try {
+            if (periodicity != null && Integer.parseInt(periodicity) > 0) {
+                return true;
+            }
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        return false;
     }
 
     @Override

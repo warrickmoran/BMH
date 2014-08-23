@@ -35,7 +35,8 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * ------------ ---------- ----------- --------------------------
  * Jul 22, 2014    3411    mpduff      Initial creation
  * Aug 5, 2014  #3490      lvenable    Updated action
- * Aug 17, 2014  #3490      lvenable    Updated action and added messageType.
+ * Aug 14, 2014    3432    mpduff      Added Afosid
+ * Aug 17, 2014  #3490     lvenable    Updated action and added messageType.
  * 
  * </pre>
  * 
@@ -45,7 +46,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 @DynamicSerialize
 public class MessageTypeRequest implements IServerRequest {
     public enum MessageTypeAction {
-        AllMessageTypes, Delete, Save;
+        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId;
     }
 
     @DynamicSerializeElement
@@ -53,6 +54,12 @@ public class MessageTypeRequest implements IServerRequest {
 
     @DynamicSerializeElement
     private MessageType messageType;
+
+    @DynamicSerializeElement
+    private String afosId;
+
+    @DynamicSerializeElement
+    private long pkId;
 
     /**
      * @return the action
@@ -75,5 +82,35 @@ public class MessageTypeRequest implements IServerRequest {
 
     public void setMessageType(MessageType messageType) {
         this.messageType = messageType;
+    }
+
+    /**
+     * @return the afosId
+     */
+    public String getAfosId() {
+        return afosId;
+    }
+
+    /**
+     * @param afosId
+     *            the afosId to set
+     */
+    public void setAfosId(String afosId) {
+        this.afosId = afosId;
+    }
+
+    /**
+     * @return the pkId
+     */
+    public long getPkId() {
+        return pkId;
+    }
+
+    /**
+     * @param pkId
+     *            the pkId to set
+     */
+    public void setPkId(long pkId) {
+        this.pkId = pkId;
     }
 }

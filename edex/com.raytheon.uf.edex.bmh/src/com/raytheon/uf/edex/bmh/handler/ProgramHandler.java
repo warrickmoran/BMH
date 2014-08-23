@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
@@ -36,8 +37,9 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 5, 2014   #3490     lvenable     Initial creation
- * Aug 12, 2014 #3490      lvenable     Refactored to make a query convenience method.
+ * Aug 05, 2014   #3490    lvenable    Initial creation
+ * Aug 12, 2014   #3490    lvenable    Refactored to make a query convenience method.
+ * Aug 15, 2014    3432    mpduff      Added getProgramForTransmitterGroup
  * Aug 17, 2014 #3490      lvenable     Added save and delete.
  * 
  * </pre>
@@ -68,6 +70,9 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
             break;
         case Save:
             programResponse = saveProgram(request);
+            break;
+        case GetProgramForTransmitterGroup:
+            programResponse = getProgramForTransmitterGroup(request);
             break;
         default:
             break;
@@ -103,6 +108,18 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
         List<Program> programList = dao.getProgramSuites();
         response.setProgramList(programList);
 
+        return response;
+    }
+
+    private ProgramResponse getProgramForTransmitterGroup(ProgramRequest req) {
+        ProgramDao dao = new ProgramDao();
+        ProgramResponse response = new ProgramResponse();
+
+        Program program = dao.getProgramForTransmitterGroup(req
+                .getTransmitterGroup());
+        List<Program> pList = new ArrayList<>();
+        pList.add(program);
+        response.setProgramList(pList);
         return response;
     }
 

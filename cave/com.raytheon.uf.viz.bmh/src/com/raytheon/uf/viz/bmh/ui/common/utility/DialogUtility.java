@@ -87,4 +87,10 @@ public class DialogUtility {
         mb.setMessage(message);
         return mb.open();
     }
+
+    // TODO Remove this method
+    public static void notImplemented(Shell shell) {
+        showMessageBox(shell, SWT.ICON_INFORMATION, "Not Implemented",
+                "This function is not yet implemented");
+    }
 }

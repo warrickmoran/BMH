@@ -19,15 +19,12 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Message Type data response object
+ * Playlist response object
  * 
  * <pre>
  * 
@@ -35,9 +32,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 22, 2014    3411    mpduff      Initial creation
- * Aug  5, 2014  #3490     lvenable    Added code.
- * Aug 15, 2014    3432    mpduff      Added addMessageType.
+ * Aug 15, 2014    3432    mpduff      Initial creation
  * 
  * </pre>
  * 
@@ -45,40 +40,23 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class MessageTypeResponse {
+public class PlaylistResponse {
 
     @DynamicSerializeElement
-    private List<MessageType> messageTypeList;
+    private Playlist playlist;
 
     /**
-     * Get the message type list.
-     * 
-     * @return List of message types.
+     * @return the playlist
      */
-    public List<MessageType> getMessageTypeList() {
-        return messageTypeList;
+    public Playlist getPlaylist() {
+        return playlist;
     }
 
     /**
-     * Set the message type list.
-     * 
-     * @param messageTypeList
-     *            The message type list.
+     * @param playlist
+     *            the playlist to set
      */
-    public void setMessageTypeList(List<MessageType> messageTypeList) {
-        this.messageTypeList = messageTypeList;
-    }
-
-    /**
-     * Add a {@link MessageType} to this object.
-     * 
-     * @param m
-     */
-    public void addMessageType(MessageType m) {
-        if (messageTypeList == null) {
-            this.messageTypeList = new ArrayList<>();
-        }
-
-        messageTypeList.add(m);
+    public void setPlaylist(Playlist playlist) {
+        this.playlist = playlist;
     }
 }

@@ -19,15 +19,12 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * Message Type data response object
+ * Playlist request object.
  * 
  * <pre>
  * 
@@ -35,9 +32,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 22, 2014    3411    mpduff      Initial creation
- * Aug  5, 2014  #3490     lvenable    Added code.
- * Aug 15, 2014    3432    mpduff      Added addMessageType.
+ * Aug 15, 2014    3432    mpduff      Initial creation
  * 
  * </pre>
  * 
@@ -45,40 +40,62 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class MessageTypeResponse {
+public class PlaylistRequest implements IServerRequest {
+    public enum PlaylistAction {
+        GET_PLAYLIST_BY_SUITE_GROUP
+    }
 
     @DynamicSerializeElement
-    private List<MessageType> messageTypeList;
+    private PlaylistAction action;
+
+    @DynamicSerializeElement
+    private String suiteName;
+
+    @DynamicSerializeElement
+    private String groupName;
 
     /**
-     * Get the message type list.
-     * 
-     * @return List of message types.
+     * @return the action
      */
-    public List<MessageType> getMessageTypeList() {
-        return messageTypeList;
+    public PlaylistAction getAction() {
+        return action;
     }
 
     /**
-     * Set the message type list.
-     * 
-     * @param messageTypeList
-     *            The message type list.
+     * @param action
+     *            the action to set
      */
-    public void setMessageTypeList(List<MessageType> messageTypeList) {
-        this.messageTypeList = messageTypeList;
+    public void setAction(PlaylistAction action) {
+        this.action = action;
     }
 
     /**
-     * Add a {@link MessageType} to this object.
-     * 
-     * @param m
+     * @return the suiteName
      */
-    public void addMessageType(MessageType m) {
-        if (messageTypeList == null) {
-            this.messageTypeList = new ArrayList<>();
-        }
+    public String getSuiteName() {
+        return suiteName;
+    }
 
-        messageTypeList.add(m);
+    /**
+     * @param suiteName
+     *            the suiteName to set
+     */
+    public void setSuiteName(String suiteName) {
+        this.suiteName = suiteName;
+    }
+
+    /**
+     * @return the groupName
+     */
+    public String getGroupName() {
+        return groupName;
+    }
+
+    /**
+     * @param groupName
+     *            the groupName to set
+     */
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
     }
 }

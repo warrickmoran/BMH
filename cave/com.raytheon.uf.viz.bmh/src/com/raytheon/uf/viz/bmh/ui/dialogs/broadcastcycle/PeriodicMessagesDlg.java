@@ -29,6 +29,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
@@ -42,6 +44,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014    3432    mpduff      Initial creation
+ * Aug 14, 2014    3432    mpduff      Additional capabilities
+ * 
  * 
  * </pre>
  * 
@@ -50,6 +54,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 
 public class PeriodicMessagesDlg extends CaveSWTDialog {
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(PeriodicMessagesDlg.class);
 
     private PeriodicMessageTableComp tableComp;
 
@@ -95,10 +101,13 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
     }
 
     private void populateTableData() {
-        tableData = new BroadcastCycleDataManager()
-                .getPeriodicMessageTableData();
-
-        tableComp.populateTable(tableData);
+        try {
+            tableData = new BroadcastCycleDataManager()
+                    .getPeriodicMessageTableData();
+            tableComp.populateTable(tableData);
+        } catch (Exception e) {
+            statusHandler.error("Error accessing BMH Database.", e);
+        }
     }
 
     private void createBottomButtons() {
@@ -116,7 +125,8 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (detailsDlg == null || detailsDlg.isDisposed()) {
-                    detailsDlg = new MessageDetailsDlg(getShell());
+                    // TODO fix this instance of the dialog
+                    detailsDlg = new MessageDetailsDlg(getShell(), null, null);
                     detailsDlg.open();
                 } else {
                     detailsDlg.bringToTop();

@@ -61,6 +61,20 @@
         <constructor-arg ref="zoneAreaHandler" />
     </bean>
 
+    <bean id="playlistHandler" class="com.raytheon.uf.edex.bmh.handler.PlaylistHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.PlaylistRequest" />
+        <constructor-arg ref="playlistHandler" />
+    </bean>
+
+    <bean id="broadcastMsgHandler" class="com.raytheon.uf.edex.bmh.handler.BroadcastMessageHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.BroadcastMsgRequest" />
+        <constructor-arg ref="broadcastMsgHandler" />
+    </bean>
+
     <bean id="transmitterHandler" class="com.raytheon.uf.edex.bmh.handler.TransmitterHandler" />
     <bean factory-bean="handlerRegistry" factory-method="register">
         <constructor-arg
