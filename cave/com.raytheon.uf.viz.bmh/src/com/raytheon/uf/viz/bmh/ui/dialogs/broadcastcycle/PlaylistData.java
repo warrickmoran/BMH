@@ -28,12 +28,15 @@ import java.util.Map;
 
 import org.eclipse.swt.widgets.Display;
 
+import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -50,6 +53,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 21, 2014   3432     mpduff      Initial creation
+ * Aug 23, 2014   3432     mpduff      Add data
  * 
  * </pre>
  * 
@@ -58,6 +62,9 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  */
 
 public class PlaylistData {
+    private static IUFStatusHandler statusHandler = UFStatus
+            .getHandler(PlaylistData.class);
+
     private final SimpleDateFormat sdf = new SimpleDateFormat(
             "MM/dd/yy HH:mm:ss");
 
@@ -127,7 +134,7 @@ public class PlaylistData {
                 playlistMap.put(id.getBroadcastId(), broadcastMessage);
                 messageTypeMap.put(id.getBroadcastId(), messageType);
             } catch (Exception e) {
-                e.printStackTrace();
+                statusHandler.error("Error accessing BMH database", e);
             }
         }
     }
@@ -137,7 +144,7 @@ public class PlaylistData {
      * 
      * @param notification
      */
-    public void handlePLaybackStatusNotification(
+    public void handlePlaybackStatusNotification(
             MessagePlaybackStatusNotification notification) {
         PlaylistDataStructure playlistData = playlistDataMap.get(notification
                 .getTransmitterGroup());
@@ -244,5 +251,16 @@ public class PlaylistData {
             tableData.addDataRow(row);
         }
         return tableData;
+    }
+
+    /**
+     * Add data for a transmitter.
+     * 
+     * @param transmitterGrpName
+     * @param dataStruct
+     */
+    public void setData(String transmitterGrpName,
+            PlaylistDataStructure dataStruct) {
+        playlistDataMap.put(transmitterGrpName, dataStruct);
     }
 }
