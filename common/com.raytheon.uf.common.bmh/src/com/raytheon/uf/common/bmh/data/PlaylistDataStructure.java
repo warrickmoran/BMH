@@ -50,38 +50,54 @@ public class PlaylistDataStructure {
      * DacPlaylistMessageId -> BroadcastMsg
      */
     @DynamicSerializeElement
-    private final Map<Long, BroadcastMsg> playlistMap = new HashMap<>();
+    private Map<Long, BroadcastMsg> playlistMap;
 
     /**
      * Broadcast Message ID -> MessagePlaybackPrediction
      */
     @DynamicSerializeElement
-    private final Map<Long, MessagePlaybackPrediction> predictionMap = new HashMap<>();
+    private Map<Long, MessagePlaybackPrediction> predictionMap;
 
     /**
      * Broadcast Message ID -> MessageType
      */
     @DynamicSerializeElement
-    private final Map<Long, MessageType> messageTypeMap = new HashMap<>();
+    private Map<Long, MessageType> messageTypeMap;
 
-    /**
-     * @return the playlistMap
-     */
     public Map<Long, BroadcastMsg> getPlaylistMap() {
+        if (playlistMap == null) {
+            playlistMap = new HashMap<>();
+        }
+
         return playlistMap;
     }
 
-    /**
-     * @return the predictionMap
-     */
+    public void setPlaylistMap(Map<Long, BroadcastMsg> playlistMap) {
+        this.playlistMap = playlistMap;
+    }
+
     public Map<Long, MessagePlaybackPrediction> getPredictionMap() {
+        if (predictionMap == null) {
+            predictionMap = new HashMap<>();
+        }
+
         return predictionMap;
     }
 
-    /**
-     * @return the messageTypeMap
-     */
+    public void setPredictionMap(
+            Map<Long, MessagePlaybackPrediction> predictionMap) {
+        this.predictionMap = predictionMap;
+    }
+
     public Map<Long, MessageType> getMessageTypeMap() {
+        if (messageTypeMap == null) {
+            messageTypeMap = new HashMap<>();
+        }
+
         return messageTypeMap;
+    }
+
+    public void setMessageTypeMap(Map<Long, MessageType> messageTypeMap) {
+        this.messageTypeMap = messageTypeMap;
     }
 }
