@@ -273,6 +273,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         MenuItem help = new MenuItem(menuBar, SWT.CASCADE);
         help.setText("&Help");
+        help.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                DialogUtility.notImplemented(getShell());
+            }
+        });
 
         Menu helpmenu = new Menu(shell, SWT.DROP_DOWN);
         help.setMenu(helpmenu);

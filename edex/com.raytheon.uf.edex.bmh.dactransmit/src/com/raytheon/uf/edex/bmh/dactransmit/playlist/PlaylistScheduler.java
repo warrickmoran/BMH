@@ -84,6 +84,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  *                                      to the audio cache.
  * Aug 22, 2014  #3286     dgilling     Update playlist selection logic to use 
  *                                      creation and trigger time.
+ * Aug 24, 2014   3432     mpduff       Fixed for the case of only one playlist in the directory.
  * 
  * </pre>
  * 
@@ -131,7 +132,7 @@ public final class PlaylistScheduler implements
 
     private final PlaylistMessageCache cache;
 
-    private List<DacPlaylist> activePlaylists;
+    private final List<DacPlaylist> activePlaylists;
 
     private List<DacPlaylistMessageId> currentMessages;
 
@@ -210,7 +211,9 @@ public final class PlaylistScheduler implements
                     String key = playlist.getPriority() + ":"
                             + playlist.getSuite();
                     DacPlaylist otherPlaylist = uniqueActivePlaylists.get(key);
-                    if ((otherPlaylist != null)
+                    if (otherPlaylist == null) {
+                        uniqueActivePlaylists.put(key, playlist);
+                    } else if ((otherPlaylist != null)
                             && (playlist.getCreationTime().after(otherPlaylist
                                     .getCreationTime()))) {
                         uniqueActivePlaylists.put(key, playlist);

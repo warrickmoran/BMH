@@ -207,8 +207,6 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label periodicityValueLbl = new Label(comp, SWT.NONE);
-        // TODO
-        // periodicityValueLbl.setText(message.getPeriodicity().toString());
         String periodicity = getPeriodicity();
 
         periodicityValueLbl.setText(periodicity);
@@ -221,6 +219,8 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label timeZoneValueLbl = new Label(comp, SWT.NONE);
+        // TODO - where does this come from?
+        timeZoneValueLbl.setText("CST");
 
         Iterator<TransmitterGroup> iter = messageType
                 .getDefaultTransmitterGroups().iterator();
