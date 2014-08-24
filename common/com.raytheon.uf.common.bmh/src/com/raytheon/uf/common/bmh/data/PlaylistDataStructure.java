@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
+package com.raytheon.uf.common.bmh.data;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +25,8 @@ import java.util.Map;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * Playlist Data Object by Transmitter Group
@@ -42,21 +44,24 @@ import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
  * @author mpduff
  * @version 1.0
  */
-
+@DynamicSerialize
 public class PlaylistDataStructure {
     /**
      * DacPlaylistMessageId -> BroadcastMsg
      */
+    @DynamicSerializeElement
     private final Map<Long, BroadcastMsg> playlistMap = new HashMap<>();
 
     /**
      * Broadcast Message ID -> MessagePlaybackPrediction
      */
+    @DynamicSerializeElement
     private final Map<Long, MessagePlaybackPrediction> predictionMap = new HashMap<>();
 
     /**
      * Broadcast Message ID -> MessageType
      */
+    @DynamicSerializeElement
     private final Map<Long, MessageType> messageTypeMap = new HashMap<>();
 
     /**

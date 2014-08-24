@@ -42,7 +42,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 @DynamicSerialize
 public class PlaylistRequest implements IServerRequest {
     public enum PlaylistAction {
-        GET_PLAYLIST_BY_SUITE_GROUP
+        GET_PLAYLIST_BY_SUITE_GROUP, GET_PLAYLIST_DATA_FOR_TRANSMITTER
     }
 
     @DynamicSerializeElement
@@ -53,6 +53,9 @@ public class PlaylistRequest implements IServerRequest {
 
     @DynamicSerializeElement
     private String groupName;
+
+    @DynamicSerializeElement
+    private String transmitterName;
 
     /**
      * @return the action
@@ -97,5 +100,20 @@ public class PlaylistRequest implements IServerRequest {
      */
     public void setGroupName(String groupName) {
         this.groupName = groupName;
+    }
+
+    /**
+     * @return the transmitterName
+     */
+    public String getTransmitterName() {
+        return transmitterName;
+    }
+
+    /**
+     * @param transmitterName
+     *            the transmitterName to set
+     */
+    public void setTransmitterName(String transmitterName) {
+        this.transmitterName = transmitterName;
     }
 }

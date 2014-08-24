@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
@@ -71,6 +72,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * ------------ ---------- ----------- --------------------------
  * Jun 03, 2014    3432    mpduff      Initial creation
  * Aug 14, 2014    3432    mpduff      Implementing more methods.
+ * Aug 23, 2014    3432    mpduff      Add getPlaylistDataForTransmitter
  * 
  * </pre>
  * 
@@ -357,5 +359,17 @@ public class BroadcastCycleDataManager {
         }
 
         return assocSuites;
+    }
+
+    public PlaylistDataStructure getPlaylistDataForTransmitter(
+            String transmitterName) throws Exception {
+        PlaylistRequest request = new PlaylistRequest();
+        request.setAction(PlaylistAction.GET_PLAYLIST_DATA_FOR_TRANSMITTER);
+        request.setTransmitterName(transmitterName);
+
+        PlaylistResponse response = (PlaylistResponse) BmhUtils
+                .sendRequest(request);
+
+        return response.getPlaylistData();
     }
 }

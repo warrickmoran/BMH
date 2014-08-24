@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -45,6 +46,9 @@ public class PlaylistResponse {
     @DynamicSerializeElement
     private Playlist playlist;
 
+    @DynamicSerializeElement
+    private PlaylistDataStructure playlistData;
+
     /**
      * @return the playlist
      */
@@ -58,5 +62,20 @@ public class PlaylistResponse {
      */
     public void setPlaylist(Playlist playlist) {
         this.playlist = playlist;
+    }
+
+    /**
+     * @return the playlistData
+     */
+    public PlaylistDataStructure getPlaylistData() {
+        return playlistData;
+    }
+
+    /**
+     * @param playlistData
+     *            the playlistData to set
+     */
+    public void setPlaylistData(PlaylistDataStructure playlistData) {
+        this.playlistData = playlistData;
     }
 }

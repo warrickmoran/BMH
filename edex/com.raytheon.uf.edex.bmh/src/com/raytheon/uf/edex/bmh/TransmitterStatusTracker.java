@@ -22,7 +22,7 @@ package com.raytheon.uf.edex.bmh;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
-import com.raytheon.uf.edex.bmh.playlist.PlaylistManager;
+import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
@@ -37,6 +37,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 28, 2014  3399     bsteffen    Initial creation
+ * Aug 23, 2014  3432     mpduff      Implement the notification handling
  * 
  * </pre>
  * 
@@ -46,14 +47,17 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 public class TransmitterStatusTracker {
 
     protected static final BMHStatusHandler logger = BMHStatusHandler
-            .getInstance(PlaylistManager.class);
+            .getInstance(TransmitterStatusTracker.class);
+
+    private final PlaylistStateManager stateManager = PlaylistStateManager
+            .getInstance();
 
     public void statusArrived(Object status) {
-        if(status instanceof PlaylistSwitchNotification){
+        if (status instanceof PlaylistSwitchNotification) {
             playlistSwitched((PlaylistSwitchNotification) status);
-        }else if(status instanceof MessagePlaybackStatusNotification){
+        } else if (status instanceof MessagePlaybackStatusNotification) {
             messagePlaybabackStatus((MessagePlaybackStatusNotification) status);
-        }else{
+        } else {
             logger.error(BMH_CATEGORY.TRANSMITTER_STATUS_ERROR,
                     "Unrecognized status of type:"
                             + status.getClass().getSimpleName());
@@ -63,13 +67,13 @@ public class TransmitterStatusTracker {
     protected void playlistSwitched(PlaylistSwitchNotification notification) {
         logger.info("Playlist switched for "
                 + notification.getTransmitterGroup());
-        // TODO keep track of state and whatnot.
+        stateManager.processPlaylistSwitchNotification(notification);
     }
 
     protected void messagePlaybabackStatus(
             MessagePlaybackStatusNotification notification) {
         logger.info("message playback status for "
                 + notification.getTransmitterGroup());
-        // TODO keep track of state and whatnot.
+        stateManager.processMessagePlaybackStatusNotification(notification);
     }
 }

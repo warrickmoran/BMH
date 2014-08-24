@@ -43,6 +43,7 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
@@ -80,6 +81,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Jun 2, 2014   3432      mpduff      Initial creation
  * Aug 04, 2014  2487      bsteffen    Hook up the monitor inline checkbox.
  * Aug 14, 2014  3432      mpduff      Hook up details dialog
+ * Aug 23, 2014  3432      mpduff      Add initial table population
  * 
  * </pre>
  * 
@@ -167,7 +169,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private Label timeZoneValueLbl;
 
     /** Playlist data object */
-    private final PlaylistData playListData;
+    private final PlaylistData playlistData;
 
     /** Message text area */
     private Text messageTextArea;
@@ -192,7 +194,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         this.dataManager = new BroadcastCycleDataManager();
         setText(TITLE);
 
-        playListData = new PlaylistData(getColumns(), getDisplay());
+        playlistData = new PlaylistData(getColumns(), getDisplay());
     }
 
     @Override
@@ -247,6 +249,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         // TODO connect to topic
         NotificationManagerJob.addObserver(BMH_DAC_STATUS, this);
+
+        initialTablePopulation();
     }
 
     private void createMenus() {
@@ -628,6 +632,21 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         messageTextArea.setLayoutData(gd);
     }
 
+    private void initialTablePopulation() {
+        try {
+            PlaylistDataStructure dataStruct = dataManager
+                    .getPlaylistDataForTransmitter(selectedTransmitterGrp);
+            if (dataStruct != null) {
+                playlistData.setData(selectedTransmitterGrp, dataStruct);
+                tableData = playlistData
+                        .getUpdatedTableData(selectedTransmitterGrp);
+                tableComp.populateTable(tableData);
+            }
+        } catch (Exception e) {
+            statusHandler.error("Error getting initial playback data", e);
+        }
+    }
+
     /**
      * Populate the transmitter list box
      */
@@ -770,8 +789,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         }
 
         messageTextArea.setText("");
-        tableData = playListData.getUpdatedTableData(selectedTransmitterGrp);
+        initialTablePopulation();
+        tableData = playlistData.getUpdatedTableData(selectedTransmitterGrp);
         tableComp.populateTable(tableData);
+        System.out.println(tableData.getTableRowCount()
+                + " rows in the tableData");
     }
 
     /**
@@ -916,10 +938,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 Object o = message.getMessagePayload();
                 if (o instanceof PlaylistSwitchNotification) {
                     PlaylistSwitchNotification notification = (PlaylistSwitchNotification) o;
-                    playListData.handlePLaylistSwitchNotification(notification);
+                    playlistData.handlePLaylistSwitchNotification(notification);
                     if (notification.getTransmitterGroup().equals(
                             selectedTransmitterGrp)) {
-                        tableData = playListData
+                        tableData = playlistData
                                 .getUpdatedTableData(notification
                                         .getTransmitterGroup());
                         updateTable(tableData);
@@ -927,10 +949,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     }
                 } else if (o instanceof MessagePlaybackStatusNotification) {
                     MessagePlaybackStatusNotification notification = (MessagePlaybackStatusNotification) o;
-                    playListData.handlePLaybackStatusNotification(notification);
+                    playlistData.handlePlaybackStatusNotification(notification);
                     if (notification.getTransmitterGroup().equals(
                             selectedTransmitterGrp)) {
-                        tableData = playListData
+                        tableData = playlistData
                                 .getUpdatedTableData(notification
                                         .getTransmitterGroup());
                         updateTable(tableData);
