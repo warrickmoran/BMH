@@ -50,7 +50,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.ISuiteSelection;
-import com.raytheon.uf.viz.bmh.ui.program.AddSuitesDlg.SuiteDialogType;
 import com.raytheon.uf.viz.bmh.ui.program.CreateEditSuiteDlg.DialogType;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -421,7 +420,7 @@ public class SuiteConfigGroup extends Composite {
                     }
 
                     AddSuitesDlg asd = new AddSuitesDlg(getShell(),
-                            SuiteDialogType.ADD_COPY, existingNames);
+                            existingNames);
                     asd.setCloseCallback(new ICloseCallback() {
                         @Override
                         public void dialogClosed(Object returnValue) {

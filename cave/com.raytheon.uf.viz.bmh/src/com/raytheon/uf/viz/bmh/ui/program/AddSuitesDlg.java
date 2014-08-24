@@ -37,6 +37,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteActionAdapter;
@@ -61,8 +62,9 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 12, 2014  #3490     lvenable     Updated to use the suite config group and
  *                                      hooked up data from the database.
  * Aug 15, 2014  #3490     lvenable     Sort the list of suites.
- * Aug 18, 2014  #3490     lvenable     Updated code changes and added TODO reminders.
+ * Aug 18, 2014  #3490     lvenable     Updated code changes and added To Do reminders.
  * Aug 21, 2014  #3490     lvenable     Updated code to save data to database.
+ * Aug 24, 2014  #3490     lvenable     Removed dialog type and fixed copy suite error.
  * 
  * </pre>
  * 
@@ -87,16 +89,6 @@ public class AddSuitesDlg extends CaveSWTDialog {
      */
     private List<Control> controlArray = new ArrayList<Control>();
 
-    /** Enumeration of dialog types. */
-    public enum SuiteDialogType {
-        ADD_COPY, COPY_ONLY;
-    };
-
-    // TODO : investigate if COPY_ONLY is needed otherwise remove the enum.
-
-    /** Type of dialog (Create or Edit). */
-    private SuiteDialogType dialogType = SuiteDialogType.ADD_COPY;
-
     /** Group that contains the controls for configuring the suites. */
     private SuiteConfigGroup suiteConfigGroup;
 
@@ -115,12 +107,10 @@ public class AddSuitesDlg extends CaveSWTDialog {
      * @param parentShell
      *            Parent shell.
      */
-    public AddSuitesDlg(Shell parentShell, SuiteDialogType dlgType,
-            Set<String> existingNames) {
+    public AddSuitesDlg(Shell parentShell, Set<String> existingNames) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
-        this.dialogType = dlgType;
         this.existingNames = existingNames;
     }
 
@@ -142,11 +132,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        if (dialogType == SuiteDialogType.ADD_COPY) {
-            setText("Add/Copy Existing Suites");
-        } else if (dialogType == SuiteDialogType.COPY_ONLY) {
-            setText("Copy Existing Suite");
-        }
+        setText("Add/Copy Existing Suites");
 
         retrieveDataFromDB();
 
@@ -171,61 +157,55 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
         GridData gd;
 
-        if (dialogType == SuiteDialogType.ADD_COPY) {
-            gd = new GridData();
-            gd.horizontalSpan = 2;
-            Button useExistingSuiteRdo = new Button(optionsComp, SWT.RADIO);
-            useExistingSuiteRdo.setText("Use Existing Suites");
-            useExistingSuiteRdo.setLayoutData(gd);
-            useExistingSuiteRdo.setSelection(true);
-            useExistingSuiteRdo.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    Button rdoBtn = (Button) e.widget;
-                    if (rdoBtn.getSelection()) {
-                        useExisting = true;
-                        enableControls(false);
-                        suiteConfigGroup.setMultipleSelection(true);
-                    }
+        gd = new GridData();
+        gd.horizontalSpan = 2;
+        Button useExistingSuiteRdo = new Button(optionsComp, SWT.RADIO);
+        useExistingSuiteRdo.setText("Use Existing Suites");
+        useExistingSuiteRdo.setLayoutData(gd);
+        useExistingSuiteRdo.setSelection(true);
+        useExistingSuiteRdo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                Button rdoBtn = (Button) e.widget;
+                if (rdoBtn.getSelection()) {
+                    useExisting = true;
+                    enableControls(false);
+                    suiteConfigGroup.setMultipleSelection(true);
                 }
-            });
+            }
+        });
 
-            gd = new GridData();
-            gd.horizontalSpan = 2;
-            Button copyExistingSuiteRdo = new Button(optionsComp, SWT.RADIO);
-            copyExistingSuiteRdo.setText("Copy an Existing Suite:");
-            copyExistingSuiteRdo.setLayoutData(gd);
-            copyExistingSuiteRdo.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    Button rdoBtn = (Button) e.widget;
-                    if (rdoBtn.getSelection()) {
-                        useExisting = false;
-                        enableControls(true);
-                        suiteConfigGroup.setMultipleSelection(false);
-                    }
+        gd = new GridData();
+        gd.horizontalSpan = 2;
+        Button copyExistingSuiteRdo = new Button(optionsComp, SWT.RADIO);
+        copyExistingSuiteRdo.setText("Copy an Existing Suite:");
+        copyExistingSuiteRdo.setLayoutData(gd);
+        copyExistingSuiteRdo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                Button rdoBtn = (Button) e.widget;
+                if (rdoBtn.getSelection()) {
+                    useExisting = false;
+                    enableControls(true);
+                    suiteConfigGroup.setMultipleSelection(false);
                 }
-            });
-
-        }
+            }
+        });
 
         Label suiteNameLbl = new Label(optionsComp, SWT.NONE);
         suiteNameLbl.setText("Enter a Suite Name: ");
-        if (dialogType == SuiteDialogType.ADD_COPY) {
-            gd = new GridData();
-            gd.horizontalIndent = 20;
-            suiteNameLbl.setLayoutData(gd);
-        }
+
+        gd = new GridData();
+        gd.horizontalIndent = 20;
+        suiteNameLbl.setLayoutData(gd);
 
         gd = new GridData(200, SWT.DEFAULT);
         suiteNameTF = new Text(optionsComp, SWT.BORDER);
         suiteNameTF.setLayoutData(gd);
 
-        if (dialogType == SuiteDialogType.ADD_COPY) {
-            controlArray.add(suiteNameLbl);
-            controlArray.add(suiteNameTF);
-            enableControls(false);
-        }
+        controlArray.add(suiteNameLbl);
+        controlArray.add(suiteNameTF);
+        enableControls(false);
     }
 
     /**
@@ -325,9 +305,10 @@ public class AddSuitesDlg extends CaveSWTDialog {
             copySuite.setId(0);
             copySuite.setName(suiteNameTF.getText().trim());
             try {
-                suiteDataMgr.saveSuite(copySuite);
+                SuiteResponse sr = suiteDataMgr.saveSuite(copySuite);
+                copySuite = sr.getSuiteList().get(0);
             } catch (Exception e) {
-                statusHandler.error("Error renaming the suite: ", e);
+                statusHandler.error("Error renaming the suite for a copy: ", e);
             }
 
             List<Suite> copySuites = new ArrayList<Suite>(1);

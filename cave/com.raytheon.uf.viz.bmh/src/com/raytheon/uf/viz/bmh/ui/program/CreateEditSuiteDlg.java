@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -76,14 +77,15 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 20, 2014  #3174      lvenable     Initial creation
- * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
+ * Jul 20, 2014  #3174      lvenable    Initial creation
+ * Jul 24, 2014  #3433      lvenable    Updated for Suite manager
  * Aug 01, 2014  #3479      lvenable    Added additional capability.
  * Aug 12, 2014  #3490      lvenable    Updated to use data from the database.
- * Aug 15, 2014  #3490     lvenable     Sort the list of message types, use data manager.
- * Aug 18, 2014  #3490     lvenable     Added save, create, add, remove, sort capabilities.
- * Aug 21, 2014  #3490     lvenable     Updated suite capabilities.
- * Aug 22, 2014  #3490     lvenable     Updated controls that disable/enable.
+ * Aug 15, 2014  #3490      lvenable    Sort the list of message types, use data manager.
+ * Aug 18, 2014  #3490      lvenable    Added save, create, add, remove, sort capabilities.
+ * Aug 21, 2014  #3490      lvenable    Updated suite capabilities.
+ * Aug 22, 2014  #3490      lvenable    Updated controls that disable/enable.
+ * Aug 24, 2014  #3490      lvenable    Added assign programs capability and check for triggers on general type.
  * 
  * </pre>
  * 
@@ -178,7 +180,11 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     /** List of assigned program for this suite. */
     private List<Program> assignedPrograms = new ArrayList<Program>();
 
+    /** Existing suite names. */
     private Set<String> existingSuiteNames = null;
+
+    /** Assign program names to the current suite. */
+    private Set<String> assignedProgramNames = new TreeSet<String>();
 
     /**
      * Constructor.
@@ -272,7 +278,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         tableMoveAction = new TableMoveAction(selectedMsgTypeTable);
 
-        populateAssignedPrograms();
+        populateAssignedProgramsLabel();
         populateMsgTypesInSuiteList();
         populateSelectedMsgTypesTable(false);
         populateAvailableMessageTypeTable();
@@ -340,8 +346,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         assignProgramBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO : update program functionality
-                // handleChangeProgram();
+                handleAssignProgramsToSuite();
             }
         });
     }
@@ -546,7 +551,15 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private void enableDisableAddRemoveTriggerBtns() {
         addMsgTypesBtn.setEnabled(availableMsgTypeTable.hasSelectedItems());
         removeMsgTypesBtn.setEnabled(selectedMsgTypeTable.hasSelectedItems());
-        setTriggersBtn.setEnabled(selectedMsgTypeTable.hasSelectedItems());
+
+        // If the suite type is GENERAL then the trigger button is disable else
+        // the enabled feature is determined if there are selected message
+        // types.
+        if (getSelectedSuiteType() == SuiteType.GENERAL) {
+            setTriggersBtn.setEnabled(false);
+        } else {
+            setTriggersBtn.setEnabled(selectedMsgTypeTable.hasSelectedItems());
+        }
     }
 
     /**
@@ -583,14 +596,44 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         checkListDlg.open();
     }
 
+    private SuiteType getSelectedSuiteType() {
+        String categoryName = categoryCbo.getItem(categoryCbo
+                .getSelectionIndex());
+        SuiteType suiteType = SuiteType.valueOf(categoryName);
+
+        return suiteType;
+    }
+
+    private boolean validateTriggerMessages() {
+        if (getSelectedSuiteType() == SuiteType.GENERAL && hasTriggerMessages()) {
+
+            String msg = "You have trigger message(s) for the GENERAL suite type.  Select OK "
+                    + "to remove the triggers and continue saving or Cancel to edit the suite.";
+            int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
+                    | SWT.OK | SWT.CANCEL, "Triggers Selected", msg.toString());
+
+            if (result == SWT.CANCEL) {
+                return false;
+            }
+
+            for (SuiteMessage sm : msgTypesInSuiteList) {
+                sm.setTrigger(false);
+            }
+        }
+
+        return true;
+    }
+
     /**
      * Handle the create/save action.
      */
     private void handleSaveAction() {
 
-        String categoryName = categoryCbo.getItem(categoryCbo
-                .getSelectionIndex());
-        SuiteType suiteType = SuiteType.valueOf(categoryName);
+        if (validateTriggerMessages() == false) {
+            return;
+        }
+
+        SuiteType suiteType = getSelectedSuiteType();
 
         if (!validMessageTypes(suiteType)) {
             return;
@@ -627,9 +670,11 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         String suiteName = suiteNameTF.getText().trim();
 
-        System.out.println(">" + suiteName + "<");
-
         if (!snv.validateInputText(shell, suiteName)) {
+            return;
+        }
+
+        if (validateTriggerMessages() == false) {
             return;
         }
 
@@ -667,6 +712,73 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     }
 
     /**
+     * Assign the selected programs to the current suite.
+     */
+    private void handleAssignProgramsToSuite() {
+
+        CheckListData cld = new CheckListData();
+
+        for (Program p : programsArray) {
+            if (!assignedProgramNames.contains(p.getName())) {
+                cld.addDataItem(p.getName(), false);
+            }
+        }
+
+        String msg = "Add suite " + selectedSuite.getName()
+                + "to selected programs:";
+
+        CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
+                "Add to Programs", msg, cld, true, 250, 300);
+
+        checkListDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue != null && returnValue instanceof CheckListData) {
+                    addSuiteToPrograms((CheckListData) returnValue);
+                }
+            }
+        });
+
+        checkListDlg.open();
+    }
+
+    private void addSuiteToPrograms(CheckListData listData) {
+
+        Map<String, Boolean> checkedPrograms = listData.getDataMap();
+        ProgramDataManager pdm = new ProgramDataManager();
+
+        // TODO: since I am doing a loadAll on the programs we can get better
+        // performance with a different query. Fix this after the demo as it
+        // works now.
+        List<Program> progs = null;
+
+        try {
+            progs = pdm.getAllPrograms(new ProgramNameComparator());
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving program data from the database: ", e);
+        }
+
+        for (Program p : progs) {
+            if (checkedPrograms.containsKey(p.getName())
+                    && checkedPrograms.get(p.getName()) == true) {
+                p.addSuite(selectedSuite);
+
+                try {
+                    pdm.saveProgram(p);
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "Error saving suite " + selectedSuite.getName()
+                                    + " to program " + p.getName() + ": ", e);
+                }
+            }
+        }
+
+        retrieveProgramDataFromDB();
+        populateAssignedProgramsLabel();
+    }
+
+    /**
      * Add message types to the selected message type table.
      */
     private void handleAddMessageTypes() {
@@ -694,6 +806,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             newSuiteMessage.setTrigger(false);
 
             msgTypesInSuiteList.add(selectedMsgTypeIndex, newSuiteMessage);
+            msgTypeNames.add(mt.getAfosid());
         }
 
         populateSelectedMsgTypesTable(true);
@@ -711,11 +824,31 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         }
 
         for (int i = indices.length - 1; i >= 0; --i) {
+            msgTypeNames
+                    .remove(msgTypesInSuiteList.get(indices[i]).getAfosid());
             msgTypesInSuiteList.remove(indices[i]);
         }
 
         populateSelectedMsgTypesTable(true);
         enableDisableAddRemoveTriggerBtns();
+    }
+
+    /**
+     * Convenience method to determine if there are any trigger messages in the
+     * selected message types.
+     * 
+     * @return True if there are trigger message in the selected message types
+     *         table, false otherwise.
+     */
+    private boolean hasTriggerMessages() {
+
+        for (SuiteMessage sm : msgTypesInSuiteList) {
+            if (sm.isTrigger()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -789,26 +922,31 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     /**
      * Populate the assign programs.
      */
-    private void populateAssignedPrograms() {
+    private void populateAssignedProgramsLabel() {
 
         if (!showProgramControls) {
             return;
         }
 
+        assignedProgramNames.clear();
         if (selectedProgram == null && selectedSuite != null) {
             for (Program p : programsArray) {
                 List<Suite> suitesInProgram = p.getSuites();
                 for (Suite s : suitesInProgram) {
                     if (s.getId() == selectedSuite.getId()) {
                         assignedPrograms.add(p);
+                        assignedProgramNames.add(p.getName());
                     }
                 }
             }
         }
 
         StringBuilder sb = new StringBuilder();
-        for (Program p : assignedPrograms) {
-            sb.append(p.getName()).append(" ");
+        for (String name : assignedProgramNames) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(name);
         }
 
         if (sb.length() > 0) {
