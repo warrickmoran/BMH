@@ -44,6 +44,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * ------------- -------- ----------- --------------------------
  * Jun 30, 2014  3285     bsteffen    Initial creation
  * Jul 22, 2014  3286     dgilling    Added toString(), isValid().
+ * Aug 22, 2014  3286     dgilling    Added isExpired().
  * 
  * </pre>
  * 
@@ -109,6 +110,17 @@ public class DacPlaylist {
                 .getTimeInMillis()));
     }
 
+    /**
+     * Determine whether this playlist has passed its expiration time based on
+     * the current time.
+     * 
+     * @return {@code true}, if the playlist's expire time is before the current
+     *         time. Else, {@code false}.
+     */
+    public boolean isExpired() {
+        return (TimeUtil.currentTimeMillis() <= expired.getTimeInMillis());
+    }
+
     public int getPriority() {
         return priority;
     }
@@ -171,6 +183,7 @@ public class DacPlaylist {
         }
         messages.add(message);
     }
+
     public List<DacPlaylistMessageId> getMessages() {
         return messages;
     }

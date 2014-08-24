@@ -23,17 +23,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXB;
 
@@ -71,6 +66,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      amplified based on the transmitter decibel range
  *                                      before it is cached. Initial implementation of
  *                                      prioritization.
+ * Aug 22, 2014  #3286     dgilling     Re-factor based on PriorityBasedExecutorService.
  * 
  * </pre>
  * 
@@ -82,14 +78,7 @@ public final class PlaylistMessageCache {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private static final int THREAD_POOL_CORE_SIZE = 3;
-
     private static final int THREAD_POOL_MAX_SIZE = 3;
-
-    // TODO: we may need additional priorities.
-    private static final int PRIORITY_LOW = 2;
-
-    private static final int PRIORITY_NORMAL = 40;
 
     /*
      * Note: the current implementation does not allow a task with a higher
@@ -129,15 +118,12 @@ public final class PlaylistMessageCache {
     public PlaylistMessageCache(Path messageDirectory, EventBus eventBus,
             Range dbRange) {
         this.messageDirectory = messageDirectory;
-        ThreadFactory threadFactory = new NamedThreadFactory(
-                "PlaylistMessageCache");
-        BlockingQueue<Runnable> workQueue = new PriorityBlockingQueue<Runnable>();
-        cacheThreadPool = new ThreadPoolExecutor(THREAD_POOL_CORE_SIZE,
-                THREAD_POOL_MAX_SIZE, 60, TimeUnit.SECONDS, workQueue,
-                threadFactory);
-        cachedMessages = new ConcurrentHashMap<>();
-        cachedFiles = new ConcurrentHashMap<>();
-        cacheStatus = new ConcurrentHashMap<>();
+        this.cacheThreadPool = new PriorityBasedExecutorService(
+                THREAD_POOL_MAX_SIZE, new NamedThreadFactory(
+                        "PlaylistMessageCache"));
+        this.cachedMessages = new ConcurrentHashMap<>();
+        this.cachedFiles = new ConcurrentHashMap<>();
+        this.cacheStatus = new ConcurrentHashMap<>();
         this.eventBus = eventBus;
         this.dbRange = dbRange;
     }
@@ -170,8 +156,8 @@ public final class PlaylistMessageCache {
      */
     public void retrieveAudio(final DacPlaylistMessageId id) {
         if (!cacheStatus.containsKey(id)) {
-            Future<AudioFileBuffer> jobStatus = this.scheduleFileRetrieval(
-                    PRIORITY_NORMAL, id);
+            Future<AudioFileBuffer> jobStatus = scheduleFileRetrieval(
+                    PriorityBasedExecutorService.PRIORITY_NORMAL, id);
             cacheStatus.put(id, jobStatus);
         }
     }
@@ -310,8 +296,8 @@ public final class PlaylistMessageCache {
         for (DacPlaylistMessage message : cachedFiles.keySet()) {
             DacPlaylistMessageId messageId = new DacPlaylistMessageId(
                     message.getBroadcastId());
-            Future<AudioFileBuffer> jobStatus = this.scheduleFileRetrieval(
-                    PRIORITY_LOW, messageId);
+            Future<AudioFileBuffer> jobStatus = scheduleFileRetrieval(
+                    PriorityBasedExecutorService.PRIORITY_LOW, messageId);
             cacheStatus.replace(messageId, jobStatus);
         }
 

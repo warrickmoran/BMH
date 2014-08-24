@@ -53,7 +53,7 @@ import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
  * @version 1.0
  */
 
-public class RetrieveAudioJob implements PrioritizableRunnable {
+public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> {
 
     private final int priority;
 
@@ -138,16 +138,6 @@ public class RetrieveAudioJob implements PrioritizableRunnable {
                 endOfMessage);
 
         return buffer;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Comparable#compareTo(java.lang.Object)
-     */
-    @Override
-    public int compareTo(PrioritizableRunnable o) {
-        return o.getPriority().compareTo(this.priority);
     }
 
     /*

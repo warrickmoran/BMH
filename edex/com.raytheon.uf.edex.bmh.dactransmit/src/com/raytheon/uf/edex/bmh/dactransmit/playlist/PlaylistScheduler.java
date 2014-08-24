@@ -19,13 +19,10 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.PathMatcher;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +30,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -40,8 +38,8 @@ import java.util.Queue;
 
 import javax.xml.bind.JAXB;
 
-import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.commons.lang.math.Range;
+import org.apache.commons.lang.mutable.MutableLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,6 +82,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  * Aug 18, 2014  #3540     dgilling     Support periodic messsages.
  * Aug 19, 2014  #3532     bkowal       Provide the supported transmitter decibel range
  *                                      to the audio cache.
+ * Aug 22, 2014  #3286     dgilling     Update playlist selection logic to use 
+ *                                      creation and trigger time.
  * 
  * </pre>
  * 
@@ -96,34 +96,7 @@ public final class PlaylistScheduler implements
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private static final PathMatcher XML_MATCHER = FileSystems.getDefault()
-            .getPathMatcher("glob:**.xml");
-
-    private static final DirectoryStream.Filter<Path> PLAYLIST_FILTER = new DirectoryStream.Filter<Path>() {
-
-        @Override
-        public boolean accept(Path entry) throws IOException {
-            if (XML_MATCHER.matches(entry)) {
-                /*
-                 * we're building a "path" string containing
-                 * <transmitter_group>/<playlist_filename>, which is what the
-                 * parser requires to figure out the DacPlaylist components.
-                 */
-                StringBuilder fileString = new StringBuilder(entry.getParent()
-                        .getFileName().toString()).append(File.separatorChar)
-                        .append(entry.getFileName().toString());
-                DacPlaylist temp = PlaylistUpdateNotification
-                        .parseFilePath(fileString);
-                if (temp != null) {
-                    long currentTime = TimeUtil.currentTimeMillis();
-                    return ((currentTime >= temp.getStart().getTimeInMillis()) && (currentTime < temp
-                            .getExpired().getTimeInMillis()));
-                }
-            }
-
-            return false;
-        }
-    };
+    private static final String PLAYLIST_EXT = "*.xml";
 
     private static final Comparator<DacPlaylist> PLAYBACK_ORDER = new Comparator<DacPlaylist>() {
 
@@ -135,7 +108,21 @@ public final class PlaylistScheduler implements
                 return retVal;
             }
 
-            retVal = 0 - o1.getStart().compareTo(o2.getStart());
+            retVal = 0 - o1.getLatestTrigger().compareTo(o2.getLatestTrigger());
+            return retVal;
+        }
+    };
+
+    private static final Comparator<DacPlaylist> QUEUE_ORDER = new Comparator<DacPlaylist>() {
+
+        @Override
+        public int compare(DacPlaylist o1, DacPlaylist o2) {
+            int retVal = 0 - o1.getStart().compareTo(o2.getStart());
+            if (retVal != 0) {
+                return retVal;
+            }
+
+            retVal = 0 - Integer.compare(o1.getPriority(), o2.getPriority());
             return retVal;
         }
     };
@@ -144,7 +131,7 @@ public final class PlaylistScheduler implements
 
     private final PlaylistMessageCache cache;
 
-    private List<DacPlaylist> currentPlaylists;
+    private List<DacPlaylist> activePlaylists;
 
     private List<DacPlaylistMessageId> currentMessages;
 
@@ -153,6 +140,12 @@ public final class PlaylistScheduler implements
      * associated with an interrupt is played only one time and discarded.
      */
     private final Queue<DacPlaylist> interrupts;
+
+    /**
+     * New playlists that we've received that don't take effect until some time
+     * in the future.
+     */
+    private final List<DacPlaylist> futurePlaylists;
 
     // TODO: Is this always going to be 0?? If so, this is probably not needed.
     private int playlistIndex;
@@ -201,30 +194,59 @@ public final class PlaylistScheduler implements
         this.playlistDirectory = inputDirectory;
         this.eventBus = eventBus;
 
-        this.currentPlaylists = new ArrayList<>();
+        this.futurePlaylists = new LinkedList<>();
         this.playlistIndex = 0;
         this.messageIndex = 0;
 
+        Map<String, DacPlaylist> uniqueActivePlaylists = new HashMap<>();
+        List<Path> expiredPlaylists = new ArrayList<>();
         try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(
-                this.playlistDirectory, PLAYLIST_FILTER)) {
+                this.playlistDirectory, PLAYLIST_EXT)) {
             for (Path entry : dirStream) {
                 DacPlaylist playlist = JAXB.unmarshal(entry.toFile(),
                         DacPlaylist.class);
-                currentPlaylists.add(playlist);
+
+                if (playlist.isValid()) {
+                    String key = playlist.getPriority() + ":"
+                            + playlist.getSuite();
+                    DacPlaylist otherPlaylist = uniqueActivePlaylists.get(key);
+                    if ((otherPlaylist != null)
+                            && (playlist.getCreationTime().after(otherPlaylist
+                                    .getCreationTime()))) {
+                        uniqueActivePlaylists.put(key, playlist);
+                        // TODO add superseded playlist to expiredPlaylists
+                        // need to see how file name/path string changes before
+                        // that can be done.
+                    }
+                } else if (!playlist.isExpired()) {
+                    this.futurePlaylists.add(playlist);
+                } else {
+                    expiredPlaylists.add(entry);
+                }
             }
         }
 
-        if (currentPlaylists.isEmpty()) {
+        this.activePlaylists = new ArrayList<>(uniqueActivePlaylists.values());
+        if (activePlaylists.isEmpty()) {
             throw new IllegalArgumentException(
                     "Input directory contained no valid playlist files.");
         }
 
-        Collections.sort(currentPlaylists, PLAYBACK_ORDER);
+        Collections.sort(this.activePlaylists, PLAYBACK_ORDER);
+        Collections.sort(this.futurePlaylists, QUEUE_ORDER);
 
-        cache = new PlaylistMessageCache(inputDirectory.resolve("messages"),
-                this.eventBus, dbRange);
-        for (DacPlaylist playlist : currentPlaylists) {
-            cache.retrieveAudio(playlist.getMessages());
+        this.cache = new PlaylistMessageCache(
+                inputDirectory.resolve("messages"), this.eventBus, dbRange);
+        for (DacPlaylist playlist : this.activePlaylists) {
+            this.cache.retrieveAudio(playlist.getMessages());
+        }
+
+        for (Path expired : expiredPlaylists) {
+            try {
+                Files.delete(expired);
+            } catch (IOException e) {
+                logger.warn("Unable to delete expired playlist " + expired, e);
+            }
         }
 
         this.interrupts = new ArrayDeque<>();
@@ -232,7 +254,7 @@ public final class PlaylistScheduler implements
          * On startup we may have some unplayed interrupts. find them and
          * transfer them to interrupt queue
          */
-        for (Iterator<DacPlaylist> iter = currentPlaylists.iterator(); iter
+        for (Iterator<DacPlaylist> iter = activePlaylists.iterator(); iter
                 .hasNext();) {
             DacPlaylist playlist = iter.next();
             if (playlist.isInterrupt()) {
@@ -242,7 +264,7 @@ public final class PlaylistScheduler implements
         }
 
         DacPlaylist firstPlaylist = (!this.interrupts.isEmpty()) ? this.interrupts
-                .peek() : currentPlaylists.get(0);
+                .peek() : activePlaylists.get(0);
 
         /*
          * We cannot send this notification to the event bus at construction
@@ -329,6 +351,54 @@ public final class PlaylistScheduler implements
                 eventBus.post(notify);
             }
 
+            DacPlaylist currentPlaylist = activePlaylists.get(playlistIndex);
+            List<DacPlaylist> expiredPlaylists = mergeFutureToActivePlaylists();
+            DacPlaylist newActivePlaylist = activePlaylists.get(0);
+            if (currentPlaylist == newActivePlaylist) {
+                logger.debug("Continuing with playlist " + currentPlaylist);
+            } else if ((currentPlaylist.getPriority() == newActivePlaylist
+                    .getPriority())
+                    && (currentPlaylist.getSuite().equals(newActivePlaylist
+                            .getSuite()))) {
+                logger.debug("Playlist " + currentPlaylist
+                        + " has been updated by future queued playlist "
+                        + newActivePlaylist);
+
+                int prevMessageIndex = findLastPlayedMessage(newActivePlaylist);
+
+                /*
+                 * We pass prevMessageIndex+1 to buildPlaylistNotification()
+                 * because that is the first index in the updated playlist that
+                 * we want to predict new playback times for. If
+                 * (prevMessageIndex+1) > newPlaylist.getMessages().size() then
+                 * we have no messages to predict new times for and
+                 * buildPlaylistNotification() won't attempt to.
+                 * 
+                 * A reminder about messageIndex: it always points to the next
+                 * message to play from currentMessages and if messageIndex =
+                 * currentMessages.size(), the next call to nextMessage() will
+                 * cause a playlist switch because we've run out of messages to
+                 * play. We do not want to wrap the value of messageIndex here
+                 * because we won't generate the playlist switch that the GUIs
+                 * need to know we're beginning a new cycle.
+                 */
+                PlaylistSwitchNotification notify = buildPlaylistNotification(
+                        newActivePlaylist, prevMessageIndex + 1);
+                currentMessages = notify.getPlaylist();
+                messageIndex = prevMessageIndex + 1;
+                eventBus.post(notify);
+            } else {
+                logger.debug("Playlist " + currentPlaylist
+                        + " has been superseded by future queued playlist "
+                        + newActivePlaylist);
+                /*
+                 * We're going to be swapping playlists, so let's just force the
+                 * code below to start looking by jumping the index off the edge
+                 * of the list.
+                 */
+                messageIndex = Integer.MAX_VALUE;
+            }
+
             while ((nextMessage == null)
                     && (messageIndex < currentMessages.size())) {
                 DacPlaylistMessage possibleNext = cache
@@ -339,10 +409,10 @@ public final class PlaylistScheduler implements
                 messageIndex++;
             }
 
-            while ((nextMessage == null) && (!currentPlaylists.isEmpty())) {
-                DacPlaylist nextPlaylist = currentPlaylists.get(playlistIndex);
+            while ((nextMessage == null) && (!activePlaylists.isEmpty())) {
+                DacPlaylist nextPlaylist = activePlaylists.get(playlistIndex);
                 PlaylistSwitchNotification notify = buildPlaylistNotification(nextPlaylist);
-                if (!notify.getMessages().isEmpty()) {
+                if ((notify != null) && (!notify.getMessages().isEmpty())) {
                     logger.debug("Switching to playlist: "
                             + nextPlaylist.toString());
 
@@ -365,10 +435,11 @@ public final class PlaylistScheduler implements
                 }
 
                 if (nextMessage == null) {
-                    DacPlaylist purgedPlaylist = currentPlaylists
+                    DacPlaylist purgedPlaylist = activePlaylists
                             .remove(playlistIndex);
                     logger.info("Puring expired playlist: "
                             + purgedPlaylist.toString());
+                    expiredPlaylists.add(purgedPlaylist);
                 }
             }
         }
@@ -383,10 +454,72 @@ public final class PlaylistScheduler implements
             logger.error("Couldn't find any valid playlists or messages to play!!!");
         }
 
+        // TODO delete all playlist files in expiredPlaylists
+        // waiting on file name/path updates...
+
         DacMessagePlaybackData nextMessageData = new DacMessagePlaybackData();
         nextMessageData.setMessage(nextMessage);
         nextMessageData.setInterrupt(isInterrupt);
         return nextMessageData;
+    }
+
+    private List<DacPlaylist> mergeFutureToActivePlaylists() {
+        List<DacPlaylist> expiredPlaylists = new ArrayList<>();
+
+        List<DacPlaylist> newPlaylists = new ArrayList<>();
+        for (Iterator<DacPlaylist> iter = futurePlaylists.iterator(); iter
+                .hasNext();) {
+            DacPlaylist playlist = iter.next();
+            if (playlist.isValid()) {
+                iter.remove();
+                newPlaylists.add(playlist);
+            }
+
+            if (playlist.isExpired()) {
+                iter.remove();
+                expiredPlaylists.add(playlist);
+            }
+        }
+
+        for (Iterator<DacPlaylist> iter = newPlaylists.iterator(); iter
+                .hasNext();) {
+            DacPlaylist newPlaylist = iter.next();
+
+            for (int i = 0; i < activePlaylists.size(); i++) {
+                DacPlaylist activePlaylist = activePlaylists.get(i);
+                if ((newPlaylist.getPriority() == activePlaylist.getPriority())
+                        && (newPlaylist.getSuite().equals(activePlaylist
+                                .getSuite()))) {
+                    iter.remove();
+                    if ((activePlaylist.isExpired())
+                            || (newPlaylist.getCreationTime()
+                                    .after(activePlaylist.getCreationTime()))) {
+                        activePlaylists.set(i, newPlaylist);
+                        expiredPlaylists.add(activePlaylist);
+                    } else {
+                        expiredPlaylists.add(newPlaylist);
+                    }
+                }
+            }
+        }
+        activePlaylists.addAll(newPlaylists);
+        Collections.sort(activePlaylists, PLAYBACK_ORDER);
+
+        return expiredPlaylists;
+    }
+
+    private int findLastPlayedMessage(DacPlaylist newPlaylist) {
+        List<DacPlaylistMessageId> newMessages = newPlaylist.getMessages();
+
+        int prevMessageIndex = -1;
+        for (int i = (messageIndex - 1); i >= 0; i--) {
+            prevMessageIndex = newMessages.indexOf(currentMessages.get(i));
+            if (prevMessageIndex >= 0) {
+                break;
+            }
+        }
+
+        return prevMessageIndex;
     }
 
     @Override
@@ -417,25 +550,36 @@ public final class PlaylistScheduler implements
                     return;
                 }
 
-                DacPlaylist currentPlaylist = currentPlaylists
+                if (newPlaylist.isExpired()) {
+                    logger.warn("Received a notification for an expired playlist: "
+                            + newPlaylist);
+                    // TODO delete from filesystem
+                    return;
+                } else if (!newPlaylist.isValid()) {
+                    logger.debug("New playlist doesn't take affect immediately. Queueing...");
+                    futurePlaylists.add(newPlaylist);
+                    Collections.sort(futurePlaylists, QUEUE_ORDER);
+                    return;
+                }
+
+                DacPlaylist currentPlaylist = activePlaylists
                         .get(playlistIndex);
 
                 if ((newPlaylist.getPriority() == currentPlaylist.getPriority())
                         && (newPlaylist.getSuite().equals(currentPlaylist
                                 .getSuite()))) {
+                    if (newPlaylist.getCreationTime().before(
+                            currentPlaylist.getCreationTime())) {
+                        logger.warn("Received an update to playlist "
+                                + currentPlaylist
+                                + " that has an older creation date. Ignoring new playlist.");
+                        // TODO delete from filesystem
+                        return;
+                    }
+
                     logger.debug("New playlist is an update to current playlist.");
 
-                    List<DacPlaylistMessageId> newMessages = newPlaylist
-                            .getMessages();
-
-                    int prevMessageIndex = -1;
-                    for (int i = (messageIndex - 1); i >= 0; i--) {
-                        prevMessageIndex = newMessages.indexOf(currentMessages
-                                .get(i));
-                        if (prevMessageIndex >= 0) {
-                            break;
-                        }
-                    }
+                    int prevMessageIndex = findLastPlayedMessage(newPlaylist);
 
                     /*
                      * We pass prevMessageIndex+1 to buildPlaylistNotification()
@@ -456,16 +600,32 @@ public final class PlaylistScheduler implements
                      */
                     PlaylistSwitchNotification notify = buildPlaylistNotification(
                             newPlaylist, prevMessageIndex + 1);
-                    currentPlaylists.set(0, newPlaylist);
+                    activePlaylists.set(0, newPlaylist);
                     currentMessages = notify.getPlaylist();
                     messageIndex = prevMessageIndex + 1;
                     eventBus.post(notify);
                 } else {
+                    int replaceIdx = findMatchingPlaylist(newPlaylist,
+                            activePlaylists);
+                    if (replaceIdx != -1) {
+                        DacPlaylist toReplace = activePlaylists.get(replaceIdx);
+                        if (newPlaylist.getCreationTime().after(
+                                toReplace.getCreationTime())) {
+                            activePlaylists.set(replaceIdx, newPlaylist);
+                        } else {
+                            logger.warn("Received an update to playlist "
+                                    + toReplace
+                                    + " that has an older creation date. Ignoring new playlist.");
+                            // TODO delete from filesystem
+                            return;
+                        }
+                    }
+
                     int compareVal = PLAYBACK_ORDER.compare(newPlaylist,
                             currentPlaylist);
 
                     if (compareVal < 0) {
-                        currentPlaylists.add(0, newPlaylist);
+                        activePlaylists.add(0, newPlaylist);
                         /*
                          * We must hold this playlist switch until the next call
                          * to next() because we will continue playing the
@@ -476,10 +636,9 @@ public final class PlaylistScheduler implements
                         playlistIndex = 0;
                         messageIndex = 0;
                     } else {
-                        currentPlaylists.add(newPlaylist);
-                        Collections.sort(
-                                currentPlaylists.subList(playlistIndex + 1,
-                                        currentPlaylists.size() - 1),
+                        activePlaylists.add(newPlaylist);
+                        Collections.sort(activePlaylists.subList(
+                                playlistIndex + 1, activePlaylists.size()),
                                 PLAYBACK_ORDER);
                     }
                 }
@@ -489,6 +648,19 @@ public final class PlaylistScheduler implements
             logger.debug("Time for newPlaylistReceived() to merge in new playlist: "
                     + timer.getElapsedTime() + " ms.");
         }
+    }
+
+    private static int findMatchingPlaylist(DacPlaylist playlist,
+            List<DacPlaylist> playlistList) {
+        for (int i = 0; i < playlistList.size(); i++) {
+            DacPlaylist compare = playlistList.get(i);
+            if ((playlist.getPriority() == compare.getPriority())
+                    && (playlist.getSuite().equals(compare.getSuite()))) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     /**
@@ -528,6 +700,10 @@ public final class PlaylistScheduler implements
      */
     private PlaylistSwitchNotification buildPlaylistNotification(
             DacPlaylist playlist, int predictStartIndex) {
+        if (!playlist.isValid()) {
+            return null;
+        }
+
         List<MessagePlaybackPrediction> predictedMessages = new ArrayList<>();
         List<DacPlaylistMessageId> allMessages = playlist.getMessages();
         long playbackStartTime = 0;
