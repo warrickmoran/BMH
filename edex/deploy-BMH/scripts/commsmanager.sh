@@ -28,6 +28,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    07/28/14        3399          bsteffen       Initial Creation.
+#    08/25/14        3558          rjpeter        Added qpid flag so queues auto created.
 ##############################################################################
 
 export BMH_DATA=/awips2/bmh/data
@@ -53,7 +54,7 @@ for dependency in $DEPENDENCIES; do
 done;
 
 JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
-JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT"
+JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dqpid.dest_syntax=BURL"
 
 java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "$@"
 

@@ -37,7 +37,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014    3173    mpduff      Initial creation
- * Aug 24, 2014    3432    mpduff      Added GenEnabledTransmitters
+ * Aug 24, 2014    3432    mpduff      Added GetEnabledTransmitterGroups
  * 
  * </pre>
  * 
@@ -47,7 +47,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 @DynamicSerialize
 public class TransmitterRequest implements IServerRequest {
     public enum TransmitterRequestAction {
-        GetTransmitterGroups, GetTransmitters, GetEnabledTransmitters, SaveTransmitter, SaveTransmitterDeleteGroup, SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup;
+        GetTransmitterGroups, GetTransmitters, GetEnabledTransmitterGroups, SaveTransmitter, SaveTransmitterDeleteGroup, SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup;
     }
 
     /**

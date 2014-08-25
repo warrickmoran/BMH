@@ -63,15 +63,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Aug 04, 2014  3173      mpduff      Changed rcs to dac, added position and convenience methods, using serialization adapter
  * Aug 13, 2014  3486      bsteffen    Add getEnabledTransmitters
  * Aug 18, 2014  3532      bkowal      Added adjustAudioMinDB and adjustAudioMaxDB
- * Aug 21, 2014  3486      lvenable   Initialized silence alram to false.
- * 
+ * Aug 21, 2014  3486      lvenable    Initialized silence alram to false.
+ * Aug 25, 2014  3558      rjpeter     Added query for enabled transmitter groups.
  * 
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
-@NamedQueries({ @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME, query = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME_QUERY) })
+@NamedQueries({
+        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME, query = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME_QUERY),
+        @NamedQuery(name = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS_QUERY) })
 @Entity
 @Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }) })
 @SequenceGenerator(initialValue = 1, name = TransmitterGroup.GEN, sequenceName = "zone_seq")
@@ -84,6 +86,10 @@ public class TransmitterGroup {
     public static final String GET_TRANSMITTER_GROUP_FOR_NAME = "getTransmitterGroupForName";
 
     protected static final String GET_TRANSMITTER_GROUP_FOR_NAME_QUERY = "FROM TransmitterGroup tg WHERE tg.name = :name";
+
+    public static final String GET_ENABLED_TRANSMITTER_GROUPS = "getEnabledTransmitterGroups";
+
+    protected static final String GET_ENABLED_TRANSMITTER_GROUPS_QUERY = "select tg FROM TransmitterGroup tg inner join tg.transmitters t WHERE t.txStatus = 'ENABLED'";
 
     public static final int NAME_LENGTH = 40;
 
@@ -297,7 +303,7 @@ public class TransmitterGroup {
      * @return true if is standalone, false otherwise
      */
     public boolean isStandalone() {
-        if (transmitters != null && transmitters.size() == 1) {
+        if ((transmitters != null) && (transmitters.size() == 1)) {
             if (getTransmitterList().get(0).getMnemonic().equals(this.name)) {
                 return true;
             }

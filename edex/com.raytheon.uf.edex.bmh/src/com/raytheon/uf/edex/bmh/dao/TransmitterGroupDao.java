@@ -40,7 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2014 3302       bkowal      Initial creation
  * Aug 04, 2014   3173     mpduff      Added getTransmitterGroups()
- * 
+ * Aug 25, 2014 3558       rjpeter     Added getEnabledTransmitterGroups()
  * </pre>
  * 
  * @author bkowal
@@ -84,7 +84,7 @@ public class TransmitterGroupDao extends
 
     public List<TransmitterGroup> getTransmitterGroups() {
         List<Object> objList = this.loadAll();
-        if (objList == null || objList.isEmpty()) {
+        if ((objList == null) || objList.isEmpty()) {
             // No data
             return Collections.emptyList();
         }
@@ -95,5 +95,21 @@ public class TransmitterGroupDao extends
         }
 
         return tGroup;
+    }
+
+    public List<TransmitterGroup> getEnabledTransmitterGroups() {
+        List<TransmitterGroup> groups = txTemplate
+                .execute(new TransactionCallback<List<TransmitterGroup>>() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public List<TransmitterGroup> doInTransaction(
+                            TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht
+                                .findByNamedQuery(TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS);
+                    }
+                });
+
+        return groups;
     }
 }

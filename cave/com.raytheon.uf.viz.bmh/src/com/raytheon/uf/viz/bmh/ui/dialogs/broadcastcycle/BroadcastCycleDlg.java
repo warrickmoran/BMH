@@ -84,7 +84,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Aug 04, 2014  2487      bsteffen    Hook up the monitor inline checkbox.
  * Aug 14, 2014  3432      mpduff      Hook up details dialog
  * Aug 23, 2014  3432      mpduff      Add initial table population
- * 
+ * Aug 25, 2014  3558      rjpeter     Updated to call getEnabledTransmitterGroupList.
  * </pre>
  * 
  * @author mpduff
@@ -642,7 +642,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private void populateTransmitters() {
         try {
             List<TransmitterGroup> transmitterGroupObjectList = dataManager
-                    .getTransmitterGroupList();
+                    .getEnabledTransmitterGroupList();
             Collections.sort(transmitterGroupObjectList,
                     new TransmitterGroupPositionComparator());
             String[] tNames = new String[transmitterGroupObjectList.size()];
@@ -800,7 +800,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * Handler for Message Details button
      */
     private void handleMessageDetails() {
-        if (detailsDlg == null || detailsDlg.isDisposed()) {
+        if ((detailsDlg == null) || detailsDlg.isDisposed()) {
             try {
                 TableRowData selection = tableComp.getSelection().get(0);
                 BroadcastCycleTableDataEntry dataEntry = (BroadcastCycleTableDataEntry) selection
@@ -844,7 +844,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * Handler for periodic message button
      */
     private void handlePeriodicAction() {
-        if (periodicMsgDlg == null || periodicMsgDlg.isDisposed()) {
+        if ((periodicMsgDlg == null) || periodicMsgDlg.isDisposed()) {
             periodicMsgDlg = new PeriodicMessagesDlg(getShell());
             periodicMsgDlg.open();
         } else {
@@ -868,7 +868,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private void handleChangeSuiteAction() {
         String[] selection = null;
         List<Suite> suiteList = programObj.getSuites();
-        if (changeSuiteDlg == null || changeSuiteDlg.isDisposed()) {
+        if ((changeSuiteDlg == null) || changeSuiteDlg.isDisposed()) {
             changeSuiteDlg = new SuiteListDlg(getShell(), suiteList);
             selection = (String[]) changeSuiteDlg.open();
             if (selection == null) {
@@ -888,7 +888,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      *            The data to update
      */
     private void updateSuiteData(String[] data) {
-        if (data[0] != null && data[0].length() > 0) {
+        if ((data[0] != null) && (data[0].length() > 0)) {
             this.suiteValueLbl.setText(data[0]);
             this.suiteCatValueLbl.setText(data[1]);
             this.leftProgSuiteComp.layout();
