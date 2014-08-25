@@ -33,6 +33,8 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
+import com.raytheon.uf.common.bmh.notify.ConfigurationNotification;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
@@ -45,6 +47,7 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
+import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
  * Imports legacy database and stores it. Will only run on start up. Moves
@@ -58,6 +61,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3175       rjpeter     Initial creation
  * Aug 19, 2014 3411       mpduff      Add handling for MessageTypeReplacement
+ * Aug 25, 2014 3486       bsteffen    Send config change notification.
  * 
  * </pre>
  * 
@@ -265,6 +269,11 @@ public class DatabaseImport {
                                                             + file.getAbsolutePath()
                                                             + "]");
                                 }
+                                EDEXUtil.getMessageProducer()
+                                        .sendAsyncUri(
+                                                "jms-durable:topic:BMH.Config",
+                                                SerializationUtil
+                                                        .transformToThrift(new ConfigurationNotification()));
                             } catch (Throwable e) {
                                 statusHandler
                                         .error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
