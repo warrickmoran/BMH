@@ -105,6 +105,9 @@ public final class DacStatusMessage {
 
     private int unrecoverablePacketErrors;
 
+    /* TODO: REMOVE when random broadcasting silence messages fixed. */
+    private final String rawMessage;
+
     /**
      * Parses a DAC heartbeat message into its component parts. Splits the DAC's
      * message by the token character {@code ','} into the individual fields.
@@ -116,6 +119,8 @@ public final class DacStatusMessage {
      */
     public DacStatusMessage(final String rawMessage)
             throws MalformedDacStatusException {
+        this.rawMessage = rawMessage;
+
         if (rawMessage.charAt(0) != STATUS_MSG_INDICATOR) {
             logger.debug("Received malformed status message: " + rawMessage);
             throw new MalformedDacStatusException(
@@ -303,20 +308,16 @@ public final class DacStatusMessage {
                 reportStatus = true;
             }
 
-            if (recoverablePacketErrors != previous.recoverablePacketErrors) {
-                int delta = recoverablePacketErrors
-                        - previous.recoverablePacketErrors;
+            if (recoverablePacketErrors > 0) {
                 logger.warn("Detected "
-                        + delta
+                        + recoverablePacketErrors
                         + " new recoverable packet errors in this session since the last status update.");
                 reportStatus = true;
             }
 
-            if (unrecoverablePacketErrors != previous.unrecoverablePacketErrors) {
-                int delta = unrecoverablePacketErrors
-                        - previous.unrecoverablePacketErrors;
+            if (unrecoverablePacketErrors > 0) {
                 logger.error("Detected "
-                        + delta
+                        + unrecoverablePacketErrors
                         + " new unrecoverable packet errors in this session since the last status update.");
                 reportStatus = true;
             }
@@ -359,6 +360,9 @@ public final class DacStatusMessage {
                                 + channelNumber
                                 + " appears to have stopped broadcasting IP audio stream. Reporting voice status of "
                                 + voiceStatus[index]);
+                        logger.debug("Current jitter buffer size: "
+                                + bufferSize);
+                        logger.debug("Original status from DAC: " + rawMessage);
                     }
                     reportStatus = true;
                 }
