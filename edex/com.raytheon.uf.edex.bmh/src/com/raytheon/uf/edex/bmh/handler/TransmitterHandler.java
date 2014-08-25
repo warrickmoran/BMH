@@ -44,6 +44,7 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014   3173     mpduff      Initial creation
  * Aug 19, 2014   3486     bsteffen    Send change notification over jms.
+ * Aug 24, 2014 3432       mpduff      Added getEnabledTransmitters()
  * 
  * </pre>
  * 
@@ -62,6 +63,9 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
             break;
         case GetTransmitters:
             response = getTransmitters();
+            break;
+        case GetEnabledTransmitters:
+            response = getEnabledTransmitters();
             break;
         case SaveTransmitter:
             response = saveTransmitter(request);
@@ -91,8 +95,9 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
         case DeleteTransmitterGroup:
         case SaveGroupList:
         case SaveTransmitterDeleteGroup:
-            EDEXUtil.getMessageProducer().sendAsyncUri(
-                    "jms-durable:topic:BMH.Config",
+            EDEXUtil.getMessageProducer()
+                    .sendAsyncUri(
+                            "jms-durable:topic:BMH.Config",
                             SerializationUtil
                                     .transformToThrift(new ConfigurationNotification()));
         }
@@ -146,6 +151,15 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
         TransmitterResponse response = new TransmitterResponse();
         TransmitterDao dao = new TransmitterDao();
         List<Transmitter> transmitters = dao.getAllTransmitters();
+        response.setTransmitterList(transmitters);
+
+        return response;
+    }
+
+    private TransmitterResponse getEnabledTransmitters() {
+        TransmitterResponse response = new TransmitterResponse();
+        TransmitterDao dao = new TransmitterDao();
+        List<Transmitter> transmitters = dao.getEnabledTransmitters();
         response.setTransmitterList(transmitters);
 
         return response;

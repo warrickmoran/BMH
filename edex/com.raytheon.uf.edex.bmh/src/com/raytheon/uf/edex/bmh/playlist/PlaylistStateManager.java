@@ -39,13 +39,15 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Playlist state tracking manager to track state of the playlists for the GUIs
  * 
  * 
+ * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 23, 2014            mpduff     Initial creation
+ * Aug 23, 2014    3432    mpduff      Initial creation
+ * Aug 24, 2014    3432    mpduff      Added thread safety
  * 
  * </pre>
  * 
@@ -71,7 +73,7 @@ public class PlaylistStateManager {
         return instance;
     }
 
-    public void processPlaylistSwitchNotification(
+    public synchronized void processPlaylistSwitchNotification(
             PlaylistSwitchNotification notification) {
         String tg = notification.getTransmitterGroup();
         statusHandler.info("PlaylistSwitchNotification arrived for "
@@ -95,6 +97,9 @@ public class PlaylistStateManager {
         }
 
         Map<Long, BroadcastMsg> playlistMap = playlistData.getPlaylistMap();
+        // remove unused messages
+        playlistMap.keySet().retainAll(predictionMap.keySet());
+
         Map<Long, MessageType> messageTypeMap = playlistData
                 .getMessageTypeMap();
 
@@ -115,7 +120,7 @@ public class PlaylistStateManager {
         }
     }
 
-    public void processMessagePlaybackStatusNotification(
+    public synchronized void processMessagePlaybackStatusNotification(
             MessagePlaybackStatusNotification notification) {
         statusHandler.info("MessagePlaybackStatusNotification arrived for "
                 + notification.getTransmitterGroup());
@@ -141,8 +146,15 @@ public class PlaylistStateManager {
         }
     }
 
-    public PlaylistDataStructure getPlaylistDataStructure(
+    public synchronized PlaylistDataStructure getPlaylistDataStructure(
             String transmitterGrpName) {
-        return playlistDataMap.get(transmitterGrpName);
+        // return a copy of the map to avoid concurrent issues during
+        // serialization
+        if (playlistDataMap.containsKey(transmitterGrpName)) {
+            return new PlaylistDataStructure(
+                    playlistDataMap.get(transmitterGrpName));
+        } else {
+            return new PlaylistDataStructure();
+        }
     }
 }

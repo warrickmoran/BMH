@@ -73,6 +73,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Jun 03, 2014    3432    mpduff      Initial creation
  * Aug 14, 2014    3432    mpduff      Implementing more methods.
  * Aug 23, 2014    3432    mpduff      Add getPlaylistDataForTransmitter
+ * Aug 24, 2014    3432    mpduff      Added getEnabledTransmitters
  * 
  * </pre>
  * 
@@ -94,9 +95,24 @@ public class BroadcastCycleDataManager {
      * @return
      * @throws Exception
      */
-    public List<Transmitter> getTransmitterList() throws Exception {
+    public List<TransmitterGroup> getTransmitterGroupList() throws Exception {
         TransmitterRequest request = new TransmitterRequest();
-        request.setAction(TransmitterRequestAction.GetTransmitters);
+        request.setAction(TransmitterRequestAction.GetTransmitterGroups);
+
+        TransmitterResponse response = (TransmitterResponse) BmhUtils
+                .sendRequest(request);
+        return response.getTransmitterGroupList();
+    }
+
+    /**
+     * Get the list of enabled transmitters
+     * 
+     * @return
+     * @throws Exception
+     */
+    public List<Transmitter> getEnabledTransmitterList() throws Exception {
+        TransmitterRequest request = new TransmitterRequest();
+        request.setAction(TransmitterRequestAction.GetEnabledTransmitters);
 
         TransmitterResponse response = (TransmitterResponse) BmhUtils
                 .sendRequest(request);

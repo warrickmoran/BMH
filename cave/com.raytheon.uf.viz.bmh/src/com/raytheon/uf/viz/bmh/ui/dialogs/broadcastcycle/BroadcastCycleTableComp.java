@@ -47,6 +47,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * ------------ ---------- ----------- --------------------------
  * Jun 3, 2014    3432     mpduff      Initial creation
  * Aug 14, 2014   3432     mpduff      Additional capabilities
+ * Aug 24, 2014   3432     mpduff      Added override for select(int row)
  * 
  * </pre>
  * 
@@ -141,5 +142,17 @@ public class BroadcastCycleTableComp extends TableComp {
         rowList.add(row);
 
         return rowList;
+    }
+
+    /**
+     * Have to override this since we deselect all and draw a blue outline
+     * around the table row.
+     * 
+     * @param row
+     *            The row to select
+     */
+    @Override
+    public void select(int row) {
+        selectedTableIndex = row;
     }
 }

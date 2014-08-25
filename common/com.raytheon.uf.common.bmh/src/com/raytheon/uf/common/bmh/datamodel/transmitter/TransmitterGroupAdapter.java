@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 6, 2014    3173     mpduff      Initial creation
+ * Aug 24, 2014   3432     mpduff      Add min/max db values
  * 
  * </pre>
  * 
@@ -101,6 +102,8 @@ public class TransmitterGroupAdapter implements
         serializer.writeObject(group.getSilenceAlarm());
         serializer.writeObject(group.getTimeZone());
         serializer.writeObject(group.getTone());
+        serializer.writeDouble(group.getAdjustAudioMaxDB());
+        serializer.writeDouble(group.getAdjustAudioMinDB());
     }
 
     /**
@@ -122,6 +125,8 @@ public class TransmitterGroupAdapter implements
         tg.setSilenceAlarm((Boolean) deserializer.readObject());
         tg.setTimeZone((String) deserializer.readObject());
         tg.setTone((Tone) deserializer.readObject());
+        tg.setAdjustAudioMaxDB(deserializer.readDouble());
+        tg.setAdjustAudioMinDB(deserializer.readDouble());
 
         return tg;
     }

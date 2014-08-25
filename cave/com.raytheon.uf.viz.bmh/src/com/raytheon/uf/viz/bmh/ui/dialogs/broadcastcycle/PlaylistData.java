@@ -122,6 +122,9 @@ public class PlaylistData {
         }
 
         Map<Long, BroadcastMsg> playlistMap = playlistData.getPlaylistMap();
+        // remove unused messages
+        playlistMap.keySet().retainAll(predictionMap.keySet());
+
         Map<Long, MessageType> messageTypeMap = playlistData
                 .getMessageTypeMap();
 
@@ -190,17 +193,12 @@ public class PlaylistData {
                 .getMessageTypeMap();
 
         List<BroadcastCycleTableDataEntry> dataEntries = new ArrayList<>();
-        for (Map.Entry<Long, BroadcastMsg> entry : playlistMap.entrySet()) {
+        for (Map.Entry<Long, MessagePlaybackPrediction> entry : predictionMap
+                .entrySet()) {
             Long broadcastId = entry.getKey();
-            BroadcastMsg message = entry.getValue();
-            MessagePlaybackPrediction pred = predictionMap.get(broadcastId);
+            MessagePlaybackPrediction pred = entry.getValue();
             BroadcastCycleTableDataEntry data = new BroadcastCycleTableDataEntry();
             data.setAlertSent(pred.isPlayedAlertTone());
-            data.setExpirationTime(TimeUtil.newGmtCalendar());
-            data.setMessageId(message.getAfosid());
-            String title = messageTypeMap.get(broadcastId).getTitle();
-            data.setMessageTitle(title);
-            data.setMrd("MRD"); // TODO
             data.setPlayCount(pred.getPlayCount());
             data.setSameSent(pred.isPlayedSameTone());
             if (pred.getNextTransmitTime() == null) {
@@ -212,6 +210,13 @@ public class PlaylistData {
                 data.setTransmitTimeColor(colorManager
                         .getPredictedTransmitTimeColor());
             }
+            data.setExpirationTime(TimeUtil.newGmtCalendar());
+
+            BroadcastMsg message = playlistMap.get(broadcastId);
+            data.setMessageId(message.getAfosid());
+            String title = messageTypeMap.get(broadcastId).getTitle();
+            data.setMessageTitle(title);
+            data.setMrd("MRD"); // TODO
             data.setBroadcastId(broadcastId);
             data.setInputMsg(message.getInputMessage());
             // TODO set other background colors

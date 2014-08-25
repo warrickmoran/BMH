@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 22, 2014     3432   mpduff      Initial creation
+ * Aug 24, 2014     3432   mpduff      Added Copy constructor
  * 
  * </pre>
  * 
@@ -63,6 +64,16 @@ public class PlaylistDataStructure {
      */
     @DynamicSerializeElement
     private Map<Long, MessageType> messageTypeMap;
+
+    public PlaylistDataStructure() {
+
+    }
+
+    public PlaylistDataStructure(PlaylistDataStructure that) {
+        this.playlistMap = new HashMap<>(that.getPlaylistMap());
+        this.predictionMap = new HashMap<>(that.getPredictionMap());
+        this.messageTypeMap = new HashMap<>(that.getMessageTypeMap());
+    }
 
     public Map<Long, BroadcastMsg> getPlaylistMap() {
         if (playlistMap == null) {

@@ -40,7 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
  * Jul 17, 2014 3406       mpduff      Added getAllTransmitters()
- * 
+ * Aug 24, 2014 3432       mpduff      Added getEnabledTransmitters()
  * </pre>
  * 
  * @author rjpeter
@@ -76,5 +76,16 @@ public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
                 });
 
         return xmit;
+    }
+
+    public List<Transmitter> getEnabledTransmitters() {
+        // TODO this needs to be changed to query for only enabled transmitters
+        List<Object> results = this.loadAll();
+        List<Transmitter> tList = new ArrayList<Transmitter>(results.size());
+        for (Object o : results) {
+            tList.add((Transmitter) o);
+        }
+
+        return tList;
     }
 }

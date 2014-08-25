@@ -107,7 +107,7 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
         }
 
         /* Adjust the raw audio data as needed. */
-        byte[] regulatedRawData = this.adjustAudio(rawData, message);
+        byte[] regulatedRawData = rawData;// this.adjustAudio(rawData, message);
 
         ByteBuffer tones = null;
         ByteBuffer endOfMessage = null;
