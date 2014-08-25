@@ -19,16 +19,12 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
-import java.io.ByteArrayOutputStream;
-
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
-import com.raytheon.uf.edex.bmh.tts.TTSInterface;
 import com.raytheon.uf.edex.bmh.tts.TTSManager;
 import com.raytheon.uf.edex.bmh.tts.TTSReturn;
-import com.raytheon.uf.edex.bmh.tts.TimeLockedTTSInterface;
 
 /**
  * Handle the CAVE text to speech requests.
@@ -41,6 +37,9 @@ import com.raytheon.uf.edex.bmh.tts.TimeLockedTTSInterface;
  * ------------ ---------- ----------- --------------------------
  * Jun 16, 2014    3355    mpduff      Initial creation
  * Aug 20, 2014    3538    bkowal      Use TTS Connection Pooling.
+ * Aug 25, 2014    3538    bkowal      Update to use the new TTS Synthesis
+ *                                     mechanism. Most of the interaction is
+ *                                     now hidden from the client.
  * 
  * </pre>
  * 
@@ -58,41 +57,17 @@ public class TextToSpeechHandler implements
 
     @Override
     public Object handleRequest(TextToSpeechRequest request) throws Exception {
-        TimeLockedTTSInterface timeLock = ttsManager.getConnectionManager()
-                .requestConnection();
-        if (timeLock == null) {
-            /*
-             * TODO: not enough connections available. Should CAVE retry? If so,
-             * how long should CAVE retry?
-             */
-            request.setByteData(null);
-            request.setStatus("No TTS connections are available!");
-            return request;
-        }
-        TTSInterface ttsInterface = timeLock.getInterface();
-        TTSReturn output = ttsInterface.transformSSMLToAudio(
+        TTSReturn output = this.ttsManager.getSynthesisFactory().synthesize(
                 request.getPhoneme(), request.getVoice(),
-                TTS_FORMAT.TTS_FORMAT_MULAW, true);
+                TTS_FORMAT.TTS_FORMAT_MULAW, 10000);
         TTS_RETURN_VALUE status = output.getReturnValue();
 
+        request.setStatus(status.getDescription());
         if (status == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
             request.setByteData(output.getVoiceData());
-        } else if (status == TTS_RETURN_VALUE.TTS_RESULT_CONTINUE) {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            outputStream.write(output.getVoiceData());
-            while (status == TTS_RETURN_VALUE.TTS_RESULT_CONTINUE) {
-                output = ttsInterface.transformSSMLToAudio(
-                        request.getPhoneme(), request.getVoice(),
-                        TTS_FORMAT.TTS_FORMAT_MULAW, false);
-                outputStream.write(output.getVoiceData());
-                status = output.getReturnValue();
-            }
-            request.setByteData(outputStream.toByteArray());
+        } else {
+            request.setByteData(null);
         }
-
-        ttsManager.getConnectionManager().returnConnection(timeLock,
-                request.getByteData().length);
-        request.setStatus(status.getDescription());
 
         return request;
     }

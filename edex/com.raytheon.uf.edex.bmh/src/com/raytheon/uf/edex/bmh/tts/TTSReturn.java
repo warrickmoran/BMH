@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.tts;
 
+import java.io.IOException;
+
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 
 /**
@@ -31,6 +33,7 @@ import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 26, 2014 3302       bkowal      Initial creation
+ * Aug 25, 2014 3538       bkowal      Added additional fields for error reporting
  * 
  * </pre>
  * 
@@ -40,15 +43,48 @@ import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 
 public class TTSReturn {
 
+    private boolean synthesisSuccess;
+
+    private long bytesSythensized;
+
     private final TTS_RETURN_VALUE returnValue;
 
     private byte[] voiceData;
+
+    private boolean ioFailed;
+
+    private IOException ioFailureCause;
 
     /**
      * 
      */
     public TTSReturn(TTS_RETURN_VALUE returnValue) {
         this.returnValue = returnValue;
+        this.synthesisSuccess = false;
+    }
+
+    public void synthesisIsComplete(final long bytesSynthesized) {
+        this.synthesisSuccess = true;
+        this.bytesSythensized = bytesSynthesized;
+    }
+
+    public void ioHasFailed(IOException ioFailureCause) {
+        this.ioFailed = true;
+        this.ioFailureCause = ioFailureCause;
+    }
+
+    /**
+     * @return the synthesisSuccess
+     */
+    public boolean isSynthesisSuccess() {
+        return synthesisSuccess;
+    }
+
+    /**
+     * @return the bytesSythensized
+     */
+    public long getBytesSythensized() {
+        return bytesSythensized;
     }
 
     /**
@@ -71,5 +107,27 @@ public class TTSReturn {
      */
     public TTS_RETURN_VALUE getReturnValue() {
         return returnValue;
+    }
+
+    /**
+     * @return the ioFailed
+     */
+    public boolean isIoFailed() {
+        return ioFailed;
+    }
+
+    /**
+     * @return the ioFailureCause
+     */
+    public IOException getIoFailureCause() {
+        return ioFailureCause;
+    }
+
+    /**
+     * @param ioFailureCause
+     *            the ioFailureCause to set
+     */
+    public void setIoFailureCause(IOException ioFailureCause) {
+        this.ioFailureCause = ioFailureCause;
     }
 }

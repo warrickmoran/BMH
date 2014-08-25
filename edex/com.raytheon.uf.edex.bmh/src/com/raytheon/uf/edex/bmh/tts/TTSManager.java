@@ -23,8 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +31,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.TTSSynthesisException;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
@@ -61,6 +60,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jul 1, 2014  3302       bkowal      Fixed log message.
  * Aug 20, 2014 3538       bkowal      Use TTS Connection Pooling. Implement Monitoring.
  *                                     Truly verify TTS Synthesis is available.
+ * Aug 25, 2014 3538       bkowal      Update to use the new TTS Synthesis
+ *                                     mechanism. Cleanup.
  * 
  * </pre>
  * 
@@ -95,15 +96,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private static final String TTS_HEARTBEAT = "bmh.tts.heartbeat";
 
-    private static final String TTS_SERVER_PROPERTY = "bmh.tts.server";
-
-    private static final String TTS_PORT_PROPERTY = "bmh.tts.port";
-
-    private static final String TTS_STATUS_PORT_PROPERTY = "bmh.tts.status.port";
-
     private static final String TTS_VOICE_VALIDATE_PROPERTY = "bmh.tts.voice.validate";
-
-    private static final String TTS_CONNECT_TIMEOUT_PROPERTY = "bmh.tts.connect-timeout";
 
     private static final String TTS_RETRY_THRESHOLD_PROPERTY = "bmh.tts.retry-threshold";
 
@@ -118,15 +111,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private long ttsHeartbeat;
 
-    private String ttsServer;
-
-    private int ttsPort;
-
-    private int ttsStatusPort;
-
     private Integer ttsValidationVoice;
-
-    private int ttsConnectionTimeout;
 
     private int ttsRetryThreshold;
 
@@ -134,7 +119,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private final boolean disabled;
 
-    private TTSConnectionManager connectionManager;
+    private TTSSynthesisFactory synthesisFactory;
 
     private ScheduledThreadPoolExecutor heartbeatMonitor;
 
@@ -213,14 +198,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         Integer ttsThreadInteger = Integer.getInteger(TTS_THREADS, null);
         Long ttsHeartbeatLong = Long.getLong(TTS_HEARTBEAT, null);
 
-        this.ttsServer = System.getProperty(TTS_SERVER_PROPERTY, null);
-        Integer portInteger = Integer.getInteger(TTS_PORT_PROPERTY, null);
-        Integer statusPortInteger = Integer.getInteger(
-                TTS_STATUS_PORT_PROPERTY, null);
         this.ttsValidationVoice = Integer.getInteger(
                 TTS_VOICE_VALIDATE_PROPERTY, null);
-        Integer timeoutInteger = Integer.getInteger(
-                TTS_CONNECT_TIMEOUT_PROPERTY, null);
         Integer retryInteger = Integer.getInteger(TTS_RETRY_THRESHOLD_PROPERTY,
                 null);
         Long delayLong = Long.getLong(TTS_RETRY_DELAY_PROPERTY, null);
@@ -235,22 +214,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                     "Failed to retrieve the TTS Heartbeat Interval from configuration!");
         }
 
-        if (this.ttsServer == null) {
-            throw new TTSConfigurationException(
-                    "Failed to retrieve the TTS Server from configuration!");
-        }
-        if (portInteger == null) {
-            throw new TTSConfigurationException(
-                    "Failed to retrieve the TTS Port from configuration!");
-        }
-        if (statusPortInteger == null) {
-            throw new TTSConfigurationException(
-                    "Failed to retrieve the TTS Status Port from configuration!");
-        }
-        if (timeoutInteger == null) {
-            throw new TTSConfigurationException(
-                    "Failed to retrieve the TTS Connection Timeout from configuration!");
-        }
         if (retryInteger == null) {
             throw new TTSConfigurationException(
                     "Failed to retrieve the TTS Retry Threshold from configuration!");
@@ -263,9 +226,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         this.ttsThreads = ttsThreadInteger;
         this.ttsHeartbeat = ttsHeartbeatLong;
 
-        this.ttsPort = portInteger;
-        this.ttsStatusPort = statusPortInteger;
-        this.ttsConnectionTimeout = timeoutInteger;
         this.ttsRetryThreshold = retryInteger;
         this.ttsRetryDelay = delayLong;
 
@@ -284,14 +244,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         if (this.ttsRetryDelay < 0) {
             throw new TTSConfigurationException("TTS Retry Delay must be >= 0!");
         }
-        /* Ensure that the TTS Connect Timeout is >= 0 */
-        if (timeoutInteger < 0) {
-            throw new TTSConfigurationException(
-                    "TTS Connection Timeout must be >= 0!");
-        }
 
-        this.connectionManager = new TTSConnectionManager(this.ttsThreads,
-                this.ttsServer, this.ttsPort, this.ttsConnectionTimeout);
         if (this.ttsValidationVoice != null) {
             statusHandler
                     .info("TTS Voice "
@@ -306,8 +259,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
         statusHandler.info("TTS Available Thread Count is " + this.ttsThreads);
         statusHandler.info("TTS Heartbeat Interval is " + this.ttsHeartbeat);
-        statusHandler.info("TTS Connection Timeout is: " + timeoutInteger
-                + " ms");
         statusHandler.info("BMH Audio Directory is: " + this.bmhDataDirectory);
         statusHandler.info("TTS Retry Threshold is: " + this.ttsRetryThreshold);
         statusHandler
@@ -332,15 +283,15 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         boolean retry = true;
         while (retry) {
             ++attempt;
-            TTS_RETURN_VALUE returnValue = TTSInterface
-                    .validateTTSAvailability(this.ttsServer, this.ttsStatusPort);
+            TTS_RETURN_VALUE returnValue = this.synthesisFactory
+                    .validateServerAvailability();
 
             retry = this.checkRetry(attempt, returnValue);
         }
 
         statusHandler.info("Verified the availability of the TTS Server at "
-                + this.ttsServer + " (Status Port = " + this.ttsStatusPort
-                + ").");
+                + this.synthesisFactory.getTtsServer() + " (Status Port = "
+                + this.synthesisFactory.getTtsStatusPort() + ").");
     }
 
     /**
@@ -362,33 +313,25 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         int attempt = 0;
         boolean retry = true;
 
-        // Currently assuming that a connection will always be available during
-        // startup.
-        TimeLockedTTSInterface timeLock = this.connectionManager
-                .requestConnection();
-        if (timeLock == null) {
-            throw new TTSConfigurationException(
-                    "Unable to acquire a connection to the TTS Server!");
-        }
         while (retry) {
             ++attempt;
-            TTSReturn ttsReturn = timeLock.getInterface()
-                    .validateTTSAvailableForSynthesis(this.ttsValidationVoice,
-                            TTS_DEFAULT_FORMAT);
+
+            TTSReturn ttsReturn;
+            try {
+                ttsReturn = this.synthesisFactory.synthesize("TEST",
+                        this.ttsValidationVoice, TTS_DEFAULT_FORMAT);
+            } catch (TTSSynthesisException e) {
+                statusHandler.error(BMH_CATEGORY.UNKNOWN,
+                        "TTS Synthesis validation has failed!", e);
+                continue;
+            }
 
             retry = this.checkRetry(attempt, ttsReturn.getReturnValue());
-            if (retry == false) {
-                /*
-                 * Lock the interface for the audio duration and return it to
-                 * the pool.
-                 */
-                this.connectionManager.returnConnection(timeLock,
-                        ttsReturn.getVoiceData().length);
-            }
         }
 
-        statusHandler.info("Verified the TTS Server at " + this.ttsServer
-                + " running on Port " + this.ttsPort
+        statusHandler.info("Verified the TTS Server at "
+                + this.synthesisFactory.getTtsServer() + " running on Port "
+                + this.synthesisFactory.getTtsSynthesisPort()
                 + " is capable of synthesis.");
     }
 
@@ -400,7 +343,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         StringBuilder stringBuilder = new StringBuilder("Connection Attempt (");
         stringBuilder.append(attempt);
         stringBuilder.append(") to the TTS Server ");
-        stringBuilder.append(this.ttsServer);
+        stringBuilder.append(this.synthesisFactory.getTtsServer());
         stringBuilder.append(" has failed! ");
         stringBuilder.append(this.getTTSErrorLogStatement(returnValue));
         stringBuilder.append(". Retrying ...");
@@ -438,50 +381,34 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 .info("Performing Text-to-Speech Transformation for message: "
                         + message.getId() + ".");
 
-        /* LinkedList to maintain the order of the converted data. */
-        List<byte[]> convertedData = new LinkedList<byte[]>();
         int attempt = 0;
         TTSReturn ttsReturn = null;
-        boolean getFirstFrame = true;
         boolean success = false;
         IOException ioException = null;
-
-        TimeLockedTTSInterface timeLock = null;
-        while (timeLock == null) {
-            timeLock = this.connectionManager.requestConnection();
-            /*
-             * Wait for a connection. Should there be a limit to how long the
-             * wait will be?
-             */
-            if (timeLock == null) {
-                statusHandler.info("Waiting for TTS Connection. [Message ID = "
-                        + message.getId() + "]");
-                this.sleepDelayTime();
-            }
-        }
-
-        statusHandler.info("Using TTS Connection " + timeLock.getIdentifier()
-                + ". [Message ID = " + message.getId() + "]");
 
         while (true) {
             ++attempt;
 
             /* Attempt the Conversion */
             try {
-                ttsReturn = timeLock.getInterface().transformSSMLToAudio(
-                        message.getSsml(), message.getVoice().getVoiceNumber(),
-                        TTS_DEFAULT_FORMAT, getFirstFrame);
-            } catch (IOException e1) {
-                /*
-                 * Prepare to retry on an IOException. Save the current
-                 * IOException just in case we have reached the maximum number
-                 * of attempts.
-                 */
-                ioException = e1;
+                ttsReturn = this.synthesisFactory
+                        .synthesize(message.getSsml(), message.getVoice()
+                                .getVoiceNumber(), TTS_DEFAULT_FORMAT);
+            } catch (TTSSynthesisException e) {
+                statusHandler.error(BMH_CATEGORY.UNKNOWN,
+                        "TTS synthesis of message " + message.getId()
+                                + " has failed! Attempt (" + attempt + ")", e);
+                if (attempt > this.ttsRetryThreshold) {
+                    break;
+                } else {
+                    continue;
+                }
+            }
+            if (ttsReturn.isIoFailed()) {
+                ioException = ttsReturn.getIoFailureCause();
             }
 
             if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
-                convertedData.add(ttsReturn.getVoiceData());
                 statusHandler.info("Successfully retrieved "
                         + ttsReturn.getVoiceData().length
                         + " bytes of audio data for message: "
@@ -491,27 +418,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 break;
             }
 
-            if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_CONTINUE) {
-                convertedData.add(ttsReturn.getVoiceData());
-                statusHandler.info("Successfully retrieved "
-                        + ttsReturn.getVoiceData().length
-                        + " bytes of audio data for message: "
-                        + message.getId() + ". Retrieving additional data ...");
-                /*
-                 * The conversion was successful; however, there is additional
-                 * data to retrieve.
-                 */
-
-                // Ensure that we will get the next available frame instead of
-                // the first frame.
-                getFirstFrame = false;
-                /* Reset the attempt count. */
-                attempt = 0;
-                continue;
-            }
-
             if (this.retry(ttsReturn.getReturnValue()) == false) {
-                this.connectionManager.returnConnection(timeLock, 0);
                 /* Absolute Failure */
                 break;
             }
@@ -523,7 +430,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                  * maximum retry count reached; halt text-to-speech
                  * transformation attempts
                  */
-                this.connectionManager.returnConnection(timeLock, 0);
                 break;
             } else {
                 String logMessage = "Text-to-Speech Transformation was unsuccessful for message: "
@@ -550,32 +456,22 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         }
 
         if (success) {
-            int totalBytes = 0;
-            for (byte[] data : convertedData) {
-                totalBytes += data.length;
-            }
+            int totalBytes = ttsReturn.getVoiceData().length;
             statusHandler
                     .info("Text-to-Speech Transformation completed successfully for message: "
                             + message.getId()
                             + ".  Length of playback = "
                             + (((totalBytes / 160) * 20) / 1000) + " seconds");
-            /* Return the connection. */
-            this.connectionManager.returnConnection(timeLock, totalBytes);
             /* Write the output file. */
             File outputFile = this.determineOutputFile(message.getId(), message
                     .getInputMessage().getAfosid(), message.getVoice());
             try {
-                boolean append = false;
-                int byteCount = 0;
-                for (byte[] data : convertedData) {
-                    FileUtils.writeByteArrayToFile(outputFile, data, append);
-                    byteCount += data.length;
-                    append = true;
-                }
+                FileUtils.writeByteArrayToFile(outputFile,
+                        ttsReturn.getVoiceData());
                 message.setOutputName(outputFile.getAbsolutePath());
                 statusHandler.info("Successfully wrote audio output file: "
                         + outputFile.getAbsolutePath() + " for message: "
-                        + message.getId() + ". " + byteCount
+                        + message.getId() + ". " + totalBytes
                         + " bytes were written.");
             } catch (IOException e) {
                 ioException = e;
@@ -746,7 +642,18 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         }
     }
 
-    public TTSConnectionManager getConnectionManager() {
-        return connectionManager;
+    /**
+     * @return the synthesisFactory
+     */
+    public TTSSynthesisFactory getSynthesisFactory() {
+        return synthesisFactory;
+    }
+
+    /**
+     * @param synthesisFactory
+     *            the synthesisFactory to set
+     */
+    public void setSynthesisFactory(TTSSynthesisFactory synthesisFactory) {
+        this.synthesisFactory = synthesisFactory;
     }
 }

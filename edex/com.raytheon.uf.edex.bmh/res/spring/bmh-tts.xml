@@ -2,11 +2,22 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
-  
+
+	<bean id="ttsSynthesisFactory" class="com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory">
+		<constructor-arg value="${bmh.tts.server}" />
+		<constructor-arg value="${bmh.tts.port}" />
+		<constructor-arg value="${bmh.tts.status.port}" />
+		<constructor-arg value="${bmh.tts.connect-timeout}" />
+		<constructor-arg value="${bmh.tts.nfs.dir}" />
+		<constructor-arg value="${bmh.tts.threads}" />
+	</bean>
+
 	<!-- tts manager -->
-	<bean id="ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager" 
-		destroy-method="dispose" />
-	
+	<bean id="ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager"
+		destroy-method="dispose">
+		<property name="synthesisFactory" ref="ttsSynthesisFactory" />
+	</bean>
+
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
 		<constructor-arg ref="bmh-tts" />
 		<constructor-arg ref="ttsManager" />
