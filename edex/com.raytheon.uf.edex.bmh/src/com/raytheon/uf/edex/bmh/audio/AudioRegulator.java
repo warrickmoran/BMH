@@ -34,6 +34,10 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 23, 2014 3424       bkowal      Initial creation
+ * Aug 25, 2014 3552       bkowal      Algorithm updates to ensure that audio
+ *                                     samples are not adjusted twice { attenuated the
+ *                                     first time and amplified the second or vice
+ *                                     verse }.
  * 
  * </pre>
  * 
@@ -197,8 +201,15 @@ public class AudioRegulator {
     /**
      * Adjusts the regulated audio data such that the minimum signal (in dB)
      * will be greater than or equal to the specified minimum signal strength
-     * (in dB) and the maximum signal (in dB) will be less than or equal to the
+     * (in dB) or the maximum signal (in dB) will be less than or equal to the
      * specified maximum signal strength (in dB).
+     * 
+     * There is a version of this algorithm that will put the entire audio
+     * sequence within the specified range: between the minimum signal AND the
+     * maximum signal by splitting the audio up. However, the quality of the
+     * audio that is produced will be dependent on the difference between the
+     * minimum and maximum. The greater the difference, the better the quality
+     * will be because the audio wave would not have to be compressed as much.
      * 
      * @param dbMin
      *            the specified minimum signal strength (in dB)
@@ -266,9 +277,12 @@ public class AudioRegulator {
                 continue;
             }
 
-            if (audioDecibels >= adjustedDBMin
-                    && audioDecibels <= adjustedDBMax) {
-                /* audio falls within the allowed range */
+            if ((audioDecibels >= adjustedDBMin && audioDecibels <= adjustedDBMax)
+                    || (audioDecibels >= dbMin && audioDecibels <= dbMax)) {
+                /*
+                 * audio falls within the allowed range - either the original
+                 * range or the adjusted range
+                 */
                 continue;
             }
 
@@ -281,10 +295,13 @@ public class AudioRegulator {
              * other outliers in immediate proximity to the original and then
              * adjust all of them together?
              */
-            short audioSample = (short) (((this.originalPCMData[index + 1] & 0xff) << 8) | (this.originalPCMData[index] & 0xff));
+            short audioSample = (short) (((alteredAudio[index + 1] & 0xff) << 8) | (alteredAudio[index] & 0xff));
             double sampleDB = this.calculateDecibels(Math.abs(audioSample));
-            adjustmentRate = this.calculateAudioAdjustmentRate(sampleDB, dbMin,
-                    dbMax);
+            /*
+             * update audio to fall within the adjusted range.
+             */
+            adjustmentRate = this.calculateAudioAdjustmentRate(sampleDB,
+                    adjustedDBMin, adjustedDBMax);
             audioSample = (short) (audioSample * adjustmentRate);
             if (Math.abs(audioSample) > MAX_AMPLITUDE) {
                 throw new AudioOverflowException(adjustmentRate,
