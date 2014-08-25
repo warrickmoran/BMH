@@ -61,6 +61,13 @@ alter table bmh.suite_message add constraint fkb09b85c09c6dfa92
     foreign key (msgtype_id) references bmh.message_type(id) on delete cascade;
 
 /**
+ * Suite to Suite Message 
+ **/
+alter table bmh.suite_message drop constraint fkb09b85c087a7814c;
+alter table bmh.suite_message add constraint fkb09b85c087a7814c
+    foreign key (suite_id) references bmh.suite(id) on delete cascade;
+
+/**
  * Area/Zone join table cascade delete
  **/
 alter table bmh.area_tx drop constraint fkd381bb7657342f33;

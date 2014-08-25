@@ -74,6 +74,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      re-populate without rebuilding the table.
  * Aug 18, 2014  #3490     lvenable     Added callback calls for actions on the suites.
  * Aug 21, 2014  #3490     lvenable     Added capability when creating new programs.
+ * Aug 25, 2014  #3490     lvenable     Method to set the selected program..
  * 
  * </pre>
  * 
@@ -195,6 +196,16 @@ public class SuiteConfigGroup extends Composite {
      */
     public void setCallBackAction(ISuiteSelection suiteSelectionCB) {
         this.suiteSelectionCB = suiteSelectionCB;
+    }
+
+    /**
+     * Set the selected program.
+     * 
+     * @param p
+     *            The program that was selected.
+     */
+    public void setSelectedProgram(Program p) {
+        selectedProgram = p;
     }
 
     /**
@@ -376,7 +387,8 @@ public class SuiteConfigGroup extends Composite {
 
                     CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
                             .getShell(), DialogType.CREATE,
-                            showProgramControls, null, existingNames);
+                            showProgramControls, selectedProgram, null,
+                            existingNames);
                     csd.setCloseCallback(new ICloseCallback() {
                         @Override
                         public void dialogClosed(Object returnValue) {
@@ -717,7 +729,7 @@ public class SuiteConfigGroup extends Composite {
 
         if (suiteTable.hasTableData() == false) {
             List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-            TableColumnData tcd = new TableColumnData("Suite Name", 150);
+            TableColumnData tcd = new TableColumnData("Suite Name", 250);
             columnNames.add(tcd);
             tcd = new TableColumnData("Category");
             columnNames.add(tcd);

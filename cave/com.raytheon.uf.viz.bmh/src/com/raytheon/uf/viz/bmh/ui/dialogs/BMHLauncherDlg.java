@@ -54,6 +54,7 @@ import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
@@ -67,7 +68,6 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.listening.zones.ListeningZoneDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypesDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
-import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.SystemStatusDlg;
 import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
@@ -93,6 +93,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 17, 2014  #3490     lvenable    Updated for disable silence alarm.
  * Aug 20, 2014   3411     mpduff      Added bringToTop for message dialog
  * Aug 21, 2014  #3490     lvenable    Updated disable silence alarm to use transmitter group.
+ * Aug 25, 2014  #3490     lvenable    Disabled Status Dialog since it will be redesigned.
  * 
  * </pre>
  * 
@@ -130,7 +131,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     private Image broadcastCycleImg;
 
     /** Status dialog. */
-    private SystemStatusDlg statusDlg;
+    // private SystemStatusDlg statusDlg;
 
     /** Message type association dialog. */
     private MessageTypeAssocDlg msgTypeAssocDlg;
@@ -241,9 +242,12 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         createMenuComp(shell);
         createQuickAccessButtons(shell);
 
-        statusDlg = new SystemStatusDlg(getParent());
-        statusDlg.open();
-        dialogsSet.add(statusDlg);
+        /*
+         * TODO : implement after the demo with the redesigned dialog
+         */
+        // statusDlg = new SystemStatusDlg(getParent());
+        // statusDlg.open();
+        // dialogsSet.add(statusDlg);
     }
 
     /**
@@ -447,6 +451,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         weatherMessageBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
+                DialogUtility.notImplemented(shell);
             }
         });
         new CustomToolTip(weatherMessageBtn, "Weather Element");
@@ -462,6 +467,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         emergencyBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
+                DialogUtility.notImplemented(shell);
             }
         });
         new CustomToolTip(emergencyBtn, "Emergency Override");
@@ -652,7 +658,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         weatherMessagesMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
+                DialogUtility.notImplemented(shell);
             }
         });
 
@@ -664,7 +670,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         emergencyOverrideMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
+                DialogUtility.notImplemented(shell);
             }
         });
     }
@@ -684,10 +690,17 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         systemStatusMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (statusDlg == null || statusDlg.isDisposed()) {
-                    statusDlg = new SystemStatusDlg(shell);
-                    statusDlg.open();
-                }
+                /*
+                 * TODO : implement new redesigned dialog
+                 */
+                DialogUtility
+                        .showMessageBox(shell, SWT.ICON_INFORMATION | SWT.OK,
+                                "Redesign Needed",
+                                "The status dialog is being redesigned and will be available at a later date.");
+                // if (statusDlg == null || statusDlg.isDisposed()) {
+                // statusDlg = new SystemStatusDlg(shell);
+                // statusDlg.open();
+                // }
             }
         });
 
@@ -699,7 +712,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         alertMonitorMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
+                DialogUtility.notImplemented(shell);
             }
         });
     }

@@ -83,6 +83,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 21, 2014  #3490      lvenable    Updated for program changes.
  * Aug 22, 2014  #3490      lvenable    Added input dialog flag.
  * Aug 23, 2014  #3490      lvenable    Added capability for add transmitters.
+ * Aug 25, 2014  #3490      lvenable    Update suite config group when the program changes.
  * 
  * </pre>
  * 
@@ -205,6 +206,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
          */
         populateProgramCombo();
         handleProgramChange();
+
+        suiteConfigGroup.setSelectedProgram(selectedProgram);
     }
 
     /**
@@ -841,6 +844,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     private void updateSelectedProgram() {
         if (programCbo.getSelectionIndex() >= 0) {
             selectedProgram = programsArray.get(programCbo.getSelectionIndex());
+            suiteConfigGroup.setSelectedProgram(selectedProgram);
         }
     }
 
