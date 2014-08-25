@@ -22,12 +22,12 @@ package com.raytheon.uf.common.bmh.dac;
 import java.util.List;
 
 import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioFormat.Encoding;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineEvent;
 import javax.sound.sampled.LineListener;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
-import javax.sound.sampled.AudioFormat.Encoding;
 
 /**
  * An implementation of the {@link IDacListener}. Collects data from the dac
@@ -40,6 +40,7 @@ import javax.sound.sampled.AudioFormat.Encoding;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014 3374       bkowal      Initial creation
+ * Aug 25, 2014 3487       bsteffen    Do not start playback until buffer is full.
  * 
  * </pre>
  * 
@@ -90,8 +91,6 @@ public class DacLiveStreamer implements IDacListener, LineListener {
             this.closeAudioStream();
             throw new DacPlaybackException(e);
         }
-
-        this.line.start();
     }
 
     /**
@@ -123,6 +122,9 @@ public class DacLiveStreamer implements IDacListener, LineListener {
      */
     @Override
     public void dataArrived(final byte[] payload) {
+        if (!this.line.isActive() && this.line.available() < payload.length) {
+            this.line.start();
+        }
         this.line.write(payload, 0, payload.length);
     }
 
