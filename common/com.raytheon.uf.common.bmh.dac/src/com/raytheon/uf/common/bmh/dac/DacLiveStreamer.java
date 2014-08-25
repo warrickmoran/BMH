@@ -71,6 +71,8 @@ public class DacLiveStreamer implements IDacListener, LineListener {
      */
     private List<LineListener> registeredListeners;
 
+    private long lastPacketTime = 0l;
+
     /**
      * Constructor
      * 
@@ -122,10 +124,30 @@ public class DacLiveStreamer implements IDacListener, LineListener {
      */
     @Override
     public void dataArrived(final byte[] payload) {
-        if (!this.line.isActive() && this.line.available() < payload.length) {
-            this.line.start();
+        long packetTime = System.currentTimeMillis();
+        int available = this.line.available();
+        if (this.line.isActive()) {
+            int maxPacketInterval = this.line.getBufferSize() * 1000
+                    / (int) ULAW_AUDIO_FMT.getSampleRate();
+            if (packetTime - lastPacketTime > maxPacketInterval) {
+                /*
+                 * If the length of time between packets is larger than the
+                 * buffer then stop and allow buffer to refill.
+                 */
+                this.line.stop();
+            }
+        } else {
+            if (available < payload.length) {
+                /*
+                 * When the line is inactive(not playing) and the buffer is full
+                 * start playing.
+                 */
+                this.line.start();
+            }
         }
         this.line.write(payload, 0, payload.length);
+        /* Since write may have blocked get the time again. */
+        lastPacketTime = System.currentTimeMillis();
     }
 
     /*
