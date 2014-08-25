@@ -50,6 +50,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramNameComparator;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -65,6 +66,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 29, 2014     3173   mpduff      Initial creation
  * Aug 18, 2014     3173   mpduff      Add Program selection
+ * Aug 24, 2014     3432   mpduff      Implemented min/max db values
  * 
  * </pre>
  * 
@@ -124,8 +126,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private Combo grpNameCbo;
 
-    private Label grpNameValueLbl;
-
     private Combo dacCombo;
 
     private Combo dacPortCbo;
@@ -170,6 +170,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     private Label modeLbl;
 
     private Combo programCombo;
+
+    private Text minDbTxt;
+
+    private Text maxDbTxt;
 
     /**
      * Edit Transmitter constructor.
@@ -466,6 +470,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 int idx = grpNameCbo.indexOf(group.getName());
                 if (idx >= 0) {
                     grpNameCbo.select(idx);
+                } else {
+                    grpNameCbo.select(0);
                 }
             }
         } else if (type == TransmitterEditType.NEW_TRANSMITTER_GROUP) {
@@ -480,11 +486,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             grpNameValueTxt.setText(group.getName());
             groupControlList.add(grpNameValueTxt);
 
-        } else {
-            grpNameValueLbl = new Label(leftComp, SWT.NONE);
-            grpNameValueLbl.setText(group.getName());
-            grpNameValueLbl.setLayoutData(new GridData(SWT.FILL, SWT.CENTER,
-                    true, false));
         }
 
         Label dacLbl = new Label(leftComp, SWT.NONE);
@@ -636,20 +637,20 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         minDbLbl.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
                 false));
 
-        Text minDbTxt = new Text(dbComp, SWT.BORDER);
+        minDbTxt = new Text(dbComp, SWT.BORDER);
         minDbTxt.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
                 false));
-        transmitterControlList.add(minDbTxt);
+        groupControlList.add(minDbTxt);
 
         Label maxDbLbl = new Label(dbComp, SWT.NONE);
         maxDbLbl.setText("Max dB:");
         maxDbLbl.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
                 false));
 
-        Text maxDbTxt = new Text(dbComp, SWT.BORDER);
+        maxDbTxt = new Text(dbComp, SWT.BORDER);
         maxDbTxt.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
                 false));
-        transmitterControlList.add(maxDbTxt);
+        groupControlList.add(maxDbTxt);
 
         // Disable all controls by default
         enableGroupControls(false);
@@ -716,6 +717,9 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             if (group.getDaylightSaving() != null) {
                 noDstChk.setSelection(group.getDaylightSaving());
             }
+
+            this.minDbTxt.setText(String.valueOf(group.getAdjustAudioMinDB()));
+            this.maxDbTxt.setText(String.valueOf(group.getAdjustAudioMaxDB()));
 
             if (group != null && group.isStandalone()) {
                 enabled = true;
@@ -924,12 +928,19 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     group.setTimeZone(this.timeZoneCbo.getText());
                     group.setSilenceAlarm(this.disableSilenceChk.getSelection());
                     group.setDaylightSaving(this.noDstChk.getSelection());
+                    group.setAdjustAudioMaxDB(Double.parseDouble(maxDbTxt
+                            .getText().trim()));
+                    group.setAdjustAudioMinDB(Double.parseDouble(minDbTxt
+                            .getText().trim()));
+
                     Object obj = programCombo.getData();
                     if (obj != null && (obj instanceof List<?>)) {
+                        ProgramDataManager pdm = new ProgramDataManager();
                         List<Program> progList = (List<Program>) obj;
                         Program p = progList.get(programCombo
                                 .getSelectionIndex() - 1);
                         p.getTransmitterGroups().add(group);
+                        pdm.saveProgram(p);
                     }
 
                     try {
@@ -989,6 +1000,26 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             }
         }
 
+        double minDb = Double.MIN_VALUE;
+        double maxDb = Double.MIN_VALUE;
+        if (this.minDbTxt.getText().trim().length() > 0) {
+            try {
+                minDb = Double.parseDouble(this.minDbTxt.getText().trim());
+            } catch (NumberFormatException e) {
+                valid = false;
+                sb.append("\tMin dB\n");
+            }
+        }
+
+        if (this.maxDbTxt.getText().trim().length() > 0) {
+            try {
+                maxDb = Double.parseDouble(this.maxDbTxt.getText().trim());
+            } catch (NumberFormatException e) {
+                valid = false;
+                sb.append("\tMax dB\n");
+            }
+        }
+
         if (!valid) {
             DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR, "Invalid",
                     sb.toString());
@@ -1003,18 +1034,31 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         sb.setLength(0);
 
         String grpName = null;
-        if (type == TransmitterEditType.NEW_TRANSMITTER) {
+        if (type == TransmitterEditType.NEW_TRANSMITTER
+                || type == TransmitterEditType.EDIT_TRANSMITTER) {
             grpName = grpNameCbo.getText();
         } else if (type == TransmitterEditType.NEW_TRANSMITTER_GROUP
                 || type == TransmitterEditType.EDIT_TRANSMITTER_GROUP) {
             grpName = grpNameValueTxt.getText().trim();
-        } else {
-            grpName = grpNameValueLbl.getText();
         }
 
-        if (type != TransmitterEditType.EDIT_TRANSMITTER) {
-            for (String name : getGroupNames()) {
-                if (name.equals(grpName)) {
+        if (!grpName.equals(group.getName())) {
+            if (type != TransmitterEditType.EDIT_TRANSMITTER) {
+                for (String name : getGroupNames()) {
+                    if (name.equals(grpName)) {
+                        valid = false;
+                        sb.append("The Transmitter Group name must be unique\n");
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!grpName.equals(group.getName())) {
+            List<Transmitter> transmitterList = dataManager.getTransmitters();
+            transmitterList.remove(previousTransmitter);
+            for (Transmitter t : transmitterList) {
+                if (t.getMnemonic().equals(grpName)) {
                     valid = false;
                     sb.append("The Transmitter Group name must be unique\n");
                     break;
@@ -1022,14 +1066,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             }
         }
 
-        List<Transmitter> transmitterList = dataManager.getTransmitters();
-        transmitterList.remove(previousTransmitter);
-        for (Transmitter t : transmitterList) {
-            if (t.getMnemonic().equals(grpName)) {
-                valid = false;
-                sb.append("The Transmitter Group name must be unique\n");
-                break;
-            }
+        // Check for min db value less than max db value if db values are valid
+        if (minDb >= maxDb) {
+            valid = false;
+            sb.append("\tMin db must be less than or equal to the Max dB\n");
         }
 
         if (!valid) {

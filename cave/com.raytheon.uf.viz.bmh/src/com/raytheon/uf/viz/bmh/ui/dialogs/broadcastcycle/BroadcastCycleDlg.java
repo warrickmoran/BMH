@@ -26,6 +26,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.eclipse.swt.SWT;
@@ -50,7 +52,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterPositionComparator;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
@@ -105,8 +107,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     /** Table Data */
     private TableData tableData;
 
-    /** Transmitter name -> Transmitter map */
-    private final Map<String, Transmitter> transmitterNameMap = new HashMap<>();;
+    /** Transmitter name -> TransmitterGroup map */
+    private final Map<String, TransmitterGroup> transmitterGroupNameMap = new HashMap<>();;
 
     /** A Program Object */
     private Program programObj;
@@ -162,8 +164,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     /** Selected transmitter */
     private Label transmitterNameLbl;
 
-    /** The selected transmitter object */
-    private Transmitter selectedTransmitterObject;
+    /** The selected transmitterGroup object */
+    private TransmitterGroup selectedTransmitterGroupObject;
 
     /** Time Zone value label */
     private Label timeZoneValueLbl;
@@ -344,26 +346,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
             @Override
             public void widgetSelected(SelectionEvent se) {
-                if (monitorThread != null) {
-                    monitorThread
-                            .removeDisconnectListener(BroadcastCycleDlg.this);
-                    monitorThread.cancel();
-                    monitorThread = null;
-                }
-                if (monitorBtn.getSelection()) {
-                    String tName = transmitterList.getSelection()[0];
-                    tName = tName.split("-")[0];
-                    System.out.println(tName.trim());
-
-                    Transmitter selectedTransmitter = transmitterNameMap
-                            .get(tName.trim());
-                    // TODO This might need to be transmitter group, see
-                    // MonitorInlineThread api
-                    monitorThread = new MonitorInlineThread(selectedTransmitter
-                            .getMnemonic());
-                    monitorThread.addDisconnectListener(BroadcastCycleDlg.this);
-                    monitorThread.start();
-                }
+                handleMonitorInlineEvent();
             }
         });
 
@@ -658,16 +641,16 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      */
     private void populateTransmitters() {
         try {
-            List<Transmitter> transmitterObjectList = dataManager
-                    .getTransmitterList();
-            Collections.sort(transmitterObjectList,
-                    new TransmitterPositionComparator());
-            String[] tNames = new String[transmitterObjectList.size()];
+            List<TransmitterGroup> transmitterGroupObjectList = dataManager
+                    .getTransmitterGroupList();
+            Collections.sort(transmitterGroupObjectList,
+                    new TransmitterGroupPositionComparator());
+            String[] tNames = new String[transmitterGroupObjectList.size()];
             int idx = 0;
-            for (Transmitter t : transmitterObjectList) {
-                tNames[idx] = t.getMnemonic() + " - " + t.getName();
+            for (TransmitterGroup tg : transmitterGroupObjectList) {
+                tNames[idx] = tg.getName();
                 idx++;
-                transmitterNameMap.put(t.getMnemonic(), t);
+                transmitterGroupNameMap.put(tg.getName(), tg);
             }
 
             transmitterList.setItems(tNames);
@@ -764,29 +747,39 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         setText(TITLE + ": " + selectedTransmitterGrp);
         transmitterNameLbl.setText(selectedTransmitterGrp);
 
-        selectedTransmitterObject = transmitterNameMap
+        selectedTransmitterGroupObject = transmitterGroupNameMap
                 .get(selectedTransmitterGrp);
 
-        this.timeZoneValueLbl.setText(selectedTransmitterObject
-                .getTransmitterGroup().getTimeZone());
+        this.timeZoneValueLbl.setText(selectedTransmitterGroupObject
+                .getTimeZone());
 
-        String dacPort = String.valueOf(selectedTransmitterObject.getDacPort());
-        if (selectedTransmitterObject.getDacPort() == null) {
-            dacPort = NA;
+        Set<Integer> portSet = new TreeSet<>();
+        for (Transmitter t : selectedTransmitterGroupObject.getTransmitters()) {
+            if (t.getDacPort() != null) {
+                portSet.add(t.getDacPort());
+            }
         }
+
+        StringBuilder sb = new StringBuilder();
+        for (int i : portSet) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(i);
+        }
+
+        String dacPort = sb.toString();
         this.portValueLbl.setText(dacPort);
 
-        TransmitterGroup tg = selectedTransmitterObject.getTransmitterGroup();
-        String dac = String.valueOf(tg.getDac());
-        if (tg.getDac() == null) {
+        String dac = String.valueOf(selectedTransmitterGroupObject.getDac());
+        if (dac.equalsIgnoreCase("null")) {
             dac = NA;
-
         }
         this.dacValueLbl.setText(dac);
-        timeZoneValueLbl.setText(tg.getTimeZone());
 
         try {
-            programObj = dataManager.getProgramForTransmitterGroup(tg);
+            programObj = dataManager
+                    .getProgramForTransmitterGroup(selectedTransmitterGroupObject);
             if (programObj != null) {
                 progValueLbl.setText(programObj.getName());
             }
@@ -798,8 +791,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         initialTablePopulation();
         tableData = playlistData.getUpdatedTableData(selectedTransmitterGrp);
         tableComp.populateTable(tableData);
-        System.out.println(tableData.getTableRowCount()
-                + " rows in the tableData");
+        tableComp.select(0);
+        handleTableSelection();
+        handleMonitorInlineEvent();
     }
 
     /**
@@ -825,6 +819,24 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             }
         } else {
             detailsDlg.bringToTop();
+        }
+    }
+
+    private void handleMonitorInlineEvent() {
+        if (monitorThread != null) {
+            monitorThread.removeDisconnectListener(BroadcastCycleDlg.this);
+            monitorThread.cancel();
+            monitorThread = null;
+        }
+        if (monitorBtn.getSelection()) {
+            String tName = transmitterList.getSelection()[0];
+            tName = tName.split("-")[0];
+            TransmitterGroup selectedTransmitterGroup = transmitterGroupNameMap
+                    .get(tName.trim());
+            monitorThread = new MonitorInlineThread(
+                    selectedTransmitterGroup.getName());
+            monitorThread.addDisconnectListener(BroadcastCycleDlg.this);
+            monitorThread.start();
         }
     }
 

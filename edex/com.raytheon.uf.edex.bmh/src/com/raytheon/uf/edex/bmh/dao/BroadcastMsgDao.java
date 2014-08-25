@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
  * Jun 26, 2014  3302     bkowal      Initial creation
  * Jul 10, 2014  3285     bsteffen    Add getMessagesByAfosid()
  * Aug 20, 2014  3432     mpduff      Added getMessageByBroadcastId, fixed GetMesageByAfosid
+ * Aug 24, 2014  3432     mpduff      Fixed getMessageByBroadcastId
  * 
  * </pre>
  * 
@@ -71,11 +72,9 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
     }
 
     public List<BroadcastMsg> getMessageByBroadcastId(Long broadcastMessageId) {
-        List<Object> objList = this.loadAll();
+        BroadcastMsg msg = this.getByID(broadcastMessageId);
         List<BroadcastMsg> results = new ArrayList<>();
-        for (Object o : objList) {
-            results.add((BroadcastMsg) o);
-        }
+        results.add(msg);
 
         return results;
     }

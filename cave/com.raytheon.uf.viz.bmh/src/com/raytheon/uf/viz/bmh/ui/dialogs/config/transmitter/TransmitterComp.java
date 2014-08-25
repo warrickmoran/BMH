@@ -66,6 +66,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014    3173    mpduff      Initial creation
  * Aug 18, 2014    3173    mpduff      Remove "Move To Group" menu item.
+ * Aug 24, 2014    3432    mpduff      Handle null ports
  * 
  * </pre>
  * 
@@ -687,16 +688,20 @@ public class TransmitterComp extends Composite implements
                 Collections.sort(transmitterList,
                         new TransmitterPositionComparator());
                 for (Transmitter t : transmitterList) {
+                    String dacPortStr = "N/A";
+                    if (t.getDacPort() != null) {
+                        dacPortStr = String.valueOf(t.getDacPort());
+                    }
                     if (standAlone) {
                         groupItem.setText(new String[] { "Transmitter",
                                 t.getName(), t.getMnemonic(),
-                                t.getServiceArea(), "Port #" + t.getDacPort(),
+                                t.getServiceArea(), "Port #" + dacPortStr,
                                 t.getTxStatus().name(), t.getTxMode().name() });
                     } else {
                         TreeItem transItem = new TreeItem(groupItem, SWT.NONE);
                         transItem.setText(new String[] { "Transmitter",
                                 t.getName(), t.getMnemonic(),
-                                t.getServiceArea(), "Port #" + t.getDacPort(),
+                                t.getServiceArea(), "Port #" + dacPortStr,
                                 t.getTxStatus().name(), t.getTxMode().name() });
                         transItem.setData(t);
                     }
