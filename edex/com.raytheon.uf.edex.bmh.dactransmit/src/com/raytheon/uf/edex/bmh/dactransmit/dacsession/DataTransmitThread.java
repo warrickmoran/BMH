@@ -71,6 +71,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Aug 18, 2014  #3532     bkowal       Add transmitter decibel range. Adjust the
  *                                      audio before transmitting it.
  * Aug 24, 2014  3558      rjpeter      Added catch to main run.
+ * Aug 25, 2014  #3286     dgilling     Re-organize try-catch blocks to keep 
+ *                                      thread always running.
  * </pre>
  * 
  * @author dgilling
@@ -157,58 +159,65 @@ public final class DataTransmitThread extends Thread implements
             eventBus.register(this);
 
             OUTER_LOOP: while (keepRunning) {
-                if (interruptsAvailable.get() > 0) {
-                    interruptsAvailable.decrementAndGet();
-                }
-                DacMessagePlaybackData playbackData = playlistMgr.next();
-                // we set playing the playingInterrupt flag here in case this is
-                // a startup scenario and we had unplayed interrupts to start.
-                playingInterrupt = playbackData.isInterrupt();
-
-                while ((playbackData.hasRemaining())
-                        && (playingInterrupt || (interruptsAvailable.get() == 0))) {
-                    try {
-                        while (!hasSync && keepRunning) {
-                            Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
-
-                            if (!keepRunning) {
-                                continue OUTER_LOOP;
-                            }
-
-                            if (hasSync && onSyncRestartMessage) {
-                                playbackData.resetAudio();
-                            }
-                        }
-
-                        byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
-
-                        MessagePlaybackStatusNotification playbackStatus = playbackData
-                                .get(nextPayload);
-                        if (playbackStatus != null) {
-                            logger.debug("Posting playback status update: "
-                                    + playbackStatus.toString());
-                            eventBus.post(playbackStatus);
-                        }
-
-                        RtpPacketIn rtpPacket = buildRtpPacket(previousPacket,
-                                nextPayload);
-
-                        sendPacket(rtpPacket);
-
-                        previousPacket = rtpPacket;
-
-                        Thread.sleep(nextCycleTime);
-                    } catch (InterruptedException e) {
-                        logger.error("Thread sleep interrupted.", e);
-                    } catch (Throwable t) {
-                        logger.error("Runtime exception thrown.", t);
+                try {
+                    if (interruptsAvailable.get() > 0) {
+                        interruptsAvailable.decrementAndGet();
                     }
-                }
 
-                playingInterrupt = false;
+                    DacMessagePlaybackData playbackData = playlistMgr.next();
+                    // we set playing the playingInterrupt flag here in case
+                    // this is
+                    // a startup scenario and we had unplayed interrupts to
+                    // start.
+                    playingInterrupt = playbackData.isInterrupt();
+
+                    while ((playbackData.hasRemaining())
+                            && (playingInterrupt || (interruptsAvailable.get() == 0))) {
+                        try {
+                            while (!hasSync && keepRunning) {
+                                Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
+
+                                if (!keepRunning) {
+                                    continue OUTER_LOOP;
+                                }
+
+                                if (hasSync && onSyncRestartMessage) {
+                                    playbackData.resetAudio();
+                                }
+                            }
+
+                            byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
+
+                            MessagePlaybackStatusNotification playbackStatus = playbackData
+                                    .get(nextPayload);
+                            if (playbackStatus != null) {
+                                logger.debug("Posting playback status update: "
+                                        + playbackStatus.toString());
+                                eventBus.post(playbackStatus);
+                            }
+
+                            RtpPacketIn rtpPacket = buildRtpPacket(
+                                    previousPacket, nextPayload);
+
+                            sendPacket(rtpPacket);
+
+                            previousPacket = rtpPacket;
+
+                            Thread.sleep(nextCycleTime);
+                        } catch (InterruptedException e) {
+                            logger.error("Thread sleep interrupted.", e);
+                        } catch (Throwable t) {
+                            logger.error(
+                                    "Uncaught exception thrown from message playback loop.",
+                                    t);
+                        }
+                    }
+
+                    playingInterrupt = false;
+                } catch (Throwable t) {
+                    logger.error("Uncaught exception thrown from main loop.", t);
+                }
             }
-        } catch (Throwable t) {
-            logger.error("Uncaught exception thrown.", t);
         } finally {
             socket.disconnect();
             socket.close();

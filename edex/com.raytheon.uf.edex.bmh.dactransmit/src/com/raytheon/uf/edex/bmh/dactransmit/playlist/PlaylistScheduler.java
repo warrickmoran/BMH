@@ -91,6 +91,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  *                                      creation and trigger time.
  * Aug 24, 2014   3432     mpduff       Fixed for the case of only one playlist in the directory.
  * Aug 24, 2014   3558     rjpeter      Switched activePlaylists to SortedSet, added deletion of old playlists.
+ * Aug 25, 2014  #3286     dgilling     Fix NPE when calling 
+ *                                      buildPlaylistNotification() against
+ *                                      interrupt playlists.
  * </pre>
  * 
  * @author dgilling
@@ -721,7 +724,7 @@ public final class PlaylistScheduler implements
      */
     private PlaylistSwitchNotification buildPlaylistNotification(
             DacPlaylist playlist, int predictStartIndex) {
-        if (!playlist.isValid()) {
+        if (!playlist.isValid() && !playlist.isInterrupt()) {
             return null;
         }
 

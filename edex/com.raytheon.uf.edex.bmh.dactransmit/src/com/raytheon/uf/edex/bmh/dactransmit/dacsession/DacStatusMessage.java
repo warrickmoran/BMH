@@ -51,6 +51,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Jul 14, 2014  #3286     dgilling     Used logback for logging.
  * Jul 31, 2014  #3286     dgilling     Send DAC status back to CommsManager.
  * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
+ * Aug 25, 2014  #3286     bsteffen     Fix buffer size alerting logic.
  * 
  * </pre>
  * 
@@ -293,7 +294,7 @@ public final class DacStatusMessage {
             boolean alertCurrentBuffer = (bufferSize <= DataTransmitConstants.ALERT_LOW_PACKETS_IN_BUFFER)
                     || (bufferSize >= DataTransmitConstants.ALERT_HIGH_PACKETS_IN_BUFFER);
             if (alertCurrentBuffer != alertPrevBuffer) {
-                if (!alertCurrentBuffer) {
+                if (alertCurrentBuffer) {
                     logger.error("DAC's jitter buffer size is outside acceptable thresholds. Current reading is: "
                             + bufferSize);
                 } else {
