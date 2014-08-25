@@ -70,7 +70,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Aug 12, 2014  #3486     bsteffen     Allow changing transmitters
  * Aug 18, 2014  #3532     bkowal       Add transmitter decibel range. Adjust the
  *                                      audio before transmitting it.
- * 
+ * Aug 24, 2014  3558      rjpeter      Added catch to main run.
  * </pre>
  * 
  * @author dgilling
@@ -166,7 +166,7 @@ public final class DataTransmitThread extends Thread implements
                 playingInterrupt = playbackData.isInterrupt();
 
                 while ((playbackData.hasRemaining())
-                        && (playingInterrupt || interruptsAvailable.get() == 0)) {
+                        && (playingInterrupt || (interruptsAvailable.get() == 0))) {
                     try {
                         while (!hasSync && keepRunning) {
                             Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
@@ -207,6 +207,8 @@ public final class DataTransmitThread extends Thread implements
 
                 playingInterrupt = false;
             }
+        } catch (Throwable t) {
+            logger.error("Uncaught exception thrown.", t);
         } finally {
             socket.disconnect();
             socket.close();

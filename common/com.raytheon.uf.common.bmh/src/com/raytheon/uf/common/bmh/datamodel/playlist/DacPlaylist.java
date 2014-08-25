@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -45,7 +46,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jun 30, 2014  3285     bsteffen    Initial creation
  * Jul 22, 2014  3286     dgilling    Added toString(), isValid().
  * Aug 22, 2014  3286     dgilling    Added isExpired().
- * 
+ * Aug 24, 2014  3558     rjpeter     Added path.
  * </pre>
  * 
  * @author bsteffen
@@ -81,6 +82,8 @@ public class DacPlaylist {
 
     @XmlElement(name = "message")
     private List<DacPlaylistMessageId> messages;
+
+    private transient Path path;
 
     public DacPlaylist() {
 
@@ -118,7 +121,7 @@ public class DacPlaylist {
      *         time. Else, {@code false}.
      */
     public boolean isExpired() {
-        return (TimeUtil.currentTimeMillis() <= expired.getTimeInMillis());
+        return (TimeUtil.currentTimeMillis() >= expired.getTimeInMillis());
     }
 
     public int getPriority() {
@@ -200,4 +203,11 @@ public class DacPlaylist {
         this.interrupt = interrupt;
     }
 
+    public Path getPath() {
+        return path;
+    }
+
+    public void setPath(Path path) {
+        this.path = path;
+    }
 }

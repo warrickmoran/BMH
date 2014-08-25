@@ -35,6 +35,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import javax.xml.bind.JAXB;
 
@@ -59,6 +62,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
 /**
  * Manages playback order of playlist and playlist messages for the current
  * {@code DacSession}.
+ * 
+ * TODO: Ensure all file deletion happens on non playing thread.
  * 
  * <pre>
  * 
@@ -85,7 +90,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  * Aug 22, 2014  #3286     dgilling     Update playlist selection logic to use 
  *                                      creation and trigger time.
  * Aug 24, 2014   3432     mpduff       Fixed for the case of only one playlist in the directory.
- * 
+ * Aug 24, 2014   3558     rjpeter      Switched activePlaylists to SortedSet, added deletion of old playlists.
  * </pre>
  * 
  * @author dgilling
@@ -132,7 +137,7 @@ public final class PlaylistScheduler implements
 
     private final PlaylistMessageCache cache;
 
-    private final List<DacPlaylist> activePlaylists;
+    private final SortedSet<DacPlaylist> activePlaylists;
 
     private List<DacPlaylistMessageId> currentMessages;
 
@@ -148,8 +153,7 @@ public final class PlaylistScheduler implements
      */
     private final List<DacPlaylist> futurePlaylists;
 
-    // TODO: Is this always going to be 0?? If so, this is probably not needed.
-    private int playlistIndex;
+    private DacPlaylist currentPlaylist;
 
     /**
      * Always points to the index of the next message to play from
@@ -163,14 +167,6 @@ public final class PlaylistScheduler implements
     private final Object playlistMessgeLock;
 
     private final EventBus eventBus;
-
-    /**
-     * There are some cases where we can't immediately send a playlist switch
-     * notification--on the startup case when the event bus isn't fully ready or
-     * when receiving a new higher priority playlist. In those cases we hold
-     * this notification until the next call to next().
-     */
-    private PlaylistSwitchNotification playlistNotify;
 
     /**
      * Reads the specified directory for valid playlist files (ones that have
@@ -196,30 +192,37 @@ public final class PlaylistScheduler implements
         this.eventBus = eventBus;
 
         this.futurePlaylists = new LinkedList<>();
-        this.playlistIndex = 0;
         this.messageIndex = 0;
 
         Map<String, DacPlaylist> uniqueActivePlaylists = new HashMap<>();
         List<Path> expiredPlaylists = new ArrayList<>();
+        int interruptCounter = 0;
+
         try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(
                 this.playlistDirectory, PLAYLIST_EXT)) {
             for (Path entry : dirStream) {
                 DacPlaylist playlist = JAXB.unmarshal(entry.toFile(),
                         DacPlaylist.class);
+                playlist.setPath(entry);
 
                 if (playlist.isValid()) {
                     String key = playlist.getPriority() + ":"
                             + playlist.getSuite();
+                    if (playlist.isInterrupt()) {
+                        key += interruptCounter++;
+                    }
+
                     DacPlaylist otherPlaylist = uniqueActivePlaylists.get(key);
                     if (otherPlaylist == null) {
                         uniqueActivePlaylists.put(key, playlist);
-                    } else if ((otherPlaylist != null)
-                            && (playlist.getCreationTime().after(otherPlaylist
-                                    .getCreationTime()))) {
-                        uniqueActivePlaylists.put(key, playlist);
-                        // TODO add superseded playlist to expiredPlaylists
-                        // need to see how file name/path string changes before
-                        // that can be done.
+                    } else {
+                        if (playlist.getCreationTime().after(
+                                otherPlaylist.getCreationTime())) {
+                            uniqueActivePlaylists.put(key, playlist);
+                            expiredPlaylists.add(otherPlaylist.getPath());
+                        } else {
+                            expiredPlaylists.add(entry);
+                        }
                     }
                 } else if (!playlist.isExpired()) {
                     this.futurePlaylists.add(playlist);
@@ -229,13 +232,13 @@ public final class PlaylistScheduler implements
             }
         }
 
-        this.activePlaylists = new ArrayList<>(uniqueActivePlaylists.values());
+        this.activePlaylists = new TreeSet<>(PLAYBACK_ORDER);
+        activePlaylists.addAll(uniqueActivePlaylists.values());
         if (activePlaylists.isEmpty()) {
             throw new IllegalArgumentException(
                     "Input directory contained no valid playlist files.");
         }
 
-        Collections.sort(this.activePlaylists, PLAYBACK_ORDER);
         Collections.sort(this.futurePlaylists, QUEUE_ORDER);
 
         this.cache = new PlaylistMessageCache(
@@ -261,25 +264,14 @@ public final class PlaylistScheduler implements
                 .hasNext();) {
             DacPlaylist playlist = iter.next();
             if (playlist.isInterrupt()) {
+                // TODO: Order interrupts by oldest start time
                 this.interrupts.add(playlist);
                 iter.remove();
             }
         }
 
         DacPlaylist firstPlaylist = (!this.interrupts.isEmpty()) ? this.interrupts
-                .peek() : activePlaylists.get(0);
-
-        /*
-         * We cannot send this notification to the event bus at construction
-         * time because the listeners will not have all been started yet. Hence,
-         * we hold on to it until the first call here.
-         */
-        this.playlistNotify = buildPlaylistNotification(firstPlaylist);
-        if (firstPlaylist.isInterrupt()) {
-            this.currentMessages = Collections.emptyList();
-        } else {
-            this.currentMessages = this.playlistNotify.getPlaylist();
-        }
+                .peek() : activePlaylists.first();
         logger.debug("Starting with playlist: " + firstPlaylist.toString());
 
         this.playlistMessgeLock = new Object();
@@ -299,11 +291,6 @@ public final class PlaylistScheduler implements
      *         file to play.
      */
     public DacMessagePlaybackData next() {
-        if (playlistNotify != null) {
-            eventBus.post(playlistNotify);
-            playlistNotify = null;
-        }
-
         DacMessagePlaybackData nextMessageData = nextMessage();
         DacPlaylistMessage nextMessage = nextMessageData.getMessage();
         logger.debug("Switching to message: " + nextMessage.toString());
@@ -316,11 +303,19 @@ public final class PlaylistScheduler implements
     }
 
     private DacMessagePlaybackData nextMessage() {
+        // TODO: Too much logic here. This was supposed to be fast just
+        // switching to next message
         DacPlaylistMessage nextMessage = null;
-        boolean isInterrupt = false;
+        DacPlaylist nextPlaylist = null;
+        List<DacPlaylist> expiredPlaylists = new LinkedList<>();
+
+        if ((currentPlaylist != null) && currentPlaylist.isInterrupt()) {
+            expiredPlaylists.add(currentPlaylist);
+        }
 
         ITimer timer = TimeUtil.getTimer();
         timer.start();
+
         synchronized (playlistMessgeLock) {
             timer.stop();
             logger.debug("Time for nextMessage() to acquire lock: "
@@ -335,7 +330,7 @@ public final class PlaylistScheduler implements
              * the beginning of the highest priority playlist.
              */
             if (!interrupts.isEmpty()) {
-                DacPlaylist nextPlaylist = interrupts.poll();
+                nextPlaylist = interrupts.poll();
                 logger.debug("Switching to playlist: "
                         + nextPlaylist.toString());
 
@@ -346,110 +341,132 @@ public final class PlaylistScheduler implements
                 DacPlaylistMessageId messageId = nextPlaylist.getMessages()
                         .get(0);
                 nextMessage = cache.getMessage(messageId);
-                isInterrupt = true;
                 messageIndex = 0;
-                playlistIndex = 0;
 
                 PlaylistSwitchNotification notify = buildPlaylistNotification(nextPlaylist);
                 eventBus.post(notify);
-            }
-
-            DacPlaylist currentPlaylist = activePlaylists.get(playlistIndex);
-            List<DacPlaylist> expiredPlaylists = mergeFutureToActivePlaylists();
-            DacPlaylist newActivePlaylist = activePlaylists.get(0);
-            if (currentPlaylist == newActivePlaylist) {
-                logger.debug("Continuing with playlist " + currentPlaylist);
-            } else if ((currentPlaylist.getPriority() == newActivePlaylist
-                    .getPriority())
-                    && (currentPlaylist.getSuite().equals(newActivePlaylist
-                            .getSuite()))) {
-                logger.debug("Playlist " + currentPlaylist
-                        + " has been updated by future queued playlist "
-                        + newActivePlaylist);
-
-                int prevMessageIndex = findLastPlayedMessage(newActivePlaylist);
-
-                /*
-                 * We pass prevMessageIndex+1 to buildPlaylistNotification()
-                 * because that is the first index in the updated playlist that
-                 * we want to predict new playback times for. If
-                 * (prevMessageIndex+1) > newPlaylist.getMessages().size() then
-                 * we have no messages to predict new times for and
-                 * buildPlaylistNotification() won't attempt to.
-                 * 
-                 * A reminder about messageIndex: it always points to the next
-                 * message to play from currentMessages and if messageIndex =
-                 * currentMessages.size(), the next call to nextMessage() will
-                 * cause a playlist switch because we've run out of messages to
-                 * play. We do not want to wrap the value of messageIndex here
-                 * because we won't generate the playlist switch that the GUIs
-                 * need to know we're beginning a new cycle.
-                 */
-                PlaylistSwitchNotification notify = buildPlaylistNotification(
-                        newActivePlaylist, prevMessageIndex + 1);
-                currentMessages = notify.getPlaylist();
-                messageIndex = prevMessageIndex + 1;
-                eventBus.post(notify);
+                currentMessages = Collections.emptyList();
             } else {
-                logger.debug("Playlist " + currentPlaylist
-                        + " has been superseded by future queued playlist "
-                        + newActivePlaylist);
-                /*
-                 * We're going to be swapping playlists, so let's just force the
-                 * code below to start looking by jumping the index off the edge
-                 * of the list.
-                 */
-                messageIndex = Integer.MAX_VALUE;
-            }
+                if (currentPlaylist != null) {
+                    mergeFutureToActivePlaylists(expiredPlaylists);
+                    nextPlaylist = activePlaylists.first();
+                    if (currentPlaylist == nextPlaylist) {
+                        logger.debug("Continuing with playlist "
+                                + currentPlaylist);
+                    } else if ((currentPlaylist.getPriority() == nextPlaylist
+                            .getPriority())
+                            && (currentPlaylist.getSuite().equals(nextPlaylist
+                                    .getSuite()))) {
+                        logger.debug("Playlist "
+                                + currentPlaylist
+                                + " has been updated by future queued playlist "
+                                + nextPlaylist);
 
-            while ((nextMessage == null)
-                    && (messageIndex < currentMessages.size())) {
-                DacPlaylistMessage possibleNext = cache
-                        .getMessage(currentMessages.get(messageIndex));
-                if (possibleNext.isValid()) {
-                    nextMessage = possibleNext;
-                }
-                messageIndex++;
-            }
+                        int prevMessageIndex = findLastPlayedMessage(nextPlaylist);
+                        // TODO: Merge this logic with same logic in
+                        // newPlaylistReceived for an update to the current list
 
-            while ((nextMessage == null) && (!activePlaylists.isEmpty())) {
-                DacPlaylist nextPlaylist = activePlaylists.get(playlistIndex);
-                PlaylistSwitchNotification notify = buildPlaylistNotification(nextPlaylist);
-                if ((notify != null) && (!notify.getMessages().isEmpty())) {
-                    logger.debug("Switching to playlist: "
-                            + nextPlaylist.toString());
-
-                    List<DacPlaylistMessageId> nextMessages = notify
-                            .getPlaylist();
-
-                    /*
-                     * Since we've switched playlists, this call will return
-                     * index 0 from the playlist. Set the messageIndex to 1, so
-                     * the next call to this method is set to check the next
-                     * message in the playlist. If this playlist so happens to
-                     * only have a single message, we'll just loop back to the
-                     * beginning at the next call to nextMessage() and generate
-                     * an updated PlaylistSwitchNotification.
-                     */
-                    nextMessage = cache.getMessage(nextMessages.get(0));
-                    currentMessages = nextMessages;
-                    messageIndex = 1;
+                        /*
+                         * We pass prevMessageIndex+1 to
+                         * buildPlaylistNotification() because that is the first
+                         * index in the updated playlist that we want to predict
+                         * new playback times for. If (prevMessageIndex+1) >
+                         * newPlaylist.getMessages().size() then we have no
+                         * messages to predict new times for and
+                         * buildPlaylistNotification() won't attempt to.
+                         * 
+                         * A reminder about messageIndex: it always points to
+                         * the next message to play from currentMessages and if
+                         * messageIndex = currentMessages.size(), the next call
+                         * to nextMessage() will cause a playlist switch because
+                         * we've run out of messages to play. We do not want to
+                         * wrap the value of messageIndex here because we won't
+                         * generate the playlist switch that the GUIs need to
+                         * know we're beginning a new cycle.
+                         */
+                        PlaylistSwitchNotification notify = buildPlaylistNotification(
+                                nextPlaylist, prevMessageIndex + 1);
+                        currentMessages = notify.getPlaylist();
+                        messageIndex = prevMessageIndex + 1;
+                        eventBus.post(notify);
+                    } else {
+                        /*
+                         * We're going to be swapping playlists, so let's just
+                         * force the code below to start looking by jumping the
+                         * index off the edge of the list.
+                         */
+                        messageIndex = Integer.MAX_VALUE;
+                    }
+                } else {
+                    nextPlaylist = activePlaylists.first();
+                    PlaylistSwitchNotification notify = buildPlaylistNotification(nextPlaylist);
                     eventBus.post(notify);
+                    currentMessages = notify.getPlaylist();
+                    messageIndex = 0;
                 }
 
-                if (nextMessage == null) {
-                    DacPlaylist purgedPlaylist = activePlaylists
-                            .remove(playlistIndex);
-                    logger.info("Puring expired playlist: "
-                            + purgedPlaylist.toString());
-                    expiredPlaylists.add(purgedPlaylist);
+                while ((nextMessage == null)
+                        && (messageIndex < currentMessages.size())) {
+                    DacPlaylistMessage possibleNext = cache
+                            .getMessage(currentMessages.get(messageIndex));
+                    if (possibleNext.isValid()) {
+                        nextMessage = possibleNext;
+                    }
+                    messageIndex++;
+                }
+
+                while ((nextMessage == null) && (!activePlaylists.isEmpty())) {
+                    nextPlaylist = activePlaylists.first();
+                    PlaylistSwitchNotification notify = buildPlaylistNotification(nextPlaylist);
+                    if ((notify != null) && (!notify.getMessages().isEmpty())) {
+                        logger.debug("Switching to playlist: "
+                                + nextPlaylist.toString());
+
+                        List<DacPlaylistMessageId> nextMessages = notify
+                                .getPlaylist();
+
+                        /*
+                         * Since we've switched playlists, this call will return
+                         * index 0 from the playlist. Set the messageIndex to 1,
+                         * so the next call to this method is set to check the
+                         * next message in the playlist. If this playlist so
+                         * happens to only have a single message, we'll just
+                         * loop back to the beginning at the next call to
+                         * nextMessage() and generate an updated
+                         * PlaylistSwitchNotification.
+                         */
+                        nextMessage = cache.getMessage(nextMessages.get(0));
+                        currentMessages = nextMessages;
+                        messageIndex = 1;
+                        eventBus.post(notify);
+                    }
+
+                    if (nextMessage == null) {
+                        activePlaylists.remove(nextPlaylist);
+                        logger.info("Puring expired playlist: "
+                                + nextPlaylist.toString());
+                        expiredPlaylists.add(nextPlaylist);
+                    }
                 }
             }
-        }
 
+            currentPlaylist = nextPlaylist;
+        }
         timer.stop();
         logger.debug("Time for nextMessage() to determine next message: "
                 + timer.getElapsedTime() + " ms.");
+
+        for (DacPlaylist expired : expiredPlaylists) {
+            try {
+                logger.debug("Deleting playlist: "
+                        + expired.getPath().toString());
+                Files.delete(expired.getPath());
+            } catch (IOException e) {
+                logger.warn(
+                        "Unable to delete expired playlist "
+                                + expired.getPath(), e);
+            }
+        }
 
         if (nextMessage == null) {
             // TODO what happens if we search all our playlists and find nothing
@@ -457,18 +474,13 @@ public final class PlaylistScheduler implements
             logger.error("Couldn't find any valid playlists or messages to play!!!");
         }
 
-        // TODO delete all playlist files in expiredPlaylists
-        // waiting on file name/path updates...
-
         DacMessagePlaybackData nextMessageData = new DacMessagePlaybackData();
         nextMessageData.setMessage(nextMessage);
-        nextMessageData.setInterrupt(isInterrupt);
+        nextMessageData.setInterrupt(currentPlaylist.isInterrupt());
         return nextMessageData;
     }
 
-    private List<DacPlaylist> mergeFutureToActivePlaylists() {
-        List<DacPlaylist> expiredPlaylists = new ArrayList<>();
-
+    private void mergeFutureToActivePlaylists(List<DacPlaylist> expiredPlaylists) {
         List<DacPlaylist> newPlaylists = new ArrayList<>();
         for (Iterator<DacPlaylist> iter = futurePlaylists.iterator(); iter
                 .hasNext();) {
@@ -476,39 +488,37 @@ public final class PlaylistScheduler implements
             if (playlist.isValid()) {
                 iter.remove();
                 newPlaylists.add(playlist);
-            }
-
-            if (playlist.isExpired()) {
+            } else if (playlist.isExpired()) {
                 iter.remove();
                 expiredPlaylists.add(playlist);
             }
         }
 
-        for (Iterator<DacPlaylist> iter = newPlaylists.iterator(); iter
+        for (Iterator<DacPlaylist> newIter = newPlaylists.iterator(); newIter
                 .hasNext();) {
-            DacPlaylist newPlaylist = iter.next();
+            DacPlaylist newPlaylist = newIter.next();
 
-            for (int i = 0; i < activePlaylists.size(); i++) {
-                DacPlaylist activePlaylist = activePlaylists.get(i);
+            for (Iterator<DacPlaylist> activeIter = activePlaylists.iterator(); activeIter
+                    .hasNext();) {
+                DacPlaylist activePlaylist = activeIter.next();
                 if ((newPlaylist.getPriority() == activePlaylist.getPriority())
                         && (newPlaylist.getSuite().equals(activePlaylist
                                 .getSuite()))) {
-                    iter.remove();
                     if ((activePlaylist.isExpired())
                             || (newPlaylist.getCreationTime()
                                     .after(activePlaylist.getCreationTime()))) {
-                        activePlaylists.set(i, newPlaylist);
+                        activeIter.remove();
                         expiredPlaylists.add(activePlaylist);
                     } else {
+                        newIter.remove();
                         expiredPlaylists.add(newPlaylist);
                     }
+                    break;
                 }
             }
         }
-        activePlaylists.addAll(newPlaylists);
-        Collections.sort(activePlaylists, PLAYBACK_ORDER);
 
-        return expiredPlaylists;
+        activePlaylists.addAll(newPlaylists);
     }
 
     private int findLastPlayedMessage(DacPlaylist newPlaylist) {
@@ -527,13 +537,14 @@ public final class PlaylistScheduler implements
 
     @Override
     @Subscribe
-    public void newPlaylistReceived(PlaylistUpdateNotification e) {
-        DacPlaylist newPlaylist = e.parseFilepath();
+    public void newPlaylistReceived(PlaylistUpdateNotification notification) {
+        DacPlaylist newPlaylist = notification.parseFilepath();
         if (newPlaylist != null) {
-            Path playlistPath = playlistDirectory.resolveSibling(e
+            Path playlistPath = playlistDirectory.resolveSibling(notification
                     .getPlaylistPath());
             newPlaylist = JAXB.unmarshal(playlistPath.toFile(),
                     DacPlaylist.class);
+            newPlaylist.setPath(playlistPath);
             cache.retrieveAudio(newPlaylist.getMessages());
             logger.debug("Received new playlist: " + newPlaylist.toString());
 
@@ -556,7 +567,13 @@ public final class PlaylistScheduler implements
                 if (newPlaylist.isExpired()) {
                     logger.warn("Received a notification for an expired playlist: "
                             + newPlaylist);
-                    // TODO delete from filesystem
+                    Path expired = newPlaylist.getPath();
+                    try {
+                        Files.delete(expired);
+                    } catch (IOException e) {
+                        logger.warn("Unable to delete expired playlist "
+                                + expired, e);
+                    }
                     return;
                 } else if (!newPlaylist.isValid()) {
                     logger.debug("New playlist doesn't take affect immediately. Queueing...");
@@ -564,9 +581,6 @@ public final class PlaylistScheduler implements
                     Collections.sort(futurePlaylists, QUEUE_ORDER);
                     return;
                 }
-
-                DacPlaylist currentPlaylist = activePlaylists
-                        .get(playlistIndex);
 
                 if ((newPlaylist.getPriority() == currentPlaylist.getPriority())
                         && (newPlaylist.getSuite().equals(currentPlaylist
@@ -576,7 +590,12 @@ public final class PlaylistScheduler implements
                         logger.warn("Received an update to playlist "
                                 + currentPlaylist
                                 + " that has an older creation date. Ignoring new playlist.");
-                        // TODO delete from filesystem
+                        Path old = newPlaylist.getPath();
+                        try {
+                            Files.delete(old);
+                        } catch (IOException e) {
+                            logger.warn("Unable to delete playlist " + old, e);
+                        }
                         return;
                     }
 
@@ -603,46 +622,43 @@ public final class PlaylistScheduler implements
                      */
                     PlaylistSwitchNotification notify = buildPlaylistNotification(
                             newPlaylist, prevMessageIndex + 1);
-                    activePlaylists.set(0, newPlaylist);
+                    activePlaylists.remove(currentPlaylist);
+                    activePlaylists.add(newPlaylist);
                     currentMessages = notify.getPlaylist();
                     messageIndex = prevMessageIndex + 1;
                     eventBus.post(notify);
+                    Path old = currentPlaylist.getPath();
+                    try {
+                        Files.delete(old);
+                    } catch (IOException e) {
+                        logger.warn("Unable to delete playlist " + old, e);
+                    }
+                    currentPlaylist = newPlaylist;
                 } else {
-                    int replaceIdx = findMatchingPlaylist(newPlaylist,
+                    DacPlaylist toReplace = findMatchingPlaylist(newPlaylist,
                             activePlaylists);
-                    if (replaceIdx != -1) {
-                        DacPlaylist toReplace = activePlaylists.get(replaceIdx);
+                    if (toReplace != null) {
+                        Path old = null;
                         if (newPlaylist.getCreationTime().after(
                                 toReplace.getCreationTime())) {
-                            activePlaylists.set(replaceIdx, newPlaylist);
+                            activePlaylists.remove(toReplace);
+                            activePlaylists.add(newPlaylist);
+                            old = toReplace.getPath();
                         } else {
                             logger.warn("Received an update to playlist "
                                     + toReplace
                                     + " that has an older creation date. Ignoring new playlist.");
-                            // TODO delete from filesystem
-                            return;
+                            old = newPlaylist.getPath();
                         }
-                    }
 
-                    int compareVal = PLAYBACK_ORDER.compare(newPlaylist,
-                            currentPlaylist);
-
-                    if (compareVal < 0) {
-                        activePlaylists.add(0, newPlaylist);
-                        /*
-                         * We must hold this playlist switch until the next call
-                         * to next() because we will continue playing the
-                         * current message from the old playlist until then.
-                         */
-                        playlistNotify = buildPlaylistNotification(newPlaylist);
-                        currentMessages = playlistNotify.getPlaylist();
-                        playlistIndex = 0;
-                        messageIndex = 0;
+                        try {
+                            Files.delete(old);
+                        } catch (IOException e) {
+                            logger.warn("Unable to delete playlist " + old, e);
+                        }
+                        return;
                     } else {
                         activePlaylists.add(newPlaylist);
-                        Collections.sort(activePlaylists.subList(
-                                playlistIndex + 1, activePlaylists.size()),
-                                PLAYBACK_ORDER);
                     }
                 }
             }
@@ -650,20 +666,22 @@ public final class PlaylistScheduler implements
             timer.stop();
             logger.debug("Time for newPlaylistReceived() to merge in new playlist: "
                     + timer.getElapsedTime() + " ms.");
+        } else {
+            logger.warn("Could not parse file path for playlist update notification: "
+                    + notification.getPlaylistPath());
         }
     }
 
-    private static int findMatchingPlaylist(DacPlaylist playlist,
-            List<DacPlaylist> playlistList) {
-        for (int i = 0; i < playlistList.size(); i++) {
-            DacPlaylist compare = playlistList.get(i);
+    private static DacPlaylist findMatchingPlaylist(DacPlaylist playlist,
+            Set<DacPlaylist> playlistSet) {
+        for (DacPlaylist compare : playlistSet) {
             if ((playlist.getPriority() == compare.getPriority())
                     && (playlist.getSuite().equals(compare.getSuite()))) {
-                return i;
+                return compare;
             }
         }
 
-        return -1;
+        return null;
     }
 
     /**
@@ -784,7 +802,7 @@ public final class PlaylistScheduler implements
                 MutableLong nextPlaybackTime = entry.getValue();
 
                 if (periodicMessage.isValid(playbackStartTime)
-                        && nextPlaybackTime.longValue() <= playbackStartTime) {
+                        && (nextPlaybackTime.longValue() <= playbackStartTime)) {
                     logger.debug("Scheduling periodic message ["
                             + periodicMessageId + "].");
 

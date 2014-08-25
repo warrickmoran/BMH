@@ -1,10 +1,12 @@
 <configuration debug="false" scan="true">
    
 <!-- general application log -->
-   <timestamp key="startupTime" datePattern="yyyyMMdd'T'HHmmss"/>
+   <appender name="DacTransmitLog" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+         <fileNamePattern>${BMH_HOME}/logs/dactransmit-${TRANSMITTER_GROUP}-%d{yyyyMMdd}.log</fileNamePattern>
+         <maxHistory>30</maxHistory>
+      </rollingPolicy> 
 
-   <appender name="DacTransmitLog" class="ch.qos.logback.core.FileAppender">
-      <file>${BMH_HOME}/logs/dactransmit-${TRANSMITTER_GROUP}-${startupTime}.log</file>
       <encoder>
          <pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
       </encoder>

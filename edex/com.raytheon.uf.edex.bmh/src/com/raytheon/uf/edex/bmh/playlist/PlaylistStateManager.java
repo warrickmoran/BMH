@@ -46,9 +46,9 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 23, 2014    3432    mpduff      Initial creation
- * Aug 24, 2014    3432    mpduff      Added thread safety
- * 
+ * Aug 23, 2014    3432    mpduff      Initial creation.
+ * Aug 24, 2014    3432    mpduff      Added thread safety.
+ * Aug 24, 2014    3558    rjpeter     Fixed population of MessagePlaybackPrediction.
  * </pre>
  * 
  * @author mpduff
@@ -136,14 +136,17 @@ public class PlaylistStateManager {
 
         long id = notification.getBroadcastId();
         MessagePlaybackPrediction pred = predictionMap.get(id);
-        if (pred != null) {
-            pred.setPlayCount(notification.getPlayCount());
-            pred.setLastTransmitTime(notification.getTransmitTime());
-            pred.setNextTransmitTime(null);
-        } else {
+        if (pred == null) {
             pred = new MessagePlaybackPrediction();
+            pred.setBroadcastId(id);
             predictionMap.put(id, pred);
         }
+
+        pred.setPlayCount(notification.getPlayCount());
+        pred.setLastTransmitTime(notification.getTransmitTime());
+        pred.setNextTransmitTime(null);
+        pred.setPlayedAlertTone(notification.isPlayedAlertTone());
+        pred.setPlayedSameTone(notification.isPlayedSameTone());
     }
 
     public synchronized PlaylistDataStructure getPlaylistDataStructure(
