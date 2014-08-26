@@ -46,6 +46,8 @@ import voiceware.libttsapi;
  * Aug 26, 2014 3559       bkowal      Notify the user of a configuration error when the
  *                                     synthesis validation fails due to an improperly
  *                                     set bmh tts nfs directory.
+ *                                     Convert the audio length to the time that it would
+ *                                     take to play the audio.
  * 
  * </pre>
  * 
@@ -165,7 +167,7 @@ public class TTSSynthesisTask implements Callable<TTSReturn> {
             // the audio file. lock the synthesizer for two (2) minutes. This
             // error will be unlikely and the BMH EDEX will not completely start
             // until the cause is corrected.
-            ttsReturn.synthesisIsComplete(120000);
+            ttsReturn.synthesisIsComplete(960000);
 
             /*
              * Announce as a Configuration Error

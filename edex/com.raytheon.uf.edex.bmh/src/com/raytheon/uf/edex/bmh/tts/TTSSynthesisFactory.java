@@ -212,8 +212,10 @@ public class TTSSynthesisFactory implements FutureCallback<UnlockNotification> {
         }
 
         if (ttsReturn.isSynthesisSuccess()) {
+            /* For ULAW encoded files, 160 bytes = 20 ms of playback time. */
+            final long playbackTime = ttsReturn.getBytesSythensized() / 160L * 20L;
             TTSLockResourceTask lockTask = new TTSLockResourceTask(
-                    task.getIdentifier(), ttsReturn.getBytesSythensized());
+                    task.getIdentifier(), playbackTime);
             ListenableFuture<UnlockNotification> lockFuture = this.executorService
                     .submit(lockTask);
             Futures.addCallback(lockFuture, this);
