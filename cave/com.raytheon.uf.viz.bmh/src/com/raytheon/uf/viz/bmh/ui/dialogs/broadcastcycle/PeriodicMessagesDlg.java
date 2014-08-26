@@ -63,6 +63,8 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
 
     private MessageDetailsDlg detailsDlg;
 
+    private Button detailsBtn;
+
     public PeriodicMessagesDlg(Shell parent) {
         super(parent, CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT);
         setText("Periodic Messages");
@@ -105,6 +107,9 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
             tableData = new BroadcastCycleDataManager()
                     .getPeriodicMessageTableData();
             tableComp.populateTable(tableData);
+            if (tableData.getTableRowCount() > 0) {
+                detailsBtn.setEnabled(true);
+            }
         } catch (Exception e) {
             statusHandler.error("Error accessing BMH Database.", e);
         }
@@ -118,9 +123,10 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
         c.setLayoutData(gd);
 
         gd = new GridData(125, SWT.DEFAULT);
-        Button detailsBtn = new Button(c, SWT.PUSH);
+        detailsBtn = new Button(c, SWT.PUSH);
         detailsBtn.setText("Message Details...");
         detailsBtn.setLayoutData(gd);
+        detailsBtn.setEnabled(false);
         detailsBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {

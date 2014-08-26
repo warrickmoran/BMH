@@ -135,8 +135,7 @@ public class BroadcastCycleTableComp extends TableComp {
         if (!(table.getItemCount() > 0) && !(table.getSelectionCount() > 0)) {
             return Collections.emptyList();
         }
-
-        TableItem item = table.getItem(selectedTableIndex);
+        TableItem item = table.getSelection()[0];
         TableRowData row = (TableRowData) item.getData();
         List<TableRowData> rowList = new ArrayList<TableRowData>(1);
         rowList.add(row);
