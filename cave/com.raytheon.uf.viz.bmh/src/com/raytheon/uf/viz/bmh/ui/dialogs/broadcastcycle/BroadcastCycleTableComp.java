@@ -132,7 +132,7 @@ public class BroadcastCycleTableComp extends TableComp {
      */
     @Override
     public List<TableRowData> getSelection() {
-        if (!(table.getItemCount() > 0) && !(selectedTableIndex >= 0)) {
+        if ((table.getItemCount() == 0) || !(selectedTableIndex >= 0)) {
             return Collections.emptyList();
         }
         TableItem item = table.getItem(selectedTableIndex);
