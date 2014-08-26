@@ -78,6 +78,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 07, 2014  3285     bsteffen    Initial creation
+ * Aug 26, 2014  3554     bsteffen    Change path to be more unique
  * 
  * </pre>
  * 
@@ -349,7 +350,15 @@ public class PlaylistManager {
         dacList.setLatestTrigger(latestTriggerTime);
         PlaylistUpdateNotification notif = new PlaylistUpdateNotification(
                 dacList);
+        statusHandler.info("PlaylistManager writing new playlist to "
+                + notif.getPlaylistPath());
         File playlistFile = new File(playlistDir, notif.getPlaylistPath());
+        if (playlistFile.exists()) {
+            statusHandler.warn(
+                    BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                    "Overwriting an existing playlist file at "
+                            + playlistFile.getAbsolutePath());
+        }
         File playlistDir = playlistFile.getParentFile();
         if (!playlistDir.exists()) {
             if (!playlistDir.mkdirs()) {
@@ -382,7 +391,7 @@ public class PlaylistManager {
         Suite suite = db.getSuite();
         dac.setPriority(suite.getType().ordinal());
         dac.setTransmitterGroup(db.getTransmitterGroup().getName());
-        dac.setSuite(suite.getType().toString());
+        dac.setSuite(suite.getName());
         dac.setCreationTime(db.getModTime());
         dac.setStart(db.getStartTime());
         dac.setExpired(db.getEndTime());
