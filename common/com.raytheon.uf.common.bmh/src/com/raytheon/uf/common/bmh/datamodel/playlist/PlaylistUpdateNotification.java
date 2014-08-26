@@ -41,6 +41,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 02, 2014  3285     bsteffen    Initial creation
+ * Aug 26, 2014  3554     bsteffen    Add more logging, change suite field for dac
  * 
  * </pre>
  * 
@@ -55,7 +56,7 @@ public class PlaylistUpdateNotification {
                     + Pattern.quote(File.separator)
                     + "]+)"
                     + Pattern.quote(File.separator)
-                    + "P(\\d+)_([^_]*)_(\\d{4})(\\d{2})(\\d{2})(\\d{2})(\\d{2})_S(\\d{2})(\\d{2})(\\d{2})_E(\\d{2})(\\d{2})(\\d{2}).xml$");
+                    + "P(\\d+)_([^_]*)_(\\d{4})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{3})_T(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{3}).xml$");
 
     @DynamicSerializeElement
     private String playlistPath;
@@ -101,12 +102,11 @@ public class PlaylistUpdateNotification {
         result.append(playlist.getSuite());
         result.append("_");
         try (Formatter formatter = new Formatter(result)) {
-            formatter.format("%1$tY%1$tm%1$td%1$tH%1$tM",
+            formatter.format("%1$tY%1$tm%1$td%1$tH%1$tM$tS$tL",
                     playlist.getCreationTime());
-            result.append("_S");
-            formatter.format("%1$td%1$tH%1$tM", playlist.getStart());
-            result.append("_E");
-            formatter.format("%1$td%1$tH%1$tM", playlist.getExpired());
+            result.append("_T");
+            formatter.format("%1$td%1$tH%1$tM$tS$tL",
+                    playlist.getLatestTrigger());
             result.append(".xml");
         }
         return result;
@@ -135,24 +135,25 @@ public class PlaylistUpdateNotification {
             int day = Integer.parseInt(m.group(6));
             int hour = Integer.parseInt(m.group(7));
             int minute = Integer.parseInt(m.group(8));
+            int second = Integer.parseInt(m.group(9));
+            int milli = Integer.parseInt(m.group(10));
             Calendar c = TimeUtil.newGmtCalendar(year, month, day);
             c.set(Calendar.HOUR_OF_DAY, hour);
             c.set(Calendar.MINUTE, minute);
+            c.set(Calendar.SECOND, second);
+            c.set(Calendar.MILLISECOND, milli);
             playlist.setCreationTime(c);
-            day = Integer.parseInt(m.group(9));
-            hour = Integer.parseInt(m.group(10));
-            minute = Integer.parseInt(m.group(11));
+            day = Integer.parseInt(m.group(11));
+            hour = Integer.parseInt(m.group(12));
+            minute = Integer.parseInt(m.group(13));
+            second = Integer.parseInt(m.group(14));
+            milli = Integer.parseInt(m.group(15));
             c = TimeUtil.newGmtCalendar(year, month, day);
             c.set(Calendar.HOUR_OF_DAY, hour);
             c.set(Calendar.MINUTE, minute);
-            playlist.setStart(c);
-            day = Integer.parseInt(m.group(12));
-            hour = Integer.parseInt(m.group(13));
-            minute = Integer.parseInt(m.group(14));
-            c = TimeUtil.newGmtCalendar(year, month, day);
-            c.set(Calendar.HOUR_OF_DAY, hour);
-            c.set(Calendar.MINUTE, minute);
-            playlist.setExpired(c);
+            c.set(Calendar.SECOND, second);
+            c.set(Calendar.MILLISECOND, milli);
+            playlist.setLatestTrigger(c);
         }
         return playlist;
     }
