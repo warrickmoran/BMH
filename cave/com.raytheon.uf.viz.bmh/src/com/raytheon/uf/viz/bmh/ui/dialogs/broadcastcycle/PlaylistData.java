@@ -37,7 +37,6 @@ import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -165,6 +164,8 @@ public class PlaylistData {
             pred.setPlayCount(notification.getPlayCount());
             pred.setLastTransmitTime(notification.getTransmitTime());
             pred.setNextTransmitTime(null);
+            pred.setPlayedAlertTone(notification.isPlayedAlertTone());
+            pred.setPlayedSameTone(notification.isPlayedSameTone());
         } else {
             pred = new MessagePlaybackPrediction();
             predictionMap.put(id, pred);
@@ -210,13 +211,15 @@ public class PlaylistData {
                 data.setTransmitTimeColor(colorManager
                         .getPredictedTransmitTimeColor());
             }
-            data.setExpirationTime(TimeUtil.newGmtCalendar());
 
             BroadcastMsg message = playlistMap.get(broadcastId);
+            data.setExpirationTime(message.getInputMessage()
+                    .getExpirationTime());
             data.setMessageId(message.getAfosid());
             String title = messageTypeMap.get(broadcastId).getTitle();
             data.setMessageTitle(title);
             data.setMrd("MRD"); // TODO
+
             data.setBroadcastId(broadcastId);
             data.setInputMsg(message.getInputMessage());
             // TODO set other background colors
