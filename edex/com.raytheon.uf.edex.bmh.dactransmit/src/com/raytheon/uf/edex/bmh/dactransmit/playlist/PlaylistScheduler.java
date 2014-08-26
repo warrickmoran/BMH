@@ -96,6 +96,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  *                                      interrupt playlists.
  * Aug 26, 2014  #3286     dgilling     Allow playlists directory to be 
  *                                      initially empty.
+ * Aug 26, 2014  #3486     bsteffen     Make deletion of playlists safer and more verbose.
  * 
  * </pre>
  * 
@@ -609,10 +610,18 @@ public final class PlaylistScheduler implements
                                 + currentPlaylist
                                 + " that has an older creation date. Ignoring new playlist.");
                         Path old = newPlaylist.getPath();
-                        try {
-                            Files.delete(old);
-                        } catch (IOException e) {
-                            logger.warn("Unable to delete playlist " + old, e);
+                        if (!newPlaylist.getPath().equals(old)) {
+                            try {
+                                Files.delete(old);
+                                logger.debug("Deleted " + old
+                                        + " because current is better ");
+                            } catch (IOException e) {
+                                logger.warn("Unable to delete playlist " + old,
+                                        e);
+                            }
+                        } else {
+                            logger.debug("Did not delete " + old
+                                    + " because it was the same as current");
                         }
                         return;
                     }
@@ -646,10 +655,17 @@ public final class PlaylistScheduler implements
                     messageIndex = prevMessageIndex + 1;
                     eventBus.post(notify);
                     Path old = currentPlaylist.getPath();
-                    try {
-                        Files.delete(old);
-                    } catch (IOException e) {
-                        logger.warn("Unable to delete playlist " + old, e);
+                    if (!newPlaylist.getPath().equals(old)) {
+                        try {
+                            Files.delete(old);
+                            logger.debug("Deleted " + old
+                                    + " because new is better ");
+                        } catch (IOException e) {
+                            logger.warn("Unable to delete playlist " + old, e);
+                        }
+                    } else {
+                        logger.debug("Did not delete " + old
+                                + " because it was the same as new");
                     }
                     currentPlaylist = newPlaylist;
                 } else {
@@ -669,10 +685,19 @@ public final class PlaylistScheduler implements
                             old = newPlaylist.getPath();
                         }
 
-                        try {
-                            Files.delete(old);
-                        } catch (IOException e) {
-                            logger.warn("Unable to delete playlist " + old, e);
+                        if (!newPlaylist.getPath().equals(toReplace.getPath())) {
+                            try {
+                                Files.delete(old);
+                                logger.debug("Deleted "
+                                        + old
+                                        + " because it is not active or not able to replace active.");
+                            } catch (IOException e) {
+                                logger.warn("Unable to delete playlist " + old,
+                                        e);
+                            }
+                        } else {
+                            logger.debug("Did not delete " + old
+                                    + " because it was the same as active");
                         }
                         return;
                     } else {
