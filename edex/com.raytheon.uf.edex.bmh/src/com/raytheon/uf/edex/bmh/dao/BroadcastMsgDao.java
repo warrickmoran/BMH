@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.dao;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import org.springframework.orm.hibernate3.HibernateTemplate;
@@ -27,6 +28,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
  * BMH DAO for {@link BroadcastMsg}.
@@ -41,6 +43,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
  * Jul 10, 2014  3285     bsteffen    Add getMessagesByAfosid()
  * Aug 20, 2014  3432     mpduff      Added getMessageByBroadcastId, fixed GetMesageByAfosid
  * Aug 24, 2014  3432     mpduff      Fixed getMessageByBroadcastId
+ * Sep 03, 2014  3554     bsteffen    Add getUnexpiredBroadcastMsgsByAfosIDAndGroup
  * 
  * </pre>
  * 
@@ -64,6 +67,26 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
                                 BroadcastMsg.GET_MSGS_BY_AFOS_ID,
                                 new String[] { "afosID" },
                                 new String[] { afosid });
+                    }
+                });
+        @SuppressWarnings("unchecked")
+        List<BroadcastMsg> result = (List<BroadcastMsg>) messages;
+        return result;
+    }
+
+    public List<BroadcastMsg> getUnexpiredMessagesByAfosidAndGroup(
+            final String afosid, final Calendar expirationTime,
+            final TransmitterGroup group) {
+        List<?> messages = txTemplate
+                .execute(new TransactionCallback<List<?>>() {
+                    @Override
+                    public List<?> doInTransaction(TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht.findByNamedQueryAndNamedParam(
+                                        BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP,
+                                        new String[] {
+                                        "afosID", "expirationTime", "group" },
+                                new Object[] { afosid, expirationTime, group });
                     }
                 });
         @SuppressWarnings("unchecked")

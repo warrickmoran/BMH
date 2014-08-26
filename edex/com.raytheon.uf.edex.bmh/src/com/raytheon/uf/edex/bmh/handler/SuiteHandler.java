@@ -22,10 +22,13 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.notify.ConfigurationNotification;
 import com.raytheon.uf.common.bmh.request.SuiteRequest;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.SuiteDao;
+import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
  * BMH Suite related request handler.
@@ -40,6 +43,7 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * Aug 12, 2014 #3490     lvenable     Refactored to make a query convenience method.
  * Aug 12, 2014 #3490     lvenable     Added delete.
  * Aug 18, 2014 #3490     lvenable     Added save.
+ * Sep 03, 2014  3554     bsteffen     Post notification of updates.
  * 
  * </pre>
  * 
@@ -51,7 +55,7 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
 
     @Override
     public Object handleRequest(SuiteRequest request) throws Exception {
-
+        boolean update = false;
         SuiteResponse suiteResponse = new SuiteResponse();
 
         switch (request.getAction()) {
@@ -66,12 +70,22 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
             break;
         case Delete:
             deleteSuite(request);
+            update = true;
             break;
         case Save:
             suiteResponse = saveSuite(request);
+            update = true;
             break;
         default:
             break;
+        }
+
+        if (update) {
+            EDEXUtil.getMessageProducer()
+                    .sendAsyncUri(
+                            "jms-durable:topic:BMH.Config",
+                            SerializationUtil
+                                    .transformToThrift(new ConfigurationNotification()));
         }
 
         return suiteResponse;
