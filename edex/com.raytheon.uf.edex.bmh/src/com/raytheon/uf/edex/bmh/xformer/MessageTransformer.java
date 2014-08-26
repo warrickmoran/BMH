@@ -26,6 +26,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.WordUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
@@ -67,6 +68,10 @@ import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
  * Jun 24, 2014 3302       bkowal      Initial creation
  * Jul 7, 2014  3302       bkowal      Finished the SSML Document generation and the
  *                                     Broadcast Message generation.
+ * Aug 26, 2014 3559       bkowal      Remove newline characters from the text and
+ *                                     standardize capitalization before applying
+ *                                     the transformation (at least so that EVERY
+ *                                     letter in the message is not capitalized).
  * 
  * </pre>
  * 
@@ -78,6 +83,8 @@ public class MessageTransformer {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(MessageTransformer.class);
+
+    private static final String PLATFORM_AGNOSTIC_NEWLINE_REGEX = "\\r\\n|\\r|\\n";
 
     private static final String SENTENCE_REGEX = "[^.!?\\s][^.!?]*(?:[.!?](?!['\"]?\\s|$)[^.!?]*)*[.!?]?['\"]?(?=\\s|$)";
 
@@ -127,8 +134,20 @@ public class MessageTransformer {
             throw new Exception(completionError + " Missing Afos ID.");
         }
 
+        if (message.getInputMessage().getContent() == null
+                || message.getInputMessage().getContent().trim().isEmpty()) {
+            throw new Exception(completionError + " Missing Text to Transform.");
+        }
+
         /* Retrieve the validation message associated with the message id. */
         statusHandler.info("Transforming Message: " + message.getId() + ".");
+
+        /*
+         * Format the text. Remove extra newlines and standardize
+         * capitalization.
+         */
+        final String formattedText = this.formatText(message.getInputMessage()
+                .getContent().trim());
 
         /* Retrieve the message type based on afos id. */
         MessageType messageType = this.getMessageType(message.getInputMessage()
@@ -144,8 +163,8 @@ public class MessageTransformer {
                     .getVoice().getLanguage(), message.getId());
             BroadcastMsg msg = null;
             try {
-                msg = this.transformText(message.getInputMessage(), dictionary,
-                        group, messageType);
+                msg = this.transformText(message.getInputMessage(),
+                        formattedText, dictionary, group, messageType);
             } catch (SSMLConversionException e) {
                 StringBuilder errorString = new StringBuilder(
                         "Failed to generate a Broadcast Msg for Input Message: ");
@@ -213,8 +232,8 @@ public class MessageTransformer {
              * the standard error handling procedure ...
              */
             statusHandler.error(BMH_CATEGORY.XFORM_MISSING_MSG_TYPE,
-                    "Failed to Transform Message: " + messageID + "!",
-                    exception);
+                    "Failed to Transform Message: SENTENCE_PUNCTUATION"
+                            + messageID + "!", exception);
 
             /*
              * But, at the same time there is nothing to send downstream -
@@ -285,12 +304,13 @@ public class MessageTransformer {
      * @throws SSMLConversionException
      */
     private BroadcastMsg transformText(InputMessage inputMessage,
-            Dictionary dictionary, TransmitterGroup group,
-            MessageType messageType) throws SSMLConversionException {
+            final String formattedContent, Dictionary dictionary,
+            TransmitterGroup group, MessageType messageType)
+            throws SSMLConversionException {
+
         /* Initially all text is Free. */
         List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
-        transformationCandidates.add(new RulingFreeText(inputMessage
-                .getContent()));
+        transformationCandidates.add(new RulingFreeText(formattedContent));
 
         /* Create Transformation rules based on the dictionary. */
         List<ITextTransformation> textTransformations = new LinkedList<ITextTransformation>();
@@ -313,7 +333,7 @@ public class MessageTransformer {
 
         /* Apply the transformations and build the SSML Document. */
         SSMLDocument ssmlDocument = this.applyTransformations(
-                transformationCandidates, inputMessage.getContent());
+                transformationCandidates, formattedContent);
 
         /* Create the Broadcast Message */
         BroadcastMsg message = new BroadcastMsg();
@@ -325,6 +345,14 @@ public class MessageTransformer {
         message.setVoice(messageType.getVoice());
 
         return message;
+    }
+
+    private String formatText(String content) {
+        /* First replace the new line characters. */
+        content = content.replaceAll(PLATFORM_AGNOSTIC_NEWLINE_REGEX,
+                StringUtils.EMPTY);
+
+        return WordUtils.capitalizeFully(content);
     }
 
     /**

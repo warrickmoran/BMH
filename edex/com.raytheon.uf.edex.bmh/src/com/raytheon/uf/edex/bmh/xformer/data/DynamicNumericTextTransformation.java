@@ -41,6 +41,8 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 7, 2014  3302       bkowal      Initial creation
+ * Aug 26, 2014 3559       bkowal      Lower case all text when constructing dictionary
+ *                                     regex and determining if rules apply.
  * 
  * </pre>
  * 
@@ -79,7 +81,7 @@ public class DynamicNumericTextTransformation extends
     public List<Serializable> applyTransformation(String text)
             throws SSMLConversionException {
         List<Integer> extractedNumerics = new LinkedList<>();
-        Matcher matcher = NUMBER_PATTERN.matcher(text);
+        Matcher matcher = NUMBER_PATTERN.matcher(text.toLowerCase());
         while (matcher.find()) {
             /*
              * If it matches the pattern, then there should be no reason to

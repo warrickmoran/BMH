@@ -40,6 +40,8 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
  * ------------ ---------- ----------- --------------------------
  * Jun 26, 2014 3302       bkowal      Initial creation
  * Jul 7, 2014  3302       bkowal      Implemented the transformation capabilities.
+ * Aug 26, 2014 3559       bkowal      Lower case all text when constructing dictionary
+ *                                     regex and determining if rules apply.
  * 
  * </pre>
  * 
@@ -72,7 +74,7 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
         if (ssmlSpeakWrapperText == null) {
             generateSpeakSSMLWrapper();
         }
-        this.transformationRegex = Pattern.compile(text);
+        this.transformationRegex = Pattern.compile(text.toLowerCase());
         this.ssmlReplacement = ssmlReplacement;
     }
 
@@ -102,7 +104,8 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
      */
     @Override
     public boolean determineTransformationApplicability(IFreeText candidate) {
-        Matcher matcher = this.transformationRegex.matcher(candidate.getText());
+        Matcher matcher = this.transformationRegex.matcher(candidate.getText()
+                .toLowerCase());
         while (matcher.find()) {
             final int endIndex = matcher.end();
             final String matchText = matcher.group(0);
