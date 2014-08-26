@@ -69,6 +69,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      or re-gained.
  * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
  * Aug 18, 2014  #3532     bkowal       Add transmitter decibel range
+ * Aug 26, 2014  #3286     dgilling     Make construction of playlist directory
+ *                                      observer optional.
  * 
  * </pre>
  * 
@@ -127,8 +129,12 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                 this.config.getTransmitters());
         this.commsManager = new CommsManagerCommunicator(this.config,
                 this.eventBus);
-        this.newPlaylistObserver = new PlaylistDirectoryObserver(
-                this.config.getInputDirectory(), this.eventBus);
+        if (Boolean.getBoolean("enableDirectoryObserver")) {
+            this.newPlaylistObserver = new PlaylistDirectoryObserver(
+                    this.config.getInputDirectory(), this.eventBus);
+        } else {
+            this.newPlaylistObserver = null;
+        }
         this.shutdownSignal = new Semaphore(1);
         this.previousStatus = null;
     }
@@ -160,7 +166,9 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
 
         dataThread.start();
         controlThread.start();
-        newPlaylistObserver.start();
+        if (newPlaylistObserver != null) {
+            newPlaylistObserver.start();
+        }
         eventBus.register(playlistMgr);
 
         isRunning = true;
@@ -181,7 +189,9 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
 
         dataThread.shutdown();
         playlistMgr.shutdown();
-        newPlaylistObserver.shutdown();
+        if (newPlaylistObserver != null) {
+            newPlaylistObserver.shutdown();
+        }
         dataThread.join();
 
         controlThread.shutdown();
