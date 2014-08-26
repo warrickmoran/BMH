@@ -87,6 +87,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 22, 2014  #3490      lvenable    Updated controls that disable/enable.
  * Aug 24, 2014  #3490      lvenable    Added assign programs capability and check for triggers on general type.
  * Aug 25, 2014  #3490      lvenable    Added validation code.
+ * Aug 26, 2014  #3490      lvenable    Fixed issue found during testing, fixed issue on create in a new suite
+ *                                      when creating a new program.
  * 
  * </pre>
  * 
@@ -179,7 +181,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private List<Program> programsArray = new ArrayList<Program>();
 
     /** Array of Programs to save the create suite to. */
-    private List<Program> newAssignedProgramsArray = new ArrayList<Program>();;
+    private List<Program> newAssignedProgramsArray = new ArrayList<Program>();
 
     /** List of assigned program for this suite. */
     private List<Program> assignedPrograms = new ArrayList<Program>();
@@ -189,6 +191,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
     /** Assign program names to the current suite. */
     private Set<String> assignedProgramNames = new TreeSet<String>();
+
+    private boolean forNewProgram = false;
 
     /**
      * 
@@ -205,7 +209,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      */
     public CreateEditSuiteDlg(Shell parentShell, DialogType dlgType,
             boolean showProgramControls, Program selectedProgram,
-            Suite selectedSuite, Set<String> existingSuiteNames) {
+            Suite selectedSuite, Set<String> existingSuiteNames,
+            boolean forNewProgram) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
@@ -215,6 +220,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         this.selectedProgram = selectedProgram;
         this.selectedSuite = selectedSuite;
         this.existingSuiteNames = existingSuiteNames;
+        this.forNewProgram = forNewProgram;
     }
 
     @Override
@@ -549,7 +555,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         if (getSelectedSuiteType() == SuiteType.GENERAL) {
             setTriggersBtn.setEnabled(false);
         } else {
-            setTriggersBtn.setEnabled(selectedMsgTypeTable.hasSelectedItems());
+            setTriggersBtn
+                    .setEnabled(selectedMsgTypeTable.getTableItemCount() > 0);
         }
     }
 
@@ -886,6 +893,12 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         enableDisableAddRemoveTriggerBtns();
     }
 
+    private void handleRemoveAllMessageTypes() {
+        msgTypesInSuiteList.clear();
+        populateSelectedMsgTypesTable(true);
+        enableDisableAddRemoveTriggerBtns();
+    }
+
     /**
      * Remove selected message types from the selected message types table.
      */
@@ -947,7 +960,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         // If the suite is HIGH or EXCLUSIVE and it is associated with a program
         // then a trigger must be set.
         if ((suiteType == SuiteType.HIGH || suiteType == SuiteType.EXCLUSIVE)
-                && (!assignedProgramNames.isEmpty() || selectedProgram != null)) {
+                && (!assignedProgramNames.isEmpty() || selectedProgram != null || forNewProgram == true)) {
 
             boolean hasTrigger = false;
             for (SuiteMessage sm : msgTypesInSuiteList) {

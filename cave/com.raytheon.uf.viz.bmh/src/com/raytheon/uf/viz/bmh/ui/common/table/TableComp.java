@@ -54,6 +54,7 @@ import org.eclipse.swt.widgets.TableItem;
  * Aug 8, 2014    #3490     lvenable    Added a populate method to allow
  *                                      the regeneration of table columns.
  * Aug 15, 2014   #3490     lvenable    Added replace table method.
+ * Aug 26, 2014   #3490     lvenable    Added method to get table item count.
  * 
  * </pre>
  * 
@@ -485,6 +486,15 @@ public abstract class TableComp extends Composite {
         }
 
         return false;
+    }
+
+    /**
+     * Returns the number of items (rows) that are currently in the table.
+     * 
+     * @return The number of items (rows).
+     */
+    public int getTableItemCount() {
+        return table.getItemCount();
     }
 
     /**
