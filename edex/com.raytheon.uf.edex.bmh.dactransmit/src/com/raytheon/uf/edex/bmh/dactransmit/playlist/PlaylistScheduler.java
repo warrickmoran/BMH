@@ -94,6 +94,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  * Aug 25, 2014  #3286     dgilling     Fix NPE when calling 
  *                                      buildPlaylistNotification() against
  *                                      interrupt playlists.
+ * Aug 26, 2014  #3286     dgilling     Allow playlists directory to be 
+ *                                      initially empty.
+ * 
  * </pre>
  * 
  * @author dgilling
@@ -171,6 +174,8 @@ public final class PlaylistScheduler implements
 
     private final EventBus eventBus;
 
+    private volatile boolean warnNoMessages;
+
     /**
      * Reads the specified directory for valid playlist files (ones that have
      * not already passed their expiration time) and sorts them into playback
@@ -190,7 +195,7 @@ public final class PlaylistScheduler implements
      *             playlist files from the specified directory.
      */
     public PlaylistScheduler(Path inputDirectory, EventBus eventBus,
-            Range dbRange) throws IOException {
+            Range dbRange) {
         this.playlistDirectory = inputDirectory;
         this.eventBus = eventBus;
 
@@ -233,14 +238,14 @@ public final class PlaylistScheduler implements
                     expiredPlaylists.add(entry);
                 }
             }
+        } catch (IOException e) {
+            logger.warn(
+                    "Unable to list initial collection of playlists/messages.",
+                    e);
         }
 
         this.activePlaylists = new TreeSet<>(PLAYBACK_ORDER);
         activePlaylists.addAll(uniqueActivePlaylists.values());
-        if (activePlaylists.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Input directory contained no valid playlist files.");
-        }
 
         Collections.sort(this.futurePlaylists, QUEUE_ORDER);
 
@@ -273,11 +278,9 @@ public final class PlaylistScheduler implements
             }
         }
 
-        DacPlaylist firstPlaylist = (!this.interrupts.isEmpty()) ? this.interrupts
-                .peek() : activePlaylists.first();
-        logger.debug("Starting with playlist: " + firstPlaylist.toString());
-
         this.playlistMessgeLock = new Object();
+
+        this.warnNoMessages = true;
     }
 
     /**
@@ -295,13 +298,23 @@ public final class PlaylistScheduler implements
      */
     public DacMessagePlaybackData next() {
         DacMessagePlaybackData nextMessageData = nextMessage();
-        DacPlaylistMessage nextMessage = nextMessageData.getMessage();
-        logger.debug("Switching to message: " + nextMessage.toString());
-        AudioFileBuffer audioData = cache.getAudio(nextMessage);
-        boolean playTones = ((nextMessage.getSAMEtone() != null) && (nextMessage
-                .getPlayCount() == 0));
-        audioData.setReturnTones(playTones);
-        nextMessageData.setAudio(audioData);
+
+        if (nextMessageData != null) {
+            warnNoMessages = true;
+            DacPlaylistMessage nextMessage = nextMessageData.getMessage();
+            logger.debug("Switching to message: " + nextMessage.toString());
+            AudioFileBuffer audioData = cache.getAudio(nextMessage);
+            boolean playTones = ((nextMessage.getSAMEtone() != null) && (nextMessage
+                    .getPlayCount() == 0));
+            audioData.setReturnTones(playTones);
+            nextMessageData.setAudio(audioData);
+        } else {
+            if (warnNoMessages) {
+                logger.warn("There are currently no valid playlists or messages to play.");
+                warnNoMessages = false;
+            }
+        }
+
         return nextMessageData;
     }
 
@@ -400,12 +413,14 @@ public final class PlaylistScheduler implements
                          */
                         messageIndex = Integer.MAX_VALUE;
                     }
-                } else {
+                } else if (!activePlaylists.isEmpty()) {
                     nextPlaylist = activePlaylists.first();
                     PlaylistSwitchNotification notify = buildPlaylistNotification(nextPlaylist);
                     eventBus.post(notify);
                     currentMessages = notify.getPlaylist();
                     messageIndex = 0;
+                } else {
+                    return null;
                 }
 
                 while ((nextMessage == null)
@@ -472,9 +487,7 @@ public final class PlaylistScheduler implements
         }
 
         if (nextMessage == null) {
-            // TODO what happens if we search all our playlists and find nothing
-            // valid?
-            logger.error("Couldn't find any valid playlists or messages to play!!!");
+            return null;
         }
 
         DacMessagePlaybackData nextMessageData = new DacMessagePlaybackData();
@@ -585,7 +598,9 @@ public final class PlaylistScheduler implements
                     return;
                 }
 
-                if ((newPlaylist.getPriority() == currentPlaylist.getPriority())
+                if ((currentPlaylist != null)
+                        && (newPlaylist.getPriority() == currentPlaylist
+                                .getPriority())
                         && (newPlaylist.getSuite().equals(currentPlaylist
                                 .getSuite()))) {
                     if (newPlaylist.getCreationTime().before(
