@@ -22,7 +22,6 @@ package com.raytheon.uf.edex.bmh.dactransmit;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
@@ -57,6 +56,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * Jul 17, 2014  #3399     bsteffen     Add comms manager port argument.
  * Aug 12, 2014  #3486     bsteffen     Remove group argument
  * Aug 18, 2014  #3532     bkowal       Added transmitter decibel range argument
+ * Aug 26, 2014  #3286     dgilling     Allow for initially empty or missing
+ *                                      playlist directory.
  * 
  * </pre>
  * 
@@ -150,10 +151,6 @@ public final class DacTransmitArgParser {
                     cmd.getOptionValue(INPUT_DIR_OPTION_KEY));
         } else {
             throw new ParseException("Required option -i not provided.");
-        }
-        if (!Files.isDirectory(inputDirectory)) {
-            throw new ParseException(
-                    "Path specified by -i must point to a directory.");
         }
 
         int managerPort = -1;

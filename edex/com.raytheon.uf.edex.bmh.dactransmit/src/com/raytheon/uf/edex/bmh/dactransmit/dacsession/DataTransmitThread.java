@@ -73,6 +73,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Aug 24, 2014  3558      rjpeter      Added catch to main run.
  * Aug 25, 2014  #3286     dgilling     Re-organize try-catch blocks to keep 
  *                                      thread always running.
+ * Aug 26, 2014  #3286     dgilling     Pause transmission when there is no
+ *                                      data to send.
  * </pre>
  * 
  * @author dgilling
@@ -110,6 +112,8 @@ public final class DataTransmitThread extends Thread implements
 
     private volatile boolean onSyncRestartMessage;
 
+    private volatile boolean warnNoData;
+
     /**
      * Constructor for this thread. Attempts to open a {@code DatagramSocket}
      * and connect to DAC IP endpoint specified by IP address and port.
@@ -146,6 +150,7 @@ public final class DataTransmitThread extends Thread implements
         this.playingInterrupt = false;
         this.hasSync = true;
         this.onSyncRestartMessage = false;
+        this.warnNoData = true;
     }
 
     /*
@@ -165,10 +170,28 @@ public final class DataTransmitThread extends Thread implements
                     }
 
                     DacMessagePlaybackData playbackData = playlistMgr.next();
-                    // we set playing the playingInterrupt flag here in case
-                    // this is
-                    // a startup scenario and we had unplayed interrupts to
-                    // start.
+                    while (playbackData == null) {
+                        if (warnNoData) {
+                            logger.error("There are no valid messages available for transmit.");
+                            warnNoData = false;
+                        }
+
+                        playbackData = playlistMgr.next();
+                        if (playbackData == null) {
+                            // FIXME: extract to constant once reasonable
+                            // default has been established
+                            Thread.sleep(1000);
+                        } else {
+                            logger.info("DataTransmitThread has resumed transmission.");
+                            warnNoData = true;
+                        }
+                    }
+
+                    /*
+                     * we set playing the playingInterrupt flag here in case
+                     * this is a startup scenario and we had unplayed interrupts
+                     * to start.
+                     */
                     playingInterrupt = playbackData.isInterrupt();
 
                     while ((playbackData.hasRemaining())
