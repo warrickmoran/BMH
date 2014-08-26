@@ -801,7 +801,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private void handleMessageDetails() {
         if ((detailsDlg == null) || detailsDlg.isDisposed()) {
             try {
-                TableRowData selection = tableComp.getSelection().get(0);
+                List<TableRowData> selectionList = tableComp.getSelection();
+                if (selectionList.isEmpty()) {
+                    return;
+                }
+                TableRowData selection = selectionList.get(0);
                 BroadcastCycleTableDataEntry dataEntry = (BroadcastCycleTableDataEntry) selection
                         .getData();
                 String afosId = selection.getTableCellData().get(1)
