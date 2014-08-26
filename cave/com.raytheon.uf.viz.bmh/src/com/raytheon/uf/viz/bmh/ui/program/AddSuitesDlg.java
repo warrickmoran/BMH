@@ -310,14 +310,14 @@ public class AddSuitesDlg extends CaveSWTDialog {
             }
         }
 
-        if (sb.length() == 0) {
+        if (sb.length() != 0) {
             String firstMsg = "The following suites cannot be added to the program because they are "
                     + "HIGH/EXCLUSIVE and do not have a trigger message:\n\n";
             sb.insert(0, firstMsg);
             sb.append("\nExclude the suite(s) or edit them to add triggers message types.");
 
             DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
-                    "Suite Issue", firstMsg);
+                    "Suite Issue", sb.toString());
 
             return false;
         }
