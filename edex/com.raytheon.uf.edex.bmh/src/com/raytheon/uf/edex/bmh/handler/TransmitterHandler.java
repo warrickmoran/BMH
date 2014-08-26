@@ -44,7 +44,7 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014   3173     mpduff      Initial creation
  * Aug 19, 2014   3486     bsteffen    Send change notification over jms.
- * Aug 24, 2014 3432       mpduff      Added getEnabledTransmitters()
+ * Aug 24, 2014 3432       mpduff      Added getEnabledTransmitterGroups()
  * 
  * </pre>
  * 
@@ -64,8 +64,8 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
         case GetTransmitters:
             response = getTransmitters();
             break;
-        case GetEnabledTransmitters:
-            response = getEnabledTransmitters();
+        case GetEnabledTransmitterGroups:
+            response = getEnabledTransmitterGroups();
             break;
         case SaveTransmitter:
             response = saveTransmitter(request);
@@ -100,6 +100,8 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
                             "jms-durable:topic:BMH.Config",
                             SerializationUtil
                                     .transformToThrift(new ConfigurationNotification()));
+        default:
+            // no-op
         }
         return response;
     }
@@ -156,11 +158,11 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
         return response;
     }
 
-    private TransmitterResponse getEnabledTransmitters() {
+    private TransmitterResponse getEnabledTransmitterGroups() {
         TransmitterResponse response = new TransmitterResponse();
-        TransmitterDao dao = new TransmitterDao();
-        List<Transmitter> transmitters = dao.getEnabledTransmitters();
-        response.setTransmitterList(transmitters);
+        TransmitterGroupDao dao = new TransmitterGroupDao();
+        List<TransmitterGroup> groups = dao.getEnabledTransmitterGroups();
+        response.setTransmitterGroupList(groups);
 
         return response;
     }

@@ -73,8 +73,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Jun 03, 2014    3432    mpduff      Initial creation
  * Aug 14, 2014    3432    mpduff      Implementing more methods.
  * Aug 23, 2014    3432    mpduff      Add getPlaylistDataForTransmitter
- * Aug 24, 2014    3432    mpduff      Added getEnabledTransmitters
- * 
+ * Aug 24, 2014    3432    mpduff      Added getEnabledTransmitterGroups
  * </pre>
  * 
  * @author mpduff
@@ -90,33 +89,19 @@ public class BroadcastCycleDataManager {
     }
 
     /**
-     * Get the list of transmitters
+     * Get the list of enabled transmitter groups
      * 
      * @return
      * @throws Exception
      */
-    public List<TransmitterGroup> getTransmitterGroupList() throws Exception {
+    public List<TransmitterGroup> getEnabledTransmitterGroupList()
+            throws Exception {
         TransmitterRequest request = new TransmitterRequest();
-        request.setAction(TransmitterRequestAction.GetTransmitterGroups);
+        request.setAction(TransmitterRequestAction.GetEnabledTransmitterGroups);
 
         TransmitterResponse response = (TransmitterResponse) BmhUtils
                 .sendRequest(request);
         return response.getTransmitterGroupList();
-    }
-
-    /**
-     * Get the list of enabled transmitters
-     * 
-     * @return
-     * @throws Exception
-     */
-    public List<Transmitter> getEnabledTransmitterList() throws Exception {
-        TransmitterRequest request = new TransmitterRequest();
-        request.setAction(TransmitterRequestAction.GetEnabledTransmitters);
-
-        TransmitterResponse response = (TransmitterResponse) BmhUtils
-                .sendRequest(request);
-        return response.getTransmitterList();
     }
 
     /**
@@ -214,7 +199,7 @@ public class BroadcastCycleDataManager {
                 .sendRequest(req);
 
         List<MessageType> list = response.getMessageTypeList();
-        if (list != null && list.size() > 0) {
+        if ((list != null) && (list.size() > 0)) {
             return list.get(0);
         }
 
@@ -239,7 +224,7 @@ public class BroadcastCycleDataManager {
                 .sendRequest(req);
 
         List<BroadcastMsg> msgList = response.getMessageList();
-        if (msgList != null && !msgList.isEmpty()) {
+        if ((msgList != null) && !msgList.isEmpty()) {
             return msgList.get(0);
         }
 
