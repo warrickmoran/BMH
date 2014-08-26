@@ -19,7 +19,9 @@
  **/
 package com.raytheon.uf.edex.bmh.playlist;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -220,7 +222,7 @@ public class PlaylistManager {
                                 startTime = messageStart;
                             }
                             if (messageStart.before(currentTime)) {
-                                if (latestTrigger == null
+                                if ((latestTrigger == null)
                                         || latestTrigger.before(messageStart)) {
                                     latestTrigger = messageStart;
                                 }
@@ -235,7 +237,7 @@ public class PlaylistManager {
                     }
                 }
             }
-            if (latestTrigger == null && !futureTriggers.isEmpty()) {
+            if ((latestTrigger == null) && !futureTriggers.isEmpty()) {
                 latestTrigger = startTime;
                 futureTriggers.remove(latestTrigger);
             }
@@ -245,7 +247,7 @@ public class PlaylistManager {
                 playlist.setMessages(messages);
                 playlistDao.persist(playlist);
                 if (futureTriggers.isEmpty()
-                        || suite.getType() == SuiteType.GENERAL) {
+                        || (suite.getType() == SuiteType.GENERAL)) {
                     writePlaylistFile(playlist, latestTrigger);
                 } else {
                     /*
@@ -255,7 +257,7 @@ public class PlaylistManager {
                     Collections.sort(futureTriggers);
                     playlist.setEndTime(futureTriggers.get(0));
                     writePlaylistFile(playlist, latestTrigger);
-                    for (int i = 0; i < futureTriggers.size() - 1; i += 1) {
+                    for (int i = 0; i < (futureTriggers.size() - 1); i += 1) {
                         playlist.setStartTime(futureTriggers.get(i));
                         playlist.setEndTime(futureTriggers.get(i + 1));
                         writePlaylistFile(playlist, futureTriggers.get(i));
@@ -368,9 +370,10 @@ public class PlaylistManager {
                 return;
             }
         }
-        try {
-            JAXB.marshal(dacList, playlistFile);
-        } catch (DataBindingException e) {
+        try (BufferedOutputStream os = new BufferedOutputStream(
+                new FileOutputStream(playlistFile))) {
+            JAXB.marshal(dacList, os);
+        } catch (Exception e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to write playlist file.", e);
             return;
