@@ -20,9 +20,10 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MenuAdapter;
@@ -139,6 +140,12 @@ public class TransmitterComp extends Composite implements
     /** Data manager */
     private TransmitterDataManager dataManager;
 
+    private final Map<String, TransmitterGroup> groupMap = new HashMap<>();
+
+    private final Map<String, Transmitter> transmitterMap = new HashMap<>();
+
+    private List<String> displayStrings;
+
     /**
      * Constructor.
      * 
@@ -198,8 +205,8 @@ public class TransmitterComp extends Composite implements
         MenuItem editItem = new MenuItem(menu, SWT.PUSH);
 
         if (tree.getSelectionCount() > 0
-                && tree.getSelection()[0].getText(0).equals(TRANSMITTER)) {
-            // Zero children items, Transmitter
+                && tree.getSelection()[0].getParentItem() != null) {
+            // Has parent so it's a transmitter
             editItem.setText("Edit Transmitter...");
             editItem.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -236,22 +243,43 @@ public class TransmitterComp extends Composite implements
                     });
         } else {
             // Group
-            editItem.setText("Edit Group...");
-            editItem.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    groupMenuAction(false);
-                }
-            });
+            if (tree.getSelectionCount() > 0
+                    && tree.getSelection()[0].getText(0).equals(
+                            this.TRANSMITTER)) {
+                editItem.setText("Edit Transmitter...");
+                editItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        transmitterMenuAction(false);
+                    }
+                });
 
-            MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
-            deleteItem.setText("Delete Group");
-            deleteItem.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    deleteGroup();
-                }
-            });
+                MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
+                deleteItem.setText("Delete Transmitter");
+                deleteItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        deleteTransmitter();
+                    }
+                });
+            } else {
+                editItem.setText("Edit Group...");
+                editItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        groupMenuAction(false);
+                    }
+                });
+
+                MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
+                deleteItem.setText("Delete Group");
+                deleteItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        deleteGroup();
+                    }
+                });
+            }
 
             MenuItem reorderMenuItem = new MenuItem(menu, SWT.PUSH);
             reorderMenuItem.setText("Order Groups/Transmitters...");
@@ -415,37 +443,40 @@ public class TransmitterComp extends Composite implements
      * Reorder the groups menu action.
      */
     private void reorderGroups() {
-        List<String> itemList = new ArrayList<String>();
-        for (TreeItem item : tree.getItems()) {
-            itemList.add(item.getText(1));
+        displayStrings = new ArrayList<>(groups.size());
+
+        for (TransmitterGroup g : groups) {
+            if (g.isStandalone()) {
+                String item = g.getTransmitterList().get(0).getName();
+                displayStrings.add(item);
+                groupMap.put(item, g);
+            } else {
+                String item = g.getName();
+                displayStrings.add(item);
+                groupMap.put(item, g);
+            }
         }
 
         GroupTransmitterOrderDlg orderDlg = new GroupTransmitterOrderDlg(
-                this.getShell(), "Reorder Groups/Transmitters", itemList);
+                this.getShell(), "Reorder Groups/Transmitters", displayStrings);
         String[] groupNameArray = (String[]) orderDlg.open();
         if (groupNameArray == null) {
             return;
         }
 
-        List<String> groupNameList = Arrays.asList(groupNameArray);
-
-        List<TransmitterGroup> groupList = new ArrayList<TransmitterGroup>(
-                groupNameList.size());
-        for (TreeItem item : tree.getItems()) {
-            groupList.add((TransmitterGroup) item.getData());
+        for (int i = 0; i < groupNameArray.length; i++) {
+            String s = groupNameArray[i];
+            TransmitterGroup g = groupMap.get(s);
+            g.setPosition(i);
         }
 
         try {
-            for (TransmitterGroup group : groupList) {
-                group.setPosition(groupNameList.indexOf(group.getName()));
-            }
-            dataManager.saveTransmitterGroups(groupList);
+            dataManager.saveTransmitterGroups(groups);
+            populateTree();
         } catch (Exception e) {
             statusHandler.error("Error saving group reorder", e);
             return;
         }
-
-        populateTree();
     }
 
     /**
@@ -459,10 +490,16 @@ public class TransmitterComp extends Composite implements
                 return;
             }
 
+            TransmitterGroup group = (TransmitterGroup) parent.getData();
+
             List<String> itemList = new ArrayList<String>();
             for (TreeItem item : parent.getItems()) {
-                itemList.add(item.getText(1));
+                Transmitter t = (Transmitter) item.getData();
+                String s = t.getMnemonic() + " - " + t.getName();
+                itemList.add(s);
+                transmitterMap.put(s, t);
             }
+
             GroupTransmitterOrderDlg orderDlg = new GroupTransmitterOrderDlg(
                     this.getShell(), "Reorder Transmitters", itemList);
             String[] transmitterNameList = (String[]) orderDlg.open();
@@ -471,10 +508,9 @@ public class TransmitterComp extends Composite implements
                 return;
             }
 
-            List<String> transmitterList = Arrays.asList(transmitterNameList);
-            TransmitterGroup group = (TransmitterGroup) parent.getData();
-            for (Transmitter trans : group.getTransmitters()) {
-                trans.setPosition(transmitterList.indexOf(trans.getName()));
+            for (int i = 0; i < transmitterNameList.length; i++) {
+                Transmitter t = transmitterMap.get(transmitterNameList[i]);
+                t.setPosition(i);
             }
 
             try {
@@ -693,9 +729,14 @@ public class TransmitterComp extends Composite implements
                         dacPortStr = String.valueOf(t.getDacPort());
                     }
                     if (standAlone) {
+                        String dacStr = "N/A";
+                        if (group.getDac() != null) {
+                            dacStr = String.valueOf(group.getDac());
+                        }
                         groupItem.setText(new String[] { "Transmitter",
                                 t.getName(), t.getMnemonic(),
-                                t.getServiceArea(), "Port #" + dacPortStr,
+                                t.getServiceArea(),
+                                dacStr + " / " + dacPortStr,
                                 t.getTxStatus().name(), t.getTxMode().name() });
                     } else {
                         TreeItem transItem = new TreeItem(groupItem, SWT.NONE);

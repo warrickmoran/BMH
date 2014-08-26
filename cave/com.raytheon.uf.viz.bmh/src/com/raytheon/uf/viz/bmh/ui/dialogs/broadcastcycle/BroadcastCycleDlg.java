@@ -49,7 +49,6 @@ import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
-import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
@@ -866,19 +865,22 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * Suite change handler
      */
     private void handleChangeSuiteAction() {
-        String[] selection = null;
-        List<Suite> suiteList = programObj.getSuites();
-        if ((changeSuiteDlg == null) || changeSuiteDlg.isDisposed()) {
-            changeSuiteDlg = new SuiteListDlg(getShell(), suiteList);
-            selection = (String[]) changeSuiteDlg.open();
-            if (selection == null) {
-                // User clicked cancel
-                return;
-            }
-        } else {
-            changeSuiteDlg.bringToTop();
-        }
-        updateSuiteData(selection);
+
+        DialogUtility.notImplemented(getShell());
+        // TODO - finsih this code section
+        // String[] selection = null;
+        // List<Suite> suiteList = programObj.getSuites();
+        // if ((changeSuiteDlg == null) || changeSuiteDlg.isDisposed()) {
+        // changeSuiteDlg = new SuiteListDlg(getShell(), suiteList);
+        // selection = (String[]) changeSuiteDlg.open();
+        // if (selection == null) {
+        // // User clicked cancel
+        // return;
+        // }
+        // } else {
+        // changeSuiteDlg.bringToTop();
+        // }
+        // updateSuiteData(selection);
     }
 
     /**

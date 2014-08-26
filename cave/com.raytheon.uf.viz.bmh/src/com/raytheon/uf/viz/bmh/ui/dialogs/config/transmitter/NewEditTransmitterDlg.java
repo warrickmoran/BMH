@@ -174,10 +174,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private Combo programCombo;
 
-    private Text minDbTxt;
-
-    private Text maxDbTxt;
-
     /**
      * Edit Transmitter constructor.
      * 
@@ -516,11 +512,11 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         dacPortCbo.setItems(new String[] { "1", "2", "3", "4" });
         dacPortCbo.select(0);
 
-        Label progLbl = new Label(leftComp, SWT.NONE);
+        Label progLbl = new Label(rightComp, SWT.NONE);
         progLbl.setText("Program:");
         progLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
 
-        programCombo = new Combo(leftComp, SWT.BORDER);
+        programCombo = new Combo(rightComp, SWT.BORDER);
         programCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
                 false));
         populateProgramCombo();
@@ -550,16 +546,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         noDstChk = new Button(rightComp, SWT.CHECK);
         noDstChk.setText("No Daylight Savings Time Observed");
         noDstChk.setLayoutData(gd);
-        groupControlList.add(noDstChk);
+        groupControlList.add(noDstChk); // Individual transmitter settings
 
-        // Blank labels
-        Label spacer = new Label(rightComp, SWT.NONE);
-        spacer.setText("");
-
-        Label spacer2 = new Label(rightComp, SWT.NONE);
-        spacer2.setText("");
-
-        // Individual transmitter settings
         Label nameLbl = new Label(leftComp, SWT.NONE);
         nameLbl.setText("Name: ");
         nameLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
@@ -627,34 +615,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         fipsTxt.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         transmitterControlList.add(fipsTxt);
 
-        Composite dbComp = new Composite(rightComp, SWT.NONE);
-        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gd.horizontalSpan = 2;
-        gl = new GridLayout(4, false);
-        gl.marginHeight = 0;
-        dbComp.setLayout(gl);
-        dbComp.setLayoutData(gd);
-
-        Label minDbLbl = new Label(dbComp, SWT.NONE);
-        minDbLbl.setText("Min dB:");
-        minDbLbl.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
-                false));
-
-        minDbTxt = new Text(dbComp, SWT.BORDER);
-        minDbTxt.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
-                false));
-        groupControlList.add(minDbTxt);
-
-        Label maxDbLbl = new Label(dbComp, SWT.NONE);
-        maxDbLbl.setText("Max dB:");
-        maxDbLbl.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
-                false));
-
-        maxDbTxt = new Text(dbComp, SWT.BORDER);
-        maxDbTxt.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
-                false));
-        groupControlList.add(maxDbTxt);
-
         // Disable all controls by default
         enableGroupControls(false);
         enableTransmitterControls(false);
@@ -720,9 +680,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             if (group.getDaylightSaving() != null) {
                 noDstChk.setSelection(group.getDaylightSaving());
             }
-
-            this.minDbTxt.setText(String.valueOf(group.getAdjustAudioMinDB()));
-            this.maxDbTxt.setText(String.valueOf(group.getAdjustAudioMaxDB()));
 
             if ((group != null) && group.isStandalone()) {
                 enabled = true;
@@ -932,10 +889,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     group.setTimeZone(this.timeZoneCbo.getText());
                     group.setSilenceAlarm(this.disableSilenceChk.getSelection());
                     group.setDaylightSaving(this.noDstChk.getSelection());
-                    group.setAdjustAudioMaxDB(Double.parseDouble(maxDbTxt
-                            .getText().trim()));
-                    group.setAdjustAudioMinDB(Double.parseDouble(minDbTxt
-                            .getText().trim()));
 
                     try {
                         if (transmitter != null) {
@@ -1021,26 +974,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             }
         }
 
-        double minDb = Double.MIN_VALUE;
-        double maxDb = Double.MIN_VALUE;
-        if (this.minDbTxt.getText().trim().length() > 0) {
-            try {
-                minDb = Double.parseDouble(this.minDbTxt.getText().trim());
-            } catch (NumberFormatException e) {
-                valid = false;
-                sb.append("\tMin dB\n");
-            }
-        }
-
-        if (this.maxDbTxt.getText().trim().length() > 0) {
-            try {
-                maxDb = Double.parseDouble(this.maxDbTxt.getText().trim());
-            } catch (NumberFormatException e) {
-                valid = false;
-                sb.append("\tMax dB\n");
-            }
-        }
-
         if (!valid) {
             DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR, "Invalid",
                     sb.toString());
@@ -1063,34 +996,31 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             grpName = grpNameValueTxt.getText().trim();
         }
 
-        if (!grpName.equals(group.getName())) {
-            if (type != TransmitterEditType.EDIT_TRANSMITTER) {
-                for (String name : getGroupNames()) {
-                    if (name.equals(grpName)) {
+        if (group != null) {
+            if (!grpName.equals(group.getName())) {
+                if (type != TransmitterEditType.EDIT_TRANSMITTER) {
+                    for (String name : getGroupNames()) {
+                        if (name.equals(grpName)) {
+                            valid = false;
+                            sb.append("The Transmitter Group name must be unique\n");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!grpName.equals(group.getName())) {
+                List<Transmitter> transmitterList = dataManager
+                        .getTransmitters();
+                transmitterList.remove(previousTransmitter);
+                for (Transmitter t : transmitterList) {
+                    if (t.getMnemonic().equals(grpName)) {
                         valid = false;
                         sb.append("The Transmitter Group name must be unique\n");
                         break;
                     }
                 }
             }
-        }
-
-        if (!grpName.equals(group.getName())) {
-            List<Transmitter> transmitterList = dataManager.getTransmitters();
-            transmitterList.remove(previousTransmitter);
-            for (Transmitter t : transmitterList) {
-                if (t.getMnemonic().equals(grpName)) {
-                    valid = false;
-                    sb.append("The Transmitter Group name must be unique\n");
-                    break;
-                }
-            }
-        }
-
-        // Check for min db value less than max db value if db values are valid
-        if (minDb >= maxDb) {
-            valid = false;
-            sb.append("\tMin db must be less than or equal to the Max dB\n");
         }
 
         if (!valid) {

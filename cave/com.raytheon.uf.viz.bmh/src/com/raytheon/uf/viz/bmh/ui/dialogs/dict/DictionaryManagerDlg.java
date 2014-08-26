@@ -181,7 +181,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
         lbl.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        dictCombo = new Combo(comp, SWT.SINGLE);
+        dictCombo = new Combo(comp, SWT.SINGLE | SWT.READ_ONLY);
         dictCombo.setLayoutData(gd);
         dictCombo.addSelectionListener(new SelectionAdapter() {
             @Override
