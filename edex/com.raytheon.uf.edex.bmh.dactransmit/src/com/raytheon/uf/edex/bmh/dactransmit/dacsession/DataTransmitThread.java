@@ -171,10 +171,6 @@ public final class DataTransmitThread extends Thread implements
 
                     DacMessagePlaybackData playbackData = playlistMgr.next();
                     while (playbackData == null && keepRunning) {
-                        if (!keepRunning) {
-                            continue OUTER_LOOP;
-                        }
-
                         if (warnNoData) {
                             logger.error("There are no valid messages available for transmit.");
                             warnNoData = false;
@@ -191,6 +187,10 @@ public final class DataTransmitThread extends Thread implements
                         }
                     }
 
+                    if (!keepRunning) {
+                        continue;
+                    }
+
                     /*
                      * we set playing the playingInterrupt flag here in case
                      * this is a startup scenario and we had unplayed interrupts
@@ -204,13 +204,13 @@ public final class DataTransmitThread extends Thread implements
                             while (!hasSync && keepRunning) {
                                 Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
 
-                                if (!keepRunning) {
-                                    continue OUTER_LOOP;
-                                }
-
                                 if (hasSync && onSyncRestartMessage) {
                                     playbackData.resetAudio();
                                 }
+                            }
+
+                            if (!keepRunning) {
+                                continue OUTER_LOOP;
                             }
 
                             byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
