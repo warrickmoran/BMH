@@ -102,10 +102,10 @@ public class PlaylistUpdateNotification {
         result.append(playlist.getSuite());
         result.append("_");
         try (Formatter formatter = new Formatter(result)) {
-            formatter.format("%1$tY%1$tm%1$td%1$tH%1$tM$tS$tL",
+            formatter.format("%1$tY%1$tm%1$td%1$tH%1$tM%1$tS%1$tL",
                     playlist.getCreationTime());
             result.append("_T");
-            formatter.format("%1$td%1$tH%1$tM$tS$tL",
+            formatter.format("%1$td%1$tH%1$tM%1$tS%1$tL",
                     playlist.getLatestTrigger());
             result.append(".xml");
         }
