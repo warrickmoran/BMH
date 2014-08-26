@@ -691,7 +691,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             boolean validAfos = MessageTypeUtils.validateAfosId(msgTypeTF
                     .getText().toUpperCase());
             if (!validAfos) {
-                String message = "Invalid name/AfosID.\n\nMust be 7-9 alphanumeric characters "
+                String message = "Invalid Message Type name.\n\nMust be 7-9 alphanumeric characters "
                         + "with no spaces or special characters.";
                 DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
                         "Invalid Name", message);

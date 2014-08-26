@@ -762,7 +762,13 @@ public class SuiteConfigGroup extends Composite {
      * Populate the suite table data.
      */
     private void populateSuiteTableData() {
+
+        if (suiteList == null) {
+            return;
+        }
+
         filteredSuiteList.clear();
+
         for (Suite suite : suiteList) {
             if (suiteCatType == null || suite.getType() == suiteCatType) {
                 filteredSuiteList.add(suite);
