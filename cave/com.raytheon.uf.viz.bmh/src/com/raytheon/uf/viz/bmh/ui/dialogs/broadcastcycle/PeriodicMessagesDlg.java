@@ -65,9 +65,16 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
 
     private Button detailsBtn;
 
-    public PeriodicMessagesDlg(Shell parent) {
+    private final String selectedSuite;
+
+    private final String selectedTransmitterGrp;
+
+    public PeriodicMessagesDlg(Shell parent, String selectedSuite,
+            String selectedTransmitterGrp) {
         super(parent, CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT);
         setText("Periodic Messages");
+        this.selectedSuite = selectedSuite;
+        this.selectedTransmitterGrp = selectedTransmitterGrp;
     }
 
     @Override
@@ -105,7 +112,8 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
     private void populateTableData() {
         try {
             tableData = new BroadcastCycleDataManager()
-                    .getPeriodicMessageTableData();
+                    .getPeriodicMessageTableData(selectedSuite,
+                            selectedTransmitterGrp);
             tableComp.populateTable(tableData);
             if (tableData.getTableRowCount() > 0) {
                 detailsBtn.setEnabled(true);

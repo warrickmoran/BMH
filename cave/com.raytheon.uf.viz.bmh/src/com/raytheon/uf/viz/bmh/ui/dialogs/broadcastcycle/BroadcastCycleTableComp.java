@@ -67,9 +67,7 @@ public class BroadcastCycleTableComp extends TableComp {
 
     @Override
     protected void handleTableMouseClick(MouseEvent event) {
-        if (event.button == 1) {
-            callbackAction.tableSelectionChange(table.getSelectionCount());
-        }
+        // no op
     }
 
     @Override
@@ -80,6 +78,7 @@ public class BroadcastCycleTableComp extends TableComp {
             selectedTableIndex = table.getSelectionIndex();
             table.deselectAll();
             table.redraw();
+            callbackAction.tableSelectionChange(table.getSelectionCount());
         }
     }
 

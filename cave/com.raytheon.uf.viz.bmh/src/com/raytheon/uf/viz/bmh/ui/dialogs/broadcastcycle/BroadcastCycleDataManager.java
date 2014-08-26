@@ -107,15 +107,21 @@ public class BroadcastCycleDataManager {
     /**
      * Get the periodic message table data
      * 
+     * @param transmitterGroupName
+     * @param suiteName
+     * 
      * @return The TableData
      * @throws Exception
      */
-    public TableData getPeriodicMessageTableData() throws Exception {
+    public TableData getPeriodicMessageTableData(String suiteName,
+            String transmitterGroupName) throws Exception {
         List<TableColumnData> columns = createPeriodicMessageColumns();
         TableData data = new TableData(columns);
 
         PlaylistRequest req = new PlaylistRequest();
         req.setAction(PlaylistAction.GET_PLAYLIST_BY_SUITE_GROUP);
+        req.setGroupName(transmitterGroupName);
+        req.setSuiteName(suiteName);
         PlaylistResponse response = (PlaylistResponse) BmhUtils
                 .sendRequest(req);
 
@@ -129,16 +135,18 @@ public class BroadcastCycleDataManager {
         for (BroadcastMsg msg : playlist.getMessages()) {
             if (msg.getInputMessage().isPeriodic()) {
                 TableRowData rowData = new TableRowData();
-                TableCellData cell = new TableCellData("Last Played Time");
+
+                TableCellData cell = new TableCellData(msg.getUpdateDate()
+                        .getTime().toString());
                 rowData.addTableCellData(cell);
 
-                cell = new TableCellData("Next Predicted Broadcast");
+                cell = new TableCellData("N/A");
                 rowData.addTableCellData(cell);
 
                 cell = new TableCellData(msg.getInputMessage().getAfosid());
                 rowData.addTableCellData(cell);
 
-                cell = new TableCellData("Message ID???");
+                cell = new TableCellData(msg.getOutputName());
                 rowData.addTableCellData(cell);
                 data.addDataRow(rowData);
             }

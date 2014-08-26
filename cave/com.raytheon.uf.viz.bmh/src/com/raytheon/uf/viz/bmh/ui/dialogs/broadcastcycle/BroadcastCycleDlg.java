@@ -181,6 +181,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     /** Cycle duration value label */
     private Label cycleDurValueLbl;
 
+    private String selectedSuite;
+
     /**
      * Constructor.
      * 
@@ -445,6 +447,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         suiteLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
+        gd.widthHint = 250;
         suiteValueLbl = new Label(leftProgSuiteComp, SWT.NONE);
         suiteValueLbl.setLayoutData(gd);
         suiteValueLbl.setText("Suite Name");
@@ -629,6 +632,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 tableData = playlistData
                         .getUpdatedTableData(selectedTransmitterGrp);
                 tableComp.populateTable(tableData);
+                if (tableData.getTableRowCount() > 0) {
+                    tableComp.select(0);
+                }
+                handleTableSelection();
             }
         } catch (Exception e) {
             statusHandler.error("Error getting initial playback data", e);
@@ -793,6 +800,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         tableComp.select(0);
         handleTableSelection();
         handleMonitorInlineEvent();
+        suiteValueLbl.setText("");
+        cycleDurValueLbl.setText("");
     }
 
     /**
@@ -847,12 +856,15 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * Handler for periodic message button
      */
     private void handlePeriodicAction() {
-        if ((periodicMsgDlg == null) || periodicMsgDlg.isDisposed()) {
-            periodicMsgDlg = new PeriodicMessagesDlg(getShell());
-            periodicMsgDlg.open();
-        } else {
-            periodicMsgDlg.bringToTop();
-        }
+        DialogUtility.notImplemented(getShell());
+        // TODO pass in group and suite
+        // if ((periodicMsgDlg == null) || periodicMsgDlg.isDisposed()) {
+        // periodicMsgDlg = new PeriodicMessagesDlg(getShell(), selectedSuite,
+        // selectedTransmitterGrp);
+        // periodicMsgDlg.open();
+        // } else {
+        // periodicMsgDlg.bringToTop();
+        // }
     }
 
     private void handleCopyAction() {
@@ -961,7 +973,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             try {
                 Object o = message.getMessagePayload();
                 if (o instanceof PlaylistSwitchNotification) {
-                    PlaylistSwitchNotification notification = (PlaylistSwitchNotification) o;
+                    final PlaylistSwitchNotification notification = (PlaylistSwitchNotification) o;
                     playlistData.handlePLaylistSwitchNotification(notification);
                     if (notification.getTransmitterGroup().equals(
                             selectedTransmitterGrp)) {
@@ -969,7 +981,17 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                 .getUpdatedTableData(notification
                                         .getTransmitterGroup());
                         updateTable(tableData);
-                        updateCycleDuration(notification.getPlaybackCycleTime());
+                        this.selectedSuite = notification.getSuiteName();
+                        VizApp.runAsync(new Runnable() {
+
+                            @Override
+                            public void run() {
+                                suiteValueLbl.setText(selectedSuite);
+                                String time = timeFormatter.format(new Date(
+                                        notification.getPlaybackCycleTime()));
+                                cycleDurValueLbl.setText(time);
+                            }
+                        });
                     }
                 } else if (o instanceof MessagePlaybackStatusNotification) {
                     MessagePlaybackStatusNotification notification = (MessagePlaybackStatusNotification) o;
@@ -986,21 +1008,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 statusHandler.error("Error processing update notification", e);
             }
         }
-    }
-
-    /**
-     * Update the cycle play time.
-     * 
-     * @param cycleDuration
-     */
-    private void updateCycleDuration(final long cycleDuration) {
-        VizApp.runAsync(new Runnable() {
-            @Override
-            public void run() {
-                String time = timeFormatter.format(new Date(cycleDuration));
-                cycleDurValueLbl.setText(time);
-            }
-        });
     }
 
     /**
