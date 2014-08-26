@@ -170,7 +170,11 @@ public final class DataTransmitThread extends Thread implements
                     }
 
                     DacMessagePlaybackData playbackData = playlistMgr.next();
-                    while (playbackData == null) {
+                    while (playbackData == null && keepRunning) {
+                        if (!keepRunning) {
+                            continue OUTER_LOOP;
+                        }
+
                         if (warnNoData) {
                             logger.error("There are no valid messages available for transmit.");
                             warnNoData = false;

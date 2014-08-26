@@ -53,6 +53,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014  #3286     dgilling     Initial creation
  * Jul 29, 2014  #3286     dgilling     Use NamedThreadFactory.
+ * Aug 26, 2014  #3286     dgilling     Revert previous change to start().
  * 
  * </pre>
  * 
@@ -100,10 +101,8 @@ public class PlaylistDirectoryObserver {
      * playlist events will be generated.
      */
     public void start() {
-        if (Boolean.getBoolean("enableDirectoryObserver")) {
-            Callable<?> eventDispatchJob = createEventDispatcher();
-            threadPool.submit(eventDispatchJob);
-        }
+        Callable<?> eventDispatchJob = createEventDispatcher();
+        threadPool.submit(eventDispatchJob);
     }
 
     /**
