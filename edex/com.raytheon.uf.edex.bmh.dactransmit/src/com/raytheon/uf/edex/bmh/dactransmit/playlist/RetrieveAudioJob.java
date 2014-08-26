@@ -46,7 +46,7 @@ import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 19, 2014 3532       bkowal      Initial creation
- * 
+ * Aug 26, 2014 3558       rjpeter     Disable audio attenuation.
  * </pre>
  * 
  * @author bkowal
@@ -125,13 +125,13 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
 
         /* regulate tones (if they exist). */
         if (tones != null) {
-            byte[] regulatedTones = adjustAudio(tones.array(), message);
-            tones = ByteBuffer.wrap(regulatedTones);
+            // byte[] regulatedTones = adjustAudio(tones.array(), message);
+            // tones = ByteBuffer.wrap(regulatedTones);
         }
         if (endOfMessage != null) {
-            byte[] regulatedEndOfMessage = adjustAudio(endOfMessage.array(),
-                    message);
-            endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
+            // byte[] regulatedEndOfMessage = adjustAudio(endOfMessage.array(),
+            // message);
+            // endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
         }
 
         AudioFileBuffer buffer = new AudioFileBuffer(regulatedRawData, tones,

@@ -28,7 +28,8 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    07/28/14        3399          bsteffen       Initial Creation.
-#    08/25/14        3558          rjpeter        Added qpid flag so queues auto created.
+#    08/25/14        3558          rjpeter        Added qpid flag so queues auto created,
+#                                                 redirect to log file, and background script.
 ##############################################################################
 
 export BMH_DATA=/awips2/bmh/data
@@ -56,5 +57,7 @@ done;
 JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
 JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dqpid.dest_syntax=BURL"
 
-java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "$@"
+t=`date "+%Y%m%d"`
+logfile=/awips2/bmh/logs/commsmanager_$t.log
+nohup java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "$@" >> $logfile 2>&1 &
 
