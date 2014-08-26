@@ -72,6 +72,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Aug 12, 2014  3486     bsteffen    Remove group from registration
  * Aug 14, 2014  3286     dgilling    Send DacTransmitCriticalError.
  * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange.
+ * Aug 26, 2014  3486     bsteffen    Stop writerThread in shutdown.
  * 
  * </pre>
  * 
@@ -211,6 +212,7 @@ public final class CommsManagerCommunicator extends Thread {
             eventBus.post(new ShutdownRequestedEvent());
             running = false;
             disconnect();
+            writerThread.shutdown();
         } else if (message instanceof PlaylistUpdateNotification) {
             eventBus.post(message);
         } else if (message instanceof ChangeTransmitters) {
