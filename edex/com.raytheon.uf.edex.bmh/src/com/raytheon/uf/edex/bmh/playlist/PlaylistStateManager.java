@@ -102,10 +102,10 @@ public class PlaylistStateManager {
 
         Map<Long, MessageType> messageTypeMap = playlistData
                 .getMessageTypeMap();
+        BroadcastMsgDao broadcastMsgDao = new BroadcastMsgDao();
+        MessageTypeDao messageTypeDao = new MessageTypeDao();
 
         for (DacPlaylistMessageId id : playlist) {
-            BroadcastMsgDao broadcastMsgDao = new BroadcastMsgDao();
-            MessageTypeDao messageTypeDao = new MessageTypeDao();
             List<BroadcastMsg> broadcastMessageList = broadcastMsgDao
                     .getMessageByBroadcastId(id.getBroadcastId());
             if (CollectionUtil.isNullOrEmpty(broadcastMessageList)) {

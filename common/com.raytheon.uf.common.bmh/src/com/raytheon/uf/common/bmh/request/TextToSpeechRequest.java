@@ -32,8 +32,8 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 16, 2014   3355     mpduff      Initial creation
- * 
+ * Jun 16, 2014   3355     mpduff      Initial creation.
+ * Aug 25, 2014 3558       rjpeter     Default to Paul.
  * </pre>
  * 
  * @author mpduff
@@ -51,7 +51,7 @@ public class TextToSpeechRequest implements IServerRequest {
      * The voice id
      */
     @DynamicSerializeElement
-    private int voice = 103; // Defaulting to Julie
+    private int voice = 101; // Defaulting to Paul
 
     /**
      * Sound byte data
