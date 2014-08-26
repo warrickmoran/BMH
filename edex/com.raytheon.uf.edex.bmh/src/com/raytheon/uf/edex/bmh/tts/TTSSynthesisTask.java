@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
@@ -42,6 +43,9 @@ import voiceware.libttsapi;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 21, 2014 3538       bkowal      Initial creation
+ * Aug 26, 2014 3559       bkowal      Notify the user of a configuration error when the
+ *                                     synthesis validation fails due to an improperly
+ *                                     set bmh tts nfs directory.
  * 
  * </pre>
  * 
@@ -147,8 +151,37 @@ public class TTSSynthesisTask implements Callable<TTSReturn> {
          * locked for the length of the audio duration before it can be used
          * again.
          */
-        ttsReturn
-                .synthesisIsComplete(synthesisOutputFilePath.toFile().length());
+        if (synthesisOutputFilePath.toFile().exists()) {
+            ttsReturn.synthesisIsComplete(synthesisOutputFilePath.toFile()
+                    .length());
+        } else {
+            ttsReturn = new TTSReturn(TTS_RETURN_VALUE.TTS_READWRITE_ERROR);
+            /*
+             * the synthesis output does not exist at the expected location.
+             * Indicates a configuration problem, otherwise the TTS Server would
+             * have failed with a file write or I/O error.
+             */
+            // synthesis was completed. but, we have no way to know the size of
+            // the audio file. lock the synthesizer for two (2) minutes. This
+            // error will be unlikely and the BMH EDEX will not completely start
+            // until the cause is corrected.
+            ttsReturn.synthesisIsComplete(120000);
+
+            /*
+             * Announce as a Configuration Error
+             */
+            StringBuilder message = new StringBuilder(
+                    "Unable to find the TTS audio output file ");
+            message.append(synthesisOutputFilePath.toString());
+            message.append(". Please verify that the BMH NFS TTS Directory is set correctly in the configuration.");
+            IOException exception = new IOException(message.toString());
+
+            statusHandler.error(BMH_CATEGORY.TTS_CONFIGURATION_ERROR,
+                    "Text Synthesis is Incomplete!", exception);
+            ttsReturn.ioHasFailed(exception);
+
+            return ttsReturn;
+        }
         try {
             ttsReturn.setVoiceData(Files.readAllBytes(synthesisOutputFilePath));
         } catch (IOException e) {

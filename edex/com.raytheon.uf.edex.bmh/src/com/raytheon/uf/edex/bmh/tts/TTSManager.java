@@ -62,6 +62,9 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     Truly verify TTS Synthesis is available.
  * Aug 25, 2014 3538       bkowal      Update to use the new TTS Synthesis
  *                                     mechanism. Cleanup.
+ * Aug 26, 2014 3559       bkowal      Notify the user of a configuration error when the
+ *                                     synthesis validation fails due to an improperly
+ *                                     set bmh tts nfs directory.
  * 
  * </pre>
  * 
@@ -388,6 +391,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
         while (true) {
             ++attempt;
+            ioException = null;
 
             /* Attempt the Conversion */
             try {
@@ -404,23 +408,24 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                     continue;
                 }
             }
+
             if (ttsReturn.isIoFailed()) {
                 ioException = ttsReturn.getIoFailureCause();
-            }
+            } else {
+                if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
+                    statusHandler.info("Successfully retrieved "
+                            + ttsReturn.getVoiceData().length
+                            + " bytes of audio data for message: "
+                            + message.getId() + ". Data retrieval complete!");
+                    /* Successful Conversion */
+                    success = true;
+                    break;
+                }
 
-            if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
-                statusHandler.info("Successfully retrieved "
-                        + ttsReturn.getVoiceData().length
-                        + " bytes of audio data for message: "
-                        + message.getId() + ". Data retrieval complete!");
-                /* Successful Conversion */
-                success = true;
-                break;
-            }
-
-            if (this.retry(ttsReturn.getReturnValue()) == false) {
-                /* Absolute Failure */
-                break;
+                if (this.retry(ttsReturn.getReturnValue()) == false) {
+                    /* Absolute Failure */
+                    break;
+                }
             }
 
             /* Have we reached the retry threshold? */

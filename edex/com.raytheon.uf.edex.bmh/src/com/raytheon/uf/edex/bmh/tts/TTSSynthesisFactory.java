@@ -49,6 +49,9 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 21, 2014 3538       bkowal      Initial creation
+ * Aug 26, 2014 3559       bkowal      Notify the user of a configuration error when the
+ *                                     synthesis validation fails due to an improperly
+ *                                     set bmh tts nfs directory.
  * 
  * </pre>
  * 
@@ -214,6 +217,12 @@ public class TTSSynthesisFactory implements FutureCallback<UnlockNotification> {
             ListenableFuture<UnlockNotification> lockFuture = this.executorService
                     .submit(lockTask);
             Futures.addCallback(lockFuture, this);
+        } else {
+            /*
+             * Synthesis was not successful. No need to keep the resource
+             * locked.
+             */
+            this.resourceCounter.release();
         }
 
         return ttsReturn;
