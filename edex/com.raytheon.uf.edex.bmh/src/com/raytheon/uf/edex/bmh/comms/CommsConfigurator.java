@@ -57,6 +57,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Aug 04, 2014  3486     bsteffen    Initial creation
  * Aug 18, 2014  3532     bkowal      Include the transmitter decibel range in
  *                                    the configuration.
+ * Aug 27, 2014  3486     bsteffen    Make Comms Configurator more robust.
  * 
  * </pre>
  * 
@@ -195,13 +196,17 @@ public class CommsConfigurator {
         for (Dac dac : dacs) {
             DacConfig dconfig = dacMap.get(dac.getId());
             List<DacChannelConfig> channels = dconfig.getChannels();
-            if (channels == null || channels.isEmpty()) {
+            if (channels == null || channels.isEmpty()
+                    || dac.getDataPorts().isEmpty()) {
                 dacMap.remove(dac.getId());
                 continue;
             }
             List<Integer> availablePorts = new ArrayList<>(dac.getDataPorts());
             if (prevDacMap.containsKey(dconfig.getIpAddress())) {
                 DacConfig prevConfig = prevDacMap.get(dconfig.getIpAddress());
+                if (prevConfig.getChannels() == null) {
+                    continue;
+                }
                 for (DacChannelConfig channel : channels) {
                     String group = channel.getTransmitterGroup();
                     for (DacChannelConfig prevChannel : prevConfig
