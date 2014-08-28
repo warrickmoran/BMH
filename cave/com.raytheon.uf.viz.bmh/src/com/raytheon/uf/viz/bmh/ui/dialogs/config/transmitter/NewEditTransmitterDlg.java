@@ -41,6 +41,8 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
@@ -68,6 +70,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 18, 2014     3173   mpduff      Add Program selection
  * Aug 24, 2014     3432   mpduff      Implemented min/max db values
  * Aug 25, 2014     3558   rjpeter     Fix saving groups.
+ * Aug 28, 2014     3432   mpduff      Added Dac info from db.
  * </pre>
  * 
  * @author mpduff
@@ -75,6 +78,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  */
 
 public class NewEditTransmitterDlg extends CaveSWTDialog {
+    private final String NONE = "None";
+
     private final String STANDALONE = "Standalone";
 
     private final IUFStatusHandler statusHandler = UFStatus
@@ -173,6 +178,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     private Label modeLbl;
 
     private Combo programCombo;
+
+    private List<Dac> dacList;
 
     /**
      * Edit Transmitter constructor.
@@ -493,9 +500,16 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
         dacCombo = new Combo(leftComp, SWT.BORDER);
         dacCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        dacCombo.setItems(new String[] { "1", "2", "3", "4", "5", "6", "7",
-                "8", "9" });
-        dacCombo.select(0);
+        // dacCombo.setItems(new String[] { "1", "2", "3", "4", "5", "6", "7",
+        // "8", "9" });
+        // dacCombo.select(0);
+        dacCombo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                // TODO implement this if needed
+                // handleDacSelection();
+            }
+        });
         groupControlList.add(dacCombo);
 
         Label dacPortLbl = new Label(leftComp, SWT.NONE);
@@ -659,6 +673,30 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     private void populate() {
         boolean enabled = false;
 
+        try {
+            dacList = dataManager.getDacs();
+            Collections.sort(dacList, new DacComparator());
+            if (dacList.size() > 0) {
+                String[] dacs = new String[dacList.size()];
+                for (int i = 0; i < dacList.size(); i++) {
+                    Dac d = dacList.get(i);
+                    dacs[i] = String.valueOf(d.getId());
+                }
+
+                dacCombo.setItems(dacs);
+                dacCombo.add(NONE, 0);
+                dacCombo.select(0);
+                // TODO use this method if needed.
+                // handleDacSelection();
+            }
+        } catch (Exception e) {
+            statusHandler.error("Error gettign Dac information", e);
+            dacCombo.add(NONE, 0);
+            if (group != null) {
+                dacCombo.add(String.valueOf(group.getDac()), 1);
+            }
+        }
+
         // Populate the fields
         enabled = ((TransmitterEditType.EDIT_TRANSMITTER_GROUP == type) || (TransmitterEditType.NEW_TRANSMITTER_GROUP == type));
         if ((group != null) || enabled) {
@@ -668,7 +706,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             if (group.getDac() != null) {
                 // TODO - When getting dac numbers from DB need to change this
                 // logic
-                dacCombo.select(group.getDac() - 1);
+                dacCombo.select(dacCombo.indexOf(String.valueOf(group.getDac())));
             }
             if (group.getTimeZone() != null) {
                 timeZoneCbo.select(timeZoneCbo.indexOf(group.getTimeZone()));
@@ -732,6 +770,23 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         }
     }
 
+    // TODO Are we using ports from the db or just hard coding 1-4
+    private void handleDacSelection() {
+        int dac = Integer.parseInt(dacCombo.getText());
+        for (Dac d : dacList) {
+            if (d.getId() == dac) {
+                String[] ports = new String[d.getDataPorts().size()];
+                int i = 0;
+                for (Integer port : d.getDataPorts()) {
+                    ports[i] = String.valueOf(port);
+                    i++;
+                }
+
+                dacPortCbo.setItems(ports);
+            }
+        }
+    }
+
     /**
      * Get group names of groups that are not standalone
      * 
@@ -774,7 +829,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
             programCombo.setData(programList);
             programCombo.setItems(programs);
-            programCombo.add("None", 0);
+            programCombo.add(NONE, 0);
             // TODO - Fix selection of existing program.
             programCombo.select(select + 1);
         } catch (Exception e) {

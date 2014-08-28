@@ -68,7 +68,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 21, 2014   3411     mpduff      Initial creation
  * Aug 13, 2014   3411     mpduff      Populate with data
  * Aug 18, 2014   3432     mpduff      Removed areaObject field
- * 
+ * Aug 28, 2014   3432     mpduff      Display areaCode, not areaId
  * </pre>
  * 
  * @author mpduff
@@ -922,7 +922,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         }
 
         TableRowData row = new TableRowData();
-        TableCellData cell = new TableCellData(String.valueOf(a.getAreaId()));
+        TableCellData cell = new TableCellData(String.valueOf(a.getAreaCode()));
         row.addTableCellData(cell);
         cell = new TableCellData(a.getAreaName());
         row.addTableCellData(cell);

@@ -21,9 +21,13 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.request.DacRequest;
+import com.raytheon.uf.common.bmh.request.DacRequest.DacRequestAction;
+import com.raytheon.uf.common.bmh.request.DacResponse;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
@@ -43,6 +47,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014    3173    mpduff      Initial creation
  * Aug 18, 2014    3173    mpduff      Added getPrograms()
+ * Aug 27, 2014    3432    mpduff      Added dac methods
  * 
  * </pre>
  * 
@@ -192,6 +197,12 @@ public class TransmitterDataManager {
         return response.getTransmitter();
     }
 
+    /**
+     * Get all {@link Program}s
+     * 
+     * @return List of Programs
+     * @throws Exception
+     */
     public List<Program> getPrograms() throws Exception {
         ProgramRequest req = new ProgramRequest();
         req.setAction(ProgramAction.AllPrograms);
@@ -199,5 +210,20 @@ public class TransmitterDataManager {
         ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(req);
 
         return response.getProgramList();
+    }
+
+    /**
+     * Get all {@link Dac}s
+     * 
+     * @return List of Dacs
+     * @throws Exception
+     */
+    public List<Dac> getDacs() throws Exception {
+        DacRequest request = new DacRequest();
+        request.setAction(DacRequestAction.GetAllDacs);
+
+        DacResponse response = (DacResponse) BmhUtils.sendRequest(request);
+
+        return response.getDacList();
     }
 }
