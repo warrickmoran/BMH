@@ -28,6 +28,7 @@
 	</mode>
 	<mode name="bmh">
 	 	<include>^bmh-</include>
+	 	<include>request-service-common.xml</include>
         <exclude>^bmh-request.xml</exclude>
 	</mode>
 	<mode name="request">
