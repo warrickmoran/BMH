@@ -41,7 +41,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 02, 2014  3285     bsteffen    Initial creation
- * Aug 26, 2014  3554     bsteffen    Add more logging, change suite field for dac
+ * Aug 26, 2014  3554     bsteffen    Change path to be more unique
  * 
  * </pre>
  * 
@@ -56,7 +56,7 @@ public class PlaylistUpdateNotification {
                     + Pattern.quote(File.separator)
                     + "]+)"
                     + Pattern.quote(File.separator)
-                    + "P(\\d+)_([^_]*)_(\\d{4})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{3})_T(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{3}).xml$");
+                    + "P(\\d+)_([^_]*)_(\\d{4})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{3})_T(\\d{2})(\\d{2})(\\d{2}).xml$");
 
     @DynamicSerializeElement
     private String playlistPath;
@@ -105,7 +105,7 @@ public class PlaylistUpdateNotification {
             formatter.format("%1$tY%1$tm%1$td%1$tH%1$tM%1$tS%1$tL",
                     playlist.getCreationTime());
             result.append("_T");
-            formatter.format("%1$td%1$tH%1$tM%1$tS%1$tL",
+            formatter.format("%1$td%1$tH%1$tM",
                     playlist.getLatestTrigger());
             result.append(".xml");
         }
@@ -146,13 +146,9 @@ public class PlaylistUpdateNotification {
             day = Integer.parseInt(m.group(11));
             hour = Integer.parseInt(m.group(12));
             minute = Integer.parseInt(m.group(13));
-            second = Integer.parseInt(m.group(14));
-            milli = Integer.parseInt(m.group(15));
             c = TimeUtil.newGmtCalendar(year, month, day);
             c.set(Calendar.HOUR_OF_DAY, hour);
             c.set(Calendar.MINUTE, minute);
-            c.set(Calendar.SECOND, second);
-            c.set(Calendar.MILLISECOND, milli);
             playlist.setLatestTrigger(c);
         }
         return playlist;
