@@ -66,7 +66,8 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * Jul 18, 2014   3407     mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Aug 05, 2014 3175       rjpeter     Reload dictionary on edit word.
- * Aug 8, 2014    #3490     lvenable   Removed Override on update method.
+ * Aug 8, 2014    #3490    lvenable    Removed Override on update method.
+ * Aug 28, 2014    3432    mpduff      Only open one new dictionary dialog
  * 
  * </pre>
  * 
@@ -113,6 +114,8 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
 
     /** The new/edit word dialog */
     private NewEditWordDlg wordDlg;
+
+    private NewDictionaryDlg newDictDlg;
 
     /**
      * Constructor.
@@ -274,17 +277,21 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
      * New dictionary action
      */
     private void newDictionaryAction() {
-        NewDictionaryDlg dlg = new NewDictionaryDlg(shell);
-        Dictionary dict = (Dictionary) dlg.open();
-        if (dict != null) {
-            try {
-                dictionaryManager.createDictionary(dict);
-            } catch (Exception e) {
-                statusHandler.error(
-                        "Error creating dictionary: " + dict.getName(), e);
-                return;
+        if (newDictDlg == null || newDictDlg.isDisposed()) {
+            newDictDlg = new NewDictionaryDlg(shell);
+            Dictionary dict = (Dictionary) newDictDlg.open();
+            if (dict != null) {
+                try {
+                    dictionaryManager.createDictionary(dict);
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "Error creating dictionary: " + dict.getName(), e);
+                    return;
+                }
+                populateDictionaryCombo(dict.getName());
             }
-            populateDictionaryCombo(dict.getName());
+        } else {
+            newDictDlg.bringToTop();
         }
     }
 

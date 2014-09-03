@@ -30,6 +30,9 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+
 /**
  * 
  * Dac information
@@ -41,6 +44,7 @@ import javax.persistence.UniqueConstraint;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Aug 04, 2014  3486     bsteffen    Initial creation
+ * Aug 27, 2014  3432     mpduff      Added Serialization annotation.
  * 
  * </pre>
  * 
@@ -52,21 +56,26 @@ import javax.persistence.UniqueConstraint;
         @UniqueConstraint(columnNames = { "id" }),
         @UniqueConstraint(columnNames = { "address" }),
         @UniqueConstraint(columnNames = { "receivePort" }) })
+@DynamicSerialize
 public class Dac {
 
     @Id
+    @DynamicSerializeElement
     private int id;
-    
+
     /* 39 is long enough for IPv6 */
     @Column(length = 39)
+    @DynamicSerializeElement
     private String address;
-    
+
     @Column
+    @DynamicSerializeElement
     private int receivePort;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "dac_ports", schema = "bmh")
     @Column(name = "dataPort")
+    @DynamicSerializeElement
     private Set<Integer> dataPorts;
 
     public int getId() {
@@ -100,5 +109,5 @@ public class Dac {
     public void setDataPorts(Set<Integer> dataPorts) {
         this.dataPorts = dataPorts;
     }
-    
+
 }
