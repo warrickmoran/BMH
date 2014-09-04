@@ -34,6 +34,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jul 22, 2014  #3283     dgilling     Add DAC heartbeat constants.
  * Aug 08, 2014  #3286     dgilling     Add/update constants to support sync
  *                                      lost and regain events.
+ * Sep 04, 2014  #3584     dgilling     Add SYNC_RETRY_PERIOD.
  * 
  * </pre>
  * 
@@ -73,6 +74,8 @@ public final class DacSessionConstants {
     public static final int MISSED_HEARTBEATS_THRESHOLD = 3;
 
     public static final long COMPLETE_SYNC_LOST_TIME = 5 * TimeUtil.MILLIS_PER_SECOND;
+
+    public static final long SYNC_RETRY_PERIOD = 1 * TimeUtil.MILLIS_PER_SECOND;
 
     private DacSessionConstants() {
         throw new AssertionError(
