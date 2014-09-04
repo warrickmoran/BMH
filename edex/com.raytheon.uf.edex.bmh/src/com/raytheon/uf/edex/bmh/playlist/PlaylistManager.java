@@ -56,11 +56,13 @@ import com.raytheon.uf.common.bmh.same.SAMEStateCodes;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
+import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
@@ -80,7 +82,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 07, 2014  3285     bsteffen    Initial creation
- * Aug 26, 2014  3554     bsteffen    Change path to be more unique
+ * Aug 26, 2014  3554     bsteffen    Add more logging, change suite field for dac
+ * Sep 03, 2014  3554     bsteffen    Add refresh method to respond to config changes.
  * 
  * </pre>
  * 
@@ -102,6 +105,8 @@ public class PlaylistManager {
 
     private final BroadcastMsgDao messageDao = new BroadcastMsgDao();
 
+    private TransmitterGroupDao tgDao = new TransmitterGroupDao();
+
     private final SAMEStateCodes stateCodes = new SAMEStateCodes();
 
     private final SAMEOriginatorMapper originatorMapping = new SAMEOriginatorMapper();
@@ -118,6 +123,61 @@ public class PlaylistManager {
                 throw e;
 
             }
+        }
+    }
+
+    /**
+     * Check and regenerate all playlist files based off the current config.
+     * TODO need to respond to specific config events.
+     * 
+     */
+    public void refreshPlaylists() {
+        for (TransmitterGroup group : tgDao.getAll()) {
+            Program program = programDao.getProgramForTransmitterGroup(group);
+            for (Suite suite : program.getSuites()) {
+                refreshPlaylist(group, suite);
+            }
+        }
+    }
+
+    /**
+     * Check and regenerate the playlist files for a specific group/suite
+     * combination.
+     */
+    protected void refreshPlaylist(TransmitterGroup group, Suite suite) {
+        ClusterTask ct = null;
+        do {
+            ct = ClusterLockUtils.lock("playlist", group.getName() + "-"
+                    + suite.getName(), 30000, true);
+        } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
+        ITimer timer = TimeUtil.getTimer();
+        timer.start();
+        try {
+            Calendar currentTime = TimeUtil.newGmtCalendar();
+            Playlist playlist = playlistDao.getBySuiteAndGroupName(
+                    suite.getName(), group.getName());
+            List<BroadcastMsg> messages = loadExistingMessages(suite, group,
+                    currentTime, true);
+            if (!messages.isEmpty()) {
+                if (playlist == null) {
+                    playlist = new Playlist();
+                    playlist.setSuite(suite);
+                    playlist.setTransmitterGroup(group);
+                }
+                playlist.setModTime(currentTime);
+                sortAndPersistPlaylist(playlist, messages);
+            } else if (playlist != null) {
+                playlist.setMessages(messages);
+                playlist.setModTime(currentTime);
+                sortAndPersistPlaylist(playlist, messages);
+            }
+        } finally {
+            ClusterLockUtils.deleteLock(ct.getId().getName(), ct.getId()
+                    .getDetails());
+            timer.stop();
+            statusHandler.info("Spent " + timer.getElapsedTime()
+                    + "ms refreshing playlist for " + group.getName() + "("
+                    + suite.getName() + ")");
         }
     }
 
@@ -159,142 +219,165 @@ public class PlaylistManager {
         try {
             Playlist playlist = playlistDao.getBySuiteAndGroupName(
                     suite.getName(), group.getName());
+            Calendar currentTime = TimeUtil.newGmtCalendar();
             if (playlist == null) {
                 playlist = new Playlist();
                 if (suite.getType() == SuiteType.GENERAL) {
                     playlist.setMessages(Collections.<BroadcastMsg> emptyList());
                 } else if (trigger) {
-                    playlist.setMessages(loadExistingMessages(suite, group));
+                    playlist.setMessages(loadExistingMessages(suite, group,
+                            currentTime, false));
                 } else {
                     return;
                 }
                 playlist.setSuite(suite);
                 playlist.setTransmitterGroup(group);
             }
-            playlist.setModTime(TimeUtil.newGmtCalendar());
+            playlist.setModTime(currentTime);
             List<BroadcastMsg> messages = mergeMessage(msg,
                     playlist.getMessages());
-            /*
-             * Sort the messages by afosid so they can be added back in the
-             * order specified by the suite, this skips any expired messages so
-             * they are removed from the list.
-             */
-            Calendar currentTime = playlist.getModTime();
-            Map<String, List<BroadcastMsg>> afosMapping = new HashMap<>();
-            for (BroadcastMsg message : messages) {
-                if (currentTime.after(message.getInputMessage()
-                        .getExpirationTime())) {
-                    continue;
-                }
-                List<BroadcastMsg> afosMessages = afosMapping.get(message
-                        .getAfosid());
-                if (afosMessages == null) {
-                    afosMessages = new ArrayList<>(1);
-                    afosMapping.put(message.getAfosid(), afosMessages);
-                }
-                afosMessages.add(message);
-            }
-            /*
-             * Add messages back into the list in the same order as the suite
-             * messages, also calculate the start and end time of the playlist
-             * by looking at the effective and expire times of any trigger
-             * messages.
-             */
-            Calendar startTime = null;
-            Calendar latestTrigger = null;
-            List<Calendar> futureTriggers = new ArrayList<>(1);
-            Calendar endTime = null;
-            messages.clear();
-            for (SuiteMessage smessage : suite.getSuiteMessages()) {
-                List<BroadcastMsg> afosMessages = afosMapping.remove(smessage
-                        .getAfosid());
-                if (afosMessages != null) {
-                    messages.addAll(afosMessages);
-                    if (smessage.isTrigger()
-                            || (suite.getType() == SuiteType.GENERAL)) {
-                        for (BroadcastMsg bmessage : afosMessages) {
-                            Calendar messageStart = bmessage.getInputMessage()
-                                    .getEffectiveTime();
-                            Calendar messageEnd = bmessage.getInputMessage()
-                                    .getExpirationTime();
-                            if ((startTime == null)
-                                    || startTime.after(messageStart)) {
-                                startTime = messageStart;
-                            }
-                            if (messageStart.before(currentTime)) {
-                                if ((latestTrigger == null)
-                                        || latestTrigger.before(messageStart)) {
-                                    latestTrigger = messageStart;
-                                }
-                            } else {
-                                futureTriggers.add(messageStart);
-                            }
-                            if ((endTime == null) || endTime.before(messageEnd)) {
-                                endTime = messageEnd;
-                            }
-
-                        }
-                    }
-                }
-            }
-            if ((latestTrigger == null) && !futureTriggers.isEmpty()) {
-                latestTrigger = startTime;
-                futureTriggers.remove(latestTrigger);
-            }
-            if (startTime != null) {
-                playlist.setStartTime(startTime);
-                playlist.setEndTime(endTime);
-                playlist.setMessages(messages);
-                playlistDao.persist(playlist);
-                if (futureTriggers.isEmpty()
-                        || (suite.getType() == SuiteType.GENERAL)) {
-                    writePlaylistFile(playlist, latestTrigger);
-                } else {
-                    /*
-                     * If there are multiple triggers, need to write one file
-                     * per trigger.
-                     */
-                    Collections.sort(futureTriggers);
-                    playlist.setEndTime(futureTriggers.get(0));
-                    writePlaylistFile(playlist, latestTrigger);
-                    for (int i = 0; i < (futureTriggers.size() - 1); i += 1) {
-                        playlist.setStartTime(futureTriggers.get(i));
-                        playlist.setEndTime(futureTriggers.get(i + 1));
-                        writePlaylistFile(playlist, futureTriggers.get(i));
-                    }
-                    playlist.setStartTime(futureTriggers.get(futureTriggers
-                            .size() - 1));
-                    playlist.setEndTime(endTime);
-                    writePlaylistFile(playlist, playlist.getStartTime());
-                }
-
-            }
+            sortAndPersistPlaylist(playlist, messages);
         } finally {
             ClusterLockUtils.deleteLock(ct.getId().getName(), ct.getId()
                     .getDetails());
         }
     }
 
-    /**
-     * Get any messages which should be in the list but aren't triggers.
-     * 
-     * @param suite
-     * @param group
-     * @return all non-trigger messages for that suite.
-     */
-    private List<BroadcastMsg> loadExistingMessages(Suite suite,
-            TransmitterGroup group) {
-        List<BroadcastMsg> messages = new ArrayList<>();
+    private void sortAndPersistPlaylist(Playlist playlist,
+            List<BroadcastMsg> messages) {
+        Calendar currentTime = playlist.getModTime();
+        Suite suite = playlist.getSuite();
+        /*
+         * Sort the messages by afosid so they can be added back in the order
+         * specified by the suite, this skips any expired messages so they are
+         * removed from the list.
+         */
+        Map<String, List<BroadcastMsg>> afosMapping = new HashMap<>();
+        for (BroadcastMsg message : messages) {
+            if (currentTime
+                    .after(message.getInputMessage().getExpirationTime())) {
+                continue;
+            }
+            List<BroadcastMsg> afosMessages = afosMapping.get(message
+                    .getAfosid());
+            if (afosMessages == null) {
+                afosMessages = new ArrayList<>(1);
+                afosMapping.put(message.getAfosid(), afosMessages);
+            }
+            afosMessages.add(message);
+        }
+        /*
+         * Add messages back into the list in the same order as the suite
+         * messages, also calculate the start and end time of the playlist by
+         * looking at the effective and expire times of any trigger messages.
+         */
+        Calendar startTime = null;
+        Calendar latestTrigger = null;
+        List<Calendar> futureTriggers = new ArrayList<>(1);
+        Calendar endTime = null;
+        messages.clear();
         for (SuiteMessage smessage : suite.getSuiteMessages()) {
-            if (!smessage.isTrigger()) {
-                // TODO filter by expiration date in dao and transmitter group
-                // on retrieval
-                for (BroadcastMsg message : messageDao
-                        .getMessagesByAfosid(smessage.getAfosid())) {
-                    if (message.getTransmitterGroup().equals(group)) {
-                        messages.add(message);
+            List<BroadcastMsg> afosMessages = afosMapping.remove(smessage
+                    .getAfosid());
+            if (afosMessages != null) {
+                messages.addAll(afosMessages);
+                if (smessage.isTrigger()
+                        || (suite.getType() == SuiteType.GENERAL)) {
+                    for (BroadcastMsg bmessage : afosMessages) {
+                        Calendar messageStart = bmessage.getInputMessage()
+                                .getEffectiveTime();
+                        Calendar messageEnd = bmessage.getInputMessage()
+                                .getExpirationTime();
+                        if ((startTime == null)
+                                || startTime.after(messageStart)) {
+                            startTime = messageStart;
+                        }
+                        if (messageStart.before(currentTime)) {
+                            if ((latestTrigger == null)
+                                    || latestTrigger.before(messageStart)) {
+                                latestTrigger = messageStart;
+                            }
+                        } else {
+                            futureTriggers.add(messageStart);
+                        }
+                        if ((endTime == null) || endTime.before(messageEnd)) {
+                            endTime = messageEnd;
+                        }
+
                     }
                 }
+            }
+        }
+        if (startTime == null) {
+            startTime = endTime = latestTrigger = playlist.getModTime();
+        } else if ((latestTrigger == null) && !futureTriggers.isEmpty()) {
+            latestTrigger = startTime;
+            futureTriggers.remove(latestTrigger);
+        }
+        playlist.setStartTime(startTime);
+        playlist.setEndTime(endTime);
+        playlist.setMessages(messages);
+        playlistDao.persist(playlist);
+        if (futureTriggers.isEmpty() || (suite.getType() == SuiteType.GENERAL)) {
+            writePlaylistFile(playlist, latestTrigger);
+        } else {
+            /*
+             * If there are multiple triggers, need to write one file per
+             * trigger.
+             */
+            Collections.sort(futureTriggers);
+            playlist.setEndTime(futureTriggers.get(0));
+            writePlaylistFile(playlist, latestTrigger);
+            for (int i = 0; i < (futureTriggers.size() - 1); i += 1) {
+                playlist.setStartTime(futureTriggers.get(i));
+                playlist.setEndTime(futureTriggers.get(i + 1));
+                writePlaylistFile(playlist, futureTriggers.get(i));
+            }
+            playlist.setStartTime(futureTriggers.get(futureTriggers.size() - 1));
+            playlist.setEndTime(endTime);
+            writePlaylistFile(playlist, playlist.getStartTime());
+        }
+    }
+
+    /**
+     * Load any {@link BroadcastMsg}s from the database which should be included
+     * in the playlist for the given suite/group.
+     * 
+     * @param suite
+     *            suite containing message types that should be loaded
+     * @param group
+     *            the group for which messages are loaded
+     * @param expirationTime
+     *            messages taht expire before this time are not included in the
+     *            list.
+     * @param checkTrigger
+     *            If true trigger messages are laoded and non-trigger messages
+     *            are loaded only if trigger messages are present. If false only
+     *            non trigger messages will be loaded.
+     * @return all the messages from the database for a playlist(optionally
+     *         excluding triggers).
+     */
+    private List<BroadcastMsg> loadExistingMessages(Suite suite,
+            TransmitterGroup group, Calendar expirationTime,
+            boolean checkTrigger) {
+        List<BroadcastMsg> messages = new ArrayList<>();
+        if (checkTrigger) {
+            for (SuiteMessage smessage : suite.getSuiteMessages()) {
+                if (smessage.isTrigger()) {
+                    messages.addAll(messageDao
+                            .getUnexpiredMessagesByAfosidAndGroup(
+                                    smessage.getAfosid(), expirationTime, group));
+                }
+            }
+            if (messages.isEmpty() && suite.getType() != SuiteType.GENERAL) {
+                return Collections.emptyList();
+            }
+        }
+        for (SuiteMessage smessage : suite.getSuiteMessages()) {
+            if (!smessage.isTrigger()) {
+                messages.addAll(messageDao
+                        .getUnexpiredMessagesByAfosidAndGroup(
+                                smessage.getAfosid(), expirationTime, group));
             }
         }
         Collections.sort(messages, new Comparator<BroadcastMsg>() {
@@ -310,7 +393,6 @@ public class PlaylistManager {
             mergeMessage(message, result);
         }
         return result;
-
     }
 
     /**

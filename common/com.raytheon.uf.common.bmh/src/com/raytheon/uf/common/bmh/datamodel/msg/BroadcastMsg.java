@@ -49,6 +49,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3302     bkowal      Initial creation
  * Jul 10, 2014  3285     bsteffen    Add getAfosid()
+ * Sep 03, 2014  3554     bsteffen    Add getUnexpiredBroadcastMsgsByAfosIDAndGroup
  * 
  * 
  * </pre>
@@ -59,7 +60,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 @NamedQueries({
         @NamedQuery(name = BroadcastMsg.GET_ALL_MSGS, query = "FROM BroadcastMsg m"),
-        @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID, query = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosID") })
+        @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID, query = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosID"),
+        @NamedQuery(name = BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP, query = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosID AND m.inputMessage.expirationTime > :expirationTime AND m.transmitterGroup = :group") })
 @Entity
 @DynamicSerialize
 @Table(name = "broadcast_msg", schema = "bmh")
@@ -70,6 +72,8 @@ public class BroadcastMsg {
     public static final String GET_ALL_MSGS = "getBroadcastMsgs";
 
     public static final String GET_MSGS_BY_AFOS_ID = "getBroadcastMsgsByAfosID";
+
+    public static final String GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP = "getUnexpiredBroadcastMsgsByAfosIDAndGroup";
 
     /* A unique auto-generated numerical id. Long = SQL BIGINT */
     @Id

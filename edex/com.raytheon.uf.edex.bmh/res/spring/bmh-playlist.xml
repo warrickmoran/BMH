@@ -1,23 +1,34 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
-	<bean id="playlistManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistManager" />
-	
-	<camelContext id="bmh-playlist" xmlns="http://camel.apache.org/schema/spring"
-		errorHandlerRef="errorHandler">
+  <bean id="playlistManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistManager" />
 
-		<route id="bmh-schedule">
-			<from uri="jms-durable:queue:BMH.Schedule" />
-			<doTry>
-				<bean ref="broadcastMsgDao" method="getByID" />
-				<bean ref="playlistManager" method="newMessage" />
-				<doCatch>
-					<exception>java.lang.Throwable</exception>
-					<to uri="log:bmh?level=ERROR" />
-				</doCatch>
-			</doTry>
-		</route>
+  <camelContext id="bmh-playlist" xmlns="http://camel.apache.org/schema/spring"
+    errorHandlerRef="errorHandler">
 
-	</camelContext>
+    <route id="bmh-schedule">
+      <from uri="jms-durable:queue:BMH.Schedule" />
+      <doTry>
+        <bean ref="broadcastMsgDao" method="getByID" />
+        <bean ref="playlistManager" method="newMessage" />
+        <doCatch>
+          <exception>java.lang.Throwable</exception>
+          <to uri="log:bmh?level=ERROR" />
+        </doCatch>
+      </doTry>
+    </route>
+
+    <route id="bmhPlaylistManagerConfig">
+      <from uri="jms-durable:topic:BMH.Config" />
+      <doTry>
+        <bean ref="playlistManager" method="refreshPlaylists" />
+        <doCatch>
+          <exception>java.lang.Throwable</exception>
+          <to uri="log:bmh?level=ERROR" />
+        </doCatch>
+      </doTry>
+    </route>
+
+  </camelContext>
 </beans>
