@@ -56,6 +56,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Aug 08, 2014  #3286     dgilling     Better handling for transmit/receive
  *                                      errors, use sync lost/gained events.
  * Aug 13, 2014  #3286     dgilling     Do not clear buffer ever when sync-ing.
+ * Sep 04, 2014  #3584     dgilling     Use same local UDP port always to fix DAC
+ *                                      reconnects.
  * 
  * 
  * </pre>
@@ -117,7 +119,7 @@ public class ControlStatusThread extends Thread {
         this.dacAddress = dacAdress;
         this.port = controlPort;
         this.keepRunning = true;
-        this.socket = new DatagramSocket();
+        this.socket = new DatagramSocket(this.port);
         this.heartbeatsMissed = 0;
     }
 
@@ -244,6 +246,12 @@ public class ControlStatusThread extends Thread {
                 logger.error(
                         "Attempt to sync with DAC failed. Re-attempting sync.",
                         t);
+                try {
+                    Thread.sleep(DacSessionConstants.SYNC_RETRY_PERIOD);
+                } catch (InterruptedException e) {
+                    logger.error("Wait period for retrying sync interrupted.",
+                            e);
+                }
             }
         }
 
