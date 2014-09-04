@@ -42,7 +42,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelRange;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
@@ -73,6 +73,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Aug 14, 2014  3286     dgilling    Send DacTransmitCriticalError.
  * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange.
  * Aug 26, 2014  3486     bsteffen    Stop writerThread in shutdown.
+ * Sep 4, 2014   3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
  * 
  * </pre>
  * 
@@ -135,8 +136,7 @@ public final class CommsManagerCommunicator extends Thread {
                                     config.getDataPort(), config
                                             .getDacAddress().getHostAddress(),
                                     Ints.toArray(config.getTransmitters()),
-                                    config.getDbRange().getMinimumDouble(),
-                                    config.getDbRange().getMaximumDouble());
+                                    config.getDbTarget());
                             SerializationUtil.transformToThriftUsingStream(
                                     registration, outputStream);
                             if (statusToSend.isConnectedToDac()) {
@@ -217,7 +217,7 @@ public final class CommsManagerCommunicator extends Thread {
             eventBus.post(message);
         } else if (message instanceof ChangeTransmitters) {
             eventBus.post(message);
-        } else if (message instanceof ChangeDecibelRange) {
+        } else if (message instanceof ChangeDecibelTarget) {
             eventBus.post(message);
         } else {
             logger.error("Unrecognized message from comms manager of type "

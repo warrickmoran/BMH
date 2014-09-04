@@ -65,6 +65,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Aug 18, 2014  3532      bkowal      Added adjustAudioMinDB and adjustAudioMaxDB
  * Aug 21, 2014  3486      lvenable    Initialized silence alram to false.
  * Aug 25, 2014  3558      rjpeter     Added query for enabled transmitter groups.
+ * Sep 4, 2014   3532      bkowal      Use a decibel target instead of a range.
  * 
  * </pre>
  * 
@@ -126,10 +127,7 @@ public class TransmitterGroup {
      * information?
      */
     @Column(nullable = false)
-    private double adjustAudioMinDB = -11.0;
-
-    @Column(nullable = false)
-    private double adjustAudioMaxDB = -9.0;
+    private double audioDBTarget = -10.0;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
     private Set<Transmitter> transmitters;
@@ -213,33 +211,18 @@ public class TransmitterGroup {
     }
 
     /**
-     * @return the adjustAudioMinDB
+     * @return the audioDBTarget
      */
-    public double getAdjustAudioMinDB() {
-        return adjustAudioMinDB;
+    public double getAudioDBTarget() {
+        return audioDBTarget;
     }
 
     /**
-     * @param adjustAudioMinDB
-     *            the adjustAudioMinDB to set
+     * @param audioDBTarget
+     *            the audioDBTarget to set
      */
-    public void setAdjustAudioMinDB(double adjustAudioMinDB) {
-        this.adjustAudioMinDB = adjustAudioMinDB;
-    }
-
-    /**
-     * @return the adjustAudioMaxDB
-     */
-    public double getAdjustAudioMaxDB() {
-        return adjustAudioMaxDB;
-    }
-
-    /**
-     * @param adjustAudioMaxDB
-     *            the adjustAudioMaxDB to set
-     */
-    public void setAdjustAudioMaxDB(double adjustAudioMaxDB) {
-        this.adjustAudioMaxDB = adjustAudioMaxDB;
+    public void setAudioDBTarget(double audioDBTarget) {
+        this.audioDBTarget = audioDBTarget;
     }
 
     public Set<Transmitter> getTransmitters() {
@@ -365,10 +348,8 @@ public class TransmitterGroup {
         stringBuilder.append(this.daylightSaving);
         stringBuilder.append(", position=");
         stringBuilder.append(this.position);
-        stringBuilder.append(", adjustAudioMinDB=");
-        stringBuilder.append(this.adjustAudioMinDB);
-        stringBuilder.append(", adjustAudioMaxDB=");
-        stringBuilder.append(this.adjustAudioMaxDB);
+        stringBuilder.append(", audioDBTarget=");
+        stringBuilder.append(this.audioDBTarget);
         stringBuilder.append(", transmitters=");
         stringBuilder.append(this.transmitters);
         stringBuilder.append("]");

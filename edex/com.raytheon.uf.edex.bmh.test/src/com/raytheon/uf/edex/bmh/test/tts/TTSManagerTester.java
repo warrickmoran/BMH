@@ -20,19 +20,12 @@
 package com.raytheon.uf.edex.bmh.test.tts;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.io.FilenameUtils;
 
-import com.raytheon.uf.common.bmh.audio.AudioConversionException;
-import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
-import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -41,8 +34,6 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
-import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.test.AbstractWavFileGeneratingTest;
@@ -289,57 +280,7 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
         String filename = FilenameUtils.getBaseName(outputUlawFile
                 .getAbsolutePath());
 
-        boolean success = false;
-        if (this.configuredTTSVolume == DEFAULT_TTS_VOLUME) {
-            // No volume adjustments
-
-            success = super.writeWavData(outputUlawFile, filename);
-        } else {
-            Path outputUlawPath = FileSystems.getDefault().getPath(
-                    outputUlawFile.getAbsolutePath());
-
-            byte[] ulawData;
-            try {
-                ulawData = Files.readAllBytes(outputUlawPath);
-            } catch (IOException e) {
-                statusHandler.error(
-                        "Failed to read contents of ulaw output file: "
-                                + outputUlawPath.toString() + "!", e);
-                return;
-            }
-
-            AudioRegulator audioRegulator = null;
-            try {
-                audioRegulator = new AudioRegulator(ulawData);
-            } catch (UnsupportedAudioFormatException | AudioConversionException e) {
-                statusHandler.error("Failed to create an audio regulator!", e);
-                return;
-            }
-
-            StringBuilder audioSignalString = new StringBuilder(
-                    "Audio Sample = ");
-            audioSignalString.append(outputUlawPath.toString());
-            audioSignalString.append(". Current signal max is: ");
-            audioSignalString.append(audioRegulator.getSignalMaxDB());
-            audioSignalString.append(" dB; current signal min is: ");
-            audioSignalString.append(audioRegulator.getSignalMinDB());
-            audioSignalString.append(" dB.");
-            statusHandler.info(audioSignalString.toString());
-            byte[] adjustedAudio = null;
-            try {
-                adjustedAudio = audioRegulator
-                        .regulateAudioVolume(this.configuredTTSVolume);
-            } catch (UnsupportedAudioFormatException | AudioConversionException
-                    | AudioOverflowException e) {
-                statusHandler.error(
-                        "Audio Adjustment failed for ulaw output file: "
-                                + outputUlawPath.toString() + "!", e);
-                return;
-            }
-
-            success = super.writeWavData(BMHAudioFormat.ULAW, adjustedAudio,
-                    filename);
-        }
+        boolean success = super.writeWavData(outputUlawFile, filename);
 
         if (success) {
             statusHandler.info("Successfully processed message: " + messageID

@@ -36,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Aug 12, 2014  3486     bsteffen    Remove tranmistter group name
  * Aug 18, 2014  3532     bkowal      Support transmitter decibel range
+ * Sep 5, 2014   3532     bkowal      Use a decibel target instead of a range.
  * 
  * </pre>
  * 
@@ -58,24 +59,20 @@ public class DacTransmitRegister {
     private int[] transmitters;
 
     @DynamicSerializeElement
-    private double dbMin;
-
-    @DynamicSerializeElement
-    private double dbMax;
+    private double dbTarget;
 
     public DacTransmitRegister() {
 
     }
 
     public DacTransmitRegister(String inputDirectory, int dataPort,
-            String dacAddress, int[] transmitters, double dbMin, double dbMax) {
+            String dacAddress, int[] transmitters, double dbTarget) {
         super();
         this.inputDirectory = inputDirectory;
         this.dataPort = dataPort;
         this.dacAddress = dacAddress;
         this.transmitters = transmitters;
-        this.dbMin = dbMin;
-        this.dbMax = dbMax;
+        this.dbTarget = dbTarget;
     }
 
     public String getInputDirectory() {
@@ -111,33 +108,17 @@ public class DacTransmitRegister {
     }
 
     /**
-     * @return the dbMin
+     * @return the dbTarget
      */
-    public double getDbMin() {
-        return dbMin;
+    public double getDbTarget() {
+        return dbTarget;
     }
 
     /**
-     * @param dbMin
-     *            the dbMin to set
+     * @param dbTarget
+     *            the dbTarget to set
      */
-    public void setDbMin(double dbMin) {
-        this.dbMin = dbMin;
+    public void setDbTarget(double dbTarget) {
+        this.dbTarget = dbTarget;
     }
-
-    /**
-     * @return the dbMax
-     */
-    public double getDbMax() {
-        return dbMax;
-    }
-
-    /**
-     * @param dbMax
-     *            the dbMax to set
-     */
-    public void setDbMax(double dbMax) {
-        this.dbMax = dbMax;
-    }
-
 }

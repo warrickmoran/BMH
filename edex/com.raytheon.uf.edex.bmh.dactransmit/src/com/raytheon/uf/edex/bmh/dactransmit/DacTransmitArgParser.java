@@ -35,8 +35,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang.math.DoubleRange;
-import org.apache.commons.lang.math.Range;
 
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 
@@ -58,6 +56,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * Aug 18, 2014  #3532     bkowal       Added transmitter decibel range argument
  * Aug 26, 2014  #3286     dgilling     Allow for initially empty or missing
  *                                      playlist directory.
+ * Sep 4, 2014   #3532     bkowal       Use a decibel target instead of a range.
  * 
  * </pre>
  * 
@@ -67,7 +66,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 
 public final class DacTransmitArgParser {
 
-    private static final String USAGE_STATEMENT = "DacTransmit [--help] -d hostname -p port -c port -t channel -i directory -m port -r min:max";
+    private static final String USAGE_STATEMENT = "DacTransmit [--help] -d hostname -p port -c port -t channel -i directory -m port -r target";
 
     private static final String HELP_OPTION_KEY = "help";
 
@@ -83,7 +82,7 @@ public final class DacTransmitArgParser {
 
     public static final char COMMS_MANAGER_PORT_OPTION_KEY = 'm';
 
-    public static final char TRANSMISSION_DB_RANGE_KEY = 'r';
+    public static final char TRANSMISSION_DB_TARGET_KEY = 'r';
 
     private final Options programOptions;
 
@@ -167,18 +166,11 @@ public final class DacTransmitArgParser {
             throw new ParseException("Required option -m not provided.");
         }
 
-        double dbRangeMin = 0.;
-        double dbRangeMax = 0.;
-        if (cmd.hasOption(TRANSMISSION_DB_RANGE_KEY)) {
-            String dbRange = cmd.getOptionValue(TRANSMISSION_DB_RANGE_KEY);
-            String[] dbRanges = dbRange.split(":");
-            if (dbRanges.length != 2) {
-                throw new ParseException(
-                        "Invalid data specified for the -r option. Expected two decimal values separated by a colon.");
-            }
+        double dbTarget = 0.;
+        if (cmd.hasOption(TRANSMISSION_DB_TARGET_KEY)) {
             try {
-                dbRangeMin = Double.valueOf(dbRanges[0].trim());
-                dbRangeMax = Double.valueOf(dbRanges[1].trim());
+                dbTarget = Double.parseDouble(cmd
+                        .getOptionValue(TRANSMISSION_DB_TARGET_KEY));
             } catch (NumberFormatException e) {
                 throw new ParseException("Failed to parse the -r option: "
                         + e.getLocalizedMessage());
@@ -187,11 +179,9 @@ public final class DacTransmitArgParser {
             throw new ParseException("Required option -r not provided.");
         }
 
-        final Range dbRange = new DoubleRange(dbRangeMin, dbRangeMax);
-
         DacSessionConfig config = new DacSessionConfig(false, dacAddress,
                 dataPort, controlPort, transmitters, inputDirectory,
-                managerPort, dbRange);
+                managerPort, dbTarget);
         return config;
     }
 
@@ -229,9 +219,9 @@ public final class DacTransmitArgParser {
                 .create(COMMS_MANAGER_PORT_OPTION_KEY);
         Option dbRange = OptionBuilder
                 .withDescription(
-                        "Minimum and maximum ranges of the audio (in decibels) allowed by the transmitter.")
+                        "The target range of the audio (in decibels) allowed by the transmitter.")
                 .hasArg().withArgName("range")
-                .create(TRANSMISSION_DB_RANGE_KEY);
+                .create(TRANSMISSION_DB_TARGET_KEY);
 
         options.addOption(help);
         options.addOption(dacAddress);

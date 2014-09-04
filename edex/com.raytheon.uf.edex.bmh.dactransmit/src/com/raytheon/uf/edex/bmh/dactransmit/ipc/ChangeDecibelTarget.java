@@ -17,10 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.audio;
+package com.raytheon.uf.edex.bmh.dactransmit.ipc;
+
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * A simple POJO used to specify how audio should be regulated.
+ * Message sent from comms manager to dac transmit to indicate the decibel
+ * target has been altered for a transmitter.
  * 
  * <pre>
  * 
@@ -28,57 +32,45 @@ package com.raytheon.uf.edex.bmh.audio;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 31, 2014 3424       bkowal      Initial creation
+ * Aug 18, 2014 3532       bkowal      Initial creation
+ * Sep 4, 2014  3532       bkowal      Change to support a single decibel target
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
+@DynamicSerialize
+public class ChangeDecibelTarget {
 
-public class AudioRegulatoryParameters {
     /*
-     * A generic id. Multiple parameters can be associated with a single buffer.
-     * The id is included in the notification to any listeners.
+     * The new decibel range to use.
      */
-    private final String id;
-
-    private final double dbMin;
-
-    private final double dbMax;
+    @DynamicSerializeElement
+    private double dbTarget;
 
     /**
-     * Constructor
-     * 
-     * @param id id associated with the parameters; uniqueness is not enforced
-     * @param dbMin the minimum decibel range
-     * @param dbMax the maximum decibel range
+     * Constructor.
      */
-    public AudioRegulatoryParameters(final String id, final double dbMin,
-            final double dbMax) {
-        this.id = id;
-        this.dbMin = dbMin;
-        this.dbMax = dbMax;
+    public ChangeDecibelTarget() {
+    }
+
+    public ChangeDecibelTarget(double dbTarget) {
+        this.dbTarget = dbTarget;
     }
 
     /**
-     * @return the id
+     * @return the dbTarget
      */
-    public String getId() {
-        return id;
+    public double getDbTarget() {
+        return dbTarget;
     }
 
     /**
-     * @return the dbMin
+     * @param dbTarget
+     *            the dbTarget to set
      */
-    public double getDbMin() {
-        return dbMin;
-    }
-
-    /**
-     * @return the dbMax
-     */
-    public double getDbMax() {
-        return dbMax;
+    public void setDbTarget(double dbTarget) {
+        this.dbTarget = dbTarget;
     }
 }

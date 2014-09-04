@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,9 +32,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 import javax.xml.bind.JAXB;
-
-import org.apache.commons.lang.math.DoubleRange;
-import org.apache.commons.lang.math.Range;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,8 +39,9 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelRange;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
@@ -67,6 +66,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      before it is cached. Initial implementation of
  *                                      prioritization.
  * Aug 22, 2014  #3286     dgilling     Re-factor based on PriorityBasedExecutorService.
+ * Sep 5, 2014   #3532     bkowal       Use a decibel target instead of a range.
  * 
  * </pre>
  * 
@@ -74,7 +74,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * @version 1.0
  */
 
-public final class PlaylistMessageCache {
+public final class PlaylistMessageCache implements IAudioJobListener {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -111,12 +111,14 @@ public final class PlaylistMessageCache {
 
     private final ConcurrentMap<DacPlaylistMessageId, Future<AudioFileBuffer>> cacheStatus;
 
+    private final ConcurrentMap<String, CachedAudioRetrievalTask> cachedRetrievalTasks;
+
     private final EventBus eventBus;
 
-    private Range dbRange;
+    private double dbTarget;
 
     public PlaylistMessageCache(Path messageDirectory, EventBus eventBus,
-            Range dbRange) {
+            double dbTarget) {
         this.messageDirectory = messageDirectory;
         this.cacheThreadPool = new PriorityBasedExecutorService(
                 THREAD_POOL_MAX_SIZE, new NamedThreadFactory(
@@ -124,8 +126,9 @@ public final class PlaylistMessageCache {
         this.cachedMessages = new ConcurrentHashMap<>();
         this.cachedFiles = new ConcurrentHashMap<>();
         this.cacheStatus = new ConcurrentHashMap<>();
+        this.cachedRetrievalTasks = new ConcurrentHashMap<>();
         this.eventBus = eventBus;
-        this.dbRange = dbRange;
+        this.dbTarget = dbTarget;
     }
 
     /**
@@ -174,8 +177,26 @@ public final class PlaylistMessageCache {
      */
     private Future<AudioFileBuffer> scheduleFileRetrieval(final int priority,
             final DacPlaylistMessageId id) {
+        return this.scheduleFileRetrieval(priority, id, null);
+    }
+
+    /**
+     * Schedules an audio file retrieval that will be tracked.
+     * 
+     * @param priority
+     *            indicates the importance of the retrieval
+     * @param id
+     *            identifies the audio file to retrieve
+     * @param taskId
+     *            used to track the progress of the retrieval task consisting of
+     *            one or multiple audio retrievals
+     * @return the results of an asynchronous computation; used to track the job
+     *         status.
+     */
+    private Future<AudioFileBuffer> scheduleFileRetrieval(final int priority,
+            final DacPlaylistMessageId id, final String taskId) {
         Callable<AudioFileBuffer> retrieveAudioJob = new RetrieveAudioJob(
-                priority, this.dbRange, this.getMessage(id));
+                priority, this.dbTarget, this.getMessage(id), this, taskId);
 
         return cacheThreadPool.submit(retrieveAudioJob);
     }
@@ -288,11 +309,20 @@ public final class PlaylistMessageCache {
         return playbackTime;
     }
 
+    /**
+     * Listens for changes to the decibel target
+     * 
+     * @param changeEvent
+     *            a notification including the updated decibel target
+     */
     @Subscribe
-    public void changeDecibelRange(ChangeDecibelRange changeEvent) {
-        this.dbRange = new DoubleRange(changeEvent.getDbMin(),
-                changeEvent.getDbMax());
+    public void changeDecibelRange(ChangeDecibelTarget changeEvent) {
+        this.dbTarget = changeEvent.getDbTarget();
 
+        CachedAudioRetrievalTask task = new CachedAudioRetrievalTask(
+                new HashSet<DacPlaylistMessage>(cachedFiles.keySet()));
+        this.cachedRetrievalTasks.put(task.getIdentifier(), task);
+        logger.info("Initiating cache update " + task.getIdentifier());
         for (DacPlaylistMessage message : cachedFiles.keySet()) {
             DacPlaylistMessageId messageId = new DacPlaylistMessageId(
                     message.getBroadcastId());
@@ -301,7 +331,27 @@ public final class PlaylistMessageCache {
             cacheStatus.replace(messageId, jobStatus);
         }
 
-        logger.info("Updated transmitter decibel range to: "
-                + this.dbRange.toString());
+        logger.info("Updated transmitter decibel target to: " + this.dbTarget);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.edex.bmh.dactransmit.playlist.IAudioJobListener#
+     * audioRetrievalFinished(java.lang.String,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage)
+     */
+    @Override
+    public void audioRetrievalFinished(String taskId, DacPlaylistMessage message) {
+        if (this.cachedRetrievalTasks.get(taskId) != null) {
+            CachedAudioRetrievalTask task = this.cachedRetrievalTasks
+                    .get(taskId);
+            task.retrievalFinished(message);
+            if (task.isComplete()) {
+                logger.info("Finished cache update " + task.getIdentifier()
+                        + " in " + TimeUtil.prettyDuration(task.getDuration()) + ".");
+                this.cachedRetrievalTasks.remove(message);
+            }
+        }
     }
 }

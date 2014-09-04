@@ -17,10 +17,13 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.audio;
+package com.raytheon.uf.edex.bmh.dactransmit.playlist;
+
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 
 /**
- * Defines an Audio Regulatory Listener.
+ * Definition of a listener that receives notifications that an audio retrieval
+ * has been finished.
  * 
  * <pre>
  * 
@@ -28,9 +31,7 @@ package com.raytheon.uf.edex.bmh.audio;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 31, 2014 3424       bkowal      Initial creation
- * Sep 4, 2014  3532       bkowal      Multiple threads will never use the same
- *                                     audio regulator.
+ * Sep 8, 2014  3532       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -38,15 +39,14 @@ package com.raytheon.uf.edex.bmh.audio;
  * @version 1.0
  */
 
-public interface IAudioRegulatoryListener {
+public interface IAudioJobListener {
     /**
-     * Notifies the listener that an audio adjustment has been completed.
+     * Used to indicate that an audio retrieval attempt has been completed.
      * 
-     * @param id
-     *            the generic identifier associated with the adjustment rules
-     *            that were applied.
-     * @param audioData
-     *            the adjusted audio data.
+     * @param taskId
+     *            generic identifier used for tracking and grouping purposes
+     * @param message
+     *            used to identify the audio that was retrieved
      */
-    public void notifyAudioAdjusted(final byte[] audioData);
+    public void audioRetrievalFinished(String taskId, DacPlaylistMessage message);
 }

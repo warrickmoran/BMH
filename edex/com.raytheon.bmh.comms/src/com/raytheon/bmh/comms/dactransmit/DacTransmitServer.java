@@ -54,6 +54,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Aug 04, 2014  3487     bsteffen    Rename config options.
  * Aug 12, 2014  3486     bsteffen    Support ChangeTransmitters
  * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange
+ * Sep 5,  2014  3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
  * 
  * </pre>
  * 
@@ -200,7 +201,7 @@ public class DacTransmitServer extends AbstractServerThread {
         }
         DacTransmitCommunicator comms = new DacTransmitCommunicator(manager,
                 this, group, message.getTransmitters(), socket,
-                message.getDbMin(), message.getDbMax());
+                message.getDbTarget());
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(key);
         if (communicators == null) {
@@ -217,8 +218,7 @@ public class DacTransmitServer extends AbstractServerThread {
         comms.start();
         if (keep) {
             comms.setRadios(channel.getRadios());
-            comms.setTransmitterDBRange(channel.getDbRangeMin(),
-                    channel.getDbRangeMax());
+            comms.setTransmitterDBTarget(channel.getDbTarget());
         } else {
             comms.shutdown();
         }

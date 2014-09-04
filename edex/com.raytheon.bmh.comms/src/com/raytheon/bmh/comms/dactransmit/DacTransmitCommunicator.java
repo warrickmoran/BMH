@@ -33,7 +33,7 @@ import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelRange;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
@@ -57,6 +57,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Aug 12, 2014  3486     bsteffen    Support ChangeTransmitters
  * Aug 14, 2014  3286     dgilling    Support DacTransmitCriticalError.
  * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange.
+ * Sep 5, 2014   3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
  * 
  * </pre>
  * 
@@ -79,15 +80,13 @@ public class DacTransmitCommunicator extends Thread {
 
     private int[] radios;
 
-    private double dbMin;
-
-    private double dbMax;
+    private double dbTarget;
 
     private DacTransmitStatus lastStatus;
 
     public DacTransmitCommunicator(CommsManager manager,
             DacTransmitServer server, String groupName, int[] radios,
-            Socket socket, double dbMin, double dbMax) {
+            Socket socket, double dbTarget) {
         super("DacTransmitCommunicator-" + groupName);
         this.manager = manager;
         this.server = server;
@@ -95,8 +94,7 @@ public class DacTransmitCommunicator extends Thread {
         Arrays.sort(radios);
         this.radios = radios;
         this.socket = socket;
-        this.dbMin = dbMin;
-        this.dbMax = dbMax;
+        this.dbTarget = dbTarget;
     }
 
     public String getGroupName() {
@@ -172,11 +170,10 @@ public class DacTransmitCommunicator extends Thread {
         }
     }
 
-    public void setTransmitterDBRange(double dbMin, double dbMax) {
-        if (this.dbMin != dbMin || this.dbMax != dbMax) {
-            this.send(new ChangeDecibelRange(dbMin, dbMax));
-            this.dbMin = dbMin;
-            this.dbMax = dbMax;
+    public void setTransmitterDBTarget(double dbTarget) {
+        if (this.dbTarget != dbTarget) {
+            this.send(new ChangeDecibelTarget(dbTarget));
+            this.dbTarget = dbTarget;
         }
     }
 
