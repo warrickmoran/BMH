@@ -22,7 +22,8 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
-import com.raytheon.uf.common.bmh.notify.ConfigurationNotification;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.request.SuiteRequest;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -44,6 +45,8 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Aug 12, 2014 #3490     lvenable     Added delete.
  * Aug 18, 2014 #3490     lvenable     Added save.
  * Sep 03, 2014  3554     bsteffen     Post notification of updates.
+ * Sep 05, 2014 3554      bsteffen     Send more specific config change notification.
+ * 
  * 
  * </pre>
  * 
@@ -55,7 +58,7 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
 
     @Override
     public Object handleRequest(SuiteRequest request) throws Exception {
-        boolean update = false;
+        SuiteConfigNotification notification = null;
         SuiteResponse suiteResponse = new SuiteResponse();
 
         switch (request.getAction()) {
@@ -70,22 +73,22 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
             break;
         case Delete:
             deleteSuite(request);
-            update = true;
+            notification = new SuiteConfigNotification(ConfigChangeType.Delete,
+                    request.getSuite());
             break;
         case Save:
             suiteResponse = saveSuite(request);
-            update = true;
+            notification = new SuiteConfigNotification(ConfigChangeType.Update,
+                    request.getSuite());
             break;
         default:
             break;
         }
 
-        if (update) {
-            EDEXUtil.getMessageProducer()
-                    .sendAsyncUri(
-                            "jms-durable:topic:BMH.Config",
-                            SerializationUtil
-                                    .transformToThrift(new ConfigurationNotification()));
+        if (notification != null) {
+            EDEXUtil.getMessageProducer().sendAsyncUri(
+                    "jms-durable:topic:BMH.Config",
+                    SerializationUtil.transformToThrift(notification));
         }
 
         return suiteResponse;

@@ -51,6 +51,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.same.SAMEOriginatorMapper;
 import com.raytheon.uf.common.bmh.same.SAMEStateCodes;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
@@ -127,15 +128,16 @@ public class PlaylistManager {
     }
 
     /**
-     * Check and regenerate all playlist files based off the current config.
-     * TODO need to respond to specific config events.
+     * Check and regenerate playlists for the suite that was changed.
      * 
      */
-    public void refreshPlaylists() {
+    public void refreshPlaylists(SuiteConfigNotification notification) {
         for (TransmitterGroup group : tgDao.getAll()) {
             Program program = programDao.getProgramForTransmitterGroup(group);
             for (Suite suite : program.getSuites()) {
-                refreshPlaylist(group, suite);
+                if (suite.getId() == notification.getId()) {
+                    refreshPlaylist(group, suite);
+                }
             }
         }
     }

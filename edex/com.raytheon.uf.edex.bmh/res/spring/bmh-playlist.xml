@@ -22,6 +22,11 @@
     <route id="bmhPlaylistManagerConfig">
       <from uri="jms-durable:topic:BMH.Config" />
       <doTry>
+          <bean ref="serializationUtil" method="transformFromThrift" />
+          <filter>
+              <simple>${body} not is "com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification"</simple>
+              <stop />
+          </filter>
         <bean ref="playlistManager" method="refreshPlaylists" />
         <doCatch>
           <exception>java.lang.Throwable</exception>

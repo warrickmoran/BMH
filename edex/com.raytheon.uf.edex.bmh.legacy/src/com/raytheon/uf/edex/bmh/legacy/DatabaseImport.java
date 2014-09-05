@@ -35,11 +35,15 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
-import com.raytheon.uf.common.bmh.notify.ConfigurationNotification;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
@@ -55,6 +59,7 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
+import com.raytheon.uf.edex.core.IMessageProducer;
 
 /**
  * Imports legacy database and stores it. Will only run on start up. Moves
@@ -70,6 +75,8 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Aug 19, 2014 3411       mpduff      Add handling for MessageTypeReplacement
  * Aug 25, 2014 3486       bsteffen    Send config change notification.
  * Aug 25, 2014 3558       rjpeter     Updated DAC population.
+ * Sep 05, 2014 3554       bsteffen    Send more specific config change notification.
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -253,11 +260,24 @@ public class DatabaseImport {
                                                             + file.getAbsolutePath()
                                                             + "]");
                                 }
-                                EDEXUtil.getMessageProducer()
-                                        .sendAsyncUri(
-                                                "jms-durable:topic:BMH.Config",
-                                                SerializationUtil
-                                                        .transformToThrift(new ConfigurationNotification()));
+                                IMessageProducer producer = EDEXUtil
+                                        .getMessageProducer();
+                                ConfigNotification notification = new TransmitterGroupConfigNotification(
+                                        ConfigChangeType.Update,
+                                        new ArrayList<>(data.getTransmitters()
+                                                .values()));
+                                producer.sendAsyncUri(
+                                        "jms-durable:topic:BMH.Config",
+                                        SerializationUtil
+                                                .transformToThrift(notification));
+                                for (Suite suite : data.getSuites().values()) {
+                                    notification = new SuiteConfigNotification(
+                                            ConfigChangeType.Update, suite);
+                                    producer.sendAsyncUri(
+                                            "jms-durable:topic:BMH.Config",
+                                            SerializationUtil
+                                                    .transformToThrift(notification));
+                                }
                             } catch (Throwable e) {
                                 statusHandler
                                         .error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,

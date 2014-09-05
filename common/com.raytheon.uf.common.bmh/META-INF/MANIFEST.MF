@@ -26,5 +26,6 @@ Export-Package: com.raytheon.uf.common.bmh,
  com.raytheon.uf.common.bmh.datamodel.playlist,
  com.raytheon.uf.common.bmh.datamodel.transmitter,
  com.raytheon.uf.common.bmh.notify,
+ com.raytheon.uf.common.bmh.notify.config,
  com.raytheon.uf.common.bmh.request,
  com.raytheon.uf.common.bmh.same

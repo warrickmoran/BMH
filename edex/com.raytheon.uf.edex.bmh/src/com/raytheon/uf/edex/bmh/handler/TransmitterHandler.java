@@ -24,7 +24,8 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.notify.ConfigurationNotification;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -45,6 +46,8 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Jul 30, 2014   3173     mpduff      Initial creation
  * Aug 19, 2014   3486     bsteffen    Send change notification over jms.
  * Aug 24, 2014 3432       mpduff      Added getEnabledTransmitterGroups()
+ * Sep 05, 2014 3554       bsteffen    Send more specific config change notification.
+ * 
  * 
  * </pre>
  * 
@@ -56,6 +59,7 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
 
     @Override
     public Object handleRequest(TransmitterRequest request) throws Exception {
+        TransmitterGroupConfigNotification notification = null;
         TransmitterResponse response = new TransmitterResponse();
         switch (request.getAction()) {
         case GetTransmitterGroups:
@@ -69,39 +73,50 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
             break;
         case SaveTransmitter:
             response = saveTransmitter(request);
+            notification = new TransmitterGroupConfigNotification(
+                    ConfigChangeType.Update, request.getTransmitter()
+                            .getTransmitterGroup());
             break;
         case SaveGroup:
+            notification = new TransmitterGroupConfigNotification(
+                    ConfigChangeType.Update, request.getTransmitterGroup());
             response = saveTransmitterGroup(request);
             break;
         case DeleteTransmitter:
             deleteTransmitter(request);
+            notification = new TransmitterGroupConfigNotification(
+                    ConfigChangeType.Update, request.getTransmitter()
+                            .getTransmitterGroup());
             break;
         case DeleteTransmitterGroup:
             deleteTransmitterGroup(request);
+            notification = new TransmitterGroupConfigNotification(
+                    ConfigChangeType.Update, request.getTransmitter()
+                            .getTransmitterGroup());
             break;
         case SaveGroupList:
             response = saveTransmitterGroups(request);
+            notification = new TransmitterGroupConfigNotification(
+                    ConfigChangeType.Update, request.getTransmitterGroupList());
             break;
         case SaveTransmitterDeleteGroup:
             response = saveTransmitterDeleteGroup(request);
+            notification = new TransmitterGroupConfigNotification(
+                    ConfigChangeType.Update, request.getTransmitter()
+                            .getTransmitterGroup());
+            EDEXUtil.getMessageProducer().sendAsyncUri(
+                    "jms-durable:topic:BMH.Config",
+                    SerializationUtil.transformToThrift(notification));
+            notification = new TransmitterGroupConfigNotification(
+                    ConfigChangeType.Delete, request.getTransmitterGroup());
             break;
         default:
             break;
         }
-        switch (request.getAction()) {
-        case SaveTransmitter:
-        case SaveGroup:
-        case DeleteTransmitter:
-        case DeleteTransmitterGroup:
-        case SaveGroupList:
-        case SaveTransmitterDeleteGroup:
-            EDEXUtil.getMessageProducer()
-                    .sendAsyncUri(
-                            "jms-durable:topic:BMH.Config",
-                            SerializationUtil
-                                    .transformToThrift(new ConfigurationNotification()));
-        default:
-            // no-op
+        if (notification != null) {
+            EDEXUtil.getMessageProducer().sendAsyncUri(
+                    "jms-durable:topic:BMH.Config",
+                    SerializationUtil.transformToThrift(notification));
         }
         return response;
     }

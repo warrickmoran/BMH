@@ -17,23 +17,24 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.notify;
+package com.raytheon.uf.common.bmh.notify.config;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * 
- * Stub class for sending notification of bmh configuration changes. As more
- * configurations are added details or new classes will need to be sent instead
- * of just an empty class.
+ * Notification that is used when a {@link Suite} is created, updated or
+ * deleted.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date          Ticket#  Engineer    Description
- * ------------- -------- ----------- --------------------------
- * Aug 18, 2014  3486     bsteffen    Initial creation
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * Sep 04, 2014  3554     bsteffen    Initial creation
  * 
  * </pre>
  * 
@@ -41,9 +42,26 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * @version 1.0
  */
 @DynamicSerialize
-public class ConfigurationNotification {
+public class SuiteConfigNotification extends ConfigNotification {
 
-    /*
-     * TODO add more details about changes.
-     */
+    @DynamicSerializeElement
+    private int id;
+
+    public SuiteConfigNotification() {
+        super();
+    }
+
+    public SuiteConfigNotification(ConfigChangeType type, Suite suite) {
+        super(type);
+        this.id = suite.getId();
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
 }

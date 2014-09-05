@@ -23,10 +23,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
 import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
+import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
  * Message Type Server Request Handler
@@ -42,6 +46,8 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * Aug 17, 2014 #3490      lvenable    Updated for deleting.
  * Aug 18, 2014  3411      mpduff      Added SaveMessageType
  * Aug 20, 2014  3432      mpduff      Added get by afosid and pk id
+ * Sep 05, 2014 3554       bsteffen    Send config change notification.
+ * 
  * 
  * </pre>
  * 
@@ -53,17 +59,21 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
 
     @Override
     public Object handleRequest(MessageTypeRequest request) throws Exception {
+        MessageTypeConfigNotification notification = null;
         MessageTypeResponse response = new MessageTypeResponse();
-
         switch (request.getAction()) {
         case AllMessageTypes:
             response = getMessageTypes();
             break;
         case Delete:
             deleteMessageType(request);
+            notification = new MessageTypeConfigNotification(
+                    ConfigChangeType.Delete, request.getMessageType());
             break;
         case Save:
             response = saveMessageType(request);
+            notification = new MessageTypeConfigNotification(
+                    ConfigChangeType.Update, request.getMessageType());
             break;
         case GetByAfosId:
             response = getByAfosId(request);
@@ -74,7 +84,11 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         default:
             break;
         }
-
+        if (notification != null) {
+            EDEXUtil.getMessageProducer().sendAsyncUri(
+                    "jms-durable:topic:BMH.Config",
+                    SerializationUtil.transformToThrift(notification));
+        }
         return response;
     }
 

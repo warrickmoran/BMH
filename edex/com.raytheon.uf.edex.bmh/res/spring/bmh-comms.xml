@@ -16,6 +16,11 @@
     <route id="bmhCommsConfiguratorRoute">
       <from uri="jms-durable:topic:BMH.Config" />
       <doTry>
+           <bean ref="serializationUtil" method="transformFromThrift" />
+          <filter>
+              <simple>${body} not is "com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification"</simple>
+              <stop />
+          </filter>
         <bean ref="commsConfigurator" method="configure" />
         <doCatch>
           <exception>java.lang.Throwable</exception>
