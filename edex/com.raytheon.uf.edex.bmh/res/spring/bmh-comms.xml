@@ -5,10 +5,10 @@
                       http://camel.apache.org/schema/spring
                       http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-  <bean id="commsConfigurator" class="com.raytheon.uf.edex.bmh.comms.CommsConfigurator" />
-
-  <bean id="commsConfigured" factory-bean="commsConfigurator"
-    factory-method="configure" depends-on="bmhDbRegistered" />
+  <bean id="commsConfigurator" class="com.raytheon.uf.edex.bmh.comms.CommsConfigurator">
+    <property name="dacDao" ref="dacDao" />
+    <property name="transmitterGroupDao" ref="transmitterGroupDao" />
+  </bean>
 
   <camelContext id="clusteredBmhCommsConfigurator" xmlns="http://camel.apache.org/schema/spring"
     errorHandlerRef="errorHandler">
@@ -33,5 +33,10 @@
 
   <bean factory-bean="contextManager" factory-method="registerClusteredContext">
     <constructor-arg ref="clusteredBmhCommsConfigurator" />
+  </bean>
+  
+  <bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
+    <constructor-arg ref="clusteredBmhCommsConfigurator" />
+    <constructor-arg ref="commsConfigurator" />
   </bean>
 </beans>

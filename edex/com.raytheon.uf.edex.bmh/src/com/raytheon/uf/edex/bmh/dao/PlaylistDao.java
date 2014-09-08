@@ -27,7 +27,6 @@ import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 
-
 /**
  * 
  * DAO for {@link Playlist} objects.
@@ -39,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 07, 2014  3285     bsteffen    Initial creation
+ * Sep 09, 2014  3554     bsteffen    Add getByGroupName
  * 
  * </pre>
  * 
@@ -49,6 +49,23 @@ public class PlaylistDao extends AbstractBMHDao<Playlist, Integer> {
 
     public PlaylistDao() {
         super(Playlist.class);
+    }
+
+    public List<Playlist> getByGroupName(final String transmitterGroupName) {
+        List<?> playlists = txTemplate
+                .execute(new TransactionCallback<List<?>>() {
+                    @Override
+                    public List<?> doInTransaction(TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht.findByNamedQueryAndNamedParam(
+                                Playlist.QUERY_BY_GROUP_NAME,
+                                new String[] { "groupName" },
+                                new String[] { transmitterGroupName });
+                    }
+                });
+        @SuppressWarnings("unchecked")
+        List<Playlist> result = (List<Playlist>) playlists;
+        return result;
     }
 
     public Playlist getBySuiteAndGroupName(final String suiteName,

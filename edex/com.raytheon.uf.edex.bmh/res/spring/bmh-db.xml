@@ -40,7 +40,8 @@
     </bean>
 
     <bean id="bmhTxTemplate"
-        class="org.springframework.transaction.support.TransactionTemplate">
+        class="org.springframework.transaction.support.TransactionTemplate"
+        depends-on="util">
         <property name="transactionManager" ref="bmhTxManager" />
     </bean>
 
@@ -53,12 +54,31 @@
         <constructor-arg ref="broadcastMsgListener" />
     </bean>
 
-    <bean id="inputMessageDao" class="com.raytheon.uf.edex.bmh.dao.InputMessageDao" />
+  <bean id="inputMessageDao" class="com.raytheon.uf.edex.bmh.dao.InputMessageDao"
+    depends-on="bmhTxTemplate" />
 
-    <bean id="validatedMessageDao" class="com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao" />
+  <bean id="validatedMessageDao" class="com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao"
+    depends-on="bmhTxTemplate" />
 
-    <bean id="broadcastMsgDao" class="com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao" />
+  <bean id="broadcastMsgDao" class="com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao"
+    depends-on="bmhTxTemplate" />
 
-    <bean id="ttsVoiceDao" class="com.raytheon.uf.edex.bmh.dao.TtsVoiceDao" />
+  <bean id="ttsVoiceDao" class="com.raytheon.uf.edex.bmh.dao.TtsVoiceDao"
+    depends-on="bmhTxTemplate" />
+
+  <bean id="programDao" class="com.raytheon.uf.edex.bmh.dao.ProgramDao"
+    depends-on="bmhTxTemplate" />
+
+  <bean id="playlistDao" class="com.raytheon.uf.edex.bmh.dao.PlaylistDao"
+    depends-on="bmhTxTemplate" />
+
+  <bean id="zoneDao" class="com.raytheon.uf.edex.bmh.dao.ZoneDao"
+    depends-on="bmhTxTemplate" />
+
+  <bean id="transmitterGroupDao" class="com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao"
+    depends-on="bmhTxTemplate" />
+
+  <bean id="dacDao" class="com.raytheon.uf.edex.bmh.dao.DacDao"
+    depends-on="bmhTxTemplate" />
 
 </beans>

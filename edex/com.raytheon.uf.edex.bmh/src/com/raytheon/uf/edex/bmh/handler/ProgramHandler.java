@@ -23,10 +23,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
+import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
  * BMH Program related request handler.
@@ -41,6 +45,7 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * Aug 12, 2014   #3490    lvenable    Refactored to make a query convenience method.
  * Aug 15, 2014    3432    mpduff      Added getProgramForTransmitterGroup
  * Aug 17, 2014 #3490      lvenable     Added save and delete.
+ * Sep 05, 2014 3554       bsteffen    Send config change notification.
  * 
  * </pre>
  * 
@@ -52,7 +57,7 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
 
     @Override
     public Object handleRequest(ProgramRequest request) throws Exception {
-
+        ProgramConfigNotification notification = null;
         ProgramResponse programResponse = new ProgramResponse();
 
         switch (request.getAction()) {
@@ -67,15 +72,25 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
             break;
         case Delete:
             deleteProgram(request);
+            notification = new ProgramConfigNotification(
+                    ConfigChangeType.Delete, request.getProgram());
             break;
         case Save:
             programResponse = saveProgram(request);
+            notification = new ProgramConfigNotification(
+                    ConfigChangeType.Update, request.getProgram());
             break;
         case GetProgramForTransmitterGroup:
             programResponse = getProgramForTransmitterGroup(request);
             break;
         default:
             break;
+        }
+
+        if (notification != null) {
+            EDEXUtil.getMessageProducer().sendAsyncUri(
+                    "jms-durable:topic:BMH.Config",
+                    SerializationUtil.transformToThrift(notification));
         }
 
         return programResponse;

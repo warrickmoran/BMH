@@ -51,6 +51,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.same.SAMEOriginatorMapper;
 import com.raytheon.uf.common.bmh.same.SAMEStateCodes;
@@ -68,6 +69,7 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
 import com.raytheon.uf.edex.core.EdexException;
+import com.raytheon.uf.edex.core.IContextStateProcessor;
 import com.raytheon.uf.edex.database.cluster.ClusterLockUtils;
 import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
 import com.raytheon.uf.edex.database.cluster.ClusterTask;
@@ -84,7 +86,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * ------------- -------- ----------- --------------------------
  * Jul 07, 2014  3285     bsteffen    Initial creation
  * Aug 26, 2014  3554     bsteffen    Add more logging, change suite field for dac
- * Sep 03, 2014  3554     bsteffen    Add refresh method to respond to config changes.
+ * Sep 03, 2014  3554     bsteffen    Respond to config notifications.
  * Sep 2, 2014   3568     bkowal      Handle static messages. Handle the
  *                                    case when no ugc codes are specified.
  * 
@@ -93,22 +95,22 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * @author bsteffen
  * @version 1.0
  */
-public class PlaylistManager {
+public class PlaylistManager implements IContextStateProcessor {
 
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(PlaylistManager.class);
 
     private final File playlistDir;
 
-    private final PlaylistDao playlistDao = new PlaylistDao();
+    private PlaylistDao playlistDao;
 
-    private final ZoneDao zoneDao = new ZoneDao();
+    private ZoneDao zoneDao;
 
-    private final ProgramDao programDao = new ProgramDao();
+    private ProgramDao programDao;
 
-    private final BroadcastMsgDao messageDao = new BroadcastMsgDao();
+    private BroadcastMsgDao broadcastMsgDao;
 
-    private TransmitterGroupDao tgDao = new TransmitterGroupDao();
+    private TransmitterGroupDao transmitterGroupDao;
 
     private final SAMEStateCodes stateCodes = new SAMEStateCodes();
 
@@ -133,14 +135,58 @@ public class PlaylistManager {
      * Check and regenerate playlists for the suite that was changed.
      * 
      */
-    public void refreshPlaylists(SuiteConfigNotification notification) {
-        for (TransmitterGroup group : tgDao.getAll()) {
+    public void processSuiteChange(SuiteConfigNotification notification) {
+        for (TransmitterGroup group : transmitterGroupDao.getAll()) {
             Program program = programDao.getProgramForTransmitterGroup(group);
             for (Suite suite : program.getSuites()) {
                 if (suite.getId() == notification.getId()) {
                     refreshPlaylist(group, suite);
                 }
             }
+        }
+    }
+
+    public void processProgramChange(ProgramConfigNotification notification) {
+        Program program = programDao.getByID(notification.getId());
+        for (TransmitterGroup group : program.getTransmitterGroups()) {
+            List<Playlist> currentLists = playlistDao.getByGroupName(group
+                    .getName());
+            List<Suite> programSuites = program.getSuites();
+            for (Suite suite : programSuites) {
+                    refreshPlaylist(group, suite);
+            }
+            for (Playlist playlist : currentLists) {
+                if (!programSuites.contains(playlist.getSuite())) {
+                    deletePlaylist(group, playlist.getSuite());
+                }
+            }
+
+        }
+    }
+
+    protected void deletePlaylist(TransmitterGroup group, Suite suite) {
+        ClusterTask ct = null;
+        do {
+            ct = ClusterLockUtils.lock("playlist", group.getName() + "-"
+                    + suite.getName(), 30000, true);
+        } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
+        ITimer timer = TimeUtil.getTimer();
+        timer.start();
+        try {
+            Playlist playlist = playlistDao.getBySuiteAndGroupName(
+                    suite.getName(), group.getName());
+            if (playlist != null) {
+                playlist.setModTime(TimeUtil.newGmtCalendar());
+                sortAndPersistPlaylist(playlist,
+                        Collections.<BroadcastMsg> emptyList());
+            }
+        } finally {
+            ClusterLockUtils.deleteLock(ct.getId().getName(), ct.getId()
+                    .getDetails());
+            timer.stop();
+            statusHandler.info("Spent " + timer.getElapsedTime()
+                    + "ms refreshing playlist for " + group.getName() + "("
+                    + suite.getName() + ")");
         }
     }
 
@@ -168,10 +214,8 @@ public class PlaylistManager {
                     playlist.setSuite(suite);
                     playlist.setTransmitterGroup(group);
                 }
-                playlist.setModTime(currentTime);
-                sortAndPersistPlaylist(playlist, messages);
-            } else if (playlist != null) {
-                playlist.setMessages(messages);
+            }
+            if (playlist != null) {
                 playlist.setModTime(currentTime);
                 sortAndPersistPlaylist(playlist, messages);
             }
@@ -321,7 +365,11 @@ public class PlaylistManager {
         playlist.setStartTime(startTime);
         playlist.setEndTime(endTime);
         playlist.setMessages(messages);
-        playlistDao.persist(playlist);
+        if (startTime == endTime) {
+            playlistDao.delete(playlist);
+        } else {
+            playlistDao.persist(playlist);
+        }
         if (futureTriggers.isEmpty() || (suite.getType() == SuiteType.GENERAL)) {
             writePlaylistFile(playlist, latestTrigger);
         } else {
@@ -368,7 +416,7 @@ public class PlaylistManager {
         if (checkTrigger) {
             for (SuiteMessage smessage : suite.getSuiteMessages()) {
                 if (smessage.isTrigger()) {
-                    messages.addAll(messageDao
+                    messages.addAll(broadcastMsgDao
                             .getUnexpiredMessagesByAfosidAndGroup(
                                     smessage.getAfosid(), expirationTime, group));
                 }
@@ -379,7 +427,7 @@ public class PlaylistManager {
         }
         for (SuiteMessage smessage : suite.getSuiteMessages()) {
             if (!smessage.isTrigger()) {
-                messages.addAll(messageDao
+                messages.addAll(broadcastMsgDao
                         .getUnexpiredMessagesByAfosidAndGroup(
                                 smessage.getAfosid(), expirationTime, group));
             }
@@ -392,9 +440,9 @@ public class PlaylistManager {
             }
 
         });
-        List<BroadcastMsg> result = new ArrayList<>(messages.size());
+        List<BroadcastMsg> result = Collections.emptyList();
         for (BroadcastMsg message : messages) {
-            mergeMessage(message, result);
+            result = mergeMessage(message, result);
         }
         return result;
     }
@@ -579,6 +627,77 @@ public class PlaylistManager {
             }
         }
         return new DacPlaylistMessageId(id);
+    }
+
+    public void setPlaylistDao(PlaylistDao playlistDao) {
+        this.playlistDao = playlistDao;
+    }
+
+    public void setZoneDao(ZoneDao zoneDao) {
+        this.zoneDao = zoneDao;
+    }
+
+    public void setProgramDao(ProgramDao programDao) {
+        this.programDao = programDao;
+    }
+
+    public void setBroadcastMsgDao(BroadcastMsgDao broadcastMsgDao) {
+        this.broadcastMsgDao = broadcastMsgDao;
+    }
+
+    public void setTransmitterGroupDao(TransmitterGroupDao transmitterGroupDao) {
+        this.transmitterGroupDao = transmitterGroupDao;
+    }
+
+    /**
+     * Validate all DAOs are set correctly and throw an exception if any are not
+     * set.
+     * 
+     * @throws IllegalStateException
+     */
+    private void validateDaos() throws IllegalStateException {
+        if (playlistDao == null) {
+            throw new IllegalStateException(
+                    "PlaylistDao has not been set on the PlaylistManager");
+        } else if (zoneDao == null) {
+            throw new IllegalStateException(
+                    "ZoneDao has not been set on the PlaylistManager");
+        } else if (programDao == null) {
+            throw new IllegalStateException(
+                    "ProgramDao has not been set on the PlaylistManager");
+        } else if (broadcastMsgDao == null) {
+            throw new IllegalStateException(
+                    "BroadcastMsgDao has not been set on the PlaylistManager");
+        } else if (transmitterGroupDao == null) {
+            throw new IllegalStateException(
+                    "TransmitterGroupDao has not been set on the PlaylistManager");
+        }
+    }
+
+    @Override
+    public void preStart() {
+        validateDaos();
+        for (TransmitterGroup group : transmitterGroupDao.getAll()) {
+            Program program = programDao.getProgramForTransmitterGroup(group);
+            for (Suite suite : program.getSuites()) {
+                refreshPlaylist(group, suite);
+            }
+        }
+    }
+
+    @Override
+    public void postStart() {
+        /* Required to implement IContextStateProcessor but not used. */
+    }
+
+    @Override
+    public void preStop() {
+        /* Required to implement IContextStateProcessor but not used. */
+    }
+
+    @Override
+    public void postStop() {
+        /* Required to implement IContextStateProcessor but not used. */
     }
 
 }

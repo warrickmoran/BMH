@@ -42,6 +42,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
+import com.raytheon.uf.edex.core.IContextStateProcessor;
 
 /**
  * 
@@ -60,20 +61,21 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Aug 27, 2014  3486     bsteffen    Make Comms Configurator more robust.
  * Sep 4, 2014   3532     bkowal      Replace the decibel range with the decibel
  *                                    target in the configuration.
+ * Sep 09, 2014  3554     bsteffen    Inject daos to better handle startup ordering
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class CommsConfigurator {
+public class CommsConfigurator implements IContextStateProcessor {
 
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(CommsConfigurator.class);
 
-    private final DacDao dacDao = new DacDao();
+    private DacDao dacDao;
 
-    private final TransmitterGroupDao tgDao = new TransmitterGroupDao();
+    private TransmitterGroupDao transmitterGroupDao;
 
     public CommsConfig configure() {
         List<Dac> dacs = dacDao.getAll();
@@ -155,7 +157,7 @@ public class CommsConfigurator {
      * @param dacMap
      */
     protected void populateChannels(Map<Integer, DacConfig> dacMap) {
-        for (TransmitterGroup group : tgDao.getAll()) {
+        for (TransmitterGroup group : transmitterGroupDao.getAll()) {
             Set<Transmitter> transmitters = group.getEnabledTransmitters();
             if (transmitters.isEmpty()) {
                 continue;
@@ -238,6 +240,51 @@ public class CommsConfigurator {
                 }
             }
         }
+    }
+
+    public void setDacDao(DacDao dacDao) {
+        this.dacDao = dacDao;
+    }
+
+    public void setTransmitterGroupDao(TransmitterGroupDao transmitterGroupDao) {
+        this.transmitterGroupDao = transmitterGroupDao;
+    }
+
+    /**
+     * Validate all DAOs are set correctly and throw an exception if any are not
+     * set.
+     * 
+     * @throws IllegalStateException
+     */
+    private void validateDaos() throws IllegalStateException {
+        if (dacDao == null) {
+            throw new IllegalStateException(
+                    "DacDao has not been set on the CommsConfigurator");
+        } else if (transmitterGroupDao == null) {
+            throw new IllegalStateException(
+                    "TransmitterGroupDao has not been set on the CommsConfigurator");
+        }
+    }
+
+    @Override
+    public void preStart() {
+        validateDaos();
+        configure();
+    }
+
+    @Override
+    public void postStart() {
+        /* Required to implement IContextStateProcessor but not used. */
+    }
+
+    @Override
+    public void preStop() {
+        /* Required to implement IContextStateProcessor but not used. */
+    }
+
+    @Override
+    public void postStop() {
+        /* Required to implement IContextStateProcessor but not used. */
     }
 
 }

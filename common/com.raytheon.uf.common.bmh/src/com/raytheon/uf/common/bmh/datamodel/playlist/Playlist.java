@@ -57,12 +57,15 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * ------------- -------- ----------- --------------------------
  * Jun 30, 2014  3285     bsteffen    Initial creation
  * Aug 15, 2014  3515     rjpeter     Add eager fetch.
+ * Sep 09, 2014  3554     bsteffen    Add QUERY_BY_GROUP_NAME
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-@NamedQueries({ @NamedQuery(name = Playlist.QUERY_BY_SUITE_GROUP_NAMES, query = Playlist.QUERY_BY_SUITE_GROUP_NAMES_HQL) })
+@NamedQueries({
+        @NamedQuery(name = Playlist.QUERY_BY_SUITE_GROUP_NAMES, query = Playlist.QUERY_BY_SUITE_GROUP_NAMES_HQL),
+        @NamedQuery(name = Playlist.QUERY_BY_GROUP_NAME, query = Playlist.QUERY_BY_GROUP_NAME_HQL) })
 @Entity
 @Table(name = "playlist", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
         "transmitter_group_name", "suite_name" }) })
@@ -79,8 +82,9 @@ public class Playlist {
 
     protected static final String QUERY_BY_SUITE_GROUP_NAMES_HQL = "select p FROM Playlist p inner join p.suite s inner join p.transmitterGroup tg WHERE s.name = :suiteName AND tg.name = :groupName";
 
-    // protected static final String QUERY_BY_SUITE_GROUP_NAMES_HQL =
-    // "FROM Playlist p WHERE p.suite.name = :suiteName AND p.transmitterGroup.name = :groupName";
+    public static final String QUERY_BY_GROUP_NAME = "getPlaylistByGroupName";
+
+    protected static final String QUERY_BY_GROUP_NAME_HQL = "select p FROM Playlist p inner join p.transmitterGroup tg WHERE tg.name = :groupName";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
