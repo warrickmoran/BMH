@@ -3,6 +3,11 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
+	<!-- static message generation -->
+
+	<bean id="staticMessageGenerator" class="com.raytheon.uf.edex.bmh.tts.StaticMessageGenerator"
+		init-method="initialize" />
+
 	<bean id="ttsSynthesisFactory" class="com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory">
 		<constructor-arg value="${bmh.tts.server}" />
 		<constructor-arg value="${bmh.tts.port}" />
@@ -23,6 +28,35 @@
 		<constructor-arg ref="ttsManager" />
 	</bean>
 
+	<camelContext id="bmh-static-msg-gen" xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+
+		<route id="staticMsgGenerate">
+			<from uri="jms-durable:topic:BMH.Config" />
+			<doTry>
+				<bean ref="serializationUtil" method="transformFromThrift" />
+				<filter>
+					<method ref="staticMessageGenerator" method="checkSkipMessage" />
+					<stop />
+				</filter>
+				<bean ref="staticMessageGenerator" method="process" />
+				<split>
+					<simple>${body}</simple>
+					<bean ref="validatedMessageDao" method="persistCascade" />
+					<setBody>
+						<simple>${body.getId}</simple>
+					</setBody>
+					<to uri="jms-durable:queue:BMH.Transform" />
+				</split>
+				<doCatch>
+					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR" />
+				</doCatch>
+			</doTry>
+		</route>
+
+	</camelContext>
+
 	<camelContext id="bmh-tts" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
 
@@ -32,6 +66,10 @@
 				<bean ref="broadcastMsgDao" method="getByID" />
 				<bean ref="ttsManager" method="process" />
 				<bean ref="broadcastMsgDao" method="saveOrUpdate" />
+				<filter>
+					<simple>${body.isSuccess} == false</simple>
+					<stop />
+				</filter>
 				<setBody>
 					<simple>${body.getId}</simple>
 				</setBody>

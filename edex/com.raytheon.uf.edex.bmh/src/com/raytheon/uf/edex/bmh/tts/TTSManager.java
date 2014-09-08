@@ -65,6 +65,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Aug 26, 2014 3559       bkowal      Notify the user of a configuration error when the
  *                                     synthesis validation fails due to an improperly
  *                                     set bmh tts nfs directory.
+ * Aug 29, 2014 3568       bkowal      Success field in broadcast msg is now set correctly.
  * 
  * </pre>
  * 
@@ -197,7 +198,10 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         this.bmhDataDirectory = FilenameUtils.normalize(this.bmhDataDirectory
                 + File.separatorChar + AUDIO_DATA_DIRECTORY);
 
-        /* Attempt to retrieve the server and port from the System properties */
+        /*
+         * Attempt to retrieve configuration information from the System
+         * properties
+         */
         Integer ttsThreadInteger = Integer.getInteger(TTS_THREADS, null);
         Long ttsHeartbeatLong = Long.getLong(TTS_HEARTBEAT, null);
 
@@ -510,7 +514,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                         stringBuilder.toString(), ioException);
             }
         }
-        message.setSuccess(true);
+        message.setSuccess(success);
 
         return message;
     }

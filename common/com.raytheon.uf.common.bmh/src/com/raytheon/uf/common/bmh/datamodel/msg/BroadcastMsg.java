@@ -49,6 +49,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3302     bkowal      Initial creation
  * Jul 10, 2014  3285     bsteffen    Add getAfosid()
+ * Aug 29, 2014  3568     bkowal      Added query to retrieve broadcast msg by transmitter
+ *                                    group, language and afos id.
  * Sep 03, 2014  3554     bsteffen    Add getUnexpiredBroadcastMsgsByAfosIDAndGroup
  * 
  * 
@@ -59,8 +61,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 
 @NamedQueries({
-        @NamedQuery(name = BroadcastMsg.GET_ALL_MSGS, query = "FROM BroadcastMsg m"),
-        @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID, query = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosID"),
+        @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID, query = BroadcastMsg.GET_MSGS_BY_AFOS_ID_QUERY),
+        @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE, query = BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP, query = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosID AND m.inputMessage.expirationTime > :expirationTime AND m.transmitterGroup = :group") })
 @Entity
 @DynamicSerialize
@@ -69,11 +71,15 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class BroadcastMsg {
     public static final String GEN = "Broadcast Msg Generator";
 
-    public static final String GET_ALL_MSGS = "getBroadcastMsgs";
+    public static final String GET_MSGS_BY_AFOS_ID = "getBroadcastMsgsByAfosId";
 
-    public static final String GET_MSGS_BY_AFOS_ID = "getBroadcastMsgsByAfosID";
+    protected static final String GET_MSGS_BY_AFOS_ID_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosId";
 
     public static final String GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP = "getUnexpiredBroadcastMsgsByAfosIDAndGroup";
+
+    public static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE = "getBroadcastMsgsByAfosIdGroupAndLanguage";
+
+    protected static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosId AND m.transmitterGroup = :group AND m.inputMessage.language = :language ORDER BY m.inputMessage.replaceId DESC";
 
     /* A unique auto-generated numerical id. Long = SQL BIGINT */
     @Id

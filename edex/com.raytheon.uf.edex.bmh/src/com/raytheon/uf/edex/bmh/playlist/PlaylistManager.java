@@ -85,6 +85,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jul 07, 2014  3285     bsteffen    Initial creation
  * Aug 26, 2014  3554     bsteffen    Add more logging, change suite field for dac
  * Sep 03, 2014  3554     bsteffen    Add refresh method to respond to config changes.
+ * Sep 2, 2014   3568     bkowal      Handle static messages. Handle the
+ *                                    case when no ugc codes are specified.
  * 
  * </pre>
  * 
@@ -424,6 +426,24 @@ public class PlaylistManager {
                 }
             }
         }
+
+        /*
+         * handle static message replacement.
+         * 
+         * TODO: temporary until #3585
+         */
+        ListIterator<BroadcastMsg> messageIterator = list.listIterator();
+        while (messageIterator.hasNext()) {
+            BroadcastMsg nextBroadcastMsg = messageIterator.next();
+            if (msg.getInputMessage().isStaticMsg()
+                    && msg.getInputMessage().getReplaceId() == nextBroadcastMsg
+                            .getId()) {
+                messageIterator.set(msg);
+                added = true;
+                break;
+            }
+        }
+
         if (!added) {
             list.add(msg);
         }
@@ -489,12 +509,21 @@ public class PlaylistManager {
         return dac;
     }
 
-    private DacPlaylistMessageId convertMessageForDAC(BroadcastMsg broadcast) {
-        long id = broadcast.getId();
+    private File determineMessageFile(BroadcastMsg broadcast) {
         File playlistDir = new File(this.playlistDir, broadcast
                 .getTransmitterGroup().getName());
         File messageDir = new File(playlistDir, "messages");
-        File messageFile = new File(messageDir, id + ".xml");
+        if (!messageDir.exists()) {
+            messageDir.mkdirs();
+        }
+        File messageFile = new File(messageDir, broadcast.getId() + ".xml");
+
+        return messageFile;
+    }
+
+    private DacPlaylistMessageId convertMessageForDAC(BroadcastMsg broadcast) {
+        long id = broadcast.getId();
+        File messageFile = this.determineMessageFile(broadcast);
         if (!messageFile.exists()) {
             DacPlaylistMessage dac = new DacPlaylistMessage();
             dac.setBroadcastId(id);
@@ -506,41 +535,41 @@ public class PlaylistManager {
             dac.setPeriodicity(input.getPeriodicity());
             dac.setMessageText(input.getContent());
             dac.setAlertTone(input.getAlertTone());
-            SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
-            builder.setOriginatorMapper(originatorMapping);
-            builder.setStateCodes(stateCodes);
-            builder.setEventFromAfosid(broadcast.getAfosid());
-            for (String ugc : input.getAreaCodeList()) {
-                try {
-                    if (ugc.charAt(2) == 'Z') {
-                        Zone z = zoneDao.getByZoneCode(ugc);
-                        if (z != null) {
-                            for (Area area : z.getAreas()) {
-                                builder.addAreaFromUGC(area.getAreaCode());
+            if (input.getAreaCodes() != null) {
+                SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
+                builder.setOriginatorMapper(originatorMapping);
+                builder.setStateCodes(stateCodes);
+                builder.setEventFromAfosid(broadcast.getAfosid());
+                for (String ugc : input.getAreaCodeList()) {
+                    try {
+                        if (ugc.charAt(2) == 'Z') {
+                            Zone z = zoneDao.getByZoneCode(ugc);
+                            if (z != null) {
+                                for (Area area : z.getAreas()) {
+                                    builder.addAreaFromUGC(area.getAreaCode());
+                                }
                             }
+                        } else {
+                            builder.addAreaFromUGC(ugc);
                         }
-                    } else {
-                        builder.addAreaFromUGC(ugc);
+                    } catch (IllegalStateException e) {
+                        statusHandler
+                                .error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                                        "Cannot add area to SAME tone, same tone will not include all areas.",
+                                        e);
+                        break;
+                    } catch (IllegalArgumentException e) {
+                        statusHandler.error(
+                                BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                                "Cannot add area to SAME tone, same tone will not include this areas("
+                                        + ugc + ").", e);
                     }
-                } catch (IllegalStateException e) {
-                    statusHandler
-                            .error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                                    "Cannot add area to SAME tone, same tone will not include all areas.",
-                                    e);
-                    break;
-                } catch (IllegalArgumentException e) {
-                    statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                            "Cannot add area to SAME tone, same tone will not include this areas("
-                                    + ugc + ").", e);
                 }
-            }
-            builder.setEffectiveTime(input.getEffectiveTime());
-            builder.setExpireTime(input.getExpirationTime());
-            // TODO this needs to be read from configuration.
-            builder.setNwsIcao("K" + SiteUtil.getSite());
-            dac.setSAMEtone(builder.build().toString());
-            if (!messageDir.exists()) {
-                messageDir.mkdirs();
+                builder.setEffectiveTime(input.getEffectiveTime());
+                builder.setExpireTime(input.getExpirationTime());
+                // TODO this needs to be read from configuration.
+                builder.setNwsIcao("K" + SiteUtil.getSite());
+                dac.setSAMEtone(builder.build().toString());
             }
             try {
                 JAXB.marshal(dac, messageFile);

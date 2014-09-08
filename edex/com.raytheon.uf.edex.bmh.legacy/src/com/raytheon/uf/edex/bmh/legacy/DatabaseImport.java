@@ -35,15 +35,19 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
@@ -76,6 +80,8 @@ import com.raytheon.uf.edex.core.IMessageProducer;
  * Aug 25, 2014 3486       bsteffen    Send config change notification.
  * Aug 25, 2014 3558       rjpeter     Updated DAC population.
  * Sep 05, 2014 3554       bsteffen    Send more specific config change notification.
+ * Sep 08, 2014 3568       bkowal      Updated to send message type and transmitter group
+ *                                     config change notifications.
  * 
  * </pre>
  * 
@@ -83,6 +89,8 @@ import com.raytheon.uf.edex.core.IMessageProducer;
  * @version 1.0
  */
 public class DatabaseImport {
+    private static final String JMS_CONFIG_TOPIC = "jms-durable:topic:BMH.Config";
+
     // Default voice information if there is not one currently in the database
     protected static final int DEFAULT_VOICE_NUMBER = 101;
 
@@ -267,14 +275,33 @@ public class DatabaseImport {
                                         new ArrayList<>(data.getTransmitters()
                                                 .values()));
                                 producer.sendAsyncUri(
-                                        "jms-durable:topic:BMH.Config",
+                                        JMS_CONFIG_TOPIC,
                                         SerializationUtil
                                                 .transformToThrift(notification));
                                 for (Suite suite : data.getSuites().values()) {
                                     notification = new SuiteConfigNotification(
                                             ConfigChangeType.Update, suite);
                                     producer.sendAsyncUri(
-                                            "jms-durable:topic:BMH.Config",
+                                            JMS_CONFIG_TOPIC,
+                                            SerializationUtil
+                                                    .transformToThrift(notification));
+                                }
+                                for (MessageType messageType : data
+                                        .getMsgTypes().values()) {
+                                    notification = new MessageTypeConfigNotification(
+                                            ConfigChangeType.Update,
+                                            messageType);
+                                    producer.sendAsyncUri(
+                                            JMS_CONFIG_TOPIC,
+                                            SerializationUtil
+                                                    .transformToThrift(notification));
+                                }
+                                for (TransmitterLanguage language : data
+                                        .getTransmitterLanguages()) {
+                                    notification = new TransmitterLanguageConfigNotification(
+                                            ConfigChangeType.Update, language);
+                                    producer.sendAsyncUri(
+                                            JMS_CONFIG_TOPIC,
                                             SerializationUtil
                                                     .transformToThrift(notification));
                                 }

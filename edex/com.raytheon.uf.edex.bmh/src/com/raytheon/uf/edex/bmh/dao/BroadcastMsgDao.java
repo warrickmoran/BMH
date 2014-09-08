@@ -27,6 +27,7 @@ import org.springframework.orm.hibernate3.HibernateTemplate;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
@@ -44,6 +45,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Aug 20, 2014  3432     mpduff      Added getMessageByBroadcastId, fixed GetMesageByAfosid
  * Aug 24, 2014  3432     mpduff      Fixed getMessageByBroadcastId
  * Sep 03, 2014  3554     bsteffen    Add getUnexpiredBroadcastMsgsByAfosIDAndGroup
+ * Aug 29, 2014  3568     bkowal      Added getMessageExistence
+ * 
  * 
  * </pre>
  * 
@@ -65,7 +68,7 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
                         HibernateTemplate ht = getHibernateTemplate();
                         return ht.findByNamedQueryAndNamedParam(
                                 BroadcastMsg.GET_MSGS_BY_AFOS_ID,
-                                new String[] { "afosID" },
+                                new String[] { "afosId" },
                                 new String[] { afosid });
                     }
                 });
@@ -92,6 +95,33 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
         @SuppressWarnings("unchecked")
         List<BroadcastMsg> result = (List<BroadcastMsg>) messages;
         return result;
+    }
+
+    public BroadcastMsg getMessageExistence(final TransmitterGroup group,
+            final String afosId, final Language language) {
+        List<?> messages = txTemplate
+                .execute(new TransactionCallback<List<?>>() {
+                    @Override
+                    public List<?> doInTransaction(TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht
+                                .findByNamedQueryAndNamedParam(
+                                        BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE,
+                                        new String[] { "afosId", "group",
+                                                "language" }, new Object[] {
+                                                afosId, group, language });
+                    }
+                });
+
+        if (messages == null || messages.isEmpty()) {
+            return null;
+        }
+
+        if (messages.get(0) instanceof BroadcastMsg == false) {
+            return null;
+        }
+
+        return (BroadcastMsg) messages.get(0);
     }
 
     public List<BroadcastMsg> getMessageByBroadcastId(Long broadcastMessageId) {

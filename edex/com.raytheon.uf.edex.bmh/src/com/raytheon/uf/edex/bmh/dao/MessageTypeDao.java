@@ -28,6 +28,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 
 /**
  * BMH DAO for {@link MessageType}.
@@ -40,6 +41,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2014 3302       bkowal      Initial creation
  * Aug 5, 2014  #3490      lvenable    added getMessageTypes()
+ * Sep 2, 2014  3568       bkowal      Added getMessageTypeForDesignation
  * 
  * </pre>
  * 
@@ -99,5 +101,32 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         }
 
         return null;
+    }
+
+    public List<MessageType> getMessageTypeForDesignation(
+            final Designation designation) {
+        List<?> types = txTemplate.execute(new TransactionCallback<List<?>>() {
+            @Override
+            public List<?> doInTransaction(TransactionStatus status) {
+                HibernateTemplate ht = getHibernateTemplate();
+                return ht.findByNamedQueryAndNamedParam(
+                        MessageType.GET_MESSAGETYPE_FOR_DESIGNATION,
+                        new String[] { "designation" },
+                        new Object[] { designation });
+            }
+        });
+
+        if (types == null || types.isEmpty()) {
+            return null;
+        }
+
+        List<MessageType> messageTypes = new ArrayList<>(types.size());
+        for (Object type : types) {
+            if (type instanceof MessageType) {
+                messageTypes.add((MessageType) type);
+            }
+        }
+
+        return messageTypes;
     }
 }

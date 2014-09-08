@@ -32,6 +32,8 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.OneToOne;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
@@ -54,15 +56,21 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Jul 7, 2014   3302     bkowal      Use eager fetching to eliminate session closed
  *                                    errors with lazy loading.
  * Jul 17, 2014  3175     rjpeter     Updated query to match field name.
+ * Sep 2, 2014   3568     bkowal      Added the getValidatedMsgForInputMsg named query.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG, query = ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG_QUERY) })
 @Entity
 @Table(name = "validated_msg", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = ValidatedMessage.GEN, sequenceName = "validated_msg_seq")
 public class ValidatedMessage {
+
+    public static final String GET_VALIDATED_MSG_FOR_INPUT_MSG = "getValidatedMsgForInputMsg";
+
+    protected static final String GET_VALIDATED_MSG_FOR_INPUT_MSG_QUERY = "FROM ValidatedMessage vm WHERE vm.inputMessage = :inputMessage";
 
     public static enum TransmissionStatus {
         /** This status must be set for a message to continue processing. */

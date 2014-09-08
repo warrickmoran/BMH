@@ -67,13 +67,16 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 12, 2014 #3490      lvenable    Added wxr and enable tone blackout fields.
  * Aug 17, 2014 #3490      lvenable    Added batch size, removed cascade all.
  * Aug 18, 2014  3411      mpduff      Added {@link MessageTypeReplacement}
+ * Sep 2, 2014   3568      bkowal      Added the getMessageTypeForDesignation named query
  * 
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
-@NamedQueries({ @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_AFOSID, query = MessageType.GET_MESSAGETYPE_FOR_AFOSID_QUERY) })
+@NamedQueries({
+        @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_AFOSID, query = MessageType.GET_MESSAGETYPE_FOR_AFOSID_QUERY),
+        @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, query = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "message_type", schema = "bmh")
@@ -89,6 +92,10 @@ public class MessageType {
     public static final String GET_MESSAGETYPE_FOR_AFOSID = "getMessageTypeForAfosId";
 
     protected static final String GET_MESSAGETYPE_FOR_AFOSID_QUERY = "FROM MessageType m WHERE m.afosid = :afosid";
+
+    public static final String GET_MESSAGETYPE_FOR_DESIGNATION = "getMessageTypeForDesignation";
+
+    protected static final String GET_MESSAGETYPE_FOR_DESIGNATION_QUERY = "FROM MessageType m WHERE m.designation = :designation";
 
     // use surrogate key
     @Id

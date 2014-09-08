@@ -19,6 +19,14 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.List;
+
+import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 
 /**
@@ -32,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
+ * Sep 2, 2014   3568     bkowal      Added getValidatedMsgByInputMsg
  * 
  * </pre>
  * 
@@ -45,4 +54,40 @@ public class ValidatedMessageDao extends
         super(ValidatedMessage.class);
     }
 
+    public void persistCascade(final ValidatedMessage msg) {
+        txTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(TransactionStatus status) {
+                HibernateTemplate ht = getHibernateTemplate();
+                ht.saveOrUpdate(msg.getInputMessage());
+                ht.saveOrUpdate(msg);
+            }
+        });
+    }
+
+    public ValidatedMessage getValidatedMsgByInputMsg(
+            final InputMessage inputMsg) {
+        List<?> messages = txTemplate
+                .execute(new TransactionCallback<List<?>>() {
+                    @Override
+                    public List<?> doInTransaction(TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht
+                                .findByNamedQueryAndNamedParam(
+                                        ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG,
+                                        new String[] { "inputMessage" },
+                                        new Object[] { inputMsg });
+                    }
+                });
+
+        if (messages == null || messages.isEmpty()) {
+            return null;
+        }
+
+        if (messages.get(0) instanceof ValidatedMessage == false) {
+            return null;
+        }
+
+        return (ValidatedMessage) messages.get(0);
+    }
 }

@@ -25,6 +25,8 @@ import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
@@ -45,15 +47,22 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014 3175       rjpeter     Initial creation
  * Jun 26, 2014 3302       bkowal      Added getters/setters for all data.
  * Aug 05, 2014 3175       rjpeter     Fixed serialization.
+ * Aug 29, 2014 3568       bkowal      Added query to retrieve transmitter language(s) associated
+ *                                     with a transmitter group
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = TransmitterLanguage.GET_LANGUAGES_FOR_GROUP, query = TransmitterLanguage.GET_LANGUAGES_FOR_GROUP_QUERY) })
 @Entity
 @Table(name = "transmitter_language", schema = "bmh")
 @DynamicSerialize
 public class TransmitterLanguage {
+
+    public static final String GET_LANGUAGES_FOR_GROUP = "getLanguagesForGroup";
+
+    protected static final String GET_LANGUAGES_FOR_GROUP_QUERY = "FROM TransmitterLanguage tl WHERE tl.id.transmitterGroup = :group";
 
     @EmbeddedId
     @DynamicSerializeElement

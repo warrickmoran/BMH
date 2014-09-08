@@ -48,7 +48,6 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Aug 20, 2014  3432      mpduff      Added get by afosid and pk id
  * Sep 05, 2014 3554       bsteffen    Send config change notification.
  * 
- * 
  * </pre>
  * 
  * @author mpduff
@@ -84,6 +83,7 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         default:
             break;
         }
+
         if (notification != null) {
             EDEXUtil.getMessageProducer().sendAsyncUri(
                     "jms-durable:topic:BMH.Config",

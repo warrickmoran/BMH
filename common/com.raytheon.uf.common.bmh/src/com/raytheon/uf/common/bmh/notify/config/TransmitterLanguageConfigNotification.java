@@ -19,17 +19,14 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
-import java.util.List;
-
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * 
- * Notification that is used when a {@link TransmitterGroup} or
- * {@link Transmitter} in a group is created, updated or deleted.
+ * Notification that is used when a {@link TransmitterLanguage} is created,
+ * updated, or deleted.
  * 
  * <pre>
  * 
@@ -37,52 +34,51 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Sep 04, 2014  3486     bsteffen    Initial creation
- * Sep 08, 2014  3568     bkowal      Updated the getIds method for
- *                                    dynamicserialize.
+ * Sep 8, 2014  3568       bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author bkowal
  * @version 1.0
  */
 @DynamicSerialize
-public class TransmitterGroupConfigNotification extends ConfigNotification {
+public class TransmitterLanguageConfigNotification extends ConfigNotification {
 
     @DynamicSerializeElement
-    private int[] ids;
+    private TransmitterLanguagePK key;
 
-    public TransmitterGroupConfigNotification() {
+    /**
+     * 
+     */
+    public TransmitterLanguageConfigNotification() {
         super();
     }
 
-    public TransmitterGroupConfigNotification(ConfigChangeType type,
-            TransmitterGroup tg) {
+    /**
+     * @param type
+     */
+    public TransmitterLanguageConfigNotification(ConfigChangeType type,
+            TransmitterLanguage tl) {
         super(type);
-        this.ids = new int[] { tg.getId() };
-    }
-
-    public TransmitterGroupConfigNotification(ConfigChangeType type,
-            List<TransmitterGroup> groups) {
-        super(type);
-        this.ids = new int[groups.size()];
-        for (int i = 0; i < ids.length; i += 1) {
-            ids[i] = groups.get(i).getId();
-        }
+        this.setKey(tl);
     }
 
     /**
-     * @return the ids
+     * @return the key
      */
-    public int[] getIds() {
-        return ids;
+    public TransmitterLanguagePK getKey() {
+        return key;
     }
 
     /**
-     * @param ids
-     *            the ids to set
+     * @param key
+     *            the key to set
      */
-    public void setIds(int[] ids) {
-        this.ids = ids;
+    public void setKey(TransmitterLanguagePK key) {
+        this.key = key;
+    }
+
+    public void setKey(TransmitterLanguage tl) {
+        this.key = tl.getId();
     }
 }

@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
+import com.raytheon.uf.edex.bmh.tts.StaticMessageIdentifierUtil;
 import com.raytheon.uf.edex.bmh.xformer.data.DynamicNumericTextTransformation;
 import com.raytheon.uf.edex.bmh.xformer.data.IBoundText;
 import com.raytheon.uf.edex.bmh.xformer.data.IFreeText;
@@ -340,9 +341,37 @@ public class MessageTransformer {
         /* Message Header */
         message.setTransmitterGroup(group);
         message.setInputMessage(inputMessage);
-        /* Message Body */
-        message.setSsml(ssmlDocument.toSSML());
+
+        /*
+         * Static message types define their own voice based on the id of the
+         * transmitter group. "Special Case" for static message types.
+         */
         message.setVoice(messageType.getVoice());
+        if (StaticMessageIdentifierUtil.isStaticMsgType(messageType)) {
+            statusHandler
+                    .info("Afos Id "
+                            + inputMessage.getAfosid()
+                            + " is associated with a static message type. Retrieving voice associated with transmitter language for transmitter group "
+                            + group.getId() + " and language "
+                            + inputMessage.getLanguage().toString() + ".");
+            final TransmitterLanguagePK key = new TransmitterLanguagePK();
+            key.setLanguage(inputMessage.getLanguage());
+            key.setTransmitterGroup(group);
+            TransmitterLanguage transmitterLanguage = this.transmitterLanguageDao
+                    .getByID(key);
+            if (transmitterLanguage != null) {
+                message.setVoice(transmitterLanguage.getVoice());
+            } else {
+                statusHandler
+                        .info("No transmitter language is associated with transmitter group "
+                                + group.getId()
+                                + " and language "
+                                + inputMessage.getLanguage().toString()
+                                + ". Using default voice associated with message type "
+                                + inputMessage.getAfosid() + ".");
+            }
+        }
+        message.setSsml(ssmlDocument.toSSML());
 
         return message;
     }
