@@ -112,15 +112,19 @@ public class StaticMessageGenerator {
 
         List<MessageType> stationMessageTypes = this
                 .retrieveMsgTypes(StaticMessageIdentifierUtil.stationDesignation);
-        for (MessageType stationMessageType : stationMessageTypes) {
-            this.staticMessageTypesMap.put(stationMessageType.getId(),
-                    stationMessageType);
+        if (stationMessageTypes != null) {
+            for (MessageType stationMessageType : stationMessageTypes) {
+                this.staticMessageTypesMap.put(stationMessageType.getId(),
+                        stationMessageType);
+            }
         }
         List<MessageType> timeMessageTypes = this
                 .retrieveMsgTypes(StaticMessageIdentifierUtil.timeDesignation);
-        for (MessageType timeMessageType : timeMessageTypes) {
-            this.staticMessageTypesMap.put(timeMessageType.getId(),
-                    timeMessageType);
+        if (timeMessageTypes != null) {
+            for (MessageType timeMessageType : timeMessageTypes) {
+                this.staticMessageTypesMap.put(timeMessageType.getId(),
+                        timeMessageType);
+            }
         }
     }
 
