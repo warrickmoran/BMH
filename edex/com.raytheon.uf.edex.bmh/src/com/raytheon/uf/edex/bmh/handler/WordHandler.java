@@ -42,6 +42,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Jul 03, 2014   3355     mpduff      Initial creation
  * Jul 28, 2014   3407     mpduff      Added delete word
  * Aug 05, 2014   3175     rjpeter     Added replace word.
+ * Sep 10, 2014   3407     mpduff      Added break statement to delete word
  * </pre>
  * 
  * @author mpduff
@@ -59,6 +60,7 @@ public class WordHandler implements IRequestHandler<WordRequest> {
             return saveWord(request);
         case Delete:
             deleteWord(request);
+            break;
         case Replace:
             return replaceWord(request);
         default:
