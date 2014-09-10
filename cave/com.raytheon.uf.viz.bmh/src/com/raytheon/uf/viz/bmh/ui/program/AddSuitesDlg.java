@@ -69,6 +69,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 21, 2014  #3490     lvenable     Updated code to save data to database.
  * Aug 24, 2014  #3490     lvenable     Removed dialog type and fixed copy suite error.
  * Aug 25, 2014  #3490     lvenable     Validate the triggers for message types.
+ * Sep 10, 2014  #3490     lvenable     Added check for adding duplicate suites.
  * 
  * </pre>
  * 
@@ -314,7 +315,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
             String firstMsg = "The following suites cannot be added to the program because they are "
                     + "HIGH/EXCLUSIVE and do not have a trigger message:\n\n";
             sb.insert(0, firstMsg);
-            sb.append("\nExclude the suite(s) or edit them to add triggers message types.");
+            sb.append("\nExclude the suite(s) or edit them with the suite manager to add triggers message types.");
 
             DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
                     "Suite Issue", sb.toString());
@@ -341,11 +342,11 @@ public class AddSuitesDlg extends CaveSWTDialog {
         }
 
         if (useExisting) {
-            if (!selectedSuites.isEmpty()) {
-                setReturnValue(selectedSuites);
-            } else {
-                setReturnValue(null);
+
+            if (validateSuites(selectedSuites) == false) {
+                return;
             }
+
         } else {
             Suite copySuite = selectedSuites.get(0);
 
@@ -374,6 +375,59 @@ public class AddSuitesDlg extends CaveSWTDialog {
         }
 
         close();
+    }
+
+    /**
+     * Validate the suites that will be added to the program.
+     * 
+     * @param selectedSuites
+     *            List of suites that were selected.
+     * @return True if there are valid suites to be added.
+     */
+    private boolean validateSuites(List<Suite> selectedSuites) {
+
+        List<Suite> validSuites = new ArrayList<Suite>();
+        List<String> invalidSuites = new ArrayList<String>();
+
+        for (Suite s : selectedSuites) {
+            if (existingNames.contains(s.getName())) {
+                invalidSuites.add(s.getName());
+            } else {
+                validSuites.add(s);
+            }
+        }
+
+        if (validSuites.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("All of the suites selected already exist in the program.  Do you want to ");
+            sb.append("go back and add different suites?");
+            int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
+                    | SWT.YES | SWT.NO, "Existing Suites", sb.toString());
+
+            // If the user wants to add valid suites then return false so the
+            // dialog doesn't close.
+            if (result == SWT.YES) {
+                return false;
+            }
+
+            setReturnValue(null);
+            return true;
+        }
+
+        if (invalidSuites.isEmpty() == false) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("The following suites are already in the program and will not be added:\n\n");
+
+            for (String str : invalidSuites) {
+                sb.append(str).append("\n");
+            }
+
+            DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
+                    "Existing Suites", sb.toString());
+        }
+
+        setReturnValue(validSuites);
+        return true;
     }
 
     /**

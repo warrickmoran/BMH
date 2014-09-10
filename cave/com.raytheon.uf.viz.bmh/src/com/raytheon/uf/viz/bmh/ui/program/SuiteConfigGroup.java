@@ -75,6 +75,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 18, 2014  #3490     lvenable     Added callback calls for actions on the suites.
  * Aug 21, 2014  #3490     lvenable     Added capability when creating new programs.
  * Aug 25, 2014  #3490     lvenable     Method to set the selected program.
+ * Sep 10, 2014  #3490     lvenable     Fixed existing suite name problem.
  * 
  * </pre>
  * 
@@ -425,12 +426,15 @@ public class SuiteConfigGroup extends Composite {
             addExistingBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    Set<String> existingNames = null;
+                    // Get the existing suite names to check against so that
+                    // duplicate suites will not be added.
+                    Set<String> existingNames = new HashSet<String>();
 
-                    if (suiteSelectionCB != null) {
-                        existingNames = suiteSelectionCB.getSuiteNames();
-                    } else {
-                        existingNames = new HashSet<String>();
+                    if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
+                            && selectedProgram != null) {
+                        for (Suite s : selectedProgram.getSuites()) {
+                            existingNames.add(s.getName());
+                        }
                     }
 
                     AddSuitesDlg asd = new AddSuitesDlg(getShell(),
