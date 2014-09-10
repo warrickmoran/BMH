@@ -58,6 +58,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Aug 18, 2014  3532     bkowal      Include the transmitter decibel range in
  *                                    the configuration.
  * Aug 27, 2014  3486     bsteffen    Make Comms Configurator more robust.
+ * Sep 4, 2014   3532     bkowal      Replace the decibel range with the decibel
+ *                                    target in the configuration.
  * 
  * </pre>
  * 
@@ -167,8 +169,7 @@ public class CommsConfigurator {
             }
             DacChannelConfig channel = new DacChannelConfig();
             channel.setTransmitterGroup(group.getName());
-            channel.setDbRangeMin(group.getAdjustAudioMinDB());
-            channel.setDbRangeMax(group.getAdjustAudioMaxDB());
+            channel.setDbTarget(group.getAudioDBTarget());
 
             int[] radios = new int[transmitters.size()];
             int rindex = 0;

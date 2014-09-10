@@ -23,8 +23,6 @@ import java.net.InetAddress;
 import java.nio.file.Path;
 import java.util.Collection;
 
-import org.apache.commons.lang.math.Range;
-
 /**
  * Configuration parameters for a DacSession object. Defines all the necessary
  * parameters to construct a DacSession so it can transmit data.
@@ -40,6 +38,7 @@ import org.apache.commons.lang.math.Range;
  * Jul 17, 2014  #3399     bsteffen     Add comms manager port argument.
  * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
  * Aug 18, 2014  #3532     bkowal       Add transmitter decibel range.
+ * Sep 4, 2014   #3532     bkowal       Use a decibel target instead of a range.
  * 
  * </pre>
  * 
@@ -63,15 +62,15 @@ public final class DacSessionConfig {
 
     private final int managerPort;
 
-    private final Range dbRange;
+    private final double dbTarget;
 
     public DacSessionConfig(boolean printHelp) {
-        this(printHelp, null, -1, -1, null, null, -1, null);
+        this(printHelp, null, -1, -1, null, null, -1, Double.NEGATIVE_INFINITY);
     }
 
     public DacSessionConfig(boolean printHelp, InetAddress dacAddress,
             int dataPort, int controlPort, Collection<Integer> transmitters,
-            Path inputDirectory, int managerPort, Range dbRange) {
+            Path inputDirectory, int managerPort, double dbTarget) {
         this.printHelp = printHelp;
         this.dacAddress = dacAddress;
         this.dataPort = dataPort;
@@ -79,7 +78,7 @@ public final class DacSessionConfig {
         this.transmitters = transmitters;
         this.inputDirectory = inputDirectory;
         this.managerPort = managerPort;
-        this.dbRange = dbRange;
+        this.dbTarget = dbTarget;
     }
 
     /*
@@ -102,10 +101,8 @@ public final class DacSessionConfig {
         stringBuilder.append(this.inputDirectory);
         stringBuilder.append(", managerPort=");
         stringBuilder.append(this.managerPort);
-        if (this.dbRange != null) {
-            stringBuilder.append(", dbRange=");
-            stringBuilder.append(dbRange.toString());
-        }
+        stringBuilder.append(", dbTarget=");
+        stringBuilder.append(this.dbTarget);
         stringBuilder.append("]");
 
         return stringBuilder.toString();
@@ -140,9 +137,9 @@ public final class DacSessionConfig {
     }
 
     /**
-     * @return the dbRange
+     * @return the dbTarget
      */
-    public Range getDbRange() {
-        return dbRange;
+    public double getDbTarget() {
+        return dbTarget;
     }
 }

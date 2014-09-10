@@ -41,7 +41,6 @@ import java.util.TreeSet;
 
 import javax.xml.bind.JAXB;
 
-import org.apache.commons.lang.math.Range;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,6 +96,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  * Aug 26, 2014  #3286     dgilling     Allow playlists directory to be 
  *                                      initially empty.
  * Aug 26, 2014  #3486     bsteffen     Make deletion of playlists safer and more verbose.
+ * Sep 5, 2014   #3532     bkowal       Use a decibel target instead of a range.
  * 
  * </pre>
  * 
@@ -188,15 +188,15 @@ public final class PlaylistScheduler implements
      * @param eventBus
      *            Reference back to the application-wide {@code EventBus}
      *            instance for posting and receiving necessary status events.
-     * @param dbRange
-     *            The minimum and maximum levels of audio allowed by the
+     * @param dbTarget
+     *            The target level of audio allowed by the
      *            destination transmitter in decibels.
      * @throws IOException
      *             If any I/O errors occur attempting to get the list of
      *             playlist files from the specified directory.
      */
     public PlaylistScheduler(Path inputDirectory, EventBus eventBus,
-            Range dbRange) {
+            double dbTarget) {
         this.playlistDirectory = inputDirectory;
         this.eventBus = eventBus;
 
@@ -251,7 +251,7 @@ public final class PlaylistScheduler implements
         Collections.sort(this.futurePlaylists, QUEUE_ORDER);
 
         this.cache = new PlaylistMessageCache(
-                inputDirectory.resolve("messages"), this.eventBus, dbRange);
+                inputDirectory.resolve("messages"), this.eventBus, dbTarget);
         for (DacPlaylist playlist : this.activePlaylists) {
             this.cache.retrieveAudio(playlist.getMessages());
         }

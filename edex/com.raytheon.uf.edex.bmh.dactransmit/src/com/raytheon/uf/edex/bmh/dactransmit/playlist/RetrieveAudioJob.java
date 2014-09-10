@@ -25,11 +25,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.apache.commons.lang.math.Range;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
 import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dactransmit.tones.TonesGenerator;
@@ -47,6 +49,7 @@ import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
  * ------------ ---------- ----------- --------------------------
  * Aug 19, 2014 3532       bkowal      Initial creation
  * Aug 26, 2014 3558       rjpeter     Disable audio attenuation.
+ * Sep 4, 2014  3532       bkowal      Use a decibel target instead of a range. Re-enable attenuation.
  * </pre>
  * 
  * @author bkowal
@@ -55,11 +58,20 @@ import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
 
 public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> {
 
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    /* equivalent to 0.125 seconds */
+    private static final int AUDIO_SAMPLE_SIZE = 1000;
+
     private final int priority;
 
-    private final Range dbRange;
+    private final double dbTarget;
 
     private final DacPlaylistMessage message;
+
+    private IAudioJobListener listener;
+
+    private String taskId;
 
     /**
      * Constructor
@@ -67,16 +79,43 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
      * @param priority
      *            the priority; the higher the number, the higher the associated
      *            priority will be.
-     * @param dbRange
-     *            the decibel range that the retrieved audio must be within
+     * @param dbTarget
+     *            the target audio decibel. No portion of the audio should
+     *            exceed the target.
      * @param message
      *            identifying information
      */
-    public RetrieveAudioJob(final int priority, final Range dbRange,
+    public RetrieveAudioJob(final int priority, final double dbTarget,
             final DacPlaylistMessage message) {
         this.priority = priority;
-        this.dbRange = dbRange;
+        this.dbTarget = dbTarget;
         this.message = message;
+    }
+
+    /**
+     * Constructor
+     * 
+     * @param priority
+     *            the priority; the higher the number, the higher the associated
+     *            priority will be.
+     * @param dbTarget
+     *            the target audio decibel. No portion of the audio should
+     *            exceed the target.
+     * @param message
+     *            identifying information
+     * @param listener
+     *            a class to notify when the audio retrieval has finished
+     *            (optional)
+     * @param taskId
+     *            identifier associated with a retrieval job for tracking
+     *            purposes (optional)
+     */
+    public RetrieveAudioJob(final int priority, final double dbTarget,
+            final DacPlaylistMessage message, final IAudioJobListener listener,
+            final String taskId) {
+        this(priority, dbTarget, message);
+        this.listener = listener;
+        this.taskId = taskId;
     }
 
     /*
@@ -86,6 +125,7 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
      */
     @Override
     public AudioFileBuffer call() throws Exception {
+        final long start = System.currentTimeMillis();
         Path filePath = Paths.get(this.message.getSoundFile());
 
         /*
@@ -101,13 +141,14 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
         try {
             rawData = Files.readAllBytes(filePath);
         } catch (IOException e) {
-            String msg = "Failed to buffer audio file for message: " + message
-                    + ", file: " + filePath;
+            String msg = "Failed to buffer audio file for message: "
+                    + message.getBroadcastId() + ", file: " + filePath;
+            this.notifyAttemptComplete();
             throw new AudioRetrievalException(msg, e);
         }
 
         /* Adjust the raw audio data as needed. */
-        byte[] regulatedRawData = rawData;// this.adjustAudio(rawData, message);
+        byte[] regulatedRawData = this.adjustAudio(rawData, message, "Body");
 
         ByteBuffer tones = null;
         ByteBuffer endOfMessage = null;
@@ -118,24 +159,32 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
                 tones = TonesGenerator.getSAMEAlertTones(message.getSAMEtone(),
                         message.isAlertTone());
             } catch (ToneGenerationException e) {
-                String msg = "Unable to generate tones for message: " + message;
+                String msg = "Unable to generate tones for message: "
+                        + message.getBroadcastId();
+                this.notifyAttemptComplete();
                 throw new AudioRetrievalException(msg, e);
             }
         }
 
         /* regulate tones (if they exist). */
         if (tones != null) {
-            // byte[] regulatedTones = adjustAudio(tones.array(), message);
-            // tones = ByteBuffer.wrap(regulatedTones);
+            byte[] regulatedTones = adjustAudio(tones.array(), message,
+                    "SAME/Alert Tones");
+            tones = ByteBuffer.wrap(regulatedTones);
         }
         if (endOfMessage != null) {
-            // byte[] regulatedEndOfMessage = adjustAudio(endOfMessage.array(),
-            // message);
-            // endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
+            byte[] regulatedEndOfMessage = adjustAudio(endOfMessage.array(),
+                    message, "End of Message");
+            endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
         }
 
         AudioFileBuffer buffer = new AudioFileBuffer(regulatedRawData, tones,
                 endOfMessage);
+        logger.info("Successfully retrieved audio for message: "
+                + message.getBroadcastId() + " in "
+                + TimeUtil.prettyDuration(System.currentTimeMillis() - start)
+                + ".");
+        this.notifyAttemptComplete();
 
         return buffer;
     }
@@ -151,6 +200,12 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
         return this.priority;
     }
 
+    private void notifyAttemptComplete() {
+        if (this.listener != null && this.taskId != null) {
+            this.listener.audioRetrievalFinished(this.taskId, this.message);
+        }
+    }
+
     /**
      * Adjusts the specified audio data so that it will be within the decibel
      * range of the transmitter.
@@ -158,21 +213,32 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
      * @param originalAudio
      *            the specified audio data
      * @param message
-     *            identifies the audio data; used for auditing purposes
+     *            identifies the audio data; used for logging purposes
+     * @param part
+     *            identifies the portion of audio that is being adjusted; used
+     *            for logging purposes
      * @return the adjusted audio data
      * @throws AudioRetrievalException
      */
     private byte[] adjustAudio(final byte[] originalAudio,
-            final DacPlaylistMessage message) throws AudioRetrievalException {
+            final DacPlaylistMessage message, final String part)
+            throws AudioRetrievalException {
         byte[] regulatedAudio = new byte[0];
         try {
-            AudioRegulator audioRegulator = new AudioRegulator(originalAudio);
-            regulatedAudio = audioRegulator.regulateAudioVolumeRange(
-                    dbRange.getMinimumDouble(), dbRange.getMaximumDouble());
+            AudioRegulator audioRegulator = new AudioRegulator();
+            regulatedAudio = audioRegulator.regulateAudioVolume(originalAudio,
+                    this.dbTarget, AUDIO_SAMPLE_SIZE);
+            logger.info("Successfully finished audio attenuation/amplification in "
+                    + audioRegulator.getDuration()
+                    + " ms for message: "
+                    + message.getBroadcastId() + " (" + part + ").");
         } catch (UnsupportedAudioFormatException | AudioConversionException
                 | AudioOverflowException e) {
-            final String msg = "Failed to adjust the audio signal to be within range "
-                    + dbRange.toString() + " for message: " + message;
+            final String msg = "Failed to adjust the audio signal to the target "
+                    + this.dbTarget
+                    + " dB for message: "
+                    + message.getBroadcastId();
+            this.notifyAttemptComplete();
             throw new AudioRetrievalException(msg, e);
         }
 

@@ -42,6 +42,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Aug 12, 2014  3486     bsteffen    Add getInputDirectory
  * Aug 18, 2014  3532     bkowal      Added transmitter decibel range
+ * Sep 5, 2014   3532     bkowal      Replaced decibel range with decibel target
  * 
  * </pre>
  * 
@@ -55,10 +56,7 @@ public class DacChannelConfig {
     private String transmitterGroup;
 
     @XmlAttribute
-    private double dbRangeMin;
-
-    @XmlAttribute
-    private double dbRangeMax;
+    private double dbTarget;
 
     @XmlAttribute
     private int[] radios;
@@ -83,33 +81,17 @@ public class DacChannelConfig {
     }
 
     /**
-     * @return the dbRangeMin
+     * @return the dbTarget
      */
-    public double getDbRangeMin() {
-        return dbRangeMin;
+    public double getDbTarget() {
+        return dbTarget;
     }
 
     /**
-     * @param dbRangeMin
-     *            the dbRangeMin to set
+     * @param dbTarget the dbTarget to set
      */
-    public void setDbRangeMin(double dbRangeMin) {
-        this.dbRangeMin = dbRangeMin;
-    }
-
-    /**
-     * @return the dbRangeMax
-     */
-    public double getDbRangeMax() {
-        return dbRangeMax;
-    }
-
-    /**
-     * @param dbRangeMax
-     *            the dbRangeMax to set
-     */
-    public void setDbRangeMax(double dbRangeMax) {
-        this.dbRangeMax = dbRangeMax;
+    public void setDbTarget(double dbTarget) {
+        this.dbTarget = dbTarget;
     }
 
     public int[] getRadios() {

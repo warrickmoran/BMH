@@ -74,6 +74,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  *                                    DacTransmit.
  * Aug 18, 2014  3532     bkowal      Pass the supported decibel range as an
  *                                    argument to the Dac Transmitter.
+ * Sep 4, 2014   3532     bkowal      Use a decibel target instead of a range.
  * 
  * </pre>
  * 
@@ -169,8 +170,7 @@ public class CommsManager {
                         if (Files.exists(modFile) && Files.exists(configPath)
                                 && Files.isSameFile(configPath, modFile)) {
                             CommsConfig config = JAXB.unmarshal(
-                                    configPath.toFile(),
-                                    CommsConfig.class);
+                                    configPath.toFile(), CommsConfig.class);
                             reconfigure(config);
                         }
                     } catch (Throwable t) {
@@ -299,9 +299,8 @@ public class CommsManager {
         args.add(channel.getInputDirectory().toString());
         args.add("-" + DacTransmitArgParser.COMMS_MANAGER_PORT_OPTION_KEY);
         args.add(Integer.toString(config.getDacTransmitPort()));
-        args.add("-" + DacTransmitArgParser.TRANSMISSION_DB_RANGE_KEY);
-        args.add(Double.toString(channel.getDbRangeMin()) + ":"
-                + channel.getDbRangeMax());
+        args.add("-" + DacTransmitArgParser.TRANSMISSION_DB_TARGET_KEY);
+        args.add(Double.toString(channel.getDbTarget()));
 
         ProcessBuilder startCommand = new ProcessBuilder(args);
         startCommand.environment().put("TRANSMITTER_GROUP", group);

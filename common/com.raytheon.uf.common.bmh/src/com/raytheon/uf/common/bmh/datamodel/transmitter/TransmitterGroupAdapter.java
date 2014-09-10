@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
  * ------------ ---------- ----------- --------------------------
  * Aug 6, 2014    3173     mpduff      Initial creation
  * Aug 24, 2014   3432     mpduff      Add min/max db values
+ * Sep 4, 2014    3532     bkowal      Replace min/max db with a target
  * 
  * </pre>
  * 
@@ -102,8 +103,7 @@ public class TransmitterGroupAdapter implements
         serializer.writeObject(group.getSilenceAlarm());
         serializer.writeObject(group.getTimeZone());
         serializer.writeObject(group.getTone());
-        serializer.writeDouble(group.getAdjustAudioMaxDB());
-        serializer.writeDouble(group.getAdjustAudioMinDB());
+        serializer.writeDouble(group.getAudioDBTarget());
     }
 
     /**
@@ -125,8 +125,7 @@ public class TransmitterGroupAdapter implements
         tg.setSilenceAlarm((Boolean) deserializer.readObject());
         tg.setTimeZone((String) deserializer.readObject());
         tg.setTone((Tone) deserializer.readObject());
-        tg.setAdjustAudioMaxDB(deserializer.readDouble());
-        tg.setAdjustAudioMinDB(deserializer.readDouble());
+        tg.setAudioDBTarget(deserializer.readDouble());
 
         return tg;
     }

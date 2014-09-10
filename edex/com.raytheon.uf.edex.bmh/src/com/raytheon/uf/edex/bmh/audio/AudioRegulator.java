@@ -19,6 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.audio;
 
+import java.nio.ByteBuffer;
+
+import org.apache.commons.lang.math.DoubleRange;
+import org.apache.commons.lang.math.Range;
+
 import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
@@ -38,6 +43,9 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  *                                     samples are not adjusted twice { attenuated the
  *                                     first time and amplified the second or vice
  *                                     verse }.
+ * Sep 3, 2014  3532       bkowal      Updated the algorithm to use a target instead of
+ *                                     a range.
+ * 
  * 
  * </pre>
  * 
@@ -46,7 +54,6 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  */
 
 public class AudioRegulator {
-
     /*
      * The maximum amplitude that can be associated with the PCM audio samples
      * recognized and supported by the BMH components.
@@ -62,77 +69,7 @@ public class AudioRegulator {
 
     private static final double DB_ALTERATION_CONSTANT = 10.0;
 
-    /*
-     * The managed audio data.
-     */
-    private byte[] originalPCMData;
-
-    private byte[] originalUlawData;
-
-    /*
-     * The average (in decibels) associated with the altered audio.
-     */
-    private double alteredAverageDB;
-
-    private double[] alteredSampledAudioDB;
-
-    /*
-     * The standard deviation associated with the altered audio.
-     */
-
-    /*
-     * The decibel value associated with the loudest audio sample in the managed
-     * audio data (in decibels).
-     */
-    private double signalMaxDB;
-
-    /*
-     * The decibel value associated with the quietest audio sample in the
-     * managed audio data (in decibels).
-     */
-    private double signalMinDB;
-
-    /**
-     * Constructor
-     * 
-     * @param ulawData
-     *            the audio data that will be regulated - in ulaw format
-     * @throws UnsupportedAudioFormatException
-     *             if ulaw to pcm conversion fails
-     * @throws AudioConversionException
-     *             if ulaw to pcm conversion fails
-     */
-    public AudioRegulator(final byte[] ulawData)
-            throws UnsupportedAudioFormatException, AudioConversionException {
-        this.originalUlawData = ulawData;
-        this.originalPCMData = AudioConvererterManager
-                .getInstance()
-                .convertAudio(ulawData, BMHAudioFormat.ULAW, BMHAudioFormat.PCM);
-        this.alteredSampledAudioDB = new double[this.originalPCMData.length / 2];
-        this.calculateBoundarySignals();
-    }
-
-    /**
-     * Adjusts the regulated audio data according to the specified volume
-     * adjustment amount
-     * 
-     * @param volumeAdjustment
-     *            the specified volume adjustment amount ( < 1.0 will decrease
-     *            the audio level; > 1.0 will increase the audio level).
-     * @return the adjusted audio data in ulaw format
-     * @throws AudioConversionException
-     *             when the final adjusted pcm to ulaw conversion fails
-     * @throws UnsupportedAudioFormatException
-     *             when the final adjusted pcm to ulaw conversion fails
-     * @throws AudioOverflowException
-     *             if the requested volume adjustment would generate invalid
-     *             audio samples
-     */
-    public byte[] regulateAudioVolume(double volumeAdjustment)
-            throws UnsupportedAudioFormatException, AudioConversionException,
-            AudioOverflowException {
-        return this.regulateAudioVolume(volumeAdjustment, true);
-    }
+    private long duration;
 
     /**
      * Adjusts the regulated audio data according to the specified volume
@@ -152,199 +89,97 @@ public class AudioRegulator {
      *             if the requested volume adjustment would generate invalid
      *             audio samples
      */
-    public byte[] regulateAudioVolume(double volumeAdjustment,
-            boolean convertUlaw) throws UnsupportedAudioFormatException,
-            AudioConversionException, AudioOverflowException {
-        double sampleSize = this.originalPCMData.length / 2;
-        double alteredDecibelSum = 0.;
-        byte[] adjustedPCMData = new byte[this.originalPCMData.length];
+    private byte[] regulateAudioVolume(final byte[] sample,
+            final double volumeAdjustment)
+            throws UnsupportedAudioFormatException, AudioConversionException,
+            AudioOverflowException {
+        byte[] adjustedPCMData = new byte[sample.length];
 
         for (int i = 0; i < adjustedPCMData.length; i += 2) {
-            short audioSample = (short) (((this.originalPCMData[i + 1] & 0xff) << 8) | (this.originalPCMData[i] & 0xff));
-
+            short audioSample = (short) (((sample[i + 1] & 0xff) << 8) | (sample[i] & 0xff));
             audioSample = (short) (audioSample * volumeAdjustment);
             if (Math.abs(audioSample) > MAX_AMPLITUDE) {
                 throw new AudioOverflowException(volumeAdjustment,
                         Math.abs(audioSample));
             }
 
-            double audioDecibels = this
-                    .calculateDecibels(Math.abs(audioSample));
-            this.alteredSampledAudioDB[i / 2] = audioDecibels;
-            if (audioSample != 0) {
-                alteredDecibelSum += audioDecibels;
-            } else {
-                /*
-                 * Exclude amplitudes of 0 due to the -INFINITY decibel value
-                 * associated with them.
-                 */
-                --sampleSize;
-            }
-
             adjustedPCMData[i] = (byte) audioSample;
             adjustedPCMData[i + 1] = (byte) (audioSample >> 8);
         }
 
-        /*
-         * Calculate the mean (in decibels) of the adjusted audio.
-         */
-        this.alteredAverageDB = alteredDecibelSum / sampleSize;
-
-        if (convertUlaw) {
-            return AudioConvererterManager.getInstance().convertAudio(
-                    adjustedPCMData, BMHAudioFormat.PCM, BMHAudioFormat.ULAW);
-        } else {
-            return adjustedPCMData;
-        }
+        return adjustedPCMData;
     }
 
-    /**
-     * Adjusts the regulated audio data such that the minimum signal (in dB)
-     * will be greater than or equal to the specified minimum signal strength
-     * (in dB) or the maximum signal (in dB) will be less than or equal to the
-     * specified maximum signal strength (in dB).
-     * 
-     * There is a version of this algorithm that will put the entire audio
-     * sequence within the specified range: between the minimum signal AND the
-     * maximum signal by splitting the audio up. However, the quality of the
-     * audio that is produced will be dependent on the difference between the
-     * minimum and maximum. The greater the difference, the better the quality
-     * will be because the audio wave would not have to be compressed as much.
-     * 
-     * @param dbMin
-     *            the specified minimum signal strength (in dB)
-     * @param dbMax
-     *            the specified maximum signal strength (in dB)
-     * @return the adjusted audio data in ulaw format
-     * @throws AudioOverflowException
-     *             if the requested volume adjustment would generate invalid
-     *             audio samples
-     * @throws UnsupportedAudioFormatException
-     *             when the final adjusted pcm to ulaw conversion fails
-     * @throws AudioConversionException
-     *             when the final adjusted pcm to ulaw conversion fails
-     */
-    public byte[] regulateAudioVolumeRange(double dbMin, double dbMax)
+    public byte[] regulateAudioVolume(final byte[] ulawData,
+            final double dbTarget, final int sampleSize)
             throws AudioOverflowException, UnsupportedAudioFormatException,
             AudioConversionException {
-        if (dbMin > dbMax) {
-            throw new IllegalArgumentException(
-                    "Error: dbMin must be less than dbMax!");
+        long start = System.currentTimeMillis();
+        final byte[] pcmData = AudioConvererterManager
+                .getInstance()
+                .convertAudio(ulawData, BMHAudioFormat.ULAW, BMHAudioFormat.PCM);
+        final int scaledSampleSize = sampleSize * 2;
+        ByteBuffer buffer = ByteBuffer.allocate(pcmData.length);
+
+        final int overflowCount = pcmData.length % scaledSampleSize;
+        final int numberSamples = (pcmData.length - overflowCount)
+                / scaledSampleSize;
+        byte[] sample = new byte[scaledSampleSize];
+        for (int i = 0; i < numberSamples; i++) {
+            System.arraycopy(pcmData, i * scaledSampleSize, sample, 0,
+                    scaledSampleSize);
+            byte[] adjustedSample = this.regulateAudioSamplePCM(sample,
+                    dbTarget);
+            buffer.put(adjustedSample);
+        }
+        if (overflowCount > 0) {
+            sample = new byte[overflowCount];
+            System.arraycopy(pcmData, numberSamples * scaledSampleSize, sample,
+                    0, overflowCount);
+            byte[] adjustedSample = this.regulateAudioSamplePCM(sample,
+                    dbTarget);
+            buffer.put(adjustedSample);
         }
 
-        /*
-         * Determine if the audio is already within range.
-         */
-        if (this.signalMinDB >= dbMin && this.signalMaxDB <= dbMax) {
-            return this.originalUlawData;
+        byte[] convertedAudio = AudioConvererterManager.getInstance()
+                .convertAudio(buffer.array(), BMHAudioFormat.PCM,
+                        BMHAudioFormat.ULAW);
+        this.duration = System.currentTimeMillis() - start;
+        return convertedAudio;
+    }
+
+    private byte[] regulateAudioSamplePCM(final byte[] sample,
+            final double dbTarget) throws UnsupportedAudioFormatException,
+            AudioConversionException, AudioOverflowException {
+        Range decibelRange = this.calculateBoundarySignals(sample);
+
+        if ((decibelRange.getMinimumDouble() == Double.NEGATIVE_INFINITY && decibelRange
+                .getMaximumDouble() == Double.NEGATIVE_INFINITY)
+                || decibelRange.getMaximumDouble() <= dbTarget) {
+            return sample;
         }
 
-        /*
-         * Determine if we are attenuating the audio or amplifying the audio.
-         */
-        double difference = 0.;
-        if (this.signalMaxDB > dbMax) {
-            // attenuate - audio is too loud
-            difference = dbMax - this.signalMaxDB;
-        } else if (this.signalMinDB < dbMin) {
-            // amplify - audio is not loud enough
-            difference = dbMin - this.signalMinDB;
-        }
-
+        double difference = dbTarget - decibelRange.getMaximumDouble();
         double adjustmentRate = Math.pow(DB_ALTERATION_CONSTANT,
                 (difference / AMPLITUDE_TO_DB_CONSTANT));
-        byte[] alteredAudio = this.regulateAudioVolume(adjustmentRate, false);
 
-        /* is the average still within range. */
-        if (this.alteredAverageDB >= dbMin && this.alteredAverageDB <= dbMax) {
-            return AudioConvererterManager.getInstance().convertAudio(
-                    alteredAudio, BMHAudioFormat.PCM, BMHAudioFormat.ULAW);
-        }
-
-        /* if not, calculate the standard deviation. */
-        double alteredAudioStdDev = this
-                .calculateStandardDeviationAdjustedAudio();
-        double adjustedDBMin = this.alteredAverageDB - alteredAudioStdDev;
-        double adjustedDBMax = this.alteredAverageDB + alteredAudioStdDev;
-        /* search for outliers */
-        for (int i = 0; i < this.alteredSampledAudioDB.length; i++) {
-            double audioDecibels = this.alteredSampledAudioDB[i];
-            if (audioDecibels == Double.NEGATIVE_INFINITY) {
-                /*
-                 * skip the obvious outliers that do not make any contribution
-                 * to the audio wave.
-                 */
-                continue;
-            }
-
-            if ((audioDecibels >= adjustedDBMin && audioDecibels <= adjustedDBMax)
-                    || (audioDecibels >= dbMin && audioDecibels <= dbMax)) {
-                /*
-                 * audio falls within the allowed range - either the original
-                 * range or the adjusted range
-                 */
-                continue;
-            }
-
-            /* adjust the outlier individually based on the original data. */
-
-            // Determine the index associated with the outlier
-            int index = i * 2;
-            /*
-             * TODO: do we just change the individual outlier or do we check for
-             * other outliers in immediate proximity to the original and then
-             * adjust all of them together?
-             */
-            short audioSample = (short) (((alteredAudio[index + 1] & 0xff) << 8) | (alteredAudio[index] & 0xff));
-            double sampleDB = this.calculateDecibels(Math.abs(audioSample));
-            /*
-             * update audio to fall within the adjusted range.
-             */
-            adjustmentRate = this.calculateAudioAdjustmentRate(sampleDB,
-                    adjustedDBMin, adjustedDBMax);
-            audioSample = (short) (audioSample * adjustmentRate);
-            if (Math.abs(audioSample) > MAX_AMPLITUDE) {
-                throw new AudioOverflowException(adjustmentRate,
-                        Math.abs(audioSample));
-            }
-
-            /* update the originally adjusted audio sample. */
-            alteredAudio[index] = (byte) audioSample;
-            alteredAudio[index + 1] = (byte) (audioSample >> 8);
-        }
-
-        return AudioConvererterManager.getInstance().convertAudio(alteredAudio,
-                BMHAudioFormat.PCM, BMHAudioFormat.ULAW);
-    }
-
-    /**
-     * Returns the maximum amplitude associated with the audio in decibels (dB)
-     * 
-     * @return the maximum amplitude associated with the audio in decibels (dB)
-     */
-    public double getSignalMaxDB() {
-        return this.signalMaxDB;
-    }
-
-    /**
-     * Returns the minimum amplitude associated with the audio in decibels (dB)
-     * 
-     * @return the minimum amplitude associated with the audio in decibels (dB)
-     */
-    public double getSignalMinDB() {
-        return this.signalMinDB;
+        return this.regulateAudioVolume(sample, adjustmentRate);
     }
 
     /**
      * Determines the minimum and maximum amplitudes to calculate the min and
      * max decibels respectively associated with the managed audio data.
+     * 
+     * @param audio
+     *            the managed audio data
+     * @return the calculated decibel range
      */
-    private void calculateBoundarySignals() {
+    private Range calculateBoundarySignals(final byte[] audio) {
         double runningMinAmplitude = 0.0;
         double runningMaxAmplitude = 0.0;
 
-        for (int i = 0; i < this.originalPCMData.length; i += 2) {
-            short amplitude = (short) (((this.originalPCMData[i + 1] & 0xff) << 8) | (this.originalPCMData[i] & 0xff));
+        for (int i = 0; i < audio.length; i += 2) {
+            short amplitude = (short) (((audio[i + 1] & 0xff) << 8) | (audio[i] & 0xff));
             amplitude = (short) Math.abs(amplitude);
 
             if (i == 0) {
@@ -367,9 +202,8 @@ public class AudioRegulator {
             }
         }
 
-        /* determine the maximum and minimum amplitude in dB */
-        this.signalMaxDB = this.calculateDecibels(runningMaxAmplitude);
-        this.signalMinDB = this.calculateDecibels(runningMinAmplitude);
+        return new DoubleRange(this.calculateDecibels(runningMinAmplitude),
+                this.calculateDecibels(runningMaxAmplitude));
     }
 
     /**
@@ -380,57 +214,15 @@ public class AudioRegulator {
      * @return the amplitude converted to decibels
      */
     private double calculateDecibels(double amplitude) {
+        amplitude = Math.abs(amplitude);
         double amplitudeRatio = amplitude / MAX_AMPLITUDE;
         return AMPLITUDE_TO_DB_CONSTANT * Math.log10(amplitudeRatio);
     }
 
     /**
-     * Calculates the standard deviation based on the decibel values associated
-     * with the altered audio.
-     * 
-     * @return the calculated standard deviation
+     * @return the duration
      */
-    private double calculateStandardDeviationAdjustedAudio() {
-        double differenceSquaredSum = 0.;
-        double sampleCount = this.alteredSampledAudioDB.length;
-
-        for (double audioDecibels : this.alteredSampledAudioDB) {
-            if (audioDecibels == Double.NEGATIVE_INFINITY) {
-                --sampleCount;
-                continue;
-            }
-            differenceSquaredSum += Math.pow(
-                    (audioDecibels - this.alteredAverageDB), 2);
-        }
-
-        return Math.sqrt(differenceSquaredSum / sampleCount);
-    }
-
-    /**
-     * Compares the specified current decibel range to the specified minimum and
-     * maximum and determines how the current range must be adjusted to fall
-     * between the specified minimum and maximum.
-     * 
-     * @param currentDB
-     *            the specified current decibel range
-     * @param minDB
-     *            the specified minimum
-     * @param maxDB
-     *            the specified maximum
-     * @return the value that the audio should be adjusted by
-     */
-    private double calculateAudioAdjustmentRate(double currentDB, double minDB,
-            double maxDB) {
-        double difference = 0.;
-        if (currentDB > maxDB) {
-            // attenuate - audio is too loud
-            difference = maxDB - currentDB;
-        } else if (currentDB < minDB) {
-            // amplify - audio is not loud enough
-            difference = minDB - currentDB;
-        }
-
-        return Math.pow(DB_ALTERATION_CONSTANT,
-                (difference / AMPLITUDE_TO_DB_CONSTANT));
+    public long getDuration() {
+        return duration;
     }
 }

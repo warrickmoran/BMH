@@ -51,6 +51,7 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 31, 2014 3424       bkowal      Initial creation
+ * Sep 4, 2014  3532       bkowal      Use a decibel target instead of a range. Re-enable attenuation.
  * 
  * </pre>
  * 
@@ -65,11 +66,7 @@ public class AudioRegulationBuffer {
      */
     private final int totalSampleSize;
 
-    /*
-     * A list of audio regulation rules. Allows a single instantiation of this
-     * class to be used for multiple transmitters.
-     */
-    private final List<AudioRegulatoryParameters> audioAdjustments;
+    private final double dbTarget;
 
     /*
      * The number of bytes that are currently buffered.
@@ -96,10 +93,9 @@ public class AudioRegulationBuffer {
      * @param audioAdjustments
      *            a list of audio regulation rules
      */
-    public AudioRegulationBuffer(final int totalSampleSize,
-            List<AudioRegulatoryParameters> audioAdjustments) {
+    public AudioRegulationBuffer(final int totalSampleSize, double dbTarget) {
         this.totalSampleSize = totalSampleSize;
-        this.audioAdjustments = audioAdjustments;
+        this.dbTarget = dbTarget;
         this.sampleBuffer = ByteBuffer.allocate(totalSampleSize);
         this.listeners = new ArrayList<>();
     }
@@ -176,13 +172,11 @@ public class AudioRegulationBuffer {
             sourceData = new byte[this.currentBufferSize];
             this.sampleBuffer.get(sourceData);
         }
-        AudioRegulator audioRegulator = new AudioRegulator(sourceData);
-        for (AudioRegulatoryParameters parameter : this.audioAdjustments) {
-            byte[] adjustedAudio = audioRegulator.regulateAudioVolumeRange(
-                    parameter.getDbMin(), parameter.getDbMax());
-            for (IAudioRegulatoryListener listener : this.listeners) {
-                listener.notifyAudioAdjusted(parameter.getId(), adjustedAudio);
-            }
+        AudioRegulator audioRegulator = new AudioRegulator();
+        byte[] adjustedAudio = audioRegulator.regulateAudioVolume(
+                sourceData, this.dbTarget, this.totalSampleSize);
+        for (IAudioRegulatoryListener listener : this.listeners) {
+            listener.notifyAudioAdjusted(adjustedAudio);
         }
         this.sampleBuffer.clear();
         this.currentBufferSize = 0;
