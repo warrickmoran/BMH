@@ -20,15 +20,15 @@
 package com.raytheon.uf.edex.bmh.tts;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.Set;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
@@ -63,6 +63,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 28, 2014 3568       bkowal      Initial creation
+ * Sep 09, 2014 2585       bsteffen    Implement MAT
  * 
  * </pre>
  * 
@@ -74,8 +75,6 @@ public class StaticMessageGenerator {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(StaticMessageGenerator.class);
-
-    private static final long NO_REPLACE = -1;
 
     /*
      * Maximum allowed value for PostgreSQL year as documented at:
@@ -408,8 +407,7 @@ public class StaticMessageGenerator {
              * The message text has been altered. New audio will need to be
              * generated.
              */
-            return this.create(language, messageType, text, groupSet,
-                    existingMsg.getId());
+            return this.create(language, messageType, text, groupSet);
         }
 
         /*
@@ -431,12 +429,6 @@ public class StaticMessageGenerator {
     private ValidatedMessage create(TransmitterLanguage language,
             MessageType messageType, final String text,
             final Set<TransmitterGroup> groupSet) {
-        return this.create(language, messageType, text, groupSet, NO_REPLACE);
-    }
-
-    private ValidatedMessage create(TransmitterLanguage language,
-            MessageType messageType, final String text,
-            final Set<TransmitterGroup> groupSet, long replaceId) {
         Calendar now = TimeUtil.newCalendar();
 
         /* create an InputMessage */
@@ -452,8 +444,6 @@ public class StaticMessageGenerator {
         inputMsg.setExpirationTime(this.expire);
         inputMsg.setContent(text);
         inputMsg.setValidHeader(true);
-        inputMsg.setStaticMsg(true);
-        inputMsg.setReplaceId(replaceId);
 
         /*
          * Also create the validated message to ensure that the TransmitterGroup

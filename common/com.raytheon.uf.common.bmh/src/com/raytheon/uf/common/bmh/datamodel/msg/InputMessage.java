@@ -54,6 +54,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 14, 2014  3432     mpduff      Added isPeriodic method
  * Sep 4, 2014   3568     bkowal      Added fields to differentiate between
  *                                    generated static messages and ingested messages.
+ * Sep 09, 2014  2585     bsteffen    Implement MAT
+ * 
  * 
  * </pre>
  * 
@@ -192,19 +194,6 @@ public class InputMessage {
     @Column
     @DynamicSerializeElement
     private boolean validHeader;
-
-    /*
-     * Special Case: for static messages generated directly within BMH. Allows
-     * for the replacement of playlist messages by broadcast message id.
-     * Currently, there is no need to make these fields serializable.
-     * 
-     * TODO: eliminate during the implementation of #3585
-     */
-    @Column(nullable = false)
-    private boolean staticMsg;
-
-    @Column(nullable = false)
-    private long replaceId;
 
     public InputMessage() {
         super();
@@ -444,36 +433,6 @@ public class InputMessage {
             return false;
         }
         return false;
-    }
-
-    /**
-     * @return the staticMsg
-     */
-    public boolean isStaticMsg() {
-        return staticMsg;
-    }
-
-    /**
-     * @param staticMsg
-     *            the staticMsg to set
-     */
-    public void setStaticMsg(boolean staticMsg) {
-        this.staticMsg = staticMsg;
-    }
-
-    /**
-     * @return the replaceId
-     */
-    public long getReplaceId() {
-        return replaceId;
-    }
-
-    /**
-     * @param replaceId
-     *            the replaceId to set
-     */
-    public void setReplaceId(long replaceID) {
-        this.replaceId = replaceID;
     }
 
     @Override

@@ -28,6 +28,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -36,10 +37,12 @@ import java.util.Set;
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
 
+import com.google.common.primitives.Ints;
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
@@ -94,6 +97,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    case when no ugc codes are specified.
  * Sep 10, 2014  3391     bsteffen    Generate SAME tones only for applicable
  *                                    transmitter areas.
+ * Sep 09, 2014  2585     bsteffen    Implement MAT
  * 
  * </pre>
  * 
@@ -289,7 +293,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setTransmitterGroup(group);
             }
             playlist.setModTime(currentTime);
-            List<BroadcastMsg> messages = mergeMessage(msg,
+            List<BroadcastMsg> messages = mergeMessage(suite, msg,
                     playlist.getMessages());
             sortAndPersistPlaylist(playlist, messages);
         } finally {
@@ -449,7 +453,7 @@ public class PlaylistManager implements IContextStateProcessor {
         });
         List<BroadcastMsg> result = Collections.emptyList();
         for (BroadcastMsg message : messages) {
-            result = mergeMessage(message, result);
+            result = mergeMessage(suite, message, result);
         }
         return result;
     }
@@ -463,39 +467,40 @@ public class PlaylistManager implements IContextStateProcessor {
      * @param list
      * @return
      */
-    private List<BroadcastMsg> mergeMessage(BroadcastMsg msg,
+    private List<BroadcastMsg> mergeMessage(Suite suite, BroadcastMsg msg,
             List<BroadcastMsg> list) {
         list = new ArrayList<>(list);
         boolean added = false;
-        int[] replacements = msg.getInputMessage().getMrdReplacements();
-        for (int replacement : replacements) {
-            ListIterator<BroadcastMsg> messageIterator = list.listIterator();
-            while (messageIterator.hasNext()) {
-                if (messageIterator.next().getInputMessage().getMrdId() == replacement) {
-                    if (added) {
-                        messageIterator.remove();
-                    } else {
-                        messageIterator.set(msg);
-                        added = true;
-                    }
-                }
+        
+        List<Integer> mrdReplacements = Ints.asList(msg.getInputMessage().getMrdReplacements());
+        Set<String> matReplacements = new HashSet<>();
+        matReplacements.add(msg.getAfosid());
+        for(SuiteMessage smsg : suite.getSuiteMessages()){
+            if (smsg.getAfosid().equals(msg.getAfosid())){
+               for(MessageTypeReplacement rep : smsg.getMsgType().getReplacementMsgs()){
+                   matReplacements.add(rep.getReplaceMsgType().getAfosid());
+               }
+                break;
             }
         }
 
-        /*
-         * handle static message replacement.
-         * 
-         * TODO: temporary until #3585
-         */
         ListIterator<BroadcastMsg> messageIterator = list.listIterator();
         while (messageIterator.hasNext()) {
-            BroadcastMsg nextBroadcastMsg = messageIterator.next();
-            if (msg.getInputMessage().isStaticMsg()
-                    && msg.getInputMessage().getReplaceId() == nextBroadcastMsg
-                            .getId()) {
-                messageIterator.set(msg);
-                added = true;
-                break;
+            BroadcastMsg potentialReplacee = messageIterator.next();
+            int mrd = potentialReplacee.getInputMessage().getMrdId();
+            boolean mrdReplacement = mrdReplacements.contains(mrd);
+            boolean matReplacement = mrd == -1 && matReplacements.contains(potentialReplacee
+                    .getAfosid());
+            matReplacement = matReplacement
+                    && potentialReplacee.getInputMessage().getAreaCodes()
+                            .equals(msg.getInputMessage().getAreaCodes());
+            if (mrdReplacement || matReplacement) {
+                if (added) {
+                    messageIterator.remove();
+                } else {
+                    messageIterator.set(msg);
+                    added = true;
+                }
             }
         }
 

@@ -52,6 +52,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 29, 2014  3568     bkowal      Added query to retrieve broadcast msg by transmitter
  *                                    group, language and afos id.
  * Sep 03, 2014  3554     bsteffen    Add getUnexpiredBroadcastMsgsByAfosIDAndGroup
+ * Sep 10, 2014  2585     bsteffen    Implement MAT
  * 
  * 
  * </pre>
@@ -79,7 +80,7 @@ public class BroadcastMsg {
 
     public static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE = "getBroadcastMsgsByAfosIdGroupAndLanguage";
 
-    protected static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosId AND m.transmitterGroup = :group AND m.inputMessage.language = :language ORDER BY m.inputMessage.replaceId DESC";
+    protected static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosId AND m.transmitterGroup = :group AND m.inputMessage.language = :language ORDER BY m.inputMessage.creationTime DESC";
 
     /* A unique auto-generated numerical id. Long = SQL BIGINT */
     @Id
