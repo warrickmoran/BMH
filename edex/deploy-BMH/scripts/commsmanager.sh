@@ -30,7 +30,10 @@
 #    07/28/14        3399          bsteffen       Initial Creation.
 #    08/25/14        3558          rjpeter        Added qpid flag so queues auto created,
 #                                                 redirect to log file, and background script.
+#    09/09/14        3456          bkowal         Use yajsw to start.
 ##############################################################################
+
+CONF_FILE="wrapper.conf"
 
 export BMH_DATA=/awips2/bmh/data
 
@@ -42,22 +45,14 @@ awips_home=$(dirname $BMH_HOME)
 export EDEX_HOME="${awips_home}/edex"
 
 export JAVA_HOME="${awips_home}/java"
+export JAVA=${JAVA_HOME}/bin/java
+export CONSOLE_LOGLEVEL=DEBUG
 
 # set Java into the path
 export PATH=${awips_home}/bin:${JAVA_HOME}/bin:${PATH}
 
-DEPENDENCIES="ch.qos.logback org.slf4j org.apache.thrift net.sf.cglib org.apache.qpid javax.jms"
-
-ENTRY_POINT="com.raytheon.bmh.comms.CommsManager"
-CLASSPATH="${EDEX_HOME}/lib/plugins/*"
-for dependency in $DEPENDENCIES; do
-  CLASSPATH="${CLASSPATH}:/awips2/edex/lib/dependencies/${dependency}/*"
-done;
-
-JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
-JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dqpid.dest_syntax=BURL"
-
 t=`date "+%Y%m%d"`
-logfile=/awips2/bmh/logs/commsmanager_$t.log
-nohup java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "$@" >> $logfile 2>&1 &
+export logfile=/awips2/bmh/logs/commsmanager-$t.log
 
+$JAVA -Xmx32m -XX:MaxPermSize=12m -XX:ReservedCodeCacheSize=4m -jar \
+	${BMH_HOME}/bin/yajsw/wrapper.jar -c ${BMH_HOME}/conf/${CONF_FILE}

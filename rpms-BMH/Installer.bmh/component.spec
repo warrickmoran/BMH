@@ -41,6 +41,10 @@ mkdir -p %{_build_root}/awips2/bmh
 if [ $? -ne 0 ]; then
    exit 1
 fi
+mkdir -p %{_build_root}/etc/init.d
+if [ $? -ne 0 ]; then
+   exit 1
+fi
 
 # deploy the BMH scripts and configuration
 deploy_xml=%{_baseline_workspace}/deploy-BMH/wa-deploy.xml
@@ -48,6 +52,13 @@ deploy_xml=%{_baseline_workspace}/deploy-BMH/wa-deploy.xml
 /awips2/ant/bin/ant -f ${deploy_xml} -Dbmh.root.directory=%{_build_root}/awips2/bmh
 if [ $? -ne 0 ]; then
    echo "FAILED TO DEPLOY THE BMH SCRIPTS!"
+   exit 1
+fi
+
+# deploy the BMH service scripts
+cp -v %{_baseline_workspace}/deploy-BMH/service/comms_manager %{_build_root}/etc/init.d
+if [ $? -ne 0 ]; then
+   echo "FAILED TO DEPLOY THE BMH SERVICE SCRIPTS!"
    exit 1
 fi
 
@@ -70,4 +81,6 @@ rm -rf ${RPM_BUILD_ROOT}
 
 %defattr(755,awips,fxalpha,755)
 %dir /awips2/bmh/bin
-/awips2/bmh/bin/* 
+/awips2/bmh/bin/*
+
+%attr(744,root,root) /etc/init.d/* 

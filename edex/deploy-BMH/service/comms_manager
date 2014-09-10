@@ -1,0 +1,239 @@
+#!/bin/bash
+#
+# comms_manager  This shell script takes care of starting and stopping
+#                the BMH Comms Manager instance.
+#
+# chkconfig: - 99 10
+# description: BMH Comms Manager 
+# processname: commsmanager.sh
+# config: /awips2/bmh/conf/comms.xml
+##############################################################################
+# BMH Comms Manager Service Script.
+#
+#     SOFTWARE HISTORY
+#    
+#    Date            Ticket#       Engineer       Description
+#    ------------    ----------    -----------    --------------------------
+#    09/09/14        3456          bkowal         Initial Creation.
+##############################################################################
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ ${NETWORKING} = "no" ] && exit 0
+
+RETVAL=0
+SCRIPT="commsmanager.sh"
+PROG="CommsManager"
+PROG_WRAPPER="${PROG} YAJSW Wrapper"
+BMH_HOME=/awips2/bmh
+BMH_BIN=${BMH_HOME}/bin
+BMH_LOGS=${BMH_HOME}/logs
+CONF_FILE=${BMH_HOME}/conf/wrapper.conf
+
+TODAY=`/bin/date +%Y%m%d`
+COMMS_LOG=${BMH_LOGS}/commsmanager-start-${TODAY}.log
+
+export BMHUSER=awips
+
+getPids() {
+	getWrapperPid
+	getCommsMgrPid
+}
+
+getWrapperPid() {
+	wrapper_pid=`pgrep -f "java.*-c ${CONF_FILE}"`
+	wrapper_pid_found=$?
+}
+
+getCommsMgrPid() {
+	comms_pid=`pgrep -f "java.*-Dbmh.component=CommsManager"`
+	comms_pid_found=$?
+}
+
+handleStatus() {
+	local status_target=$1
+	local status_code=$2
+	local status_pid=$3
+
+	case ${status_code} in
+		0)
+			echo "${status_target} (pid ${status_pid}) is running ..."
+			;;
+		1)
+			echo "${status_target} is not running."
+			;;
+		4)
+			echo "${status_target} status uknown due to insufficient privileges."
+			;;
+		*)
+			echo "${status_target} unknown!"
+			;;
+	esac
+}
+
+start() {
+	getCommsMgrPid
+	if [ ${comms_pid_found} -eq 0 ]; then
+		echo -ne "${PROG} (pid ${comms_pid}) is already running."
+		failure
+		echo
+		return
+	fi
+	
+	# Start Comms Manager
+	local now=`date`
+	echo "Starting ${PROG} @ ${now} ..." >> ${COMMS_LOG}
+	echo -ne "Starting ${PROG} ..."
+	su ${BMHUSER} -c "/bin/bash ${BMH_BIN}/${SCRIPT} &" >> ${COMMS_LOG} 2>&1 &
+	if [ $? -ne 0 ]; then
+		failure
+		echo
+		echo "Failed to start ${PROG}!" >> ${COMMS_LOG}
+		return
+	fi
+	
+	local attempt_max=10
+	local attempt_count=0
+	# Verify that Comms Manager has started
+	while [ ${comms_pid_found} -ne 0 ]; do
+		let attempt_count+=1
+		if [ ${attempt_count} -eq ${attempt_max} ]; then
+			failure
+			echo
+			# the assumption is that there will be stacktraces in the log
+			# at this point to differentiate between this failure and
+			# the previous potential failure.
+			echo "Failed to start ${PROG}!" >> ${COMMS_LOG}
+			return
+		fi
+		sleep 2
+		getCommsMgrPid
+	done
+	
+	success
+	echo
+}
+
+stop() {
+	# get the pids
+	getPids
+	if [ ${comms_pid_found} -ne 0 ]; then
+		echo -ne "${PROG} is not running."
+		failure
+		echo
+		return
+	fi
+	
+	local attempt_max=10
+	local force_kill_wrapper=0
+	local force_kill_comms=0
+	
+	local now=`date`
+	echo "Stopping ${PROG} @ ${now} ..." >> ${COMMS_LOG}
+	echo -ne "Stopping ${PROG} ..."
+	# first stop the wrapper process if it exists
+	local save_wrapper_pid=${wrapper_pid}
+	if [ ${wrapper_pid_found} -eq 0 ]; then
+		kill ${wrapper_pid} > /dev/null 2>&1
+	fi
+	# wait for the wrapper to stop
+	local attempt_count=0
+	while [ ${wrapper_pid_found} -eq 0 ]; do
+		let attempt_count+=1
+		if [ ${attempt_count} -eq ${attempt_max} -a ${force_kill_wrapper} -eq 0 ]; then
+			force_kill_wrapper=1
+			attempt_count=0
+			kill -9 ${wrapper_pid} > /dev/null 2>&1
+		elif [ ${attempt_count} -eq ${attempt_max} -a ${force_kill_wrapper} -eq 1 ]; then
+			failure
+			echo
+			echo "Failed to stop ${PROG_WRAPPER} (pid ${wrapper_pid})!"
+			echo "Failed to stop ${PROG_WRAPPER} (pid ${wrapper_pid})!" >> ${COMMS_LOG}
+			return
+		fi
+		sleep 2
+		getWrapperPid
+	done
+	
+	getCommsMgrPid
+	# did stopping the wrapper also stop the comms manager?
+	if [ ${comms_pid_found} -ne 0 ]; then
+		success
+		echo
+		if [ ${force_kill_wrapper} -eq 1 ]; then
+			echo "Force killed ${PROG_WRAPPER} (pid ${save_wrapper_pid})."
+			echo "Force killed ${PROG_WRAPPER} (pid ${save_wrapper_pid})." >> ${COMMS_LOG}
+		fi
+		return
+	fi
+	# now stop the comms manager
+	local save_comms_pid=${comms_pid}
+	kill ${comms_pid} > /dev/null 2>&1
+	# wait for the comms manager to stop
+	local attempt_count=0
+	while [ ${comms_pid_found} -eq 0 ]; do
+		let attempt_count+=1
+		if [ ${attempt_count} -eq ${attempt_max} -a ${force_kill_comms} -eq 0 ]; then
+			force_kill_comms=1
+			attempt_count=0
+			kill -9 ${comms_pid} > /dev/null 2>&1
+		elif [ ${attempt_count} -eq ${attempt_max} -a ${force_kill_comms} -eq 1 ]; then
+			failure
+			echo
+			echo "Failed to stop ${PROG} (pid ${comms_pid})"
+			echo "Failed to stop ${PROG} (pid ${comms_pid})" >> ${COMMS_LOG}
+			return
+		fi
+	done
+	
+	success
+	echo
+	if [ ${force_kill_wrapper} -eq 1 ]; then
+		echo "Force killed ${PROG_WRAPPER} (pid ${save_wrapper_pid})."
+		echo "Force killed ${PROG_WRAPPER} (pid ${save_wrapper_pid})." >> ${COMMS_LOG}
+	fi
+	if [ ${force_kill_comms} -eq 1 ]; then
+		echo "Force killed ${PROG} (pid ${save_comms_pid})."
+		echo "Force killed ${PROG} (pid ${save_comms_pid})." >> ${COMMS_LOG}
+	fi
+
+	return
+}
+
+status() {
+	getPids
+	
+	handleStatus "${PROG_WRAPPER}" ${wrapper_pid_found} ${wrapper_pid}
+	handleStatus ${PROG} ${comms_pid_found} ${comms_pid}
+}
+
+usage() {
+	echo "Usage: $0 {start|stop|status|restart}"
+}
+
+func=$1
+
+case $func in
+	start)
+		${func}
+		;;
+	stop)
+		${func}
+		;;
+	status)
+		${func}
+		;;
+	restart)
+		stop
+		sleep 1
+		start
+		;;
+	*)
+		usage
+		;;
+	esac
