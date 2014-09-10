@@ -75,6 +75,9 @@
   <bean id="zoneDao" class="com.raytheon.uf.edex.bmh.dao.ZoneDao"
     depends-on="bmhTxTemplate" />
 
+  <bean id="areaDao" class="com.raytheon.uf.edex.bmh.dao.AreaDao"
+    depends-on="bmhTxTemplate" />
+
   <bean id="transmitterGroupDao" class="com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao"
     depends-on="bmhTxTemplate" />
 

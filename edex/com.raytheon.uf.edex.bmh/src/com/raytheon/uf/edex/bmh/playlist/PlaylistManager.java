@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
@@ -49,6 +50,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
@@ -61,6 +63,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
@@ -89,6 +92,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Sep 03, 2014  3554     bsteffen    Respond to config notifications.
  * Sep 2, 2014   3568     bkowal      Handle static messages. Handle the
  *                                    case when no ugc codes are specified.
+ * Sep 10, 2014  3391     bsteffen    Generate SAME tones only for applicable
+ *                                    transmitter areas.
  * 
  * </pre>
  * 
@@ -105,6 +110,8 @@ public class PlaylistManager implements IContextStateProcessor {
     private PlaylistDao playlistDao;
 
     private ZoneDao zoneDao;
+
+    private AreaDao areaDao;
 
     private ProgramDao programDao;
 
@@ -584,6 +591,9 @@ public class PlaylistManager implements IContextStateProcessor {
             dac.setMessageText(input.getContent());
             dac.setAlertTone(input.getAlertTone());
             if (input.getAreaCodes() != null) {
+                Set<Transmitter> transmitters = broadcast.getTransmitterGroup()
+                        .getTransmitters();
+
                 SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
                 builder.setOriginatorMapper(originatorMapping);
                 builder.setStateCodes(stateCodes);
@@ -594,11 +604,20 @@ public class PlaylistManager implements IContextStateProcessor {
                             Zone z = zoneDao.getByZoneCode(ugc);
                             if (z != null) {
                                 for (Area area : z.getAreas()) {
-                                    builder.addAreaFromUGC(area.getAreaCode());
+                                    if (!Collections.disjoint(
+                                            area.getTransmitters(),
+                                            transmitters)) {
+                                        builder.addAreaFromUGC(area
+                                                .getAreaCode());
+                                    }
                                 }
                             }
                         } else {
-                            builder.addAreaFromUGC(ugc);
+                            Area area = areaDao.getByAreaCode(ugc);
+                            if (!Collections.disjoint(area.getTransmitters(),
+                                    transmitters)) {
+                                builder.addAreaFromUGC(ugc);
+                            }
                         }
                     } catch (IllegalStateException e) {
                         statusHandler
@@ -637,6 +656,10 @@ public class PlaylistManager implements IContextStateProcessor {
         this.zoneDao = zoneDao;
     }
 
+    public void setAreaDao(AreaDao areaDao) {
+        this.areaDao = areaDao;
+    }
+
     public void setProgramDao(ProgramDao programDao) {
         this.programDao = programDao;
     }
@@ -662,6 +685,9 @@ public class PlaylistManager implements IContextStateProcessor {
         } else if (zoneDao == null) {
             throw new IllegalStateException(
                     "ZoneDao has not been set on the PlaylistManager");
+        } else if (areaDao == null) {
+            throw new IllegalStateException(
+                    "AreaDao has not been set on the PlaylistManager");
         } else if (programDao == null) {
             throw new IllegalStateException(
                     "ProgramDao has not been set on the PlaylistManager");
