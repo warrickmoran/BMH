@@ -47,6 +47,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 1, 2014     3355    mpduff      Initial creation
+ * Sep 10, 2014    3355    mpduff      Added SWT.PRIMARY_MODAL
  * 
  * </pre>
  * 
@@ -72,7 +73,8 @@ public class NewDictionaryDlg extends CaveSWTDialog {
      * @param parentShell
      */
     public NewDictionaryDlg(Shell parentShell) {
-        super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT);
+        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
+                CAVE.PERSPECTIVE_INDEPENDENT);
 
         setText("New Dictionary");
     }

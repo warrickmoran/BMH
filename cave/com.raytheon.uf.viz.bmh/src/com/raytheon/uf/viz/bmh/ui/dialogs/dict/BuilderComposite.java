@@ -54,6 +54,7 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 25, 2014    3355    mpduff      Initial creation
+ * Sep 10, 2014    3355    mpduff      Make Combo boxes readonly
  * 
  * </pre>
  * 
@@ -192,7 +193,7 @@ public class BuilderComposite extends Composite {
 
         gd = new GridData(100, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.LEFT;
-        typeCombo = new Combo(this, SWT.SINGLE);
+        typeCombo = new Combo(this, SWT.SINGLE | SWT.READ_ONLY);
         typeCombo.setLayoutData(gd);
         typeCombo.setItems(BuilderType.getTypes());
         typeCombo.addSelectionListener(new SelectionAdapter() {

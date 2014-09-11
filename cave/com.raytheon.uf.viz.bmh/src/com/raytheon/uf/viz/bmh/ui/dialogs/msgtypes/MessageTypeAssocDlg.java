@@ -64,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 14, 2014  #3330     lvenable    Initial creation
  * Jul 15, 2014  #3387     lvenable    Implemented abstract BMH dialog.
  * Aug 15, 2014   3411     mpduff      populated.
+ * Sep 11, 2014   3355     mpduff      Post demo cleanup (change label)
  * 
  * </pre>
  * 
@@ -94,7 +95,10 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
     private MsgTypeTable msgReplaceTableComp;
 
     /** Prefix text for the replacement group title. */
-    private final String msgReplaceGrpPrefix = " Message Types replaced by: ";
+    private final String msgReplaceGrpTextPrefix = " Message Type ";
+
+    /** Suffix text for the replacement group title. */
+    private final String msgReplaceGrpTextSuffix = " replaces the following: ";
 
     /** Button to add message types. */
     private Button addMsgTypesBtn;
@@ -216,7 +220,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         msgReplaceGrp.setLayout(gl);
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         msgReplaceGrp.setLayoutData(gd);
-        msgReplaceGrp.setText(msgReplaceGrpPrefix);
+        msgReplaceGrp.setText(msgReplaceGrpTextPrefix);
 
         msgReplaceTableComp = new MsgTypeTable(msgReplaceGrp, 550, 100);
         msgReplaceTableComp.setCallbackAction(new ITableActionCB() {
@@ -372,6 +376,8 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
     private void populateSelection() {
         msgTypeSelectedLbl.setText(selectedMessageType.getAfosid());
         msgTitleLbl.setText(selectedMessageType.getTitle());
+        msgReplaceGrp.setText(msgReplaceGrpTextPrefix
+                + selectedMessageType.getAfosid() + msgReplaceGrpTextSuffix);
 
         selectedMessageTableData.deleteAllRows();
         for (MessageTypeReplacement replace : selectedMessageType
