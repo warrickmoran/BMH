@@ -19,24 +19,32 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXB;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -67,6 +75,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      prioritization.
  * Aug 22, 2014  #3286     dgilling     Re-factor based on PriorityBasedExecutorService.
  * Sep 5, 2014   #3532     bkowal       Use a decibel target instead of a range.
+ * Sep 08, 2014  #3286     dgilling     Allow expired items to be removed from
+ *                                      cache.
  * 
  * </pre>
  * 
@@ -78,7 +88,11 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
+    private static final int PURGE_JOB_INTERVAL = 15;
+
     private static final int THREAD_POOL_MAX_SIZE = 3;
+
+    private static final int PURGE_THREADS = 1;
 
     /*
      * Note: the current implementation does not allow a task with a higher
@@ -105,6 +119,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private final ExecutorService cacheThreadPool;
 
+    private final ScheduledExecutorService purgeThreadPool;
+
     private final ConcurrentMap<DacPlaylistMessageId, DacPlaylistMessage> cachedMessages;
 
     private final ConcurrentMap<DacPlaylistMessage, AudioFileBuffer> cachedFiles;
@@ -117,7 +133,10 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private double dbTarget;
 
-    public PlaylistMessageCache(Path messageDirectory, EventBus eventBus,
+    private final PlaylistScheduler scheduler;
+
+    public PlaylistMessageCache(Path messageDirectory,
+            PlaylistScheduler playlistScheduler, EventBus eventBus,
             double dbTarget) {
         this.messageDirectory = messageDirectory;
         this.cacheThreadPool = new PriorityBasedExecutorService(
@@ -129,6 +148,13 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         this.cachedRetrievalTasks = new ConcurrentHashMap<>();
         this.eventBus = eventBus;
         this.dbTarget = dbTarget;
+        this.scheduler = playlistScheduler;
+
+        this.purgeThreadPool = Executors.newScheduledThreadPool(PURGE_THREADS,
+                new NamedThreadFactory("MessageCachePurge"));
+        Runnable purgeJob = createPurgeJob();
+        this.purgeThreadPool.scheduleWithFixedDelay(purgeJob,
+                PURGE_JOB_INTERVAL, PURGE_JOB_INTERVAL, TimeUnit.MINUTES);
     }
 
     /**
@@ -264,6 +290,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                     + ".xml");
             message = JAXB.unmarshal(messagePath.toFile(),
                     DacPlaylistMessage.class);
+            message.setPath(messagePath);
             cachedMessages.put(id, message);
         }
         return message;
@@ -349,9 +376,131 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             task.retrievalFinished(message);
             if (task.isComplete()) {
                 logger.info("Finished cache update " + task.getIdentifier()
-                        + " in " + TimeUtil.prettyDuration(task.getDuration()) + ".");
+                        + " in " + TimeUtil.prettyDuration(task.getDuration())
+                        + ".");
                 this.cachedRetrievalTasks.remove(message);
             }
+        }
+    }
+
+    /**
+     * Remove any expired messages referenced in this playlist from the cache.
+     * After removing the messages from cache, the playlist file will be deleted
+     * from disk.
+     * 
+     * @param playlist
+     *            Expired playlist.
+     */
+    public void removeExpiredMessages(final DacPlaylist playlist) {
+        try {
+            Runnable removeFromCacheJob = createUncacheExpiredPlaylistJob(playlist);
+            purgeThreadPool.submit(removeFromCacheJob);
+        } catch (Exception e) {
+            logger.error("Cannot schedule playlist " + playlist
+                    + " for removal.", e);
+        }
+    }
+
+    private Runnable createPurgeJob() {
+        Runnable job = new Runnable() {
+
+            @Override
+            public void run() {
+                Collection<DacPlaylist> playlists = scheduler
+                        .getActivePlaylists();
+                Set<DacPlaylistMessageId> activeMessageIds = new HashSet<>();
+                for (DacPlaylist playlist : playlists) {
+                    activeMessageIds.addAll(playlist.getMessages());
+                }
+
+                for (DacPlaylistMessageId messageId : cachedMessages.keySet()) {
+                    /*
+                     * we remove the cached audio buffer separate from the
+                     * cached message data because we need the message data to
+                     * remain cached so that any playlists that reference the
+                     * expired message can know that the message has expired.
+                     * But once expiration hits, we no longer need the audio
+                     * data.
+                     */
+                    if (isExpired(messageId)) {
+                        purgeAudio(messageId);
+                    }
+
+                    if (!activeMessageIds.contains(messageId)) {
+                        try {
+                            purgeAudio(messageId);
+                            purgeMessage(messageId);
+                        } catch (IOException e) {
+                            logger.error("Error removing message " + messageId
+                                    + " from cache.", e);
+                        }
+                    }
+                }
+            }
+        };
+        return job;
+    }
+
+    private Runnable createUncacheExpiredPlaylistJob(final DacPlaylist playlist) {
+        Runnable job = new Runnable() {
+
+            @Override
+            public void run() {
+                for (DacPlaylistMessageId messageId : playlist.getMessages()) {
+                    if (isExpired(messageId)) {
+                        purgeAudio(messageId);
+                    }
+                }
+
+                try {
+                    Files.delete(playlist.getPath());
+                    logger.info("Deleted " + playlist.getPath());
+                } catch (IOException e) {
+                    logger.error(
+                            "Error deleting playlist " + playlist.getPath()
+                                    + " from disk.", e);
+                }
+            }
+        };
+        return job;
+    }
+
+    private boolean isExpired(final DacPlaylistMessageId messageId) {
+        long playbackTime = getPlaybackTime(messageId);
+        long purgeTime = playbackTime
+                + getMessage(messageId).getExpire().getTimeInMillis();
+
+        long currentTime = TimeUtil.currentTimeMillis();
+
+        return (currentTime >= purgeTime);
+    }
+
+    private void purgeMessage(final DacPlaylistMessageId messageId)
+            throws IOException {
+        logger.debug("Removing message " + messageId + " from cache.");
+
+        DacPlaylistMessage message = cachedMessages.remove(messageId);
+        if (message != null) {
+            Path path = message.getPath();
+            if (path != null) {
+                Files.delete(path);
+                logger.info("Deleted " + message.getPath());
+            }
+
+        }
+    }
+
+    private void purgeAudio(final DacPlaylistMessageId messageId) {
+        logger.debug("Removing audio for message " + messageId + " from cache.");
+
+        Future<AudioFileBuffer> jobStatus = cacheStatus.remove(messageId);
+        if (jobStatus != null) {
+            jobStatus.cancel(true);
+        }
+
+        DacPlaylistMessage message = cachedMessages.get(messageId);
+        if (message != null) {
+            cachedFiles.remove(message);
         }
     }
 }

@@ -25,10 +25,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -61,8 +63,6 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
 /**
  * Manages playback order of playlist and playlist messages for the current
  * {@code DacSession}.
- * 
- * TODO: Ensure all file deletion happens on non playing thread.
  * 
  * <pre>
  * 
@@ -97,6 +97,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  *                                      initially empty.
  * Aug 26, 2014  #3486     bsteffen     Make deletion of playlists safer and more verbose.
  * Sep 5, 2014   #3532     bkowal       Use a decibel target instead of a range.
+ * Sep 08, 2014  #3286     dgilling     Move playlist deletion off main thread.
  * 
  * </pre>
  * 
@@ -204,7 +205,7 @@ public final class PlaylistScheduler implements
         this.messageIndex = 0;
 
         Map<String, DacPlaylist> uniqueActivePlaylists = new HashMap<>();
-        List<Path> expiredPlaylists = new ArrayList<>();
+        List<DacPlaylist> expiredPlaylists = new ArrayList<>();
         int interruptCounter = 0;
 
         try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(
@@ -228,15 +229,15 @@ public final class PlaylistScheduler implements
                         if (playlist.getCreationTime().after(
                                 otherPlaylist.getCreationTime())) {
                             uniqueActivePlaylists.put(key, playlist);
-                            expiredPlaylists.add(otherPlaylist.getPath());
+                            expiredPlaylists.add(otherPlaylist);
                         } else {
-                            expiredPlaylists.add(entry);
+                            expiredPlaylists.add(playlist);
                         }
                     }
                 } else if (!playlist.isExpired()) {
                     this.futurePlaylists.add(playlist);
                 } else {
-                    expiredPlaylists.add(entry);
+                    expiredPlaylists.add(playlist);
                 }
             }
         } catch (IOException e) {
@@ -251,18 +252,13 @@ public final class PlaylistScheduler implements
         Collections.sort(this.futurePlaylists, QUEUE_ORDER);
 
         this.cache = new PlaylistMessageCache(
-                inputDirectory.resolve("messages"), this.eventBus, dbTarget);
+                inputDirectory.resolve("messages"), this, this.eventBus,
+                dbTarget);
         for (DacPlaylist playlist : this.activePlaylists) {
             this.cache.retrieveAudio(playlist.getMessages());
         }
 
-        for (Path expired : expiredPlaylists) {
-            try {
-                Files.delete(expired);
-            } catch (IOException e) {
-                logger.warn("Unable to delete expired playlist " + expired, e);
-            }
-        }
+        expirePlaylists(expiredPlaylists);
 
         this.interrupts = new ArrayDeque<>();
         /*
@@ -462,9 +458,7 @@ public final class PlaylistScheduler implements
 
                     if (nextMessage == null) {
                         activePlaylists.remove(nextPlaylist);
-                        logger.info("Puring expired playlist: "
-                                + nextPlaylist.toString());
-                        expiredPlaylists.add(nextPlaylist);
+                        logger.info("Puring expired playlist: " + nextPlaylist);
                     }
                 }
             }
@@ -475,17 +469,7 @@ public final class PlaylistScheduler implements
         logger.debug("Time for nextMessage() to determine next message: "
                 + timer.getElapsedTime() + " ms.");
 
-        for (DacPlaylist expired : expiredPlaylists) {
-            try {
-                logger.debug("Deleting playlist: "
-                        + expired.getPath().toString());
-                Files.delete(expired.getPath());
-            } catch (IOException e) {
-                logger.warn(
-                        "Unable to delete expired playlist "
-                                + expired.getPath(), e);
-            }
-        }
+        expirePlaylists(expiredPlaylists);
 
         if (nextMessage == null) {
             return null;
@@ -584,13 +568,7 @@ public final class PlaylistScheduler implements
                 if (newPlaylist.isExpired()) {
                     logger.warn("Received a notification for an expired playlist: "
                             + newPlaylist);
-                    Path expired = newPlaylist.getPath();
-                    try {
-                        Files.delete(expired);
-                    } catch (IOException e) {
-                        logger.warn("Unable to delete expired playlist "
-                                + expired, e);
-                    }
+                    expirePlaylist(newPlaylist);
                     return;
                 } else if (!newPlaylist.isValid()) {
                     logger.debug("New playlist doesn't take affect immediately. Queueing...");
@@ -611,14 +589,9 @@ public final class PlaylistScheduler implements
                                 + " that has an older creation date. Ignoring new playlist.");
                         Path old = newPlaylist.getPath();
                         if (!newPlaylist.getPath().equals(old)) {
-                            try {
-                                Files.delete(old);
-                                logger.debug("Deleted " + old
-                                        + " because current is better ");
-                            } catch (IOException e) {
-                                logger.warn("Unable to delete playlist " + old,
-                                        e);
-                            }
+                            logger.debug("Deleting " + newPlaylist
+                                    + " because current is better ");
+                            expirePlaylist(newPlaylist);
                         } else {
                             logger.debug("Did not delete " + old
                                     + " because it was the same as current");
@@ -656,13 +629,9 @@ public final class PlaylistScheduler implements
                     eventBus.post(notify);
                     Path old = currentPlaylist.getPath();
                     if (!newPlaylist.getPath().equals(old)) {
-                        try {
-                            Files.delete(old);
-                            logger.debug("Deleted " + old
-                                    + " because new is better ");
-                        } catch (IOException e) {
-                            logger.warn("Unable to delete playlist " + old, e);
-                        }
+                        logger.debug("Deleting " + old
+                                + " because new is better ");
+                        expirePlaylist(currentPlaylist);
                     } else {
                         logger.debug("Did not delete " + old
                                 + " because it was the same as new");
@@ -672,31 +641,26 @@ public final class PlaylistScheduler implements
                     DacPlaylist toReplace = findMatchingPlaylist(newPlaylist,
                             activePlaylists);
                     if (toReplace != null) {
-                        Path old = null;
+                        DacPlaylist expired = null;
                         if (newPlaylist.getCreationTime().after(
                                 toReplace.getCreationTime())) {
                             activePlaylists.remove(toReplace);
                             activePlaylists.add(newPlaylist);
-                            old = toReplace.getPath();
+                            expired = toReplace;
                         } else {
                             logger.warn("Received an update to playlist "
                                     + toReplace
                                     + " that has an older creation date. Ignoring new playlist.");
-                            old = newPlaylist.getPath();
+                            expired = newPlaylist;
                         }
 
                         if (!newPlaylist.getPath().equals(toReplace.getPath())) {
-                            try {
-                                Files.delete(old);
-                                logger.debug("Deleted "
-                                        + old
-                                        + " because it is not active or not able to replace active.");
-                            } catch (IOException e) {
-                                logger.warn("Unable to delete playlist " + old,
-                                        e);
-                            }
+                            logger.debug("Deleting "
+                                    + expired
+                                    + " because it is not active or not able to replace active.");
+                            expirePlaylist(expired);
                         } else {
-                            logger.debug("Did not delete " + old
+                            logger.debug("Did not delete " + expired
                                     + " because it was the same as active");
                         }
                         return;
@@ -874,5 +838,23 @@ public final class PlaylistScheduler implements
                 playlist.getSuite(), playlist.getTransmitterGroup(),
                 predictedMessages, cycleTime);
         return retVal;
+    }
+
+    private void expirePlaylists(Collection<DacPlaylist> expiredPlaylists) {
+        for (DacPlaylist playlist : expiredPlaylists) {
+            expirePlaylist(playlist);
+        }
+    }
+
+    private void expirePlaylist(DacPlaylist expiredPlaylist) {
+        cache.removeExpiredMessages(expiredPlaylist);
+    }
+
+    Collection<DacPlaylist> getActivePlaylists() {
+        Collection<DacPlaylist> playlists = new HashSet<>();
+        synchronized (playlistMessgeLock) {
+            playlists.addAll(activePlaylists);
+        }
+        return playlists;
     }
 }

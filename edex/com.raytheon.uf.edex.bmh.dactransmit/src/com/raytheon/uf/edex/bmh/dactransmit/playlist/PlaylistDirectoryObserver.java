@@ -31,13 +31,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import javax.xml.bind.JAXB;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
-import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
@@ -54,6 +55,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jul 17, 2014  #3286     dgilling     Initial creation
  * Jul 29, 2014  #3286     dgilling     Use NamedThreadFactory.
  * Aug 26, 2014  #3286     dgilling     Revert previous change to start().
+ * Sep 08, 2014  #3286     dgilling     Make compatible with playlist changes.
  * 
  * </pre>
  * 
@@ -73,6 +75,8 @@ public class PlaylistDirectoryObserver {
 
     private volatile boolean keepRunning;
 
+    private final Path playlistDirectory;
+
     /**
      * Constructor.
      * 
@@ -90,8 +94,9 @@ public class PlaylistDirectoryObserver {
         this.threadPool = Executors
                 .newSingleThreadExecutor(new NamedThreadFactory(
                         "PlaylistDirectoryObserver"));
+        this.playlistDirectory = playlistDirectory;
         this.watchService = FileSystems.getDefault().newWatchService();
-        playlistDirectory.register(this.watchService,
+        this.playlistDirectory.register(this.watchService,
                 StandardWatchEventKinds.ENTRY_CREATE);
         this.keepRunning = true;
     }
@@ -122,40 +127,27 @@ public class PlaylistDirectoryObserver {
                 while (keepRunning) {
                     WatchKey key = watchService.poll(1L, TimeUnit.SECONDS);
                     if (key != null) {
-                        Path parent = ((Path) key.watchable()).getFileName();
-
                         for (WatchEvent<?> event : key.pollEvents()) {
                             if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
                                 @SuppressWarnings("unchecked")
-                                /*
-                                 * FIXME: update this code after new playlist
-                                 * file name/path format has been determined.
-                                 */
-                                WatchEvent<Path> e = (WatchEvent<Path>) event;
-                                Path newPlaylist = parent.resolve(e.context());
+                                WatchEvent<Path> ev = (WatchEvent<Path>) event;
+                                Path newPlaylistPath = playlistDirectory
+                                        .resolve(ev.context());
 
-                                String playlistString = newPlaylist.toString();
-                                DacPlaylist playlistObj = PlaylistUpdateNotification
-                                        .parseFilePath(playlistString);
-                                if (playlistObj != null) {
-                                    long currentTime = TimeUtil
-                                            .currentTimeMillis();
-                                    if ((currentTime >= playlistObj.getStart()
-                                            .getTimeInMillis())
-                                            && (currentTime < playlistObj
-                                                    .getExpired()
-                                                    .getTimeInMillis())) {
-                                        PlaylistUpdateNotification notification = new PlaylistUpdateNotification();
-                                        notification
-                                                .setPlaylistPath(playlistString);
-                                        eventBus.post(notification);
-                                    } else {
-                                        logger.warn("Ignoring invalid playlist: "
-                                                + playlistString);
-                                    }
-                                } else {
-                                    logger.debug("Ignoring file that is not a valid playlist: "
-                                            + playlistString);
+                                logger.debug("Got new file notification for "
+                                        + newPlaylistPath + "...");
+
+                                try {
+                                    DacPlaylist newPlaylist = JAXB.unmarshal(
+                                            newPlaylistPath.toFile(),
+                                            DacPlaylist.class);
+                                    PlaylistUpdateNotification notification = new PlaylistUpdateNotification(
+                                            newPlaylist);
+                                    eventBus.post(notification);
+                                } catch (Exception e) {
+                                    logger.error(
+                                            "Unable to process new playlist file "
+                                                    + newPlaylistPath, e);
                                 }
                             }
                         }

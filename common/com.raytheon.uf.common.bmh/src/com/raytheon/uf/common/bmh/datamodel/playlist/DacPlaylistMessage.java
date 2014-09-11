@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
+import java.nio.file.Path;
 import java.util.Calendar;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -43,6 +44,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jul 24, 2014  3286     dgilling    Implement toString().
  * Aug 13, 2014  3286     dgilling    Add fields for tone playback.
  * Aug 18, 2014  3540     dgilling    Add getPlaybackInterval().
+ * Sep 08, 2014  3286     dgilling    Add getPath() and setPath().
  * 
  * </pre>
  * 
@@ -89,6 +91,8 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     @XmlElement
     private boolean playedAlertTone;
+
+    private transient Path path;
 
     public DacPlaylistMessage() {
 
@@ -249,5 +253,13 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
                     * TimeUtil.MILLIS_PER_MINUTE;
         }
         return -1;
+    }
+
+    public Path getPath() {
+        return path;
+    }
+
+    public void setPath(Path path) {
+        this.path = path;
     }
 }
