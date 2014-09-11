@@ -47,6 +47,7 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
+import com.raytheon.uf.common.bmh.request.DictionaryResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
@@ -77,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     PronunciationBuilderDlg
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Aug 8, 2014    #3490     lvenable   Removed Override tag.
+ * Sep 10, 2014     3355   mpduff      Made Dictionary combo readonly, post demo cleanup
  * 
  * </pre>
  * 
@@ -87,8 +89,6 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(LegacyDictionaryConverterDlg.class);
-
-    private final String NEW_DICT = "New Dictionary...";
 
     /** Column Names */
     private final String[] COLUMN_NAMES = { "Converted", "Word/Phrase",
@@ -219,6 +219,9 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
 
         createColumns();
         openLegacyDictionary();
+        if (dictCombo.getItemCount() > 0) {
+            chooseDictionary();
+        }
     }
 
     /**
@@ -235,14 +238,19 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
         labelComp.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.horizontalSpan = 3;
         legacyDictLbl = new Label(labelComp, SWT.NONE);
         legacyDictLbl.setLayoutData(gd);
+        legacyDictLbl.setText("Converting Dictionary:   "
+                + dictionaryFile.getName());
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, false);
         Label saveToLbl = new Label(labelComp, SWT.NONE);
-        saveToLbl.setText("Save to Dictionary: ");
+        saveToLbl.setText("Saving to Dictionary: ");
 
-        dictCombo = new Combo(labelComp, SWT.SINGLE);
+        gd = new GridData(200, SWT.DEFAULT);
+        dictCombo = new Combo(labelComp, SWT.SINGLE | SWT.READ_ONLY);
+        dictCombo.setLayoutData(gd);
         dictCombo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -252,15 +260,48 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
 
         try {
             dictionaryNames = dictionaryManager.getAllBMHDictionaryNames();
-            Collections.sort(dictionaryNames);
-            dictionaryNames.add(0, NEW_DICT);
+            if (!dictionaryNames.isEmpty()) {
+                Collections.sort(dictionaryNames);
 
-            dictCombo.setItems(dictionaryNames
-                    .toArray(new String[dictionaryNames.size()]));
+                dictCombo.setItems(dictionaryNames
+                        .toArray(new String[dictionaryNames.size()]));
+                dictCombo.select(0);
+            }
         } catch (Exception e1) {
             statusHandler.error("Unable to query for available Dictionaries.",
                     e1);
         }
+
+        gd = new GridData(125, SWT.DEFAULT);
+        gd.horizontalAlignment = SWT.RIGHT;
+        Button newDictBtn = new Button(labelComp, SWT.PUSH);
+        newDictBtn.setText("New Dictionary...");
+        newDictBtn.setLayoutData(gd);
+        newDictBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                NewDictionaryDlg dlg = new NewDictionaryDlg(shell);
+                Dictionary dict = (Dictionary) dlg.open();
+                if (dict != null) {
+                    dictionaryNames.add(dict.getName());
+                    Collections.sort(dictionaryNames);
+                    dictCombo.setItems(dictionaryNames
+                            .toArray(new String[dictionaryNames.size()]));
+                    dictCombo.select(dictionaryNames.indexOf(dict.getName()));
+                    try {
+                        dictionaryManager.createDictionary(dict);
+                        if (wordValueLbl.getText().length() >= 0) {
+                            saveWordBtn.setEnabled(true);
+                        }
+                        updateConvertStatus();
+                        chooseDictionary();
+                    } catch (Exception e2) {
+                        statusHandler.error("Error creating dictionary: "
+                                + dict.getName(), e2);
+                    }
+                }
+            }
+        });
     }
 
     /**
@@ -424,6 +465,10 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
                 neoPhoneme = (String) pronunciationBuilderDlg.open();
                 if (neoPhoneme != null) {
                     neoValueTxt.setText(neoPhoneme);
+                } else {
+                    if (neoValueTxt.getText().trim().length() > 0) {
+                        neoPhoneme = neoValueTxt.getText().trim();
+                    }
                 }
             }
         });
@@ -439,13 +484,6 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
                 saveWord();
             }
         });
-    }
-
-    /**
-     * Reload the table.
-     */
-    private void reloadTable() {
-        tableComp.populateTable(tableData);
     }
 
     /**
@@ -501,45 +539,20 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
      * Set up dialog for the selected dictionary
      */
     private void chooseDictionary() {
-        if (dictCombo.getText().equals(NEW_DICT)) {
-            NewDictionaryDlg dlg = new NewDictionaryDlg(shell);
-            Dictionary dict = (Dictionary) dlg.open();
-            if (dict != null) {
-                dictionaryNames.add(dict.getName());
-                Collections.sort(dictionaryNames);
-                dictCombo.setItems(dictionaryNames
-                        .toArray(new String[dictionaryNames.size()]));
-                dictCombo.setItem(0, NEW_DICT);
-                dictCombo.select(dictionaryNames.indexOf(dict.getName()));
-                try {
-                    dictionaryManager.createDictionary(dict);
-                    if (wordValueLbl.getText().length() >= 0) {
-                        saveWordBtn.setEnabled(true);
-                    }
-                    updateConvertStatus();
-                } catch (Exception e) {
-                    statusHandler.error(
-                            "Error creating dictionary: " + dict.getName(), e);
-                }
-            } else {
-                saveWordBtn.setEnabled(false);
-            }
-        } else {
-            try {
-                selectedDictionary = dictionaryManager.getDictionary(dictCombo
-                        .getText());
-            } catch (Exception e) {
-                statusHandler.error(
-                        "Error getting dictionary: " + dictCombo.getText(), e);
-            }
-
-            boolean status = true;
-            if (wordValueLbl.getText().length() <= 0) {
-                status = false;
-            }
-            saveWordBtn.setEnabled(status);
-            updateConvertStatus();
+        try {
+            selectedDictionary = dictionaryManager.getDictionary(dictCombo
+                    .getText());
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error getting dictionary: " + dictCombo.getText(), e);
         }
+
+        boolean status = true;
+        if (wordValueLbl.getText().length() <= 0) {
+            status = false;
+        }
+        saveWordBtn.setEnabled(status);
+        updateConvertStatus();
     }
 
     /**
@@ -547,7 +560,6 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
      */
     private void openLegacyDictionary() {
         populateTable();
-        legacyDictLbl.setText("Converting: " + dictionaryFile.getName());
         enableButtons(false);
     }
 
@@ -637,7 +649,8 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
     private void saveWord() {
         if (dictCombo.getText().length() == 0) {
             String message = "A destination dictionary must be selected via the\n"
-                    + "\"Save to Dictionary selection\".";
+                    + "\"Saving to Dictionary\" selection.  If no dictionaries exist "
+                    + "then click the \"New Dictionary...\" button.";
             DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
                     "Choose Dictionary", message);
             return;
@@ -646,10 +659,12 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
         word.setWord(selectedWord);
         word.setSubstitute(neoPhoneme);
 
-        selectedDictionary.getWords().add(word);
+        addWordToDictionary(word);
 
         try {
-            dictionaryManager.saveDictionary(selectedDictionary);
+            DictionaryResponse response = dictionaryManager
+                    .saveDictionary(selectedDictionary);
+            selectedDictionary = response.getDictionary();
             for (TableRowData row : tableData.getTableRows()) {
                 if (selectedWord.equalsIgnoreCase(row.getTableCellData().get(1)
                         .getCellText())) {
@@ -661,6 +676,21 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
         } catch (Exception e) {
             statusHandler.error("Error saving word: " + selectedWord, e);
         }
+    }
+
+    /**
+     * Add the word to the dictionary, if word exists in dictionary replace the
+     * substitute.
+     */
+    private void addWordToDictionary(Word word) {
+        for (Word w : selectedDictionary.getWords()) {
+            if (w.getWord().equalsIgnoreCase(word.getWord())) {
+                w.setSubstitute(word.getSubstitute());
+                return;
+            }
+        }
+
+        selectedDictionary.getWords().add(word);
     }
 
     /**
@@ -696,6 +726,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
             table.select(selectedIndex);
             table.showSelection();
             table.layout();
+            tableSelectionAction(table.getSelection()[0]);
         }
 
         @Override
