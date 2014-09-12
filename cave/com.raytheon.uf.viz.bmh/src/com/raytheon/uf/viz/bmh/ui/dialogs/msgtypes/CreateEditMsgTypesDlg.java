@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest.TtsVoiceAction;
@@ -82,6 +84,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 15, 2014  #3490     lvenable    Hooked up transmitters and selected the SAME transmitters
  *                                     if in edit mode.
  * Aug 18, 2014   3411     mpduff      Implement New and Edit.
+ * Sep 11, 2014   3411     mpduff      Pass MessageType object to Area Selection for populating, save TransmitterGroups
  * 
  * </pre>
  * 
@@ -601,7 +604,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         areaSelectionBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                AreaSelectionDlg dlg = new AreaSelectionDlg(getShell());
+                AreaSelectionDlg dlg = new AreaSelectionDlg(getShell(),
+                        selectedMsgType);
                 dlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
@@ -795,6 +799,12 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         if (areaData != null) {
             selectedMsgType.setDefaultAreas(areaData.getAreas());
             selectedMsgType.setDefaultZones(areaData.getZones());
+            Set<Transmitter> transmitterSet = areaData.getTransmitters();
+            Set<TransmitterGroup> groupSet = new HashSet<>();
+            for (Transmitter t : transmitterSet) {
+                groupSet.add(t.getTransmitterGroup());
+            }
+            selectedMsgType.setDefaultTransmitterGroups(groupSet);
         }
         MessageTypeDataManager dm = new MessageTypeDataManager();
         try {
