@@ -40,9 +40,11 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.AreaNameComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterNameComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.ZoneNameComparator;
@@ -69,6 +71,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 13, 2014   3411     mpduff      Populate with data
  * Aug 18, 2014   3432     mpduff      Removed areaObject field
  * Aug 28, 2014   3432     mpduff      Display areaCode, not areaId
+ * Sep 11, 2014   3411     mpduff      Populate upon opening.
  * </pre>
  * 
  * @author mpduff
@@ -81,9 +84,9 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
     private final String TRANSMITTER = "Transmitter";
 
-    private final String AREA = "AREA";
+    private final String AREA = "Area";
 
-    private final String ZONE = "ZONE";
+    private final String ZONE = "Zone";
 
     private final int LIST_WIDTH = 125;
 
@@ -157,15 +160,21 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     /** List of all areas */
     private List areaList;
 
+    /** The Message Type */
+    private final MessageType messageType;
+
     /**
      * Constructor.
      * 
      * @param parentShell
      *            The parent shell
      */
-    public AreaSelectionDlg(Shell parentShell) {
-        super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT);
+    public AreaSelectionDlg(Shell parentShell, MessageType messageType) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
+                CAVE.PERSPECTIVE_INDEPENDENT);
         setText("Area Selection");
+
+        this.messageType = messageType;
     }
 
     @Override
@@ -199,6 +208,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
         gatherData();
         populateTabs();
+        populateTableData();
         populateTable();
     }
 
@@ -673,6 +683,28 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     }
 
     /**
+     * Populate the TableData object.
+     */
+    private void populateTableData() {
+        for (Area area : messageType.getDefaultAreas()) {
+            TableRowData row = createAreaRow(area);
+            tableData.addDataRow(row);
+        }
+
+        for (Zone zone : messageType.getDefaultZones()) {
+            TableRowData row = createZoneRow(zone);
+            tableData.addDataRow(row);
+        }
+
+        for (TransmitterGroup group : messageType.getDefaultTransmitterGroups()) {
+            for (Transmitter t : group.getTransmitters()) {
+                TableRowData row = createTransmitterRow(t);
+                tableData.addDataRow(row);
+            }
+        }
+    }
+
+    /**
      * Populate the table
      */
     private void populateTable() {
@@ -894,15 +926,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
             }
         }
 
-        TableRowData row = new TableRowData();
-        TableCellData cell = new TableCellData(t.getMnemonic());
-        row.addTableCellData(cell);
-        cell = new TableCellData(t.getName());
-        row.addTableCellData(cell);
-        cell = new TableCellData(TRANSMITTER);
-        row.addTableCellData(cell);
-
-        row.setData(t);
+        TableRowData row = createTransmitterRow(t);
         tableData.addDataRow(row);
     }
 
@@ -921,15 +945,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
             }
         }
 
-        TableRowData row = new TableRowData();
-        TableCellData cell = new TableCellData(String.valueOf(a.getAreaCode()));
-        row.addTableCellData(cell);
-        cell = new TableCellData(a.getAreaName());
-        row.addTableCellData(cell);
-        cell = new TableCellData(AREA);
-        row.addTableCellData(cell);
-
-        row.setData(a);
+        TableRowData row = createAreaRow(a);
         tableData.addDataRow(row);
     }
 
@@ -948,15 +964,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
             }
         }
 
-        TableRowData row = new TableRowData();
-        TableCellData cell = new TableCellData(String.valueOf(z.getZoneCode()));
-        row.addTableCellData(cell);
-        cell = new TableCellData(z.getZoneName());
-        row.addTableCellData(cell);
-        cell = new TableCellData(ZONE);
-        row.addTableCellData(cell);
-
-        row.setData(z);
+        TableRowData row = createZoneRow(z);
         tableData.addDataRow(row);
     }
 
@@ -1031,6 +1039,69 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         }
 
         setReturnValue(saveData);
+    }
+
+    /**
+     * Create an Area row.
+     * 
+     * @param a
+     *            The Area
+     * @return
+     */
+    private TableRowData createAreaRow(Area a) {
+        TableRowData row = new TableRowData();
+        TableCellData cell = new TableCellData(String.valueOf(a.getAreaCode()));
+        row.addTableCellData(cell);
+        cell = new TableCellData(a.getAreaName());
+        row.addTableCellData(cell);
+        cell = new TableCellData(AREA);
+        row.addTableCellData(cell);
+
+        row.setData(a);
+
+        return row;
+    }
+
+    /**
+     * Create a Zone row.
+     * 
+     * @param z
+     *            The Zone
+     * @return
+     */
+    private TableRowData createZoneRow(Zone z) {
+        TableRowData row = new TableRowData();
+        TableCellData cell = new TableCellData(String.valueOf(z.getZoneCode()));
+        row.addTableCellData(cell);
+        cell = new TableCellData(z.getZoneName());
+        row.addTableCellData(cell);
+        cell = new TableCellData(ZONE);
+        row.addTableCellData(cell);
+
+        row.setData(z);
+
+        return row;
+    }
+
+    /**
+     * Create a transmitter row.
+     * 
+     * @param t
+     *            The Transmitter
+     * @return
+     */
+    private TableRowData createTransmitterRow(Transmitter t) {
+        TableRowData row = new TableRowData();
+        TableCellData cell = new TableCellData(t.getMnemonic());
+        row.addTableCellData(cell);
+        cell = new TableCellData(t.getName());
+        row.addTableCellData(cell);
+        cell = new TableCellData(TRANSMITTER);
+        row.addTableCellData(cell);
+
+        row.setData(t);
+
+        return row;
     }
 
     /**
