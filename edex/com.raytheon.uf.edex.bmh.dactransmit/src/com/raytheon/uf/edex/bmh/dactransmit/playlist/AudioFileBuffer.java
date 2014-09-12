@@ -40,6 +40,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
  * Jul 02, 2014  #3286     dgilling     Initial creation
  * Jul 29, 2014  #3286     dgilling     Add capacity().
  * Aug 12, 2014  #3286     dgilling     Integrate tone playback.
+ * Sep 12, 2014  #3588     bsteffen     Support audio fragments.
  * 
  * </pre>
  * 
@@ -186,7 +187,7 @@ public final class AudioFileBuffer {
      *            Whether or not to include the tones data in this calculation.
      * @return The capacity of this buffer
      */
-    public int capcity(boolean includeTones) {
+    public int capacity(boolean includeTones) {
         int capacity = messageBuffer.capacity();
         if (includeTones) {
             capacity += (tonesBuffer.capacity() + endOfMessageBuffer.capacity());

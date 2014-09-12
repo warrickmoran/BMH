@@ -24,6 +24,8 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +52,8 @@ import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
  * Aug 19, 2014 3532       bkowal      Initial creation
  * Aug 26, 2014 3558       rjpeter     Disable audio attenuation.
  * Sep 4, 2014  3532       bkowal      Use a decibel target instead of a range. Re-enable attenuation.
+ * Sep 12, 2014 3588       bsteffen    Support audio fragments.
+ * 
  * </pre>
  * 
  * @author bkowal
@@ -126,27 +130,42 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
     @Override
     public AudioFileBuffer call() throws Exception {
         final long start = System.currentTimeMillis();
-        Path filePath = Paths.get(this.message.getSoundFile());
+        List<byte[]> rawDataArrays = new ArrayList<>(this.message
+                .getSoundFiles().size());
+        int concatenatedSize = 0;
+        for (String soundFile : this.message.getSoundFiles()) {
+            Path filePath = Paths.get(soundFile);
 
-        /*
-         * We really don't want to leave essentially null messages in the cache
-         * for playback. However for the highly-controlled environment of the
-         * initial demo version, file read errors and tone generation errors
-         * shouldn't happen.
-         * 
-         * FIXME: if caching a message's audio data fails, perform retry of some
-         * sort.
-         */
-        byte[] rawData = new byte[0];
-        try {
-            rawData = Files.readAllBytes(filePath);
-        } catch (IOException e) {
-            String msg = "Failed to buffer audio file for message: "
-                    + message.getBroadcastId() + ", file: " + filePath;
-            this.notifyAttemptComplete();
-            throw new AudioRetrievalException(msg, e);
+            /*
+             * We really don't want to leave essentially null messages in the
+             * cache for playback. However for the highly-controlled environment
+             * of the initial demo version, file read errors and tone generation
+             * errors shouldn't happen.
+             * 
+             * FIXME: if caching a message's audio data fails, perform retry of
+             * some sort.
+             */
+            try {
+                byte[] rawData = Files.readAllBytes(filePath);
+                concatenatedSize += rawData.length;
+                rawDataArrays.add(rawData);
+            } catch (IOException e) {
+                String msg = "Failed to buffer audio file for message: "
+                        + message.getBroadcastId() + ", file: " + filePath;
+                this.notifyAttemptComplete();
+                throw new AudioRetrievalException(msg, e);
+            }
         }
-
+        byte[] rawData = null;
+        if (rawDataArrays.size() == 1) {
+            rawData = rawDataArrays.get(0);
+        } else {
+            ByteBuffer concatenation = ByteBuffer.allocate(concatenatedSize);
+            for (byte[] array : rawDataArrays) {
+                concatenation.put(array);
+            }
+            rawData = concatenation.array();
+        }
         /* Adjust the raw audio data as needed. */
         byte[] regulatedRawData = this.adjustAudio(rawData, message, "Body");
 

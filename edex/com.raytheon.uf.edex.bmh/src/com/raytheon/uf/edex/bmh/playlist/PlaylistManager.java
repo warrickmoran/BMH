@@ -40,6 +40,7 @@ import javax.xml.bind.JAXB;
 import com.google.common.primitives.Ints;
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
@@ -98,6 +99,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Sep 10, 2014  3391     bsteffen    Generate SAME tones only for applicable
  *                                    transmitter areas.
  * Sep 09, 2014  2585     bsteffen    Implement MAT
+ * Sep 12, 2014  3588     bsteffen    Support audio fragments.
  * 
  * </pre>
  * 
@@ -164,7 +166,7 @@ public class PlaylistManager implements IContextStateProcessor {
                     .getName());
             List<Suite> programSuites = program.getSuites();
             for (Suite suite : programSuites) {
-                    refreshPlaylist(group, suite);
+                refreshPlaylist(group, suite);
             }
             for (Playlist playlist : currentLists) {
                 if (!programSuites.contains(playlist.getSuite())) {
@@ -471,15 +473,17 @@ public class PlaylistManager implements IContextStateProcessor {
             List<BroadcastMsg> list) {
         list = new ArrayList<>(list);
         boolean added = false;
-        
-        List<Integer> mrdReplacements = Ints.asList(msg.getInputMessage().getMrdReplacements());
+
+        List<Integer> mrdReplacements = Ints.asList(msg.getInputMessage()
+                .getMrdReplacements());
         Set<String> matReplacements = new HashSet<>();
         matReplacements.add(msg.getAfosid());
-        for(SuiteMessage smsg : suite.getSuiteMessages()){
-            if (smsg.getAfosid().equals(msg.getAfosid())){
-               for(MessageTypeReplacement rep : smsg.getMsgType().getReplacementMsgs()){
-                   matReplacements.add(rep.getReplaceMsgType().getAfosid());
-               }
+        for (SuiteMessage smsg : suite.getSuiteMessages()) {
+            if (smsg.getAfosid().equals(msg.getAfosid())) {
+                for (MessageTypeReplacement rep : smsg.getMsgType()
+                        .getReplacementMsgs()) {
+                    matReplacements.add(rep.getReplaceMsgType().getAfosid());
+                }
                 break;
             }
         }
@@ -489,8 +493,8 @@ public class PlaylistManager implements IContextStateProcessor {
             BroadcastMsg potentialReplacee = messageIterator.next();
             int mrd = potentialReplacee.getInputMessage().getMrdId();
             boolean mrdReplacement = mrdReplacements.contains(mrd);
-            boolean matReplacement = mrd == -1 && matReplacements.contains(potentialReplacee
-                    .getAfosid());
+            boolean matReplacement = mrd == -1
+                    && matReplacements.contains(potentialReplacee.getAfosid());
             matReplacement = matReplacement
                     && potentialReplacee.getInputMessage().getAreaCodes()
                             .equals(msg.getInputMessage().getAreaCodes());
@@ -564,7 +568,9 @@ public class PlaylistManager implements IContextStateProcessor {
         dac.setExpired(db.getEndTime());
         dac.setInterrupt(suite.getType() == SuiteType.INTERRUPT);
         for (BroadcastMsg message : db.getMessages()) {
-            dac.addMessage(convertMessageForDAC(message));
+            if (message.isSuccess()) {
+                dac.addMessage(convertMessageForDAC(message));
+            }
         }
         return dac;
     }
@@ -587,7 +593,9 @@ public class PlaylistManager implements IContextStateProcessor {
         if (!messageFile.exists()) {
             DacPlaylistMessage dac = new DacPlaylistMessage();
             dac.setBroadcastId(id);
-            dac.setSoundFile(broadcast.getOutputName());
+            for (BroadcastFragment fragment : broadcast.getFragments()) {
+                dac.addSoundFile(fragment.getOutputName());
+            }
             InputMessage input = broadcast.getInputMessage();
             dac.setMessageType(input.getAfosid());
             dac.setStart(input.getEffectiveTime());

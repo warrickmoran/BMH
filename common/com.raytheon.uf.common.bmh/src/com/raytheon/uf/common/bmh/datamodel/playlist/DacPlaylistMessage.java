@@ -20,7 +20,9 @@
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -45,6 +47,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 13, 2014  3286     dgilling    Add fields for tone playback.
  * Aug 18, 2014  3540     dgilling    Add getPlaybackInterval().
  * Sep 08, 2014  3286     dgilling    Add getPath() and setPath().
+ * Sep 12, 2014  3588     bsteffen    Support audio fragments.
  * 
  * </pre>
  * 
@@ -58,8 +61,8 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     @XmlElement
     private String messageType;
 
-    @XmlElement
-    private String soundFile;
+    @XmlElement(name = "soundFile")
+    private List<String> soundFiles;
 
     @XmlElement
     private Calendar start;
@@ -121,12 +124,19 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         this.messageType = messageType;
     }
 
-    public String getSoundFile() {
-        return soundFile;
+    public List<String> getSoundFiles() {
+        return soundFiles;
     }
 
-    public void setSoundFile(String soundFile) {
-        this.soundFile = soundFile;
+    public void setSoundFiles(List<String> soundFiles) {
+        this.soundFiles = soundFiles;
+    }
+
+    public void addSoundFile(String soundFile) {
+        if (this.soundFiles == null) {
+            this.soundFiles = new ArrayList<>();
+        }
+        this.soundFiles.add(soundFile);
     }
 
     public Calendar getStart() {

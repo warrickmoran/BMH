@@ -21,6 +21,8 @@ package com.raytheon.uf.edex.bmh.tts;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
@@ -31,10 +33,11 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
-import com.raytheon.uf.common.bmh.TTSSynthesisException;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
+import com.raytheon.uf.common.bmh.TTSSynthesisException;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
@@ -66,6 +69,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     synthesis validation fails due to an improperly
  *                                     set bmh tts nfs directory.
  * Aug 29, 2014 3568       bkowal      Success field in broadcast msg is now set correctly.
+ * Sep 12, 2014 3588       bsteffen    Support audio fragments.
  * 
  * </pre>
  * 
@@ -380,142 +384,154 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         if (this.disabled) {
             statusHandler
                     .info("TTS Manager is currently disabled. No messages can be processed.");
-            message.setSuccess(false);
+            for (BroadcastFragment fragemnt : message.getFragments()) {
+                fragemnt.setSuccess(false);
+            }
             return message;
         }
 
         statusHandler
                 .info("Performing Text-to-Speech Transformation for message: "
                         + message.getId() + ".");
+        for (BroadcastFragment fragment : message.getFragments()) {
+            if (fragment.isSuccess()
+                    && Files.exists(Paths.get(fragment.getOutputName()))) {
+                continue;
+            }
+            int attempt = 0;
+            TTSReturn ttsReturn = null;
+            boolean success = false;
+            IOException ioException = null;
 
-        int attempt = 0;
-        TTSReturn ttsReturn = null;
-        boolean success = false;
-        IOException ioException = null;
+            while (true) {
+                ++attempt;
+                ioException = null;
 
-        while (true) {
-            ++attempt;
-            ioException = null;
+                /* Attempt the Conversion */
+                try {
+                    ttsReturn = this.synthesisFactory.synthesize(fragment
+                            .getSsml(), fragment.getVoice().getVoiceNumber(),
+                            TTS_DEFAULT_FORMAT);
+                } catch (TTSSynthesisException e) {
+                    statusHandler.error(BMH_CATEGORY.UNKNOWN,
+                            "TTS synthesis of message " + message.getId()
+                                    + " has failed! Attempt (" + attempt + ")",
+                            e);
+                    if (attempt > this.ttsRetryThreshold) {
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
 
-            /* Attempt the Conversion */
-            try {
-                ttsReturn = this.synthesisFactory
-                        .synthesize(message.getSsml(), message.getVoice()
-                                .getVoiceNumber(), TTS_DEFAULT_FORMAT);
-            } catch (TTSSynthesisException e) {
-                statusHandler.error(BMH_CATEGORY.UNKNOWN,
-                        "TTS synthesis of message " + message.getId()
-                                + " has failed! Attempt (" + attempt + ")", e);
+                if (ttsReturn.isIoFailed()) {
+                    ioException = ttsReturn.getIoFailureCause();
+                } else {
+                    if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
+                        statusHandler.info("Successfully retrieved "
+                                + ttsReturn.getVoiceData().length
+                                + " bytes of audio data for message: "
+                                + message.getId() + "(fragment: "
+                                + fragment.getId()
+                                + "). Data retrieval complete!");
+                        /* Successful Conversion */
+                        success = true;
+                        break;
+                    }
+
+                    if (this.retry(ttsReturn.getReturnValue()) == false) {
+                        /* Absolute Failure */
+                        break;
+                    }
+                }
+
+                /* Have we reached the retry threshold? */
+
                 if (attempt > this.ttsRetryThreshold) {
+                    /*
+                     * maximum retry count reached; halt text-to-speech
+                     * transformation attempts
+                     */
                     break;
                 } else {
-                    continue;
+                    String logMessage = "Text-to-Speech Transformation was unsuccessful for message: "
+                            + message.getId() + "; ";
+                    BMH_CATEGORY category = null;
+                    if (ioException == null) {
+                        /* Build the log message. */
+                        logMessage += this.getTTSErrorLogStatement(ttsReturn
+                                .getReturnValue());
+                        category = ttsReturn.getReturnValue()
+                                .getAssociatedBMHCategory();
+                    } else {
+                        logMessage += "IO Error = "
+                                + ioException.getLocalizedMessage();
+                        category = BMH_CATEGORY.TTS_SYSTEM_ERROR;
+                    }
+                    logMessage += "! Attempt (" + attempt + ")";
+
+                    /* Just log a warning. */
+                    statusHandler.warn(category, logMessage);
+
+                    this.sleepDelayTime();
                 }
             }
 
-            if (ttsReturn.isIoFailed()) {
-                ioException = ttsReturn.getIoFailureCause();
+            if (success) {
+                int totalBytes = ttsReturn.getVoiceData().length;
+                statusHandler
+                        .info("Text-to-Speech Transformation completed successfully for message: "
+                                + message.getId()
+                                + ".  Length of playback = "
+                                + (((totalBytes / 160) * 20) / 1000)
+                                + " seconds");
+                /* Write the output file. */
+                File outputFile = this.determineOutputFile(message.getId(),
+                        message.getInputMessage().getAfosid(),
+                        fragment.getVoice());
+                try {
+                    FileUtils.writeByteArrayToFile(outputFile,
+                            ttsReturn.getVoiceData());
+                    fragment.setOutputName(outputFile.getAbsolutePath());
+                    statusHandler.info("Successfully wrote audio output file: "
+                            + outputFile.getAbsolutePath() + " for message: "
+                            + message.getId() + ". " + totalBytes
+                            + " bytes were written.");
+                } catch (IOException e) {
+                    ioException = e;
+                    StringBuilder stringBuilder = new StringBuilder(
+                            "Failed to write audio output file: ");
+                    stringBuilder.append(outputFile.getAbsolutePath());
+                    stringBuilder.append("; REASON = ");
+                    stringBuilder.append(e.getLocalizedMessage());
+                    statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
+                            stringBuilder.toString(), e);
+                    /*
+                     * TTS Conversion may have succeeded; however, the file
+                     * write has failed!
+                     */
+                    success = false;
+                }
             } else {
-                if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
-                    statusHandler.info("Successfully retrieved "
-                            + ttsReturn.getVoiceData().length
-                            + " bytes of audio data for message: "
-                            + message.getId() + ". Data retrieval complete!");
-                    /* Successful Conversion */
-                    success = true;
-                    break;
-                }
-
-                if (this.retry(ttsReturn.getReturnValue()) == false) {
-                    /* Absolute Failure */
-                    break;
-                }
-            }
-
-            /* Have we reached the retry threshold? */
-
-            if (attempt > this.ttsRetryThreshold) {
-                /*
-                 * maximum retry count reached; halt text-to-speech
-                 * transformation attempts
-                 */
-                break;
-            } else {
-                String logMessage = "Text-to-Speech Transformation was unsuccessful for message: "
-                        + message.getId() + "; ";
-                BMH_CATEGORY category = null;
-                if (ioException == null) {
-                    /* Build the log message. */
-                    logMessage += this.getTTSErrorLogStatement(ttsReturn
-                            .getReturnValue());
-                    category = ttsReturn.getReturnValue()
-                            .getAssociatedBMHCategory();
-                } else {
-                    logMessage += "IO Error = "
-                            + ioException.getLocalizedMessage();
-                    category = BMH_CATEGORY.TTS_SYSTEM_ERROR;
-                }
-                logMessage += "! Attempt (" + attempt + ")";
-
-                /* Just log a warning. */
-                statusHandler.warn(category, logMessage);
-
-                this.sleepDelayTime();
-            }
-        }
-
-        if (success) {
-            int totalBytes = ttsReturn.getVoiceData().length;
-            statusHandler
-                    .info("Text-to-Speech Transformation completed successfully for message: "
-                            + message.getId()
-                            + ".  Length of playback = "
-                            + (((totalBytes / 160) * 20) / 1000) + " seconds");
-            /* Write the output file. */
-            File outputFile = this.determineOutputFile(message.getId(), message
-                    .getInputMessage().getAfosid(), message.getVoice());
-            try {
-                FileUtils.writeByteArrayToFile(outputFile,
-                        ttsReturn.getVoiceData());
-                message.setOutputName(outputFile.getAbsolutePath());
-                statusHandler.info("Successfully wrote audio output file: "
-                        + outputFile.getAbsolutePath() + " for message: "
-                        + message.getId() + ". " + totalBytes
-                        + " bytes were written.");
-            } catch (IOException e) {
-                ioException = e;
                 StringBuilder stringBuilder = new StringBuilder(
-                        "Failed to write audio output file: ");
-                stringBuilder.append(outputFile.getAbsolutePath());
-                stringBuilder.append("; REASON = ");
-                stringBuilder.append(e.getLocalizedMessage());
-                statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
-                        stringBuilder.toString(), e);
-                /*
-                 * TTS Conversion may have succeeded; however, the file write
-                 * has failed!
-                 */
-                success = false;
+                        "Text-to-Speech Transformation failed for message: ");
+                stringBuilder.append(message.getId());
+                if (ioException == null) {
+                    stringBuilder.append("; ");
+                    stringBuilder.append(this.getTTSErrorLogStatement(ttsReturn
+                            .getReturnValue()));
+                    stringBuilder.append("!");
+                    statusHandler.error(ttsReturn.getReturnValue()
+                            .getAssociatedBMHCategory(), stringBuilder
+                            .toString());
+                } else {
+                    stringBuilder.append("!");
+                    statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
+                            stringBuilder.toString(), ioException);
+                }
             }
-        } else {
-            StringBuilder stringBuilder = new StringBuilder(
-                    "Text-to-Speech Transformation failed for message: ");
-            stringBuilder.append(message.getId());
-            if (ioException == null) {
-                stringBuilder.append("; ");
-                stringBuilder.append(this.getTTSErrorLogStatement(ttsReturn
-                        .getReturnValue()));
-                stringBuilder.append("!");
-                statusHandler.error(ttsReturn.getReturnValue()
-                        .getAssociatedBMHCategory(), stringBuilder.toString());
-            } else {
-                stringBuilder.append("!");
-                statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
-                        stringBuilder.toString(), ioException);
-            }
+            fragment.setSuccess(success);
         }
-        message.setSuccess(success);
-
         return message;
     }
 

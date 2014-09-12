@@ -19,10 +19,14 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -30,10 +34,11 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
+import javax.persistence.OneToMany;
+import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
-import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -53,7 +58,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                    group, language and afos id.
  * Sep 03, 2014  3554     bsteffen    Add getUnexpiredBroadcastMsgsByAfosIDAndGroup
  * Sep 10, 2014  2585     bsteffen    Implement MAT
- * 
+ * Sep 12, 2014  3588     bsteffen    Support audio fragments.
  * 
  * </pre>
  * 
@@ -117,35 +122,10 @@ public class BroadcastMsg {
     @DynamicSerializeElement
     private InputMessage inputMessage;
 
-    /* ===== Message Body ===== */
-
-    /* The text to transform in SSML format. */
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @OneToMany(mappedBy = "message", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
-    private String ssml;
-
-    /* The Voice that should be used to transform the SSML text. */
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "voice_id")
-    @DynamicSerializeElement
-    private TtsVoice voice;
-
-    /*
-     * The name of the output file; generated at the conclusion of the
-     * transformation - will initially be NULL; but, will be updated after a
-     * successful text transformation.
-     */
-    @Column(nullable = true)
-    @DynamicSerializeElement
-    private String outputName;
-
-    /*
-     * Indicates whether or not the text was successfully transformed; set at
-     * the conclusion of the transformation.
-     */
-    @Column
-    @DynamicSerializeElement
-    private boolean success;
+    private List<BroadcastFragment> fragments;
 
     /**
      * 
@@ -228,64 +208,35 @@ public class BroadcastMsg {
         this.inputMessage = inputMessage;
     }
 
-    /**
-     * @return the ssml
-     */
-    public String getSsml() {
-        return ssml;
+    public List<BroadcastFragment> getFragments() {
+        return fragments;
     }
 
-    /**
-     * @param ssml
-     *            the ssml to set
-     */
-    public void setSsml(String ssml) {
-        this.ssml = ssml;
+    public void setFragments(List<BroadcastFragment> fragments) {
+        this.fragments = fragments;
+        for (BroadcastFragment fragment : fragments) {
+            fragment.setMessage(this);
+        }
     }
 
-    /**
-     * @return the voice
-     */
-    public TtsVoice getVoice() {
-        return voice;
-    }
-
-    /**
-     * @param voice
-     *            the voice to set
-     */
-    public void setVoice(TtsVoice voice) {
-        this.voice = voice;
-    }
-
-    /**
-     * @return the outputName
-     */
-    public String getOutputName() {
-        return outputName;
-    }
-
-    /**
-     * @param outputName
-     *            the outputName to set
-     */
-    public void setOutputName(String outputName) {
-        this.outputName = outputName;
+    public void addFragment(BroadcastFragment fragment) {
+        if (this.fragments == null) {
+            this.fragments = new ArrayList<>(1);
+        }
+        this.fragments.add(fragment);
+        fragment.setMessage(this);
     }
 
     /**
      * @return the success
      */
     public boolean isSuccess() {
-        return success;
-    }
-
-    /**
-     * @param success
-     *            the success to set
-     */
-    public void setSuccess(boolean success) {
-        this.success = success;
+        for (BroadcastFragment fragment : fragments) {
+            if (!fragment.isSuccess()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

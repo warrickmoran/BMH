@@ -32,6 +32,7 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -73,6 +74,7 @@ import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
  *                                     standardize capitalization before applying
  *                                     the transformation (at least so that EVERY
  *                                     letter in the message is not capitalized).
+ * Sep 12, 2014 3588       bsteffen    Support audio fragments.
  * 
  * </pre>
  * 
@@ -346,7 +348,8 @@ public class MessageTransformer {
          * Static message types define their own voice based on the id of the
          * transmitter group. "Special Case" for static message types.
          */
-        message.setVoice(messageType.getVoice());
+        BroadcastFragment fragment = new BroadcastFragment();
+        fragment.setVoice(messageType.getVoice());
         if (StaticMessageIdentifierUtil.isStaticMsgType(messageType)) {
             statusHandler
                     .info("Afos Id "
@@ -360,7 +363,7 @@ public class MessageTransformer {
             TransmitterLanguage transmitterLanguage = this.transmitterLanguageDao
                     .getByID(key);
             if (transmitterLanguage != null) {
-                message.setVoice(transmitterLanguage.getVoice());
+                fragment.setVoice(transmitterLanguage.getVoice());
             } else {
                 statusHandler
                         .info("No transmitter language is associated with transmitter group "
@@ -371,8 +374,8 @@ public class MessageTransformer {
                                 + inputMessage.getAfosid() + ".");
             }
         }
-        message.setSsml(ssmlDocument.toSSML());
-
+        fragment.setSsml(ssmlDocument.toSSML());
+        message.addFragment(fragment);
         return message;
     }
 

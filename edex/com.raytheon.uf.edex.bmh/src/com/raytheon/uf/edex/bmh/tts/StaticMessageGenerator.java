@@ -19,7 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.tts;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -64,6 +66,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * ------------ ---------- ----------- --------------------------
  * Aug 28, 2014 3568       bkowal      Initial creation
  * Sep 09, 2014 2585       bsteffen    Implement MAT
+ * Sep 12, 2014 3588       bsteffen    Support audio fragments.
  * 
  * </pre>
  * 
@@ -387,11 +390,18 @@ public class StaticMessageGenerator {
          * Does an associated broadcast message exist. And, if one does exist,
          * is it complete?
          */
-        if (existingMsg == null || existingMsg.isSuccess() == false
-                || existingMsg.getOutputName() == null
-                || existingMsg.getOutputName().isEmpty()
-                || (new File(existingMsg.getOutputName()).exists() == false)) {
-            return this.create(language, messageType, text, groupSet);
+        boolean complete = existingMsg != null && existingMsg.isSuccess()
+                && existingMsg.getFragments() != null
+                && !existingMsg.getFragments().isEmpty();
+        if (complete) {
+            for (BroadcastFragment fragment : existingMsg.getFragments()) {
+                String output = fragment.getOutputName();
+                complete &= output != null && !output.isEmpty()
+                        && Files.exists(Paths.get(output));
+            }
+            if (complete) {
+                return this.create(language, messageType, text, groupSet);
+            }
         }
 
         /*

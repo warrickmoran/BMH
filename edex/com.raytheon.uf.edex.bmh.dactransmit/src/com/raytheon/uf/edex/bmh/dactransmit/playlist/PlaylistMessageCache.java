@@ -80,6 +80,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      cache.
  * Sep 11, 2014  #3606     dgilling     Prevent exceptions when messages don't
  *                                      have an associated sound file.
+ * Sep 12, 2014  #3588     bsteffen     Support audio fragments.
  * 
  * </pre>
  * 
@@ -318,28 +319,35 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
         long fileSize = 0;
         if (cachedFiles.containsKey(message)) {
-            fileSize = cachedFiles.get(message).capcity(includeTones);
+            fileSize = cachedFiles.get(message).capacity(includeTones);
         } else {
-            String pathString = cachedMessages.get(messageId).getSoundFile();
-
-            if ((pathString != null) && (!pathString.isEmpty())) {
-                Path audioFile = Paths.get(pathString);
-                try {
-                    fileSize = Files.size(audioFile);
-                } catch (Exception e) {
-                    logger.error("Unable to retrieve file size for file: "
-                            + audioFile.toString(), e);
-                }
-
-                if (includeTones) {
-                    fileSize += SAME_TONE_ESTIMATE;
-                    if (message.isAlertTone()) {
-                        fileSize += ALERT_TONE_ESTIMATE;
-                    }
-                }
-            } else {
+            List<String> soundFiles = cachedMessages.get(messageId)
+                    .getSoundFiles();
+            if (soundFiles == null || soundFiles.isEmpty()) {
                 throw new NoSoundFileException("Message " + messageId
-                        + " contains no soundFile attribute.");
+                        + " contains no soundFile attributes.");
+            }
+            for (String pathString : soundFiles) {
+
+                if ((pathString != null) && (!pathString.isEmpty())) {
+                    Path audioFile = Paths.get(pathString);
+                    try {
+                        fileSize = Files.size(audioFile);
+                    } catch (Exception e) {
+                        logger.error("Unable to retrieve file size for file: "
+                                + audioFile.toString(), e);
+                    }
+
+                } else {
+                    throw new NoSoundFileException("Message " + messageId
+                            + " contains an empty soundFile attribute.");
+                }
+            }
+            if (includeTones) {
+                fileSize += SAME_TONE_ESTIMATE;
+                if (message.isAlertTone()) {
+                    fileSize += ALERT_TONE_ESTIMATE;
+                }
             }
         }
 

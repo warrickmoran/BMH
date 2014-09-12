@@ -28,12 +28,13 @@ import org.apache.commons.io.FilenameUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.test.AbstractWavFileGeneratingTest;
@@ -59,6 +60,8 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * Jul 23, 2014 3424       bkowal      Will now optionally adjust the audio volume
  *                                     post-TTS generation based on the optional
  *                                     'tts.volume.adjust' property.
+ * Sep 12, 2014 3588       bsteffen    Support audio fragments.
+ * 
  * 
  * </pre>
  * 
@@ -208,8 +211,10 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
         BroadcastMsg message = new BroadcastMsg();
         message.setInputMessage(inputMessage);
         message.setTransmitterGroup(transmitterGroup);
-        message.setSsml(ssmlMessage);
-        message.setVoice(voice);
+        BroadcastFragment fragment = new BroadcastFragment();
+        fragment.setSsml(ssmlMessage);
+        fragment.setVoice(voice);
+        message.addFragment(fragment);
 
         return message;
     }
@@ -260,35 +265,43 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
             return;
         }
 
-        if (message.getOutputName() == null
-                || message.getOutputName().trim().isEmpty()) {
-            statusHandler
-                    .error("Output file name has not been set on the message; skipping message ["
-                            + messageID + "]!");
+        if (message.getFragments() == null || message.getFragments().isEmpty()) {
+            statusHandler.error("Message has no fragments; skipping message ["
+                    + messageID + "]!");
             return;
         }
 
-        File outputUlawFile = new File(message.getOutputName().trim());
-        if (outputUlawFile.exists() == false) {
-            statusHandler.error("Specified output file: "
-                    + outputUlawFile.getAbsolutePath()
-                    + " does not exist; skipping message [" + messageID + "]!");
-            return;
+        for (BroadcastFragment fragment : message.getFragments()) {
+            if (fragment.getOutputName() == null
+                    || fragment.getOutputName().trim().isEmpty()) {
+                statusHandler
+                        .error("Output file name has not been set on the message; skipping message ["
+                                + messageID + "]!");
+                return;
+            }
+
+            File outputUlawFile = new File(fragment.getOutputName().trim());
+            if (outputUlawFile.exists() == false) {
+                statusHandler.error("Specified output file: "
+                        + outputUlawFile.getAbsolutePath()
+                        + " does not exist; skipping message [" + messageID
+                        + "]!");
+                return;
+            }
+
+            /* Get the name of the file, itself. */
+            String filename = FilenameUtils.getBaseName(outputUlawFile
+                    .getAbsolutePath());
+
+            boolean success = super.writeWavData(outputUlawFile, filename);
+            if (!success) {
+                statusHandler.error("Failed to process message: " + messageID
+                        + "!");
+                return;
+            }
         }
-
-        /* Get the name of the file, itself. */
-        String filename = FilenameUtils.getBaseName(outputUlawFile
-                .getAbsolutePath());
-
-        boolean success = super.writeWavData(outputUlawFile, filename);
-
-        if (success) {
-            statusHandler.info("Successfully processed message: " + messageID
-                    + ".");
-        } else {
-            statusHandler
-                    .error("Failed to process message: " + messageID + "!");
-        }
+        statusHandler
+                .info("Successfully processed message: " + messageID + ".");
     }
 
     /**

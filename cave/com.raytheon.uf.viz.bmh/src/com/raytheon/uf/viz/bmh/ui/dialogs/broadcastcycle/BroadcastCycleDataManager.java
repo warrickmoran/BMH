@@ -74,6 +74,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Aug 24, 2014    3432    mpduff      Added getEnabledTransmitterGroups
  * Sep 15, 2014   #3610    lvenable    Moved getMessageType functionality into the
  *                                     MessageTypeDataManager class.
+ * Sep 12, 2014    3588    bsteffen    Broadcast msg support audio fragments.
  * 
  * </pre>
  * 
@@ -151,8 +152,6 @@ public class BroadcastCycleDataManager {
                 cell = new TableCellData(msg.getInputMessage().getAfosid());
                 rowData.addTableCellData(cell);
 
-                cell = new TableCellData(msg.getOutputName());
-                rowData.addTableCellData(cell);
                 data.addDataRow(rowData);
             }
         }
