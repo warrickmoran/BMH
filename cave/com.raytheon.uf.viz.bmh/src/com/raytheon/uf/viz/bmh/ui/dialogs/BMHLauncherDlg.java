@@ -68,6 +68,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.listening.zones.ListeningZoneDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypesDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WeatherMessagesDlg;
 import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
@@ -94,6 +95,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 20, 2014   3411     mpduff      Added bringToTop for message dialog
  * Aug 21, 2014  #3490     lvenable    Updated disable silence alarm to use transmitter group.
  * Aug 25, 2014  #3490     lvenable    Disabled Status Dialog since it will be redesigned.
+ * Sep 14, 2014  #3610     lvenable    Added launching of Weather Messages dialog.
  * 
  * </pre>
  * 
@@ -155,7 +157,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     private ListeningAreaDlg listeningAreaDlg;
 
     /** Listening zone configuration dialog */
-    protected ListeningZoneDlg listeningZoneDlg;
+    private ListeningZoneDlg listeningZoneDlg;
 
     /** Message types dialog. */
     private MessageTypesDlg messageTypesDlg;
@@ -164,7 +166,10 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     private DictionaryManagerDlg dictManagerDlg;
 
     /** Transmitter configuration dialog */
-    protected TransmitterConfigDlg transmitterConfigDlg;
+    private TransmitterConfigDlg transmitterConfigDlg;
+
+    /** Weather Messages dialog. */
+    private WeatherMessagesDlg weatherMessagesDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -451,10 +456,10 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         weatherMessageBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                DialogUtility.notImplemented(shell);
+                launchWeatherMessages();
             }
         });
-        new CustomToolTip(weatherMessageBtn, "Weather Element");
+        new CustomToolTip(weatherMessageBtn, "Weather Messages");
 
         /*
          * Emergency Override
@@ -658,7 +663,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         weatherMessagesMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                DialogUtility.notImplemented(shell);
+                launchWeatherMessages();
             }
         });
 
@@ -825,6 +830,16 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             broadcastCycleDlg.open();
         } else {
             broadcastCycleDlg.bringToTop();
+        }
+    }
+
+    private void launchWeatherMessages() {
+        if (weatherMessagesDlg == null || weatherMessagesDlg.isDisposed()) {
+            weatherMessagesDlg = new WeatherMessagesDlg(getShell(),
+                    dlgsToValidateCloseMap);
+            weatherMessagesDlg.open();
+        } else {
+            weatherMessagesDlg.bringToTop();
         }
     }
 

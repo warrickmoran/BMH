@@ -37,9 +37,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest.BroadcastMessageAction;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgResponse;
-import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
-import com.raytheon.uf.common.bmh.request.MessageTypeRequest.MessageTypeAction;
-import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
 import com.raytheon.uf.common.bmh.request.PlaylistRequest;
 import com.raytheon.uf.common.bmh.request.PlaylistRequest.PlaylistAction;
 import com.raytheon.uf.common.bmh.request.PlaylistResponse;
@@ -60,6 +57,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 
 /**
  * The {@link BroadcastCycleDlg} data manager class.
@@ -74,6 +72,9 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Aug 14, 2014    3432    mpduff      Implementing more methods.
  * Aug 23, 2014    3432    mpduff      Add getPlaylistDataForTransmitter
  * Aug 24, 2014    3432    mpduff      Added getEnabledTransmitterGroups
+ * Sep 15, 2014   #3610    lvenable    Moved getMessageType functionality into the
+ *                                     MessageTypeDataManager class.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -81,6 +82,10 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  */
 
 public class BroadcastCycleDataManager {
+
+    /** Message type data manager. */
+    private MessageTypeDataManager messageTypeDataManager;
+
     /**
      * Constructor
      */
@@ -199,19 +204,12 @@ public class BroadcastCycleDataManager {
      * @throws Exception
      */
     public MessageType getMessageType(String afosId) throws Exception {
-        MessageTypeRequest req = new MessageTypeRequest();
-        req.setAction(MessageTypeAction.GetByAfosId);
-        req.setAfosId(afosId);
 
-        MessageTypeResponse response = (MessageTypeResponse) BmhUtils
-                .sendRequest(req);
-
-        List<MessageType> list = response.getMessageTypeList();
-        if ((list != null) && (list.size() > 0)) {
-            return list.get(0);
+        if (messageTypeDataManager == null) {
+            messageTypeDataManager = new MessageTypeDataManager();
         }
 
-        return null;
+        return messageTypeDataManager.getMessageType(afosId);
     }
 
     /**

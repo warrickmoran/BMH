@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * Aug 5, 2014  #3490      lvenable    Updated action
  * Aug 14, 2014    3432    mpduff      Added Afosid
  * Aug 17, 2014  #3490     lvenable    Updated action and added messageType.
+ * Sep 15, 2014   #3610    lvenable    Added GetAfosIdTitle.
  * 
  * </pre>
  * 
@@ -46,7 +47,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 @DynamicSerialize
 public class MessageTypeRequest implements IServerRequest {
     public enum MessageTypeAction {
-        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId;
+        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle;
     }
 
     @DynamicSerializeElement

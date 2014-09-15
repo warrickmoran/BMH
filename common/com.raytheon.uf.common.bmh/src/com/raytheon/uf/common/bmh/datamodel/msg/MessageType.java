@@ -68,6 +68,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 17, 2014 #3490      lvenable    Added batch size, removed cascade all.
  * Aug 18, 2014  3411      mpduff      Added {@link MessageTypeReplacement}
  * Sep 2, 2014   3568      bkowal      Added the getMessageTypeForDesignation named query
+ * Sep 15, 2014   #3610    lvenable    Added query for getting Afos ID and Title.
  * 
  * </pre>
  * 
@@ -75,6 +76,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @NamedQueries({
+        @NamedQuery(name = MessageType.GET_MESSAGETYPE_AFOSID_TITLE, query = MessageType.GET_MESSAGETYPE_AFOSID_TITLE_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_AFOSID, query = MessageType.GET_MESSAGETYPE_FOR_AFOSID_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, query = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION_QUERY) })
 @Entity
@@ -88,6 +90,10 @@ public class MessageType {
     }
 
     static final String GEN = "Message Type Generator";
+
+    public static final String GET_MESSAGETYPE_AFOSID_TITLE = "getMessageTypeAfosTitle";
+
+    protected static final String GET_MESSAGETYPE_AFOSID_TITLE_QUERY = "select afosid, title FROM MessageType m";
 
     public static final String GET_MESSAGETYPE_FOR_AFOSID = "getMessageTypeForAfosId";
 
