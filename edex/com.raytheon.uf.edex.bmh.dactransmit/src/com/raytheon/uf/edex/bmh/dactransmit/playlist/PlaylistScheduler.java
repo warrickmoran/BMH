@@ -59,6 +59,7 @@ import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotificationHandler;
+import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
 
 /**
  * Manages playback order of playlist and playlist messages for the current
@@ -98,6 +99,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotif
  * Aug 26, 2014  #3486     bsteffen     Make deletion of playlists safer and more verbose.
  * Sep 5, 2014   #3532     bkowal       Use a decibel target instead of a range.
  * Sep 08, 2014  #3286     dgilling     Move playlist deletion off main thread.
+ * Sep 11, 2014  #3606     dgilling     Prevent exceptions when messages don't
+ *                                      have an associated sound file and when
+ *                                      all playlists expire.
  * 
  * </pre>
  * 
@@ -190,8 +194,8 @@ public final class PlaylistScheduler implements
      *            Reference back to the application-wide {@code EventBus}
      *            instance for posting and receiving necessary status events.
      * @param dbTarget
-     *            The target level of audio allowed by the
-     *            destination transmitter in decibels.
+     *            The target level of audio allowed by the destination
+     *            transmitter in decibels.
      * @throws IOException
      *             If any I/O errors occur attempting to get the list of
      *             playlist files from the specified directory.
@@ -360,8 +364,9 @@ public final class PlaylistScheduler implements
                 eventBus.post(notify);
                 currentMessages = Collections.emptyList();
             } else {
-                if (currentPlaylist != null) {
-                    mergeFutureToActivePlaylists(expiredPlaylists);
+                mergeFutureToActivePlaylists(expiredPlaylists);
+
+                if ((currentPlaylist != null) & (!activePlaylists.isEmpty())) {
                     nextPlaylist = activePlaylists.first();
                     if (currentPlaylist == nextPlaylist) {
                         logger.debug("Continuing with playlist "
@@ -749,11 +754,24 @@ public final class PlaylistScheduler implements
                     messageId.getBroadcastId(), null, messageData);
             predictedMessages.add(prediction);
 
-            cycleTime += cache.getPlaybackTime(messageId);
+            long playbackTime;
+            try {
+                playbackTime = cache.getPlaybackTime(messageId);
+            } catch (NoSoundFileException e) {
+                /*
+                 * I don't this case should ever occur--how would we have played
+                 * a message with no soundFile attribute? Nonetheless, let's
+                 * catch and assume 0ms playback time, for now...
+                 */
+                playbackTime = 0;
+                logger.warn("Message " + messageId
+                        + " has no soundFile attribute.");
+            }
 
+            cycleTime += playbackTime;
             if (i == (predictStartIndex - 1)) {
                 playbackStartTime = messageData.getLastTransmitTime()
-                        .getTimeInMillis() + cache.getPlaybackTime(messageId);
+                        .getTimeInMillis() + playbackTime;
             }
         }
 
@@ -790,15 +808,21 @@ public final class PlaylistScheduler implements
             if ((playlist.isInterrupt() || messageData
                     .isValid(playbackStartTime))
                     && (!periodicMessages.containsKey(messageId))) {
-                MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
-                        messageId.getBroadcastId(),
-                        TimeUtil.newGmtCalendar(new Date(playbackStartTime)),
-                        messageData);
-                predictedMessages.add(prediction);
+                try {
+                    long playbackTime = cache.getPlaybackTime(messageId);
 
-                long playbackTime = cache.getPlaybackTime(messageId);
-                cycleTime += playbackTime;
-                playbackStartTime += playbackTime;
+                    MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
+                            messageId.getBroadcastId(),
+                            TimeUtil.newGmtCalendar(new Date(playbackStartTime)),
+                            messageData);
+                    predictedMessages.add(prediction);
+
+                    cycleTime += playbackTime;
+                    playbackStartTime += playbackTime;
+                } catch (NoSoundFileException e) {
+                    logger.error("Message " + messageId
+                            + " has no soundFile attribute. Skipping.");
+                }
             }
 
             for (Entry<DacPlaylistMessageId, MutableLong> entry : periodicMessages
@@ -813,16 +837,22 @@ public final class PlaylistScheduler implements
                     logger.debug("Scheduling periodic message ["
                             + periodicMessageId + "].");
 
-                    MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
-                            periodicMessageId.getBroadcastId(),
-                            TimeUtil.newGmtCalendar(new Date(playbackStartTime)),
-                            periodicMessage);
-                    predictedMessages.add(prediction);
+                    try {
+                        long playbackTime = cache
+                                .getPlaybackTime(periodicMessageId);
 
-                    long playbackTime = cache
-                            .getPlaybackTime(periodicMessageId);
-                    cycleTime += playbackTime;
-                    playbackStartTime += playbackTime;
+                        MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
+                                periodicMessageId.getBroadcastId(),
+                                TimeUtil.newGmtCalendar(new Date(
+                                        playbackStartTime)), periodicMessage);
+                        predictedMessages.add(prediction);
+
+                        cycleTime += playbackTime;
+                        playbackStartTime += playbackTime;
+                    } catch (NoSoundFileException e) {
+                        logger.error("Message " + messageId
+                                + " has no soundFile attribute. Skipping.");
+                    }
 
                     /*
                      * Now that we've scheduled the message, we jump the next

@@ -49,6 +49,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
@@ -77,6 +78,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Sep 5, 2014   #3532     bkowal       Use a decibel target instead of a range.
  * Sep 08, 2014  #3286     dgilling     Allow expired items to be removed from
  *                                      cache.
+ * Sep 11, 2014  #3606     dgilling     Prevent exceptions when messages don't
+ *                                      have an associated sound file.
  * 
  * </pre>
  * 
@@ -304,8 +307,11 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      *            The {@code DacPlaylistMessageId} of the message to get the
      *            playback time for.
      * @return The playback time in milliseconds.
+     * @throws NoSoundFileException
+     *             If the message data contains no soundFile attribute.
      */
-    public long getPlaybackTime(DacPlaylistMessageId messageId) {
+    public long getPlaybackTime(DacPlaylistMessageId messageId)
+            throws NoSoundFileException {
         DacPlaylistMessage message = cachedMessages.get(messageId);
         boolean includeTones = ((message.getSAMEtone() != null) && (message
                 .getPlayCount() == 0));
@@ -314,20 +320,26 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         if (cachedFiles.containsKey(message)) {
             fileSize = cachedFiles.get(message).capcity(includeTones);
         } else {
-            Path audioFile = Paths.get(cachedMessages.get(messageId)
-                    .getSoundFile());
-            try {
-                fileSize = Files.size(audioFile);
-            } catch (Exception e) {
-                logger.error("Unable to retrieve file size for file: "
-                        + audioFile.toString(), e);
-            }
+            String pathString = cachedMessages.get(messageId).getSoundFile();
 
-            if (includeTones) {
-                fileSize += SAME_TONE_ESTIMATE;
-                if (message.isAlertTone()) {
-                    fileSize += ALERT_TONE_ESTIMATE;
+            if ((pathString != null) && (!pathString.isEmpty())) {
+                Path audioFile = Paths.get(pathString);
+                try {
+                    fileSize = Files.size(audioFile);
+                } catch (Exception e) {
+                    logger.error("Unable to retrieve file size for file: "
+                            + audioFile.toString(), e);
                 }
+
+                if (includeTones) {
+                    fileSize += SAME_TONE_ESTIMATE;
+                    if (message.isAlertTone()) {
+                        fileSize += ALERT_TONE_ESTIMATE;
+                    }
+                }
+            } else {
+                throw new NoSoundFileException("Message " + messageId
+                        + " contains no soundFile attribute.");
             }
         }
 
@@ -466,7 +478,14 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     }
 
     private boolean isExpired(final DacPlaylistMessageId messageId) {
-        long playbackTime = getPlaybackTime(messageId);
+        long playbackTime;
+        try {
+            playbackTime = getPlaybackTime(messageId);
+        } catch (NoSoundFileException e) {
+            playbackTime = 0;
+            logger.warn("Unable to determine playback time for message "
+                    + messageId);
+        }
         long purgeTime = playbackTime
                 + getMessage(messageId).getExpire().getTimeInMillis();
 
