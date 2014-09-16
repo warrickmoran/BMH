@@ -47,6 +47,7 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Aug 18, 2014  3411      mpduff      Added SaveMessageType
  * Aug 20, 2014  3432      mpduff      Added get by afosid and pk id
  * Sep 05, 2014 3554       bsteffen    Send config change notification.
+ * Sep 15, 2014   #3610    lvenable    Added GetAfosIdTitle capability.
  * 
  * </pre>
  * 
@@ -69,6 +70,9 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
             notification = new MessageTypeConfigNotification(
                     ConfigChangeType.Delete, request.getMessageType());
             break;
+        case GetAfosIdTitle:
+            response = getMessageTypeAfosIdTitle();
+            break;
         case Save:
             response = saveMessageType(request);
             notification = new MessageTypeConfigNotification(
@@ -89,6 +93,16 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
                     "jms-durable:topic:BMH.Config",
                     SerializationUtil.transformToThrift(notification));
         }
+        return response;
+    }
+
+    private MessageTypeResponse getMessageTypeAfosIdTitle() {
+        MessageTypeDao dao = new MessageTypeDao();
+        MessageTypeResponse response = new MessageTypeResponse();
+
+        List<MessageType> messageTypeList = dao.getMessgeTypeAfosIdTitle();
+        response.setMessageTypeList(messageTypeList);
+
         return response;
     }
 

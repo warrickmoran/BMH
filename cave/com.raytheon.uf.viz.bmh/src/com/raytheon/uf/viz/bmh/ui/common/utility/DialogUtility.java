@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.common.utility;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.MessageBox;
@@ -38,6 +39,7 @@ import org.eclipse.swt.widgets.Shell;
  * ------------ ---------- ----------- --------------------------
  * Jul 07, 2014  #3360     lvenable    Initial creation
  * Jul 17, 2014   3120     mpduff      Added showMessageBox convenience method.
+ * Sep 14, 2014  #3610     lvenable    Added horizontal span for addSeparator() method.
  * 
  * </pre>
  * 
@@ -59,6 +61,11 @@ public class DialogUtility {
 
         if (orientation == SWT.HORIZONTAL) {
             gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+
+            if (comp.getLayout() instanceof GridLayout) {
+                int columns = ((GridLayout) comp.getLayout()).numColumns;
+                gd.horizontalSpan = columns;
+            }
         } else {
             gd = new GridData(SWT.DEFAULT, SWT.FILL, false, true);
         }

@@ -85,6 +85,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     if in edit mode.
  * Aug 18, 2014   3411     mpduff      Implement New and Edit.
  * Sep 11, 2014   3411     mpduff      Pass MessageType object to Area Selection for populating, save TransmitterGroups
+ * Sep 14, 2014  #3610     lvenable    Removed unused code and renamed variable.
  * 
  * </pre>
  * 
@@ -394,11 +395,6 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         /*
          * Time Controls
          */
-        List<DateFieldType> fieldTypes = new ArrayList<DateFieldType>();
-        fieldTypes.add(DateFieldType.DAY);
-        fieldTypes.add(DateFieldType.HOUR);
-        fieldTypes.add(DateFieldType.MINUTE);
-
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
         Label durationLbl = new Label(defaultsGroup, SWT.RIGHT);
         durationLbl.setText("Duration (DDHHMM): ");
@@ -782,6 +778,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         if (selectedMsgType.getSameTransmitters() != null) {
             selectedMsgType.getSameTransmitters().clear();
         }
+
         for (String xmit : sameData.getCheckedItems()) {
             selectedMsgType.addSameTransmitter(transmitterMap.get(xmit));
         }
@@ -952,20 +949,20 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      */
     private Map<DateFieldType, Integer> generateDayHourMinuteMap(
             String dateTimeStr) {
-        Map<DateFieldType, Integer> durmap = new LinkedHashMap<DateFieldType, Integer>();
+        Map<DateFieldType, Integer> dateTimeMap = new LinkedHashMap<DateFieldType, Integer>();
 
         if (dateTimeStr == null || dateTimeStr.length() != 6) {
-            durmap.put(DateFieldType.DAY, 0);
-            durmap.put(DateFieldType.HOUR, 0);
-            durmap.put(DateFieldType.MINUTE, 0);
+            dateTimeMap.put(DateFieldType.DAY, 0);
+            dateTimeMap.put(DateFieldType.HOUR, 0);
+            dateTimeMap.put(DateFieldType.MINUTE, 0);
         } else {
             int[] dtArray = splitDateTimeString(dateTimeStr);
-            durmap.put(DateFieldType.DAY, dtArray[0]);
-            durmap.put(DateFieldType.HOUR, dtArray[1]);
-            durmap.put(DateFieldType.MINUTE, dtArray[2]);
+            dateTimeMap.put(DateFieldType.DAY, dtArray[0]);
+            dateTimeMap.put(DateFieldType.HOUR, dtArray[1]);
+            dateTimeMap.put(DateFieldType.MINUTE, dtArray[2]);
         }
 
-        return durmap;
+        return dateTimeMap;
     }
 
     /**

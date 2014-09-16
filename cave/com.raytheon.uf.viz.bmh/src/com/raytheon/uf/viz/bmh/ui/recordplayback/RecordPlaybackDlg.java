@@ -53,6 +53,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014  #3329     lvenable     Initial creation
+ * Sep 14, 2014  #3610     lvenable     Updated to show when 30 seconds of recording
+ *                                      is left and fixed a couple of bugs.
  * 
  * </pre>
  * 
@@ -106,6 +108,12 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
     /** Play button. */
     private Button playBtn;
 
+    private enum RecordPlayStatus {
+        RECORD, PLAY, STOP
+    };
+
+    private RecordPlayStatus recordPlayStatus = RecordPlayStatus.STOP;
+
     /**
      * Constructor.
      * 
@@ -115,8 +123,8 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
      *            Maximum seconds to record.
      */
     public RecordPlaybackDlg(Shell parentShell, int maxRecordingSeconds) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
-                | CAVE.MODE_INDEPENDENT);
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
+                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
 
         this.maxRecordingSeconds = maxRecordingSeconds;
     }
@@ -239,6 +247,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
         recBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                recordPlayStatus = RecordPlayStatus.RECORD;
                 recordAction();
             }
         });
@@ -252,6 +261,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
         stopBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                recordPlayStatus = RecordPlayStatus.STOP;
                 stopAction();
             }
         });
@@ -265,6 +275,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
         playBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                recordPlayStatus = RecordPlayStatus.PLAY;
                 playAction();
             }
         });
@@ -323,6 +334,11 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
         if (totalElapsedSeconds >= maxRecordingSeconds) {
             stopAction();
         }
+
+        if ((maxRecordingSeconds - totalElapsedSeconds) <= 30
+                && recordPlayStatus == RecordPlayStatus.RECORD) {
+            statusLbl.setText("Warning: 30 secs for recording");
+        }
     }
 
     /**
@@ -344,7 +360,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
         stopBtn.setEnabled(true);
         recBtn.setEnabled(false);
         playBtn.setEnabled(false);
-        resetRecordingValues();
+        resetRecordPlayValues();
         timer = Executors.newSingleThreadScheduledExecutor();
         timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, updateRate,
                 TimeUnit.MILLISECONDS);
@@ -366,18 +382,23 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
     private void playAction() {
         recBtn.setEnabled(false);
         stopBtn.setEnabled(true);
+        resetRecordPlayValues();
+        timer = Executors.newSingleThreadScheduledExecutor();
+        timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, updateRate,
+                TimeUnit.MILLISECONDS);
     }
 
     /**
      * Reset the recording values to the initial values.
      */
-    private void resetRecordingValues() {
+    private void resetRecordPlayValues() {
         elapsedMinutes = 0;
         elapsedSeconds = 0;
         totalElapsedSeconds = 0;
         elapsedTimeLbl.setText(String.format(formatStr, elapsedMinutes,
                 elapsedSeconds));
         recordingProgBar.setSelection(0);
+        statusLbl.setText("Press REC Button to Start Recording...");
     }
 
     /**

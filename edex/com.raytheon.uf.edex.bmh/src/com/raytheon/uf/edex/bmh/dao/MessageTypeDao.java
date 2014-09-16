@@ -42,6 +42,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
  * Jun 24, 2014 3302       bkowal      Initial creation
  * Aug 5, 2014  #3490      lvenable    added getMessageTypes()
  * Sep 2, 2014  3568       bkowal      Added getMessageTypeForDesignation
+ * Sep 15, 2014  #3610     lvenable    Added methods to get message type
+ *                                     Afos ID and title.
  * 
  * </pre>
  * 
@@ -70,6 +72,66 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
                 allObjects.size());
         for (Object obj : allObjects) {
             MessageType mt = (MessageType) obj;
+            messageTypeList.add(mt);
+        }
+
+        return messageTypeList;
+    }
+
+    /**
+     * Get the list of message types with the Afos ID and Title populated.
+     * 
+     * @return List of Message Types.
+     */
+    public List<MessageType> getMessgeTypeAfosIdTitle() {
+        List<Object[]> objectList = getMessageTypeByQuery(MessageType.GET_MESSAGETYPE_AFOSID_TITLE);
+
+        if (objectList == null) {
+            return Collections.emptyList();
+        }
+
+        List<MessageType> messageTypeList = createMessageTypeAfosIdTitle(objectList);
+        return messageTypeList;
+    }
+
+    /**
+     * The the message type information by the query passed in.
+     * 
+     * @param messageTypeQuery
+     *            Message type query to use.
+     * @return List of data objects.
+     */
+    private List<Object[]> getMessageTypeByQuery(final String messageTypeQuery) {
+
+        List<Object[]> objectList = txTemplate
+                .execute(new TransactionCallback<List<Object[]>>() {
+                    @Override
+                    public List<Object[]> doInTransaction(
+                            TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht.findByNamedQuery(messageTypeQuery);
+                    }
+                });
+
+        return objectList;
+    }
+
+    /**
+     * Convert the list of object data into a list of message type data.
+     * 
+     * @param objectList
+     *            List of objects.
+     * @return List of message types.
+     */
+    private List<MessageType> createMessageTypeAfosIdTitle(
+            List<Object[]> objectList) {
+        List<MessageType> messageTypeList = new ArrayList<MessageType>(
+                objectList.size());
+
+        for (Object[] objArray : objectList) {
+            MessageType mt = new MessageType();
+            mt.setAfosid((String) objArray[0]);
+            mt.setTitle((String) objArray[1]);
             messageTypeList.add(mt);
         }
 

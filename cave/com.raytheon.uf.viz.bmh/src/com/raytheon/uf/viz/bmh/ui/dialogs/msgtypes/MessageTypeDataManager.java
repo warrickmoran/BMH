@@ -40,6 +40,8 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * ------------ ---------- ----------- --------------------------
  * Aug 17, 2014  #3490     lvenable    Initial creation
  * Aug 18, 2014   3411     mpduff      Added saveMessageType()
+ * Sep 15, 2014   #3610    lvenable    Moved getMessageType functionality into this
+ *                                     class from the BroadcastCycleDataManager.
  * 
  * </pre>
  * 
@@ -68,13 +70,46 @@ public class MessageTypeDataManager {
         mtResponse = (MessageTypeResponse) BmhUtils.sendRequest(mtRequest);
         messageTypeList = mtResponse.getMessageTypeList();
 
+        if (messageTypeList == null) {
+            messageTypeList = Collections.emptyList();
+        }
+
         if (comparator != null && messageTypeList.isEmpty() == false) {
             Collections.sort(messageTypeList, comparator);
         }
 
+        return messageTypeList;
+    }
+
+    /**
+     * Get the list of all the message types with only the Afos ID and Title
+     * populated.
+     * 
+     * @param comparator
+     *            Comparator for ordering the message types.
+     * @return List of message types.
+     * @throws Exception
+     */
+    public List<MessageType> getMsgTypesAfosIdTitle(
+            Comparator<MessageType> comparator) throws Exception {
+
+        List<MessageType> messageTypeList = null;
+
+        MessageTypeRequest mtRequest = new MessageTypeRequest();
+        mtRequest.setAction(MessageTypeAction.GetAfosIdTitle);
+        MessageTypeResponse mtResponse = null;
+
+        mtResponse = (MessageTypeResponse) BmhUtils.sendRequest(mtRequest);
+        messageTypeList = mtResponse.getMessageTypeList();
+
         if (messageTypeList == null) {
             messageTypeList = Collections.emptyList();
         }
+
+        if (comparator != null && messageTypeList.isEmpty() == false) {
+            Collections.sort(messageTypeList, comparator);
+        }
+
         return messageTypeList;
     }
 
@@ -111,5 +146,29 @@ public class MessageTypeDataManager {
                 .sendRequest(req);
 
         return response.getMessageTypeList().get(0);
+    }
+
+    /**
+     * Get the {@link MessageType} object for the associated afosId
+     * 
+     * @param afosId
+     *            The afosId
+     * @return The MessageType
+     * @throws Exception
+     */
+    public MessageType getMessageType(String afosId) throws Exception {
+        MessageTypeRequest req = new MessageTypeRequest();
+        req.setAction(MessageTypeAction.GetByAfosId);
+        req.setAfosId(afosId);
+
+        MessageTypeResponse response = (MessageTypeResponse) BmhUtils
+                .sendRequest(req);
+
+        List<MessageType> list = response.getMessageTypeList();
+        if ((list != null) && (list.size() > 0)) {
+            return list.get(0);
+        }
+
+        return null;
     }
 }
