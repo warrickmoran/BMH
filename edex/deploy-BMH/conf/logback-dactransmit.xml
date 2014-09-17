@@ -15,15 +15,17 @@
    <appender name="asyncDacTransmitLog" class="ch.qos.logback.classic.AsyncAppender">
       <appender-ref ref="DacTransmitLog" />
    </appender>
-
-   <appender name="console" class="ch.qos.logback.core.ConsoleAppender">       
-      <encoder> 
-         <pattern>%-5p %d [%t] %c{0}: %m%n</pattern> 
-      </encoder> 
-   </appender>
-
-   <appender name="asyncConsole" class="ch.qos.logback.classic.AsyncAppender">            
-      <appender-ref ref="console" />
+   
+   <appender name="baseDacTransmitLog" class="com.raytheon.uf.common.status.logback.SuppressingAppender">
+      <!-- If any message appears in the last 10 unique messages more than
+           1 time in 1 sec, it will be suppressed. Events that continue for
+           5 or more seconds will log every 5 seconds.
+      -->
+      <cacheSize>10</cacheSize>
+      <duplicateThreshold>1</duplicateThreshold>
+      <timeThreshold>1000</timeThreshold>
+      <suppressionLoggingInterval>5000</suppressionLoggingInterval>
+      <appender-ref ref="asyncDacTransmitLog" />
    </appender>
 
    <logger name="com.raytheon">
@@ -36,7 +38,7 @@
    <!-- default logging --> 
    <root> 
       <level value="DEBUG"/> 
-      <appender-ref ref="asyncDacTransmitLog"/>
+      <appender-ref ref="baseDacTransmitLog"/>
    </root> 
 </configuration>
 
