@@ -47,6 +47,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jul 22, 2014  3286     dgilling    Added toString(), isValid().
  * Aug 22, 2014  3286     dgilling    Added isExpired().
  * Aug 24, 2014  3558     rjpeter     Added path.
+ * Sep 18, 2014  3554     bsteffen    Initialize messages to avoid null list.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -81,7 +83,7 @@ public class DacPlaylist {
     private boolean interrupt;
 
     @XmlElement(name = "message")
-    private List<DacPlaylistMessageId> messages;
+    private List<DacPlaylistMessageId> messages = new ArrayList<>();
 
     private transient Path path;
 
@@ -181,9 +183,6 @@ public class DacPlaylist {
     }
 
     public void addMessage(DacPlaylistMessageId message) {
-        if (messages == null) {
-            messages = new ArrayList<>();
-        }
         messages.add(message);
     }
 
