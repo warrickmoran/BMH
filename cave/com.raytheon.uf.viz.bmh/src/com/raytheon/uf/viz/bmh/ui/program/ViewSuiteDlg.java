@@ -62,6 +62,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 12, 2014  #3490     lvenable     Update to use data from the database.
  * Aug 15, 2014  #3490     lvenable     Reworked to use the data manager.
  * Aug 22, 2014  #3490     lvenable     Added resize and minimum size.
+ * Sep 16, 2014  #3587     bkowal       Updated to only allow trigger assignment for {Program, Suite}
  * 
  * </pre>
  * 
@@ -298,8 +299,12 @@ public class ViewSuiteDlg extends CaveSWTDialog {
         columnNames.add(tcd);
         tcd = new TableColumnData("Message Title");
         columnNames.add(tcd);
-        tcd = new TableColumnData("Trigger");
-        columnNames.add(tcd);
+        /*
+         * TODO: this could be updated so that the triggers that are displayed
+         * would be based on the program that is selected in the
+         * "Associated Programs" table. Until then, the Trigger column will be
+         * removed.
+         */
         TableData msgTypeTableData = new TableData(columnNames);
 
         List<SuiteMessage> suiteMessageArray = selectedSuite.getSuiteMessages();
@@ -314,8 +319,6 @@ public class ViewSuiteDlg extends CaveSWTDialog {
 
             trd.addTableCellData(new TableCellData(sm.getMsgType().getAfosid()));
             trd.addTableCellData(new TableCellData(sm.getMsgType().getTitle()));
-            trd.addTableCellData(new TableCellData(sm.isTrigger() ? "Yes"
-                    : "No"));
 
             msgTypeTableData.addDataRow(trd);
         }

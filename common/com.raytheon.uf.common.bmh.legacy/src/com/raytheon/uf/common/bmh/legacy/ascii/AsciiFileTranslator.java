@@ -42,6 +42,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramTrigger;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
@@ -69,6 +71,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Jul 17, 2014 3175       rjpeter     Initial creation
  * Aug 05, 2014 3175       rjpeter     Added set verification of message type in suite.
  * Aug 19, 2014 3411       mpduff      Implement {@link MessageTypeReplacement}
+ * Sep 16, 2014 3587       bkowal      Updated to only allow trigger assignment for {Program, Suite}
  * </pre>
  * 
  * @author rjpeter
@@ -969,7 +972,7 @@ public class AsciiFileTranslator {
 
             if (field.startsWith(">")) {
                 // validate last suite
-                validateProgramSuite(program, suite, triggers, reader);
+                validateProgramSuite(program, suite, triggers, msgTypes, reader);
                 // validate previous program
                 program = validateProgram(program, reader);
 
@@ -987,7 +990,8 @@ public class AsciiFileTranslator {
             } else {
                 if (suiteTypes.contains(field)) {
                     // validate last suite
-                    validateProgramSuite(program, suite, triggers, reader);
+                    validateProgramSuite(program, suite, triggers, msgTypes,
+                            reader);
                     triggers.clear();
 
                     String type = field;
@@ -1079,7 +1083,7 @@ public class AsciiFileTranslator {
         }
 
         // validate last suite
-        validateProgramSuite(program, suite, triggers, reader);
+        validateProgramSuite(program, suite, triggers, msgTypes, reader);
         // validate previous program
         program = validateProgram(program, reader);
 
@@ -1093,7 +1097,7 @@ public class AsciiFileTranslator {
         Iterator<Program> progIter = rval.values().iterator();
         while (progIter.hasNext()) {
             Program prg = progIter.next();
-            List<Suite> prgSuites = prg.getSuites();
+            List<ProgramSuite> prgSuites = prg.getProgramSuites();
             if ((prgSuites == null) || (prgSuites.size() == 0)) {
                 // remove programs that have no suites
                 progIter.remove();
@@ -1114,7 +1118,7 @@ public class AsciiFileTranslator {
     private Program validateProgram(Program program, AsciiFileParser reader)
             throws ParseException {
         if (program != null) {
-            List<Suite> suites = program.getSuites();
+            List<ProgramSuite> suites = program.getProgramSuites();
             if ((suites == null) || (suites.size() == 0)) {
                 // no suites, don't keep program
                 return null;
@@ -1134,69 +1138,30 @@ public class AsciiFileTranslator {
      * @throws ParseException
      */
     private void validateProgramSuite(Program program, Suite suite,
-            List<String> triggers, AsciiFileParser reader)
-            throws ParseException {
+            List<String> triggers, Map<String, MessageType> msgTypes,
+            AsciiFileParser reader) throws ParseException {
         if (suite == null) {
             return;
         }
 
         List<SuiteMessage> messages = suite.getSuiteMessages();
+        ProgramSuite programSuite = new ProgramSuite();
+        programSuite.setSuite(suite);
+        program.addProgramSuite(programSuite);
 
         // only keep suites that have message
         if ((messages == null) || (messages.size() == 0)) {
             return;
         }
 
-        // only keep higher priority suites that have triggers
+        // determine if there are any triggers associated with the suite.
         if (!SuiteType.GENERAL.equals(suite.getType())) {
-            if ((triggers == null) || (triggers.size() == 0)) {
-                StringBuilder msg = new StringBuilder(80);
-                msg.append("Suite [")
-                        .append(suite.getName())
-                        .append("] is a ")
-                        .append(suite.getType())
-                        .append(" suite with no triggers.  Suite will not be added to program ["
-                                + program.getName() + "]");
-                handleError(msg, reader.getCurrentLineNumber(),
-                        reader.getSourceFile());
-                return;
-            } else {
-                /*
-                 * validate program is not using a message type to trigger more
-                 * than one suite
-                 */
-                List<Suite> prevSuites = program.getSuites();
-                Set<String> set = new HashSet<String>(triggers);
-                if ((prevSuites != null) && (prevSuites.size() > 0)) {
-                    for (Suite prevSuite : prevSuites) {
-                        for (SuiteMessage suiteMsg : suite.getSuiteMessages()) {
-                            if (suiteMsg.isTrigger()
-                                    && set.contains(suiteMsg.getAfosid())) {
-                                StringBuilder msg = new StringBuilder(80);
-                                msg.append("Message type [")
-                                        .append(suiteMsg.getAfosid())
-                                        .append("] is used as a trigger for multiple suites [")
-                                        .append(prevSuite.getName())
-                                        .append(", ").append(suite.getName())
-                                        .append("] in program [")
-                                        .append(program.getName()).append("]");
-                                handleError(msg, reader.getCurrentLineNumber(),
-                                        reader.getSourceFile());
-                            }
-                        }
-                    }
-                }
-
-                // set the triggers, NOTE triggers not allowed on GENERAL suite
-                for (SuiteMessage sm : messages) {
-                    if (set.contains(sm.getAfosid())) {
-                        sm.setTrigger(true);
-                    }
-                }
+            for (String trigger : triggers) {
+                ProgramTrigger programTrigger = new ProgramTrigger();
+                programTrigger.setMsgType(msgTypes.get(trigger));
+                programSuite.addTrigger(programTrigger);
             }
         }
-
-        program.addSuite(suite);
     }
 
     /**

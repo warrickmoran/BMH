@@ -35,6 +35,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessagePk;
 
 /**
  * 
@@ -52,6 +53,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
  *                                    will used the query passed it to retrieve the data.
  * Aug 17, 2014 #3490     lvenable    Fixed empty list error in createSuiteMsgTypes().
  * Aug 21, 2014 #3490     lvenable    Added code from Richard to fix a hibernate issue for save/update.
+ * Sep 18, 2014 #3587     bkowal      Added code to manually cleanup triggers due to hibernate bug.
  * 
  * </pre>
  * 
@@ -125,6 +127,7 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
 
         List<Object[]> objectList = txTemplate
                 .execute(new TransactionCallback<List<Object[]>>() {
+                    @SuppressWarnings("unchecked")
                     @Override
                     public List<Object[]> doInTransaction(
                             TransactionStatus status) {
@@ -249,7 +252,25 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
         // bidirectional relationship
         if (suite.getId() != 0) {
             ht.bulkUpdate("delete from SuiteMessage where suite_id = ?",
-                            suite.getId());
+                    suite.getId());
+
+            /*
+             * special case due to orphanRemoval bug. Remove any triggers
+             * associated with SuiteMessage(s) that have been removed.
+             */
+
+            if (suite.getRemovedTriggerSuiteMessages() != null
+                    && suite.getRemovedTriggerSuiteMessages().isEmpty() == false) {
+
+                for (SuiteMessagePk id : suite.getRemovedTriggerSuiteMessages()) {
+                    ht.bulkUpdate(
+                            "DELETE FROM ProgramTrigger WHERE suite_id = ? AND msgtype_id = ?",
+                            id.getSuiteId(), id.getMsgTypeId());
+                }
+
+                suite.getRemovedTriggerSuiteMessages().clear();
+            }
+
             ht.update(suite);
         } else {
             ht.save(suite);

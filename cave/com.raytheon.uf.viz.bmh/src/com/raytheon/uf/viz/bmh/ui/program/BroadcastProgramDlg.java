@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.program;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +43,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -84,7 +86,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 22, 2014  #3490      lvenable    Added input dialog flag.
  * Aug 23, 2014  #3490      lvenable    Added capability for add transmitters.
  * Aug 25, 2014  #3490      lvenable    Update suite config group when the program changes.
- * 
+ * Sep 16, 2014  #3587      bkowal      Updated to only allow trigger assignment for {Program, Suite}
  * </pre>
  * 
  * @author lvenable
@@ -676,11 +678,18 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             return;
         }
 
-        List<Suite> programSuites = selectedProgram.getSuites();
-        int index = programSuites.indexOf(suite);
-        if (index >= 0) {
-            programSuites.remove(index);
-        } else {
+        List<ProgramSuite> programSuites = selectedProgram.getProgramSuites();
+        Iterator<ProgramSuite> programSuiteIterator = programSuites.iterator();
+        boolean removed = false;
+        while (programSuiteIterator.hasNext()) {
+            if (programSuiteIterator.next().getSuite().getId() == suite.getId()) {
+                programSuiteIterator.remove();
+                removed = true;
+                break;
+            }
+        }
+
+        if (removed == false) {
             return;
         }
 
@@ -797,7 +806,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     }
 
     /**
-     * After populating the program combo control, selecte the name specified.
+     * After populating the program combo control, select the name specified.
      * 
      * @param programToSelect
      *            Name to select. If null then select the first item in the
@@ -954,8 +963,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
             trd.addTableCellData(new TableCellData(sm.getMsgType().getAfosid()));
             trd.addTableCellData(new TableCellData(sm.getMsgType().getTitle()));
-            trd.addTableCellData(new TableCellData(sm.isTrigger() ? "Yes"
-                    : "No"));
+            trd.addTableCellData(new TableCellData(this.selectedProgram
+                    .isTriggerMsgType(suite, sm.getMsgType()) ? "Yes" : "No"));
 
             msgTypeTableData.addDataRow(trd);
         }

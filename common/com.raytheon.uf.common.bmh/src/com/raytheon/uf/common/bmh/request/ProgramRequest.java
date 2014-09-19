@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * Aug 12, 2014 #3490      lvenable     Added ProgramSuites action.
  * Aug 15, 2014 #3490      lvenable     Added Program with getters & setters.
  * Aug 15, 2014  3432      mpduff       Added GetProgramForTransmitterGroup
+ * Sep 18, 2014 #3587      bkowal       Added GetProgramsWithTrigger
  * 
  * </pre>
  * 
@@ -48,7 +49,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 public class ProgramRequest implements IServerRequest {
 
     public enum ProgramAction {
-        Save, ListNamesIDs, AllPrograms, ProgramSuites, Delete, GetProgramForTransmitterGroup;
+        Save, ListNamesIDs, AllPrograms, ProgramSuites, Delete, GetProgramForTransmitterGroup, GetProgramsWithTrigger;
     }
 
     @DynamicSerializeElement
@@ -59,6 +60,16 @@ public class ProgramRequest implements IServerRequest {
 
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
+
+    /*
+     * At this point in time, it is not necessary to transfer the entire Suite
+     * and Message Types to the request handler.
+     */
+    @DynamicSerializeElement
+    private int suiteId;
+
+    @DynamicSerializeElement
+    private int msgTypeId;
 
     /**
      * Get the program action.
@@ -100,5 +111,35 @@ public class ProgramRequest implements IServerRequest {
      */
     public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    /**
+     * @return the suiteId
+     */
+    public int getSuiteId() {
+        return suiteId;
+    }
+
+    /**
+     * @param suiteId
+     *            the suiteId to set
+     */
+    public void setSuiteId(int suiteId) {
+        this.suiteId = suiteId;
+    }
+
+    /**
+     * @return the msgTypeId
+     */
+    public int getMsgTypeId() {
+        return msgTypeId;
+    }
+
+    /**
+     * @param msgTypeId
+     *            the msgTypeId to set
+     */
+    public void setMsgTypeId(int msgTypeId) {
+        this.msgTypeId = msgTypeId;
     }
 }

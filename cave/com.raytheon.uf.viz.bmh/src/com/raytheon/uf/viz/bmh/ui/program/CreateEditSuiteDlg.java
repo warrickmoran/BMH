@@ -43,9 +43,11 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramTrigger;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessagePk;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -89,6 +91,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 25, 2014  #3490      lvenable    Added validation code.
  * Aug 26, 2014  #3490      lvenable    Fixed issue found during testing, fixed issue on create in a new suite
  *                                      when creating a new program.
+ * Sep 16, 2014  #3587      bkowal      Updated to only allow trigger assignment for {Program, Suite}
  * 
  * </pre>
  * 
@@ -106,6 +109,12 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
     /** List of message types in the suite. */
     private List<SuiteMessage> msgTypesInSuiteList = new ArrayList<SuiteMessage>();
+
+    /**
+     * List of suite messages corresponding to a message type that is associated
+     * with a trigger that have been removed from the suite.
+     **/
+    private List<SuiteMessagePk> triggerSuiteMsgsRemoved = new ArrayList<SuiteMessagePk>();
 
     private Set<String> msgTypeNames = new HashSet<String>();
 
@@ -552,7 +561,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         // If the suite type is GENERAL then the trigger button is disable else
         // the enabled feature is determined if there are selected message
         // types.
-        if (getSelectedSuiteType() == SuiteType.GENERAL) {
+        if (getSelectedSuiteType() == SuiteType.GENERAL
+                || this.selectedProgram == null) {
             setTriggersBtn.setEnabled(false);
         } else {
             setTriggersBtn
@@ -567,7 +577,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         CheckListData cld = new CheckListData();
 
         for (SuiteMessage sm : msgTypesInSuiteList) {
-            cld.addDataItem(sm.getAfosid(), sm.isTrigger());
+            cld.addDataItem(sm.getAfosid(), this.selectedProgram
+                    .isTriggerMsgType(this.selectedSuite, sm.getMsgType()));
         }
 
         CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
@@ -580,9 +591,20 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                     CheckListData listData = (CheckListData) returnValue;
                     Map<String, Boolean> dataMap = listData.getDataMap();
 
+                    selectedProgram.clearTriggerMsgTypes(selectedSuite);
+
                     for (SuiteMessage sm : msgTypesInSuiteList) {
                         if (dataMap.containsKey(sm.getAfosid())) {
-                            sm.setTrigger(dataMap.get(sm.getAfosid()));
+                            if (dataMap.get(sm.getAfosid()) == false) {
+                                continue;
+                            }
+
+                            ProgramTrigger trigger = new ProgramTrigger();
+                            trigger.setProgram(selectedProgram);
+                            trigger.setSuite(selectedSuite);
+                            trigger.setMsgType(sm.getMsgType());
+                            selectedProgram.addTriggerMsgType(selectedSuite,
+                                    trigger);
                         }
                     }
 
@@ -625,9 +647,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                 return false;
             }
 
-            for (SuiteMessage sm : msgTypesInSuiteList) {
-                sm.setTrigger(false);
-            }
+            this.selectedProgram.clearTriggerMsgTypes(this.selectedSuite);
         }
 
         return true;
@@ -652,6 +672,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         selectedSuite.setType(suiteType);
         selectedSuite.setSuiteMessages(msgTypesInSuiteList);
+        if (this.triggerSuiteMsgsRemoved.isEmpty() == false) {
+            this.selectedSuite
+                    .setRemovedTriggerSuiteMessages(this.triggerSuiteMsgsRemoved);
+        }
 
         Suite savedSuite = null;
         try {
@@ -877,24 +901,18 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         for (int i = indices.length - 1; i >= 0; --i) {
             MessageType mt = allMsgTypesList.get(indices[i]);
+
             if (msgTypeNames.contains(mt.getAfosid())) {
                 continue;
             }
 
             SuiteMessage newSuiteMessage = new SuiteMessage();
             newSuiteMessage.setMsgType(mt);
-            newSuiteMessage.setTrigger(false);
 
             msgTypesInSuiteList.add(selectedMsgTypeIndex, newSuiteMessage);
             msgTypeNames.add(mt.getAfosid());
         }
 
-        populateSelectedMsgTypesTable(true);
-        enableDisableAddRemoveTriggerBtns();
-    }
-
-    private void handleRemoveAllMessageTypes() {
-        msgTypesInSuiteList.clear();
         populateSelectedMsgTypesTable(true);
         enableDisableAddRemoveTriggerBtns();
     }
@@ -909,10 +927,62 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             return;
         }
 
+        ProgramDataManager pdm = new ProgramDataManager();
         for (int i = indices.length - 1; i >= 0; --i) {
+            SuiteMessage removalCandidate = msgTypesInSuiteList.get(indices[i]);
+            List<Program> triggeredPrograms;
+
+            try {
+                triggeredPrograms = pdm.getProgramsWithTrigger(
+                        removalCandidate.getSuite(),
+                        removalCandidate.getMsgType());
+            } catch (Exception e) {
+                statusHandler.error(
+                        "Error checking for programs with trigger: '"
+                                + removalCandidate.getMsgType().getAfosid()
+                                + "'!", e);
+                continue;
+            }
+
+            if (triggeredPrograms != null
+                    && triggeredPrograms.isEmpty() == false) {
+                StringBuilder stringBuilder = new StringBuilder("Message Type ");
+                stringBuilder.append(removalCandidate.getMsgType().getAfosid());
+                stringBuilder
+                        .append(" is currently a Trigger for the following programs:\n\n");
+                for (Program triggeredProgram : triggeredPrograms) {
+                    stringBuilder.append(triggeredProgram.getName());
+                    stringBuilder.append("\n");
+                }
+                stringBuilder
+                        .append("\nAre you sure you want to remove the message type from Suite ");
+                stringBuilder.append(removalCandidate.getSuite().getName());
+                stringBuilder.append("?");
+
+                int result = DialogUtility.showMessageBox(shell,
+                        SWT.ICON_WARNING | SWT.YES | SWT.NO,
+                        "Remove Message Type", stringBuilder.toString());
+                if (result == SWT.NO) {
+                    /*
+                     * Do not remove anything.
+                     */
+                    continue;
+                }
+
+                /*
+                 * Save the message type associated with the triggers until the
+                 * user decides to save the changes.
+                 */
+                this.triggerSuiteMsgsRemoved.add(removalCandidate.getId());
+            }
+
             msgTypeNames
                     .remove(msgTypesInSuiteList.get(indices[i]).getAfosid());
             msgTypesInSuiteList.remove(indices[i]);
+            if (this.selectedProgram != null) {
+                this.selectedProgram.removeTriggerMsgType(this.selectedSuite,
+                        removalCandidate.getMsgType());
+            }
         }
 
         populateSelectedMsgTypesTable(true);
@@ -927,14 +997,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      *         table, false otherwise.
      */
     private boolean hasTriggerMessages() {
-
-        for (SuiteMessage sm : msgTypesInSuiteList) {
-            if (sm.isTrigger()) {
-                return true;
-            }
+        if (this.selectedProgram == null) {
+            return false;
         }
-
-        return false;
+        return this.selectedProgram.doTriggersExist(this.selectedSuite);
     }
 
     /**
@@ -955,33 +1021,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                     "No Message Types", sb.toString());
 
             return false;
-        }
-
-        // If the suite is HIGH or EXCLUSIVE and it is associated with a program
-        // then a trigger must be set.
-        if ((suiteType == SuiteType.HIGH || suiteType == SuiteType.EXCLUSIVE)
-                && (!assignedProgramNames.isEmpty() || selectedProgram != null || forNewProgram == true)) {
-
-            boolean hasTrigger = false;
-            for (SuiteMessage sm : msgTypesInSuiteList) {
-                if (sm.isTrigger()) {
-                    hasTrigger = true;
-                    break;
-                }
-            }
-
-            if (!hasTrigger) {
-                StringBuilder sb = new StringBuilder();
-
-                sb.append("The Suite is ")
-                        .append(suiteType.name())
-                        .append(" and is assigned to a program so saving requires at least one message type to be a trigger.");
-
-                DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
-                        "Need A Trigger", sb.toString());
-
-                return false;
-            }
         }
 
         return true;
@@ -1109,8 +1148,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             columnNames.add(tcd);
             tcd = new TableColumnData("Message Title", 300);
             columnNames.add(tcd);
-            tcd = new TableColumnData("Trigger");
-            columnNames.add(tcd);
+            if (this.selectedProgram != null) {
+                tcd = new TableColumnData("Trigger");
+                columnNames.add(tcd);
+            }
             selectedMsgTypeTableData = new TableData(columnNames);
         } else {
             selectedMsgTypeTableData.deleteAllRows();
@@ -1143,8 +1184,12 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
             trd.addTableCellData(new TableCellData(sm.getMsgType().getAfosid()));
             trd.addTableCellData(new TableCellData(sm.getMsgType().getTitle()));
-            trd.addTableCellData(new TableCellData(sm.isTrigger() ? "Yes"
-                    : "No"));
+            if (this.selectedProgram != null && this.selectedSuite != null) {
+                trd.addTableCellData(new TableCellData(
+                        this.selectedProgram.isTriggerMsgType(
+                                this.selectedSuite, sm.getMsgType()) ? "Yes"
+                                : "No"));
+            }
 
             selectedMsgTypeTableData.addDataRow(trd);
         }

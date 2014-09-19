@@ -19,12 +19,13 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.program;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
@@ -40,6 +41,8 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 17, 2014  #3490     lvenable     Initial creation
+ * Sep 18, 2014  #3587     bkowal       Added methods to retrieve programs associated
+ *                                      with a trigger.
  * 
  * </pre>
  * 
@@ -111,6 +114,24 @@ public class ProgramDataManager {
         return response;
     }
 
+    public List<Program> getProgramsWithTrigger(MessageType msgType)
+            throws Exception {
+        return this.getProgramsWithTrigger(null, msgType);
+    }
+
+    public List<Program> getProgramsWithTrigger(Suite suite, MessageType msgType)
+            throws Exception {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.GetProgramsWithTrigger);
+        if (suite != null) {
+            pr.setSuiteId(suite.getId());
+        }
+        pr.setMsgTypeId(msgType.getId());
+
+        ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(pr);
+        return response.getProgramList();
+    }
+
     /**
      * Get a list of programs each with the associated suite information.
      * 
@@ -118,15 +139,11 @@ public class ProgramDataManager {
      * @throws Exception
      */
     public List<Program> getProgramSuites() throws Exception {
-        List<Program> programList = new ArrayList<Program>();
-
         ProgramRequest pr = new ProgramRequest();
         pr.setAction(ProgramAction.ProgramSuites);
         ProgramResponse progResponse = null;
 
         progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
-        programList = progResponse.getProgramList();
-
-        return programList;
+        return progResponse.getProgramList();
     }
 }

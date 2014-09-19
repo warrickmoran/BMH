@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Aug 15, 2014    3432    mpduff      Added getProgramForTransmitterGroup
  * Aug 17, 2014 #3490      lvenable     Added save and delete.
  * Sep 05, 2014 3554       bsteffen    Send config change notification.
+ * Sep 18, 2014   #3587    bkowal      Added getProgramsWithTrigger
  * 
  * </pre>
  * 
@@ -82,6 +83,9 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
             break;
         case GetProgramForTransmitterGroup:
             programResponse = getProgramForTransmitterGroup(request);
+            break;
+        case GetProgramsWithTrigger:
+            programResponse = getProgramsWithTrigger(request);
             break;
         default:
             break;
@@ -127,14 +131,36 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
     }
 
     private ProgramResponse getProgramForTransmitterGroup(ProgramRequest req) {
+        // TODO: does an instance of the program dao need to be created in every
+        // method instead of using an instance associated with the class?
         ProgramDao dao = new ProgramDao();
         ProgramResponse response = new ProgramResponse();
 
         Program program = dao.getProgramForTransmitterGroup(req
                 .getTransmitterGroup());
-        List<Program> pList = new ArrayList<>();
+        List<Program> pList = new ArrayList<>(1);
         pList.add(program);
         response.setProgramList(pList);
+        return response;
+    }
+
+    private ProgramResponse getProgramsWithTrigger(ProgramRequest req) {
+        if (req.getMsgTypeId() <= 0) {
+            throw new IllegalArgumentException(
+                    "The Message Type Id is required!");
+        }
+
+        ProgramDao dao = new ProgramDao();
+        ProgramResponse response = new ProgramResponse();
+
+        List<Program> triggeredPrograms = null;
+        if (req.getSuiteId() > 0) {
+            triggeredPrograms = dao.getProgramsWithTrigger(req.getSuiteId(),
+                    req.getMsgTypeId());
+        } else {
+            triggeredPrograms = dao.getProgramsWithTrigger(req.getMsgTypeId());
+        }
+        response.setProgramList(triggeredPrograms);
         return response;
     }
 

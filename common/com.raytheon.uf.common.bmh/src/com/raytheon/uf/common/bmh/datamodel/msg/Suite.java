@@ -37,6 +37,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 import org.hibernate.annotations.BatchSize;
 
@@ -62,6 +63,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                    message types.
  * Aug 17, 2014 #3490     lvenable    Added batch size, fixed issue in setSuiteMessages().
  * Aug 21, 2014 #3490     lvenable    Remove cascade all.
+ * Sep 18, 2014 #3587     bkowal      Added a transient to track messages types associated
+ *                                    with triggers that are no longer associated with the suite.
  * 
  * </pre>
  * 
@@ -111,6 +114,15 @@ public class Suite {
     @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
     private List<SuiteMessage> suiteMessages;
+
+    @Transient
+    @DynamicSerializeElement
+    /*
+     * id values associated with suite messages that are linked to triggers that
+     * have been removed from the suite. Special case due to the hibernate
+     * orphanRemoval bug.
+     */
+    private List<SuiteMessagePk> removedTriggerSuiteMessages;
 
     public int getId() {
         return id;
@@ -175,6 +187,22 @@ public class Suite {
             suiteMessages.add(suiteMessage);
             suiteMessage.setSuite(this);
         }
+    }
+
+    /**
+     * @return the removedTriggerSuiteMessages
+     */
+    public List<SuiteMessagePk> getRemovedTriggerSuiteMessages() {
+        return removedTriggerSuiteMessages;
+    }
+
+    /**
+     * @param removedTriggerSuiteMessages
+     *            the removedTriggerSuiteMessages to set
+     */
+    public void setRemovedTriggerSuiteMessages(
+            List<SuiteMessagePk> removedTriggerSuiteMessages) {
+        this.removedTriggerSuiteMessages = removedTriggerSuiteMessages;
     }
 
     /**

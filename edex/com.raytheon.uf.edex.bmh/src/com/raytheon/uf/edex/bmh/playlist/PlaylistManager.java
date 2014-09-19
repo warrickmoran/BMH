@@ -45,6 +45,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramTrigger;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
@@ -100,6 +102,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    transmitter areas.
  * Sep 09, 2014  2585     bsteffen    Implement MAT
  * Sep 12, 2014  3588     bsteffen    Support audio fragments.
+ * Sep 16, 2014  3587     bkowal      No longer check the {@link SuiteMessage} for triggers.
+ *                                    Updated to use the {@link ProgramSuite}.
  * 
  * </pre>
  * 
@@ -150,12 +154,13 @@ public class PlaylistManager implements IContextStateProcessor {
      */
     public void processSuiteChange(SuiteConfigNotification notification) {
         for (TransmitterGroup group : transmitterGroupDao.getAll()) {
-            Program program = programDao.getProgramForTransmitterGroup(group);
-            for (Suite suite : program.getSuites()) {
-                if (suite.getId() == notification.getId()) {
-                    refreshPlaylist(group, suite);
-                }
+            ProgramSuite programSuite = this.programDao
+                    .getSuiteByIDForTransmitterGroup(group,
+                            notification.getId());
+            if (programSuite == null) {
+                continue;
             }
+            refreshPlaylist(group, programSuite);
         }
     }
 
@@ -164,34 +169,40 @@ public class PlaylistManager implements IContextStateProcessor {
         for (TransmitterGroup group : program.getTransmitterGroups()) {
             List<Playlist> currentLists = playlistDao.getByGroupName(group
                     .getName());
-            List<Suite> programSuites = program.getSuites();
-            for (Suite suite : programSuites) {
-                refreshPlaylist(group, suite);
+            List<ProgramSuite> programSuites = program.getProgramSuites();
+            List<Suite> suites = new ArrayList<>(programSuites.size());
+            for (ProgramSuite programSuite : programSuites) {
+                refreshPlaylist(group, programSuite);
+                suites.add(programSuite.getSuite());
             }
             for (Playlist playlist : currentLists) {
-                if (!programSuites.contains(playlist.getSuite())) {
-                    deletePlaylist(group, playlist.getSuite());
+                if (!suites.contains(playlist.getSuite())) {
+                    ProgramSuite programSuite = new ProgramSuite();
+                    programSuite.setProgram(program);
+                    programSuite.setSuite(playlist.getSuite());
+
+                    deletePlaylist(group, programSuite);
                 }
             }
-
         }
     }
 
-    protected void deletePlaylist(TransmitterGroup group, Suite suite) {
+    protected void deletePlaylist(TransmitterGroup group,
+            ProgramSuite programSuite) {
         ClusterTask ct = null;
         do {
             ct = ClusterLockUtils.lock("playlist", group.getName() + "-"
-                    + suite.getName(), 30000, true);
+                    + programSuite.getSuite().getName(), 30000, true);
         } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
         ITimer timer = TimeUtil.getTimer();
         timer.start();
         try {
-            Playlist playlist = playlistDao.getBySuiteAndGroupName(
-                    suite.getName(), group.getName());
+            Playlist playlist = playlistDao.getBySuiteAndGroupName(programSuite
+                    .getSuite().getName(), group.getName());
             if (playlist != null) {
                 playlist.setModTime(TimeUtil.newGmtCalendar());
                 sortAndPersistPlaylist(playlist,
-                        Collections.<BroadcastMsg> emptyList());
+                        Collections.<BroadcastMsg> emptyList(), programSuite);
             }
         } finally {
             ClusterLockUtils.deleteLock(ct.getId().getName(), ct.getId()
@@ -199,7 +210,7 @@ public class PlaylistManager implements IContextStateProcessor {
             timer.stop();
             statusHandler.info("Spent " + timer.getElapsedTime()
                     + "ms refreshing playlist for " + group.getName() + "("
-                    + suite.getName() + ")");
+                    + programSuite.getSuite().getName() + ")");
         }
     }
 
@@ -207,30 +218,31 @@ public class PlaylistManager implements IContextStateProcessor {
      * Check and regenerate the playlist files for a specific group/suite
      * combination.
      */
-    protected void refreshPlaylist(TransmitterGroup group, Suite suite) {
+    protected void refreshPlaylist(TransmitterGroup group,
+            ProgramSuite programSuite) {
         ClusterTask ct = null;
         do {
             ct = ClusterLockUtils.lock("playlist", group.getName() + "-"
-                    + suite.getName(), 30000, true);
+                    + programSuite.getSuite().getName(), 30000, true);
         } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
         ITimer timer = TimeUtil.getTimer();
         timer.start();
         try {
             Calendar currentTime = TimeUtil.newGmtCalendar();
-            Playlist playlist = playlistDao.getBySuiteAndGroupName(
-                    suite.getName(), group.getName());
-            List<BroadcastMsg> messages = loadExistingMessages(suite, group,
-                    currentTime, true);
+            Playlist playlist = playlistDao.getBySuiteAndGroupName(programSuite
+                    .getSuite().getName(), group.getName());
+            List<BroadcastMsg> messages = loadExistingMessages(programSuite,
+                    group, currentTime, true);
             if (!messages.isEmpty()) {
                 if (playlist == null) {
                     playlist = new Playlist();
-                    playlist.setSuite(suite);
+                    playlist.setSuite(programSuite.getSuite());
                     playlist.setTransmitterGroup(group);
                 }
             }
             if (playlist != null) {
                 playlist.setModTime(currentTime);
-                sortAndPersistPlaylist(playlist, messages);
+                sortAndPersistPlaylist(playlist, messages, programSuite);
             }
         } finally {
             ClusterLockUtils.deleteLock(ct.getId().getName(), ct.getId()
@@ -238,7 +250,7 @@ public class PlaylistManager implements IContextStateProcessor {
             timer.stop();
             statusHandler.info("Spent " + timer.getElapsedTime()
                     + "ms refreshing playlist for " + group.getName() + "("
-                    + suite.getName() + ")");
+                    + programSuite.getSuite().getName() + ")");
         }
     }
 
@@ -260,44 +272,46 @@ public class PlaylistManager implements IContextStateProcessor {
             writePlaylistFile(playlist, playlist.getStartTime());
         }
 
-        for (Suite suite : program.getSuites()) {
-            for (SuiteMessage smessage : suite.getSuiteMessages()) {
+        // TODO: optimize.
+        for (ProgramSuite programSuite : program.getProgramSuites()) {
+            for (SuiteMessage smessage : programSuite.getSuite()
+                    .getSuiteMessages()) {
                 if (smessage.getAfosid().equals(msg.getAfosid())) {
-                    addMessageToPlaylist(msg, group, suite,
-                            smessage.isTrigger());
+                    addMessageToPlaylist(msg, group, programSuite,
+                            programSuite.isTrigger(smessage.getMsgType()));
                 }
             }
         }
     }
 
     private void addMessageToPlaylist(BroadcastMsg msg, TransmitterGroup group,
-            Suite suite, boolean trigger) {
+            ProgramSuite programSuite, boolean trigger) {
         ClusterTask ct = null;
         do {
             ct = ClusterLockUtils.lock("playlist", group.getName() + "-"
-                    + suite.getName(), 30000, true);
+                    + programSuite.getSuite().getName(), 30000, true);
         } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
         try {
-            Playlist playlist = playlistDao.getBySuiteAndGroupName(
-                    suite.getName(), group.getName());
+            Playlist playlist = playlistDao.getBySuiteAndGroupName(programSuite
+                    .getSuite().getName(), group.getName());
             Calendar currentTime = TimeUtil.newGmtCalendar();
             if (playlist == null) {
                 playlist = new Playlist();
-                if (suite.getType() == SuiteType.GENERAL) {
+                if (programSuite.getSuite().getType() == SuiteType.GENERAL) {
                     playlist.setMessages(Collections.<BroadcastMsg> emptyList());
                 } else if (trigger) {
-                    playlist.setMessages(loadExistingMessages(suite, group,
-                            currentTime, false));
+                    playlist.setMessages(loadExistingMessages(programSuite,
+                            group, currentTime, false));
                 } else {
                     return;
                 }
-                playlist.setSuite(suite);
+                playlist.setSuite(programSuite.getSuite());
                 playlist.setTransmitterGroup(group);
             }
             playlist.setModTime(currentTime);
-            List<BroadcastMsg> messages = mergeMessage(suite, msg,
-                    playlist.getMessages());
-            sortAndPersistPlaylist(playlist, messages);
+            List<BroadcastMsg> messages = mergeMessage(programSuite.getSuite(),
+                    msg, playlist.getMessages());
+            sortAndPersistPlaylist(playlist, messages, programSuite);
         } finally {
             ClusterLockUtils.deleteLock(ct.getId().getName(), ct.getId()
                     .getDetails());
@@ -305,7 +319,7 @@ public class PlaylistManager implements IContextStateProcessor {
     }
 
     private void sortAndPersistPlaylist(Playlist playlist,
-            List<BroadcastMsg> messages) {
+            List<BroadcastMsg> messages, final ProgramSuite programSuite) {
         Calendar currentTime = playlist.getModTime();
         Suite suite = playlist.getSuite();
         /*
@@ -342,7 +356,7 @@ public class PlaylistManager implements IContextStateProcessor {
                     .getAfosid());
             if (afosMessages != null) {
                 messages.addAll(afosMessages);
-                if (smessage.isTrigger()
+                if (programSuite.isTrigger(smessage.getMsgType())
                         || (suite.getType() == SuiteType.GENERAL)) {
                     for (BroadcastMsg bmessage : afosMessages) {
                         Calendar messageStart = bmessage.getInputMessage()
@@ -364,9 +378,9 @@ public class PlaylistManager implements IContextStateProcessor {
                         if ((endTime == null) || endTime.before(messageEnd)) {
                             endTime = messageEnd;
                         }
-
                     }
                 }
+
             }
         }
         if (startTime == null) {
@@ -413,33 +427,32 @@ public class PlaylistManager implements IContextStateProcessor {
      * @param group
      *            the group for which messages are loaded
      * @param expirationTime
-     *            messages taht expire before this time are not included in the
+     *            messages that expire before this time are not included in the
      *            list.
      * @param checkTrigger
-     *            If true trigger messages are laoded and non-trigger messages
+     *            If true trigger messages are loaded and non-trigger messages
      *            are loaded only if trigger messages are present. If false only
      *            non trigger messages will be loaded.
      * @return all the messages from the database for a playlist(optionally
      *         excluding triggers).
      */
-    private List<BroadcastMsg> loadExistingMessages(Suite suite,
-            TransmitterGroup group, Calendar expirationTime,
-            boolean checkTrigger) {
+    private List<BroadcastMsg> loadExistingMessages(
+            final ProgramSuite programSuite, TransmitterGroup group,
+            Calendar expirationTime, boolean checkTrigger) {
         List<BroadcastMsg> messages = new ArrayList<>();
         if (checkTrigger) {
-            for (SuiteMessage smessage : suite.getSuiteMessages()) {
-                if (smessage.isTrigger()) {
-                    messages.addAll(broadcastMsgDao
-                            .getUnexpiredMessagesByAfosidAndGroup(
-                                    smessage.getAfosid(), expirationTime, group));
-                }
+            for (ProgramTrigger programTrigger : programSuite.getTriggers()) {
+                messages.addAll(broadcastMsgDao
+                        .getMessagesByAfosid(programTrigger.getMsgType()
+                                .getAfosid()));
             }
-            if (messages.isEmpty() && suite.getType() != SuiteType.GENERAL) {
+            if (messages.isEmpty()
+                    && programSuite.getSuite().getType() != SuiteType.GENERAL) {
                 return Collections.emptyList();
             }
         }
-        for (SuiteMessage smessage : suite.getSuiteMessages()) {
-            if (!smessage.isTrigger()) {
+        for (SuiteMessage smessage : programSuite.getSuite().getSuiteMessages()) {
+            if (programSuite.isTrigger(smessage.getMsgType()) == false) {
                 messages.addAll(broadcastMsgDao
                         .getUnexpiredMessagesByAfosidAndGroup(
                                 smessage.getAfosid(), expirationTime, group));
@@ -455,7 +468,7 @@ public class PlaylistManager implements IContextStateProcessor {
         });
         List<BroadcastMsg> result = Collections.emptyList();
         for (BroadcastMsg message : messages) {
-            result = mergeMessage(suite, message, result);
+            result = mergeMessage(programSuite.getSuite(), message, result);
         }
         return result;
     }
@@ -718,8 +731,8 @@ public class PlaylistManager implements IContextStateProcessor {
         validateDaos();
         for (TransmitterGroup group : transmitterGroupDao.getAll()) {
             Program program = programDao.getProgramForTransmitterGroup(group);
-            for (Suite suite : program.getSuites()) {
-                refreshPlaylist(group, suite);
+            for (ProgramSuite programSuite : program.getProgramSuites()) {
+                refreshPlaylist(group, programSuite);
             }
         }
     }

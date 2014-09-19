@@ -42,6 +42,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
@@ -54,6 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.CreateEditMsgTypesDlg.DialogType;
+import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -73,6 +75,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 15, 2014  #3490     lvenable    Sort the list of message types.
  * Aug 18, 2014   3411     mpduff      Add validation.
  * Aug 22, 2014   3411     lvenable    Update rename and made some tweaks.
+ * Sep 18, 2014  #3587     bkowal      Notify a user when a message type is a trigger
+ *                                     before they are allowed to remove it.
  * 
  * </pre>
  * 
@@ -402,23 +406,59 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             return;
         }
         MessageType mt = messageTypeList.get(index);
-        StringBuilder sb = new StringBuilder();
-        sb.append("Do you wish to delete message type ").append(mt.getAfosid())
-                .append("?");
-        int result = DialogUtility.showMessageBox(getParent().getShell(),
-                SWT.ICON_WARNING | SWT.OK | SWT.CANCEL, "Confirm Delete",
-                sb.toString());
 
-        if (result == SWT.CANCEL) {
-            return;
+        /*
+         * Determine if the Message Type is associated with a trigger for any
+         * programs.
+         */
+        ProgramDataManager pdm = new ProgramDataManager();
+        List<Program> triggeredPrograms = null;
+        try {
+            triggeredPrograms = pdm.getProgramsWithTrigger(mt);
+        } catch (Exception e) {
+            statusHandler.error("Error checking for programs with trigger: '"
+                    + mt.getAfosid() + "'!", e);
+        }
+
+        if (triggeredPrograms == null || triggeredPrograms.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Do you wish to delete message type ")
+                    .append(mt.getAfosid()).append("?");
+            int result = DialogUtility.showMessageBox(getParent().getShell(),
+                    SWT.ICON_WARNING | SWT.OK | SWT.CANCEL, "Confirm Delete",
+                    sb.toString());
+
+            if (result == SWT.CANCEL) {
+                return;
+            }
+        } else {
+            StringBuilder sb = new StringBuilder("Message Type ");
+            sb.append(mt.getAfosid());
+            sb.append(" is currently a Trigger for the following programs:\n\n");
+            for (Program triggeredProgram : triggeredPrograms) {
+                sb.append(triggeredProgram.getName());
+                sb.append("\n");
+            }
+            sb.append("\nAre you sure you want to delete message type ");
+            sb.append(mt.getAfosid());
+            sb.append("?");
+
+            int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
+                    | SWT.YES | SWT.NO, "Remove Message Type", sb.toString());
+            if (result == SWT.NO) {
+                /*
+                 * Do not remove anything.
+                 */
+                return;
+            }
         }
 
         try {
             msgTypeDataMgr.deleteMessageType(mt);
         } catch (Exception e) {
-            statusHandler
-                    .error("Error retrieving message type data from the database: ",
-                            e);
+            statusHandler.error(
+                    "Failed to remove message type " + mt.getAfosid()
+                            + " from the database!", e);
         }
 
         retrieveDataFromDB();

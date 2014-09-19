@@ -20,8 +20,12 @@
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 
 import javax.persistence.Column;
@@ -31,15 +35,15 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -60,6 +64,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 06, 2014 #3490     lvenable    Updated to add name/query.
  * Aug 12, 2014 #3490     lvenable    Updated to add name/query for getting Programs/Suites.
  * Aug 15, 2014 #3490     lvenable    Removed cascade type all.
+ * Sep 16, 2014 #3587     bkowal      Updated to use the new {@link ProgramSuite}. Created
+ *                                    named queries for retrieving programs associated with a
+ *                                    trigger.
  * 
  * </pre>
  * 
@@ -70,7 +77,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = Program.GET_PROGRAM_FOR_TRANSMITTER_GROUP, query = Program.GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY),
         @NamedQuery(name = Program.GET_GROUPS_FOR_MSG_TYPE, query = Program.GET_GROUPS_FOR_MSG_TYPE_QUERY),
         @NamedQuery(name = Program.GET_PROGRAM_NAMES_IDS, query = Program.GET_PROGRAM_NAMES_IDS_QUERY),
-        @NamedQuery(name = Program.GET_PROGRAM_SUITES, query = Program.GET_PROGRAM_SUITES_QUERY) })
+        @NamedQuery(name = Program.GET_PROGRAM_SUITES, query = Program.GET_PROGRAM_SUITES_QUERY),
+        @NamedQuery(name = Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP, query = Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP_QUERY),
+        @NamedQuery(name = Program.GET_TRIGGERS_FOR_PROGRAM_AND_SUITE, query = Program.GET_TRIGGERS_FOR_PROGRAM_AND_SUITE_QUERY),
+        @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE_QUERY),
+        @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY) })
 @Entity
 @Table(name = "program", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = Program.GEN, sequenceName = "program_seq")
@@ -86,13 +97,29 @@ public class Program {
 
     protected static final String GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY = "select p FROM Program p inner join p.transmitterGroups tg WHERE tg = :group";
 
+    public static final String GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP = "getSuiteByIDForTransmitterGroup";
+
+    protected static final String GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP_QUERY = "select ps FROM Program p inner join p.programSuites ps inner join p.transmitterGroups tg WHERE tg = :group AND ps.id.suiteId = :suiteId";
+
     public static final String GET_GROUPS_FOR_MSG_TYPE = "getGroupsForMsgType";
 
-    protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY = "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.suites s inner join s.suiteMessages sm inner join sm.msgType mt WHERE mt.afosid = :afosid";
+    protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY = "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.programSuites ps inner join ps.suite s inner join s.suiteMessages sm inner join sm.msgType mt WHERE mt.afosid = :afosid";
 
     public static final String GET_PROGRAM_SUITES = "getProgramsAndSuites";
 
-    protected static final String GET_PROGRAM_SUITES_QUERY = "SELECT p.name, s.name, s.type, s.id FROM Program p inner join p.suites s";
+    protected static final String GET_PROGRAM_SUITES_QUERY = "SELECT p.id, p.name, s.name, s.type, s.id FROM Program p inner join p.programSuites ps inner join ps.suite s";
+
+    public static final String GET_TRIGGERS_FOR_PROGRAM_AND_SUITE = "getTriggersForProgramAndSuite";
+
+    protected static final String GET_TRIGGERS_FOR_PROGRAM_AND_SUITE_QUERY = "SELECT trig FROM Program p INNER JOIN p.programSuites ps INNER JOIN ps.triggers trig WHERE trig.id.programId = :programId AND trig.id.suiteId = :suiteId";
+
+    public static final String GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE = "getProgramsWithTriggerBySuiteAndMsgType";
+
+    protected static final String GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE_QUERY = "SELECT p.id, p.name FROM Program p INNER JOIN p.programSuites ps INNER JOIN ps.triggers trig WHERE trig.id.suiteId = :suiteId AND trig.id.msgTypeId = :msgTypeId";
+
+    public static final String GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE = "getProgramsWithTriggerByMsgType";
+
+    protected static final String GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY = "SELECT p.id, p.name FROM Program p INNER JOIN p.programSuites ps INNER JOIN ps.triggers trig WHERE trig.id.msgTypeId = :msgTypeId";;
 
     // use surrogate key
     @Id
@@ -104,11 +131,16 @@ public class Program {
     @DynamicSerializeElement
     private String name;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "program_suites", schema = "bmh", joinColumns = { @JoinColumn(name = "program_id") }, inverseJoinColumns = { @JoinColumn(name = "suite_id") })
+    @OneToMany(mappedBy = "program", fetch = FetchType.EAGER)
     @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
-    private List<Suite> suites;
+    private List<ProgramSuite> programSuites;
+
+    /*
+     * Convenience mapping for working with triggers.
+     */
+    @Transient
+    private Map<Suite, ProgramSuite> suiteToProgramSuiteMap;
 
     @OneToMany(fetch = FetchType.EAGER)
     @JoinColumn(name = "program_id")
@@ -131,22 +163,180 @@ public class Program {
         this.name = name;
     }
 
+    private void checkSuiteLookupMap(final Suite suite) {
+        if (this.suiteToProgramSuiteMap == null) {
+            this.suiteToProgramSuiteMap = new HashMap<>();
+        }
+
+        /*
+         * Look for changes that were made directly to the program suites list
+         * via pass-by-reference.
+         */
+        if (this.suiteToProgramSuiteMap.size() != this.programSuites.size()
+                || this.suiteToProgramSuiteMap.containsKey(suite) == false) {
+            for (ProgramSuite pg : this.programSuites) {
+                this.suiteToProgramSuiteMap.put(pg.getSuite(), pg);
+            }
+
+            /*
+             * Now the lookup map should contain the specified suite.
+             */
+            if (this.suiteToProgramSuiteMap.containsKey(suite) == false) {
+                throw new IllegalStateException(
+                        "Unable to find any references to suite: "
+                                + suite.getId()
+                                + "! Too many changes have been made to the internal data structures by reference.");
+            }
+        }
+    }
+
     public List<Suite> getSuites() {
+        if (this.programSuites == null) {
+            return Collections.emptyList();
+        }
+
+        List<Suite> suites = new ArrayList<>(this.programSuites.size());
+        for (ProgramSuite programSuite : this.programSuites) {
+            suites.add(programSuite.getSuite());
+        }
+
         return suites;
     }
 
+    /*
+     * BEGIN: Convenience methods for interacting with triggers
+     */
+    public boolean isTriggerMsgType(Suite suite, MessageType messageType) {
+        this.checkSuiteLookupMap(suite);
+        if (suite.getType() == SuiteType.GENERAL) {
+            /*
+             * General suites will never have triggers.
+             */
+            return false;
+        }
+
+        return this.suiteToProgramSuiteMap.get(suite).isTrigger(messageType);
+    }
+
+    public boolean doTriggersExist(Suite suite) {
+        this.checkSuiteLookupMap(suite);
+        if (suite.getType() == SuiteType.GENERAL) {
+            /*
+             * General suites will never have triggers.
+             */
+            return false;
+        }
+
+        return this.suiteToProgramSuiteMap.get(suite).triggersExist();
+    }
+
+    public void clearTriggerMsgTypes(Suite suite) {
+        this.checkSuiteLookupMap(suite);
+        this.suiteToProgramSuiteMap.get(suite).clearTriggers();
+    }
+
+    public void addTriggerMsgType(Suite suite, ProgramTrigger trigger) {
+        this.checkSuiteLookupMap(suite);
+        this.suiteToProgramSuiteMap.get(suite).addTrigger(trigger);
+    }
+
+    public void removeTriggerMsgType(Suite suite, MessageType msgType) {
+        this.checkSuiteLookupMap(suite);
+        if (this.isTriggerMsgType(suite, msgType) == false) {
+            return;
+        }
+        this.suiteToProgramSuiteMap.get(suite).removeTrigger(msgType);
+    }
+
+    /*
+     * END: Convenience methods for interacting with triggers
+     */
+
     public void setSuites(List<Suite> suites) {
-        this.suites = suites;
+        if (programSuites == null) {
+            programSuites = new ArrayList<>(suites.size());
+        }
+        for (Suite suite : suites) {
+            ProgramSuite programSuite = new ProgramSuite();
+            programSuite.setProgram(this);
+            programSuite.setSuite(suite);
+            programSuite.setPosition(this.programSuites.size());
+            this.programSuites.add(programSuite);
+        }
     }
 
     public void addSuite(Suite suite) {
         if (suite != null) {
-            if (suites == null) {
-                suites = new ArrayList<>();
+            if (programSuites == null) {
+                programSuites = new ArrayList<>();
             }
 
-            suites.add(suite);
+            ProgramSuite programSuite = new ProgramSuite();
+            programSuite.setProgram(this);
+            programSuite.setSuite(suite);
+            programSuite.setPosition(this.programSuites.size());
+            this.programSuites.add(programSuite);
         }
+    }
+
+    /**
+     * @return the programSuites
+     */
+    public List<ProgramSuite> getProgramSuites() {
+        return programSuites;
+    }
+
+    /**
+     * @param programSuites
+     *            the programSuites to set
+     */
+    public void setProgramSuites(List<ProgramSuite> programSuites) {
+        if (programSuites == null) {
+            /*
+             * Instantiate new list instead of empty list so that items can
+             * still be added to the list.
+             */
+            this.programSuites = new ArrayList<>();
+            return;
+        }
+        this.programSuites = programSuites;
+
+        Iterator<ProgramSuite> psi = programSuites.iterator();
+        while (psi.hasNext()) {
+            if (psi.next() == null) {
+                psi.remove();
+            }
+        }
+
+        this.updatePositions();
+
+        for (ProgramSuite ps : this.programSuites) {
+            ps.setProgram(this);
+        }
+    }
+
+    public void updatePositions() {
+        if (this.programSuites == null) {
+            return;
+        }
+
+        int index = 0;
+        for (ProgramSuite ps : this.programSuites) {
+            ps.setPosition(index++);
+        }
+    }
+
+    public void addProgramSuite(ProgramSuite programSuite) {
+        if (this.programSuites == null) {
+            this.programSuites = new ArrayList<>();
+            programSuite.setPosition(0);
+        } else {
+            programSuite.setPosition(this.programSuites.get(
+                    this.programSuites.size() - 1).getPosition() + 1);
+        }
+
+        programSuite.setProgram(this);
+        this.programSuites.add(programSuite);
     }
 
     public Set<TransmitterGroup> getTransmitterGroups() {

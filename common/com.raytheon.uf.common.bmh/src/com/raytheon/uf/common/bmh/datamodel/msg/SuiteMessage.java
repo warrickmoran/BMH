@@ -44,6 +44,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014 3175       rjpeter     Initial creation.
  * Aug 05, 2014 3175       rjpeter     Fixed mapping.
  * Aug 17, 2014 #3490     lvenable    Added batch size.
+ * Sep 11, 2014 #3587      bkowal      Remove trigger.
  * 
  * </pre>
  * 
@@ -71,10 +72,6 @@ public class SuiteMessage {
 
     @Column(nullable = false)
     @DynamicSerializeElement
-    private boolean trigger;
-
-    @Column(nullable = false)
-    @DynamicSerializeElement
     private int position;
 
     public SuiteMessagePk getId() {
@@ -83,14 +80,6 @@ public class SuiteMessage {
 
     public void setId(SuiteMessagePk id) {
         this.id = id;
-    }
-
-    public boolean isTrigger() {
-        return trigger;
-    }
-
-    public void setTrigger(boolean trigger) {
-        this.trigger = trigger;
     }
 
     public Suite getSuite() {

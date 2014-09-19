@@ -37,8 +37,6 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
-import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
-import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -70,6 +68,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 24, 2014  #3490     lvenable     Removed dialog type and fixed copy suite error.
  * Aug 25, 2014  #3490     lvenable     Validate the triggers for message types.
  * Sep 10, 2014  #3490     lvenable     Added check for adding duplicate suites.
+ * Sep 11, 2014  #3587     bkowal       Remove validateSuiteTriggerMessages. Updated
+ *                                      to only allow trigger assignment for {Program, Suite}
  * 
  * </pre>
  * 
@@ -281,52 +281,6 @@ public class AddSuitesDlg extends CaveSWTDialog {
     }
 
     /**
-     * Validate the the trigger message in the list of suites. If the suite is
-     * HIGH or EXCLUSIVE then it needs a trigger message.
-     * 
-     * @param selectedSuites
-     *            List of selected suites that need to be checked.
-     * @return True if the criteria for trigger messages is met.
-     */
-    private boolean validateSuiteTriggerMessages(List<Suite> selectedSuites) {
-
-        StringBuilder sb = new StringBuilder();
-        boolean hasTrigger = false;
-
-        for (Suite s : selectedSuites) {
-            if (s.getType() == SuiteType.HIGH
-                    || s.getType() == SuiteType.EXCLUSIVE) {
-                List<SuiteMessage> smList = s.getSuiteMessages();
-                hasTrigger = false;
-                for (SuiteMessage sm : smList) {
-                    if (sm.isTrigger()) {
-                        hasTrigger = true;
-                        break;
-                    }
-                }
-
-                if (hasTrigger == false) {
-                    sb.append(s.getName()).append("\n");
-                }
-            }
-        }
-
-        if (sb.length() != 0) {
-            String firstMsg = "The following suites cannot be added to the program because they are "
-                    + "HIGH/EXCLUSIVE and do not have a trigger message:\n\n";
-            sb.insert(0, firstMsg);
-            sb.append("\nExclude the suite(s) or edit them with the suite manager to add triggers message types.");
-
-            DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
-                    "Suite Issue", sb.toString());
-
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
      * Handle adding suites.
      */
     private void handleAddSuites() {
@@ -334,10 +288,6 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
         // Safety check.
         if (selectedSuites.isEmpty()) {
-            return;
-        }
-
-        if (validateSuiteTriggerMessages(selectedSuites) == false) {
             return;
         }
 
