@@ -42,6 +42,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Aug 18, 2014   3411     mpduff      Added saveMessageType()
  * Sep 15, 2014   #3610    lvenable    Moved getMessageType functionality into this
  *                                     class from the BroadcastCycleDataManager.
+ * Sep 19, 2014   #3611    lvenable    Added method to get emergency override message types.
  * 
  * </pre>
  * 
@@ -170,5 +171,34 @@ public class MessageTypeDataManager {
         }
 
         return null;
+    }
+
+    /**
+     * Get the message types that are of type emergency override.
+     * 
+     * @param comparator
+     *            Comparator to sort the message types.
+     * @return List of emergency override message types.
+     * @throws Exception
+     */
+    public List<MessageType> getEmergencyOverrideMsgTypes(
+            Comparator<MessageType> comparator) throws Exception {
+        MessageTypeRequest req = new MessageTypeRequest();
+        req.setAction(MessageTypeAction.GetEmergencyOverrideMsgTypes);
+        req.setEmergencyOverride(true);
+
+        MessageTypeResponse response = (MessageTypeResponse) BmhUtils
+                .sendRequest(req);
+
+        List<MessageType> messageTypeList = response.getMessageTypeList();
+        if (messageTypeList == null) {
+            return Collections.emptyList();
+        }
+
+        if (comparator != null && messageTypeList.isEmpty() == false) {
+            Collections.sort(messageTypeList, comparator);
+        }
+
+        return messageTypeList;
     }
 }

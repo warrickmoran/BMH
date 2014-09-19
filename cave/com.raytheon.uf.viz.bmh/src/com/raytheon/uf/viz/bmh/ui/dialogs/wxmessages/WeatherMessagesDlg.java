@@ -562,7 +562,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
          */
         ButtonImageCreator bic = new ButtonImageCreator(shell);
 
-        // Area Selection button.
+        // Contents button.
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         contentsBtn = new Button(controlComp, SWT.PUSH);
         contentsBtn.setLayoutData(gd);

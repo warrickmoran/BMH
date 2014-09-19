@@ -69,6 +69,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 18, 2014  3411      mpduff      Added {@link MessageTypeReplacement}
  * Sep 2, 2014   3568      bkowal      Added the getMessageTypeForDesignation named query
  * Sep 15, 2014   #3610    lvenable    Added query for getting Afos ID and Title.
+ * Sep 19, 2014   #3611    lvenable    Added query for getting emergency override message types.
  * 
  * </pre>
  * 
@@ -78,6 +79,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_AFOSID_TITLE, query = MessageType.GET_MESSAGETYPE_AFOSID_TITLE_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_AFOSID, query = MessageType.GET_MESSAGETYPE_FOR_AFOSID_QUERY),
+        @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE, query = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, query = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION_QUERY) })
 @Entity
 @DynamicSerialize
@@ -102,6 +104,10 @@ public class MessageType {
     public static final String GET_MESSAGETYPE_FOR_DESIGNATION = "getMessageTypeForDesignation";
 
     protected static final String GET_MESSAGETYPE_FOR_DESIGNATION_QUERY = "FROM MessageType m WHERE m.designation = :designation";
+
+    public static final String GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE = "getMessageTypeForEmergencyOverride";
+
+    protected static final String GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE_QUERY = "FROM MessageType m WHERE m.emergencyOverride = :emergencyOverride";
 
     // use surrogate key
     @Id

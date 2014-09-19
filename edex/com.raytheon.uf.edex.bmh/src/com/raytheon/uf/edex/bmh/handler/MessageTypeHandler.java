@@ -48,6 +48,7 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Aug 20, 2014  3432      mpduff      Added get by afosid and pk id
  * Sep 05, 2014 3554       bsteffen    Send config change notification.
  * Sep 15, 2014   #3610    lvenable    Added GetAfosIdTitle capability.
+ * Sep 19, 2014   #3611    lvenable    Added emergency override capability..
  * 
  * </pre>
  * 
@@ -83,6 +84,9 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
             break;
         case GetByPkId:
             response = getByPkId(request);
+            break;
+        case GetEmergencyOverrideMsgTypes:
+            response = getEmergencyOverrideMsgTypes(request);
             break;
         default:
             break;
@@ -166,6 +170,25 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         MessageTypeDao dao = new MessageTypeDao();
         MessageType m = dao.getByID((int) request.getPkId());
         response.addMessageType(m);
+
+        return response;
+    }
+
+    /**
+     * Get the list of emergency override message types.
+     * 
+     * @param request
+     *            Message type request.
+     * @return Message type response.
+     */
+    private MessageTypeResponse getEmergencyOverrideMsgTypes(
+            MessageTypeRequest request) {
+        MessageTypeResponse response = new MessageTypeResponse();
+        MessageTypeDao dao = new MessageTypeDao();
+
+        List<MessageType> mTypes = dao.getEmergencyOverride(request
+                .isEmergencyOverride());
+        response.setMessageTypeList(mTypes);
 
         return response;
     }
