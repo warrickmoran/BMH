@@ -198,7 +198,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      */
     public BMHLauncherDlg(Shell parentShell) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.DO_NOT_BLOCK
-                | CAVE.MODE_INDEPENDENT);
+                | CAVE.MODE_INDEPENDENT | CAVE.INDEPENDENT_SHELL);
     }
 
     @Override

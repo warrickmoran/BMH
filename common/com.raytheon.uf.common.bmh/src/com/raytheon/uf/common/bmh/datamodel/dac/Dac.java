@@ -26,7 +26,10 @@ import javax.persistence.Column;
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
@@ -45,6 +48,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Aug 04, 2014  3486     bsteffen    Initial creation
  * Aug 27, 2014  3432     mpduff      Added Serialization annotation.
+ * Sep 22, 2014  #3652    lvenable    Added name column and a sequence generator for the ID.
  * 
  * </pre>
  * 
@@ -54,14 +58,22 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Entity
 @Table(name = "dac_address", schema = "bmh", uniqueConstraints = {
         @UniqueConstraint(columnNames = { "id" }),
+        @UniqueConstraint(columnNames = { "name" }),
         @UniqueConstraint(columnNames = { "address" }),
         @UniqueConstraint(columnNames = { "receivePort" }) })
+@SequenceGenerator(initialValue = 1, name = Dac.GEN, sequenceName = "dac_seq")
 @DynamicSerialize
 public class Dac {
+    static final String GEN = "DAC Generator";
 
     @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     @DynamicSerializeElement
     private int id;
+
+    @Column(length = 40, nullable = false)
+    @DynamicSerializeElement
+    private String name;
 
     /* 39 is long enough for IPv6 */
     @Column(length = 39)
@@ -108,6 +120,18 @@ public class Dac {
 
     public void setDataPorts(Set<Integer> dataPorts) {
         this.dataPorts = dataPorts;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        if (name != null) {
+            this.name = name;
+        } else {
+            this.name = "";
+        }
     }
 
 }
