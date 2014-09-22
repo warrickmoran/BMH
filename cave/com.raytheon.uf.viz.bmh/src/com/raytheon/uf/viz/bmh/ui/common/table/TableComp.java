@@ -36,7 +36,7 @@ import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 
 /**
- * Generic table composite for use in BMH.
+ * Abstract table composite for use in BMH.
  * 
  * <pre>
  * 

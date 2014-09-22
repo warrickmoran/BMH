@@ -44,6 +44,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
  * Sep 2, 2014  3568       bkowal      Added getMessageTypeForDesignation
  * Sep 15, 2014  #3610     lvenable    Added methods to get message type
  *                                     Afos ID and title.
+ * Sep 19, 2014  #3611     lvenable    Added emergency override.
  * 
  * </pre>
  * 
@@ -163,6 +164,36 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         }
 
         return null;
+    }
+
+    /**
+     * Get the list of emergency override message types.
+     * 
+     * @param eoFlag
+     *            Emergency Override flag to indicate if you want the message
+     *            types that are emergency override or not.
+     * @return List of message types.
+     */
+    public List<MessageType> getEmergencyOverride(final boolean eoFlag) {
+        List<MessageType> types = txTemplate
+                .execute(new TransactionCallback<List<MessageType>>() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public List<MessageType> doInTransaction(
+                            TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht
+                                .findByNamedQueryAndNamedParam(
+                                        MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE,
+                                        new String[] { "emergencyOverride" },
+                                        new Object[] { eoFlag });
+                    }
+                });
+        if (types == null) {
+            return Collections.emptyList();
+        }
+
+        return types;
     }
 
     public List<MessageType> getMessageTypeForDesignation(

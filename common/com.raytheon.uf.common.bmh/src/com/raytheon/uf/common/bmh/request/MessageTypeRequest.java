@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * Aug 14, 2014    3432    mpduff      Added Afosid
  * Aug 17, 2014  #3490     lvenable    Updated action and added messageType.
  * Sep 15, 2014   #3610    lvenable    Added GetAfosIdTitle.
+ * Sep 19, 2014   #3611    lvenable    Added emergency override.
  * 
  * </pre>
  * 
@@ -47,7 +48,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 @DynamicSerialize
 public class MessageTypeRequest implements IServerRequest {
     public enum MessageTypeAction {
-        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle;
+        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle, GetEmergencyOverrideMsgTypes;
     }
 
     @DynamicSerializeElement
@@ -61,6 +62,9 @@ public class MessageTypeRequest implements IServerRequest {
 
     @DynamicSerializeElement
     private long pkId;
+
+    @DynamicSerializeElement
+    private boolean emergencyOverride;
 
     /**
      * @return the action
@@ -113,5 +117,13 @@ public class MessageTypeRequest implements IServerRequest {
      */
     public void setPkId(long pkId) {
         this.pkId = pkId;
+    }
+
+    public boolean isEmergencyOverride() {
+        return emergencyOverride;
+    }
+
+    public void setEmergencyOverride(boolean emergencyOverride) {
+        this.emergencyOverride = emergencyOverride;
     }
 }

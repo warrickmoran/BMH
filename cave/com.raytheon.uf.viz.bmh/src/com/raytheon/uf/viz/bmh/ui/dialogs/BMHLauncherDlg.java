@@ -63,6 +63,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterConfigDl
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.DictionaryManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride.EmergencyOverrideDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.areas.ListeningAreaDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.zones.ListeningZoneDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
@@ -96,6 +97,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 21, 2014  #3490     lvenable    Updated disable silence alarm to use transmitter group.
  * Aug 25, 2014  #3490     lvenable    Disabled Status Dialog since it will be redesigned.
  * Sep 14, 2014  #3610     lvenable    Added launching of Weather Messages dialog.
+ * Sep 19, 2014  #3611     lvenable    Added launching of Emergency Override dialog.
  * 
  * </pre>
  * 
@@ -170,6 +172,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     /** Weather Messages dialog. */
     private WeatherMessagesDlg weatherMessagesDlg;
+
+    /** Emergency Override dialog. */
+    private EmergencyOverrideDlg emergecyOverrideDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -472,7 +477,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         emergencyBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                DialogUtility.notImplemented(shell);
+                launchEmergencyOverride();
             }
         });
         new CustomToolTip(emergencyBtn, "Emergency Override");
@@ -675,7 +680,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         emergencyOverrideMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                DialogUtility.notImplemented(shell);
+                launchEmergencyOverride();
             }
         });
     }
@@ -840,6 +845,16 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             weatherMessagesDlg.open();
         } else {
             weatherMessagesDlg.bringToTop();
+        }
+    }
+
+    private void launchEmergencyOverride() {
+        if (emergecyOverrideDlg == null || emergecyOverrideDlg.isDisposed()) {
+            emergecyOverrideDlg = new EmergencyOverrideDlg(getShell(),
+                    dlgsToValidateCloseMap);
+            emergecyOverrideDlg.open();
+        } else {
+            emergecyOverrideDlg.bringToTop();
         }
     }
 
