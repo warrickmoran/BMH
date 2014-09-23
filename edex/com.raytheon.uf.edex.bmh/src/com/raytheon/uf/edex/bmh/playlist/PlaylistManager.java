@@ -104,6 +104,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Sep 12, 2014  3588     bsteffen    Support audio fragments.
  * Sep 16, 2014  3587     bkowal      No longer check the {@link SuiteMessage} for triggers.
  *                                    Updated to use the {@link ProgramSuite}.
+ * Sep 23, 2014  3485     bsteffen    Move queue naming logic to PlaylistUpdateNotification
  * 
  * </pre>
  * 
@@ -559,10 +560,11 @@ public class PlaylistManager implements IContextStateProcessor {
                     "Unable to write playlist file.", e);
             return;
         }
+        String queue = PlaylistUpdateNotification.getQueueName(playlist
+                .getTransmitterGroup().getName());
         try {
             EDEXUtil.getMessageProducer().sendAsyncUri(
-                    "jms-durable:queue:BMH.Playlist."
-                            + playlist.getTransmitterGroup().getName(),
+                    "jms-durable:queue:" + queue,
                     SerializationUtil.transformToThrift(notif));
         } catch (EdexException | SerializationException e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,

@@ -35,9 +35,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
-import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
-import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.bmh.comms.DacTransmitKey;
+import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.jms.notification.JmsNotificationManager;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -55,6 +55,8 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * ------------- -------- ----------- --------------------------
  * Jul 25, 2014  3399     bsteffen    Initial creation
  * Jul 31, 2014  3286     dgilling    Wire up DacHardwareStatusNotification.
+ * Sep 23, 2014  3485     bsteffen    Enable sending anything for dac status.
+ *                                    Add methods to specifically listen for playlist changes.
  * 
  * </pre>
  * 
@@ -78,19 +80,7 @@ public class JmsCommunicator extends JmsNotificationManager {
         super(new AMQConnectionFactory(config.getJmsConnection()));
     }
 
-    public void sendStatus(PlaylistSwitchNotification notification) {
-        sendStatusInternal(notification);
-    }
-
-    public void sendStatus(MessagePlaybackStatusNotification notification) {
-        sendStatusInternal(notification);
-    }
-
-    public void sendStatus(DacHardwareStatusNotification notification) {
-        sendStatusInternal(notification);
-    }
-
-    protected void sendStatusInternal(Object notification) {
+    public void sendDacStatus(Object notification) {
         /* If too many messages are queued up drop the oldest message. */
         while (!unsent.offerLast(notification)) {
             unsent.pollFirst();
@@ -114,6 +104,18 @@ public class JmsCommunicator extends JmsNotificationManager {
     public void onException(JMSException e) {
         super.onException(e);
         disconnectProducer();
+    }
+
+    public void listenForPlaylistChanges(DacTransmitKey key, String group,
+            DacTransmitServer server) {
+        addQueueObserver(PlaylistUpdateNotification.getQueueName(group),
+                new PlaylistNotificationObserver(server, key));
+    }
+
+    public void unlistenForPlaylistChanges(DacTransmitKey key, String group,
+            DacTransmitServer server) {
+        removeQueueObserver(PlaylistUpdateNotification.getQueueName(group), null,
+                new PlaylistNotificationObserver(server, key));
     }
 
     protected synchronized void connectProducerAndSend() {
