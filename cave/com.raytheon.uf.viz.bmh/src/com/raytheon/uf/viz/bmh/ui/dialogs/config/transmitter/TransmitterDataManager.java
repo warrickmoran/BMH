@@ -198,14 +198,15 @@ public class TransmitterDataManager {
     }
 
     /**
-     * Get all {@link Program}s
+     * Get all {@link Program}s. This only populates the name and id fields for
+     * each program.
      * 
      * @return List of Programs
      * @throws Exception
      */
     public List<Program> getPrograms() throws Exception {
         ProgramRequest req = new ProgramRequest();
-        req.setAction(ProgramAction.AllPrograms);
+        req.setAction(ProgramAction.ListNamesIDs);
 
         ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(req);
 

@@ -47,6 +47,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Jun 30, 2014  3283     bsteffen    Add some getter/setters.
  * Jul 17, 2014  3406     mpduff      Added id pk column, named query, removed cascade
  * Aug 04, 2014  3173     mpduff      Added DAC and Fips, changed to use serialization adapter
+ * Oct 06, 2014  3649     rferrel     Methods hashCode and equals now use id.
  * 
  * </pre>
  * 
@@ -286,8 +287,11 @@ public class Transmitter {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = (prime * result)
-                + ((mnemonic == null) ? 0 : mnemonic.hashCode());
+        result = prime * result + id;
+        if (id == 0) {
+            result = prime * result
+                    + ((mnemonic == null) ? 0 : mnemonic.hashCode());
+        }
         return result;
     }
 
@@ -303,12 +307,18 @@ public class Transmitter {
             return false;
         }
         Transmitter other = (Transmitter) obj;
-        if (mnemonic == null) {
-            if (other.mnemonic != null) {
+        if (id != other.id) {
+            return false;
+        }
+        // Comparing new transmitters not in database.
+        if (id == 0) {
+            if (mnemonic == null) {
+                if (other.mnemonic != null) {
+                    return false;
+                }
+            } else if (!mnemonic.equals(other.mnemonic)) {
                 return false;
             }
-        } else if (!mnemonic.equals(other.mnemonic)) {
-            return false;
         }
         return true;
     }

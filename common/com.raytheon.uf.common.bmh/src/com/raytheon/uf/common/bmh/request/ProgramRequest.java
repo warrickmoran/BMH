@@ -39,6 +39,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * Aug 15, 2014 #3490      lvenable     Added Program with getters & setters.
  * Aug 15, 2014  3432      mpduff       Added GetProgramForTransmitterGroup
  * Sep 18, 2014 #3587      bkowal       Added GetProgramsWithTrigger
+ * Oct 02, 2014 #3649      rferrel      Added AddGroup.
  * 
  * </pre>
  * 
@@ -49,7 +50,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 public class ProgramRequest implements IServerRequest {
 
     public enum ProgramAction {
-        Save, ListNamesIDs, AllPrograms, ProgramSuites, Delete, GetProgramForTransmitterGroup, GetProgramsWithTrigger;
+        Save, ListNamesIDs, AllPrograms, ProgramSuites, Delete, GetProgramForTransmitterGroup, GetProgramsWithTrigger, AddGroup;
     }
 
     @DynamicSerializeElement

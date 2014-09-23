@@ -26,6 +26,7 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
@@ -43,6 +44,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Aug 17, 2014  #3490     lvenable     Initial creation
  * Sep 18, 2014  #3587     bkowal       Added methods to retrieve programs associated
  *                                      with a trigger.
+ * Oct 02, 2014  #3649     rferrel      Added methods addGroup and getProgramForTransmitterGroup.
  * 
  * </pre>
  * 
@@ -91,6 +93,17 @@ public class ProgramDataManager {
         ProgramRequest pr = new ProgramRequest();
         pr.setProgram(selectedProgram);
         pr.setAction(ProgramAction.Save);
+
+        ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(pr);
+        return response;
+    }
+
+    public ProgramResponse addGroup(Program program, TransmitterGroup group)
+            throws Exception {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setProgram(program);
+        pr.setTransmitterGroup(group);
+        pr.setAction(ProgramAction.AddGroup);
 
         ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(pr);
         return response;
@@ -145,5 +158,28 @@ public class ProgramDataManager {
 
         progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
         return progResponse.getProgramList();
+    }
+
+    /**
+     * Get the fully populated {@link Program} that contains the
+     * {@link TransmitterGroup} in its group list.
+     * 
+     * @param group
+     * @return program
+     * @throws Exception
+     */
+    public Program getProgramForTransmitterGroup(TransmitterGroup group)
+            throws Exception {
+        ProgramRequest request = new ProgramRequest();
+        request.setTransmitterGroup(group);
+        request.setAction(ProgramAction.GetProgramForTransmitterGroup);
+
+        ProgramResponse response;
+        response = (ProgramResponse) BmhUtils.sendRequest(request);
+        List<Program> programs = response.getProgramList();
+        if ((programs == null) || (programs.size() == 0)) {
+            return null;
+        }
+        return programs.get(0);
     }
 }

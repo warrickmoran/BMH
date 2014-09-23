@@ -44,12 +44,14 @@ import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DetailsDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.NewEditTransmitterDlg.TransmitterEditType;
@@ -68,13 +70,13 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 30, 2014    3173    mpduff      Initial creation
  * Aug 18, 2014    3173    mpduff      Remove "Move To Group" menu item.
  * Aug 24, 2014    3432    mpduff      Handle null ports
+ * Sep 23, 2014    3649    rferrel     Changes to handle all types of groups.
  * 
  * </pre>
  * 
  * @author mpduff
  * @version 1.0
  */
-
 public class TransmitterComp extends Composite implements
         ITransmitterStatusChange {
     private final IUFStatusHandler statusHandler = UFStatus
@@ -147,6 +149,18 @@ public class TransmitterComp extends Composite implements
     private List<String> displayStrings;
 
     /**
+     * Call back for NewEditTranmitterDlg.
+     */
+    private final ICloseCallback callback = new ICloseCallback() {
+        @Override
+        public void dialogClosed(Object returnValue) {
+            if (returnValue != null) {
+                populateTree(returnValue);
+            }
+        }
+    };
+
+    /**
      * Constructor.
      * 
      * @param parent
@@ -201,68 +215,29 @@ public class TransmitterComp extends Composite implements
                 transmitterMenuAction(true);
             }
         });
+        new MenuItem(menu, SWT.SEPARATOR);
 
-        MenuItem editItem = new MenuItem(menu, SWT.PUSH);
+        TransmitterGroup group = null;
+        TransmitterGroup standaloneGroup = null;
+        Transmitter groupTransmitter = null;
+        boolean transmitterEnabled = false;
+        boolean transmitterPrimary = false;
 
-        if (tree.getSelectionCount() > 0
-                && tree.getSelection()[0].getParentItem() != null) {
-            // Has parent so it's a transmitter
-            editItem.setText("Edit Transmitter...");
-            editItem.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    transmitterMenuAction(false);
+        if (tree.getSelectionCount() > 0) {
+            Object o = tree.getSelection()[0].getData();
+
+            if (o instanceof TransmitterGroup) {
+                group = (TransmitterGroup) o;
+                if (group.isStandalone()) {
+                    standaloneGroup = group;
+                    group = null;
                 }
-            });
+            } else if (o instanceof Transmitter) {
+                groupTransmitter = (Transmitter) o;
+            }
+            MenuItem editItem = new MenuItem(menu, SWT.PUSH);
 
-            MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
-            deleteItem.setText("Delete Transmitter");
-            deleteItem.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    deleteTransmitter();
-                }
-            });
-
-            MenuItem reorderMenuItem = new MenuItem(menu, SWT.PUSH);
-            reorderMenuItem.setText("Order Transmitters...");
-            reorderMenuItem.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    reorderTransmitters();
-                }
-            });
-            MenuItem decommissionTransmitterItem = new MenuItem(menu, SWT.PUSH);
-            decommissionTransmitterItem.setText("Decommission Transmitter");
-            decommissionTransmitterItem
-                    .addSelectionListener(new SelectionAdapter() {
-                        @Override
-                        public void widgetSelected(SelectionEvent e) {
-                            decommissionTransmitter();
-                        }
-                    });
-        } else {
-            // Group
-            if (tree.getSelectionCount() > 0
-                    && tree.getSelection()[0].getText(0).equals(
-                            this.TRANSMITTER)) {
-                editItem.setText("Edit Transmitter...");
-                editItem.addSelectionListener(new SelectionAdapter() {
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        transmitterMenuAction(false);
-                    }
-                });
-
-                MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
-                deleteItem.setText("Delete Transmitter");
-                deleteItem.addSelectionListener(new SelectionAdapter() {
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        deleteTransmitter();
-                    }
-                });
-            } else {
+            if (group != null) {
                 editItem.setText("Edit Group...");
                 editItem.addSelectionListener(new SelectionAdapter() {
                     @Override
@@ -271,17 +246,136 @@ public class TransmitterComp extends Composite implements
                     }
                 });
 
+                if (group.getTransmitters().size() == 0) {
+                    MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
+                    deleteItem.setText("Delete Group");
+                    deleteItem.addSelectionListener(new SelectionAdapter() {
+                        @Override
+                        public void widgetSelected(SelectionEvent e) {
+                            deleteGroup();
+                        }
+                    });
+                }
+
+            } else {
+                editItem.setText("Edit Transmitter...");
+                editItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        transmitterMenuAction(false);
+                    }
+                });
+
+                transmitterEnabled = ((groupTransmitter != null) && (groupTransmitter
+                        .getTxStatus() == TxStatus.ENABLED))
+                        || ((standaloneGroup != null) && standaloneGroup
+                                .getTransmitterList().get(0).getTxStatus() == TxStatus.ENABLED);
+
+                transmitterPrimary = ((groupTransmitter != null) && (groupTransmitter
+                        .getTxMode() == TxMode.PRIMARY))
+                        || ((standaloneGroup != null) && standaloneGroup
+                                .getTransmitterList().get(0).getTxMode() == TxMode.PRIMARY);
+
+                new MenuItem(menu, SWT.SEPARATOR);
+                MenuItem statusMenuItem = new MenuItem(menu, SWT.CASCADE);
+                statusMenuItem.setText("Transmitter Status");
+                Menu statusMenu = new Menu(menu);
+                statusMenuItem.setMenu(statusMenu);
+
+                MenuItem enableStatusItem = new MenuItem(statusMenu, SWT.RADIO);
+                enableStatusItem.setText("Enable Transmitter");
+                enableStatusItem.addSelectionListener(new SelectionAdapter() {
+
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        MenuItem item = (MenuItem) e.widget;
+                        if (item.getSelection()) {
+                            changeTxStatus(TxStatus.ENABLED);
+                        }
+                    }
+                });
+                enableStatusItem.setSelection(transmitterEnabled);
+
+                // Enable only when transmitter has a DAC and DAC port.
+                enableStatusItem
+                        .setEnabled(((standaloneGroup != null)
+                                && (standaloneGroup.getDac() != null) && (standaloneGroup
+                                .getTransmitterList().get(0).getDacPort() != null))
+                                || ((groupTransmitter != null)
+                                        && (groupTransmitter.getDacPort() != null) && (groupTransmitter
+                                        .getTransmitterGroup().getDac() != null)));
+
+                MenuItem disableStatusItem = new MenuItem(statusMenu, SWT.RADIO);
+                disableStatusItem.setText("Disable Transmitter");
+                disableStatusItem.addSelectionListener(new SelectionAdapter() {
+
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        MenuItem item = (MenuItem) e.widget;
+                        if (item.getSelection()) {
+                            changeTxStatus(TxStatus.DISABLED);
+                        }
+                    }
+                });
+                disableStatusItem.setSelection(!transmitterEnabled);
+
+                MenuItem modeMenuItem = new MenuItem(menu, SWT.CASCADE);
+                modeMenuItem.setText("Transmitter Mode");
+                Menu modeMenu = new Menu(menu);
+                modeMenuItem.setMenu(modeMenu);
+
+                MenuItem primaryModeItem = new MenuItem(modeMenu, SWT.RADIO);
+                primaryModeItem.setText("PRIMARY Mode");
+                primaryModeItem.addSelectionListener(new SelectionAdapter() {
+
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        MenuItem item = (MenuItem) e.widget;
+                        if (item.getSelection()) {
+                            changeTxMode(TxMode.PRIMARY);
+                        }
+                    }
+                });
+                primaryModeItem.setSelection(transmitterPrimary);
+
+                MenuItem secondaryModeItem = new MenuItem(modeMenu, SWT.RADIO);
+                secondaryModeItem.setText("SECONDARY Mode");
+                secondaryModeItem.addSelectionListener(new SelectionAdapter() {
+
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        MenuItem item = (MenuItem) e.widget;
+                        if (item.getSelection()) {
+                            changeTxMode(TxMode.SECONDARY);
+                        }
+                    }
+                });
+                secondaryModeItem.setSelection(!transmitterPrimary);
+
+                new MenuItem(menu, SWT.SEPARATOR);
+
                 MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
-                deleteItem.setText("Delete Group");
+                deleteItem.setText("Delete Transmitter");
+                deleteItem.setEnabled(!transmitterEnabled);
                 deleteItem.addSelectionListener(new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent e) {
-                        deleteGroup();
+                        deleteTransmitter();
                     }
                 });
             }
+        }
 
-            MenuItem reorderMenuItem = new MenuItem(menu, SWT.PUSH);
+        MenuItem reorderMenuItem = new MenuItem(menu, SWT.PUSH);
+        if (groupTransmitter != null) {
+            reorderMenuItem.setText("Order Transmitters...");
+            reorderMenuItem.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    reorderTransmitters();
+                }
+            });
+        } else {
             reorderMenuItem.setText("Order Groups/Transmitters...");
             reorderMenuItem.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -291,16 +385,31 @@ public class TransmitterComp extends Composite implements
             });
         }
 
-        new MenuItem(menu, SWT.SEPARATOR);
+        if (!transmitterEnabled && (group == null)
+                && (tree.getSelectionCount() > 0)) {
+            MenuItem decommissionTransmitterItem = new MenuItem(menu, SWT.PUSH);
+            decommissionTransmitterItem.setText("Decommission Transmitter");
+            decommissionTransmitterItem
+                    .addSelectionListener(new SelectionAdapter() {
+                        @Override
+                        public void widgetSelected(SelectionEvent e) {
+                            decommissionTransmitter();
+                        }
+                    });
+        }
 
-        MenuItem detailsItem = new MenuItem(menu, SWT.PUSH);
-        detailsItem.setText("Details...");
-        detailsItem.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                showDetails();
-            }
-        });
+        if (tree.getSelectionCount() > 0) {
+            new MenuItem(menu, SWT.SEPARATOR);
+
+            MenuItem detailsItem = new MenuItem(menu, SWT.PUSH);
+            detailsItem.setText("Details...");
+            detailsItem.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    showDetails();
+                }
+            });
+        }
 
         new MenuItem(menu, SWT.SEPARATOR);
 
@@ -342,20 +451,19 @@ public class TransmitterComp extends Composite implements
      *            true for a new transmitter, false for an edit
      */
     private void transmitterMenuAction(boolean newTransmitter) {
-        ICloseCallback callback = new ICloseCallback() {
-            @Override
-            public void dialogClosed(Object returnValue) {
-                if (returnValue != null) {
-                    Boolean reload = (Boolean) returnValue;
-                    if (reload) {
-                        populateTree();
-                    }
-                }
-            }
-        };
-
         if (newTransmitter) {
-            newEditDlg = new NewEditTransmitterDlg(getShell(),
+            TransmitterGroup group = null;
+
+            if (tree.getSelectionCount() > 0) {
+                TreeItem item = tree.getSelection()[0];
+                Object o = item.getData();
+                if (o instanceof Transmitter) {
+                    o = item.getParentItem().getData();
+                }
+                group = (TransmitterGroup) o;
+            }
+
+            newEditDlg = new NewEditTransmitterDlg(getShell(), null, group,
                     TransmitterEditType.NEW_TRANSMITTER, callback, this);
         } else {
             TreeItem selectedItem = tree.getSelection()[0];
@@ -368,10 +476,7 @@ public class TransmitterComp extends Composite implements
             } else {
                 group = (TransmitterGroup) selectedItem.getData();
                 // in this case there is only one transmitter in the group
-                for (Transmitter trans : group.getTransmitters()) {
-                    t = trans;
-                    break;
-                }
+                t = group.getTransmitters().iterator().next();
             }
 
             newEditDlg = new NewEditTransmitterDlg(getShell(), t, group,
@@ -387,17 +492,6 @@ public class TransmitterComp extends Composite implements
      *            true for a new TransmitterGroup, false for an edit
      */
     private void groupMenuAction(boolean newGroup) {
-        ICloseCallback callback = new ICloseCallback() {
-            @Override
-            public void dialogClosed(Object returnValue) {
-                if (returnValue != null) {
-                    Boolean reload = (Boolean) returnValue;
-                    if (reload) {
-                        populateTree();
-                    }
-                }
-            }
-        };
 
         if (newGroup) {
             newEditDlg = new NewEditTransmitterDlg(getShell(),
@@ -413,14 +507,9 @@ public class TransmitterComp extends Composite implements
     }
 
     /**
-     * Show Details menu action
+     * Show Details menu action.
      */
     private void showDetails() {
-        if (tree.getSelectionCount() == 0) {
-            DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
-                    "Select", "A Group/Transmitter must be selected");
-            return;
-        }
         TransmitterUtils tu = new TransmitterUtils();
         TreeItem selection = tree.getSelection()[0];
         Object obj = selection.getData();
@@ -523,76 +612,138 @@ public class TransmitterComp extends Composite implements
     }
 
     /**
-     * Delete TransmitterGroup menu action
+     * Delete TransmitterGroup menu action. Assumes menu item is displayed only
+     * when the group has no transmitters.
      */
     private void deleteGroup() {
         TreeItem selectedItem = tree.getSelection()[0];
         TransmitterGroup toDelete = (TransmitterGroup) selectedItem.getData();
-        if (toDelete.getTransmitters() == null
-                || toDelete.getTransmitters().size() == 0) {
-            int answer = DialogUtility.showMessageBox(this.getShell(),
-                    SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Delete",
-                    "Are you sure you want to permenantly delete Transmitter Group "
-                            + toDelete.getName() + ".");
+        int answer = DialogUtility.showMessageBox(this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Delete",
+                "Are you sure you want to permenantly delete Transmitter Group "
+                        + toDelete.getName() + "?");
 
-            if (answer == SWT.YES) {
+        if (answer == SWT.YES) {
 
-                try {
-                    dataManager.deleteTransmitterGroup(toDelete);
-                    populateTree();
-                } catch (Exception e) {
-                    statusHandler.error("Error deleting Transmitter Group "
-                            + toDelete.getName(), e);
-                }
+            try {
+                dataManager.deleteTransmitterGroup(toDelete);
+                populateTree();
+            } catch (Exception e) {
+                statusHandler.error("Error deleting Transmitter Group: "
+                        + toDelete.getName(), e);
             }
-        } else {
-            DialogUtility.showMessageBox(this.getShell(), SWT.ICON_WARNING
-                    | SWT.OK, "Group Not Empty",
-                    "To Delete a Group all Transmitters must be removed.");
         }
     }
 
     /**
-     * Delete Transmitter menu action
+     * Delete Transmitter menu action. Assumes transmitter is disabled.
      */
     private void deleteTransmitter() {
-        TreeItem selectedItem = tree.getSelection()[0];
-        Object obj = selectedItem.getData();
-        if (obj instanceof Transmitter) {
-            Transmitter toDelete = (Transmitter) selectedItem.getData();
-            int answer = DialogUtility.showMessageBox(this.getShell(),
-                    SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Delete",
-                    "Are you sure you want to permenantly delete Transmitter "
-                            + toDelete.getName() + ".");
+        Transmitter transmitter = getSelectedTransmitter();
 
-            if (answer == SWT.YES) {
-                try {
-                    dataManager.deleteTransmitter(toDelete);
-                    populateTree();
-                } catch (Exception e) {
-                    statusHandler.error("Error deleting Transmitter "
-                            + toDelete.getName(), e);
+        if (confirmDeleteTransmitter(transmitter)) {
+            try {
+                if (transmitter.getTransmitterGroup().isStandalone()) {
+                    dataManager.deleteTransmitterGroup(transmitter
+                            .getTransmitterGroup());
+                } else {
+                    dataManager.deleteTransmitter(transmitter);
                 }
-            }
-        } else if (obj instanceof TransmitterGroup) {
-            // A stand alone transmitter
-            TransmitterGroup toDelete = (TransmitterGroup) selectedItem
-                    .getData();
-            int answer = DialogUtility.showMessageBox(this.getShell(),
-                    SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Delete",
-                    "Are you sure you want to permenantly delete Transmitter "
-                            + toDelete.getName() + ".");
-
-            if (answer == SWT.YES) {
-                try {
-                    dataManager.deleteTransmitterGroup(toDelete);
-                    populateTree();
-                } catch (Exception e) {
-                    statusHandler.error("Error deleting Transmitter "
-                            + toDelete.getName(), e);
-                }
+                populateTree();
+            } catch (Exception e) {
+                statusHandler.handle(
+                        Priority.PROBLEM,
+                        "Error deleting transmitter "
+                                + transmitter.getMnemonic(), e);
             }
         }
+    }
+
+    /**
+     * @param toDelete
+     * @return true to perform delete
+     */
+    private boolean confirmDeleteTransmitter(Transmitter toDelete) {
+        return SWT.YES == DialogUtility.showMessageBox(this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Delete",
+                "Are you sure you want to permenantly delete Transmitter "
+                        + toDelete.getName() + "?");
+    }
+
+    /**
+     * Change the selected transmitter's TxStatus menu action.
+     */
+    private void changeTxStatus(TxStatus status) {
+        Transmitter transmitter = getSelectedTransmitter();
+        Object data = tree.getSelection()[0].getData();
+        if (confirmChangeTxStatus(transmitter, status)) {
+            transmitter.setTxStatus(status);
+            try {
+                dataManager.saveTransmitter(transmitter);
+                populateTree(data);
+            } catch (Exception e) {
+                statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
+                        e);
+            }
+        }
+    }
+
+    private boolean confirmChangeTxStatus(Transmitter toChange, TxStatus status) {
+        String statusName = status.name();
+        return SWT.YES == DialogUtility.showMessageBox(this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm " + statusName,
+                "Are you sure you want " + statusName + " Transmitter "
+                        + toChange.getName() + "?");
+    }
+
+    /**
+     * Change the selected transmitter's TxMode menu action.
+     */
+    private void changeTxMode(TxMode mode) {
+        Transmitter transmitter = getSelectedTransmitter();
+        Object data = tree.getSelection()[0].getData();
+        if (confirmChangeTxMode(transmitter, mode)) {
+            transmitter.setTxMode(mode);
+            try {
+                dataManager.saveTransmitter(transmitter);
+                populateTree(data);
+            } catch (Exception e) {
+                statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
+                        e);
+            }
+        }
+    }
+
+    private boolean confirmChangeTxMode(Transmitter toChange, TxMode mode) {
+        String modeName = mode.name();
+        return SWT.YES == DialogUtility.showMessageBox(
+                this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO,
+                "Confirm " + modeName,
+                "Are you sure you want to set Transmitter "
+                        + toChange.getMnemonic() + " as " + modeName + "?");
+    }
+
+    /**
+     * Get the transmitter for the tree's selected item.
+     * 
+     * @return transmitter - null when selected item is not a transmitter or
+     *         standalone group
+     */
+    private Transmitter getSelectedTransmitter() {
+        TreeItem selectedItem = tree.getSelection()[0];
+        Object obj = selectedItem.getData();
+        Transmitter transmitter = null;
+
+        if (obj instanceof Transmitter) {
+            transmitter = (Transmitter) obj;
+        } else if (obj instanceof TransmitterGroup) {
+            TransmitterGroup group = (TransmitterGroup) selectedItem.getData();
+            if (group.isStandalone()) {
+                transmitter = group.getTransmitterList().get(0);
+            }
+        }
+        return transmitter;
     }
 
     /**
@@ -600,7 +751,7 @@ public class TransmitterComp extends Composite implements
      */
     private void decommissionTransmitter() {
         // TODO implement when ready
-        System.out.println("Decommission");
+        statusHandler.warn("Decommission transmitter not yet implemented");
     }
 
     /**
@@ -688,6 +839,10 @@ public class TransmitterComp extends Composite implements
     }
 
     private void populateTree() {
+        populateTree(null);
+    }
+
+    private void populateTree(Object selectData) {
         groups = getTransmitterGroups();
         List<Integer> expandedList = new ArrayList<Integer>();
         TreeItem[] items = tree.getItems();
@@ -713,11 +868,20 @@ public class TransmitterComp extends Composite implements
                 }
             }
             TreeItem groupItem = new TreeItem(tree, SWT.NONE);
+            StringBuffer sb = new StringBuffer("DAC ");
+            if (group.getDac() == null) {
+                sb.append("N/A");
+            } else {
+                sb.append("#").append(group.getDac());
+            }
             groupItem.setText(new String[] { "Group", group.getName(), "", "",
-                    "DAC #" + group.getDac() });
+                    sb.toString() });
             groupItem.setData(group);
             groupItem.setBackground(getDisplay().getSystemColor(
                     SWT.COLOR_WIDGET_LIGHT_SHADOW));
+            if (group.equals(selectData)) {
+                tree.setSelection(groupItem);
+            }
 
             List<Transmitter> transmitterList = group.getTransmitterList();
             if (transmitterList != null) {
@@ -733,18 +897,21 @@ public class TransmitterComp extends Composite implements
                         if (group.getDac() != null) {
                             dacStr = String.valueOf(group.getDac());
                         }
-                        groupItem.setText(new String[] { "Transmitter",
+                        groupItem.setText(new String[] { TRANSMITTER,
                                 t.getName(), t.getMnemonic(),
                                 t.getServiceArea(),
                                 dacStr + " / " + dacPortStr,
                                 t.getTxStatus().name(), t.getTxMode().name() });
                     } else {
                         TreeItem transItem = new TreeItem(groupItem, SWT.NONE);
-                        transItem.setText(new String[] { "Transmitter",
+                        transItem.setText(new String[] { TRANSMITTER,
                                 t.getName(), t.getMnemonic(),
                                 t.getServiceArea(), "Port #" + dacPortStr,
                                 t.getTxStatus().name(), t.getTxMode().name() });
                         transItem.setData(t);
+                        if (t.equals(selectData)) {
+                            tree.setSelection(transItem);
+                        }
                     }
                 }
             }

@@ -66,6 +66,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Aug 21, 2014  3486      lvenable    Initialized silence alram to false.
  * Aug 25, 2014  3558      rjpeter     Added query for enabled transmitter groups.
  * Sep 4, 2014   3532      bkowal      Use a decibel target instead of a range.
+ * Oct 07, 2014  3649      rferrel     addTrasmitter now replaces old entry with new.
  * 
  * </pre>
  * 
@@ -262,6 +263,8 @@ public class TransmitterGroup {
                 transmitters = new LinkedHashSet<>();
             }
 
+            // Assume trans should replace old entry.
+            transmitters.remove(trans);
             transmitters.add(trans);
         }
     }

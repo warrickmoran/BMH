@@ -27,6 +27,8 @@ import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.VerifyEvent;
+import org.eclipse.swt.events.VerifyListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -50,8 +52,11 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
+import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramNameComparator;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -71,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 24, 2014     3432   mpduff      Implemented min/max db values
  * Aug 25, 2014     3558   rjpeter     Fix saving groups.
  * Aug 28, 2014     3432   mpduff      Added Dac info from db.
+ * Sep 23, 2014     3649   rferrel     Changes to handle all types of groups.
  * </pre>
  * 
  * @author mpduff
@@ -81,6 +87,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     private final String NONE = "None";
 
     private final String STANDALONE = "Standalone";
+
+    private final String FIPS_CODE_VALID_PATTERN = "^[A-Z0-9]{1,9}$";
+
+    private final String FIPS_CODE_ERROR_MSG = "FIPS Code must be between 1 and 9 characters in length\nand only numbers and upper case letters.";
 
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(NewEditTransmitterDlg.class);
@@ -130,6 +140,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private final TransmitterDataManager dataManager;
 
+    private final ProgramDataManager programManager;
+
     private List<TransmitterGroup> groupList;
 
     private Combo grpNameCbo;
@@ -160,6 +172,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private Text grpNameValueTxt;
 
+    private Button saveBtn;
+
     /** List of group controls */
     private final List<Control> groupControlList = new ArrayList<Control>();
 
@@ -181,6 +195,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private List<Dac> dacList;
 
+    private final boolean prevIsStandalone;
+
     /**
      * Edit Transmitter constructor.
      * 
@@ -198,14 +214,23 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     public NewEditTransmitterDlg(Shell parentShell, Transmitter transmitter,
             TransmitterGroup group, TransmitterEditType type,
             ICloseCallback callback, ITransmitterStatusChange statusChange) {
-        super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
-                | CAVE.DO_NOT_BLOCK);
+        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.type = type;
         this.transmitter = transmitter;
         this.group = group;
         this.callback = callback;
         this.statusChange = statusChange;
         dataManager = new TransmitterDataManager();
+        programManager = new ProgramDataManager();
+
+        if (group != null) {
+            prevIsStandalone = group.isStandalone();
+        } else if (transmitter != null) {
+            prevIsStandalone = transmitter.getTransmitterGroup().isStandalone();
+        } else {
+            prevIsStandalone = false;
+        }
 
         switch (type) {
         case EDIT_TRANSMITTER:
@@ -256,13 +281,15 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         mainComp.setLayout(gl);
         mainComp.setLayoutData(gd);
 
-        createStatusComp(mainComp);
+        // createStatusComp(mainComp);
         createAttrComp(mainComp);
 
         createBottomButtons();
+
         populate();
     }
 
+    // TODO Remove upon approval of removal of status/mode buttons.
     /**
      * Create the Transmitter status composite
      * 
@@ -314,15 +341,16 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 // TODO trigger changes
-                int answer = DialogUtility.showMessageBox(getShell(),
-                        SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                        "Enable Transmitter",
-                        "Are you sure you want to enable Transmitter "
-                                + transmitter.getMnemonic() + "?");
-                if (answer == SWT.NO) {
-                    return;
+                if (type != TransmitterEditType.NEW_TRANSMITTER) {
+                    int answer = DialogUtility.showMessageBox(getShell(),
+                            SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
+                            "Enable Transmitter",
+                            "Are you sure you want to enable Transmitter "
+                                    + transmitter.getMnemonic() + "?");
+                    if (answer == SWT.NO) {
+                        return;
+                    }
                 }
-
                 setTransmitterStatus(TxStatus.ENABLED);
             }
         });
@@ -335,15 +363,16 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 // TODO trigger changes
-                int answer = DialogUtility.showMessageBox(getShell(),
-                        SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                        "Enable Transmitter",
-                        "Are you sure you want to disable Transmitter "
-                                + transmitter.getMnemonic() + "?");
-                if (answer == SWT.NO) {
-                    return;
+                if (type != TransmitterEditType.NEW_TRANSMITTER) {
+                    int answer = DialogUtility.showMessageBox(getShell(),
+                            SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
+                            "Disable Transmitter",
+                            "Are you sure you want to disable Transmitter "
+                                    + transmitter.getMnemonic() + "?");
+                    if (answer == SWT.NO) {
+                        return;
+                    }
                 }
-
                 setTransmitterStatus(TxStatus.DISABLED);
             }
         });
@@ -387,16 +416,17 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 // TODO trigger changes
-                int answer = DialogUtility.showMessageBox(getShell(),
-                        SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                        "Transmitter Mode",
-                        "Are you sure you want to set Transmitter "
-                                + transmitter.getMnemonic() + " as "
-                                + TxMode.PRIMARY.name() + "?");
-                if (answer == SWT.NO) {
-                    return;
+                if (type != TransmitterEditType.NEW_TRANSMITTER) {
+                    int answer = DialogUtility.showMessageBox(getShell(),
+                            SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
+                            TxMode.PRIMARY.name() + " Transmitter Mode",
+                            "Are you sure you want to set Transmitter "
+                                    + transmitter.getMnemonic() + " as "
+                                    + TxMode.PRIMARY.name() + "?");
+                    if (answer == SWT.NO) {
+                        return;
+                    }
                 }
-
                 setTransmitterMode(TxMode.PRIMARY);
             }
         });
@@ -409,16 +439,17 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 // TODO trigger changes
-                int answer = DialogUtility.showMessageBox(getShell(),
-                        SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                        "Transmitter Mode",
-                        "Are you sure you want to set Transmitter "
-                                + transmitter.getMnemonic() + " as "
-                                + TxMode.SECONDARY.name() + "?");
-                if (answer == SWT.NO) {
-                    return;
+                if (type != TransmitterEditType.NEW_TRANSMITTER) {
+                    int answer = DialogUtility.showMessageBox(getShell(),
+                            SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
+                            TxMode.SECONDARY.name() + " Transmitter Mode",
+                            "Are you sure you want to set Transmitter "
+                                    + transmitter.getMnemonic() + " as "
+                                    + TxMode.SECONDARY.name() + "?");
+                    if (answer == SWT.NO) {
+                        return;
+                    }
                 }
-
                 setTransmitterMode(TxMode.SECONDARY);
             }
         });
@@ -468,18 +499,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     groupNameSelectionAction();
                 }
             });
-            grpNameCbo.setItems(getGroupNames());
-            grpNameCbo.add(STANDALONE, 0);
-            if (type == TransmitterEditType.NEW_TRANSMITTER) {
-                grpNameCbo.select(0);
-            } else {
-                int idx = grpNameCbo.indexOf(group.getName());
-                if (idx >= 0) {
-                    grpNameCbo.select(idx);
-                } else {
-                    grpNameCbo.select(0);
-                }
-            }
         } else if (type == TransmitterEditType.NEW_TRANSMITTER_GROUP) {
             grpNameValueTxt = new Text(leftComp, SWT.BORDER);
             grpNameValueTxt.setLayoutData(new GridData(SWT.FILL, SWT.CENTER,
@@ -498,16 +517,12 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         dacLbl.setText("DAC #: ");
         dacLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
 
-        dacCombo = new Combo(leftComp, SWT.BORDER);
+        dacCombo = new Combo(leftComp, SWT.BORDER | SWT.READ_ONLY);
         dacCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        // dacCombo.setItems(new String[] { "1", "2", "3", "4", "5", "6", "7",
-        // "8", "9" });
-        // dacCombo.select(0);
         dacCombo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO implement this if needed
-                // handleDacSelection();
+                handleDacSelection();
             }
         });
         groupControlList.add(dacCombo);
@@ -517,23 +532,18 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         dacPortLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false,
                 false));
 
-        dacPortCbo = new Combo(leftComp, SWT.BORDER);
+        dacPortCbo = new Combo(leftComp, SWT.BORDER | SWT.READ_ONLY);
         dacPortCbo
                 .setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         transmitterControlList.add(dacPortCbo);
-
-        // TODO get real data?
-        dacPortCbo.setItems(new String[] { "1", "2", "3", "4" });
-        dacPortCbo.select(0);
 
         Label progLbl = new Label(rightComp, SWT.NONE);
         progLbl.setText("Program:");
         progLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
 
-        programCombo = new Combo(rightComp, SWT.BORDER);
+        programCombo = new Combo(rightComp, SWT.BORDER | SWT.READ_ONLY);
         programCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
                 false));
-        populateProgramCombo();
         groupControlList.add(programCombo);
 
         Label timeZoneLbl = new Label(rightComp, SWT.NONE);
@@ -627,6 +637,13 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
         fipsTxt = new Text(rightComp, SWT.BORDER);
         fipsTxt.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        fipsTxt.addVerifyListener(new VerifyListener() {
+
+            @Override
+            public void verifyText(VerifyEvent e) {
+                e.text = e.text.toUpperCase();
+            }
+        });
         transmitterControlList.add(fipsTxt);
 
         // Disable all controls by default
@@ -642,7 +659,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         comp.setLayoutData(gd);
 
         gd = new GridData(75, SWT.DEFAULT);
-        Button saveBtn = new Button(comp, SWT.PUSH);
+        saveBtn = new Button(comp, SWT.PUSH);
         saveBtn.setText("Save");
         saveBtn.setLayoutData(gd);
         saveBtn.addSelectionListener(new SelectionAdapter() {
@@ -673,6 +690,25 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     private void populate() {
         boolean enabled = false;
 
+        if (grpNameCbo != null) {
+            grpNameCbo.setItems(getGroupNames());
+            grpNameCbo.add(STANDALONE, 0);
+
+            if (group == null) {
+                grpNameCbo.select(0);
+            } else {
+                int idx = -1;
+                if (group.getName() != null) {
+                    idx = grpNameCbo.indexOf(group.getName());
+                }
+                if (idx >= 0) {
+                    grpNameCbo.select(idx);
+                } else {
+                    grpNameCbo.select(0);
+                }
+            }
+        }
+
         try {
             dacList = dataManager.getDacs();
             Collections.sort(dacList, new DacComparator());
@@ -686,16 +722,18 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 dacCombo.setItems(dacs);
                 dacCombo.add(NONE, 0);
                 dacCombo.select(0);
-                // TODO use this method if needed.
-                // handleDacSelection();
             }
+
         } catch (Exception e) {
             statusHandler.error("Error gettign Dac information", e);
             dacCombo.add(NONE, 0);
+            dacCombo.select(0);
             if (group != null) {
                 dacCombo.add(String.valueOf(group.getDac()), 1);
             }
         }
+
+        populateProgramCombo();
 
         // Populate the fields
         enabled = ((TransmitterEditType.EDIT_TRANSMITTER_GROUP == type) || (TransmitterEditType.NEW_TRANSMITTER_GROUP == type));
@@ -707,6 +745,12 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 // TODO - When getting dac numbers from DB need to change this
                 // logic
                 dacCombo.select(dacCombo.indexOf(String.valueOf(group.getDac())));
+                handleDacSelection();
+                Integer dacPort = null;
+                if (transmitter != null) {
+                    dacPort = transmitter.getDacPort();
+                }
+                setCboSelect(dacPortCbo, dacPort);
             }
             if (group.getTimeZone() != null) {
                 timeZoneCbo.select(timeZoneCbo.indexOf(group.getTimeZone()));
@@ -733,9 +777,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             if (transmitter == null) {
                 transmitter = new Transmitter();
             }
-            if (transmitter.getDacPort() != null) {
-                dacPortCbo.select(transmitter.getDacPort() - 1);
-            }
+            setCboSelect(dacPortCbo, transmitter.getDacPort());
 
             if (transmitter.getName() != null) {
                 transmitterNameTxt.setText(transmitter.getName());
@@ -758,9 +800,14 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 fipsTxt.setText(transmitter.getFipsCode());
             }
 
-            statusLbl.setText(this.STATUS_PREFIX
-                    + transmitter.getTxStatus().name());
-            modeLbl.setText(this.STATUS_PREFIX + transmitter.getTxMode().name());
+            // TODO Remove upon approval of removal of status/mode buttons.
+            // statusLbl.setText(this.STATUS_PREFIX
+            // + transmitter.getTxStatus().name());
+            // modeLbl.setText(this.STATUS_PREFIX +
+            // transmitter.getTxMode().name());
+
+            // saveBtn.setEnabled(transmitter.getTxStatus() ==
+            // TxStatus.DISABLED);
 
             // Enable/Disable controls
             enableTransmitterControls(enabled);
@@ -768,22 +815,55 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 enableGroupControls(enabled);
             }
         }
+
+        if (TransmitterEditType.NEW_TRANSMITTER == type) {
+            setTransmitterStatus(TxStatus.DISABLED);
+        }
+
+        if (TransmitterEditType.NEW_TRANSMITTER_GROUP != type) {
+            if (grpNameCbo != null) {
+                if (group.isStandalone()) {
+                    grpNameCbo.select(0);
+                } else {
+                    int selIndex = -1;
+                    if (group.getName() != null) {
+                        selIndex = grpNameCbo.indexOf(group.getName());
+                    }
+                    if (selIndex < 0) {
+                        selIndex = 0;
+                    }
+                    grpNameCbo.select(selIndex);
+                }
+                String groupName = grpNameCbo.getText();
+                groupNameSelectionAction();
+                populateGroupControls(groupName);
+            }
+        }
     }
 
-    // TODO Are we using ports from the db or just hard coding 1-4
+    /**
+     * populate the dacPortCbo based on current dacCombo selection.
+     */
     private void handleDacSelection() {
-        int dac = Integer.parseInt(dacCombo.getText());
-        for (Dac d : dacList) {
-            if (d.getId() == dac) {
-                String[] ports = new String[d.getDataPorts().size()];
-                int i = 0;
-                for (Integer port : d.getDataPorts()) {
-                    ports[i] = String.valueOf(port);
-                    i++;
-                }
+        int dac = -1;
+        if (dacCombo.getSelectionIndex() > 0) {
+            dac = Integer.parseInt(dacCombo.getText());
 
-                dacPortCbo.setItems(ports);
-            }
+            // TODO get real data?
+            dacPortCbo.setItems(new String[] { "1", "2", "3", "4" });
+        } else {
+            dacPortCbo.setItems(new String[0]);
+        }
+        dacPortCbo.add(NONE, 0);
+
+        // Only select transmitter's dac port when its group dac is selected.
+        if ((transmitter == null)
+                || (transmitter.getTransmitterGroup() == null)
+                || (transmitter.getTransmitterGroup().getDac() == null)
+                || (transmitter.getTransmitterGroup().getDac() != dac)) {
+            dacPortCbo.select(0);
+        } else {
+            setCboSelect(dacPortCbo, transmitter.getDacPort());
         }
     }
 
@@ -812,17 +892,28 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private void populateProgramCombo() {
         try {
+            /*
+             * This programList only has id and name populated for each program.
+             */
             List<Program> programList = dataManager.getPrograms();
             Collections.sort(programList, new ProgramNameComparator());
+
+            /*
+             * Fully populated Program. Only need name, id and group list.
+             */
+            origProgram = programManager.getProgramForTransmitterGroup(group);
+            int groupProgramId = -1;
+            if (origProgram != null) {
+                groupProgramId = origProgram.getId();
+            }
 
             String[] programs = new String[programList.size()];
             int select = -1;
             int i = 0;
             for (Program p : programList) {
                 programs[i] = p.getName();
-                if (p.getTransmitterGroups().contains(this.group)) {
+                if (groupProgramId == p.getId()) {
                     select = i;
-                    origProgram = p;
                 }
                 i++;
             }
@@ -830,7 +921,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             programCombo.setData(programList);
             programCombo.setItems(programs);
             programCombo.add(NONE, 0);
-            // TODO - Fix selection of existing program.
             programCombo.select(select + 1);
         } catch (Exception e) {
             statusHandler.error("Error retrieving Program data", e);
@@ -845,9 +935,27 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if (groupName.equals(STANDALONE)) {
             enableGroupControls(true);
         } else {
-            populateGroupControls(groupName);
             enableGroupControls(false);
         }
+        populateGroupControls(groupName);
+    }
+
+    /**
+     * Sets the combo's selection to select or first entry if select is null or
+     * not in the combo's list.
+     * 
+     * @param combo
+     * @param select
+     */
+    private void setCboSelect(Combo combo, Object select) {
+        int selIndex = -1;
+        if (select != null) {
+            selIndex = combo.indexOf(select.toString());
+        }
+        if (selIndex < 0) {
+            selIndex = 0;
+        }
+        combo.select(selIndex);
     }
 
     /**
@@ -860,10 +968,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         for (TransmitterGroup tg : groupList) {
             if (tg.getName().equals(groupName)) {
                 group = tg;
-                if (group.getDac() != null) {
-                    // TODO change logic
-                    dacCombo.select(group.getDac() - 1);
-                }
+                setCboSelect(dacCombo, group.getDac());
+                handleDacSelection();
                 if (group.getTimeZone() != null) {
                     timeZoneCbo
                             .select(timeZoneCbo.indexOf(group.getTimeZone()));
@@ -875,8 +981,20 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 if (group.getDaylightSaving() != null) {
                     noDstChk.setSelection(group.getDaylightSaving());
                 }
-                break;
+                return;
             }
+        }
+
+        // Assume stand alone
+        if ((transmitter != null)
+                && (transmitter.getTransmitterGroup() != null)
+                && transmitter.getTransmitterGroup().isStandalone()) {
+            setCboSelect(dacCombo, transmitter.getTransmitterGroup().getDac());
+            handleDacSelection();
+            setCboSelect(dacPortCbo, transmitter.getDacPort());
+        } else {
+            dacCombo.select(0);
+            dacPortCbo.select(0);
         }
     }
 
@@ -886,17 +1004,40 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      * @return true if saved successfully
      */
     private boolean save() {
+        saveGroup = false;
+
+        shell.setCursor(shell.getDisplay().getSystemCursor(SWT.CURSOR_WAIT));
         try {
             if ((type == TransmitterEditType.NEW_TRANSMITTER)
                     || (type == TransmitterEditType.EDIT_TRANSMITTER)) {
+                this.previousTransmitter = new Transmitter(transmitter);
                 if (validateTransmitter()) {
-                    this.previousTransmitter = new Transmitter(transmitter);
+                    if (!prevIsStandalone
+                            && STANDALONE.equals(grpNameCbo.getText())) {
+                        saveGroup = true;
+                        group = new TransmitterGroup();
+                    }
+
                     if (type == TransmitterEditType.NEW_TRANSMITTER) {
                         transmitter = new Transmitter();
                     }
                     transmitter.setCallSign(this.callSignTxt.getText().trim());
-                    transmitter
-                            .setDacPort(this.dacPortCbo.getSelectionIndex() + 1);
+                    Integer dac = null;
+                    if (this.dacCombo.getSelectionIndex() > 0) {
+                        dac = Integer.parseInt(this.dacCombo.getText());
+                    }
+
+                    if (dac != group.getDac()) {
+                        group.setDac(dac);
+                        saveGroup = true;
+                    }
+
+                    Integer selectedPort = null;
+                    if (this.dacPortCbo.getSelectionIndex() > 0) {
+                        selectedPort = Integer.parseInt(this.dacPortCbo
+                                .getText());
+                    }
+                    transmitter.setDacPort(selectedPort);
                     transmitter.setFipsCode(this.fipsTxt.getText().trim());
                     transmitter.setFrequency(Float.parseFloat(this.frequencyTxt
                             .getText().trim()));
@@ -907,24 +1048,42 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     transmitter.setServiceArea(this.serviceAreaTxt.getText()
                             .trim());
                     transmitter.setTransmitterGroup(group);
+                    transmitter.setTxMode(this.previousTransmitter.getTxMode());
+                    transmitter.setTxStatus(this.previousTransmitter
+                            .getTxStatus());
 
                     if (!saveGroup) {
                         // Save the transmitter
                         try {
-                            dataManager.saveTransmitter(transmitter);
-                            setReturnValue(true);
-                            return true;
+                            if (prevIsStandalone && !group.isStandalone()) {
+                                TransmitterGroup saGroup = previousTransmitter
+                                        .getTransmitterGroup();
+                                dataManager.saveTransmitterDeleteGroup(
+                                        transmitter, saGroup);
+                                setReturnValue(transmitter);
+                                return true;
+                            } else {
+                                saveGroup = checkGroupUpdate();
+                                if (!saveGroup) {
+                                    dataManager.saveTransmitter(transmitter);
+                                    setReturnValue(transmitter);
+                                    return true;
+                                }
+                            }
                         } catch (Exception e) {
                             statusHandler.error("Error saving transmitter "
                                     + transmitter.getName(), e);
+                            return false;
                         }
                     }
+                } else {
+                    return false;
                 }
             }
 
             // TODO Fix validation on transmitter group program change
             // This causes vaildation failure because a group with that
-            // that name already exists
+            // name already exists
             if ((TransmitterEditType.NEW_TRANSMITTER_GROUP == type)
                     || (TransmitterEditType.EDIT_TRANSMITTER_GROUP == type)
                     || saveGroup) {
@@ -940,7 +1099,11 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     } else {
                         group.setName(grpNameValueTxt.getText().trim());
                     }
-                    group.setDac(dacCombo.getSelectionIndex() + 1);
+                    Integer dac = null;
+                    if (dacCombo.getSelectionIndex() > 0) {
+                        dac = new Integer(dacCombo.getText());
+                    }
+                    group.setDac(dac);
                     group.setTimeZone(this.timeZoneCbo.getText());
                     group.setSilenceAlarm(this.disableSilenceChk.getSelection());
                     group.setDaylightSaving(this.noDstChk.getSelection());
@@ -954,33 +1117,12 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                         }
                         List<TransmitterGroup> savedGroup = dataManager
                                 .saveTransmitterGroup(group);
-
-                        Object obj = programCombo.getData();
-                        if ((obj != null) && (obj instanceof List<?>)
-                                && (savedGroup != null)
-                                && !savedGroup.isEmpty()) {
-                            ProgramDataManager pdm = new ProgramDataManager();
-                            if (programCombo.getSelectionIndex() > 0) {
-                                List<Program> progList = (List<Program>) obj;
-                                Program p = progList.get(programCombo
-                                        .getSelectionIndex() - 1);
-                                if (p != origProgram) {
-                                    p.getTransmitterGroups().add(
-                                            savedGroup.get(0));
-                                    pdm.saveProgram(p);
-                                }
-                            } else if (group.getId() != 0) {
-                                /*
-                                 * None selected and not a new group, clear this
-                                 * group from original program
-                                 */
-                                origProgram.getTransmitterGroups()
-                                        .remove(group);
-                                pdm.saveProgram(origProgram);
-                            }
+                        if ((savedGroup != null) && !savedGroup.isEmpty()) {
+                            group = savedGroup.get(0);
+                            updateProgram();
                         }
 
-                        setReturnValue(true);
+                        setReturnValue(group);
                         return true;
                     } catch (Exception e) {
                         statusHandler.error("Error saving transmitter.", e);
@@ -990,10 +1132,78 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         } catch (Exception e) {
             statusHandler.error(
                     "Error accessing database.  Changes not saved.", e);
+        } finally {
+            shell.setCursor(null);
         }
 
-        setReturnValue(false);
         return false;
+    }
+
+    /**
+     * Check to see if group needs to be updated.
+     * 
+     * @return true if changes to group values
+     * @throws Exception
+     */
+    private boolean checkGroupUpdate() throws Exception {
+        String tz = timeZoneCbo.getText();
+        if (!tz.equals(group.getTimeZone())) {
+            return true;
+        }
+        if (disableSilenceChk.getSelection() != group.getSilenceAlarm()) {
+            return true;
+        }
+        if (noDstChk.getSelection() != group.getDaylightSaving()) {
+            return true;
+        }
+
+        Program groupProgram = programManager
+                .getProgramForTransmitterGroup(group);
+        if (groupProgram == null) {
+            if (programCombo.getSelectionIndex() > 0) {
+                return true;
+            }
+        } else if (!programCombo.getText().equals(groupProgram.getName())) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check to see if group's program has changed and if needed update
+     * program's group list.
+     */
+    @SuppressWarnings("unchecked")
+    private void updateProgram() {
+        Object obj = programCombo.getData();
+        if (obj instanceof List<?>) {
+            List<Program> progList = (List<Program>) obj;
+            ProgramDataManager pdm = new ProgramDataManager();
+            try {
+                if (programCombo.getSelectionIndex() > 0) {
+                    Program p = progList
+                            .get(programCombo.getSelectionIndex() - 1);
+                    if ((origProgram == null)
+                            || (p.getId() != origProgram.getId())) {
+                        pdm.addGroup(p, group);
+                    }
+                } else if (group.getId() != 0) {
+                    /*
+                     * None selected and not a new group, clear this group from
+                     * original program
+                     */
+                    if (origProgram != null) {
+                        origProgram.getTransmitterGroups().remove(group);
+                        pdm.saveProgram(origProgram);
+                    }
+                }
+            } catch (Exception e) {
+                statusHandler.handle(
+                        Priority.PROBLEM,
+                        "Update Program groups failed: "
+                                + e.getLocalizedMessage(), e);
+            }
+        }
     }
 
     /**
@@ -1117,19 +1327,41 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             sb.append("\tLocation\n");
         }
 
-        if (this.mnemonicTxt.getText().trim().length() == 0) {
+        String mnemonic = this.mnemonicTxt.getText().trim();
+        if ((mnemonic.length() == 0) || (mnemonic.length() > 5)) {
             valid = false;
-            sb.append("\tMnemonic\n");
+            sb.append("\tMnemonic must be btween 1 and 5 characters in length.\n");
         }
 
-        if (this.transmitterNameTxt.getText().trim().length() == 0) {
+        String transmitterName = this.transmitterNameTxt.getText().trim();
+        if ((transmitterName.length() == 0) || (transmitterName.length() > 40)) {
             valid = false;
-            sb.append("\tName\n");
+            sb.append("\tName must be 1 to 40 characters in length.\n");
         }
 
-        if (this.serviceAreaTxt.getText().trim().length() == 0) {
+        String callSign = this.callSignTxt.getText().trim();
+        if ((callSign.length() == 0) || (callSign.length() > 10)) {
             valid = false;
-            sb.append("\tService Area\n");
+            sb.append("\tCall Sign must be 1 to 10 characters in length.\n");
+        }
+
+        String location = this.locationTxt.getText().trim();
+        if ((location.length() == 0) || (location.length() > 40)) {
+            valid = false;
+            sb.append("\tLocation must be 1 to 40 characters in length.\n");
+        }
+
+        String serviceArea = this.serviceAreaTxt.getText().trim();
+        if ((serviceArea.length() == 0) || (serviceArea.length() > 40)) {
+            valid = false;
+            sb.append("\tService Area must be 1 to 40 characters in length.\n");
+        }
+
+        String fipsCode = fipsTxt.getText().trim();
+        if ((fipsCode.length() > 0)
+                && !fipsCode.matches(FIPS_CODE_VALID_PATTERN)) {
+            valid = false;
+            sb.append(FIPS_CODE_ERROR_MSG);
         }
 
         if (!valid) {
@@ -1145,13 +1377,91 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         // Reset the message buffer
         sb.setLength(0);
 
-        // Fips Codes only for transmitters in a group of 2 or more
-        if ((group != null) && (group.getTransmitters().size() > 1)) {
-            // Fips code required
-            if ((this.fipsTxt.getText().trim().length() == 0)
-                    || (this.fipsTxt.getText().trim().length() > 9)) {
-                valid = false;
-                sb.append("FIPS Code is required for groups of 2 or more transmitters\n");
+        // Check for valid DAC and port.
+        if (dacPortCbo.getSelectionIndex() > 0) {
+            Integer dac = Integer.parseInt(this.dacCombo.getText());
+            Integer dacPort = new Integer(dacPortCbo.getText());
+            List<TransmitterGroup> groups = dataManager.getTransmitterGroups();
+
+            TransmitterGroup selGroup = null;
+            String grpName = null;
+            if (grpNameCbo.getSelectionIndex() == 0) {
+                grpName = mnemonicTxt.getText().trim();
+            } else {
+                grpName = grpNameCbo.getText();
+            }
+
+            for (TransmitterGroup grp : groups) {
+                if (grpName.equals(grp.getName())) {
+                    selGroup = grp;
+                    break;
+                }
+            }
+
+            // Check that DAC port not in use in some other group.
+            for (TransmitterGroup grp : groups) {
+                if ((selGroup == null) || !grp.equals(selGroup)) {
+                    if (dac.equals(grp.getDac())) {
+                        for (Transmitter trans : grp.getTransmitterList()) {
+                            if (!trans.equals(previousTransmitter)
+                                    && dacPort.equals(trans.getDacPort())) {
+                                valid = false;
+                                if (grp.isStandalone()) {
+                                    sb.append(
+                                            "DAC's Port already in use by stand alone transmitter ")
+                                            .append(trans.getMnemonic())
+                                            .append(".\n");
+                                } else {
+                                    sb.append(
+                                            "DAC's Port already in use by transmitter ")
+                                            .append(trans.getMnemonic())
+                                            .append(" in group ")
+                                            .append(grp.getName())
+                                            .append(".\n");
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Check for valid FIPS code
+            if (valid && (selGroup != null)) {
+                for (Transmitter trans : selGroup.getTransmitterList()) {
+                    if (!trans.equals(previousTransmitter)
+                            && dacPort.equals(trans.getDacPort())) {
+                        String fips = this.fipsTxt.getText().trim();
+                        if (fips.length() == 0) {
+                            valid = false;
+                            sb.append("FIPS Code is required for transmitters on the same dac and port\n");
+                            break;
+                        } else if (!fips.matches(FIPS_CODE_VALID_PATTERN)) {
+                            sb.append(FIPS_CODE_ERROR_MSG);
+                            break;
+                        } else {
+                            String tFips = trans.getFipsCode();
+                            if ((tFips == null) || (tFips.trim().length() == 0)) {
+                                tFips = getFipsCode(
+                                        selGroup.getTransmitterList(), trans);
+                                if (tFips == null) {
+                                    return false;
+                                } else {
+                                    trans.setFipsCode(tFips);
+                                    try {
+                                        dataManager.saveTransmitter(trans);
+                                    } catch (Exception e) {
+                                        statusHandler.handle(Priority.PROBLEM,
+                                                "Unable to update FIPS code for "
+                                                        + trans.getMnemonic(),
+                                                e);
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -1167,25 +1477,26 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             // Remove this transmitters port
             portList.remove(transmitter.getDacPort());
 
-            Integer selectedPort = Integer.parseInt(dacPortCbo.getText());
-            if (portList.contains(selectedPort)) {
-                String msg = "The selected port is already in use by "
-                        + "another transmitter.  Are these transmitters daisy chained?";
+            if (dacPortCbo.getSelectionIndex() > 0) {
+                Integer selectedPort = Integer.parseInt(dacPortCbo.getText());
+                if (portList.contains(selectedPort)) {
+                    String msg = "The selected port is already in use by "
+                            + "another transmitter.  Are these transmitters daisy chained?";
 
-                int answer = DialogUtility.showMessageBox(getShell(),
-                        SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Daisy Chained",
-                        msg);
-                if (answer == SWT.NO) {
-                    msg = "The transmitters must be daisy chained in order to be on "
-                            + "the same port.\n\nPlease select another port.\n";
-                    valid = false;
-                    sb.append(msg + "\n");
+                    int answer = DialogUtility.showMessageBox(getShell(),
+                            SWT.ICON_QUESTION | SWT.YES | SWT.NO,
+                            "Daisy Chained", msg);
+                    if (answer == SWT.NO) {
+                        msg = "The transmitters must be daisy chained in order to be on "
+                                + "the same port.\n\nPlease select another port.\n";
+                        valid = false;
+                        sb.append(msg + "\n");
+                    }
                 }
             }
         }
 
         // Check for duplicate mnemonic
-        String mnemonic = mnemonicTxt.getText().trim();
         List<Transmitter> transmitterList = dataManager.getTransmitters();
 
         // Remove the current transmitter
@@ -1198,15 +1509,16 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             }
         }
 
-        String grpName = null;
-        grpName = grpNameCbo.getText();
+        if (grpNameCbo.getSelectionIndex() > 0) {
+            String grpName = group.getName();
 
-        if (grpName.equals(mnemonicTxt.getText().trim())) {
-            if (group.getTransmitters().size() > 1) {
-                valid = false;
-                String msg = "Transmitter cannot have same mnemonic as the "
-                        + "group unless there is only one transmitter in the group\n";
-                sb.append(msg);
+            if (grpName.equals(mnemonicTxt.getText().trim())) {
+                if (group.getTransmitters().size() > 1) {
+                    valid = false;
+                    String msg = "Transmitter cannot have same mnemonic as the "
+                            + "group unless there is only one transmitter in the group\n";
+                    sb.append(msg);
+                }
             }
         }
 
@@ -1217,7 +1529,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if (type == TransmitterEditType.EDIT_TRANSMITTER) {
             if (!mnemonicTxt.getText().trim()
                     .equals(this.transmitter.getMnemonic())) {
-                if (group.getTransmitters().size() == 1) {
+                if (prevIsStandalone) {
                     // Rename group too
                     group.setName(mnemonicTxt.getText().trim());
                     saveGroup = true;
@@ -1225,8 +1537,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             }
         }
 
-        if (type == TransmitterEditType.NEW_TRANSMITTER) {
-            grpName = grpNameCbo.getText().trim();
+        else if (type == TransmitterEditType.NEW_TRANSMITTER) {
+            String grpName = grpNameCbo.getText().trim();
             if (grpName.equals(STANDALONE)) {
                 saveGroup = true;
             }
@@ -1245,12 +1557,79 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         return valid;
     }
 
+    /**
+     * Get a valid FIPS Code for transmitter.
+     * 
+     * @param transmitters
+     *            - list to check for duplicates
+     * @param transmitter
+     *            - transmitter code is for
+     * @return ftpsCode - null if user cancels else valid code.
+     */
+    private String getFipsCode(final List<Transmitter> transmitters,
+            final Transmitter transmitter) {
+        IInputTextValidator textValidator = new IInputTextValidator() {
+
+            @Override
+            public boolean validateInputText(Shell shell, String text) {
+                String value = text.trim();
+                if (!value.matches(FIPS_CODE_VALID_PATTERN)) {
+                    DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR
+                            | SWT.OK, "FIPS Code Error", FIPS_CODE_ERROR_MSG);
+                    return false;
+                }
+                if (!uniqueFipsCode(transmitters, transmitter, value)) {
+                    DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR
+                            | SWT.OK, "FIPS Code Error",
+                            "FIPS Code must be unique.");
+                    return false;
+                }
+                return true;
+            }
+        };
+        InputTextDlg dlg = new InputTextDlg(shell, "Update - "
+                + transmitter.getMnemonic(), transmitter.getMnemonic()
+                + " must now have a FIPS Code: ", null, textValidator, false,
+                true);
+        dlg.open();
+
+        if (dlg.getReturnValue() == null) {
+            return null;
+        }
+        return dlg.getReturnValue().toString().trim();
+    }
+
+    /**
+     * Checks the group's transmitters to see if the new FIPS code for
+     * transmitter is unique.
+     * 
+     * @param transmitters
+     * @param transmitter
+     * @param fipsCode
+     * @return isUnique
+     */
+    private boolean uniqueFipsCode(List<Transmitter> transmitters,
+            Transmitter transmitter, String fipsCode) {
+        for (Transmitter t : transmitters) {
+            if (!transmitter.equals(t)) {
+                if (fipsCode.equals(t.getFipsCode())) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     private void setTransmitterStatus(TxStatus status) {
         transmitter.setTxStatus(status);
         try {
-            transmitter = dataManager.saveTransmitter(transmitter);
-            this.statusLbl.setText(STATUS_PREFIX + status.name());
-            statusChange.statusChanged();
+            if (type != TransmitterEditType.NEW_TRANSMITTER) {
+                transmitter = dataManager.saveTransmitter(transmitter);
+                statusChange.statusChanged();
+            }
+            // TODO Remove upon approval of removal of status/mode buttons.
+            // this.statusLbl.setText(STATUS_PREFIX + status.name());
+            // saveBtn.setEnabled(status == TxStatus.DISABLED);
         } catch (Exception e) {
             statusHandler.error("Error saving Transmitter status change", e);
         }
@@ -1259,9 +1638,11 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     private void setTransmitterMode(TxMode mode) {
         transmitter.setTxMode(mode);
         try {
-            transmitter = dataManager.saveTransmitter(transmitter);
+            if (type != TransmitterEditType.NEW_TRANSMITTER) {
+                transmitter = dataManager.saveTransmitter(transmitter);
+                statusChange.statusChanged();
+            }
             this.modeLbl.setText(STATUS_PREFIX + mode.name());
-            statusChange.statusChanged();
         } catch (Exception e) {
             statusHandler.error("Error saving Transmitter mode change", e);
         }
@@ -1289,6 +1670,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         for (Control c : transmitterControlList) {
             c.setEnabled(enabled);
         }
+        // TODO Remove upon approval of removal of status/mode buttons.
+        // if (type == TransmitterEditType.NEW_TRANSMITTER) {
+        // enableTransmitterBtn.setEnabled(false);
+        // }
     }
 
     @Override

@@ -47,6 +47,8 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Aug 19, 2014   3486     bsteffen    Send change notification over jms.
  * Aug 24, 2014 3432       mpduff      Added getEnabledTransmitterGroups()
  * Sep 05, 2014 3554       bsteffen    Send more specific config change notification.
+ * Sep 23, 2014 3649       rferrel     DeleteTransmitterGroup notfication no longer
+ *                                      causes null pointer exception.
  * 
  * 
  * </pre>
@@ -91,8 +93,7 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
         case DeleteTransmitterGroup:
             deleteTransmitterGroup(request);
             notification = new TransmitterGroupConfigNotification(
-                    ConfigChangeType.Update, request.getTransmitter()
-                            .getTransmitterGroup());
+                    ConfigChangeType.Update, request.getTransmitterGroup());
             break;
         case SaveGroupList:
             response = saveTransmitterGroups(request);

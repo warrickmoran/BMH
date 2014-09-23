@@ -57,6 +57,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  *                                    will used the query passed it to retrieve the data.
  * Sep 16, 2014  3587     bkowal      Overrode persistAll. Added getProgramTriggersForSuite.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Oct 02, 2014 #3649     rferrel     Added addGroup method.
  * 
  * </pre>
  * 
@@ -428,5 +429,21 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
                 }
             }
         }
+    }
+
+    public Program addGroup(final int programId, final TransmitterGroup group) {
+        Program xProgram = txTemplate
+                .execute(new TransactionCallback<Program>() {
+
+                    @Override
+                    public Program doInTransaction(TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        Program program = getByID(programId);
+                        program.getTransmitterGroups().add(group);
+                        ht.save(program);
+                        return program;
+                    }
+                });
+        return xProgram;
     }
 }

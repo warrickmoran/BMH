@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
@@ -47,6 +48,7 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Aug 17, 2014 #3490      lvenable     Added save and delete.
  * Sep 05, 2014 3554       bsteffen    Send config change notification.
  * Sep 18, 2014   #3587    bkowal      Added getProgramsWithTrigger
+ * Oct 02, 2014   #3649    rferrel     Added addGroup.
  * 
  * </pre>
  * 
@@ -86,6 +88,11 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
             break;
         case GetProgramsWithTrigger:
             programResponse = getProgramsWithTrigger(request);
+            break;
+        case AddGroup:
+            programResponse = addGroup(request);
+            notification = new ProgramConfigNotification(
+                    ConfigChangeType.Update, request.getProgram());
             break;
         default:
             break;
@@ -205,6 +212,17 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
             dao.saveOrUpdate(request.getProgram());
             response.addProgram(request.getProgram());
         }
+
+        return response;
+    }
+
+    private ProgramResponse addGroup(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao();
+        int programId = request.getProgram().getId();
+        TransmitterGroup group = request.getTransmitterGroup();
+        ProgramResponse response = new ProgramResponse();
+        Program program = dao.addGroup(programId, group);
+        response.addProgram(program);
 
         return response;
     }

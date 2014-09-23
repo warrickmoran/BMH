@@ -48,6 +48,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 7, 2014   #3174     lvenable     Initial creation
  * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
  * Aug 22, 2014  #3490      lvenable    Updated code to handle making code all-caps.
+ * Sep 25, 2014  #3649     rferrel      Allow blocking dialog.
  * Sep 28, 2014   3630     mpduff       Set the ok button as the default button.
  * 
  * </pre>
@@ -105,8 +106,16 @@ public class InputTextDlg extends CaveSWTDialog {
      */
     public InputTextDlg(Shell parentShell, String title, String descriptionTxt,
             String tfText, IInputTextValidator textValidator, boolean upcaseText) {
+        this(parentShell, title, descriptionTxt, tfText, textValidator,
+                upcaseText, false);
+    }
+
+    public InputTextDlg(Shell parentShell, String title, String descriptionTxt,
+            String tfText, IInputTextValidator textValidator,
+            boolean upcaseText, boolean blocking) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.MODE_INDEPENDENT
+                        | (blocking ? CAVE.NONE : CAVE.DO_NOT_BLOCK));
 
         this.descriptionTxt = descriptionTxt;
         this.textFieldText = tfText;

@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * ------------- -------- ----------- --------------------------
  * May 30, 2014  3175     rjpeter     Initial creation
  * Jul 17, 2014  3406     mpduff      Added getAllTransmitters()
+ * Sep 20, 2014 3640       rferrel     saveTransmitterDeleteGroup no longer deletes transmitter.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
@@ -56,6 +57,11 @@ public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
         super(operational, Transmitter.class);
     }
 
+    /**
+     * Get all the data on all the transmitters.
+     * 
+     * @return transmitters
+     */
     public List<Transmitter> getAllTransmitters() {
         List<Object> results = this.loadAll();
         List<Transmitter> tList = new ArrayList<Transmitter>(results.size());
@@ -66,6 +72,14 @@ public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
         return tList;
     }
 
+    /**
+     * Update transmitter, remove it from the transmitter group then delete the
+     * group.
+     * 
+     * @param transmitter
+     * @param transmitterGroup
+     * @return transmitter
+     */
     public Transmitter saveTransmitterDeleteGroup(
             final Transmitter transmitter,
             final TransmitterGroup transmitterGroup) {
@@ -75,6 +89,12 @@ public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
                     public Transmitter doInTransaction(TransactionStatus status) {
                         HibernateTemplate ht = getHibernateTemplate();
                         ht.saveOrUpdate(transmitter);
+
+                        /*
+                         * Remove transmitter from the group to prevent deleting
+                         * it along with the group.
+                         */
+                        transmitterGroup.getTransmitters().remove(transmitter);
                         ht.delete(transmitterGroup);
                         return transmitter;
                     }
