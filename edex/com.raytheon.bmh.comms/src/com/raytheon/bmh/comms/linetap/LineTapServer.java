@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
+import com.raytheon.uf.edex.bmh.comms.MulticastReceiveConfig;
 
 /**
  * 
@@ -49,6 +50,7 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Aug 04, 2014  2487     bsteffen    Initial creation
+ * Sep 23, 2014  3485     bsteffen    Enable multicast
  * 
  * </pre>
  * 
@@ -71,7 +73,7 @@ public class LineTapServer extends AbstractServerThread {
 
     public void reconfigure(CommsConfig config) {
         Set<DacConfig> dacs = config.getDacs();
-        if(dacs == null){
+        if (dacs == null) {
             dacs = Collections.emptySet();
         }
         this.dacs = dacs;
@@ -90,8 +92,18 @@ public class LineTapServer extends AbstractServerThread {
                         DacReceiveThread receiver = receivers.get(dac
                                 .getReceivePort());
                         if (receiver == null || !receiver.isAlive()) {
-                            receiver = new DacReceiveThread(
-                                    dac.getReceivePort());
+                            MulticastReceiveConfig multicast = dac
+                                    .getMulticastReceive();
+                            if (multicast != null
+                                    && multicast.getAddress() != null) {
+                                receiver = new DacReceiveThread(
+                                        multicast.getNetworkInterface(),
+                                        multicast.getInetAddress(),
+                                        dac.getReceivePort());
+                            } else {
+                                receiver = new DacReceiveThread(
+                                        dac.getReceivePort());
+                            }
                             receivers.put(dac.getReceivePort(), receiver);
                             receiver.start();
                         }
@@ -104,8 +116,8 @@ public class LineTapServer extends AbstractServerThread {
                 }
             }
         }
-        logger.error("Unable to tap line of " + group
-                + " because it is not configured.");
+        logger.error("Unable to tap line of {} because it is not configured.",
+                group);
         socket.close();
     }
 

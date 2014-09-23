@@ -104,7 +104,7 @@ public class DacTransmitCommunicator extends Thread {
 
     @Override
     public void run() {
-        manager.dacTransmitConnected(key);
+        manager.dacTransmitConnected(key, groupName);
         try {
             while (!socket.isClosed()) {
                 try {
@@ -112,8 +112,8 @@ public class DacTransmitCommunicator extends Thread {
                             Object.class, socket.getInputStream());
                     handleMessage(message);
                 } catch (SerializationException | IOException e) {
-                    logger.error("Error reading message from DacTransmit: "
-                            + groupName, e);
+                    logger.error("Error reading message from DacTransmit: {}",
+                            groupName, e);
                     disconnect();
                     if (isConnectedToDac()) {
                         manager.dacDisconnectedLocal(key, groupName);
@@ -122,7 +122,7 @@ public class DacTransmitCommunicator extends Thread {
                 }
             }
         } finally {
-            manager.dacTransmitDisconnected(key);
+            manager.dacTransmitDisconnected(key, groupName);
         }
     }
 
@@ -154,9 +154,13 @@ public class DacTransmitCommunicator extends Thread {
             manager.errorReceived(notification, groupName);
         } else if (message instanceof DacTransmitShutdown) {
             disconnect();
+            if (isConnectedToDac()) {
+                manager.dacDisconnectedLocal(key, groupName);
+                lastStatus = null;
+            }
         } else {
-            logger.error("Unexpected message from dac transmit of type: "
-                    + message.getClass().getSimpleName());
+            logger.error("Unexpected message from dac transmit of type: {}",
+                    message.getClass().getSimpleName());
         }
     }
 
@@ -197,8 +201,8 @@ public class DacTransmitCommunicator extends Thread {
                 SerializationUtil.transformToThriftUsingStream(toSend,
                         socket.getOutputStream());
             } catch (SerializationException | IOException e) {
-                logger.error("Error communicating with DacTransmit: "
-                        + groupName, e);
+                logger.error("Error communicating with DacTransmit: {}",
+                        groupName, e);
             }
         }
     }

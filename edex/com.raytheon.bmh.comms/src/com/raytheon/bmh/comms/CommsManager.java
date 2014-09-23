@@ -22,11 +22,14 @@ package com.raytheon.bmh.comms;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,9 +42,11 @@ import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.bmh.comms.linetap.LineTapServer;
+import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
@@ -101,11 +106,17 @@ public class CommsManager {
     private static final int SLEEP_TIME = Integer.getInteger(
             "CommsSleepInterval", 30000);
 
+    /** NOT THREAD SAFE: only use from the run method */
+    private final SimpleDateFormat logDateFormat = new SimpleDateFormat(
+            "yyyyMMdd");
+
     private final Path configPath;
 
     private final DacTransmitServer transmitServer;
 
     private final LineTapServer lineTapServer;
+
+    private final ClusterServer clusterServer;
 
     /**
      * This is the thread currently executing in a loop in the {@link #run()}
@@ -136,6 +147,7 @@ public class CommsManager {
         configPath = CommsConfig.getDefaultPath();
         if (Files.exists(configPath)) {
             config = JAXB.unmarshal(configPath.toFile(), CommsConfig.class);
+            logger.info("Successfully loaded config file at {}", configPath);
         } else {
             logger.error("No config found, using default values.");
             config = new CommsConfig();
@@ -146,6 +158,12 @@ public class CommsManager {
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Unable to start dac transmit server.", e);
+        }
+        try {
+            clusterServer = new ClusterServer(this, config);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to start cluster server.",
+                    e);
         }
         try {
             lineTapServer = new LineTapServer(config);
@@ -184,23 +202,32 @@ public class CommsManager {
                     e);
         }
         transmitServer.start();
+        clusterServer.start();
         lineTapServer.start();
         if (jms != null) {
             jms.connect();
         }
+        clusterServer.attempClusterConnections(config);
         try {
+            /*
+             * This sleep enables any existing processes to connect before
+             * launching new dac transmit processes.
+             */
             Thread.sleep(FIRST_SLEEP_TIME);
         } catch (InterruptedException e1) {
             /* Just start processing right away. */
         }
-        while (transmitServer.isAlive() && lineTapServer.isAlive()) {
+        while (transmitServer.isAlive() && lineTapServer.isAlive()
+                && clusterServer.isAlive()) {
+            clusterServer.attempClusterConnections(config);
             try {
                 if (config.getDacs() != null) {
                     for (DacConfig dac : config.getDacs()) {
                         for (DacChannelConfig channel : dac.getChannels()) {
                             DacTransmitKey key = new DacTransmitKey(dac,
                                     channel);
-                            if (!transmitServer.isConnectedToDacTransmit(key)) {
+                            if (!transmitServer.isConnectedToDacTransmit(key)
+                                    && !clusterServer.isConnected(key)) {
                                 launchDacTransmit(key, channel);
                             }
                         }
@@ -227,7 +254,7 @@ public class CommsManager {
                         modFile = configPath.resolveSibling(modFile);
                         if (Files.exists(modFile) && Files.exists(configPath)
                                 && Files.isSameFile(configPath, modFile)) {
-                            logger.info("Rescanning configuration file.");
+                            logger.info("Reloading configuration file.");
                             CommsConfig config = JAXB.unmarshal(
                                     configPath.toFile(), CommsConfig.class);
                             reconfigure(config);
@@ -270,6 +297,15 @@ public class CommsManager {
                 logger.error("Unable to switch line tap server port, port will remain: "
                         + config.getDacTransmitPort());
                 newConfig.setLineTapPort(config.getLineTapPort());
+            }
+        }
+        if (newConfig.getClusterPort() != config.getClusterPort()) {
+            try {
+                clusterServer.changePort(newConfig.getClusterPort());
+            } catch (IOException e) {
+                logger.error("Unable to switch cluster server port, port will remain: "
+                        + config.getClusterPort());
+                newConfig.setClusterPort(config.getClusterPort());
             }
         }
         if (jms != null
@@ -343,7 +379,21 @@ public class CommsManager {
 
         ProcessBuilder startCommand = new ProcessBuilder(args);
         startCommand.environment().put("TRANSMITTER_GROUP", group);
-        startCommand.inheritIO();
+
+        /*
+         * Send console output to a file. This is quite rudimentary, the dac
+         * transmit process itself has a more refined log configuration that
+         * will hopefully be used for all output but if any messages do make it
+         * to stdout/stderr we do not want them interleaved with this process
+         * logs and we do not want them to be silently discarded.
+         */
+        String logDate = logDateFormat.format(new Date());
+        String logFileName = "dactransmit-" + group + "-console-" + logDate
+                + ".log";
+        Path logFilePath = Paths.get(BMHConstants.getBmhDataDirectory())
+                .resolveSibling("logs").resolve(logFileName);
+        startCommand.redirectOutput(logFilePath.toFile());
+        startCommand.redirectError(logFilePath.toFile());
         try {
             p = startCommand.start();
             startedProcesses.put(key, p);
@@ -374,7 +424,8 @@ public class CommsManager {
      * a dac. Any other components that may need to refresh and/or notify will
      * be informed.
      */
-    public void dacTransmitConnected(DacTransmitKey key) {
+    public void dacTransmitConnected(DacTransmitKey key, String group) {
+        logger.info("dac transmit connected for {}", group);
         startedProcesses.remove(key);
     }
 
@@ -384,11 +435,12 @@ public class CommsManager {
      * components that may need to refresh and/or notify will be informed.
      */
     public void dacConnectedLocal(DacTransmitKey key, String group) {
-        logger.info(group + " is now connected to the dac");
+        logger.info("{} is now connected to the dac", group);
         if (jms != null) {
             jms.listenForPlaylistChanges(key, group, transmitServer);
         }
         transmitServer.dacConnected(key);
+        clusterServer.dacConnectedLocal(key);
     }
 
     /**
@@ -407,7 +459,8 @@ public class CommsManager {
      * Any other components that may need to refresh and/or notify will be
      * informed.
      */
-    public void dacTransmitDisconnected(DacTransmitKey key) {
+    public void dacTransmitDisconnected(DacTransmitKey key, String group) {
+        logger.info("dac transmit disconnected for {}", group);
         transmitServer.dacTransmitDisconnected(key);
         attemptLaunchDacTransmits();
     }
@@ -420,10 +473,11 @@ public class CommsManager {
      * will be informed.
      */
     public void dacDisconnectedLocal(DacTransmitKey key, String group) {
-        logger.info(group + " is now disconnected from the dac");
+        logger.info("{} is now disconnected from the dac", group);
         if (jms != null) {
             jms.unlistenForPlaylistChanges(key, group, transmitServer);
         }
+        clusterServer.dacDisconnectedLocal(key);
         attemptLaunchDacTransmits();
     }
 
@@ -468,7 +522,15 @@ public class CommsManager {
     public void shutdown() {
         logger.info("Comms manager is shutting down.");
         transmitServer.shutdown();
+        clusterServer.shutdown();
         lineTapServer.shutdown();
+        try {
+            transmitServer.join();
+            clusterServer.join();
+            transmitServer.join();
+        } catch (InterruptedException e) {
+            logger.error("Unexpected interruption while shutting down.", e);
+        }
         Thread mainThread = this.mainThread;
         if (mainThread != null) {
             mainThread.interrupt();

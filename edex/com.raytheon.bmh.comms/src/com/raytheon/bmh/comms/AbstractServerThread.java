@@ -22,6 +22,7 @@ package com.raytheon.bmh.comms;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,7 @@ import org.slf4j.LoggerFactory;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Aug 15, 2014  3486     bsteffen    Initial Creation
+ * Sep 24, 2014  3485     bsteffen    Better logging and smoother shutdown.
  * 
  * </pre>
  * 
@@ -60,15 +62,20 @@ public abstract class AbstractServerThread extends Thread {
      */
     public AbstractServerThread(int port) throws IOException {
         super();
-        this.setName(getClass().getName());
+        this.setName(getClass().getSimpleName());
         server = new ServerSocket(port);
     }
 
     public void shutdown() {
-        try {
-            server.close();
-        } catch (IOException e) {
-            logger.error("Failed to close server socket for " + getName(), e);
+        ServerSocket server = this.server;
+        this.server = null;
+        if (server != null) {
+            try {
+                server.close();
+            } catch (IOException e) {
+                logger.error("Failed to close server socket for {}", getName(),
+                        e);
+            }
         }
     }
 
@@ -76,25 +83,33 @@ public abstract class AbstractServerThread extends Thread {
         ServerSocket server = new ServerSocket(port);
         ServerSocket old = this.server;
         this.server = server;
-        try {
-            old.close();
-        } catch (IOException e) {
-            logger.error("Failed to close server socket for " + getName(), e);
+        if (old != null) {
+            try {
+                old.close();
+            } catch (IOException e) {
+                logger.error("Failed to close server socket for {}", getName(),
+                        e);
+            }
         }
     }
 
     @Override
     public void run() {
-        while (!server.isClosed()) {
+        logger.info("{} is now handling connections ", this.getClass()
+                .getSimpleName());
+        while (server != null && !server.isClosed()) {
             ServerSocket server = this.server;
             Socket socket = null;
             try {
                 socket = server.accept();
                 socket.setTcpNoDelay(true);
             } catch (Throwable e) {
-                if (server != this.server) {
-                    logger.debug("Expected error accepting a connection", e);
-                } else {
+                /*
+                 * do not log if this is the exact exception we are expecting
+                 * for closing the connection(either from port change or shutdown)
+                 */
+                if (server == this.server || !(e instanceof SocketException)
+                        || !"Socket closed".equals(e.getMessage())) {
                     logger.error("Unexpected error accepting a connection", e);
                 }
                 continue;
@@ -110,6 +125,8 @@ public abstract class AbstractServerThread extends Thread {
                 logger.error("Error accepting client", e);
             }
         }
+        logger.info("{} is no longer handling connections ", this.getClass()
+                .getSimpleName());
     }
 
     protected abstract void handleConnection(Socket socket) throws Exception;

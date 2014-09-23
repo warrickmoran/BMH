@@ -43,6 +43,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Aug 04, 2014  2487     bsteffen    Rename config options.
+ * Sep 25, 2014  3485     bsteffen    Add cluster options
  * 
  * </pre>
  * 
@@ -52,6 +53,9 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
 @XmlRootElement(name = "dacs")
 @XmlAccessorType(XmlAccessType.NONE)
 public class CommsConfig {
+
+    @XmlAttribute
+    private int clusterPort = 58258;
 
     @XmlAttribute
     private int dacTransmitPort = 58259;
@@ -68,12 +72,23 @@ public class CommsConfig {
     @XmlElement(name = "dac")
     private Set<DacConfig> dacs;
 
+    @XmlElement(name = "clusterHost")
+    private Set<CommsHostConfig> clusterHosts;
+
     public Set<DacConfig> getDacs() {
         return dacs;
     }
 
     public void setDacs(Set<DacConfig> dacs) {
         this.dacs = dacs;
+    }
+
+    public int getClusterPort() {
+        return clusterPort;
+    }
+
+    public void setClusterPort(int clusterPort) {
+        this.clusterPort = clusterPort;
     }
 
     public int getDacTransmitPort() {
@@ -113,50 +128,12 @@ public class CommsConfig {
                 .resolveSibling("conf").resolve("comms.xml");
     }
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + dacTransmitPort;
-        result = prime
-                * result
-                + ((dacTransmitStarter == null) ? 0 : dacTransmitStarter
-                        .hashCode());
-        result = prime * result + ((dacs == null) ? 0 : dacs.hashCode());
-        result = prime * result
-                + ((jmsConnection == null) ? 0 : jmsConnection.hashCode());
-        result = prime * result + lineTapPort;
-        return result;
+    public Set<CommsHostConfig> getClusterHosts() {
+        return clusterHosts;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        CommsConfig other = (CommsConfig) obj;
-        if (dacTransmitPort != other.dacTransmitPort)
-            return false;
-        if (dacTransmitStarter == null) {
-            if (other.dacTransmitStarter != null)
-                return false;
-        } else if (!dacTransmitStarter.equals(other.dacTransmitStarter))
-            return false;
-        if (dacs == null) {
-            if (other.dacs != null)
-                return false;
-        } else if (!dacs.equals(other.dacs))
-            return false;
-        if (jmsConnection == null) {
-            if (other.jmsConnection != null)
-                return false;
-        } else if (!jmsConnection.equals(other.jmsConnection))
-            return false;
-        if (lineTapPort != other.lineTapPort)
-            return false;
-        return true;
+    public void setClusterHosts(Set<CommsHostConfig> clusterHosts) {
+        this.clusterHosts = clusterHosts;
     }
+
 }

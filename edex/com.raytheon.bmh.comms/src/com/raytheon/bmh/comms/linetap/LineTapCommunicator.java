@@ -40,6 +40,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Aug 04, 2014  2487     bsteffen    Initial creation
+ * Sep 23, 2014  3485     bsteffen    Name the thread.
  * 
  * </pre>
  * 
@@ -60,6 +61,7 @@ public class LineTapCommunicator extends Thread implements IDacListener {
 
     public LineTapCommunicator(LineTapServer server, String group,
             int channel, Socket socket) {
+        super("LineTap-" + group);
         this.server = server;
         this.groupName = group;
         this.channel = channel;
@@ -74,8 +76,8 @@ public class LineTapCommunicator extends Thread implements IDacListener {
         try {
             socket.getOutputStream().write(payload);
         } catch (IOException e) {
-            logger.error("Error sending line tap packets for group + "
-                    + groupName, e);
+            logger.error("Error sending line tap packets for group {}",
+                    groupName, e);
         }
     }
 
@@ -85,15 +87,16 @@ public class LineTapCommunicator extends Thread implements IDacListener {
             SerializationUtil.transformFromThrift(LineTapDisconnect.class,
                     socket.getInputStream());
         } catch (Throwable e) {
-            logger.error("Unexpected error while disconnecting from + "
-                    + groupName, e);
+            logger.error("Unexpected error while disconnecting from {}",
+                    groupName, e);
         } finally {
             server.unsubscribe(this);
             try {
                 socket.close();
             } catch (IOException e) {
-                logger.error("Unexpected error while closing connection for + "
-                        + groupName, e);
+                logger.error(
+                        "Unexpected error while closing connection for {}",
+                        groupName, e);
             }
         }
     }

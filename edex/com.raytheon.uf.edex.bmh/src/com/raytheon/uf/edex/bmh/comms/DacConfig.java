@@ -39,6 +39,7 @@ import javax.xml.bind.annotation.XmlElement;
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Aug 04, 2014  2487     bsteffen    Add receivePort
+ * Sep 25, 2014  3485     bsteffen    Add multicast options
  * 
  * </pre>
  * 
@@ -53,6 +54,9 @@ public class DacConfig {
 
     @XmlAttribute
     private int receivePort;
+
+    @XmlElement
+    private MulticastReceiveConfig multicastReceive;
 
     @XmlElement(name = "channel")
     private List<DacChannelConfig> channels;
@@ -71,6 +75,14 @@ public class DacConfig {
 
     public void setReceivePort(int receivePort) {
         this.receivePort = receivePort;
+    }
+
+    public MulticastReceiveConfig getMulticastReceive() {
+        return multicastReceive;
+    }
+
+    public void setMulticastReceive(MulticastReceiveConfig multicastReceive) {
+        this.multicastReceive = multicastReceive;
     }
 
     public List<DacChannelConfig> getChannels() {
@@ -96,6 +108,9 @@ public class DacConfig {
                 + ((channels == null) ? 0 : channels.hashCode());
         result = prime * result
                 + ((ipAddress == null) ? 0 : ipAddress.hashCode());
+        result = prime
+                * result
+                + ((multicastReceive == null) ? 0 : multicastReceive.hashCode());
         result = prime * result + receivePort;
         return result;
     }
@@ -119,9 +134,15 @@ public class DacConfig {
                 return false;
         } else if (!ipAddress.equals(other.ipAddress))
             return false;
+        if (multicastReceive == null) {
+            if (other.multicastReceive != null)
+                return false;
+        } else if (!multicastReceive.equals(other.multicastReceive))
+            return false;
         if (receivePort != other.receivePort)
             return false;
         return true;
     }
+
 
 }
