@@ -72,6 +72,8 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Aug 05, 2014 3175       rjpeter     Added set verification of message type in suite.
  * Aug 19, 2014 3411       mpduff      Implement {@link MessageTypeReplacement}
  * Sep 16, 2014 3587       bkowal      Updated to only allow trigger assignment for {Program, Suite}
+ * Sep 25, 2014 3620       bsteffen    Add seconds to periodicity and duration.
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -1255,7 +1257,7 @@ public class AsciiFileTranslator {
     }
 
     private float parseFloat(String freq, AsciiFileParser reader)
-            throws IOException, ParseException {
+            throws ParseException {
         if (freq != null) {
             try {
                 return Float.parseFloat(freq);
@@ -1453,7 +1455,8 @@ public class AsciiFileTranslator {
         String period = reader.nextField();
         Matcher matcher = PERIOD.matcher(period);
         if (matcher.matches()) {
-            return matcher.group(1) + matcher.group(2) + matcher.group(3);
+            return matcher.group(1) + matcher.group(2) + matcher.group(3)
+                    + matcher.group(4);
         } else {
             throw new ParseException("Invalid time format, found [" + period
                     + "], expected [00.00:00:00]",

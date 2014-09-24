@@ -55,7 +55,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 4, 2014   3568     bkowal      Added fields to differentiate between
  *                                    generated static messages and ingested messages.
  * Sep 09, 2014  2585     bsteffen    Implement MAT
- * 
+ * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
  * 
  * </pre>
  * 
@@ -106,11 +106,11 @@ public class InputMessage {
     /**
      * The periodicity of message transmission for messages to be scheduled
      * based on time. This is stored in String representation with the format
-     * 'DDHHMM'. This field will contain null for non-time-inserted messages.
+     * 'DDHHMMSS'. This field will contain null for non-time-inserted messages.
      * 
      * @see InputMessage#getPeriodicityMinutes()
      **/
-    @Column(length = 6)
+    @Column(length = 8)
     @DynamicSerializeElement
     private String periodicity;
 
@@ -263,15 +263,16 @@ public class InputMessage {
     }
 
     /**
-     * @return the parsed number of minutes represented by the periodicty field
+     * @return the parsed number of seconds represented by the periodicty field
      *         of this message.
      */
-    public int getPeriodicityMinutes() {
+    public int getPeriodicitySeconds() {
         if (this.periodicity != null) {
             int days = Integer.parseInt(this.periodicity.substring(0, 2));
             int hours = Integer.parseInt(this.periodicity.substring(2, 4));
             int minutes = Integer.parseInt(this.periodicity.substring(4, 6));
-            return minutes + (60 * (hours + (24 * days)));
+            int seconds = Integer.parseInt(this.periodicity.substring(6, 8));
+            return seconds + (60 * minutes + (60 * (hours + (24 * days))));
         }
         return -1;
     }

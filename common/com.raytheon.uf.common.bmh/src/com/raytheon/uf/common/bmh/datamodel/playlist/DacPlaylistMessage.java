@@ -48,6 +48,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 18, 2014  3540     dgilling    Add getPlaybackInterval().
  * Sep 08, 2014  3286     dgilling    Add getPath() and setPath().
  * Sep 12, 2014  3588     bsteffen    Support audio fragments.
+ * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
  * 
  * </pre>
  * 
@@ -70,7 +71,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     @XmlElement
     private Calendar expire;
 
-    /** format is HHMMSS */
+    /** format is DDHHMMSS */
     @XmlElement
     private String periodicity;
 
@@ -259,8 +260,9 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
             int days = Integer.parseInt(this.periodicity.substring(0, 2));
             int hours = Integer.parseInt(this.periodicity.substring(2, 4));
             int minutes = Integer.parseInt(this.periodicity.substring(4, 6));
-            return (minutes + (60 * (hours + (24 * days))))
-                    * TimeUtil.MILLIS_PER_MINUTE;
+            int seconds = Integer.parseInt(this.periodicity.substring(6, 8));
+            return (seconds + (60 * (minutes + (60 * (hours + (24 * days))))))
+                    * TimeUtil.MILLIS_PER_SECOND;
         }
         return -1;
     }

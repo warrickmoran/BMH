@@ -86,6 +86,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 18, 2014   3411     mpduff      Implement New and Edit.
  * Sep 11, 2014   3411     mpduff      Pass MessageType object to Area Selection for populating, save TransmitterGroups
  * Sep 14, 2014  #3610     lvenable    Removed unused code and renamed variable.
+ * Sep 25, 2014   3620     bsteffen    Add seconds to periodicity and duration.
  * 
  * </pre>
  * 
@@ -407,7 +408,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             durDateTimeStr = selectedMsgType.getDuration();
         }
 
-        durMap = generateDayHourMinuteMap(durDateTimeStr);
+        durMap = generateDayHourMinuteSecondMap(durDateTimeStr);
 
         durationDTF = new DateTimeFields(defaultsGroup, durMap, false, false,
                 true);
@@ -424,7 +425,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             periodicityDateTimeStr = selectedMsgType.getPeriodicity();
         }
 
-        periodicityMap = generateDayHourMinuteMap(periodicityDateTimeStr);
+        periodicityMap = generateDayHourMinuteSecondMap(periodicityDateTimeStr);
 
         periodicityDTF = new DateTimeFields(defaultsGroup, periodicityMap,
                 false, false, true);
@@ -718,13 +719,13 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         }
 
         String duration = this.durationDTF.getFormattedValue();
-        if (duration.length() != 6) {
+        if (duration.length() != 8) {
             msg.append("Duration is invalid\n");
             valid = false;
         }
 
         String periodicity = this.periodicityDTF.getFormattedValue();
-        if (periodicity.length() != 6) {
+        if (periodicity.length() != 8) {
             msg.append("Periodicity is invalid\n");
             valid = false;
         }
@@ -944,10 +945,10 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      * from the provided string.
      * 
      * @param dateTimeStr
-     *            Date/Time string (DDHHMM).
+     *            Date/Time string (DDHHMMSS).
      * @return Map of DateFieldTypes and the associated values.
      */
-    private Map<DateFieldType, Integer> generateDayHourMinuteMap(
+    private Map<DateFieldType, Integer> generateDayHourMinuteSecondMap(
             String dateTimeStr) {
         Map<DateFieldType, Integer> dateTimeMap = new LinkedHashMap<DateFieldType, Integer>();
 
@@ -955,11 +956,13 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             dateTimeMap.put(DateFieldType.DAY, 0);
             dateTimeMap.put(DateFieldType.HOUR, 0);
             dateTimeMap.put(DateFieldType.MINUTE, 0);
+            dateTimeMap.put(DateFieldType.SECOND, 0);
         } else {
             int[] dtArray = splitDateTimeString(dateTimeStr);
             dateTimeMap.put(DateFieldType.DAY, dtArray[0]);
             dateTimeMap.put(DateFieldType.HOUR, dtArray[1]);
             dateTimeMap.put(DateFieldType.MINUTE, dtArray[2]);
+            dateTimeMap.put(DateFieldType.MINUTE, dtArray[3]);
         }
 
         return dateTimeMap;
