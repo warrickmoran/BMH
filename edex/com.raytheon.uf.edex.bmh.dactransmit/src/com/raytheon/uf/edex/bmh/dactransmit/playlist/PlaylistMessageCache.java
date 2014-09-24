@@ -81,6 +81,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Sep 11, 2014  #3606     dgilling     Prevent exceptions when messages don't
  *                                      have an associated sound file.
  * Sep 12, 2014  #3588     bsteffen     Support audio fragments.
+ * Sep 12, 2014  #3485     bsteffen     Shutdown purge job on shutdown.
  * 
  * </pre>
  * 
@@ -167,6 +168,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      */
     public void shutdown() {
         cacheThreadPool.shutdown();
+        purgeThreadPool.shutdown();
     }
 
     /**
