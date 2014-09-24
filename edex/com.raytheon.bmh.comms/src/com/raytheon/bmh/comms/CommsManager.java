@@ -39,20 +39,14 @@ import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.bmh.comms.dactransmit.DacTransmitCommunicator;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
-import com.raytheon.bmh.comms.jms.PlaylistNotificationObserver;
 import com.raytheon.bmh.comms.linetap.LineTapServer;
-import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
-import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
-import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
 
 /**
  * 
@@ -74,7 +68,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  *                                    DacTransmit.
  * Aug 18, 2014  3532     bkowal      Pass the supported decibel range as an
  *                                    argument to the Dac Transmitter.
- * Sep 4, 2014   3532     bkowal      Use a decibel target instead of a range.
+ * Sep 04, 2014  3532     bkowal      Use a decibel target instead of a range.
+ * Sep 23, 2014  3485     bsteffen    Additional event handling to support clustering.
  * 
  * </pre>
  * 
@@ -86,15 +81,50 @@ public class CommsManager {
     private static final Logger logger = LoggerFactory
             .getLogger(CommsManager.class);
 
-    private Path configPath;
+    /**
+     * The amount of time(in ms) to wait after startup before launching dac
+     * transmit processes for any dacs that are not connected. A shorter
+     * interval will make it more likely that not all dac transmits have tried
+     * to connect which can result in duplicate processes. A longer interval
+     * creates the possibility of radio silence when a dac transmit needs to be
+     * started.
+     */
+    private static final int FIRST_SLEEP_TIME = Integer.getInteger(
+            "CommsFirstSleepInterval", 1000);
 
-    private CommsConfig config;
+    /**
+     * The amount of time(in ms) to wait between attempts to start new dac
+     * transmit processes when needed. Any important events(like disconnects)
+     * will interrupt the waiting so this can be a long time to avoid wasting
+     * cpu.
+     */
+    private static final int SLEEP_TIME = Integer.getInteger(
+            "CommsSleepInterval", 30000);
 
-    private DacTransmitServer transmitServer;
+    private final Path configPath;
 
-    private LineTapServer lineTapServer;
+    private final DacTransmitServer transmitServer;
+
+    private final LineTapServer lineTapServer;
+
+    /**
+     * This is the thread currently executing in a loop in the {@link #run()}
+     * method. This thread sleeps and periodically wakes up to check connections
+     * and start services as needed. If a change occurs that may require connections or services
+     * that are made during the run method then this thread can be interrupted
+     * to immediatly perform any necessary actions.
+     */
+    private volatile Thread mainThread;
 
     private JmsCommunicator jms;
+
+    /**
+     * Holds the current config from {@link #configPath}, The
+     * {@link #mainThread} is watching this path and will update this field with
+     * changes. To maintain consistent state, after construction this should
+     * only be accessed from the thread executing the {@link #run()} method.
+     */
+    private CommsConfig config;
 
     private final Map<DacTransmitKey, Process> startedProcesses = new HashMap<>();
 
@@ -124,7 +154,11 @@ public class CommsManager {
                     e);
         }
         try {
-            jms = new JmsCommunicator(config);
+            if (config.getJmsConnection() != null) {
+                jms = new JmsCommunicator(config);
+            } else {
+                logger.warn("No jms connection specified, jms will be disabled.");
+            }
         } catch (URLSyntaxException e) {
             logger.error(
                     "Error parsing jms connection url, jms will be disabled.",
@@ -138,6 +172,7 @@ public class CommsManager {
      * have a running dac transmit process.
      */
     public void run() {
+        mainThread = Thread.currentThread();
         WatchService configWatcher = null;
         try {
             configWatcher = configPath.getFileSystem().newWatchService();
@@ -150,17 +185,40 @@ public class CommsManager {
         }
         transmitServer.start();
         lineTapServer.start();
-        jms.connect();
+        if (jms != null) {
+            jms.connect();
+        }
+        try {
+            Thread.sleep(FIRST_SLEEP_TIME);
+        } catch (InterruptedException e1) {
+            /* Just start processing right away. */
+        }
         while (transmitServer.isAlive() && lineTapServer.isAlive()) {
+            try {
+                if (config.getDacs() != null) {
+                    for (DacConfig dac : config.getDacs()) {
+                        for (DacChannelConfig channel : dac.getChannels()) {
+                            DacTransmitKey key = new DacTransmitKey(dac,
+                                    channel);
+                            if (!transmitServer.isConnectedToDacTransmit(key)) {
+                                launchDacTransmit(key, channel);
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable e) {
+                logger.error("Error checking connection status.", e);
+            }
             WatchKey wkey = null;
             try {
                 if (configWatcher == null) {
-                    Thread.sleep(1000);
+                    Thread.sleep(SLEEP_TIME);
                 } else {
-                    wkey = configWatcher.poll(1, TimeUnit.SECONDS);
+                    wkey = configWatcher
+                            .poll(SLEEP_TIME, TimeUnit.MILLISECONDS);
                 }
             } catch (InterruptedException e) {
-                /* Don't care */
+                /* Check dacs immediately. */
             }
             if (wkey != null) {
                 for (WatchEvent<?> e : wkey.pollEvents()) {
@@ -169,6 +227,7 @@ public class CommsManager {
                         modFile = configPath.resolveSibling(modFile);
                         if (Files.exists(modFile) && Files.exists(configPath)
                                 && Files.isSameFile(configPath, modFile)) {
+                            logger.info("Rescanning configuration file.");
                             CommsConfig config = JAXB.unmarshal(
                                     configPath.toFile(), CommsConfig.class);
                             reconfigure(config);
@@ -180,27 +239,6 @@ public class CommsManager {
                 }
                 wkey.reset();
             }
-            try {
-                if (config.getDacs() != null) {
-                    for (DacConfig dac : config.getDacs()) {
-                        for (DacChannelConfig channel : dac.getChannels()) {
-                            DacTransmitKey key = new DacTransmitKey(dac,
-                                    channel);
-                            if (transmitServer.isConnected(key)) {
-                                startedProcesses.remove(key);
-                            } else {
-                                launchDacTransmit(key, channel);
-                            }
-                        }
-                    }
-                }
-            } catch (Throwable e) {
-                logger.error("Error checking connection status.", e);
-                /*
-                 * TODO If this fails multiple times may want to try failing
-                 * over or reseting some dac transmit application.
-                 */
-            }
         }
         if (configWatcher != null) {
             try {
@@ -209,9 +247,10 @@ public class CommsManager {
                 logger.error("Unexpected error monitoring config file.", e);
             }
         }
+        mainThread = null;
     }
 
-    public void reconfigure(CommsConfig newConfig) {
+    protected void reconfigure(CommsConfig newConfig) {
         if (newConfig.equals(this.config)) {
             return;
         }
@@ -242,7 +281,7 @@ public class CommsManager {
         this.config = newConfig;
         transmitServer.reconfigure(config);
         lineTapServer.reconfigure(config);
-        if (jms == null) {
+        if (jms == null && config.getJmsConnection() != null) {
             try {
                 jms = new JmsCommunicator(config);
                 jms.connect();
@@ -313,38 +352,127 @@ public class CommsManager {
         }
     }
 
-    public void dacStatusChanged(DacTransmitCommunicator communicator,
-            DacTransmitStatus status) {
-        String group = communicator.getGroupName();
-        if (status.isConnectedToDac()) {
-            logger.info(group + " is now connected to the dac");
-            jms.addQueueObserver("BMH.Playlist." + group,
-                    new PlaylistNotificationObserver(communicator));
-        } else {
-            jms.removeQueueObserver("BMH.Playlist." + group, null,
-                    new PlaylistNotificationObserver(communicator));
-            logger.info(group + " is now disconnected from the dac");
+    /**
+     * Method to call when an event has occured which may require a new dac
+     * transmit process to be created. The current implementation just wakes up
+     * the main thread rather than checking the config immediately to avoid any
+     * synchronization problems.
+     * 
+     */
+    protected void attemptLaunchDacTransmits() {
+        Thread mainThread = this.mainThread;
+        if (mainThread != null) {
+            mainThread.interrupt();
         }
     }
 
-    public void playlistSwitched(PlaylistSwitchNotification notification) {
-        jms.sendStatus(notification);
+    /**
+     * This method should be called when a dac transmit process has connected to
+     * the comms manager. This does not indicate that the dac transmit is
+     * connected to a dac. {@link #dacConnectedLocal(DacTransmitKey, String)}
+     * should be called when the dac transmit is successfully communicating with
+     * a dac. Any other components that may need to refresh and/or notify will
+     * be informed.
+     */
+    public void dacTransmitConnected(DacTransmitKey key) {
+        startedProcesses.remove(key);
     }
 
-    public void messagePlaybackStatusArrived(
-            MessagePlaybackStatusNotification notification) {
-        jms.sendStatus(notification);
+    /**
+     * This method should be called when this process is connected to a dac
+     * transmit process that is successfully communicating with a dac. Any other
+     * components that may need to refresh and/or notify will be informed.
+     */
+    public void dacConnectedLocal(DacTransmitKey key, String group) {
+        logger.info(group + " is now connected to the dac");
+        if (jms != null) {
+            jms.listenForPlaylistChanges(key, group, transmitServer);
+        }
+        transmitServer.dacConnected(key);
     }
 
-    public void hardwareStatusArrived(DacHardwareStatusNotification notification) {
-        jms.sendStatus(notification);
+    /**
+     * This method should be called when this process is connected to another
+     * comms manager that is successfully communicating with a dac. Any other
+     * components that may need to refresh and/or notify will be informed.
+     */
+    public void dacConnectedRemote(DacTransmitKey key) {
+        transmitServer.dacConnected(key);
     }
 
+    /**
+     * This method should be called when a dac transmit process has disconnected
+     * from the comms manager. If the dac transmit was connected to a dac than
+     * {@link #dacConnectedLocal(DacTransmitKey, String) should also be called.
+     * Any other components that may need to refresh and/or notify will be
+     * informed.
+     */
+    public void dacTransmitDisconnected(DacTransmitKey key) {
+        transmitServer.dacTransmitDisconnected(key);
+        attemptLaunchDacTransmits();
+    }
+
+    /**
+     * This method should be called when there is no longer a dac transmit
+     * process connected to a dac connected to this comms manager either because
+     * the dac has disconnected or the dac transmit process has died or been
+     * disconnected. Any other components that may need to refresh and/or notify
+     * will be informed.
+     */
+    public void dacDisconnectedLocal(DacTransmitKey key, String group) {
+        logger.info(group + " is now disconnected from the dac");
+        if (jms != null) {
+            jms.unlistenForPlaylistChanges(key, group, transmitServer);
+        }
+        attemptLaunchDacTransmits();
+    }
+
+    /**
+     * This method should be called when another comms manager loses its
+     * connection to a dac or if this comms manager loses its connection with
+     * another comms manager. Any other components that may need to refresh
+     * and/or notify will be informed.
+     */
+    public void dacDisconnectedRemote() {
+        attemptLaunchDacTransmits();
+    }
+
+    /**
+     * This method should be called when a dac transmit process has sent a
+     * message that needs to be forwarded on to the rest of the world(edex and
+     * cave mostly).
+     */
+    public void transmitDacStatus(Object statusObject) {
+        if (jms != null) {
+            jms.sendDacStatus(statusObject);
+        }
+    }
+
+    /**
+     * This method should be called when an error has been recieved from a dac
+     * transmit process that needs to be communicated to users.
+     * 
+     * @param e
+     * @param group
+     */
     public void errorReceived(DacTransmitCriticalError e, String group) {
         // TODO send to alertviz via EDEX
         logger.error(
                 "Critical error received from group: " + group + ": "
                         + e.getErrorMessage(), e.getThrowable());
+    }
+
+    /**
+     * Shutdown this comms mamanger and all connected dac transmit processes.
+     */
+    public void shutdown() {
+        logger.info("Comms manager is shutting down.");
+        transmitServer.shutdown();
+        lineTapServer.shutdown();
+        Thread mainThread = this.mainThread;
+        if (mainThread != null) {
+            mainThread.interrupt();
+        }
     }
 
     public static void main(String[] args) {

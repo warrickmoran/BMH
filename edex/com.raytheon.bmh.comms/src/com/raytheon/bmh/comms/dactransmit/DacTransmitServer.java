@@ -21,7 +21,6 @@ package com.raytheon.bmh.comms.dactransmit;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -29,10 +28,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
@@ -55,6 +56,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Aug 12, 2014  3486     bsteffen    Support ChangeTransmitters
  * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange
  * Sep 5,  2014  3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
+ * Sep 23, 2014  3485     bsteffen    Bug fixes and changes to notification processing to support clustering
  * 
  * </pre>
  * 
@@ -114,6 +116,13 @@ public class DacTransmitServer extends AbstractServerThread {
         }
     }
 
+    /**
+     * Reload the configuration file. Shutdown any dac transmit processes that
+     * are no longer in the configuration and ensure that all remaining
+     * processes are configured correctly.
+     * 
+     * @param config
+     */
     public void reconfigure(CommsConfig config) {
         readChannels(config);
         for (Entry<DacTransmitKey, List<DacTransmitCommunicator>> entry : communicators
@@ -126,13 +135,18 @@ public class DacTransmitServer extends AbstractServerThread {
             } else {
                 for (DacTransmitCommunicator communicator : entry.getValue()) {
                     communicator.setRadios(channel.getRadios());
-
+                    communicator.setTransmitterDBTarget(channel.getDbTarget());
                 }
             }
         }
     }
 
-    public boolean isConnected(DacTransmitKey key) {
+    /**
+     * Check if the server is connected to a dac transmit process for the
+     * provided key. This method does not check whether that process is
+     * successfully communicating with a dac or not.
+     */
+    public boolean isConnectedToDacTransmit(DacTransmitKey key) {
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(key);
         if (communicators == null || communicators.isEmpty()) {
@@ -141,31 +155,59 @@ public class DacTransmitServer extends AbstractServerThread {
         return true;
     }
 
-    public void disconnected(DacTransmitCommunicator communicator) {
-        Iterator<List<DacTransmitCommunicator>> cit = this.communicators
-                .values().iterator();
-        while (cit.hasNext()) {
-            List<DacTransmitCommunicator> communicators = cit.next();
-            if (communicators.remove(communicator)) {
-                if (communicators.isEmpty()) {
-                    cit.remove();
-                }
-                break;
+    /**
+     * Send a playlist update to any dac transmit processes which are connected
+     * to this server.
+     */
+    public void playlistNotificationArrived(DacTransmitKey key,
+            PlaylistUpdateNotification notification) {
+        List<DacTransmitCommunicator> communicators = this.communicators
+                .get(key);
+        if (communicators != null) {
+            for (DacTransmitCommunicator communicator : communicators) {
+                communicator.sendPlaylistUpdate(notification);
             }
         }
     }
 
-    public void connectedToDac(DacTransmitCommunicator communicator) {
-        for (List<DacTransmitCommunicator> communicators : this.communicators
-                .values()) {
-            if (communicators.contains(communicator)) {
-                for (DacTransmitCommunicator otherComm : communicators) {
-                    if (communicator != otherComm) {
-                        otherComm.shutdown();
-                    }
+    /**
+     * This method should be called from the comms manager whenever a successful
+     * connection is made to a dac. This will clean up any dac transmit process
+     * that are trying to access the same dac unsuccessfully(Normally there
+     * shouldn't be much to clean up unless there was a startup or clustering
+     * race and this server lost).
+     */
+    public void dacConnected(DacTransmitKey key) {
+        List<DacTransmitCommunicator> communicators = this.communicators
+                .get(key);
+        if (communicators != null) {
+            Iterator<DacTransmitCommunicator> it = communicators.iterator();
+            while (it.hasNext()) {
+                DacTransmitCommunicator communicator = it.next();
+                if (!communicator.isConnectedToDac()) {
+                    communicator.shutdown();
                 }
-                break;
             }
+        }
+
+    }
+
+    /**
+     * This method should be called from the comms manager when the connection
+     * with a dac transmit has been lost.
+     */
+    public void dacTransmitDisconnected(DacTransmitKey key) {
+        List<DacTransmitCommunicator> communicators = this.communicators
+                .get(key);
+        if (communicators != null) {
+            Iterator<DacTransmitCommunicator> it = communicators.iterator();
+            while (it.hasNext()) {
+                DacTransmitCommunicator communicator = it.next();
+                if (!communicator.isAlive()) {
+                    it.remove();
+                }
+            }
+
         }
     }
 
@@ -200,12 +242,12 @@ public class DacTransmitServer extends AbstractServerThread {
             group = channel.getTransmitterGroup();
         }
         DacTransmitCommunicator comms = new DacTransmitCommunicator(manager,
-                this, group, message.getTransmitters(), socket,
+                key, group, message.getTransmitters(), socket,
                 message.getDbTarget());
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(key);
         if (communicators == null) {
-            communicators = new ArrayList<>(1);
+            communicators = new CopyOnWriteArrayList<>();
             this.communicators.put(key, communicators);
         } else {
             for (DacTransmitCommunicator communicator : communicators) {

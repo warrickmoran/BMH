@@ -22,7 +22,8 @@ package com.raytheon.bmh.comms.jms;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.bmh.comms.dactransmit.DacTransmitCommunicator;
+import com.raytheon.bmh.comms.DacTransmitKey;
+import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
@@ -39,7 +40,8 @@ import com.raytheon.uf.common.jms.notification.NotificationMessage;
  * 
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
- * Jul 24, 2014  3399     bsteffen     Initial creation
+ * Jul 24, 2014  3399     bsteffen    Initial creation
+ * Sep 23, 2014  3485     bsteffen    Send notification to the DacTransmitServer
  * 
  * </pre>
  * 
@@ -51,10 +53,14 @@ public class PlaylistNotificationObserver implements INotificationObserver {
     private static final Logger logger = LoggerFactory
             .getLogger(PlaylistNotificationObserver.class);
 
-    private final DacTransmitCommunicator communicator;
+    private final DacTransmitServer server;
 
-    public PlaylistNotificationObserver(DacTransmitCommunicator communicator) {
-        this.communicator = communicator;
+    private final DacTransmitKey key;
+
+    public PlaylistNotificationObserver(DacTransmitServer server,
+            DacTransmitKey key) {
+        this.server = server;
+        this.key = key;
     }
 
     @Override
@@ -65,7 +71,7 @@ public class PlaylistNotificationObserver implements INotificationObserver {
                 Object payload = message.getMessagePayload();
                 if (payload instanceof PlaylistUpdateNotification) {
                     PlaylistUpdateNotification update = (PlaylistUpdateNotification) payload;
-                    communicator.sendPlaylistUpdate(update);
+                    server.playlistNotificationArrived(key, update);
                 } else if (payload != null) {
                     logger.error("Unexpected notification of type: "
                             + payload.getClass().getSimpleName());
@@ -77,6 +83,31 @@ public class PlaylistNotificationObserver implements INotificationObserver {
             }
 
         }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((key == null) ? 0 : key.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        PlaylistNotificationObserver other = (PlaylistNotificationObserver) obj;
+        if (key == null) {
+            if (other.key != null)
+                return false;
+        } else if (!key.equals(other.key))
+            return false;
+        return true;
     }
 
 }

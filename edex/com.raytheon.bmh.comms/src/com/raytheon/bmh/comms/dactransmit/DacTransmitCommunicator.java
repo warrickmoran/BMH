@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
+import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
@@ -58,6 +59,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Aug 14, 2014  3286     dgilling    Support DacTransmitCriticalError.
  * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange.
  * Sep 5, 2014   3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
+ * Sep 23, 2014  3485     bsteffen    Ensure the manager gets notified of any state changes.
  * 
  * </pre>
  * 
@@ -72,7 +74,7 @@ public class DacTransmitCommunicator extends Thread {
 
     private final CommsManager manager;
 
-    private final DacTransmitServer server;
+    private final DacTransmitKey key;
 
     private final String groupName;
 
@@ -84,12 +86,11 @@ public class DacTransmitCommunicator extends Thread {
 
     private DacTransmitStatus lastStatus;
 
-    public DacTransmitCommunicator(CommsManager manager,
-            DacTransmitServer server, String groupName, int[] radios,
-            Socket socket, double dbTarget) {
+    public DacTransmitCommunicator(CommsManager manager, DacTransmitKey key,
+            String groupName, int[] radios, Socket socket, double dbTarget) {
         super("DacTransmitCommunicator-" + groupName);
         this.manager = manager;
-        this.server = server;
+        this.key = key;
         this.groupName = groupName;
         Arrays.sort(radios);
         this.radios = radios;
@@ -103,16 +104,25 @@ public class DacTransmitCommunicator extends Thread {
 
     @Override
     public void run() {
-        while (!socket.isClosed()) {
-            try {
-                Object message = SerializationUtil.transformFromThrift(
-                        Object.class, socket.getInputStream());
-                handleMessage(message);
-            } catch (SerializationException | IOException e) {
-                logger.error("Error reading message from DacTransmit: "
-                        + groupName, e);
-                disconnect();
+        manager.dacTransmitConnected(key);
+        try {
+            while (!socket.isClosed()) {
+                try {
+                    Object message = SerializationUtil.transformFromThrift(
+                            Object.class, socket.getInputStream());
+                    handleMessage(message);
+                } catch (SerializationException | IOException e) {
+                    logger.error("Error reading message from DacTransmit: "
+                            + groupName, e);
+                    disconnect();
+                    if (isConnectedToDac()) {
+                        manager.dacDisconnectedLocal(key, groupName);
+                        lastStatus = null;
+                    }
+                }
             }
+        } finally {
+            manager.dacTransmitDisconnected(key);
         }
     }
 
@@ -120,25 +130,25 @@ public class DacTransmitCommunicator extends Thread {
         if (message instanceof DacTransmitStatus) {
             DacTransmitStatus newStatus = (DacTransmitStatus) message;
             if (lastStatus == null || !newStatus.equals(lastStatus)) {
-                if (newStatus.isConnectedToDac()) {
-                    server.connectedToDac(this);
-                }
-                manager.dacStatusChanged(this, newStatus);
                 lastStatus = newStatus;
-
+                if (newStatus.isConnectedToDac()) {
+                    manager.dacConnectedLocal(key, groupName);
+                } else {
+                    manager.dacDisconnectedLocal(key, groupName);
+                }
             }
         } else if (message instanceof MessagePlaybackStatusNotification) {
             MessagePlaybackStatusNotification notification = (MessagePlaybackStatusNotification) message;
             notification.setTransmitterGroup(groupName);
-            manager.messagePlaybackStatusArrived(notification);
+            manager.transmitDacStatus(notification);
         } else if (message instanceof PlaylistSwitchNotification) {
             PlaylistSwitchNotification notification = (PlaylistSwitchNotification) message;
             notification.setTransmitterGroup(groupName);
-            manager.playlistSwitched(notification);
+            manager.transmitDacStatus(notification);
         } else if (message instanceof DacHardwareStatusNotification) {
             DacHardwareStatusNotification notification = (DacHardwareStatusNotification) message;
             notification.setTransmitterGroup(groupName);
-            manager.hardwareStatusArrived(notification);
+            manager.transmitDacStatus(notification);
         } else if (message instanceof DacTransmitCriticalError) {
             DacTransmitCriticalError notification = (DacTransmitCriticalError) message;
             manager.errorReceived(notification, groupName);
@@ -195,12 +205,9 @@ public class DacTransmitCommunicator extends Thread {
 
     private void disconnect() {
         try {
-            if (socket != null) {
-                socket.close();
-            }
+            socket.close();
         } catch (IOException e) {
             logger.error("Error disconnecting from comms manager", e);
         }
-        server.disconnected(this);
     }
 }
