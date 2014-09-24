@@ -22,7 +22,9 @@ package com.raytheon.uf.common.bmh.dac;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.SocketException;
+import java.net.InetAddress;
+import java.net.MulticastSocket;
+import java.net.NetworkInterface;
 import java.nio.ByteBuffer;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
@@ -48,6 +50,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014 3374       bkowal      Initial creation
  * Jul 15, 2014 3487       bsteffen    Add hasSubscribers
+ * Sep 23, 2014 3485       bsteffen    Allow receiving through multicast.
  * 
  * </pre>
  * 
@@ -104,6 +107,11 @@ public class DacReceiveThread extends Thread {
     private final int port;
 
     /*
+     * When receiving through multicast this is the group address to join.
+     */
+    private final InetAddress multicastAddress;
+
+    /*
      * Used to connect to the DAC and read data.
      */
     private DatagramSocket dacConnection;
@@ -139,19 +147,37 @@ public class DacReceiveThread extends Thread {
     private boolean potentialWrapAround = false;
 
     /**
-     * Constructor
+     * Receive audio playback from the dac using a multicast address.
      * 
+     * @param netIf
+     *            - the network interface connected to the network the dac is
+     *            on. This can be null and will use the default network
+     *            interface.
+     * @param multicastAddress
+     *            the multicast address that the dac is sending audio to.
      * @param port
-     *            the port that will be used to connect to the dac.
+     *            the port that the dac is sending audio to.
      */
-    public DacReceiveThread(final int port) {
+    public DacReceiveThread(final NetworkInterface netIf,
+            final InetAddress multicastAddress, final int port) {
         super(DacReceiveThread.class.getName());
         this.subscribers = new ArrayList<>();
         this.port = port;
+        this.multicastAddress = multicastAddress;
 
         try {
-            this.dacConnection = new DatagramSocket(this.port);
-        } catch (SocketException e) {
+            if (multicastAddress == null) {
+                this.dacConnection = new DatagramSocket(this.port);
+            } else {
+                MulticastSocket socket = new MulticastSocket(this.port);
+                if (netIf != null) {
+                    socket.setNetworkInterface(netIf);
+                }
+                socket.joinGroup(multicastAddress);
+                this.dacConnection = socket;
+
+            }
+        } catch (IOException e) {
             statusHandler
                     .fatal("Failed to bind to port: " + this.port + "!", e);
             return;
@@ -161,6 +187,16 @@ public class DacReceiveThread extends Thread {
 
         statusHandler.info("Ready to listen for DAC packets on port: "
                 + this.port + ".");
+    }
+
+    /**
+     * Constructor
+     * 
+     * @param port
+     *            the port that will be used to connect to the dac.
+     */
+    public DacReceiveThread(final int port) {
+        this(null, null, port);
     }
 
     private void initDataStorage() {
@@ -212,7 +248,16 @@ public class DacReceiveThread extends Thread {
         if (this.dacConnection == null) {
             return;
         }
-
+        if (this.dacConnection instanceof MulticastSocket
+                && multicastAddress != null) {
+            MulticastSocket multicast = (MulticastSocket) this.dacConnection;
+            try {
+                multicast.leaveGroup(multicastAddress);
+            } catch (IOException e) {
+                statusHandler.error("Failed to leave multicast group: "
+                        + multicastAddress, e);
+            }
+        }
         this.dacConnection.close();
         statusHandler.info("Terminated the connection to the DAC.");
         this.dacConnection = null;
