@@ -20,6 +20,7 @@
 package com.raytheon.bmh.comms;
 
 import java.io.IOException;
+import java.lang.ProcessBuilder.Redirect;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -392,8 +393,8 @@ public class CommsManager {
                 + ".log";
         Path logFilePath = Paths.get(BMHConstants.getBmhDataDirectory())
                 .resolveSibling("logs").resolve(logFileName);
-        startCommand.redirectOutput(logFilePath.toFile());
-        startCommand.redirectError(logFilePath.toFile());
+        startCommand.redirectOutput(Redirect.appendTo(logFilePath.toFile()));
+        startCommand.redirectError(Redirect.appendTo(logFilePath.toFile()));
         try {
             p = startCommand.start();
             startedProcesses.put(key, p);
