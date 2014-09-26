@@ -61,6 +61,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.DictionaryManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride.EmergencyOverrideDlg;
@@ -175,6 +176,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     /** Emergency Override dialog. */
     private EmergencyOverrideDlg emergecyOverrideDlg;
+
+    /** DAC configuration dialog. */
+    private DacConfigDlg dacConfigDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -769,6 +773,24 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent event) {
                 launchLegacyDictionaryConverter();
+            }
+        });
+
+        /*
+         * Convert Legacy Dictionary
+         */
+        MenuItem dacConfigMI = new MenuItem(maintenanceMenu, SWT.PUSH);
+        dacConfigMI.setText("DAC Configuration...");
+        dacConfigMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                if (dacConfigDlg == null || dacConfigDlg.isDisposed() == true) {
+                    dacConfigDlg = new DacConfigDlg(shell,
+                            dlgsToValidateCloseMap);
+                    dacConfigDlg.open();
+                } else {
+                    dacConfigDlg.bringToTop();
+                }
             }
         });
     }
