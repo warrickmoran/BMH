@@ -66,6 +66,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jun 04, 2014    3432       mpduff    Initial creation
  * Aug 14, 2014    3432       mpduff    Remaining capabilities
+ * Sep 25, 2014    3620       bsteffen  Add seconds to periodicity.
  * 
  * </pre>
  * 
@@ -470,7 +471,8 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         StringBuilder sb = new StringBuilder();
         sb.append(periodicity.substring(0, 2)).append(COLON);
         sb.append(periodicity.substring(2, 4)).append(COLON);
-        sb.append(periodicity.substring(4, 6));
+        sb.append(periodicity.substring(4, 6)).append(COLON);
+        sb.append(periodicity.substring(6, 8));
 
         return sb.toString();
     }

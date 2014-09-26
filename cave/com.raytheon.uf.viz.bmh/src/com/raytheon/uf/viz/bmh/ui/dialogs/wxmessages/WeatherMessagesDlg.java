@@ -72,6 +72,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 11, 2014  #3610     lvenable     Initial creation
+ * Sep 25, 2014   3620     bsteffen     Add seconds to periodicity.
  * 
  * </pre>
  * 
@@ -494,7 +495,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             periodicityDateTimeStr = selectedMsgType.getPeriodicity();
         }
 
-        periodicityMap = generateDayHourMinuteMap(periodicityDateTimeStr);
+        periodicityMap = generateDayHourMinuteSecondMap(periodicityDateTimeStr);
 
         periodicityDTF = new DateTimeFields(defaultsGrp, periodicityMap, false,
                 false, true);
@@ -672,7 +673,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      *            Date/Time string (DDHHMM).
      * @return Map of DateFieldTypes and the associated values.
      */
-    private Map<DateFieldType, Integer> generateDayHourMinuteMap(
+    private Map<DateFieldType, Integer> generateDayHourMinuteSecondMap(
             String dateTimeStr) {
         Map<DateFieldType, Integer> durMap = new LinkedHashMap<DateFieldType, Integer>();
 

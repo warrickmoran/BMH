@@ -44,6 +44,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
+ * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
  * 
  * </pre>
  * 
@@ -181,11 +182,7 @@ public class InputMessageParser {
             throw new ParseException("Invalid Periocity.", index);
         }
         if (!periodicity.group().trim().isEmpty()) {
-            /*
-             * Dropping the seconds, we only use periodicity down to minute
-             * accuracy.
-             */
-            message.setPeriodicity(periodicity.group().substring(0, 6));
+            message.setPeriodicity(periodicity.group());
         }
         return periodicity.end();
     }

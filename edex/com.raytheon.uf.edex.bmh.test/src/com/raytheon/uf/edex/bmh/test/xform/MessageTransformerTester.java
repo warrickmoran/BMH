@@ -65,6 +65,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 8, 2014  3302       bkowal      Initial creation
+ * Sep 25, 2014 3620       bsteffen    Add seconds to periodicity and duration.
  * 
  * </pre>
  * 
@@ -87,7 +88,7 @@ public class MessageTransformerTester extends AbstractBMHTester {
 
     private static final String MSG_TYPE_TITLE = "XFORMTITLE";
 
-    private static final String MSG_TYPE_DEFAULT_9 = "999999";
+    private static final String MSG_TYPE_DEFAULT_9 = "99999999";
 
     private static final String TRANSMITTER_LANGUAGE_DICTIONARY = "XFormTestDict";
 
@@ -213,7 +214,6 @@ public class MessageTransformerTester extends AbstractBMHTester {
             messageType = new MessageType();
             messageType.setAfosid(afosid);
             messageType.setTitle(MSG_TYPE_TITLE);
-            messageType.setDuration(MSG_TYPE_DEFAULT_9);
             messageType.setDesignation(Designation.Warning);
             messageType.setDuration(MSG_TYPE_DEFAULT_9);
             messageType.setPeriodicity(MSG_TYPE_DEFAULT_9);

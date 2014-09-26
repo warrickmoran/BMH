@@ -143,11 +143,11 @@ public class MessageType {
     @DynamicSerializeElement
     private Designation designation;
 
-    @Column(length = 6, nullable = false)
+    @Column(length = 8, nullable = false)
     @DynamicSerializeElement
     private String duration;
 
-    @Column(length = 6, nullable = false)
+    @Column(length = 8, nullable = false)
     @DynamicSerializeElement
     private String periodicity;
 
@@ -359,10 +359,8 @@ public class MessageType {
                 replacementMsgs = new HashSet<>();
             }
 
-            if (replaceMsg != null) {
-                replaceMsg.setMsgType(this);
-                replacementMsgs.add(replaceMsg);
-            }
+            replaceMsg.setMsgType(this);
+            replacementMsgs.add(replaceMsg);
         }
     }
 
