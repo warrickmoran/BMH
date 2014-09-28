@@ -48,6 +48,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 7, 2014   #3174     lvenable     Initial creation
  * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
  * Aug 22, 2014  #3490      lvenable    Updated code to handle making code all-caps.
+ * Sep 28, 2014   3630     mpduff       Set the ok button as the default button.
  * 
  * </pre>
  * 
@@ -60,13 +61,13 @@ public class InputTextDlg extends CaveSWTDialog {
     private Text inputTf;
 
     /** Description message. */
-    private String descriptionTxt;
+    private final String descriptionTxt;
 
     /** Text to populate the text field with on start up. */
     private String textFieldText = null;
 
     /** Text validator. */
-    private IInputTextValidator textValidator;
+    private final IInputTextValidator textValidator;
 
     private boolean upcaseText;
 
@@ -194,6 +195,8 @@ public class InputTextDlg extends CaveSWTDialog {
                 }
             }
         });
+
+        shell.setDefaultButton(okBtn);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;

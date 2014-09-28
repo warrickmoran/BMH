@@ -59,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterAlignmentDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacConfigDlg;
@@ -98,6 +99,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 21, 2014  #3490     lvenable    Updated disable silence alarm to use transmitter group.
  * Aug 25, 2014  #3490     lvenable    Disabled Status Dialog since it will be redesigned.
  * Sep 14, 2014  #3610     lvenable    Added launching of Weather Messages dialog.
+ * Sep 14, 2014   3630     mpduff      Add the Transmitter Alignment dialog.
  * Sep 19, 2014  #3611     lvenable    Added launching of Emergency Override dialog.
  * 
  * </pre>
@@ -179,6 +181,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     /** DAC configuration dialog. */
     private DacConfigDlg dacConfigDlg;
+
+    /** Transmitter Alignment Dialog */
+    private TransmitterAlignmentDlg transmitterAlignmentDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -509,6 +514,25 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                     transmitterConfigDlg.open();
                 } else {
                     transmitterConfigDlg.bringToTop();
+                }
+            }
+        });
+
+        /*
+         * Transmitter alignment
+         */
+        MenuItem transAlignmentMI = new MenuItem(transmittersMenu, SWT.PUSH);
+        transAlignmentMI.setText("Transmitter Alignment...");
+        transAlignmentMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (transmitterAlignmentDlg == null
+                        || transmitterAlignmentDlg.isDisposed()) {
+                    transmitterAlignmentDlg = new TransmitterAlignmentDlg(
+                            shell, dlgsToValidateCloseMap);
+                    transmitterAlignmentDlg.open();
+                } else {
+                    transmitterAlignmentDlg.bringToTop();
                 }
             }
         });
