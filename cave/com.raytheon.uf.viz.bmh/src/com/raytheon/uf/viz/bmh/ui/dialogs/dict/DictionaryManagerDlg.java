@@ -68,6 +68,7 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * Aug 05, 2014 3175       rjpeter     Reload dictionary on edit word.
  * Aug 8, 2014    #3490    lvenable    Removed Override on update method.
  * Aug 28, 2014    3432    mpduff      Only open one new dictionary dialog
+ * Sep 28, 2014   3407     mpduff      Fix button states for certain situations
  * 
  * </pre>
  * 
@@ -108,6 +109,9 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
 
     /** The currently selected dictionary */
     private Dictionary selectedDictionary;
+
+    /** The new word button */
+    private Button newWordBtn;
 
     /** The edit word button */
     private Button editWordBtn;
@@ -237,9 +241,10 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
 
         int btnWidth = 95;
         gd = new GridData(btnWidth, SWT.DEFAULT);
-        Button newWordBtn = new Button(comp, SWT.PUSH);
+        newWordBtn = new Button(comp, SWT.PUSH);
         newWordBtn.setText("New Word...");
         newWordBtn.setLayoutData(gd);
+        newWordBtn.setEnabled(false);
         newWordBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -318,6 +323,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
             tableData.getTableRows().clear();
             dictionaryTableComp.updateTable(tableData);
             dictCombo.select(0);
+            dictionarySelectAction();
         } catch (Exception e) {
             statusHandler.error("Unable to delete dictionary, " + name, e);
             return;
@@ -337,6 +343,14 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
                 return;
             }
             this.deleteDictionaryBtn.setEnabled(true);
+            this.newWordBtn.setEnabled(true);
+            populateTable();
+        } else {
+            deleteDictionaryBtn.setEnabled(false);
+            newWordBtn.setEnabled(false);
+            editWordBtn.setEnabled(false);
+            deleteWordBtn.setEnabled(false);
+            selectedDictionary = null;
             populateTable();
         }
     }
@@ -348,17 +362,18 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
         this.tableData = new TableData(columns);
         tableData.setSortColumnAndDirection(0, SortDirection.ASCENDING);
 
-        for (Word word : selectedDictionary.getWords()) {
-            TableRowData row = new TableRowData();
-            row.setData(word);
-            TableCellData tcd = new TableCellData(word.getWord());
-            row.addTableCellData(tcd);
+        if (selectedDictionary != null) {
+            for (Word word : selectedDictionary.getWords()) {
+                TableRowData row = new TableRowData();
+                row.setData(word);
+                TableCellData tcd = new TableCellData(word.getWord());
+                row.addTableCellData(tcd);
 
-            tcd = new TableCellData(word.getSubstitute());
-            row.addTableCellData(tcd);
-            tableData.addDataRow(row);
+                tcd = new TableCellData(word.getSubstitute());
+                row.addTableCellData(tcd);
+                tableData.addDataRow(row);
+            }
         }
-
         this.dictionaryTableComp.updateTable(tableData);
     }
 
