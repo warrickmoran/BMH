@@ -35,6 +35,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 3, 2014  3228       bkowal      Initial creation
+ * Sep 29, 2014 3291       bkowal      Added the bmh home directory.
  * 
  * </pre>
  * 
@@ -59,9 +60,20 @@ public final class BMHConstants {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(BMHConstants.class);
 
+    private static final String BMH_HOME_ENV_VAR = "BMH_HOME";
+
     private static final String BMH_DATA_ENV_VAR = "BMH_DATA";
 
+    private static String BMH_HOME_DIRECTORY;
+
     private static String BMH_DATA_DIRECTORY;
+
+    public static String getBmhHomeDirectory() {
+        if (BMH_HOME_DIRECTORY == null) {
+            BMH_HOME_DIRECTORY = getHomeDirectory();
+        }
+        return BMH_HOME_DIRECTORY;
+    }
 
     public static String getBmhDataDirectory() {
         if (BMH_DATA_DIRECTORY == null) {
@@ -83,9 +95,28 @@ public final class BMHConstants {
         return stringBuilder.toString();
     }
 
+    private static String getHomeDirectory() {
+        String bmhHomeDirectory = System.getenv(BMH_HOME_ENV_VAR);
+        if (bmhHomeDirectory == null || bmhHomeDirectory.isEmpty()) {
+            /*
+             * This case is unlikely because other aspects of the startup would
+             * most likely fail long before this segment of code was reached.
+             */
+            final String exceptionText = "Unable to determine the location of the BMH HOME directory! Please ensure that the environment variable '"
+                    + BMH_HOME_ENV_VAR
+                    + "' is set to the location of the directory.";
+
+            statusHandler.handle(Priority.CRITICAL, exceptionText);
+            throw new RuntimeException(exceptionText);
+        }
+
+        statusHandler.info("BMH HOME is: " + bmhHomeDirectory);
+        return bmhHomeDirectory;
+    }
+
     private static String getDataDirectory() {
         String bmhDataDirectory = System.getenv(BMH_DATA_ENV_VAR);
-        if (bmhDataDirectory == null) {
+        if (bmhDataDirectory == null || bmhDataDirectory.isEmpty()) {
             final String exceptionText = "Unable to determine the location of the BMH DATA directory! Please ensure that the environment variable '"
                     + BMH_DATA_ENV_VAR
                     + "' is set to the location of the directory.";

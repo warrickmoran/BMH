@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.comms;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Set;
@@ -44,6 +45,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Aug 04, 2014  2487     bsteffen    Rename config options.
  * Sep 25, 2014  3485     bsteffen    Add cluster options
+ * Sep 29, 2014  3291     bkowal      Updated to use the bmh home directory.
  * 
  * </pre>
  * 
@@ -64,7 +66,8 @@ public class CommsConfig {
     private int lineTapPort = 58260;
 
     @XmlElement
-    private String dacTransmitStarter = "/awips2/bmh/bin/dactransmit.sh";
+    private String dacTransmitStarter = BMHConstants.getBmhHomeDirectory()
+            + File.separator + "bin" + File.separator + "dactransmit.sh";
 
     @XmlElement
     private String jmsConnection;
@@ -124,8 +127,8 @@ public class CommsConfig {
     }
 
     public static Path getDefaultPath() {
-        return Paths.get(BMHConstants.getBmhDataDirectory())
-                .resolveSibling("conf").resolve("comms.xml");
+        return Paths.get(BMHConstants.getBmhHomeDirectory()).resolve("conf")
+                .resolve("comms.xml");
     }
 
     public Set<CommsHostConfig> getClusterHosts() {
