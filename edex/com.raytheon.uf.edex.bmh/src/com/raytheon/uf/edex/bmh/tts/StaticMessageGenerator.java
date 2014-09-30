@@ -67,6 +67,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Aug 28, 2014 3568       bkowal      Initial creation
  * Sep 09, 2014 2585       bsteffen    Implement MAT
  * Sep 12, 2014 3588       bsteffen    Support audio fragments.
+ * Sep 29, 2014 3673       bkowal      Fix existing msg validation.
  * 
  * </pre>
  * 
@@ -399,9 +400,13 @@ public class StaticMessageGenerator {
                 complete &= output != null && !output.isEmpty()
                         && Files.exists(Paths.get(output));
             }
-            if (complete) {
-                return this.create(language, messageType, text, groupSet);
-            }
+        }
+
+        if (complete == false) {
+            /*
+             * an associated broadcast message does not exist or is incomplete.
+             */
+            return this.create(language, messageType, text, groupSet);
         }
 
         /*
