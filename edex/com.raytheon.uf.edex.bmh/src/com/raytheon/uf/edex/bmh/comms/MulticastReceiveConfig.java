@@ -24,6 +24,8 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 
 /**
@@ -43,6 +45,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * @author bsteffen
  * @version 1.0
  */
+@XmlAccessorType(XmlAccessType.NONE)
 public class MulticastReceiveConfig {
 
     @XmlAttribute
