@@ -49,6 +49,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 04, 2014  3486     bsteffen    Initial creation
  * Aug 27, 2014  3432     mpduff      Added Serialization annotation.
  * Sep 22, 2014  #3652    lvenable    Added name column and a sequence generator for the ID.
+ * Sep 25, 2014  3485     bsteffen    Add receiveAddress
  * 
  * </pre>
  * 
@@ -84,6 +85,10 @@ public class Dac {
     @DynamicSerializeElement
     private int receivePort;
 
+    @Column
+    @DynamicSerializeElement
+    private String receiveAddress;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "dac_ports", schema = "bmh")
     @Column(name = "dataPort")
@@ -112,6 +117,14 @@ public class Dac {
 
     public void setReceivePort(int receivePort) {
         this.receivePort = receivePort;
+    }
+
+    public String getReceiveAddress() {
+        return receiveAddress;
+    }
+
+    public void setReceiveAddress(String receiveAddress) {
+        this.receiveAddress = receiveAddress;
     }
 
     public Set<Integer> getDataPorts() {

@@ -10,7 +10,7 @@
     <property name="transmitterGroupDao" ref="transmitterGroupDao" />
   </bean>
 
-  <camelContext id="clusteredBmhCommsConfigurator" xmlns="http://camel.apache.org/schema/spring"
+  <camelContext id="bmhCommsConfigurator" xmlns="http://camel.apache.org/schema/spring"
     errorHandlerRef="errorHandler">
 
     <route id="bmhCommsConfiguratorRoute">
@@ -30,13 +30,9 @@
     </route>
 
   </camelContext>
-
-  <bean factory-bean="contextManager" factory-method="registerClusteredContext">
-    <constructor-arg ref="clusteredBmhCommsConfigurator" />
-  </bean>
   
   <bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
-    <constructor-arg ref="clusteredBmhCommsConfigurator" />
+    <constructor-arg ref="bmhCommsConfigurator" />
     <constructor-arg ref="commsConfigurator" />
   </bean>
 </beans>

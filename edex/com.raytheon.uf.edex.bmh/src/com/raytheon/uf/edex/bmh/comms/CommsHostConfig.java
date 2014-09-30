@@ -19,6 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.comms;
 
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -46,12 +51,79 @@ public class CommsHostConfig {
     @XmlAttribute
     private String ipAddress;
 
+    @XmlAttribute
+    private String dacInterface;
+
     public String getIpAddress() {
         return ipAddress;
     }
 
     public void setIpAddress(String ipAddress) {
         this.ipAddress = ipAddress;
+    }
+
+    public String getDacInterface() {
+        return dacInterface;
+    }
+
+    public void setDacInterface(String dacInterface) {
+        this.dacInterface = dacInterface;
+    }
+
+    public boolean isLocalHost() throws UnknownHostException, SocketException {
+        if (ipAddress == null) {
+            return false;
+        }
+        InetAddress address = InetAddress.getByName(ipAddress);
+        return NetworkInterface.getByInetAddress(address) != null;
+    }
+
+    public NetworkInterface getDacNetworkInterface()
+            throws UnknownHostException, SocketException {
+        if (dacInterface == null || dacInterface.isEmpty()) {
+            return null;
+        } else {
+            try {
+                return NetworkInterface.getByName(dacInterface);
+            } catch (SocketException e) {
+                InetAddress address = InetAddress.getByName(dacInterface);
+                return NetworkInterface.getByInetAddress(address);
+
+            }
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result
+                + ((dacInterface == null) ? 0 : dacInterface.hashCode());
+        result = prime * result
+                + ((ipAddress == null) ? 0 : ipAddress.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        CommsHostConfig other = (CommsHostConfig) obj;
+        if (dacInterface == null) {
+            if (other.dacInterface != null)
+                return false;
+        } else if (!dacInterface.equals(other.dacInterface))
+            return false;
+        if (ipAddress == null) {
+            if (other.ipAddress != null)
+                return false;
+        } else if (!ipAddress.equals(other.ipAddress))
+            return false;
+        return true;
     }
 
 }

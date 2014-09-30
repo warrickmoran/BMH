@@ -20,9 +20,14 @@
 package com.raytheon.bmh.comms.linetap;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.Socket;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -35,9 +40,9 @@ import com.raytheon.uf.common.bmh.dac.DacReceiveThread;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
+import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
-import com.raytheon.uf.edex.bmh.comms.MulticastReceiveConfig;
 
 /**
  * 
@@ -62,9 +67,11 @@ public class LineTapServer extends AbstractServerThread {
     private static final Logger logger = LoggerFactory
             .getLogger(LineTapServer.class);
 
-    private final Map<Integer, DacReceiveThread> receivers = new HashMap<>();
+    private final Map<ReceiveKey, DacReceiveThread> receivers = new HashMap<>();
 
     private volatile Set<DacConfig> dacs;
+
+    private volatile NetworkInterface multicastInterface;
 
     public LineTapServer(CommsConfig config) throws IOException {
         super(config.getLineTapPort());
@@ -77,6 +84,19 @@ public class LineTapServer extends AbstractServerThread {
             dacs = Collections.emptySet();
         }
         this.dacs = dacs;
+        try {
+            CommsHostConfig localHost = config.getLocalClusterHost();
+            if (localHost == null) {
+                multicastInterface = null;
+            } else {
+                multicastInterface = localHost.getDacNetworkInterface();
+            }
+        } catch (IOException e) {
+            logger.error(
+                    "Unable to determine interface for multicast line tap, default interface will be used.",
+                    e);
+            multicastInterface = null;
+        }
     }
 
     @Override
@@ -88,25 +108,10 @@ public class LineTapServer extends AbstractServerThread {
         for (DacConfig dac : dacs) {
             for (DacChannelConfig channel : dac.getChannels()) {
                 if (channel.getTransmitterGroup().equals(group)) {
-                    synchronized (receivers) {
-                        DacReceiveThread receiver = receivers.get(dac
-                                .getReceivePort());
-                        if (receiver == null || !receiver.isAlive()) {
-                            MulticastReceiveConfig multicast = dac
-                                    .getMulticastReceive();
-                            if (multicast != null
-                                    && multicast.getAddress() != null) {
-                                receiver = new DacReceiveThread(
-                                        multicast.getNetworkInterface(),
-                                        multicast.getInetAddress(),
-                                        dac.getReceivePort());
-                            } else {
-                                receiver = new DacReceiveThread(
-                                        dac.getReceivePort());
-                            }
-                            receivers.put(dac.getReceivePort(), receiver);
-                            receiver.start();
-                        }
+                    DacReceiveThread receiver = getReceiver(dac);
+                    if (receiver == null) {
+                        socket.close();
+                    } else {
                         LineTapCommunicator comms = new LineTapCommunicator(
                                 this, group, channel.getRadios()[0], socket);
                         receiver.subscribe(comms);
@@ -121,25 +126,105 @@ public class LineTapServer extends AbstractServerThread {
         socket.close();
     }
 
-    public void unsubscribe(LineTapCommunicator comms) {
-        for (DacConfig dac : dacs) {
-            for (DacChannelConfig channel : dac.getChannels()) {
-                if (channel.getTransmitterGroup().equals(comms.getGroupName())) {
-                    synchronized (receivers) {
-                        DacReceiveThread receiver = receivers.get(dac
-                                .getReceivePort());
-                        if (receiver != null) {
-                            receiver.unsubscribe(comms);
-                            if (!receiver.hasSubscribers()) {
-                                receiver.halt();
-                                receivers.remove(dac.getReceivePort());
-                            }
-                        }
+    private DacReceiveThread getReceiver(DacConfig dac)
+            throws UnknownHostException, SocketException {
+        synchronized (receivers) {
+            int receivePort = dac.getReceivePort();
+            DacReceiveThread receiver = null;
+            String receiverAddress = dac.getReceiveAddress();
+            if (receiverAddress != null) {
+                InetAddress address = InetAddress.getByName(receiverAddress);
+                if (address.isMulticastAddress()) {
+                    ReceiveKey key = new ReceiveKey(receiverAddress,
+                            receivePort);
+                    receiver = receivers.get(key);
+                    if (receiver == null || !receiver.isAlive()) {
+                        receiver = new DacReceiveThread(multicastInterface,
+                                address, receivePort);
+                        receivers.put(key, receiver);
+                        receiver.start();
                     }
-                    return;
+                } else if (NetworkInterface.getByInetAddress(address) == null) {
+                    logger.error(
+                            "Unable open line tap because the receive address({}) is not valid for this host.",
+                            receiverAddress);
+                    return null;
+                }
+            }
+            if (receiver == null) {
+                ReceiveKey key = new ReceiveKey(receivePort);
+                receiver = receivers.get(key);
+                if (receiver == null || !receiver.isAlive()) {
+                    receiver = new DacReceiveThread(receivePort);
+                    receivers.put(key, receiver);
+                    receiver.start();
+                }
+            }
+            return receiver;
+        }
+    }
+
+    public void unsubscribe(LineTapCommunicator comms) {
+        synchronized (receivers) {
+            Iterator<DacReceiveThread> it = receivers.values().iterator();
+            while (it.hasNext()) {
+                DacReceiveThread receiver = it.next();
+                receiver.unsubscribe(comms);
+                if (!receiver.hasSubscribers()) {
+                    receiver.halt();
+                    it.remove();
                 }
             }
         }
+    }
+
+    private static final class ReceiveKey {
+
+        private final String address;
+
+        private final int port;
+
+        private final int hashCode;
+
+        public ReceiveKey(String address, int port) {
+            this.address = address;
+            this.port = port;
+            final int prime = 31;
+            int hashCode = 1;
+            hashCode = prime * hashCode
+                    + ((address == null) ? 0 : address.hashCode());
+            hashCode = prime * hashCode + port;
+            this.hashCode = hashCode;
+        }
+
+        public ReceiveKey(int port) {
+            this(null, port);
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            ReceiveKey other = (ReceiveKey) obj;
+            if (address == null) {
+                if (other.address != null)
+                    return false;
+            } else if (!address.equals(other.address))
+                return false;
+            if (port != other.port)
+                return false;
+            return true;
+        }
+
     }
 
 }

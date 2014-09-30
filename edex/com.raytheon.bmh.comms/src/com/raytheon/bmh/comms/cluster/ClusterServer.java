@@ -21,9 +21,7 @@ package com.raytheon.bmh.comms.cluster;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.NetworkInterface;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -88,10 +86,6 @@ public class ClusterServer extends AbstractServerThread {
         }
     }
 
-    private boolean isLocalhost(InetAddress address) throws SocketException {
-        return NetworkInterface.getByInetAddress(address) != null;
-    }
-
     public void attempClusterConnections(CommsConfig config) {
         if (config.getClusterHosts() == null) {
             for (ClusterCommunicator communicator : communicators.values()) {
@@ -103,6 +97,16 @@ public class ClusterServer extends AbstractServerThread {
         Set<InetAddress> configuredAddresses = new CopyOnWriteArraySet<>();
         boolean localFound = false;
         for (CommsHostConfig host : config.getClusterHosts()) {
+            try {
+                if (host.isLocalHost()) {
+                    localFound = true;
+                    continue;
+                }
+            } catch (IOException e) {
+                logger.error("Unable to check location of cluster member: {}",
+                        host.getIpAddress(), e);
+                continue;
+            }
             InetAddress address = null;
             try {
                 address = InetAddress.getByName(host.getIpAddress());
@@ -115,35 +119,21 @@ public class ClusterServer extends AbstractServerThread {
             if (communicators.containsKey(address)) {
                 continue;
             }
-            boolean local = false;
             try {
-                local = isLocalhost(address);
-            } catch (SocketException e) {
-                logger.error("Unable to check location of cluster member: {}",
-                        host.getIpAddress(), e);
-                continue;
-            }
-
-            if (local) {
-                localFound = true;
-            } else {
-                try {
-                    Socket socket = new Socket(address, config.getClusterPort());
-                    socket.setTcpNoDelay(true);
-                    ClusterCommunicator communicator = new ClusterCommunicator(
-                            manager, socket);
-                    communicator.start();
-                    communicator.sendState(state);
-                    ClusterCommunicator prev = communicators.put(address,
-                            communicator);
-                    if (prev != null) {
-                        prev.disconnect();
-                    }
-                } catch (IOException e) {
-                    logger.warn(
-"Unable to connect to cluster member: {}",
-                            host.getIpAddress());
+                Socket socket = new Socket(address, config.getClusterPort());
+                socket.setTcpNoDelay(true);
+                ClusterCommunicator communicator = new ClusterCommunicator(
+                        manager, socket);
+                communicator.start();
+                communicator.sendState(state);
+                ClusterCommunicator prev = communicators.put(address,
+                        communicator);
+                if (prev != null) {
+                    prev.disconnect();
                 }
+            } catch (IOException e) {
+                logger.warn("Unable to connect to cluster member: {}",
+                        host.getIpAddress());
             }
         }
         this.configuredAddresses = configuredAddresses;

@@ -21,6 +21,7 @@ package com.raytheon.bmh.comms.dactransmit;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -200,13 +201,13 @@ public class DacTransmitServer extends AbstractServerThread {
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(key);
         if (communicators != null) {
-            Iterator<DacTransmitCommunicator> it = communicators.iterator();
-            while (it.hasNext()) {
-                DacTransmitCommunicator communicator = it.next();
-                if (!communicator.isAlive()) {
-                    it.remove();
+            List<DacTransmitCommunicator> bad = new ArrayList<>();
+            for (DacTransmitCommunicator communicator : communicators) {
+                if (!communicator.isConnectedToDacTransmit()) {
+                    bad.add(communicator);
                 }
             }
+            communicators.removeAll(bad);
 
         }
     }

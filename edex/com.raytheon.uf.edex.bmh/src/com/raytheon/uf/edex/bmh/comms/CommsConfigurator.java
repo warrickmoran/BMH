@@ -62,6 +62,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Sep 4, 2014   3532     bkowal      Replace the decibel range with the decibel
  *                                    target in the configuration.
  * Sep 09, 2014  3554     bsteffen    Inject daos to better handle startup ordering
+ * Sep 25, 2014  3485     bsteffen    Preserve cluster options and write dac receiveAddress.
  * 
  * </pre>
  * 
@@ -106,7 +107,9 @@ public class CommsConfigurator implements IContextStateProcessor {
         if (prevConfig != null) {
             config.setDacTransmitPort(prevConfig.getDacTransmitPort());
             config.setLineTapPort(prevConfig.getLineTapPort());
+            config.setClusterPort(prevConfig.getClusterPort());
             config.setDacTransmitStarter(prevConfig.getDacTransmitStarter());
+            config.setClusterHosts(prevConfig.getClusterHosts());
             if (prevConfig.getDacs() != null) {
                 for (DacConfig dconf : prevConfig.getDacs()) {
                     prevDacMap.put(dconf.getIpAddress(), dconf);
@@ -146,6 +149,7 @@ public class CommsConfigurator implements IContextStateProcessor {
             DacConfig dconf = new DacConfig();
             dconf.setIpAddress(dac.getAddress());
             dconf.setReceivePort(dac.getReceivePort());
+            dconf.setReceiveAddress(dac.getReceiveAddress());
             dacMap.put(dac.getId(), dconf);
         }
         return dacMap;

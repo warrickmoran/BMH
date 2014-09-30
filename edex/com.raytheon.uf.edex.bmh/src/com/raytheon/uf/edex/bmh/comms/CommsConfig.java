@@ -20,6 +20,8 @@
 package com.raytheon.uf.edex.bmh.comms;
 
 import java.io.File;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Set;
@@ -52,7 +54,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * @author bsteffen
  * @version 1.0
  */
-@XmlRootElement(name = "dacs")
+@XmlRootElement(name = "commsConfig")
 @XmlAccessorType(XmlAccessType.NONE)
 public class CommsConfig {
 
@@ -137,6 +139,21 @@ public class CommsConfig {
 
     public void setClusterHosts(Set<CommsHostConfig> clusterHosts) {
         this.clusterHosts = clusterHosts;
+    }
+
+    public CommsHostConfig getLocalClusterHost() throws UnknownHostException,
+            SocketException {
+        if (clusterHosts == null) {
+            return null;
+        } else {
+            for (CommsHostConfig clusterHost : clusterHosts) {
+                if (clusterHost.isLocalHost()) {
+                    return clusterHost;
+                }
+            }
+            return null;
+        }
+
     }
 
 }

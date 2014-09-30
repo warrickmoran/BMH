@@ -116,8 +116,8 @@ public class DacTransmitCommunicator extends Thread {
                             groupName, e);
                     disconnect();
                     if (isConnectedToDac()) {
-                        manager.dacDisconnectedLocal(key, groupName);
                         lastStatus = null;
+                        manager.dacDisconnectedLocal(key, groupName);
                     }
                 }
             }
@@ -155,13 +155,17 @@ public class DacTransmitCommunicator extends Thread {
         } else if (message instanceof DacTransmitShutdown) {
             disconnect();
             if (isConnectedToDac()) {
-                manager.dacDisconnectedLocal(key, groupName);
                 lastStatus = null;
+                manager.dacDisconnectedLocal(key, groupName);
             }
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",
                     message.getClass().getSimpleName());
         }
+    }
+
+    public boolean isConnectedToDacTransmit() {
+        return lastStatus != null;
     }
 
     public boolean isConnectedToDac() {

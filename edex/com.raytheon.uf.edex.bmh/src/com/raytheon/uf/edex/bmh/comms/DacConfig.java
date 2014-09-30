@@ -55,8 +55,8 @@ public class DacConfig {
     @XmlAttribute
     private int receivePort;
 
-    @XmlElement
-    private MulticastReceiveConfig multicastReceive;
+    @XmlAttribute
+    private String receiveAddress;
 
     @XmlElement(name = "channel")
     private List<DacChannelConfig> channels;
@@ -77,12 +77,12 @@ public class DacConfig {
         this.receivePort = receivePort;
     }
 
-    public MulticastReceiveConfig getMulticastReceive() {
-        return multicastReceive;
+    public String getReceiveAddress() {
+        return receiveAddress;
     }
 
-    public void setMulticastReceive(MulticastReceiveConfig multicastReceive) {
-        this.multicastReceive = multicastReceive;
+    public void setReceiveAddress(String receiveAddress) {
+        this.receiveAddress = receiveAddress;
     }
 
     public List<DacChannelConfig> getChannels() {
@@ -108,9 +108,8 @@ public class DacConfig {
                 + ((channels == null) ? 0 : channels.hashCode());
         result = prime * result
                 + ((ipAddress == null) ? 0 : ipAddress.hashCode());
-        result = prime
-                * result
-                + ((multicastReceive == null) ? 0 : multicastReceive.hashCode());
+        result = prime * result
+                + ((receiveAddress == null) ? 0 : receiveAddress.hashCode());
         result = prime * result + receivePort;
         return result;
     }
@@ -134,15 +133,14 @@ public class DacConfig {
                 return false;
         } else if (!ipAddress.equals(other.ipAddress))
             return false;
-        if (multicastReceive == null) {
-            if (other.multicastReceive != null)
+        if (receiveAddress == null) {
+            if (other.receiveAddress != null)
                 return false;
-        } else if (!multicastReceive.equals(other.multicastReceive))
+        } else if (!receiveAddress.equals(other.receiveAddress))
             return false;
         if (receivePort != other.receivePort)
             return false;
         return true;
     }
-
 
 }
