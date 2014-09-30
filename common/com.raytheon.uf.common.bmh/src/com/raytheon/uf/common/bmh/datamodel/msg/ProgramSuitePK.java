@@ -36,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 11, 2014 3587       bkowal     Initial creation
+ * Sep 29, 2014 3589       dgilling   Implement hashCode() and equals().
  * 
  * </pre>
  * 
@@ -51,9 +52,39 @@ public class ProgramSuitePK implements Serializable {
 
     @DynamicSerializeElement
     private int programId;
-    
+
     @DynamicSerializeElement
     private int suiteId;
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + programId;
+        result = prime * result + suiteId;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        ProgramSuitePK other = (ProgramSuitePK) obj;
+        if (programId != other.programId) {
+            return false;
+        }
+        if (suiteId != other.suiteId) {
+            return false;
+        }
+        return true;
+    }
 
     /**
      * @return the programId
@@ -78,7 +109,8 @@ public class ProgramSuitePK implements Serializable {
     }
 
     /**
-     * @param suiteId the suiteId to set
+     * @param suiteId
+     *            the suiteId to set
      */
     public void setSuiteId(int suiteId) {
         this.suiteId = suiteId;

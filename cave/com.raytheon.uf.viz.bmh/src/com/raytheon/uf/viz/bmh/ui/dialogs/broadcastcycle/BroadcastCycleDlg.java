@@ -30,6 +30,10 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -49,16 +53,20 @@ import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
+import com.raytheon.uf.common.serialization.comm.IServerRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -84,6 +92,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Aug 14, 2014  3432      mpduff      Hook up details dialog
  * Aug 23, 2014  3432      mpduff      Add initial table population
  * Aug 25, 2014  3558      rjpeter     Updated to call getEnabledTransmitterGroupList.
+ * Sep 25, 2014  3589      dgilling    Hook up Change Suite feature.
  * </pre>
  * 
  * @author mpduff
@@ -881,37 +890,45 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * Suite change handler
      */
     private void handleChangeSuiteAction() {
+        Suite selection = null;
+        List<Suite> suiteList = programObj.getSuites();
+        if ((changeSuiteDlg == null) || changeSuiteDlg.isDisposed()) {
+            changeSuiteDlg = new SuiteListDlg(getShell(), suiteList);
+            selection = (Suite) changeSuiteDlg.open();
+        } else {
+            changeSuiteDlg.bringToTop();
+        }
 
-        DialogUtility.notImplemented(getShell());
-        // TODO - finsih this code section
-        // String[] selection = null;
-        // List<Suite> suiteList = programObj.getSuites();
-        // if ((changeSuiteDlg == null) || changeSuiteDlg.isDisposed()) {
-        // changeSuiteDlg = new SuiteListDlg(getShell(), suiteList);
-        // selection = (String[]) changeSuiteDlg.open();
-        // if (selection == null) {
-        // // User clicked cancel
-        // return;
-        // }
-        // } else {
-        // changeSuiteDlg.bringToTop();
-        // }
-        // updateSuiteData(selection);
-    }
+        if (selection != null) {
+            final TransmitterGroup group = selectedTransmitterGroupObject;
+            final Suite suite = selection;
 
-    /**
-     * Update suite data
-     * 
-     * @param data
-     *            The data to update
-     */
-    private void updateSuiteData(String[] data) {
-        if ((data[0] != null) && (data[0].length() > 0)) {
-            this.suiteValueLbl.setText(data[0]);
-            this.suiteCatValueLbl.setText(data[1]);
-            this.leftProgSuiteComp.layout();
-            // TODO - Add action to change the suite, currently only updates the
-            // gui
+            statusHandler.info("User requested to change to suite ["
+                    + suite.getName() + "] for transmitter group ["
+                    + group.getName() + "].");
+
+            /*
+             * FIXME: If and when BMH viz code has a common method for making
+             * async Thrift requests, replace this code with a call to that
+             * common method.
+             */
+            Job requestJob = new Job("ForceSuiteChangeJob") {
+
+                @Override
+                protected IStatus run(IProgressMonitor monitor) {
+                    IServerRequest request = new ForceSuiteChangeRequest(group,
+                            suite);
+                    try {
+                        BmhUtils.sendRequest(request);
+                    } catch (Exception e) {
+                        statusHandler.error("Unable to change suites to ["
+                                + suite.getName() + "].", e);
+                    }
+                    return Status.OK_STATUS;
+                }
+            };
+            requestJob.setSystem(true);
+            requestJob.schedule();
         }
     }
 

@@ -52,6 +52,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 19, 2014    3432    mpduff      Initial creation
+ * Sep 25, 2014    3589    dgilling    Return Suite object to caller.
  * 
  * </pre>
  * 
@@ -133,13 +134,10 @@ public class SuiteListDlg extends CaveSWTDialogBase {
     }
 
     private void handleOk() {
-        String[] selection = new String[2];
         List<TableRowData> selections = tableComp.getSelection();
-        TableRowData data = selections.get(0);
-        for (int i = 0; i < data.getRowOfDisplayStrings().size(); i++) {
-            selection[i] = data.getRowOfDisplayStrings().get(i);
-        }
-        setReturnValue(selection);
+        Object data = selections.get(0).getData();
+        Suite selectedSuite = (Suite) data;
+        setReturnValue(selectedSuite);
     }
 
     private void populateTable() {
@@ -155,6 +153,7 @@ public class SuiteListDlg extends CaveSWTDialogBase {
             TableRowData trd = new TableRowData();
             trd.addTableCellData(new TableCellData(s.getName()));
             trd.addTableCellData(new TableCellData(s.getType().name()));
+            trd.setData(s);
             td.addDataRow(trd);
         }
 
