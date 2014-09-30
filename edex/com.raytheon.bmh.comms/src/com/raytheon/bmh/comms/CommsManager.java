@@ -76,6 +76,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  *                                    argument to the Dac Transmitter.
  * Sep 04, 2014  3532     bkowal      Use a decibel target instead of a range.
  * Sep 23, 2014  3485     bsteffen    Additional event handling to support clustering.
+ * Sep 29, 2014  3291     bkowal      Use bmh home to look for configuration.
  * 
  * </pre>
  * 
@@ -122,9 +123,9 @@ public class CommsManager {
     /**
      * This is the thread currently executing in a loop in the {@link #run()}
      * method. This thread sleeps and periodically wakes up to check connections
-     * and start services as needed. If a change occurs that may require connections or services
-     * that are made during the run method then this thread can be interrupted
-     * to immediatly perform any necessary actions.
+     * and start services as needed. If a change occurs that may require
+     * connections or services that are made during the run method then this
+     * thread can be interrupted to immediately perform any necessary actions.
      */
     private volatile Thread mainThread;
 
@@ -391,8 +392,8 @@ public class CommsManager {
         String logDate = logDateFormat.format(new Date());
         String logFileName = "dactransmit-" + group + "-console-" + logDate
                 + ".log";
-        Path logFilePath = Paths.get(BMHConstants.getBmhDataDirectory())
-                .resolveSibling("logs").resolve(logFileName);
+        Path logFilePath = Paths.get(BMHConstants.getBmhHomeDirectory())
+                .resolve("logs").resolve(logFileName);
         startCommand.redirectOutput(Redirect.appendTo(logFilePath.toFile()));
         startCommand.redirectError(Redirect.appendTo(logFilePath.toFile()));
         try {
@@ -404,7 +405,7 @@ public class CommsManager {
     }
 
     /**
-     * Method to call when an event has occured which may require a new dac
+     * Method to call when an event has occurred which may require a new dac
      * transmit process to be created. The current implementation just wakes up
      * the main thread rather than checking the config immediately to avoid any
      * synchronization problems.
@@ -504,7 +505,7 @@ public class CommsManager {
     }
 
     /**
-     * This method should be called when an error has been recieved from a dac
+     * This method should be called when an error has been received from a dac
      * transmit process that needs to be communicated to users.
      * 
      * @param e

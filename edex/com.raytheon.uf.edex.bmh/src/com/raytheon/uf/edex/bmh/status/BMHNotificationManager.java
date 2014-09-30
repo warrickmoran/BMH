@@ -52,6 +52,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * ------------ ---------- ----------- --------------------------
  * Jun 16, 2014 3291       bkowal      Initial creation
  * Aug 01, 2014 3283       bsteffen    Change conf dir
+ * Sep 29, 2014 3291       bkowal      Use the conf dir in BMH_HOME
  * 
  * </pre>
  * 
@@ -124,7 +125,7 @@ public class BMHNotificationManager {
          * Determine where the custom configuration should be loaded based on
          * BMH_DATA.
          */
-        String notificationProperties = BMHConstants.getBmhDataDirectory()
+        String notificationProperties = BMHConstants.getBmhHomeDirectory()
                 + File.separatorChar + CONFIGURATION_DIRECTORY
                 + File.separatorChar + NOTIFICATION_PROPERTIES_FILE;
         /*

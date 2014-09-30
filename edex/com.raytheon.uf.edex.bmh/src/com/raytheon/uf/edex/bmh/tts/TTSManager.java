@@ -70,6 +70,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     set bmh tts nfs directory.
  * Aug 29, 2014 3568       bkowal      Success field in broadcast msg is now set correctly.
  * Sep 12, 2014 3588       bsteffen    Support audio fragments.
+ * Sep 29, 2014 3291       bkowal      Cleanup. Do not depend on properties that are not
+ *                                     directly used.
  * 
  * </pre>
  * 
@@ -114,8 +116,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     /* Configuration */
     private String bmhDataDirectory;
-
-    private int ttsThreads;
 
     private long ttsHeartbeat;
 
@@ -234,17 +234,11 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                     "Failed to retrieve the TTS Retry Delay from configuration!");
         }
 
-        this.ttsThreads = ttsThreadInteger;
         this.ttsHeartbeat = ttsHeartbeatLong;
 
         this.ttsRetryThreshold = retryInteger;
         this.ttsRetryDelay = delayLong;
 
-        /* Ensure that the thread count is > 0 */
-        if (this.ttsThreads <= 0) {
-            throw new TTSConfigurationException(
-                    "TTS Available Thread Count must be > 0!");
-        }
         /* Ensure that the heartbeat interval is > 0 */
         if (this.ttsHeartbeat <= 0) {
             throw new TTSConfigurationException(
@@ -268,7 +262,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         this.validateAvailability();
         this.validateSynthesis();
 
-        statusHandler.info("TTS Available Thread Count is " + this.ttsThreads);
         statusHandler.info("TTS Heartbeat Interval is " + this.ttsHeartbeat);
         statusHandler.info("BMH Audio Directory is: " + this.bmhDataDirectory);
         statusHandler.info("TTS Retry Threshold is: " + this.ttsRetryThreshold);
