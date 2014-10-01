@@ -21,7 +21,11 @@
 ##
 
 ##############################################################################
-# Start script for BMH DacTransmit application.
+# Start script for BMH DacTransmit application. Will not start DacTransmit if
+# another is running for the same dac on the same port. To force this script to
+# to kill any existing DacTransmit applications and start a new one pass in the
+# -k option. All other options are parsed directly through to the DacTransmit
+# java process.
 #
 #     SOFTWARE HISTORY
 #    
@@ -32,10 +36,54 @@
 #    07/28/14        3399          bsteffen       Build CLASSPATH from DEPENDENCIES.
 #    08/11/14        3286          dgilling       Remove unneeded dependencies.
 #    08/18/14        3286          dgilling       Add org.apache.commons.lang.
+#    09/01/14        3665          bsteffen       Dont allow multiple instances
 ##############################################################################
 
 path_to_script=`readlink -f $0`
 dir=$(dirname $path_to_script)
+
+# As we process args, any that aren't the kill flag are accumulated in this
+# variable and passed to the java process.
+preservedArgs=()
+
+# This loop processes the command line args. We need to extract DAC_ADDRESS(-d)
+# and DAC_PORT(-p). To make it easier to grab the argument to flags $prev will
+# contain the previous argument. Also need to check for the kill flag(-k)
+for arg in $@
+do
+  case $prev in
+    -d) 
+       DAC_ADDRESS=$arg
+       ;;
+    -p) 
+       DAC_PORT=$arg
+       ;;
+  esac
+  case $arg in
+    -k) 
+       KILL=true
+       ;;
+    *)
+       preservedArgs=("${preservedArgs[@]}" "${arg}")
+       ;;
+  esac
+  prev=$arg
+done
+
+# If these aren't set there is something very wrong. Rather than try to print
+# usage here, just let all the args go to the java application and it will print
+# pretty usage.
+if [ -n "$DAC_ADDRESS" ] && [ -n "$DAC_PORT" ]; then
+    if [ -n "$KILL" ]; then
+    	pkill -f "java.*DacTransmitMain(.*-d ${DAC_ADDRESS}|.*-p ${DAC_PORT}){2}"
+    else
+		pid=`pgrep -f "java.*DacTransmitMain(.*-d ${DAC_ADDRESS}|.*-p ${DAC_PORT}){2}"`
+		if [ $? -eq 0 ]; then
+		    echo "Dac transmit is already running with pid of $pid"
+		    exit 1
+		fi
+	fi
+fi
 
 export BMH_HOME=$(dirname $dir)
 awips_home=$(dirname $BMH_HOME)
@@ -58,6 +106,4 @@ JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
 JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml"
 
 
-
-java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "$@"
-
+java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "${preservedArgs[@]}"
