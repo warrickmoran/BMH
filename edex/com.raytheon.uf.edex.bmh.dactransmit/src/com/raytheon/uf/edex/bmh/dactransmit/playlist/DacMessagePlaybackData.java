@@ -19,11 +19,25 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Calendar;
+
+import javax.xml.bind.JAXB;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
+import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
 
 /**
  * All the necessary data needed by the {@code DataTransmitThread} to play a
@@ -41,6 +55,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                      CommsManager.
  * Aug 08, 2014  #3286     dgilling     Add resetAudio().
  * Aug 13, 2014  #3286     dgilling     Send status for tones playback.
+ * Oct 01, 2014  #3485     bsteffen     Add ability to resume.
  * 
  * </pre>
  * 
@@ -50,6 +65,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 
 public final class DacMessagePlaybackData {
 
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
     private DacPlaylistMessage message;
 
     private AudioFileBuffer audio;
@@ -58,29 +75,181 @@ public final class DacMessagePlaybackData {
 
     private boolean firstCallToGet = true;
 
+    private boolean resume = false;
+
+    /**
+     * The stream to write position information for resume if this process dies
+     * unexpectedly. The current mechanism writes a single byte to the stream
+     * for each packet sent. On resume the index in the audio stream can be
+     * easily calculated. This method should be atomic and allows for no
+     * possibility of a corrupt or incomplete state. When running multiple dac
+     * transmits there is a possibility this will become too IO intensive in
+     * which case a less intense resume method is needed or the concept of
+     * resuming mid-stream may need to be abandoned.
+     */
+    private OutputStream positionStream = null;
+
+    /**
+     * Allow this playback to resume where a previous incarnation has left off.
+     * Calling this method does not guarantee the data will resume, this will
+     * only resume if a valid position file is found that is not too old and was
+     * not positioned within tones.
+     * 
+     */
+    public void allowResume() {
+        resume = true;
+    }
+
+    /**
+     * Determine if it is possible to resume and position the stream
+     * accordingly. This method must be called during the first call to get().
+     * If the current position file is too old, or if it is positioned within
+     * tones then the message starts over.
+     * 
+     * @return true if the resume was successful.
+     */
+    private boolean resumePlayback() {
+        this.resume = false;
+        Path positionFile = message.getPositionPath();
+        if (Files.exists(positionFile)) {
+            int position = 0;
+            try {
+                BasicFileAttributes attrs = Files.readAttributes(positionFile,
+                        BasicFileAttributes.class);
+                long timeOffset = TimeUtil.currentTimeMillis()
+                        - attrs.lastModifiedTime().toMillis();
+                if (timeOffset < DataTransmitConstants.SYNC_DOWNTIME_RESTART_THRESHOLD) {
+                    position = (int) Files.size(positionFile);
+                } else {
+                    logger.info(
+                            "Message restarted because position file is {}ms old",
+                            timeOffset);
+                }
+            } catch (IOException e) {
+                logger.error(
+                        "Unable to determine position of message {} resetting playback.",
+                        message.getBroadcastId(), e);
+            }
+            if (position > 0) {
+                audio.skip(position * DacSessionConstants.SINGLE_PAYLOAD_SIZE);
+                if (audio.isInTones()) {
+                    audio.rewind();
+                    return false;
+                } else {
+                    try {
+                        positionStream = Files.newOutputStream(positionFile,
+                                StandardOpenOption.APPEND);
+                    } catch (IOException e) {
+                        logger.error(
+                                "Unable to open position file, position tracking will be disabled.",
+                                e);
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Should be called on first get.
+     */
+    private MessagePlaybackStatusNotification firstGet() {
+        int playCount = message.getPlayCount() + 1;
+        message.setPlayCount(playCount);
+        Calendar transmitTime = TimeUtil.newGmtCalendar();
+        message.setLastTransmitTime(transmitTime);
+
+        boolean playedSameTone = message.isPlayedSameTone();
+        boolean playedAlertTone = message.isPlayedAlertTone();
+        if (playCount == 1) {
+            playedSameTone = (message.getSAMEtone() != null && !message
+                    .getSAMEtone().isEmpty());
+            playedAlertTone = (playedSameTone && message.isAlertTone());
+        }
+        message.setPlayedAlertTone(playedAlertTone);
+        message.setPlayedSameTone(playedSameTone);
+        MessagePlaybackStatusNotification playbackStatus = new MessagePlaybackStatusNotification(
+                message.getBroadcastId(), transmitTime, playCount,
+                playedSameTone, playedAlertTone, null);
+        firstCallToGet = false;
+        if (!resume || !resumePlayback()) {
+            try {
+                positionStream = Files.newOutputStream(
+                        message.getPositionPath(), StandardOpenOption.CREATE);
+            } catch (IOException e) {
+                logger.error(
+                        "Unable to open position file, position tracking will be disabled.",
+                        e);
+            }
+        }
+        return playbackStatus;
+    }
+
+    /**
+     * Called when the message is no longer played to persist the current state
+     * and remove the position tracking file.
+     */
+    public void endPlayback() {
+        if (positionStream != null) {
+            try {
+                positionStream.close();
+            } catch (IOException e) {
+                logger.error("Unable to close position file.", e);
+            }
+            try {
+                Files.delete(message.getPositionPath());
+            } catch (IOException e) {
+                logger.error("Unable to delete position file.", e);
+            }
+        }
+        /*
+         * TODO the notification was sent at the beginning of playing but the
+         * state is not persisted until the end.
+         */
+        Path msgPath = message.getPath();
+        Path tmpPath = msgPath.resolveSibling(msgPath.getFileName().toString()
+                .replace(".xml", ".tmp.xml"));
+        try {
+            JAXB.marshal(message, tmpPath.toFile());
+            Files.move(tmpPath, msgPath, StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE);
+        } catch (Throwable e) {
+            logger.error("Unable to persist message state.", e);
+        }
+
+    }
+
     public MessagePlaybackStatusNotification get(byte[] dst) {
         MessagePlaybackStatusNotification playbackStatus = null;
         if (firstCallToGet) {
-            int playCount = message.getPlayCount() + 1;
-            message.setPlayCount(playCount);
-            Calendar transmitTime = TimeUtil.newGmtCalendar();
-            message.setLastTransmitTime(transmitTime);
-
-            boolean playedSameTone = message.isPlayedSameTone();
-            boolean playedAlertTone = message.isPlayedAlertTone();
-            if (playCount == 1) {
-                playedSameTone = (message.getSAMEtone() != null && !message
-                        .getSAMEtone().isEmpty());
-                playedAlertTone = (playedSameTone && message.isAlertTone());
-            }
-
-            playbackStatus = new MessagePlaybackStatusNotification(
-                    message.getBroadcastId(), transmitTime, playCount,
-                    playedSameTone, playedAlertTone, null);
-            firstCallToGet = false;
+            playbackStatus = firstGet();
         }
-
         audio.get(dst, 0, dst.length);
+        if (positionStream != null && audio.hasRemaining()) {
+            try {
+                /*
+                 * TODO make this async or timeout. If the nfs write is failing
+                 * we do NOT want to stop all playback.
+                 */
+                positionStream.write(0);
+                positionStream.flush();
+            } catch (IOException e) {
+                logger.error(
+                        "Unable to write position file, position tracking will be disabled.",
+                        e);
+                try {
+                    positionStream.close();
+                } catch (IOException e1) {
+                    logger.error("Unable to close position file.", e);
+                }
+                try {
+                    Files.delete(message.getPositionPath());
+                } catch (IOException e1) {
+                    logger.error("Unable to delete position file.", e);
+                }
+            }
+        }
         return playbackStatus;
     }
 
@@ -89,6 +258,21 @@ public final class DacMessagePlaybackData {
     }
 
     public void resetAudio() {
+        if (positionStream != null) {
+            try {
+                positionStream.close();
+            } catch (IOException e) {
+                logger.error("Unable to close position file.", e);
+            }
+        }
+        try {
+            positionStream = Files.newOutputStream(message.getPositionPath(),
+                    StandardOpenOption.CREATE);
+        } catch (IOException e) {
+            logger.error(
+                    "Unable to open position file, position tracking will be disabled.",
+                    e);
+        }
         audio.rewind();
     }
 

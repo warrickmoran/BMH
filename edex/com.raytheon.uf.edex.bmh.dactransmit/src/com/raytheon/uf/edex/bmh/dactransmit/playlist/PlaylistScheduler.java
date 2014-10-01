@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -105,6 +106,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
  *                                      all playlists expire.
  * Sep 30, 2014  #3589     dgilling     Better handle forced expiration of 
  *                                      playlists from CommsManager.
+ * Oct 01, 2014  #3485     bsteffen     Allow playlist to resume on startup.
  * 
  * </pre>
  * 
@@ -184,6 +186,12 @@ public final class PlaylistScheduler implements
     private final EventBus eventBus;
 
     private volatile boolean warnNoMessages;
+
+    /**
+     * Flag indicating the system is starting up. Will be true until the first
+     * time next() is called.
+     */
+    private volatile boolean startup = true;
 
     /**
      * Reads the specified directory for valid playlist files (ones that have
@@ -326,6 +334,12 @@ public final class PlaylistScheduler implements
         // TODO: Too much logic here. This was supposed to be fast just
         // switching to next message
         DacPlaylistMessage nextMessage = null;
+        /*
+         * Make sure even if we introduce more early returns, we never forget to
+         * reset startup.
+         */
+        boolean startup = this.startup;
+        this.startup = false;
         DacPlaylist nextPlaylist = null;
         List<DacPlaylist> expiredPlaylists = new LinkedList<>();
 
@@ -428,6 +442,22 @@ public final class PlaylistScheduler implements
                     return null;
                 }
 
+                if (startup) {
+                    Calendar latestLastTime = null;
+                    for (int i = 0; i < currentMessages.size(); i += 1) {
+                        DacPlaylistMessage message = cache
+                                .getMessage(currentMessages.get(i));
+                        Calendar lastTime = message.getLastTransmitTime();
+                        if (lastTime != null
+                                && (latestLastTime == null || lastTime
+                                        .after(latestLastTime))) {
+                            messageIndex = i + 1;
+                            latestLastTime = lastTime;
+                        }
+
+                    }
+                }
+
                 while ((nextMessage == null)
                         && (messageIndex < currentMessages.size())) {
                     DacPlaylistMessage possibleNext = cache
@@ -486,6 +516,9 @@ public final class PlaylistScheduler implements
         DacMessagePlaybackData nextMessageData = new DacMessagePlaybackData();
         nextMessageData.setMessage(nextMessage);
         nextMessageData.setInterrupt(currentPlaylist.isInterrupt());
+        if (startup) {
+            nextMessageData.allowResume();
+        }
         return nextMessageData;
     }
 

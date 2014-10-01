@@ -49,6 +49,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Sep 08, 2014  3286     dgilling    Add getPath() and setPath().
  * Sep 12, 2014  3588     bsteffen    Support audio fragments.
  * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
+ * Oct 01, 2014  3485     bsteffen    Add method for getting path of position file.
+ * 
  * 
  * </pre>
  * 
@@ -273,5 +275,17 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     public void setPath(Path path) {
         this.path = path;
+    }
+
+    /**
+     * @return the path of a file that should be used for tracking the position
+     *         in the stream of the current playback.
+     */
+    public Path getPositionPath() {
+        if (path == null) {
+            return null;
+        }
+        return path.resolveSibling(path.getFileName().toString()
+                .replace(".xml", ".position"));
     }
 }

@@ -41,6 +41,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
  * Jul 29, 2014  #3286     dgilling     Add capacity().
  * Aug 12, 2014  #3286     dgilling     Integrate tone playback.
  * Sep 12, 2014  #3588     bsteffen     Support audio fragments.
+ * Oct 01, 2014  #3485     bsteffen     Add skip() and isInTones()
  * 
  * </pre>
  * 
@@ -156,6 +157,38 @@ public final class AudioFileBuffer {
             Arrays.fill(dst, offset + (length - bytesRemaining), offset
                     + length, DacSessionConstants.SILENCE);
         }
+    }
+    
+    public void skip(int length) {
+        int bytesRemaining = length;
+        if ((bytesRemaining > 0) && (returnTones)
+                && (tonesBuffer.hasRemaining())) {
+            int bytesToRead = Math.min(bytesRemaining, tonesBuffer.remaining());
+            tonesBuffer.position(tonesBuffer.position() + bytesToRead);
+            bytesRemaining -= bytesToRead;
+        }
+
+        if ((bytesRemaining > 0) && (messageBuffer.hasRemaining())) {
+            int bytesToRead = Math.min(bytesRemaining,
+                    messageBuffer.remaining());
+            messageBuffer.position(messageBuffer.position() + bytesToRead);
+            bytesRemaining -= bytesToRead;
+        }
+
+        if ((bytesRemaining > 0) && (returnTones)
+                && (endOfMessageBuffer.hasRemaining())) {
+            int bytesToRead = Math.min(bytesRemaining,
+                    endOfMessageBuffer.remaining());
+            endOfMessageBuffer.position(endOfMessageBuffer.position()
+                    + bytesToRead);
+            bytesRemaining -= bytesToRead;
+        }
+    }
+
+    public boolean isInTones() {
+        return returnTones
+                && (tonesBuffer.hasRemaining() || (!messageBuffer
+                        .hasRemaining() && endOfMessageBuffer.hasRemaining()));
     }
 
     /**

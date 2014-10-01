@@ -75,6 +75,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  *                                      thread always running.
  * Aug 26, 2014  #3286     dgilling     Pause transmission when there is no
  *                                      data to send.
+ * Oct 03, 2014  #3485     bsteffen     End playback after playing a message.
+ * 
  * </pre>
  * 
  * @author dgilling
@@ -239,7 +241,7 @@ public final class DataTransmitThread extends Thread implements
                                     t);
                         }
                     }
-
+                    playbackData.endPlayback();
                     playingInterrupt = false;
                 } catch (Throwable t) {
                     logger.error("Uncaught exception thrown from main loop.", t);

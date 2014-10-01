@@ -36,6 +36,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jul 31, 2014  #3286     dgilling     Add alert constants for buffer size.
  * Aug 08, 2014  #3286     dgilling     Add constants for sync regain.
  * Aug 25, 2014  #3286     dgilling     Adjust buffer size alert constants.
+ * Oct 01, 2014  #3485     bsteffen     Add STARTUP_RESUME_THRESHOLD
  * 
  * </pre>
  * 
@@ -62,6 +63,13 @@ public final class DataTransmitConstants {
             - (WATERMARK_PACKETS_IN_BUFFER / 4);
 
     public static final long SYNC_DOWNTIME_RESTART_THRESHOLD = 2 * TimeUtil.MILLIS_PER_SECOND;
+
+    /**
+     * When a dac transmit is restarted it can attempt to resume where it left
+     * off, this is the amount of time that resume is valid. If more than this
+     * amount of time has elapsed the message will replay from the beginning.
+     */
+    public static final long STARTUP_RESUME_THRESHOLD = 4 * TimeUtil.MILLIS_PER_SECOND;
 
     public static final int SEQUENCE_INCREMENT = 1;
 
