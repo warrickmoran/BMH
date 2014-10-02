@@ -21,11 +21,11 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Set;
 
 import javax.persistence.Column;
@@ -67,6 +67,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 16, 2014 #3587     bkowal      Updated to use the new {@link ProgramSuite}. Created
  *                                    named queries for retrieving programs associated with a
  *                                    trigger.
+ * Oct 01, 2014 #3589     dgilling    Add getProgramSuite().
  * 
  * </pre>
  * 
@@ -387,4 +388,8 @@ public class Program {
         return true;
     }
 
+    public ProgramSuite getProgramSuite(final Suite suite) {
+        checkSuiteLookupMap(suite);
+        return suiteToProgramSuiteMap.get(suite);
+    }
 }

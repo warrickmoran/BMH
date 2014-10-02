@@ -21,10 +21,11 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -50,6 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 11, 2014 3587       bkowal      Initial creation
+ * Sep 29, 2014 3589       dgilling    Add forced field.
  * 
  * </pre>
  * 
@@ -90,6 +92,10 @@ public class ProgramSuite implements Serializable {
 
     @Transient
     private List<MessageType> triggerMsgTypes;
+
+    @Column
+    @DynamicSerializeElement
+    private boolean forced = false;
 
     private void checkId() {
         if (this.id != null) {
@@ -228,5 +234,13 @@ public class ProgramSuite implements Serializable {
             trigger.setSuite(this.suite);
             this.triggerMsgTypes.add(trigger.getMsgType());
         }
+    }
+
+    public boolean isForced() {
+        return forced;
+    }
+
+    public void setForced(boolean forced) {
+        this.forced = forced;
     }
 }

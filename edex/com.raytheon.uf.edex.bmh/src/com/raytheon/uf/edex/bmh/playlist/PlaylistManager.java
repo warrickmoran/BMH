@@ -43,6 +43,7 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
@@ -105,6 +106,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Sep 16, 2014  3587     bkowal      No longer check the {@link SuiteMessage} for triggers.
  *                                    Updated to use the {@link ProgramSuite}.
  * Sep 23, 2014  3485     bsteffen    Move queue naming logic to PlaylistUpdateNotification
+ * Sep 26, 2014  3589     dgilling    Implement administrative suite change.
  * 
  * </pre>
  * 
@@ -173,6 +175,20 @@ public class PlaylistManager implements IContextStateProcessor {
             List<ProgramSuite> programSuites = program.getProgramSuites();
             List<Suite> suites = new ArrayList<>(programSuites.size());
             for (ProgramSuite programSuite : programSuites) {
+                /*
+                 * Need to leave the forced flag on the GENERAL suite so we can
+                 * track what is the single true GENERAL suite since Programs
+                 * are allowed multiple GENERAL suites still at this stage.
+                 * 
+                 * FIXME: When we remove the ability to have multiple GENERAL
+                 * suites in a Program, remove this additional part of the
+                 * condition.
+                 */
+                if (programSuite.isForced()
+                        && programSuite.getSuite().getType() != SuiteType.GENERAL) {
+                    programSuite.setForced(false);
+                    programDao.persist(programSuite);
+                }
                 refreshPlaylist(group, programSuite);
                 suites.add(programSuite.getSuite());
             }
@@ -185,6 +201,59 @@ public class PlaylistManager implements IContextStateProcessor {
                     deletePlaylist(group, programSuite);
                 }
             }
+        }
+    }
+
+    public void processForceSuiteSwitch(final TransmitterGroup group,
+            final Suite suite) {
+        statusHandler.info("User requested transmitter group ["
+                + group.getName() + "] switch to suite [" + suite.getName()
+                + "].");
+
+        Program program = programDao.getProgramForTransmitterGroup(group);
+        ProgramSuite forcedProgramSuite = program.getProgramSuite(suite);
+        if ((forcedProgramSuite != null) && (program != null)) {
+            statusHandler.info("Due to forced switch, refreshing "
+                    + forcedProgramSuite.getSuite().getName());
+            forcedProgramSuite.setForced(true);
+            programDao.persist(forcedProgramSuite);
+            refreshPlaylist(group, forcedProgramSuite);
+
+            SuiteType forcedSuiteType = suite.getType();
+            List<ProgramSuite> programSuites = program.getProgramSuites();
+            for (ProgramSuite programSuite : programSuites) {
+                SuiteType programSuiteType = programSuite.getSuite().getType();
+
+                /*
+                 * So the dactransmit playlist scheduler correctly plays our
+                 * user-selected suite, we must delete any previously forced
+                 * playlist or playlists with a higher priority than this user
+                 * selection or any other GENERAL suites if the user forced a
+                 * GENERAL suite.
+                 * 
+                 * FIXME: When we remove the ability to have multiple GENERAL
+                 * suites in a Program, remove the special case for GENERAL.
+                 */
+                if ((programSuite.isForced() && programSuiteType != SuiteType.GENERAL)
+                        || (programSuiteType.ordinal() > forcedSuiteType
+                                .ordinal())
+                        || (programSuiteType == SuiteType.GENERAL
+                                && forcedSuiteType == SuiteType.GENERAL && !forcedProgramSuite
+                                .getId().equals(programSuite.getId()))) {
+                    statusHandler.info("Due to forced switch, deleting "
+                            + programSuite.getSuite().getName());
+                    programSuite.setForced(false);
+                    programDao.persist(programSuite);
+                    deletePlaylist(group, programSuite);
+                }
+            }
+
+        } else {
+            String msg = String
+                    .format("Could not locate suite [%s] to perform user-requested suite change.",
+                            suite.getName());
+            statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR, msg);
+            throw new IllegalArgumentException(msg);
         }
     }
 
@@ -258,6 +327,7 @@ public class PlaylistManager implements IContextStateProcessor {
     public void newMessage(BroadcastMsg msg) {
         TransmitterGroup group = msg.getTransmitterGroup();
         Program program = programDao.getProgramForTransmitterGroup(group);
+        boolean disableForcedSuite = false;
 
         if (msg.getInputMessage().getInterrupt()) {
             Suite suite = new Suite();
@@ -271,17 +341,75 @@ public class PlaylistManager implements IContextStateProcessor {
             playlist.setStartTime(msg.getInputMessage().getEffectiveTime());
             playlist.setEndTime(msg.getInputMessage().getExpirationTime());
             writePlaylistFile(playlist, playlist.getStartTime());
+
+            disableForcedSuite = true;
+        }
+
+        /*
+         * Determine if we have a administratively forced GENERAL suite. If so
+         * we must find it and ensure no message updates are processed for any
+         * other GENERAL suites, if they exist. GENERAL suite changes can only
+         * be made via user intervention.
+         * 
+         * FIXME: When we remove the ability to have multiple GENERAL suites in
+         * a Program, remove special case for GENERAL.
+         * 
+         * Secondly, we need to determine if we have a forced suite that's not
+         * GENERAL. If so, we might have to reset the forced flag on the
+         * ProgramSuite if this new message triggers any suites.
+         */
+        ProgramSuite forcedGeneral = null;
+        ProgramSuite forcedHigher = null;
+        for (ProgramSuite programSuite : program.getProgramSuites()) {
+            if (programSuite.isForced()
+                    && programSuite.getSuite().getType() == SuiteType.GENERAL) {
+                forcedGeneral = programSuite;
+            } else if (programSuite.isForced()
+                    && programSuite.getSuite().getType() != SuiteType.GENERAL) {
+                forcedHigher = programSuite;
+            }
         }
 
         // TODO: optimize.
         for (ProgramSuite programSuite : program.getProgramSuites()) {
+            /*
+             * Do not process any updates for GENERAL suites except the forced
+             * GENERAL suite (if it exists). If the user wants a different
+             * GENERAL suite to play, they must manually force that suite into
+             * effect.
+             * 
+             * FIXME: When we remove the ability to have multiple GENERAL suites
+             * in a Program, remove special case for GENERAL.
+             */
+            if ((forcedGeneral != null)
+                    && (programSuite.getSuite().getType() == SuiteType.GENERAL)
+                    && (!programSuite.getId().equals(forcedGeneral.getId()))) {
+                continue;
+            }
+
             for (SuiteMessage smessage : programSuite.getSuite()
                     .getSuiteMessages()) {
                 if (smessage.getAfosid().equals(msg.getAfosid())) {
-                    addMessageToPlaylist(msg, group, programSuite,
-                            programSuite.isTrigger(smessage.getMsgType()));
+                    boolean isTrigger = programSuite.isTrigger(smessage
+                            .getMsgType());
+                    addMessageToPlaylist(msg, group, programSuite, isTrigger);
+
+                    if ((isTrigger)
+                            && (forcedHigher != null)
+                            && (programSuite.getId().equals(forcedHigher
+                                    .getId()))) {
+                        disableForcedSuite = true;
+                    }
                 }
             }
+        }
+
+        if ((forcedHigher != null) && (disableForcedSuite)) {
+            statusHandler
+                    .debug("Incoming message has triggered a suite, removing forced flag from suite "
+                            + forcedHigher.getSuite().getName());
+            forcedHigher.setForced(false);
+            programDao.persist(forcedHigher);
         }
     }
 
@@ -357,8 +485,23 @@ public class PlaylistManager implements IContextStateProcessor {
                     .getAfosid());
             if (afosMessages != null) {
                 messages.addAll(afosMessages);
-                if (programSuite.isTrigger(smessage.getMsgType())
-                        || (suite.getType() == SuiteType.GENERAL)) {
+
+                Designation msgType = smessage.getMsgType().getDesignation();
+
+                /*
+                 * We need to exert control over how the start time and expire
+                 * time of the playlist is calculated. If the message is a
+                 * trigger or we're creating a playlist for a GENERAL suite,
+                 * then we use the message's start and expire times in
+                 * calculating the same for the playlist. Additionally, if we're
+                 * updating a playlist for a forced suite, we need to ignore the
+                 * routine messages--station ID and time of day--so that the
+                 * playlist expires when all messages but those routine messages
+                 * have expired.
+                 */
+                if ((programSuite.isTrigger(smessage.getMsgType()))
+                        || (suite.getType() == SuiteType.GENERAL)
+                        || (programSuite.isForced() && (msgType != Designation.TimeAnnouncement && msgType != Designation.StationID))) {
                     for (BroadcastMsg bmessage : afosMessages) {
                         Calendar messageStart = bmessage.getInputMessage()
                                 .getEffectiveTime();
@@ -398,7 +541,8 @@ public class PlaylistManager implements IContextStateProcessor {
         } else {
             playlistDao.persist(playlist);
         }
-        if (futureTriggers.isEmpty() || (suite.getType() == SuiteType.GENERAL)) {
+        if (futureTriggers.isEmpty() || (suite.getType() == SuiteType.GENERAL)
+                || (programSuite.isForced())) {
             writePlaylistFile(playlist, latestTrigger);
         } else {
             /*
@@ -423,7 +567,7 @@ public class PlaylistManager implements IContextStateProcessor {
      * Load any {@link BroadcastMsg}s from the database which should be included
      * in the playlist for the given suite/group.
      * 
-     * @param suite
+     * @param programSuite
      *            suite containing message types that should be loaded
      * @param group
      *            the group for which messages are loaded
@@ -434,7 +578,7 @@ public class PlaylistManager implements IContextStateProcessor {
      *            If true trigger messages are loaded and non-trigger messages
      *            are loaded only if trigger messages are present. If false only
      *            non trigger messages will be loaded.
-     * @return all the messages from the database for a playlist(optionally
+     * @return all the messages from the database for a playlist (optionally
      *         excluding triggers).
      */
     private List<BroadcastMsg> loadExistingMessages(
@@ -447,8 +591,9 @@ public class PlaylistManager implements IContextStateProcessor {
                         .getMessagesByAfosid(programTrigger.getMsgType()
                                 .getAfosid()));
             }
-            if (messages.isEmpty()
-                    && programSuite.getSuite().getType() != SuiteType.GENERAL) {
+            if ((messages.isEmpty())
+                    && ((programSuite.getSuite().getType() != SuiteType.GENERAL) || (!programSuite
+                            .isForced()))) {
                 return Collections.emptyList();
             }
         }

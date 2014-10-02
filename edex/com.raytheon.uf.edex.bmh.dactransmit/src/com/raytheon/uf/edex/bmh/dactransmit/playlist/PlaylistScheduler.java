@@ -102,6 +102,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
  * Sep 11, 2014  #3606     dgilling     Prevent exceptions when messages don't
  *                                      have an associated sound file and when
  *                                      all playlists expire.
+ * Sep 30, 2014  #3589     dgilling     Better handle forced expiration of 
+ *                                      playlists from CommsManager.
  * 
  * </pre>
  * 
@@ -571,9 +573,23 @@ public final class PlaylistScheduler implements
                 }
 
                 if (newPlaylist.isExpired()) {
-                    logger.warn("Received a notification for an expired playlist: "
-                            + newPlaylist);
-                    expirePlaylist(newPlaylist);
+                    logger.info("Received a notification to expire playlists for suite: "
+                            + newPlaylist.getSuite());
+                    Collection<DacPlaylist> expired = new ArrayList<>();
+                    expired.add(newPlaylist);
+
+                    DacPlaylist expiredActive = findMatchingPlaylist(
+                            newPlaylist, activePlaylists);
+                    if (expiredActive != null) {
+                        expired.add(expiredActive);
+
+                        if (expiredActive == currentPlaylist) {
+                            currentPlaylist = null;
+                            currentMessages = Collections.emptyList();
+                        }
+                    }
+
+                    expirePlaylists(expired);
                     return;
                 } else if (!newPlaylist.isValid()) {
                     logger.debug("New playlist doesn't take affect immediately. Queueing...");

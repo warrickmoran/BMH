@@ -88,5 +88,14 @@
             value="com.raytheon.uf.common.bmh.request.TransmitterRequest" />
         <constructor-arg ref="transmitterHandler" />
     </bean>
+    
+    <bean id="forceSuiteHandler" class="com.raytheon.uf.edex.bmh.handler.ForceSuiteChangeHandler"> 
+        <constructor-arg ref="playlistManager"/>
+    </bean>
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest" />
+        <constructor-arg ref="forceSuiteHandler" />
+    </bean>
 
 </beans>
