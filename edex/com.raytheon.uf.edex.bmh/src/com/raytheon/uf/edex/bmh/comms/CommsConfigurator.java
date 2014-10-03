@@ -63,6 +63,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                    target in the configuration.
  * Sep 09, 2014  3554     bsteffen    Inject daos to better handle startup ordering
  * Sep 25, 2014  3485     bsteffen    Preserve cluster options and write dac receiveAddress.
+ * Oct 03, 2014  3485     bsteffen    Better handling of poorly configured dacs.
+ * 
  * 
  * </pre>
  * 
@@ -180,8 +182,23 @@ public class CommsConfigurator implements IContextStateProcessor {
             int[] radios = new int[transmitters.size()];
             int rindex = 0;
             for (Transmitter transmitter : transmitters) {
-                radios[rindex] = transmitter.getDacPort();
-                rindex += 1;
+                Integer dacPort = transmitter.getDacPort();
+                if (dacPort == null) {
+                    statusHandler
+                            .error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
+                                    transmitter.getName()
+                                            + " is enabled but has no port, it be omitted from the comms configuration.");
+                } else {
+                    radios[rindex] = transmitter.getDacPort();
+                    rindex += 1;
+                }
+            }
+            if (rindex != radios.length) {
+                if (rindex == 0) {
+                    continue;
+                } else {
+                    radios = Arrays.copyOf(radios, rindex);
+                }
             }
             Arrays.sort(radios);
             channel.setRadios(radios);

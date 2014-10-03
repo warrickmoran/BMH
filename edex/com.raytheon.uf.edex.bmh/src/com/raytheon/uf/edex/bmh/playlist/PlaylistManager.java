@@ -107,6 +107,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    Updated to use the {@link ProgramSuite}.
  * Sep 23, 2014  3485     bsteffen    Move queue naming logic to PlaylistUpdateNotification
  * Sep 26, 2014  3589     dgilling    Implement administrative suite change.
+ * Oct 03, 2014  3485     bsteffen    Handle InputMessage with no area codes.
  * 
  * </pre>
  * 
@@ -651,12 +652,14 @@ public class PlaylistManager implements IContextStateProcessor {
         while (messageIterator.hasNext()) {
             BroadcastMsg potentialReplacee = messageIterator.next();
             int mrd = potentialReplacee.getInputMessage().getMrdId();
+            String msgCodes = msg.getInputMessage().getAreaCodes();
+            boolean areaCodesEqual = msgCodes != null
+                    && msgCodes.equals(potentialReplacee.getInputMessage()
+                            .getAreaCodes());
             boolean mrdReplacement = mrdReplacements.contains(mrd);
             boolean matReplacement = mrd == -1
                     && matReplacements.contains(potentialReplacee.getAfosid());
-            matReplacement = matReplacement
-                    && potentialReplacee.getInputMessage().getAreaCodes()
-                            .equals(msg.getInputMessage().getAreaCodes());
+            matReplacement = matReplacement && areaCodesEqual;
             if (mrdReplacement || matReplacement) {
                 if (added) {
                     messageIterator.remove();
