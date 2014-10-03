@@ -398,7 +398,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
         Label durationLbl = new Label(defaultsGroup, SWT.RIGHT);
-        durationLbl.setText("Duration (DDHHMM): ");
+        durationLbl.setText("Duration (DDHHMMSS): ");
         durationLbl.setLayoutData(gd);
 
         Map<DateFieldType, Integer> durMap = null;
@@ -415,7 +415,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
         Label periodicityLbl = new Label(defaultsGroup, SWT.RIGHT);
-        periodicityLbl.setText("Periodicity (DDHHMM): ");
+        periodicityLbl.setText("Periodicity (DDHHMMSS): ");
         periodicityLbl.setLayoutData(gd);
 
         Map<DateFieldType, Integer> periodicityMap = null;
