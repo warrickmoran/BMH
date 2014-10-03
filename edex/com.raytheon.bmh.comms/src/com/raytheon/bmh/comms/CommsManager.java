@@ -77,6 +77,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Sep 04, 2014  3532     bkowal      Use a decibel target instead of a range.
  * Sep 23, 2014  3485     bsteffen    Additional event handling to support clustering.
  * Sep 29, 2014  3291     bkowal      Use bmh home to look for configuration.
+ * Oct 01, 2014  3665     bsteffen    Add force start flag to dac transmit starter.
+ * 
  * 
  * </pre>
  * 
@@ -101,11 +103,17 @@ public class CommsManager {
 
     /**
      * The amount of time(in ms) to wait between attempts to start new dac
-     * transmit processes when needed. Any important events(like disconnects)
-     * will interrupt the waiting so this can be a long time to avoid wasting
-     * cpu.
+     * transmit processes when needed.
      */
-    private static final int SLEEP_TIME = Integer.getInteger(
+    private static final int DAC_START_SLEEP_TIME = Integer.getInteger(
+            "CommsDacStartSleepInterval", 5000);
+
+    /**
+     * The amount of time(in ms) to wait before checking the status of the dacs.
+     * Any important events(like disconnects) will interrupt the waiting so this
+     * can be a long time to avoid wasting cpu.
+     */
+    private static final int NORMAL_SLEEP_TIME = Integer.getInteger(
             "CommsSleepInterval", 30000);
 
     /** NOT THREAD SAFE: only use from the run method */
@@ -221,6 +229,7 @@ public class CommsManager {
         }
         while (transmitServer.isAlive() && lineTapServer.isAlive()
                 && clusterServer.isAlive()) {
+            int sleeptime = NORMAL_SLEEP_TIME;
             clusterServer.attempClusterConnections(config);
             try {
                 if (config.getDacs() != null) {
@@ -231,6 +240,7 @@ public class CommsManager {
                             if (!transmitServer.isConnectedToDacTransmit(key)
                                     && !clusterServer.isConnected(key)) {
                                 launchDacTransmit(key, channel);
+                                sleeptime = DAC_START_SLEEP_TIME;
                             }
                         }
                     }
@@ -241,10 +251,9 @@ public class CommsManager {
             WatchKey wkey = null;
             try {
                 if (configWatcher == null) {
-                    Thread.sleep(SLEEP_TIME);
+                    Thread.sleep(sleeptime);
                 } else {
-                    wkey = configWatcher
-                            .poll(SLEEP_TIME, TimeUnit.MILLISECONDS);
+                    wkey = configWatcher.poll(sleeptime, TimeUnit.MILLISECONDS);
                 }
             } catch (InterruptedException e) {
                 /* Check dacs immediately. */
@@ -342,6 +351,7 @@ public class CommsManager {
 
     protected void launchDacTransmit(DacTransmitKey key,
             DacChannelConfig channel) {
+        boolean force = false;
         String group = channel.getTransmitterGroup();
         Process p = startedProcesses.get(key);
         if (p != null) {
@@ -349,6 +359,7 @@ public class CommsManager {
                 int status = p.exitValue();
                 logger.error("Dac transmit process has unexpectedly exited for "
                         + group + " with a status of " + status);
+                force = true;
             } catch (IllegalThreadStateException e) {
                 logger.info("Dac transmit process is running but unconnected for "
                         + group);
@@ -358,6 +369,9 @@ public class CommsManager {
         logger.info("Starting dac transmit for: " + group);
         List<String> args = new ArrayList<>();
         args.add(config.getDacTransmitStarter());
+        if (force) {
+            args.add("-k");
+        }
         args.add("-" + DacTransmitArgParser.DAC_HOSTNAME_OPTION_KEY);
         args.add(key.getDacAddress());
         args.add("-" + DacTransmitArgParser.DATA_PORT_OPTION_KEY);
