@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -89,8 +89,8 @@ public class PlaylistData {
      * @param display
      *            The Display
      */
-    public PlaylistData(List<TableColumnData> columns, Display display) {
-        colorManager = new BroadcastCycleColorManager(display);
+    public PlaylistData(List<TableColumnData> columns, Shell shell) {
+        colorManager = new BroadcastCycleColorManager(shell);
         this.columns = columns;
     }
 

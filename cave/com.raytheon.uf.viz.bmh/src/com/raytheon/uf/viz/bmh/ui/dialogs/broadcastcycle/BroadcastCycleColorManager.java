@@ -19,8 +19,11 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
 
 /**
  * Color manager for the Broadcast Cycle Dialog. The creator of this class is
@@ -33,6 +36,7 @@ import org.eclipse.swt.widgets.Display;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014   3432     mpduff      Initial creation
+ * Oct 05, 2014   3647     mpduff      Add dispose listener to provided shell
  * 
  * </pre>
  * 
@@ -51,10 +55,16 @@ public class BroadcastCycleColorManager {
     private final Color predictedTransmitTimeColor;
 
     private final Color periodicColor;
-
-    // TODO Pass in the shell of the dialog calling this and add dispose
-    // listener, then get rid of finalize method
-    public BroadcastCycleColorManager(Display display) {
+    
+    public BroadcastCycleColorManager(Shell shell) {
+        shell.addDisposeListener(new DisposeListener() {
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                dispose();
+            }
+        });
+        
+        Display display = shell.getDisplay();
         actualTransmitTimeColor = new Color(display, 154, 205, 50);
         interruptColor = new Color(display, 255, 0, 0);
         replaceColor = new Color(display, 0, 191, 255);
@@ -97,17 +107,23 @@ public class BroadcastCycleColorManager {
         return periodicColor;
     }
 
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize();
-        dispose();
-    }
-
-    public void dispose() {
-        this.actualTransmitTimeColor.dispose();
-        this.interruptColor.dispose();
-        this.periodicColor.dispose();
-        this.predictedTransmitTimeColor.dispose();
-        this.replaceColor.dispose();
+    private void dispose() {
+        if (actualTransmitTimeColor != null
+                && !actualTransmitTimeColor.isDisposed()) {
+            this.actualTransmitTimeColor.dispose();
+        }
+        if (interruptColor != null && !interruptColor.isDisposed()) {
+            this.interruptColor.dispose();
+        }
+        if (periodicColor != null && !periodicColor.isDisposed()) {
+            this.periodicColor.dispose();
+        }
+        if (predictedTransmitTimeColor != null
+                && !predictedTransmitTimeColor.isDisposed()) {
+            this.predictedTransmitTimeColor.dispose();
+        }
+        if (replaceColor != null && !replaceColor.isDisposed()) {
+            this.replaceColor.dispose();
+        }
     }
 }

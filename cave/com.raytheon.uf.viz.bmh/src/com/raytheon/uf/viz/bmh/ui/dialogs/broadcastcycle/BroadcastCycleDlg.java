@@ -93,6 +93,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Aug 23, 2014  3432      mpduff      Add initial table population
  * Aug 25, 2014  3558      rjpeter     Updated to call getEnabledTransmitterGroupList.
  * Sep 25, 2014  3589      dgilling    Hook up Change Suite feature.
+ * Oct 05, 2014  3647      mpduff      Changes to color manager.
  * </pre>
  * 
  * @author mpduff
@@ -179,7 +180,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private Label timeZoneValueLbl;
 
     /** Playlist data object */
-    private final PlaylistData playlistData;
+    private PlaylistData playlistData;
 
     /** Message text area */
     private Text messageTextArea;
@@ -205,8 +206,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT);
         this.dataManager = new BroadcastCycleDataManager();
         setText(TITLE);
-
-        playlistData = new PlaylistData(getColumns(), getDisplay());
     }
 
     @Override
@@ -232,7 +231,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     @Override
     protected void initializeComponents(Shell shell) {
         // initialize colors
-        colorManager = new BroadcastCycleColorManager(getShell().getDisplay());
+        colorManager = new BroadcastCycleColorManager(getShell());
+        playlistData = new PlaylistData(getColumns(), getShell());
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         GridLayout gl = new GridLayout(2, false);
         gl.horizontalSpacing = 0;
@@ -949,7 +949,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     @Override
     protected void disposed() {
         super.disposed();
-        colorManager.dispose();
         if (monitorThread != null) {
             monitorThread.cancel();
             monitorThread.removeDisconnectListener(this);
