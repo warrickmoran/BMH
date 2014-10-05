@@ -49,9 +49,11 @@ import org.eclipse.ui.plugin.AbstractUIPlugin;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest.TtsVoiceAction;
 import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
@@ -87,6 +89,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 11, 2014   3411     mpduff      Pass MessageType object to Area Selection for populating, save TransmitterGroups
  * Sep 14, 2014  #3610     lvenable    Removed unused code and renamed variable.
  * Sep 25, 2014   3620     bsteffen    Add seconds to periodicity and duration.
+ * Oct 05, 2014   3411     mpduff      Added null checks and added transmitter to the group that contains it
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
@@ -796,11 +799,22 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         selectedMsgType.setWxr(wxrRdo.getSelection());
 
         if (areaData != null) {
-            selectedMsgType.setDefaultAreas(areaData.getAreas());
-            selectedMsgType.setDefaultZones(areaData.getZones());
+            if (areaData.getAreas() != null) {
+                selectedMsgType.setDefaultAreas(areaData.getAreas());
+            } else {
+                selectedMsgType.setDefaultAreas(new HashSet<Area>());
+            }
+
+            if (areaData.getZones() != null) {
+                selectedMsgType.setDefaultZones(areaData.getZones());
+            } else {
+                selectedMsgType.setDefaultZones(new HashSet<Zone>());
+            }
+
             Set<Transmitter> transmitterSet = areaData.getTransmitters();
             Set<TransmitterGroup> groupSet = new HashSet<>();
             for (Transmitter t : transmitterSet) {
+                t.getTransmitterGroup().addTransmitter(t);
                 groupSet.add(t.getTransmitterGroup());
             }
             selectedMsgType.setDefaultTransmitterGroups(groupSet);

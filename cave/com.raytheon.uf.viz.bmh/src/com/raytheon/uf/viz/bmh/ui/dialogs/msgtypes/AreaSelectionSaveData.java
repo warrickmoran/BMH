@@ -36,6 +36,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 20, 2014    3411    mpduff      Initial creation
+ * Oct 05, 2014    3411    mpduff      getTransmitters now returns an empty set rather than null
  * 
  * </pre>
  * 
@@ -108,6 +109,9 @@ public class AreaSelectionSaveData {
      * @return the transmitterList
      */
     public Set<Transmitter> getTransmitters() {
+        if (transmitters == null) {
+            transmitters = new HashSet<>();
+        }
         return transmitters;
     }
 
