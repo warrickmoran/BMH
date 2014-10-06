@@ -101,6 +101,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 14, 2014  #3610     lvenable    Added launching of Weather Messages dialog.
  * Sep 14, 2014   3630     mpduff      Add the Transmitter Alignment dialog.
  * Sep 19, 2014  #3611     lvenable    Added launching of Emergency Override dialog.
+ * Oct 06, 2014  #3700     lvenable    Added code for force hiding the tool tip.
  * 
  * </pre>
  * 
@@ -198,6 +199,15 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      * remain open if the main dialog is closed.
      */
     private final Set<CaveSWTDialogBase> dialogsSet = new HashSet<CaveSWTDialogBase>();
+
+    /** Tool tip for the Broadcast Cycle button. */
+    private CustomToolTip broadcastCycleTip;
+
+    /** Tool tip for the Weahter Messages button. */
+    private CustomToolTip weatherMessagesTip;
+
+    /** Tool tip for the Emergency Override button. */
+    private CustomToolTip emergencyOverrideTip;
 
     /**
      * Constructor.
@@ -455,9 +465,11 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent event) {
                 launchBroadcastCycle();
+                broadcastCycleTip.forceHideToolTip();
             }
         });
-        new CustomToolTip(broadcastCycleBtn, "Broadcast Cycle");
+        broadcastCycleTip = new CustomToolTip(broadcastCycleBtn,
+                "Broadcast Cycle");
 
         /*
          * Weather Message
@@ -471,9 +483,11 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent event) {
                 launchWeatherMessages();
+                weatherMessagesTip.forceHideToolTip();
             }
         });
-        new CustomToolTip(weatherMessageBtn, "Weather Messages");
+        weatherMessagesTip = new CustomToolTip(weatherMessageBtn,
+                "Weather Messages");
 
         /*
          * Emergency Override
@@ -487,9 +501,11 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent event) {
                 launchEmergencyOverride();
+                emergencyOverrideTip.forceHideToolTip();
             }
         });
-        new CustomToolTip(emergencyBtn, "Emergency Override");
+        emergencyOverrideTip = new CustomToolTip(emergencyBtn,
+                "Emergency Override");
     }
 
     /**

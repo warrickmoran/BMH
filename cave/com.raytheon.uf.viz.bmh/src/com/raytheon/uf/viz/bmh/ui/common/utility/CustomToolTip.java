@@ -23,6 +23,7 @@ import java.awt.Toolkit;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.MouseMoveListener;
 import org.eclipse.swt.events.MouseTrackAdapter;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
@@ -51,6 +52,7 @@ import org.eclipse.swt.widgets.Shell;
  * Jul 01, 2014 #3338      lvenable     Initial creation
  * Aug 23, 2014 #3490      lvenable     Add a fix for finding the total screen width of
  *                                      multiple monitors.
+ * Oct 06, 2014  #3700     lvenable     Added a force hide that will dispose of the tool tip text.
  * 
  * </pre>
  * 
@@ -162,9 +164,9 @@ public class CustomToolTip {
      */
     private void setupMouseListeners() {
 
-        tipControl.addMouseTrackListener(new MouseTrackAdapter() {
+        tipControl.addMouseMoveListener(new MouseMoveListener() {
             @Override
-            public void mouseExit(MouseEvent e) {
+            public void mouseMove(MouseEvent e) {
                 if (tipShell == null) {
                     return;
                 }
@@ -172,13 +174,19 @@ public class CustomToolTip {
                 if (tipControlRect != null
                         && tipControlRect.contains(Display.getCurrent()
                                 .getCursorLocation())) {
-                    return;
-                }
 
-                tipShell.dispose();
-                tipShell = null;
-                tipLabel = null;
-                tipControlRect = null;
+                    tipShell.dispose();
+                    tipShell = null;
+                    tipLabel = null;
+                    tipControlRect = null;
+                }
+            }
+        });
+
+        tipControl.addMouseTrackListener(new MouseTrackAdapter() {
+            @Override
+            public void mouseExit(MouseEvent e) {
+                forceHideToolTip();
             }
 
             @Override
@@ -255,6 +263,27 @@ public class CustomToolTip {
                 }
             }
         });
+    }
+
+    /**
+     * Convenience method to hide (read: dispose) of the tool tip for the
+     * situations when a dialog pops up when the mouse is over the controls that
+     * has this tool tip.
+     */
+    public void forceHideToolTip() {
+        if (tipShell == null) {
+            return;
+        }
+
+        if (tipControlRect != null
+                && tipControlRect.contains(Display.getCurrent()
+                        .getCursorLocation())) {
+
+            tipShell.dispose();
+            tipShell = null;
+            tipLabel = null;
+            tipControlRect = null;
+        }
     }
 
     /**
