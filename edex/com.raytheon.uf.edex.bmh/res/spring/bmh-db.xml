@@ -1,12 +1,24 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
+    
+    <bean id="bmhCommonDbPluginProperties" class="com.raytheon.uf.edex.database.DatabasePluginProperties">
+        <property name="pluginFQN" value="com.raytheon.uf.edex.database" />
+        <property name="database" value="bmh" />
+        <property name="forceCheck" value="true" />
+    </bean>
+    
+    <bean id="bmhCommonDbRegistered" factory-bean="dbPluginRegistry" factory-method="register">
+        <constructor-arg value="com.raytheon.uf.edex.database.bmh" />
+        <constructor-arg ref="bmhCommonDbPluginProperties" />
+    </bean>
+    
     <bean id="bmhDbPluginProperties" class="com.raytheon.uf.edex.database.DatabasePluginProperties">
         <property name="pluginFQN" value="com.raytheon.uf.common.bmh" />
         <property name="database" value="${bmh.database}" />
     </bean>
 
-    <bean id="bmhDbRegistered" factory-bean="dbPluginRegistry" factory-method="register">
+    <bean id="bmhDbRegistered" factory-bean="dbPluginRegistry" factory-method="register" depends-on="bmhCommonDbRegistered">
         <constructor-arg value="com.raytheon.uf.common.bmh" />
         <constructor-arg ref="bmhDbPluginProperties" />
     </bean>
@@ -21,6 +33,7 @@
                 <value>com.raytheon.uf.common.bmh.datamodel.msg</value>
                 <value>com.raytheon.uf.common.bmh.datamodel.playlist</value>
                 <value>com.raytheon.uf.common.bmh.datamodel.transmitter</value>
+                <value>com.raytheon.uf.edex.database</value>
             </list>
         </property>
     </bean>
@@ -82,6 +95,9 @@
     depends-on="bmhTxTemplate" />
 
   <bean id="dacDao" class="com.raytheon.uf.edex.bmh.dao.DacDao"
+    depends-on="bmhTxTemplate" />
+
+  <bean id="messageTypeDao" class="com.raytheon.uf.edex.bmh.dao.MessageTypeDao"
     depends-on="bmhTxTemplate" />
 
 </beans>
