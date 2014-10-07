@@ -63,6 +63,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                    target in the configuration.
  * Sep 09, 2014  3554     bsteffen    Inject daos to better handle startup ordering
  * Sep 25, 2014  3485     bsteffen    Preserve cluster options and write dac receiveAddress.
+ * Oct 2, 2014   3642     bkowal      Added transmitter timezone
  * Oct 03, 2014  3485     bsteffen    Better handling of poorly configured dacs.
  * 
  * 
@@ -178,6 +179,7 @@ public class CommsConfigurator implements IContextStateProcessor {
             DacChannelConfig channel = new DacChannelConfig();
             channel.setTransmitterGroup(group.getName());
             channel.setDbTarget(group.getAudioDBTarget());
+            channel.setTimezone(group.getTimeZone());
 
             int[] radios = new int[transmitters.size()];
             int rindex = 0;

@@ -41,6 +41,7 @@ import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TimeZone;
 import java.util.TreeSet;
 
 import javax.xml.bind.JAXB;
@@ -107,6 +108,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
  * Sep 30, 2014  #3589     dgilling     Better handle forced expiration of 
  *                                      playlists from CommsManager.
  * Oct 01, 2014  #3485     bsteffen     Allow playlist to resume on startup.
+ * Oct 2, 2014   #3642     bkowal       Updated to use the transmitter timezone and the
+ *                                      audio buffer abstraction.
  * 
  * </pre>
  * 
@@ -212,7 +215,7 @@ public final class PlaylistScheduler implements
      *             playlist files from the specified directory.
      */
     public PlaylistScheduler(Path inputDirectory, EventBus eventBus,
-            double dbTarget) {
+            double dbTarget, TimeZone timezone) {
         this.playlistDirectory = inputDirectory;
         this.eventBus = eventBus;
 
@@ -268,7 +271,7 @@ public final class PlaylistScheduler implements
 
         this.cache = new PlaylistMessageCache(
                 inputDirectory.resolve("messages"), this, this.eventBus,
-                dbTarget);
+                dbTarget, timezone);
         for (DacPlaylist playlist : this.activePlaylists) {
             this.cache.retrieveAudio(playlist.getMessages());
         }
@@ -315,7 +318,15 @@ public final class PlaylistScheduler implements
             warnNoMessages = true;
             DacPlaylistMessage nextMessage = nextMessageData.getMessage();
             logger.debug("Switching to message: " + nextMessage.toString());
-            AudioFileBuffer audioData = cache.getAudio(nextMessage);
+            IAudioFileBuffer audioDataBuffer = cache.getAudio(nextMessage);
+            AudioFileBuffer audioData = null;
+            if (audioDataBuffer.isDynamic()) {
+                audioData = this.cache.refreshTimeSensitiveAudio(
+                        (DynamicTimeAudioFileBuffer) audioDataBuffer,
+                        nextMessage, TimeUtil.newGmtCalendar());
+            } else {
+                audioData = (AudioFileBuffer) audioDataBuffer;
+            }
             boolean playTones = ((nextMessage.getSAMEtone() != null) && (nextMessage
                     .getPlayCount() == 0));
             audioData.setReturnTones(playTones);

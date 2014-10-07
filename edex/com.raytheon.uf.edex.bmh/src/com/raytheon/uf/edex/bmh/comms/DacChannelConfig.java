@@ -43,6 +43,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Aug 12, 2014  3486     bsteffen    Add getInputDirectory
  * Aug 18, 2014  3532     bkowal      Added transmitter decibel range
  * Sep 5, 2014   3532     bkowal      Replaced decibel range with decibel target
+ * Oct 2, 2014   3642     bkowal      Added transmitter timezone.
  * 
  * </pre>
  * 
@@ -57,6 +58,9 @@ public class DacChannelConfig {
 
     @XmlAttribute
     private double dbTarget;
+
+    @XmlAttribute
+    private String timezone;
 
     @XmlAttribute
     private int[] radios;
@@ -88,10 +92,19 @@ public class DacChannelConfig {
     }
 
     /**
-     * @param dbTarget the dbTarget to set
+     * @param dbTarget
+     *            the dbTarget to set
      */
     public void setDbTarget(double dbTarget) {
         this.dbTarget = dbTarget;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 
     public int[] getRadios() {
@@ -125,7 +138,12 @@ public class DacChannelConfig {
         result = prime * result
                 + ((controlPort == null) ? 0 : controlPort.hashCode());
         result = prime * result + dataPort;
+        long temp;
+        temp = Double.doubleToLongBits(dbTarget);
+        result = prime * result + (int) (temp ^ (temp >>> 32));
         result = prime * result + Arrays.hashCode(radios);
+        result = prime * result
+                + ((timezone == null) ? 0 : timezone.hashCode());
         result = prime
                 * result
                 + ((transmitterGroup == null) ? 0 : transmitterGroup.hashCode());
@@ -148,7 +166,15 @@ public class DacChannelConfig {
             return false;
         if (dataPort != other.dataPort)
             return false;
+        if (Double.doubleToLongBits(dbTarget) != Double
+                .doubleToLongBits(other.dbTarget))
+            return false;
         if (!Arrays.equals(radios, other.radios))
+            return false;
+        if (timezone == null) {
+            if (other.timezone != null)
+                return false;
+        } else if (!timezone.equals(other.timezone))
             return false;
         if (transmitterGroup == null) {
             if (other.transmitterGroup != null)
@@ -157,5 +183,4 @@ public class DacChannelConfig {
             return false;
         return true;
     }
-
 }

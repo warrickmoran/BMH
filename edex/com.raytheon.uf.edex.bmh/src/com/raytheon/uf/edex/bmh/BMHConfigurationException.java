@@ -17,10 +17,10 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.tts;
+package com.raytheon.uf.edex.bmh;
 
 /**
- * TTS Configuration Exceptions. Thrown by the TTS Manager when invalid or
+ * BMH Configuration Exceptions. Thrown by BMH Components when invalid or
  * missing configuration is encountered.
  * 
  * <pre>
@@ -30,6 +30,7 @@ package com.raytheon.uf.edex.bmh.tts;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 2, 2014  3228       bkowal      Initial creation
+ * Oct 2, 2014  3642       bkowal      Rename to apply to all BMH configuration errors.
  * 
  * </pre>
  * 
@@ -37,20 +38,20 @@ package com.raytheon.uf.edex.bmh.tts;
  * @version 1.0
  */
 
-public class TTSConfigurationException extends Exception {
+public class BMHConfigurationException extends Exception {
     private static final long serialVersionUID = 4593840624766159163L;
 
     /**
      * @param message
      */
-    public TTSConfigurationException(String message) {
+    public BMHConfigurationException(String message) {
         super(message);
     }
 
     /**
      * @param cause
      */
-    public TTSConfigurationException(Throwable cause) {
+    public BMHConfigurationException(Throwable cause) {
         super(cause);
     }
 
@@ -58,7 +59,7 @@ public class TTSConfigurationException extends Exception {
      * @param message
      * @param cause
      */
-    public TTSConfigurationException(String message, Throwable cause) {
+    public BMHConfigurationException(String message, Throwable cause) {
         super(message, cause);
     }
 
@@ -68,9 +69,8 @@ public class TTSConfigurationException extends Exception {
      * @param enableSuppression
      * @param writableStackTrace
      */
-    public TTSConfigurationException(String message, Throwable cause,
+    public BMHConfigurationException(String message, Throwable cause,
             boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
-
 }

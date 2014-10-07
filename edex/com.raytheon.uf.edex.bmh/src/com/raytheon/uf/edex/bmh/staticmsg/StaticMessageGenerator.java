@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.tts;
+package com.raytheon.uf.edex.bmh.staticmsg;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
@@ -68,6 +69,9 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Sep 09, 2014 2585       bsteffen    Implement MAT
  * Sep 12, 2014 3588       bsteffen    Support audio fragments.
  * Sep 29, 2014 3673       bkowal      Fix existing msg validation.
+ * Oct 2, 2014  3642       bkowal      Utilize the time audio generator to
+ *                                     verify / generate time messages for a
+ *                                     specific voice and timezone.
  * 
  * </pre>
  * 
@@ -79,6 +83,8 @@ public class StaticMessageGenerator {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(StaticMessageGenerator.class);
+
+    private final TimeMessagesGenerator tmGenerator;
 
     /*
      * Maximum allowed value for PostgreSQL year as documented at:
@@ -105,7 +111,8 @@ public class StaticMessageGenerator {
     /**
      * 
      */
-    public StaticMessageGenerator() {
+    public StaticMessageGenerator(final TimeMessagesGenerator tmGenerator) {
+        this.tmGenerator = tmGenerator;
         this.expire = Calendar.getInstance();
         this.expire.set(Calendar.YEAR, MAX_YEAR);
     }
@@ -354,8 +361,25 @@ public class StaticMessageGenerator {
              * Create the static message when necessary.
              */
             for (MessageType messageType : types) {
-                String text = messageType.getDesignation() == Designation.StationID ? language
-                        .getStationIdMsg() : language.getTimeMsg();
+                String text = StaticMessageIdentifierUtil.getText(messageType,
+                        language);
+                /*
+                 * Do time message fragments need to be generated?
+                 * 
+                 * Another special case for static messages.
+                 */
+                if (messageType.getDesignation() == Designation.TimeAnnouncement) {
+                    try {
+                        this.tmGenerator.process(language.getVoice(),
+                                group.getTimeZone());
+                    } catch (StaticGenerationException e) {
+                        statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
+                                "Failed to generate the static time message fragments for voice "
+                                        + language.getVoice().getVoiceNumber()
+                                        + "!", e);
+                        continue;
+                    }
+                }
                 ValidatedMessage msg = this.generateStaticMessage(group,
                         language, messageType, text, groupSet);
                 if (msg != null) {

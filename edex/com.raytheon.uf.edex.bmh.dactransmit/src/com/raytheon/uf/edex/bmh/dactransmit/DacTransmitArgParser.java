@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.TimeZone;
 
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
@@ -57,6 +58,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * Aug 26, 2014  #3286     dgilling     Allow for initially empty or missing
  *                                      playlist directory.
  * Sep 4, 2014   #3532     bkowal       Use a decibel target instead of a range.
+ * Oct 2, 2014   #3642     bkowal       Added transmitter timezone argument.
  * 
  * </pre>
  * 
@@ -66,7 +68,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 
 public final class DacTransmitArgParser {
 
-    private static final String USAGE_STATEMENT = "DacTransmit [--help] -d hostname -p port -c port -t channel -i directory -m port -r target";
+    private static final String USAGE_STATEMENT = "DacTransmit [--help] -d hostname -p port -c port -t channel -i directory -m port -r target -z timezone";
 
     private static final String HELP_OPTION_KEY = "help";
 
@@ -83,6 +85,8 @@ public final class DacTransmitArgParser {
     public static final char COMMS_MANAGER_PORT_OPTION_KEY = 'm';
 
     public static final char TRANSMISSION_DB_TARGET_KEY = 'r';
+
+    public static final char TIMEZONE_KEY = 'z';
 
     private final Options programOptions;
 
@@ -179,9 +183,31 @@ public final class DacTransmitArgParser {
             throw new ParseException("Required option -r not provided.");
         }
 
+        String timezoneStr = null;
+        if (cmd.hasOption(TIMEZONE_KEY)) {
+            timezoneStr = cmd.getOptionValue(TIMEZONE_KEY, null);
+            if (timezoneStr == null) {
+                throw new ParseException("Required option -z not provided.");
+            }
+        } else {
+            throw new ParseException("Required option -z not provided.");
+        }
+
+        TimeZone timeZone = TimeZone.getTimeZone(timezoneStr);
+        /*
+         * If the timezone ids do not match. An invalid timezone was provided.
+         * {@link TimeZone} will default to the GMT timezone if an associated
+         * time zone cannot be found.
+         */
+        if (timeZone.getID().equals(timezoneStr) == false) {
+            throw new ParseException(
+                    "An invalid timezone has been specified for the -z option: "
+                            + timezoneStr + ".");
+        }
+
         DacSessionConfig config = new DacSessionConfig(false, dacAddress,
                 dataPort, controlPort, transmitters, inputDirectory,
-                managerPort, dbTarget);
+                managerPort, dbTarget, timeZone);
         return config;
     }
 
@@ -219,9 +245,13 @@ public final class DacTransmitArgParser {
                 .create(COMMS_MANAGER_PORT_OPTION_KEY);
         Option dbRange = OptionBuilder
                 .withDescription(
-                        "The target range of the audio (in decibels) allowed by the transmitter.")
+                        "The target maximum of the audio (in decibels) allowed by the transmitter.")
                 .hasArg().withArgName("range")
                 .create(TRANSMISSION_DB_TARGET_KEY);
+        Option timezone = OptionBuilder
+                .withDescription(
+                        "The timezone associated with the transmitter.")
+                .hasArg().withArgName("timezone").create(TIMEZONE_KEY);
 
         options.addOption(help);
         options.addOption(dacAddress);
@@ -231,6 +261,7 @@ public final class DacTransmitArgParser {
         options.addOption(inputDirectory);
         options.addOption(managerPort);
         options.addOption(dbRange);
+        options.addOption(timezone);
         return options;
     }
 

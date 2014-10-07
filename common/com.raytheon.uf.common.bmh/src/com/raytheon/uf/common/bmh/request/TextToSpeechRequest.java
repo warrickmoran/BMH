@@ -34,6 +34,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * ------------ ---------- ----------- --------------------------
  * Jun 16, 2014   3355     mpduff      Initial creation.
  * Aug 25, 2014 3558       rjpeter     Default to Paul.
+ * Oct 2, 2014   3642      bkowal      Added timeout.
  * </pre>
  * 
  * @author mpduff
@@ -64,6 +65,12 @@ public class TextToSpeechRequest implements IServerRequest {
      */
     @DynamicSerializeElement
     private String status;
+
+    /**
+     * The maximum amount of time to wait for a synthesizer (in milliseconds).
+     */
+    @DynamicSerializeElement
+    private int timeout;
 
     /**
      * @return the phoneme
@@ -123,5 +130,13 @@ public class TextToSpeechRequest implements IServerRequest {
      */
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
     }
 }

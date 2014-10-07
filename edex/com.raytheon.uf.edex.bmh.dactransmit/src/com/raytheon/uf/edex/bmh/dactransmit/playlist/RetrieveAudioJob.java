@@ -25,17 +25,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.raytheon.uf.common.bmh.audio.AudioConversionException;
-import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
+import com.google.common.collect.Table;
+import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
-import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dactransmit.tones.TonesGenerator;
 import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
 
@@ -53,6 +51,8 @@ import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
  * Aug 26, 2014 3558       rjpeter     Disable audio attenuation.
  * Sep 4, 2014  3532       bkowal      Use a decibel target instead of a range. Re-enable attenuation.
  * Sep 12, 2014 3588       bsteffen    Support audio fragments.
+ * Oct 2, 2014  3642       bkowal      Updated to use the audio buffer abstraction and to
+ *                                     populate a {@link TimeMsgCache} for dynamic messages.
  * 
  * </pre>
  * 
@@ -60,19 +60,7 @@ import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
  * @version 1.0
  */
 
-public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> {
-
-    private final Logger logger = LoggerFactory.getLogger(getClass());
-
-    /* equivalent to 0.125 seconds */
-    private static final int AUDIO_SAMPLE_SIZE = 1000;
-
-    private final int priority;
-
-    private final double dbTarget;
-
-    private final DacPlaylistMessage message;
-
+public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
     private IAudioJobListener listener;
 
     private String taskId;
@@ -91,9 +79,7 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
      */
     public RetrieveAudioJob(final int priority, final double dbTarget,
             final DacPlaylistMessage message) {
-        this.priority = priority;
-        this.dbTarget = dbTarget;
-        this.message = message;
+        super(priority, dbTarget, message);
     }
 
     /**
@@ -128,14 +114,35 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
      * @see java.util.concurrent.Callable#call()
      */
     @Override
-    public AudioFileBuffer call() throws Exception {
+    public IAudioFileBuffer call() throws Exception {
         final long start = System.currentTimeMillis();
         List<byte[]> rawDataArrays = new ArrayList<>(this.message
                 .getSoundFiles().size());
-        int concatenatedSize = 0;
-        for (String soundFile : this.message.getSoundFiles()) {
-            Path filePath = Paths.get(soundFile);
+        Map<Integer, TIME_MSG_TOKENS> dynamicAudioPositionMap = new LinkedHashMap<>(
+                rawDataArrays.size());
+        TimeMsgCache timeCache = null;
+        IAudioFileBuffer buffer = null;
+        boolean dynamicMsg = false;
 
+        int concatenatedSize = 0;
+
+        for (int i = 0; i < this.message.getSoundFiles().size(); i++) {
+            Path filePath = Paths.get(this.message.getSoundFiles().get(i));
+
+            if (Files.isDirectory(filePath)) {
+                dynamicMsg = true;
+                rawDataArrays.add(null);
+                if (timeCache == null) {
+                    timeCache = new TimeMsgCache();
+                }
+                TIME_MSG_TOKENS token = timeCache.loadCache(filePath);
+                /*
+                 * This audio is dynamic. Use the tokens to keep track of the
+                 * order of the dynamic audio blocks.
+                 */
+                dynamicAudioPositionMap.put(i, token);
+                continue;
+            }
             /*
              * We really don't want to leave essentially null messages in the
              * cache for playback. However for the highly-controlled environment
@@ -148,26 +155,23 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
             try {
                 byte[] rawData = Files.readAllBytes(filePath);
                 concatenatedSize += rawData.length;
-                rawDataArrays.add(rawData);
+                byte[] regulatedRawData = this.adjustAudio(rawData,
+                        "Body (segment " + i + ")");
+                rawDataArrays.add(regulatedRawData);
+                /*
+                 * Not dynamic data. So, no lookup key.
+                 */
+                dynamicAudioPositionMap.put(i, null);
             } catch (IOException e) {
                 String msg = "Failed to buffer audio file for message: "
                         + message.getBroadcastId() + ", file: " + filePath;
                 this.notifyAttemptComplete();
                 throw new AudioRetrievalException(msg, e);
+            } catch (AudioRetrievalException e) {
+                this.notifyAttemptComplete();
+                throw e;
             }
         }
-        byte[] rawData = null;
-        if (rawDataArrays.size() == 1) {
-            rawData = rawDataArrays.get(0);
-        } else {
-            ByteBuffer concatenation = ByteBuffer.allocate(concatenatedSize);
-            for (byte[] array : rawDataArrays) {
-                concatenation.put(array);
-            }
-            rawData = concatenation.array();
-        }
-        /* Adjust the raw audio data as needed. */
-        byte[] regulatedRawData = this.adjustAudio(rawData, message, "Body");
 
         ByteBuffer tones = null;
         ByteBuffer endOfMessage = null;
@@ -187,18 +191,63 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
 
         /* regulate tones (if they exist). */
         if (tones != null) {
-            byte[] regulatedTones = adjustAudio(tones.array(), message,
-                    "SAME/Alert Tones");
-            tones = ByteBuffer.wrap(regulatedTones);
+            try {
+                byte[] regulatedTones = adjustAudio(tones.array(),
+                        "SAME/Alert Tones");
+                tones = ByteBuffer.wrap(regulatedTones);
+            } catch (AudioRetrievalException e) {
+                this.notifyAttemptComplete();
+                throw e;
+            }
         }
         if (endOfMessage != null) {
-            byte[] regulatedEndOfMessage = adjustAudio(endOfMessage.array(),
-                    message, "End of Message");
-            endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
+            try {
+                byte[] regulatedEndOfMessage = adjustAudio(
+                        endOfMessage.array(), "End of Message");
+                endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
+            } catch (AudioRetrievalException e) {
+                this.notifyAttemptComplete();
+                throw e;
+            }
         }
 
-        AudioFileBuffer buffer = new AudioFileBuffer(regulatedRawData, tones,
-                endOfMessage);
+        if (dynamicMsg == false) {
+            byte[] rawData = null;
+            if (rawDataArrays.size() == 1) {
+                rawData = rawDataArrays.get(0);
+            } else {
+                ByteBuffer concatenation = ByteBuffer
+                        .allocate(concatenatedSize);
+                for (byte[] array : rawDataArrays) {
+                    concatenation.put(array);
+                }
+                rawData = concatenation.array();
+            }
+            buffer = new AudioFileBuffer(rawData, tones, endOfMessage);
+        } else {
+            /*
+             * Adjust the time cache audio.
+             */
+            ITimer timeCacheAdjustTimer = TimeUtil.getTimer();
+            timeCacheAdjustTimer.start();
+            for (Table.Cell<String, String, byte[]> timeCell : timeCache
+                    .getTimeCache().cellSet()) {
+                final String rowKey = timeCell.getRowKey();
+                final String columnKey = timeCell.getColumnKey();
+                timeCache.getTimeCache().put(
+                        rowKey,
+                        columnKey,
+                        super.adjustAudio(timeCell.getValue(), "Time Cache: { "
+                                + rowKey + ", " + columnKey + " }"));
+            }
+            timeCacheAdjustTimer.stop();
+            logger.info("Successfully finished audio attenuation/amplification in "
+                    + TimeUtil.prettyDuration(timeCacheAdjustTimer
+                            .getElapsedTime()) + " for all time cached audio.");
+            buffer = new DynamicTimeAudioFileBuffer(tones, rawDataArrays,
+                    dynamicAudioPositionMap, endOfMessage, timeCache);
+        }
+
         logger.info("Successfully retrieved audio for message: "
                 + message.getBroadcastId() + " in "
                 + TimeUtil.prettyDuration(System.currentTimeMillis() - start)
@@ -208,59 +257,9 @@ public class RetrieveAudioJob implements PrioritizableCallable<AudioFileBuffer> 
         return buffer;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.edex.bmh.dactransmit.playlist.PrioritizableRunnable#
-     * getPriority()
-     */
-    @Override
-    public Integer getPriority() {
-        return this.priority;
-    }
-
     private void notifyAttemptComplete() {
         if (this.listener != null && this.taskId != null) {
             this.listener.audioRetrievalFinished(this.taskId, this.message);
         }
-    }
-
-    /**
-     * Adjusts the specified audio data so that it will be within the decibel
-     * range of the transmitter.
-     * 
-     * @param originalAudio
-     *            the specified audio data
-     * @param message
-     *            identifies the audio data; used for logging purposes
-     * @param part
-     *            identifies the portion of audio that is being adjusted; used
-     *            for logging purposes
-     * @return the adjusted audio data
-     * @throws AudioRetrievalException
-     */
-    private byte[] adjustAudio(final byte[] originalAudio,
-            final DacPlaylistMessage message, final String part)
-            throws AudioRetrievalException {
-        byte[] regulatedAudio = new byte[0];
-        try {
-            AudioRegulator audioRegulator = new AudioRegulator();
-            regulatedAudio = audioRegulator.regulateAudioVolume(originalAudio,
-                    this.dbTarget, AUDIO_SAMPLE_SIZE);
-            logger.info("Successfully finished audio attenuation/amplification in "
-                    + audioRegulator.getDuration()
-                    + " ms for message: "
-                    + message.getBroadcastId() + " (" + part + ").");
-        } catch (UnsupportedAudioFormatException | AudioConversionException
-                | AudioOverflowException e) {
-            final String msg = "Failed to adjust the audio signal to the target "
-                    + this.dbTarget
-                    + " dB for message: "
-                    + message.getBroadcastId();
-            this.notifyAttemptComplete();
-            throw new AudioRetrievalException(msg, e);
-        }
-
-        return regulatedAudio;
     }
 }

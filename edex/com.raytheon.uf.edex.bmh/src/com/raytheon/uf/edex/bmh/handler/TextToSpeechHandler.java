@@ -40,6 +40,8 @@ import com.raytheon.uf.edex.bmh.tts.TTSReturn;
  * Aug 25, 2014    3538    bkowal      Update to use the new TTS Synthesis
  *                                     mechanism. Most of the interaction is
  *                                     now hidden from the client.
+ * Oct 2, 2014     3642    bkowal      Use the tts synthesis timeout provided
+ *                                     in the request.
  * 
  * </pre>
  * 
@@ -59,7 +61,7 @@ public class TextToSpeechHandler implements
     public Object handleRequest(TextToSpeechRequest request) throws Exception {
         TTSReturn output = this.ttsManager.getSynthesisFactory().synthesize(
                 request.getPhoneme(), request.getVoice(),
-                TTS_FORMAT.TTS_FORMAT_MULAW, 10000);
+                TTS_FORMAT.TTS_FORMAT_MULAW, request.getTimeout());
         TTS_RETURN_VALUE status = output.getReturnValue();
 
         request.setStatus(status.getDescription());

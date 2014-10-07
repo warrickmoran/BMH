@@ -17,14 +17,10 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.tts;
-
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
 /**
- * Used to identify the different types of static messages the system will need
- * to support.
+ * Definition of a BMH Audio File Buffer.
  * 
  * <pre>
  * 
@@ -32,7 +28,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 29, 2014 3568       bkowal      Initial creation
+ * Oct 1, 2014  3642        bkowal     Initial creation
  * 
  * </pre>
  * 
@@ -40,20 +36,27 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
  * @version 1.0
  */
 
-public class StaticMessageIdentifierUtil {
-
-    public static final Designation stationDesignation = Designation.StationID;
-
-    public static final Designation timeDesignation = Designation.TimeAnnouncement;
+public interface IAudioFileBuffer {
+    /**
+     * Indicates whether or not there are any fragments that need to be loaded /
+     * reloaded prior to audio transmission
+     * 
+     * @return a boolean indicating whether or not any audio fragments
+     *         will need to be loaded / reloaded prior to transmission
+     */
+    public boolean isDynamic();
 
     /**
+     * Returns this buffer's capacity.
      * 
+     * @param includeTones
+     *            Whether or not to include the tones data in this calculation.
+     * @return The capacity of this buffer
      */
-    protected StaticMessageIdentifierUtil() {
-    }
+    public int capacity(boolean includeTones);
 
-    public static boolean isStaticMsgType(MessageType messageType) {
-        return messageType.getDesignation() == Designation.StationID
-                || messageType.getDesignation() == Designation.TimeAnnouncement;
-    }
+    /**
+     * Rewinds this buffer.
+     */
+    public void rewind();
 }

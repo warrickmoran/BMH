@@ -32,6 +32,7 @@ package com.raytheon.uf.common.bmh.audio;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2014 3383       bkowal      Initial creation
+ * Oct 2, 2014  3642       bkowal      Fix file extension specifiers
  * 
  * </pre>
  * 
@@ -41,11 +42,11 @@ package com.raytheon.uf.common.bmh.audio;
 
 public enum BMHAudioFormat {
     /* The WAV Audio Format. */
-    WAV("wav"),
+    WAV(".wav"),
     /* The ULAW Audio Format. */
-    ULAW("ulaw"),
+    ULAW(".ulaw"),
     /* The PCM Audio Format. */
-    PCM("pcm");
+    PCM(".pcm");
 
     private final String extension;
 

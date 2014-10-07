@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.xformer;
 
+import java.nio.file.Paths;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,13 +30,16 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.WordUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
@@ -43,11 +47,14 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.Sentence;
+import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
+import com.raytheon.uf.edex.bmh.staticmsg.StaticMessageIdentifierUtil;
+import com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator;
+import com.raytheon.uf.edex.bmh.staticmsg.TimeTextFragment;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
-import com.raytheon.uf.edex.bmh.tts.StaticMessageIdentifierUtil;
 import com.raytheon.uf.edex.bmh.xformer.data.DynamicNumericTextTransformation;
 import com.raytheon.uf.edex.bmh.xformer.data.IBoundText;
 import com.raytheon.uf.edex.bmh.xformer.data.IFreeText;
@@ -75,6 +82,7 @@ import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
  *                                     the transformation (at least so that EVERY
  *                                     letter in the message is not capitalized).
  * Sep 12, 2014 3588       bsteffen    Support audio fragments.
+ * Oct 2, 2014  3642       bkowal      Updated to recognize and handle static time fragments.
  * 
  * </pre>
  * 
@@ -305,15 +313,12 @@ public class MessageTransformer {
      *            based on afosid
      * @return the broadcast message that was built.
      * @throws SSMLConversionException
+     * @throws BMHConfigurationException
      */
     private BroadcastMsg transformText(InputMessage inputMessage,
             final String formattedContent, Dictionary dictionary,
             TransmitterGroup group, MessageType messageType)
-            throws SSMLConversionException {
-
-        /* Initially all text is Free. */
-        List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
-        transformationCandidates.add(new RulingFreeText(formattedContent));
+            throws SSMLConversionException, BMHConfigurationException {
 
         /* Create Transformation rules based on the dictionary. */
         List<ITextTransformation> textTransformations = new LinkedList<ITextTransformation>();
@@ -330,52 +335,130 @@ public class MessageTransformer {
             }
         }
 
-        /* Determine which text the transformations can be applied to. */
-        transformationCandidates = this.setTransformations(textTransformations,
-                transformationCandidates);
+        /*
+         * Handle the static message type special case.
+         */
+        TtsVoice fragmentVoice = messageType.getVoice();
+        TransmitterLanguage transmitterLanguage = null;
+        if (StaticMessageIdentifierUtil.isStaticMsgType(messageType)) {
+            statusHandler
+                    .info("Afos Id "
+                            + inputMessage.getAfosid()
+                            + " is associated with a static message type. Retrieving associated transmitter language for transmitter group "
+                            + group.getId() + " and language "
+                            + inputMessage.getLanguage().toString() + ".");
+            final TransmitterLanguagePK key = new TransmitterLanguagePK();
+            key.setLanguage(inputMessage.getLanguage());
+            key.setTransmitterGroup(group);
+            transmitterLanguage = this.transmitterLanguageDao.getByID(key);
+            if (transmitterLanguage == null) {
+                throw new BMHConfigurationException(
+                        "Unable to find a transmitter language associated with transmitter group "
+                                + group.getId() + " and language "
+                                + inputMessage.getLanguage().toString() + "!");
+            }
+            fragmentVoice = transmitterLanguage.getVoice();
+        }
 
-        /* Apply the transformations and build the SSML Document. */
-        SSMLDocument ssmlDocument = this.applyTransformations(
-                transformationCandidates, formattedContent);
+        /*
+         * Handle the Time Announcement static message type special case.
+         */
+        List<BroadcastFragment> broadcastFragments = new LinkedList<>();
+        if (messageType.getDesignation() == Designation.TimeAnnouncement) {
+            /*
+             * There will be a fragment for each portion of the time message.
+             */
+            List<TimeTextFragment> timeFragments = StaticMessageIdentifierUtil
+                    .getTimeMsgFragments(transmitterLanguage);
+            int index = 0;
+            for (TimeTextFragment timeFragment : timeFragments) {
+                if (timeFragment.isTimePlaceholder() == false) {
+                    final String formattedTimeText = this
+                            .formatText(timeFragment.getText());
+
+                    /* Initially all text is Free. */
+                    List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
+                    transformationCandidates.add(new RulingFreeText(
+                            formattedTimeText));
+
+                    /*
+                     * Determine which text the transformations can be applied
+                     * to.
+                     */
+                    transformationCandidates = this.setTransformations(
+                            textTransformations, transformationCandidates);
+                    /*
+                     * Just a standard part of the message. Will only change
+                     * when the message is changed triggering an absolute
+                     * regeneration.
+                     */
+                    SSMLDocument ssmlDocument = this.applyTransformations(
+                            transformationCandidates, formattedTimeText);
+                    BroadcastFragment fragment = new BroadcastFragment();
+                    fragment.setSsml(ssmlDocument.toSSML());
+                    fragment.setPosition(index);
+                    broadcastFragments.add(fragment);
+                    ++index;
+                } else {
+                    for (TIME_MSG_TOKENS token : StaticMessageIdentifierUtil.timeContentFormat) {
+                        BroadcastFragment fragment = new BroadcastFragment();
+                        /*
+                         * Dynamic audio that will need to be swapped in based
+                         * on the current time. No need to actually set text for
+                         * audio synthesis because all of the time messages have
+                         * been pre-generated.
+                         */
+                        fragment.setSsml(StringUtils.EMPTY);
+                        /*
+                         * Set the location of the file. Dac Transmit will be
+                         * responsible for building the full path to the file
+                         * based on the hour and minute at the time.
+                         */
+                        fragment.setOutputName(Paths.get(
+                                TimeMessagesGenerator.getTimeVoiceDirectory(
+                                        fragmentVoice).toString(),
+                                token.getIdentifier()).toString());
+                        /*
+                         * Ensure that TTS Manager skips over this fragment
+                         * during synthesis. If the TTS Manager still attempts
+                         * to process the message at this point, something may
+                         * have happened to the pre-generated time audio files.
+                         */
+                        fragment.setSuccess(true);
+                        fragment.setPosition(index);
+                        broadcastFragments.add(fragment);
+                        ++index;
+                    }
+                }
+            }
+        } else {
+            /* Initially all text is Free. */
+            List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
+            transformationCandidates.add(new RulingFreeText(formattedContent));
+
+            /* Determine which text the transformations can be applied to. */
+            transformationCandidates = this.setTransformations(
+                    textTransformations, transformationCandidates);
+
+            /*
+             * There will only be one fragment for all text.
+             */
+            SSMLDocument ssmlDocument = this.applyTransformations(
+                    transformationCandidates, formattedContent);
+            BroadcastFragment fragment = new BroadcastFragment();
+            fragment.setSsml(ssmlDocument.toSSML());
+            broadcastFragments.add(fragment);
+        }
 
         /* Create the Broadcast Message */
         BroadcastMsg message = new BroadcastMsg();
         /* Message Header */
         message.setTransmitterGroup(group);
         message.setInputMessage(inputMessage);
-
-        /*
-         * Static message types define their own voice based on the id of the
-         * transmitter group. "Special Case" for static message types.
-         */
-        BroadcastFragment fragment = new BroadcastFragment();
-        fragment.setVoice(messageType.getVoice());
-        if (StaticMessageIdentifierUtil.isStaticMsgType(messageType)) {
-            statusHandler
-                    .info("Afos Id "
-                            + inputMessage.getAfosid()
-                            + " is associated with a static message type. Retrieving voice associated with transmitter language for transmitter group "
-                            + group.getId() + " and language "
-                            + inputMessage.getLanguage().toString() + ".");
-            final TransmitterLanguagePK key = new TransmitterLanguagePK();
-            key.setLanguage(inputMessage.getLanguage());
-            key.setTransmitterGroup(group);
-            TransmitterLanguage transmitterLanguage = this.transmitterLanguageDao
-                    .getByID(key);
-            if (transmitterLanguage != null) {
-                fragment.setVoice(transmitterLanguage.getVoice());
-            } else {
-                statusHandler
-                        .info("No transmitter language is associated with transmitter group "
-                                + group.getId()
-                                + " and language "
-                                + inputMessage.getLanguage().toString()
-                                + ". Using default voice associated with message type "
-                                + inputMessage.getAfosid() + ".");
-            }
+        for (BroadcastFragment fragment : broadcastFragments) {
+            fragment.setVoice(fragmentVoice);
+            message.addFragment(fragment);
         }
-        fragment.setSsml(ssmlDocument.toSSML());
-        message.addFragment(fragment);
         return message;
     }
 

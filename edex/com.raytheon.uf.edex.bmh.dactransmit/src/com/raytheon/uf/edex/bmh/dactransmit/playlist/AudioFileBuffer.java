@@ -42,6 +42,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
  * Aug 12, 2014  #3286     dgilling     Integrate tone playback.
  * Sep 12, 2014  #3588     bsteffen     Support audio fragments.
  * Oct 01, 2014  #3485     bsteffen     Add skip() and isInTones()
+ * Oct 2, 2014   #3642     bkowal       Abstract to support dynamic audio fragments.
  * 
  * </pre>
  * 
@@ -49,7 +50,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
  * @version 1.0
  */
 
-public final class AudioFileBuffer {
+public class AudioFileBuffer extends AbstractAudioFileBuffer {
 
     private final ByteBuffer tonesBuffer;
 
@@ -191,9 +192,14 @@ public final class AudioFileBuffer {
                         .hasRemaining() && endOfMessageBuffer.hasRemaining()));
     }
 
-    /**
-     * Rewinds this buffer.
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.dactransmit.playlist.AbstractAudioFileBuffer
+     * #rewind()
      */
+    @Override
     public void rewind() {
         messageBuffer.rewind();
         tonesBuffer.rewind();
@@ -213,13 +219,14 @@ public final class AudioFileBuffer {
                 .hasRemaining()) : messageBuffer.hasRemaining();
     }
 
-    /**
-     * Returns this buffer's capacity.
+    /*
+     * (non-Javadoc)
      * 
-     * @param includeTones
-     *            Whether or not to include the tones data in this calculation.
-     * @return The capacity of this buffer
+     * @see
+     * com.raytheon.uf.edex.bmh.dactransmit.playlist.IAudioFileBuffer#capacity
+     * (boolean)
      */
+    @Override
     public int capacity(boolean includeTones) {
         int capacity = messageBuffer.capacity();
         if (includeTones) {

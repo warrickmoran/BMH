@@ -49,6 +49,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 05, 2014 3175       rjpeter     Fixed serialization.
  * Aug 29, 2014 3568       bkowal      Added query to retrieve transmitter language(s) associated
  *                                     with a transmitter group
+ * Oct 2, 2014  3642       bkowal      Updated time message field to be: preamble and postamble
  * </pre>
  * 
  * @author rjpeter
@@ -74,12 +75,19 @@ public class TransmitterLanguage {
     @DynamicSerializeElement
     private String stationIdMsg;
 
-    // Text: 1-40960 characters
-    // Must contain a parsable DTG string
+    /*
+     * Note: the time preamble and postamble are optional. Additional
+     * information about the time message, itself, is still required.
+     */
     @Lob
-    @Column
+    @Column(nullable = false)
     @DynamicSerializeElement
-    private String timeMsg;
+    private String timeMsgPreamble;
+
+    @Lob
+    @Column(nullable = true)
+    @DynamicSerializeElement
+    private String timeMsgPostamble;
 
     @ManyToOne(optional = true)
     @DynamicSerializeElement
@@ -164,19 +172,20 @@ public class TransmitterLanguage {
         this.stationIdMsg = stationIdMsg;
     }
 
-    /**
-     * @return the timeMsg
-     */
-    public String getTimeMsg() {
-        return timeMsg;
+    public String getTimeMsgPreamble() {
+        return timeMsgPreamble;
     }
 
-    /**
-     * @param timeMsg
-     *            the timeMsg to set
-     */
-    public void setTimeMsg(String timeMsg) {
-        this.timeMsg = timeMsg;
+    public void setTimeMsgPreamble(String timeMsgPreamble) {
+        this.timeMsgPreamble = timeMsgPreamble;
+    }
+
+    public String getTimeMsgPostamble() {
+        return timeMsgPostamble;
+    }
+
+    public void setTimeMsgPostamble(String timeMsgPostamble) {
+        this.timeMsgPostamble = timeMsgPostamble;
     }
 
     /**
@@ -240,5 +249,4 @@ public class TransmitterLanguage {
         }
         return true;
     }
-
 }

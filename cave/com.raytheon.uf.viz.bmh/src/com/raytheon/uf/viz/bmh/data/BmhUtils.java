@@ -46,6 +46,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Jun 25, 2014    3355    mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
+ * Oct 2, 2014  3642       bkowal      Specify the Synthesizer Timeout
  * </pre>
  * 
  * @author mpduff
@@ -90,6 +91,7 @@ public class BmhUtils {
     public static void playText(String text) {
         TextToSpeechRequest req = new TextToSpeechRequest();
         req.setPhoneme(text);
+        req.setTimeout(10000);
         try {
             req = (TextToSpeechRequest) BmhUtils.sendRequest(req);
             playSound(req.getByteData(), req.getStatus());

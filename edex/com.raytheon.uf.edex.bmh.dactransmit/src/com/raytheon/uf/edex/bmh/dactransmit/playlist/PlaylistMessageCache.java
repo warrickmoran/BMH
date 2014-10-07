@@ -23,10 +23,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -82,6 +84,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      have an associated sound file.
  * Sep 12, 2014  #3588     bsteffen     Support audio fragments.
  * Sep 12, 2014  #3485     bsteffen     Shutdown purge job on shutdown.
+ * Oct 2, 2014   #3642     bkowal       Updated to use the audio buffer abstraction
  * 
  * </pre>
  * 
@@ -128,9 +131,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private final ConcurrentMap<DacPlaylistMessageId, DacPlaylistMessage> cachedMessages;
 
-    private final ConcurrentMap<DacPlaylistMessage, AudioFileBuffer> cachedFiles;
+    private final ConcurrentMap<DacPlaylistMessage, IAudioFileBuffer> cachedFiles;
 
-    private final ConcurrentMap<DacPlaylistMessageId, Future<AudioFileBuffer>> cacheStatus;
+    private final ConcurrentMap<DacPlaylistMessageId, Future<IAudioFileBuffer>> cacheStatus;
 
     private final ConcurrentMap<String, CachedAudioRetrievalTask> cachedRetrievalTasks;
 
@@ -138,11 +141,13 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private double dbTarget;
 
+    private TimeZone timezone;
+
     private final PlaylistScheduler scheduler;
 
     public PlaylistMessageCache(Path messageDirectory,
             PlaylistScheduler playlistScheduler, EventBus eventBus,
-            double dbTarget) {
+            double dbTarget, TimeZone timezone) {
         this.messageDirectory = messageDirectory;
         this.cacheThreadPool = new PriorityBasedExecutorService(
                 THREAD_POOL_MAX_SIZE, new NamedThreadFactory(
@@ -153,6 +158,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         this.cachedRetrievalTasks = new ConcurrentHashMap<>();
         this.eventBus = eventBus;
         this.dbTarget = dbTarget;
+        this.timezone = timezone;
         this.scheduler = playlistScheduler;
 
         this.purgeThreadPool = Executors.newScheduledThreadPool(PURGE_THREADS,
@@ -191,7 +197,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      */
     public void retrieveAudio(final DacPlaylistMessageId id) {
         if (!cacheStatus.containsKey(id)) {
-            Future<AudioFileBuffer> jobStatus = scheduleFileRetrieval(
+            Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
                     PriorityBasedExecutorService.PRIORITY_NORMAL, id);
             cacheStatus.put(id, jobStatus);
         }
@@ -207,7 +213,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * @return the results of an asynchronous computation; used to track the job
      *         status.
      */
-    private Future<AudioFileBuffer> scheduleFileRetrieval(final int priority,
+    private Future<IAudioFileBuffer> scheduleFileRetrieval(final int priority,
             final DacPlaylistMessageId id) {
         return this.scheduleFileRetrieval(priority, id, null);
     }
@@ -225,9 +231,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * @return the results of an asynchronous computation; used to track the job
      *         status.
      */
-    private Future<AudioFileBuffer> scheduleFileRetrieval(final int priority,
+    private Future<IAudioFileBuffer> scheduleFileRetrieval(final int priority,
             final DacPlaylistMessageId id, final String taskId) {
-        Callable<AudioFileBuffer> retrieveAudioJob = new RetrieveAudioJob(
+        Callable<IAudioFileBuffer> retrieveAudioJob = new RetrieveAudioJob(
                 priority, this.dbTarget, this.getMessage(id), this, taskId);
 
         return cacheThreadPool.submit(retrieveAudioJob);
@@ -244,11 +250,11 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * @return The audio file's data, or {@code null} if the data isn't in the
      *         cache.
      */
-    public AudioFileBuffer getAudio(final DacPlaylistMessage message) {
-        Future<AudioFileBuffer> fileStatus = cacheStatus
+    public IAudioFileBuffer getAudio(final DacPlaylistMessage message) {
+        Future<IAudioFileBuffer> fileStatus = cacheStatus
                 .get(new DacPlaylistMessageId(message.getBroadcastId()));
         if (fileStatus != null) {
-            AudioFileBuffer buffer = cachedFiles.get(message);
+            IAudioFileBuffer buffer = cachedFiles.get(message);
             if (buffer == null) {
                 try {
                     /*
@@ -279,6 +285,25 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         }
 
         return null;
+    }
+
+    public AudioFileBuffer refreshTimeSensitiveAudio(
+            DynamicTimeAudioFileBuffer dynamicBuffer,
+            final DacPlaylistMessage message, Calendar transmission) {
+        /*
+         * Currently, the data is in GMT format. So, it will be necessary to
+         * convert it to the correct timezone.
+         */
+        transmission.setTimeZone(this.timezone);
+        try {
+            return dynamicBuffer.finalizeFileBuffer(transmission);
+        } catch (NotTimeCachedException e) {
+            logger.error("Failed to update dynamic time audio!", e);
+            CriticalErrorEvent event = new CriticalErrorEvent(
+                    "Failed to update dynamic time audio!", e);
+            this.eventBus.post(event);
+            return null;
+        }
     }
 
     /**
@@ -375,7 +400,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         for (DacPlaylistMessage message : cachedFiles.keySet()) {
             DacPlaylistMessageId messageId = new DacPlaylistMessageId(
                     message.getBroadcastId());
-            Future<AudioFileBuffer> jobStatus = scheduleFileRetrieval(
+            Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
                     PriorityBasedExecutorService.PRIORITY_LOW, messageId);
             cacheStatus.replace(messageId, jobStatus);
         }
@@ -515,14 +540,13 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 Files.delete(path);
                 logger.info("Deleted " + message.getPath());
             }
-
         }
     }
 
     private void purgeAudio(final DacPlaylistMessageId messageId) {
         logger.debug("Removing audio for message " + messageId + " from cache.");
 
-        Future<AudioFileBuffer> jobStatus = cacheStatus.remove(messageId);
+        Future<IAudioFileBuffer> jobStatus = cacheStatus.remove(messageId);
         if (jobStatus != null) {
             jobStatus.cancel(true);
         }

@@ -52,6 +52,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Aug 26, 2014 3559       bkowal      Notify the user of a configuration error when the
  *                                     synthesis validation fails due to an improperly
  *                                     set bmh tts nfs directory.
+ * Oct 2, 2014  3642       bkowal      Made NO_TIMEOUT public.
  * 
  * </pre>
  * 
@@ -64,7 +65,7 @@ public class TTSSynthesisFactory implements FutureCallback<UnlockNotification> {
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(TTSSynthesisFactory.class);
 
-    private static final int NO_TIMEOUT = -1;
+    public static final int NO_TIMEOUT = -1;
 
     private final String ttsServer;
 

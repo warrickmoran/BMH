@@ -66,6 +66,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * ------------ ---------- ----------- --------------------------
  * Jul 8, 2014  3302       bkowal      Initial creation
  * Sep 25, 2014 3620       bsteffen    Add seconds to periodicity and duration.
+ * Oct 7, 2014  3642       bkowal      Update for compilation compatibility.
  * 
  * </pre>
  * 
@@ -73,6 +74,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * @version 1.0
  */
 
+@Deprecated
 public class MessageTransformerTester extends AbstractBMHTester {
 
     private static final IUFStatusHandler statusHandler = UFStatus
@@ -89,8 +91,6 @@ public class MessageTransformerTester extends AbstractBMHTester {
     private static final String MSG_TYPE_TITLE = "XFORMTITLE";
 
     private static final String MSG_TYPE_DEFAULT_9 = "99999999";
-
-    private static final String TRANSMITTER_LANGUAGE_DICTIONARY = "XFormTestDict";
 
     private final InputMessageDao inputMessageDao;
 
@@ -263,7 +263,6 @@ public class MessageTransformerTester extends AbstractBMHTester {
         TransmitterLanguage transmitterLanguage = new TransmitterLanguage();
         transmitterLanguage.setId(transmitterLanguagePK);
         transmitterLanguage.setStationIdMsg(StringUtils.EMPTY);
-        transmitterLanguage.setTimeMsg(StringUtils.EMPTY);
         // transmitterLanguage.setDictionaryName(TRANSMITTER_LANGUAGE_DICTIONARY);
         transmitterLanguage.setVoice(ttsVoice);
         languages.put(Language.ENGLISH, transmitterLanguage);

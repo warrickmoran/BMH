@@ -79,6 +79,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Sep 29, 2014  3291     bkowal      Use bmh home to look for configuration.
  * Oct 01, 2014  3665     bsteffen    Add force start flag to dac transmit starter.
  * 
+ * Oct 2, 2014   3642     bkowal      Pass the timezone associated with the transmitter
+ *                                    group as an argument to the Dac Transmitter.
  * 
  * </pre>
  * 
@@ -392,6 +394,8 @@ public class CommsManager {
         args.add(Integer.toString(config.getDacTransmitPort()));
         args.add("-" + DacTransmitArgParser.TRANSMISSION_DB_TARGET_KEY);
         args.add(Double.toString(channel.getDbTarget()));
+        args.add("-" + DacTransmitArgParser.TIMEZONE_KEY);
+        args.add(channel.getTimezone());
 
         ProcessBuilder startCommand = new ProcessBuilder(args);
         startCommand.environment().put("TRANSMITTER_GROUP", group);

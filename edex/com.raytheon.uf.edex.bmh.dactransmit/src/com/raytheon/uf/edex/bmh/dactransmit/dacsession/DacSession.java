@@ -72,6 +72,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Aug 26, 2014  #3286     dgilling     Make construction of playlist directory
  *                                      observer optional.
  * Sep 4, 2014   #3532     bkowal       Use a decibel target instead of a range.
+ * Oct 2, 2014   #3642     bkowal       Add transmitter timezone
  * 
  * </pre>
  * 
@@ -122,7 +123,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         this.eventBus = new AsyncEventBus("DAC-Transmit", notificationExecutor);
         this.playlistMgr = new PlaylistScheduler(
                 this.config.getInputDirectory(), this.eventBus,
-                this.config.getDbTarget());
+                this.config.getDbTarget(), this.config.getTimezone());
         this.controlThread = new ControlStatusThread(this.eventBus,
                 this.config.getDacAddress(), this.config.getControlPort());
         this.dataThread = new DataTransmitThread(this.eventBus, playlistMgr,

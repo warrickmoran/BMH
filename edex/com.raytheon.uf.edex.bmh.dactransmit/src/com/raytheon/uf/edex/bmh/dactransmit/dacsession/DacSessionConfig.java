@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 import java.net.InetAddress;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.TimeZone;
 
 /**
  * Configuration parameters for a DacSession object. Defines all the necessary
@@ -39,6 +40,7 @@ import java.util.Collection;
  * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
  * Aug 18, 2014  #3532     bkowal       Add transmitter decibel range.
  * Sep 4, 2014   #3532     bkowal       Use a decibel target instead of a range.
+ * Oct 2, 2014   #3642     bkowal       Add transmitter timezone.
  * 
  * </pre>
  * 
@@ -64,13 +66,17 @@ public final class DacSessionConfig {
 
     private final double dbTarget;
 
+    private final TimeZone timezone;
+
     public DacSessionConfig(boolean printHelp) {
-        this(printHelp, null, -1, -1, null, null, -1, Double.NEGATIVE_INFINITY);
+        this(printHelp, null, -1, -1, null, null, -1, Double.NEGATIVE_INFINITY,
+                null);
     }
 
     public DacSessionConfig(boolean printHelp, InetAddress dacAddress,
             int dataPort, int controlPort, Collection<Integer> transmitters,
-            Path inputDirectory, int managerPort, double dbTarget) {
+            Path inputDirectory, int managerPort, double dbTarget,
+            TimeZone timezone) {
         this.printHelp = printHelp;
         this.dacAddress = dacAddress;
         this.dataPort = dataPort;
@@ -79,6 +85,7 @@ public final class DacSessionConfig {
         this.inputDirectory = inputDirectory;
         this.managerPort = managerPort;
         this.dbTarget = dbTarget;
+        this.timezone = timezone;
     }
 
     /*
@@ -141,5 +148,9 @@ public final class DacSessionConfig {
      */
     public double getDbTarget() {
         return dbTarget;
+    }
+
+    public TimeZone getTimezone() {
+        return timezone;
     }
 }

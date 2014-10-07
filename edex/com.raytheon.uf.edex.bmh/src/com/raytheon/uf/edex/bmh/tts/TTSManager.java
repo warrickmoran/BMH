@@ -36,10 +36,12 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.TTSSynthesisException;
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
@@ -72,6 +74,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Sep 12, 2014 3588       bsteffen    Support audio fragments.
  * Sep 29, 2014 3291       bkowal      Cleanup. Do not depend on properties that are not
  *                                     directly used.
+ * Oct 2, 2014  3642       bkowal      Updated for compatibility with other changes
  * 
  * </pre>
  * 
@@ -99,7 +102,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     /* For now, just default the format to a MULAW file. */
     private static final TTS_FORMAT TTS_DEFAULT_FORMAT = TTS_FORMAT.TTS_FORMAT_MULAW;
 
-    private static final String DEFAULT_TTS_FILE_EXTENSION = ".ulaw";
+    private static final String DEFAULT_TTS_FILE_EXTENSION = BMHAudioFormat.ULAW
+            .getExtension();
 
     /* Configuration Property Name Constants */
     private static final String TTS_THREADS = "bmh.tts.threads";
@@ -150,7 +154,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
         try {
             this.initialize();
-        } catch (TTSConfigurationException | IOException e) {
+        } catch (BMHConfigurationException | IOException e) {
             statusHandler.fatal(BMH_CATEGORY.TTS_CONFIGURATION_ERROR,
                     "TTS Manager Initialization Failed!", e);
             /* Halt the context startup. */
@@ -175,7 +179,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      */
     @Override
     public void preStop() {
-        // Do Nothing
+        this.dispose();
     }
 
     /*
@@ -191,10 +195,10 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     /**
      * Retrieves and validates the configuration required by the TTS Manager.
      * 
-     * @throws TTSConfigurationException
+     * @throws BMHConfigurationException
      * @throws IOException
      */
-    private void initialize() throws TTSConfigurationException, IOException {
+    private void initialize() throws BMHConfigurationException, IOException {
         statusHandler.info("Initializing the TTS Manager ...");
 
         /* Attempt to retrieve the location of BMH_DATA */
@@ -217,20 +221,20 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
         /* Verify that the configuration was successfully retrieved. */
         if (ttsThreadInteger == null) {
-            throw new TTSConfigurationException(
+            throw new BMHConfigurationException(
                     "Failed to retrieve the TTS Available Thread Count from configuration!");
         }
         if (ttsHeartbeatLong == null) {
-            throw new TTSConfigurationException(
+            throw new BMHConfigurationException(
                     "Failed to retrieve the TTS Heartbeat Interval from configuration!");
         }
 
         if (retryInteger == null) {
-            throw new TTSConfigurationException(
+            throw new BMHConfigurationException(
                     "Failed to retrieve the TTS Retry Threshold from configuration!");
         }
         if (delayLong == null) {
-            throw new TTSConfigurationException(
+            throw new BMHConfigurationException(
                     "Failed to retrieve the TTS Retry Delay from configuration!");
         }
 
@@ -241,13 +245,13 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
         /* Ensure that the heartbeat interval is > 0 */
         if (this.ttsHeartbeat <= 0) {
-            throw new TTSConfigurationException(
+            throw new BMHConfigurationException(
                     "TTS Heartbeat Interval must be > 0!");
         }
 
         /* Ensure that the TTS Retry Delay is >= 0 */
         if (this.ttsRetryDelay < 0) {
-            throw new TTSConfigurationException("TTS Retry Delay must be >= 0!");
+            throw new BMHConfigurationException("TTS Retry Delay must be >= 0!");
         }
 
         if (this.ttsValidationVoice != null) {
@@ -281,7 +285,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         }
     }
 
-    private void validateAvailability() throws TTSConfigurationException,
+    private void validateAvailability() throws BMHConfigurationException,
             IOException {
         int attempt = 0;
         boolean retry = true;
@@ -303,10 +307,10 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      * the configuration. This test does not care about the actual results of
      * the Text-to-Speech transformation that is tested.
      * 
-     * @throws TTSConfigurationException
+     * @throws BMHConfigurationException
      * @throws IOException
      */
-    private void validateSynthesis() throws TTSConfigurationException,
+    private void validateSynthesis() throws BMHConfigurationException,
             IOException {
         if (this.ttsValidationVoice == null) {
             statusHandler
@@ -652,7 +656,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     public void run() {
         try {
             this.validateAvailability();
-        } catch (TTSConfigurationException | IOException e) {
+        } catch (BMHConfigurationException | IOException e) {
             statusHandler
                     .error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
                             "Failed to determine the current status of the TTS Server!",

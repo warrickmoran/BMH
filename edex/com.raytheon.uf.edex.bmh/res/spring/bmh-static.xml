@@ -1,0 +1,51 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<bean id="timeMessagesGenerator"
+		class="com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator">
+		<constructor-arg ref="ttsHandler" />
+	</bean>
+
+	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
+		<constructor-arg ref="bmh-static-msg-gen" />
+		<constructor-arg ref="timeMessagesGenerator" />
+	</bean>
+
+	<bean id="staticMessageGenerator"
+		class="com.raytheon.uf.edex.bmh.staticmsg.StaticMessageGenerator"
+		init-method="initialize">
+		<constructor-arg ref="timeMessagesGenerator" />
+	</bean>
+
+	<camelContext id="bmh-static-msg-gen" xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+
+		<route id="staticMsgGenerate">
+			<from uri="jms-durable:topic:BMH.Config" />
+			<doTry>
+				<bean ref="serializationUtil" method="transformFromThrift" />
+				<filter>
+					<method ref="staticMessageGenerator" method="checkSkipMessage" />
+					<stop />
+				</filter>
+				<bean ref="staticMessageGenerator" method="process" />
+				<split>
+					<simple>${body}</simple>
+					<bean ref="validatedMessageDao" method="persistCascade" />
+					<setBody>
+						<simple>${body.getId}</simple>
+					</setBody>
+					<to uri="jms-durable:queue:BMH.Transform" />
+				</split>
+				<doCatch>
+					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR" />
+				</doCatch>
+			</doTry>
+		</route>
+
+	</camelContext>
+
+</beans>

@@ -73,6 +73,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Aug 19, 2014 3411       mpduff      Implement {@link MessageTypeReplacement}
  * Sep 16, 2014 3587       bkowal      Updated to only allow trigger assignment for {Program, Suite}
  * Sep 25, 2014 3620       bsteffen    Add seconds to periodicity and duration.
+ * Oct 7, 2014  3642       bkowal      Set a default time message preamble for {@link TransmitterLanguage}
  * 
  * </pre>
  * 
@@ -80,6 +81,15 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * @version 1.0
  */
 public class AsciiFileTranslator {
+
+    private static final Map<Language, String> defaultTimeMsgs;
+
+    static {
+        defaultTimeMsgs = new HashMap<>(Language.values().length);
+        defaultTimeMsgs.put(Language.ENGLISH, "The current time is");
+        defaultTimeMsgs.put(Language.SPANISH, "La hora actual es");
+    }
+
     /**
      * Pattern to match the Block header marker.
      */
@@ -1396,6 +1406,7 @@ public class AsciiFileTranslator {
         if (stationMessage != null) {
             TransmitterLanguage transLang = new TransmitterLanguage();
             transLang.setLanguage(lang);
+            transLang.setTimeMsgPreamble(defaultTimeMsgs.get(lang));
             // transLang.setDictionaryName(dict.getName());
             transLang.setStationIdMsg(stationMessage);
 
