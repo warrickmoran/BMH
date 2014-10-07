@@ -36,10 +36,12 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
- * Jul 17, 2014 3406       mpduff      Added getAllTransmitters()
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * May 30, 2014  3175     rjpeter     Initial creation
+ * Jul 17, 2014  3406     mpduff      Added getAllTransmitters()
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -48,6 +50,10 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
     public TransmitterDao() {
         super(Transmitter.class);
+    }
+
+    public TransmitterDao(boolean operational) {
+        super(operational, Transmitter.class);
     }
 
     public List<Transmitter> getAllTransmitters() {

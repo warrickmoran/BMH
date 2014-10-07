@@ -41,6 +41,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
  * Aug 15, 2014  3432     mpduff      Added getPeriodicMessages
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -51,6 +52,10 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
 
     public InputMessageDao() {
         super(InputMessage.class);
+    }
+
+    public InputMessageDao(boolean operational) {
+        super(operational, InputMessage.class);
     }
 
     /**

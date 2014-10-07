@@ -36,10 +36,11 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 28, 2014 3175       rjpeter     Initial creation
- * Aug 29, 2014 3568       bkowal      Added getLanguagesForTransmitterGroup
+ * Date          Ticket#    Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 28, 2014  3175     rjpeter     Initial creation
+ * Aug 29, 2014  3568     bkowal      Added getLanguagesForTransmitterGroup
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -50,6 +51,10 @@ public class TransmitterLanguageDao extends
         AbstractBMHDao<TransmitterLanguage, TransmitterLanguagePK> {
     public TransmitterLanguageDao() {
         super(TransmitterLanguage.class);
+    }
+
+    public TransmitterLanguageDao(boolean operational) {
+        super(operational, TransmitterLanguage.class);
     }
 
     public List<TransmitterLanguage> getLanguagesForTransmitterGroup(

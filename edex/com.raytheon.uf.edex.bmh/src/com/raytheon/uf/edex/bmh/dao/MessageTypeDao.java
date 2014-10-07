@@ -37,14 +37,15 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 24, 2014 3302       bkowal      Initial creation
- * Aug 5, 2014  #3490      lvenable    added getMessageTypes()
- * Sep 2, 2014  3568       bkowal      Added getMessageTypeForDesignation
- * Sep 15, 2014  #3610     lvenable    Added methods to get message type
- *                                     Afos ID and title.
- * Sep 19, 2014  #3611     lvenable    Added emergency override.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jun 24, 2014  3302     bkowal      Initial creation
+ * Aug 05, 2014  3490     lvenable    added getMessageTypes()
+ * Sep 02, 2014  3568     bkowal      Added getMessageTypeForDesignation
+ * Sep 15, 2014  3610     lvenable    Added methods to get message type
+ *                                    Afos ID and title.
+ * Sep 19, 2014  3611     lvenable    Added emergency override.
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -56,6 +57,10 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
 
     public MessageTypeDao() {
         super(MessageType.class);
+    }
+
+    public MessageTypeDao(boolean operational) {
+        super(operational, MessageType.class);
     }
 
     /**

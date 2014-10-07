@@ -52,10 +52,11 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * ------------- -------- ----------- --------------------------
  * Jun 25, 2014  3283     bsteffen    Initial creation
  * Jul 17, 2014  3175     rjpeter     Added get methods.
- * Aug 06, 2014 #3490     lvenable    Updated to get Program information.
- * Aug 12, 2014 #3490     lvenable    Refactored to make a getProgramByQuery() method that
+ * Aug 06, 2014  3490     lvenable    Updated to get Program information.
+ * Aug 12, 2014  3490     lvenable    Refactored to make a getProgramByQuery() method that
  *                                    will used the query passed it to retrieve the data.
- * Sep 16, 2014 #3587     bkowal      Overrode persistAll. Added getProgramTriggersForSuite.
+ * Sep 16, 2014  3587     bkowal      Overrode persistAll. Added getProgramTriggersForSuite.
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -66,6 +67,10 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
 
     public ProgramDao() {
         super(Program.class);
+    }
+
+    public ProgramDao(boolean operational) {
+        super(operational, Program.class);
     }
 
     /**

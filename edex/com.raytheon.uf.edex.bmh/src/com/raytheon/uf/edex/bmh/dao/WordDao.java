@@ -32,10 +32,12 @@ import com.raytheon.uf.common.bmh.datamodel.language.Word;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 03, 2014    3355    mpduff      Initial creation.
- * Aug 05, 2014 3175       rjpeter     Added replaceWord.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 03, 2014  3355     mpduff      Initial creation.
+ * Aug 05, 2014  3175     rjpeter     Added replaceWord.
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -47,6 +49,10 @@ public class WordDao extends AbstractBMHDao<Word, String> {
 
     public WordDao() {
         super(Word.class);
+    }
+
+    public WordDao(boolean operational) {
+        super(operational, Word.class);
     }
 
     public void replaceWord(final Word word) {

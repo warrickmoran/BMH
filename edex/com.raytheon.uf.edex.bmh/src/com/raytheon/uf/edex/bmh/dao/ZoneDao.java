@@ -41,6 +41,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * ------------- -------- ----------- --------------------------
  * Jun 25, 2014  3283     bsteffen    Initial creation
  * Jul 17, 2014  3406     mpduff      Added getAllZones()
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -51,6 +52,10 @@ public class ZoneDao extends AbstractBMHDao<Zone, Integer> {
 
     public ZoneDao() {
         super(Zone.class);
+    }
+
+    public ZoneDao(boolean operational) {
+        super(operational, Zone.class);
     }
 
     /**

@@ -40,7 +40,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
- * Sep 2, 2014   3568     bkowal      Added getValidatedMsgByInputMsg
+ * Sep 02, 2014  3568     bkowal      Added getValidatedMsgByInputMsg
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * 
  * 
  * </pre>
  * 
@@ -52,6 +54,10 @@ public class ValidatedMessageDao extends
 
     public ValidatedMessageDao() {
         super(ValidatedMessage.class);
+    }
+
+    public ValidatedMessageDao(boolean operational) {
+        super(operational, ValidatedMessage.class);
     }
 
     public void persistCascade(final ValidatedMessage msg) {

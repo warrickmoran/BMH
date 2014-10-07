@@ -37,10 +37,11 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 24, 2014 3302       bkowal      Initial creation.
- * Jul 17, 2014 3175       rjpeter     Added getAll.
+ * Date          Ticket#    Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jun 24, 2014  3302     bkowal      Initial creation.
+ * Jul 17, 2014  3175     rjpeter     Added getAll.
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -50,10 +51,33 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
 
 public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
 
+    public static final String BMH_DATABASE_NAME = "bmh";
+
+    public static final String BMH_PRACTICE_DATABASE_NAME = "bmh_practice";
+
     private final Class<T> daoClass;
 
+    /**
+     * Create a DAO for the operational database.
+     * 
+     * @see #AbstractBMHDao(boolean, Class)
+     */
     public AbstractBMHDao(Class<T> daoClass) {
-        super(DaoConfig.forClass(DatabaseConstants.BMH_DATABASE_NAME, daoClass));
+        this(true, daoClass);
+    }
+
+    /**
+     * Create a new DAO for accessing BMH data.
+     * 
+     * @param operational
+     *            true indicates the DAO should use the operational database,
+     *            false will use the test/practice database.
+     * @param daoClass
+     *            The class that this dao is responsible for persisting.
+     */
+    public AbstractBMHDao(boolean operational, Class<T> daoClass) {
+        super(DaoConfig.forClass(operational ? BMH_DATABASE_NAME
+                : BMH_PRACTICE_DATABASE_NAME, daoClass));
         this.daoClass = daoClass;
     }
 

@@ -29,9 +29,10 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacementPK;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 19, 2014     3411   mpduff      Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 19, 2014  3411     mpduff      Initial creation
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -44,6 +45,10 @@ public class MessageTypeReplacementDao extends
 
     public MessageTypeReplacementDao() {
         super(MessageTypeReplacement.class);
+    }
+
+    public MessageTypeReplacementDao(boolean operational) {
+        super(operational, MessageTypeReplacement.class);
     }
 
 }

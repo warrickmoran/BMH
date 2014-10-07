@@ -46,7 +46,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Aug 24, 2014  3432     mpduff      Fixed getMessageByBroadcastId
  * Sep 03, 2014  3554     bsteffen    Add getUnexpiredBroadcastMsgsByAfosIDAndGroup
  * Aug 29, 2014  3568     bkowal      Added getMessageExistence
- * 
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -58,6 +58,10 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
 
     public BroadcastMsgDao() {
         super(BroadcastMsg.class);
+    }
+
+    public BroadcastMsgDao(boolean operational) {
+        super(operational, BroadcastMsg.class);
     }
 
     public List<BroadcastMsg> getMessagesByAfosid(final String afosid) {

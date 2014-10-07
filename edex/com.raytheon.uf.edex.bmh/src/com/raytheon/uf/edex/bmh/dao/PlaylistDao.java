@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
  * ------------- -------- ----------- --------------------------
  * Jul 07, 2014  3285     bsteffen    Initial creation
  * Sep 09, 2014  3554     bsteffen    Add getByGroupName
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -49,6 +50,10 @@ public class PlaylistDao extends AbstractBMHDao<Playlist, Integer> {
 
     public PlaylistDao() {
         super(Playlist.class);
+    }
+
+    public PlaylistDao(boolean operational) {
+        super(operational, Playlist.class);
     }
 
     public List<Playlist> getByGroupName(final String transmitterGroupName) {

@@ -32,10 +32,11 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 1, 2014  3302       bkowal      Initial creation
- * Aug 11, 2014 #3490      lvenable    Updated to get Voice information.
+ * Date          Ticket#    Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 01, 2014  3302     bkowal      Initial creation
+ * Aug 11, 2014  3490     lvenable    Updated to get Voice information.
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -47,6 +48,10 @@ public class TtsVoiceDao extends AbstractBMHDao<TtsVoice, Integer> {
 
     public TtsVoiceDao() {
         super(TtsVoice.class);
+    }
+
+    public TtsVoiceDao(boolean operational) {
+        super(operational, TtsVoice.class);
     }
 
     /**

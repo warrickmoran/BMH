@@ -17,26 +17,10 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dao;
-
-/**
- * Database Constants
- * 
- * <pre>
- * 
- * SOFTWARE HISTORY
- * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 30, 2014 3175       rjpeter     Initial creation
- * Jul 1, 2014  3202       bkowal      Changed the default database to bmh.
- * 
- * </pre>
- * 
- * @author rjpeter
- * @version 1.0
- */
-public class DatabaseConstants {
-    public static final String BMH_DATABASE_NAME = System.getProperty(
-            "bmh.database", "bmh");
-}
+\set ON_ERROR_STOP 1
+DROP DATABASE IF EXISTS bmh_practice;
+DROP TABLESPACE IF EXISTS bmh_practice;
+CREATE TABLESPACE bmh_practice owner awips location '/awips2/data/bmh_practice';
+CREATE DATABASE bmh_practice OWNER awips TABLESPACE bmh_practice;
+\connect bmh_practice
+CREATE SCHEMA bmh AUTHORIZATION awips;

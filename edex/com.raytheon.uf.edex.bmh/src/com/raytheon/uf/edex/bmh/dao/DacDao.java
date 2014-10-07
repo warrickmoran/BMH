@@ -32,6 +32,7 @@ import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Aug 04, 2014  3486     bsteffen    Initial creation
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -42,6 +43,10 @@ public class DacDao extends AbstractBMHDao<Dac, String> {
 
     public DacDao() {
         super(Dac.class);
+    }
+
+    public DacDao(boolean operational) {
+        super(operational, Dac.class);
     }
 
 }

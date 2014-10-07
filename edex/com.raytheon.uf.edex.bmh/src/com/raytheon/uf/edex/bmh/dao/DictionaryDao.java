@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2014 3302       bkowal      Initial creation
  * Jul 08, 2014 3355       mpduff      Added getDictionaryNames()
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -47,9 +48,15 @@ import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
  */
 
 public class DictionaryDao extends AbstractBMHDao<Dictionary, String> {
+
     public DictionaryDao() {
         super(Dictionary.class);
     }
+
+    public DictionaryDao(boolean operational) {
+        super(operational, Dictionary.class);
+    }
+
 
     /**
      * Get a list of all dictionaries in the BMH database.

@@ -41,6 +41,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
  * ------------- -------- ----------- --------------------------
  * Jun 25, 2014  3283     bsteffen    Initial creation
  * Jul 17, 2014  3406     mpduff      Added getAllAreas()
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -51,6 +52,10 @@ public class AreaDao extends AbstractBMHDao<Area, Integer> {
 
     public AreaDao() {
         super(Area.class);
+    }
+
+    public AreaDao(boolean operational) {
+        super(operational, Area.class);
     }
 
     /**

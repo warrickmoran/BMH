@@ -15,7 +15,7 @@
     
     <bean id="bmhDbPluginProperties" class="com.raytheon.uf.edex.database.DatabasePluginProperties">
         <property name="pluginFQN" value="com.raytheon.uf.common.bmh" />
-        <property name="database" value="${bmh.database}" />
+        <property name="database" value="bmh" />
     </bean>
 
     <bean id="bmhDbRegistered" factory-bean="dbPluginRegistry" factory-method="register" depends-on="bmhCommonDbRegistered">

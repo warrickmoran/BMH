@@ -48,12 +48,13 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessagePk;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 14, 2014           rjpeter     Initial creation
- * Aug 06, 2014 #3490     lvenable    Updated to get Suite information.
- * Aug 12, 2014 #3490     lvenable    Refactored to make a getSuiteByQuery() method that
+ * Aug 06, 2014  3490     lvenable    Updated to get Suite information.
+ * Aug 12, 2014  3490     lvenable    Refactored to make a getSuiteByQuery() method that
  *                                    will used the query passed it to retrieve the data.
- * Aug 17, 2014 #3490     lvenable    Fixed empty list error in createSuiteMsgTypes().
- * Aug 21, 2014 #3490     lvenable    Added code from Richard to fix a hibernate issue for save/update.
- * Sep 18, 2014 #3587     bkowal      Added code to manually cleanup triggers due to hibernate bug.
+ * Aug 17, 2014  3490     lvenable    Fixed empty list error in createSuiteMsgTypes().
+ * Aug 21, 2014  3490     lvenable    Added code from Richard to fix a hibernate issue for save/update.
+ * Sep 18, 2014  3587     bkowal      Added code to manually cleanup triggers due to hibernate bug.
+ * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * 
  * </pre>
  * 
@@ -64,6 +65,10 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
 
     public SuiteDao() {
         super(Suite.class);
+    }
+
+    public SuiteDao(boolean operational) {
+        super(operational, Suite.class);
     }
 
     /**
