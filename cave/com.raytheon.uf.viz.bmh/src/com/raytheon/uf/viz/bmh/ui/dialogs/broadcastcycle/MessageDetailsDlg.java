@@ -203,7 +203,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label periodicityLbl = new Label(comp, SWT.NONE);
-        periodicityLbl.setText("Periodicity\n(DD:HH:MM): ");
+        periodicityLbl.setText("Periodicity\n(DD:HH:MM:SS): ");
         periodicityLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
