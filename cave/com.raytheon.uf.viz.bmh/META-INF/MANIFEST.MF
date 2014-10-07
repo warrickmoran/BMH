@@ -5,6 +5,8 @@ Bundle-SymbolicName: com.raytheon.uf.viz.bmh;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: com.raytheon.uf.viz.bmh.Activator
 Bundle-Vendor: RAYTHEON
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-ActivationPolicy: lazy
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  com.raytheon.uf.common.bmh;bundle-version="1.14.0",
@@ -15,6 +17,4 @@ Require-Bundle: org.eclipse.ui,
  com.raytheon.uf.common.time;bundle-version="1.12.1174",
  com.raytheon.uf.common.bmh.dac;bundle-version="1.0.0",
  org.apache.commons.lang;bundle-version="2.3.0"
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
-Bundle-ActivationPolicy: lazy
-Export-Package: com.raytheon.uf.viz.bmh
+Import-Package: com.raytheon.viz.core.mode

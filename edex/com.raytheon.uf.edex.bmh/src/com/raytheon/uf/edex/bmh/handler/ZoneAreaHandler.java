@@ -27,22 +27,22 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.request.ZoneAreaRequest;
 import com.raytheon.uf.common.bmh.request.ZoneAreaResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 
 /**
- * Listening Area and Listening Zone request handler.
+ * Handles any requests to get or modify the state of {@link Zone}s or
+ * {@link Area}s.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 15, 2014    3406    mpduff      Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 15, 2014  3406     mpduff      Initial creation
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * 
  * </pre>
  * 
@@ -51,8 +51,6 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
  */
 
 public class ZoneAreaHandler implements IRequestHandler<ZoneAreaRequest> {
-    private final static IUFStatusHandler statusHandler = UFStatus
-            .getHandler(ZoneAreaHandler.class);
 
     @Override
     public Object handleRequest(ZoneAreaRequest request) throws Exception {
@@ -80,7 +78,10 @@ public class ZoneAreaHandler implements IRequestHandler<ZoneAreaRequest> {
             deleteZone(request);
             break;
         default:
-            break;
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
         return response;
     }
@@ -92,8 +93,8 @@ public class ZoneAreaHandler implements IRequestHandler<ZoneAreaRequest> {
      *            Request object
      * @return response object
      */
-    private ZoneAreaResponse getAreas(ZoneAreaRequest req) {
-        AreaDao dao = new AreaDao();
+    private ZoneAreaResponse getAreas(ZoneAreaRequest request) {
+        AreaDao dao = new AreaDao(request.isOperational());
         List<Area> areas = dao.getAllAreas();
         ZoneAreaResponse response = new ZoneAreaResponse();
         response.setAreaList(areas);
@@ -108,8 +109,8 @@ public class ZoneAreaHandler implements IRequestHandler<ZoneAreaRequest> {
      *            Request object
      * @return response object
      */
-    private ZoneAreaResponse getZones(ZoneAreaRequest req) {
-        ZoneDao dao = new ZoneDao();
+    private ZoneAreaResponse getZones(ZoneAreaRequest request) {
+        ZoneDao dao = new ZoneDao(request.isOperational());
         List<Zone> zones = dao.getAllZones();
         ZoneAreaResponse response = new ZoneAreaResponse();
         response.setZoneList(zones);
@@ -124,8 +125,8 @@ public class ZoneAreaHandler implements IRequestHandler<ZoneAreaRequest> {
      *            Request object
      * @return response object
      */
-    private ZoneAreaResponse getTransmitters(ZoneAreaRequest req) {
-        TransmitterDao dao = new TransmitterDao();
+    private ZoneAreaResponse getTransmitters(ZoneAreaRequest request) {
+        TransmitterDao dao = new TransmitterDao(request.isOperational());
         List<Transmitter> transList = dao.getAllTransmitters();
         ZoneAreaResponse response = new ZoneAreaResponse();
         response.setTransmitterList(transList);
@@ -140,15 +141,15 @@ public class ZoneAreaHandler implements IRequestHandler<ZoneAreaRequest> {
      *            Request object
      * @return response object
      */
-    private ZoneAreaResponse saveZones(ZoneAreaRequest req) {
-        ZoneDao dao = new ZoneDao();
-        for (Zone z : req.getZoneList()) {
+    private ZoneAreaResponse saveZones(ZoneAreaRequest request) {
+        ZoneDao dao = new ZoneDao(request.isOperational());
+        for (Zone z : request.getZoneList()) {
             dao.saveOrUpdate(z);
         }
 
-        req.getZoneList();
+        request.getZoneList();
         ZoneAreaResponse response = new ZoneAreaResponse();
-        response.setZoneList(req.getZoneList());
+        response.setZoneList(request.getZoneList());
 
         return response;
     }
@@ -160,14 +161,14 @@ public class ZoneAreaHandler implements IRequestHandler<ZoneAreaRequest> {
      *            Request object
      * @return response object
      */
-    private ZoneAreaResponse saveAreas(ZoneAreaRequest req) {
-        AreaDao dao = new AreaDao();
-        for (Area a : req.getAreaList()) {
+    private ZoneAreaResponse saveAreas(ZoneAreaRequest request) {
+        AreaDao dao = new AreaDao(request.isOperational());
+        for (Area a : request.getAreaList()) {
             dao.saveOrUpdate(a);
         }
 
         ZoneAreaResponse response = new ZoneAreaResponse();
-        response.setAreaList(req.getAreaList());
+        response.setAreaList(request.getAreaList());
 
         return response;
     }
@@ -179,9 +180,9 @@ public class ZoneAreaHandler implements IRequestHandler<ZoneAreaRequest> {
      *            Request object
      * @return response object
      */
-    private void deleteArea(ZoneAreaRequest req) {
-        AreaDao dao = new AreaDao();
-        for (Area a : req.getAreaList()) {
+    private void deleteArea(ZoneAreaRequest request) {
+        AreaDao dao = new AreaDao(request.isOperational());
+        for (Area a : request.getAreaList()) {
             dao.delete(a);
         }
     }
@@ -193,9 +194,9 @@ public class ZoneAreaHandler implements IRequestHandler<ZoneAreaRequest> {
      *            Request object
      * @return response object
      */
-    private void deleteZone(ZoneAreaRequest req) {
-        ZoneDao dao = new ZoneDao();
-        List<Zone> zoneList = req.getZoneList();
+    private void deleteZone(ZoneAreaRequest request) {
+        ZoneDao dao = new ZoneDao(request.isOperational());
+        List<Zone> zoneList = request.getZoneList();
         for (Zone z : zoneList) {
             dao.delete(z);
         }

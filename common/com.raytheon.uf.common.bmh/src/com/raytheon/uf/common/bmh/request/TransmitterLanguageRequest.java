@@ -23,7 +23,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
  * {@link TransmitterLanguage} Request Object.
@@ -32,9 +31,10 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 29, 2014 3568       bkowal     Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 29, 2014  3568     bkowal      Initial creation
+ * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * 
  * </pre>
  * 
@@ -42,7 +42,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class TransmitterLanguageRequest implements IServerRequest {
+public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
     /*
      * Additional enums will be required dependent on how the
      * yet-to-be-implemented dialog

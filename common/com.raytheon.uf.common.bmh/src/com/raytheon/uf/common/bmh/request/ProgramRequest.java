@@ -23,7 +23,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
  * Request object for Program queries.
@@ -32,14 +31,15 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 5, 2014  #3490      lvenable     Initial creation
- * Aug 12, 2014 #3490      lvenable     Added ProgramSuites action.
- * Aug 15, 2014 #3490      lvenable     Added Program with getters & setters.
- * Aug 15, 2014  3432      mpduff       Added GetProgramForTransmitterGroup
- * Sep 18, 2014 #3587      bkowal       Added GetProgramsWithTrigger
- * Oct 02, 2014 #3649      rferrel      Added AddGroup.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 05, 2014  3490     lvenable    Initial creation
+ * Aug 12, 2014  3490     lvenable    Added ProgramSuites action.
+ * Aug 15, 2014  3490     lvenable    Added Program with getters & setters.
+ * Aug 15, 2014  3432     mpduff      Added GetProgramForTransmitterGroup
+ * Sep 18, 2014  3587     bkowal      Added GetProgramsWithTrigger
+ * Oct 02, 2014  3649     rferrel     Added AddGroup.
+ * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * 
  * </pre>
  * 
@@ -47,7 +47,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class ProgramRequest implements IServerRequest {
+public class ProgramRequest extends AbstractBMHServerRequest {
 
     public enum ProgramAction {
         Save, ListNamesIDs, AllPrograms, ProgramSuites, Delete, GetProgramForTransmitterGroup, GetProgramsWithTrigger, AddGroup;

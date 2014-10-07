@@ -22,7 +22,6 @@ package com.raytheon.uf.common.bmh.request;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
  * Message Type data request object
@@ -31,14 +30,15 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 22, 2014    3411    mpduff      Initial creation
- * Aug 5, 2014  #3490      lvenable    Updated action
- * Aug 14, 2014    3432    mpduff      Added Afosid
- * Aug 17, 2014  #3490     lvenable    Updated action and added messageType.
- * Sep 15, 2014   #3610    lvenable    Added GetAfosIdTitle.
- * Sep 19, 2014   #3611    lvenable    Added emergency override.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 22, 2014  3411     mpduff      Initial creation
+ * Aug 05, 2014  3490     lvenable    Updated action
+ * Aug 14, 2014  3432     mpduff      Added Afosid
+ * Aug 17, 2014  3490     lvenable    Updated action and added messageType.
+ * Sep 15, 2014  3610     lvenable    Added GetAfosIdTitle.
+ * Sep 19, 2014  3611     lvenable    Added emergency override.
+ * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * 
  * </pre>
  * 
@@ -46,7 +46,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class MessageTypeRequest implements IServerRequest {
+public class MessageTypeRequest extends AbstractBMHServerRequest {
     public enum MessageTypeAction {
         AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle, GetEmergencyOverrideMsgTypes;
     }

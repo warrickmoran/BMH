@@ -25,23 +25,20 @@ import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest;
 import com.raytheon.uf.common.bmh.request.DictionaryResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
-import com.raytheon.uf.edex.database.DataAccessLayerException;
-import com.raytheon.uf.edex.database.query.DatabaseQuery;
 
 /**
- * BMH Dictionary related request handler.
+ * Handles any requests to get or modify the state of {@link Dictionary}s
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 02, 2014   3355     mpduff      Initial creation
- * Jul 21, 2014   3407     mpduff      Added delete dictionary action
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 02, 2014  3355     mpduff      Initial creation
+ * Jul 21, 2014  3407     mpduff      Added delete dictionary action
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * 
  * </pre>
  * 
@@ -50,8 +47,6 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  */
 
 public class DictionaryHandler implements IRequestHandler<DictionaryRequest> {
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(DictionaryHandler.class);
 
     @Override
     public Object handleRequest(DictionaryRequest request) throws Exception {
@@ -71,15 +66,17 @@ public class DictionaryHandler implements IRequestHandler<DictionaryRequest> {
             deleteDictionary(request);
             break;
         default:
-            break;
-
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
 
         return response;
     }
 
     private DictionaryResponse getNames(DictionaryRequest request) {
-        DictionaryDao dao = new DictionaryDao();
+        DictionaryDao dao = new DictionaryDao(request.isOperational());
         List<String> names = dao.getDictionaryNames();
         DictionaryResponse response = new DictionaryResponse();
         response.setDictionaryNames(names);
@@ -87,36 +84,28 @@ public class DictionaryHandler implements IRequestHandler<DictionaryRequest> {
         return response;
     }
 
-    private DictionaryResponse getDictionaryByName(DictionaryRequest request)
-            throws DataAccessLayerException {
-        DictionaryDao dao = new DictionaryDao();
+    private DictionaryResponse getDictionaryByName(DictionaryRequest request) {
+        DictionaryDao dao = new DictionaryDao(request.isOperational());
+        Dictionary dictionary = dao.getByID(request.getDictionaryName());
         DictionaryResponse response = new DictionaryResponse();
-        DatabaseQuery query = new DatabaseQuery(Dictionary.class);
-        query.addQueryParam("name", request.getDictionaryName());
-
-        List<?> dictReturnList;
-        dictReturnList = dao.queryByCriteria(query);
-        if (dictReturnList != null) {
-            response.setDictionary((Dictionary) dictReturnList.get(0));
-        }
+        response.setDictionary(dictionary);
 
         return response;
     }
 
     private DictionaryResponse saveDictionary(DictionaryRequest request) {
         DictionaryResponse response = new DictionaryResponse();
-        DictionaryDao dao = new DictionaryDao();
+        DictionaryDao dao = new DictionaryDao(request.isOperational());
         dao.saveOrUpdate(request.getDictionary());
         response.setDictionary(request.getDictionary());
 
         return response;
     }
 
-    private void deleteDictionary(DictionaryRequest request)
-            throws DataAccessLayerException {
+    private void deleteDictionary(DictionaryRequest request) {
         DictionaryResponse response = getDictionaryByName(request);
         if (response.getDictionary() != null) {
-            DictionaryDao dao = new DictionaryDao();
+            DictionaryDao dao = new DictionaryDao(request.isOperational());
             dao.delete(response.getDictionary());
         }
     }

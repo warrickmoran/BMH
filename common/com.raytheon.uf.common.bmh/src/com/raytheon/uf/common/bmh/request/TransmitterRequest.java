@@ -25,7 +25,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
  * {@link Transmitter} Request Object.
@@ -34,10 +33,11 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 30, 2014    3173    mpduff      Initial creation
- * Aug 24, 2014    3432    mpduff      Added GetEnabledTransmitterGroups
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 30, 2014  3173     mpduff      Initial creation
+ * Aug 24, 2014  3432     mpduff      Added GetEnabledTransmitterGroups
+ * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * 
  * </pre>
  * 
@@ -45,7 +45,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class TransmitterRequest implements IServerRequest {
+public class TransmitterRequest extends AbstractBMHServerRequest {
     public enum TransmitterRequestAction {
         GetTransmitterGroups, GetTransmitters, GetEnabledTransmitterGroups, SaveTransmitter, SaveTransmitterDeleteGroup, SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup;
     }

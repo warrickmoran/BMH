@@ -22,7 +22,6 @@ package com.raytheon.uf.common.bmh.request;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
  * Request object for word queries.
@@ -31,18 +30,20 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 03, 2014    3355    mpduff      Initial creation
- * Jul 27, 2014    3407    mpduff      Added delete action
- * Aug 05, 2014    3175    rjpeter     Added replace, removed dictionaryName.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 03, 2014  3355     mpduff      Initial creation
+ * Jul 27, 2014  3407     mpduff      Added delete action
+ * Aug 05, 2014  3175     rjpeter     Added replace, removed dictionaryName.
+ * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * 
  * </pre>
  * 
  * @author mpduff
  * @version 1.0
  */
 @DynamicSerialize
-public class WordRequest implements IServerRequest {
+public class WordRequest extends AbstractBMHServerRequest {
 
     public enum WordAction {
         Save, Query, Delete, Replace;

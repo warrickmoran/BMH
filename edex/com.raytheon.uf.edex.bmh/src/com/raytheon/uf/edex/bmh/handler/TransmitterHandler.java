@@ -41,15 +41,15 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 30, 2014   3173     mpduff      Initial creation
- * Aug 19, 2014   3486     bsteffen    Send change notification over jms.
- * Aug 24, 2014 3432       mpduff      Added getEnabledTransmitterGroups()
- * Sep 05, 2014 3554       bsteffen    Send more specific config change notification.
- * Sep 23, 2014 3649       rferrel     DeleteTransmitterGroup notfication no longer
- *                                      causes null pointer exception.
- * 
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 30, 2014  3173     mpduff      Initial creation
+ * Aug 19, 2014  3486     bsteffen    Send change notification over jms.
+ * Aug 24, 2014  3432     mpduff      Added getEnabledTransmitterGroups()
+ * Sep 05, 2014  3554     bsteffen    Send more specific config change notification.
+ * Sep 23, 2014  3649     rferrel     DeleteTransmitterGroup notfication no longer
+ *                                    causes null pointer exception.
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * 
  * </pre>
  * 
@@ -65,13 +65,13 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
         TransmitterResponse response = new TransmitterResponse();
         switch (request.getAction()) {
         case GetTransmitterGroups:
-            response = getTransmitterGroups();
+            response = getTransmitterGroups(request);
             break;
         case GetTransmitters:
-            response = getTransmitters();
+            response = getTransmitters(request);
             break;
         case GetEnabledTransmitterGroups:
-            response = getEnabledTransmitterGroups();
+            response = getEnabledTransmitterGroups(request);
             break;
         case SaveTransmitter:
             response = saveTransmitter(request);
@@ -112,7 +112,10 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
                     ConfigChangeType.Delete, request.getTransmitterGroup());
             break;
         default:
-            break;
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
         if (notification != null) {
             EDEXUtil.getMessageProducer().sendAsyncUri(
@@ -122,8 +125,9 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
         return response;
     }
 
-    private TransmitterResponse getTransmitterGroups() {
-        TransmitterGroupDao dao = new TransmitterGroupDao();
+    private TransmitterResponse getTransmitterGroups(TransmitterRequest request) {
+        TransmitterGroupDao dao = new TransmitterGroupDao(
+                request.isOperational());
         List<TransmitterGroup> tGroups = dao.getTransmitterGroups();
         TransmitterResponse resp = new TransmitterResponse();
         resp.setTransmitterGroupList(tGroups);
@@ -134,7 +138,7 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
     private TransmitterResponse saveTransmitter(TransmitterRequest request) {
         TransmitterResponse response = new TransmitterResponse();
         Transmitter t = request.getTransmitter();
-        TransmitterDao dao = new TransmitterDao();
+        TransmitterDao dao = new TransmitterDao(request.isOperational());
         dao.saveOrUpdate(t);
         response.setTransmitter(t);
 
@@ -143,7 +147,7 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
 
     private TransmitterResponse saveTransmitterGroup(TransmitterRequest request) {
         TransmitterResponse response = new TransmitterResponse();
-        TransmitterDao dao = new TransmitterDao();
+        TransmitterDao dao = new TransmitterDao(request.isOperational());
         TransmitterGroup group = request.getTransmitterGroup();
         dao.saveOrUpdate(group);
         List<TransmitterGroup> list = new ArrayList<TransmitterGroup>();
@@ -154,29 +158,31 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
     }
 
     private void deleteTransmitter(TransmitterRequest request) {
-        TransmitterDao dao = new TransmitterDao();
+        TransmitterDao dao = new TransmitterDao(request.isOperational());
         Transmitter transmitter = request.getTransmitter();
         dao.delete(transmitter);
     }
 
     private void deleteTransmitterGroup(TransmitterRequest request) {
-        TransmitterDao dao = new TransmitterDao();
+        TransmitterDao dao = new TransmitterDao(request.isOperational());
         TransmitterGroup group = request.getTransmitterGroup();
         dao.delete(group);
     }
 
-    private TransmitterResponse getTransmitters() {
+    private TransmitterResponse getTransmitters(TransmitterRequest request) {
         TransmitterResponse response = new TransmitterResponse();
-        TransmitterDao dao = new TransmitterDao();
+        TransmitterDao dao = new TransmitterDao(request.isOperational());
         List<Transmitter> transmitters = dao.getAllTransmitters();
         response.setTransmitterList(transmitters);
 
         return response;
     }
 
-    private TransmitterResponse getEnabledTransmitterGroups() {
+    private TransmitterResponse getEnabledTransmitterGroups(
+            TransmitterRequest request) {
         TransmitterResponse response = new TransmitterResponse();
-        TransmitterGroupDao dao = new TransmitterGroupDao();
+        TransmitterGroupDao dao = new TransmitterGroupDao(
+                request.isOperational());
         List<TransmitterGroup> groups = dao.getEnabledTransmitterGroups();
         response.setTransmitterGroupList(groups);
 
@@ -185,7 +191,8 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
 
     private TransmitterResponse saveTransmitterGroups(TransmitterRequest request) {
         TransmitterResponse response = new TransmitterResponse();
-        TransmitterGroupDao dao = new TransmitterGroupDao();
+        TransmitterGroupDao dao = new TransmitterGroupDao(
+                request.isOperational());
         List<TransmitterGroup> groupList = request.getTransmitterGroupList();
         dao.persistAll(groupList);
         response.setTransmitterGroupList(groupList);
@@ -196,7 +203,7 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
     private TransmitterResponse saveTransmitterDeleteGroup(
             TransmitterRequest request) {
         TransmitterResponse response = new TransmitterResponse();
-        TransmitterDao dao = new TransmitterDao();
+        TransmitterDao dao = new TransmitterDao(request.isOperational());
         Transmitter transmitter = dao.saveTransmitterDeleteGroup(
                 request.getTransmitter(), request.getTransmitterGroup());
         response.setTransmitter(transmitter);

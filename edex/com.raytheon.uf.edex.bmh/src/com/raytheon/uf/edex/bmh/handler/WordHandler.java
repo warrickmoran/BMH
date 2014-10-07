@@ -31,18 +31,20 @@ import com.raytheon.uf.edex.database.DataAccessLayerException;
 import com.raytheon.uf.edex.database.query.DatabaseQuery;
 
 /**
- * BMH Word related request handler.
+ * Handles any requests to get or modify the state of {@link Word}s
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 03, 2014   3355     mpduff      Initial creation
- * Jul 28, 2014   3407     mpduff      Added delete word
- * Aug 05, 2014   3175     rjpeter     Added replace word.
- * Sep 10, 2014   3407     mpduff      Added break statement to delete word
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 03, 2014  3355     mpduff      Initial creation
+ * Jul 28, 2014  3407     mpduff      Added delete word
+ * Aug 05, 2014  3175     rjpeter     Added replace word.
+ * Sep 10, 2014  3407     mpduff      Added break statement to delete word
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -64,8 +66,10 @@ public class WordHandler implements IRequestHandler<WordRequest> {
         case Replace:
             return replaceWord(request);
         default:
-            break;
-
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
 
         WordResponse response = new WordResponse();
@@ -75,7 +79,7 @@ public class WordHandler implements IRequestHandler<WordRequest> {
     @SuppressWarnings("unchecked")
     private WordResponse queryWord(WordRequest request)
             throws DataAccessLayerException {
-        WordDao dao = new WordDao();
+        WordDao dao = new WordDao(request.isOperational());
         WordResponse response = new WordResponse();
         DatabaseQuery query = new DatabaseQuery(Word.class);
         query.addOrder("word", true);
@@ -86,7 +90,7 @@ public class WordHandler implements IRequestHandler<WordRequest> {
     }
 
     private WordResponse saveWord(WordRequest request) {
-        WordDao dao = new WordDao();
+        WordDao dao = new WordDao(request.isOperational());
         WordResponse response = new WordResponse();
         dao.saveOrUpdate(request.getWord());
         List<Word> wordList = new ArrayList<Word>(1);
@@ -96,7 +100,7 @@ public class WordHandler implements IRequestHandler<WordRequest> {
     }
 
     private WordResponse replaceWord(WordRequest request) {
-        WordDao dao = new WordDao();
+        WordDao dao = new WordDao(request.isOperational());
         Word word = request.getWord();
         dao.replaceWord(word);
         WordResponse response = new WordResponse();
@@ -107,7 +111,7 @@ public class WordHandler implements IRequestHandler<WordRequest> {
     }
 
     private void deleteWord(WordRequest request) {
-        WordDao dao = new WordDao();
+        WordDao dao = new WordDao(request.isOperational());
         dao.delete(request.getWord());
     }
 }

@@ -23,7 +23,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
  * Request object to administratively override the currently playing Suite for
@@ -33,9 +32,10 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Sep 25, 2014  #3589     dgilling     Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Sep 25, 2014  3589     dgilling    Initial creation
+ * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * 
  * </pre>
  * 
@@ -44,7 +44,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  */
 
 @DynamicSerialize
-public final class ForceSuiteChangeRequest implements IServerRequest {
+public final class ForceSuiteChangeRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;

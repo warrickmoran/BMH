@@ -21,9 +21,12 @@ package com.raytheon.uf.common.bmh.request;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * Broadcast message request object.
+ * 
+ * Adds an operational flag to {@link IServerRequest}s so that they can be
+ * executed in test/practice mode where necessary.
  * 
  * <pre>
  * 
@@ -31,53 +34,33 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
- * Aug 15, 2014  3432     mpduff      Initial creation
- * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Oct 07, 2014  3687     bsteffen    Initial creation
  * 
  * </pre>
  * 
- * @author mpduff
+ * @author bsteffen
  * @version 1.0
  */
 @DynamicSerialize
-public class BroadcastMsgRequest extends AbstractBMHServerRequest {
-    public enum BroadcastMessageAction {
-        GET_MESSAGE_BY_ID
-    }
+public abstract class AbstractBMHServerRequest implements IServerRequest {
 
     @DynamicSerializeElement
-    private BroadcastMessageAction action;
+    private boolean operational;
 
-    @DynamicSerializeElement
-    private Long broadcastMessageId;
+    protected AbstractBMHServerRequest() {
 
-    /**
-     * @return the broadcastMessageId
-     */
-    public Long getBroadcastMessageId() {
-        return broadcastMessageId;
     }
 
-    /**
-     * @param broadcastMessageId
-     *            the broadcastMessageId to set
-     */
-    public void setBroadcastMessageId(Long broadcastMessageId) {
-        this.broadcastMessageId = broadcastMessageId;
+    protected AbstractBMHServerRequest(boolean operational) {
+        this.operational = operational;
     }
 
-    /**
-     * @return the action
-     */
-    public BroadcastMessageAction getAction() {
-        return action;
+    public boolean isOperational() {
+        return operational;
     }
 
-    /**
-     * @param action
-     *            the action to set
-     */
-    public void setAction(BroadcastMessageAction action) {
-        this.action = action;
+    public void setOperational(boolean operational) {
+        this.operational = operational;
     }
+
 }

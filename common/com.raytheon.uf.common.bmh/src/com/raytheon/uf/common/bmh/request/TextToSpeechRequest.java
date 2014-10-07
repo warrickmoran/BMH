@@ -21,7 +21,6 @@ package com.raytheon.uf.common.bmh.request;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
  * Object for text to speech requests from CAVE
@@ -30,18 +29,20 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 16, 2014   3355     mpduff      Initial creation.
- * Aug 25, 2014 3558       rjpeter     Default to Paul.
- * Oct 2, 2014   3642      bkowal      Added timeout.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jun 16, 2014  3355     mpduff      Initial creation.
+ * Aug 25, 2014  3558     rjpeter     Default to Paul.
+ * Oct 02, 2014  3642     bkowal      Added timeout.
+ * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * 
  * </pre>
  * 
  * @author mpduff
  * @version 1.0
  */
 @DynamicSerialize
-public class TextToSpeechRequest implements IServerRequest {
+public class TextToSpeechRequest extends AbstractBMHServerRequest {
     /**
      * Phoneme/Phrase to speak
      */

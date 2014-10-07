@@ -32,21 +32,21 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
 import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
- * BMH Suite related request handler.
+ * Handles any requests to get or modify the state of {@link Suite}s
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 5, 2014  #3490      lvenable     Initial creation
- * Aug 12, 2014 #3490     lvenable     Refactored to make a query convenience method.
- * Aug 12, 2014 #3490     lvenable     Added delete.
- * Aug 18, 2014 #3490     lvenable     Added save.
- * Sep 03, 2014  3554     bsteffen     Post notification of updates.
- * Sep 05, 2014 3554      bsteffen     Send more specific config change notification.
- * 
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 05, 2014  3490     lvenable    Initial creation
+ * Aug 12, 2014  3490     lvenable    Refactored to make a query convenience method.
+ * Aug 12, 2014  3490     lvenable    Added delete.
+ * Aug 18, 2014  3490     lvenable    Added save.
+ * Sep 03, 2014  3554     bsteffen    Post notification of updates.
+ * Sep 05, 2014  3554     bsteffen    Send more specific config change notification.
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * 
  * </pre>
  * 
@@ -63,13 +63,13 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
 
         switch (request.getAction()) {
         case ListSuitesCats:
-            suiteResponse = getSuitesNameCatIDs();
+            suiteResponse = getSuitesNameCatIDs(request);
             break;
         case SuitesMsgTypes:
-            suiteResponse = getSuitesMessageTypes();
+            suiteResponse = getSuitesMessageTypes(request);
             break;
         case AllSuites:
-            suiteResponse = getSuites();
+            suiteResponse = getSuites(request);
             break;
         case Delete:
             deleteSuite(request);
@@ -82,7 +82,10 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
                     request.getSuite());
             break;
         default:
-            break;
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
 
         if (notification != null) {
@@ -99,8 +102,8 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
      * 
      * @return List of suites with name, type, and IDs.
      */
-    private SuiteResponse getSuitesNameCatIDs() {
-        SuiteDao dao = new SuiteDao();
+    private SuiteResponse getSuitesNameCatIDs(SuiteRequest request) {
+        SuiteDao dao = new SuiteDao(request.isOperational());
         SuiteResponse response = new SuiteResponse();
 
         List<Suite> suiteList = dao.getSuiteNamesCatIds();
@@ -115,8 +118,8 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
      * 
      * @return List of suites with message types.
      */
-    private SuiteResponse getSuitesMessageTypes() {
-        SuiteDao dao = new SuiteDao();
+    private SuiteResponse getSuitesMessageTypes(SuiteRequest request) {
+        SuiteDao dao = new SuiteDao(request.isOperational());
         SuiteResponse response = new SuiteResponse();
 
         List<Suite> suiteList = dao.getSuiteMsgTypes();
@@ -131,8 +134,8 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
      * 
      * @return List of populated Suites.
      */
-    private SuiteResponse getSuites() {
-        SuiteDao dao = new SuiteDao();
+    private SuiteResponse getSuites(SuiteRequest request) {
+        SuiteDao dao = new SuiteDao(request.isOperational());
         SuiteResponse response = new SuiteResponse();
 
         List<Suite> suiteList = dao.getSuites();
@@ -147,11 +150,9 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
      * @param suiteRequest
      *            Suite request.
      */
-    private void deleteSuite(SuiteRequest suiteRequest) {
-        SuiteDao dao = new SuiteDao();
-        if (suiteRequest != null) {
-            dao.delete(suiteRequest.getSuite());
-        }
+    private void deleteSuite(SuiteRequest request) {
+        SuiteDao dao = new SuiteDao(request.isOperational());
+        dao.delete(request.getSuite());
     }
 
     /**
@@ -162,7 +163,7 @@ public class SuiteHandler implements IRequestHandler<SuiteRequest> {
      * @return Suite response.
      */
     private SuiteResponse saveSuite(SuiteRequest request) {
-        SuiteDao dao = new SuiteDao();
+        SuiteDao dao = new SuiteDao(request.isOperational());
         SuiteResponse suiteResponse = new SuiteResponse();
         if (request.getSuite() != null) {
             dao.saveOrUpdate(request.getSuite());

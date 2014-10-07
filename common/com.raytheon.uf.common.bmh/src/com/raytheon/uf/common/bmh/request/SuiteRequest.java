@@ -22,7 +22,6 @@ package com.raytheon.uf.common.bmh.request;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
  * Request object for Suite queries.
@@ -31,11 +30,12 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 5, 2014  #3490      lvenable     Initial creation
- * Aug 12, 2014 #3490      lvenable     Added SuitesMsgTypes action.
- * Aug 17, 2014 #3490      lvenable     Added suite and getter/setters.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 05, 2014  3490     lvenable    Initial creation
+ * Aug 12, 2014  3490     lvenable    Added SuitesMsgTypes action.
+ * Aug 17, 2014  3490     lvenable    Added suite and getter/setters.
+ * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * 
  * </pre>
  * 
@@ -43,7 +43,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class SuiteRequest implements IServerRequest {
+public class SuiteRequest extends AbstractBMHServerRequest {
 
     public enum SuiteAction {
         Save, ListSuitesCats, AllSuites, SuitesMsgTypes, Delete;

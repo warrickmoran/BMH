@@ -21,7 +21,6 @@ package com.raytheon.uf.common.bmh.request;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
  * Playlist request object.
@@ -30,9 +29,10 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 15, 2014    3432    mpduff      Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 15, 2014  3432     mpduff      Initial creation
+ * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * 
  * </pre>
  * 
@@ -40,7 +40,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class PlaylistRequest implements IServerRequest {
+public class PlaylistRequest extends AbstractBMHServerRequest {
     public enum PlaylistAction {
         GET_PLAYLIST_BY_SUITE_GROUP, GET_PLAYLIST_DATA_FOR_TRANSMITTER
     }

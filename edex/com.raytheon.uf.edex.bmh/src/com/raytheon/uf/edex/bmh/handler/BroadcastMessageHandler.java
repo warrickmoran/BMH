@@ -28,15 +28,16 @@ import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 
 /**
- * Broadcast Message request handler.
+ * Handles any requests to get or modify the state of {@link BroadcastMsg}s
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 15, 2014     3432   mpduff      Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 15, 2014  3432     mpduff      Initial creation
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * 
  * </pre>
  * 
@@ -56,7 +57,10 @@ public class BroadcastMessageHandler implements
             response = getMessage(request);
             break;
         default:
-            break;
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
 
         return response;
@@ -64,7 +68,7 @@ public class BroadcastMessageHandler implements
 
     private BroadcastMsgResponse getMessage(BroadcastMsgRequest request) {
         BroadcastMsgResponse response = new BroadcastMsgResponse();
-        BroadcastMsgDao dao = new BroadcastMsgDao();
+        BroadcastMsgDao dao = new BroadcastMsgDao(request.isOperational());
         List<BroadcastMsg> list = dao.getMessageByBroadcastId(request
                 .getBroadcastMessageId());
         response.setMessageList(list);

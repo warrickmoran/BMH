@@ -25,7 +25,6 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
  * Request object for dictionary queries.
@@ -34,10 +33,11 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 02, 2014    3355    mpduff      Initial creation
- * Jul 21, 2014    3407    mpduff      Add delete dictionary action
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 02, 2014  3355     mpduff      Initial creation
+ * Jul 21, 2014  3407     mpduff      Add delete dictionary action
+ * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * 
  * </pre>
  * 
@@ -45,7 +45,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class DictionaryRequest implements IServerRequest {
+public class DictionaryRequest extends AbstractBMHServerRequest {
 
     public enum DictionaryAction {
         Save, ListNames, QueryByName, Delete;

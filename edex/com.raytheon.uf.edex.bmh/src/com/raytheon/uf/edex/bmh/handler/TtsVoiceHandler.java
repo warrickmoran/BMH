@@ -28,15 +28,16 @@ import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 
 /**
- * TTS Voice Server Request Handler
+ * Handles any requests to get or modify the state of {@link TtsVoice}s
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 11, 2014 #3490      lvenable     Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 11, 2014  3490     lvenable    Initial creation
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * 
  * </pre>
  * 
@@ -53,10 +54,13 @@ public class TtsVoiceHandler implements IRequestHandler<TtsVoiceRequest> {
 
         switch (request.getAction()) {
         case AllVoices:
-            ttsVoiceResponce = getVoices();
+            ttsVoiceResponce = getVoices(request);
             break;
         default:
-            break;
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
 
         return ttsVoiceResponce;
@@ -67,8 +71,8 @@ public class TtsVoiceHandler implements IRequestHandler<TtsVoiceRequest> {
      * 
      * @return TtsVoice response.
      */
-    private TtsVoiceResponse getVoices() {
-        TtsVoiceDao dao = new TtsVoiceDao();
+    private TtsVoiceResponse getVoices(TtsVoiceRequest request) {
+        TtsVoiceDao dao = new TtsVoiceDao(request.isOperational());
         TtsVoiceResponse response = new TtsVoiceResponse();
 
         List<TtsVoice> voiceList = dao.getVoices();

@@ -34,21 +34,22 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
- * BMH Program related request handler.
+ * Handles any requests to get or modify the state of {@link Program}s
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 05, 2014   #3490    lvenable    Initial creation
- * Aug 12, 2014   #3490    lvenable    Refactored to make a query convenience method.
- * Aug 15, 2014    3432    mpduff      Added getProgramForTransmitterGroup
- * Aug 17, 2014 #3490      lvenable     Added save and delete.
- * Sep 05, 2014 3554       bsteffen    Send config change notification.
- * Sep 18, 2014   #3587    bkowal      Added getProgramsWithTrigger
- * Oct 02, 2014   #3649    rferrel     Added addGroup.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 05, 2014  3490     lvenable    Initial creation
+ * Aug 12, 2014  3490     lvenable    Refactored to make a query convenience method.
+ * Aug 15, 2014  3432     mpduff      Added getProgramForTransmitterGroup
+ * Aug 17, 2014  3490     lvenable    Added save and delete.
+ * Sep 05, 2014  3554     bsteffen    Send config change notification.
+ * Sep 18, 2014  3587     bkowal      Added getProgramsWithTrigger
+ * Oct 02, 2014  3649     rferrel     Added addGroup.
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * 
  * </pre>
  * 
@@ -65,13 +66,13 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
 
         switch (request.getAction()) {
         case ListNamesIDs:
-            programResponse = getProgramNameIDs();
+            programResponse = getProgramNameIDs(request);
             break;
         case ProgramSuites:
-            programResponse = getProgramSuites();
+            programResponse = getProgramSuites(request);
             break;
         case AllPrograms:
-            programResponse = getPrograms();
+            programResponse = getPrograms(request);
             break;
         case Delete:
             deleteProgram(request);
@@ -95,7 +96,10 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
                     ConfigChangeType.Update, request.getProgram());
             break;
         default:
-            break;
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
 
         if (notification != null) {
@@ -112,8 +116,8 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
      * 
      * @return List of Program name and IDs.
      */
-    private ProgramResponse getProgramNameIDs() {
-        ProgramDao dao = new ProgramDao();
+    private ProgramResponse getProgramNameIDs(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao(request.isOperational());
         ProgramResponse response = new ProgramResponse();
 
         List<Program> programList = dao.getProgramNameIDs();
@@ -127,8 +131,8 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
      * 
      * @return List of Program and Suites.
      */
-    private ProgramResponse getProgramSuites() {
-        ProgramDao dao = new ProgramDao();
+    private ProgramResponse getProgramSuites(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao(request.isOperational());
         ProgramResponse response = new ProgramResponse();
 
         List<Program> programList = dao.getProgramSuites();
@@ -137,13 +141,11 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
         return response;
     }
 
-    private ProgramResponse getProgramForTransmitterGroup(ProgramRequest req) {
-        // TODO: does an instance of the program dao need to be created in every
-        // method instead of using an instance associated with the class?
-        ProgramDao dao = new ProgramDao();
+    private ProgramResponse getProgramForTransmitterGroup(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao(request.isOperational());
         ProgramResponse response = new ProgramResponse();
 
-        Program program = dao.getProgramForTransmitterGroup(req
+        Program program = dao.getProgramForTransmitterGroup(request
                 .getTransmitterGroup());
         List<Program> pList = new ArrayList<>(1);
         pList.add(program);
@@ -151,21 +153,22 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
         return response;
     }
 
-    private ProgramResponse getProgramsWithTrigger(ProgramRequest req) {
-        if (req.getMsgTypeId() <= 0) {
+    private ProgramResponse getProgramsWithTrigger(ProgramRequest request) {
+        if (request.getMsgTypeId() <= 0) {
             throw new IllegalArgumentException(
                     "The Message Type Id is required!");
         }
 
-        ProgramDao dao = new ProgramDao();
+        ProgramDao dao = new ProgramDao(request.isOperational());
         ProgramResponse response = new ProgramResponse();
 
         List<Program> triggeredPrograms = null;
-        if (req.getSuiteId() > 0) {
-            triggeredPrograms = dao.getProgramsWithTrigger(req.getSuiteId(),
-                    req.getMsgTypeId());
+        if (request.getSuiteId() > 0) {
+            triggeredPrograms = dao.getProgramsWithTrigger(
+                    request.getSuiteId(), request.getMsgTypeId());
         } else {
-            triggeredPrograms = dao.getProgramsWithTrigger(req.getMsgTypeId());
+            triggeredPrograms = dao.getProgramsWithTrigger(request
+                    .getMsgTypeId());
         }
         response.setProgramList(triggeredPrograms);
         return response;
@@ -176,8 +179,8 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
      * 
      * @return List of fully populated programs.
      */
-    private ProgramResponse getPrograms() {
-        ProgramDao dao = new ProgramDao();
+    private ProgramResponse getPrograms(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao(request.isOperational());
         ProgramResponse response = new ProgramResponse();
 
         List<Program> progList = dao.getPrograms();
@@ -193,7 +196,7 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
      *            Program request.
      */
     private void deleteProgram(ProgramRequest request) {
-        ProgramDao dao = new ProgramDao();
+        ProgramDao dao = new ProgramDao(request.isOperational());
         if (request.getProgram() != null) {
             dao.delete(request.getProgram());
         }
@@ -206,7 +209,7 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
      *            Program request.
      */
     private ProgramResponse saveProgram(ProgramRequest request) {
-        ProgramDao dao = new ProgramDao();
+        ProgramDao dao = new ProgramDao(request.isOperational());
         ProgramResponse response = new ProgramResponse();
         if (request.getProgram() != null) {
             dao.saveOrUpdate(request.getProgram());

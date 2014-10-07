@@ -33,22 +33,24 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
- * Message Type Server Request Handler
+ * Handles any requests to get or modify the state of {@link MessageType}s
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 22, 2014    3411    mpduff      Initial creation
- * Aug 5, 2014  #3490      lvenable    Updated to get Message types.
- * Aug 17, 2014 #3490      lvenable    Updated for deleting.
- * Aug 18, 2014  3411      mpduff      Added SaveMessageType
- * Aug 20, 2014  3432      mpduff      Added get by afosid and pk id
- * Sep 05, 2014 3554       bsteffen    Send config change notification.
- * Sep 15, 2014   #3610    lvenable    Added GetAfosIdTitle capability.
- * Sep 19, 2014   #3611    lvenable    Added emergency override capability..
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 22, 2014  3411     mpduff      Initial creation
+ * Aug 05, 2014  3490     lvenable    Updated to get Message types.
+ * Aug 17, 2014  3490     lvenable    Updated for deleting.
+ * Aug 18, 2014  3411     mpduff      Added SaveMessageType
+ * Aug 20, 2014  3432     mpduff      Added get by afosid and pk id
+ * Sep 05, 2014  3554     bsteffen    Send config change notification.
+ * Sep 15, 2014  3610     lvenable    Added GetAfosIdTitle capability.
+ * Sep 19, 2014  3611     lvenable    Added emergency override capability..
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * 
  * 
  * </pre>
  * 
@@ -64,7 +66,7 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         MessageTypeResponse response = new MessageTypeResponse();
         switch (request.getAction()) {
         case AllMessageTypes:
-            response = getMessageTypes();
+            response = getMessageTypes(request);
             break;
         case Delete:
             deleteMessageType(request);
@@ -72,7 +74,7 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
                     ConfigChangeType.Delete, request.getMessageType());
             break;
         case GetAfosIdTitle:
-            response = getMessageTypeAfosIdTitle();
+            response = getMessageTypeAfosIdTitle(request);
             break;
         case Save:
             response = saveMessageType(request);
@@ -89,7 +91,10 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
             response = getEmergencyOverrideMsgTypes(request);
             break;
         default:
-            break;
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
 
         if (notification != null) {
@@ -100,8 +105,9 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
         return response;
     }
 
-    private MessageTypeResponse getMessageTypeAfosIdTitle() {
-        MessageTypeDao dao = new MessageTypeDao();
+    private MessageTypeResponse getMessageTypeAfosIdTitle(
+            MessageTypeRequest request) {
+        MessageTypeDao dao = new MessageTypeDao(request.isOperational());
         MessageTypeResponse response = new MessageTypeResponse();
 
         List<MessageType> messageTypeList = dao.getMessgeTypeAfosIdTitle();
@@ -115,8 +121,8 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
      * 
      * @return Message Type Response.
      */
-    private MessageTypeResponse getMessageTypes() {
-        MessageTypeDao dao = new MessageTypeDao();
+    private MessageTypeResponse getMessageTypes(MessageTypeRequest request) {
+        MessageTypeDao dao = new MessageTypeDao(request.isOperational());
         MessageTypeResponse response = new MessageTypeResponse();
 
         List<MessageType> messageTypeList = dao.getMessgeTypes();
@@ -132,17 +138,13 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
      *            Message type request.
      */
     private void deleteMessageType(MessageTypeRequest request) {
-        MessageTypeDao dao = new MessageTypeDao();
-        if (request != null) {
-            dao.delete(request.getMessageType());
-        }
+        MessageTypeDao dao = new MessageTypeDao(request.isOperational());
+        dao.delete(request.getMessageType());
     }
 
     private MessageTypeResponse saveMessageType(MessageTypeRequest request) {
-        MessageTypeDao dao = new MessageTypeDao();
-        if (request != null) {
-            dao.saveOrUpdate(request.getMessageType());
-        }
+        MessageTypeDao dao = new MessageTypeDao(request.isOperational());
+        dao.saveOrUpdate(request.getMessageType());
 
         MessageTypeResponse response = new MessageTypeResponse();
         List<MessageType> list = new ArrayList<>(1);
@@ -154,7 +156,7 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
 
     private MessageTypeResponse getByAfosId(MessageTypeRequest request) {
         MessageTypeResponse response = new MessageTypeResponse();
-        MessageTypeDao dao = new MessageTypeDao();
+        MessageTypeDao dao = new MessageTypeDao(request.isOperational());
         MessageType mt = dao.getByAfosId(request.getAfosId());
         List<MessageType> list = new ArrayList<>(1);
         if (mt != null) {
@@ -167,7 +169,7 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
 
     private MessageTypeResponse getByPkId(MessageTypeRequest request) {
         MessageTypeResponse response = new MessageTypeResponse();
-        MessageTypeDao dao = new MessageTypeDao();
+        MessageTypeDao dao = new MessageTypeDao(request.isOperational());
         MessageType m = dao.getByID((int) request.getPkId());
         response.addMessageType(m);
 
@@ -184,7 +186,7 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
     private MessageTypeResponse getEmergencyOverrideMsgTypes(
             MessageTypeRequest request) {
         MessageTypeResponse response = new MessageTypeResponse();
-        MessageTypeDao dao = new MessageTypeDao();
+        MessageTypeDao dao = new MessageTypeDao(request.isOperational());
 
         List<MessageType> mTypes = dao.getEmergencyOverride(request
                 .isEmergencyOverride());

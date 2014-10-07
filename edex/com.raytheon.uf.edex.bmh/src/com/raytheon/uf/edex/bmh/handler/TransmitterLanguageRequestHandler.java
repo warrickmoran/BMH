@@ -25,7 +25,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
-import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest.TransmitterLanguageRequestAction;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
@@ -39,9 +38,10 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 29, 2014 3568       bkowal     Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 29, 2014  3568     bkowal     Initial creation
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * 
  * </pre>
  * 
@@ -52,13 +52,11 @@ import com.raytheon.uf.edex.core.EDEXUtil;
 public class TransmitterLanguageRequestHandler implements
         IRequestHandler<TransmitterLanguageRequest> {
 
-    private final TransmitterLanguageDao transmitterLanguageDao = new TransmitterLanguageDao();
-
     @Override
     public Object handleRequest(TransmitterLanguageRequest request)
             throws Exception {
         TransmitterLanguageResponse response = null;
-        TransmitterLanguageConfigNotification notification = new TransmitterLanguageConfigNotification();
+        TransmitterLanguageConfigNotification notification = null;
         switch (request.getAction()) {
         case GetTransmitterLanguagesForTransmitterGrp:
             response = this.getTransmitterLanguagesForTransmitterGroup(request);
@@ -69,12 +67,17 @@ public class TransmitterLanguageRequestHandler implements
              * transmitter language that has not been modified.
              */
             response = this.updateTransmitterLanguage(request);
-            notification.setType(ConfigChangeType.Update);
+            notification = new TransmitterLanguageConfigNotification(
+                    ConfigChangeType.Update, request.getTransmitterLanguage());
             break;
+        default:
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
 
-        if (request.getAction() == TransmitterLanguageRequestAction.UpdateTransmitterLanguage) {
-            notification.setKey(request.getTransmitterLanguage());
+        if (notification != null) {
             /* Need to initiate a regeneration. */
             EDEXUtil.getMessageProducer().sendAsyncUri(
                     "jms-durable:topic:BMH.Config",
@@ -91,7 +94,9 @@ public class TransmitterLanguageRequestHandler implements
                     "Transmitter group cannot be NULL when the requested action is: "
                             + request.getAction().toString() + "!");
         }
-        List<TransmitterLanguage> transmitterLanguages = this.transmitterLanguageDao
+        TransmitterLanguageDao transmitterLanguageDao = new TransmitterLanguageDao(
+                request.isOperational());
+        List<TransmitterLanguage> transmitterLanguages = transmitterLanguageDao
                 .getLanguagesForTransmitterGroup(request.getTransmitterGroup());
 
         TransmitterLanguageResponse response = new TransmitterLanguageResponse();
@@ -107,10 +112,11 @@ public class TransmitterLanguageRequestHandler implements
                     "Transmitter language cannot be NULL when the requested action is: "
                             + request.getAction().toString() + "!");
         }
+        TransmitterLanguageDao transmitterLanguageDao = new TransmitterLanguageDao(
+                request.isOperational());
         TransmitterLanguage transmitterLanguage = request
                 .getTransmitterLanguage();
-        this.transmitterLanguageDao.saveOrUpdate(request
-                .getTransmitterLanguage());
+        transmitterLanguageDao.saveOrUpdate(request.getTransmitterLanguage());
 
         TransmitterLanguageResponse response = new TransmitterLanguageResponse();
         response.addTransmitterLanguage(transmitterLanguage);

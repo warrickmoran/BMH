@@ -26,18 +26,18 @@ import com.raytheon.uf.common.bmh.request.PlaylistResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
-import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
- * Playlist request handler.
+ * Handles any requests to get or modify the state of {@link Playlist}s
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 15, 2014   3432     mpduff      Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 15, 2014  3432     mpduff      Initial creation
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * 
  * </pre>
  * 
@@ -46,37 +46,42 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  */
 
 public class PlaylistHandler implements IRequestHandler<PlaylistRequest> {
-    private static final BMHStatusHandler statusHandler = BMHStatusHandler
-            .getInstance(PlaylistHandler.class);
 
     @Override
-    public Object handleRequest(PlaylistRequest request) throws Exception {
-        PlaylistResponse response = new PlaylistResponse();
+    public Object handleRequest(PlaylistRequest request) {
+        PlaylistResponse response = null;
         switch (request.getAction()) {
         case GET_PLAYLIST_BY_SUITE_GROUP:
             response = getPlaylistBySuiteAndGroup(request);
             break;
         case GET_PLAYLIST_DATA_FOR_TRANSMITTER:
-            statusHandler.info("Playlist data request for "
-                    + request.getTransmitterName() + " arrived...");
-            PlaylistDataStructure data = PlaylistStateManager.getInstance()
-                    .getPlaylistDataStructure(request.getTransmitterName());
-            response.setPlaylistData(data);
+            response = getPlaylistDataForTransmitter(request);
             break;
         default:
-            break;
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action " + request.getAction());
         }
-
         return response;
     }
 
     private PlaylistResponse getPlaylistBySuiteAndGroup(PlaylistRequest request) {
         PlaylistResponse response = new PlaylistResponse();
-        PlaylistDao dao = new PlaylistDao();
+        PlaylistDao dao = new PlaylistDao(request.isOperational());
         Playlist playlist = dao.getBySuiteAndGroupName(request.getSuiteName(),
                 request.getGroupName());
         response.setPlaylist(playlist);
 
         return response;
     }
+
+    private PlaylistResponse getPlaylistDataForTransmitter(PlaylistRequest request){
+        PlaylistResponse response = new PlaylistResponse();
+        PlaylistStateManager playlistState = PlaylistStateManager.getInstance();
+        PlaylistDataStructure data = playlistState
+                .getPlaylistDataStructure(request.getTransmitterName());
+        response.setPlaylistData(data);
+        return response;
+    }
+
 }

@@ -63,7 +63,6 @@ import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
-import com.raytheon.uf.common.serialization.comm.IServerRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
@@ -916,7 +915,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
                 @Override
                 protected IStatus run(IProgressMonitor monitor) {
-                    IServerRequest request = new ForceSuiteChangeRequest(group,
+                    ForceSuiteChangeRequest request = new ForceSuiteChangeRequest(
+                            group,
                             suite);
                     try {
                         BmhUtils.sendRequest(request);

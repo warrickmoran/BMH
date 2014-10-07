@@ -28,15 +28,16 @@ import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 
 /**
- * BMH DAC request handler.
+ * Handles any requests to get or modify the state of {@link Dac}s
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 27, 2014    3173    mpduff      Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Aug 27, 2014  3137     mpduff      Initial creation
+ * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * 
  * </pre>
  * 
@@ -55,8 +56,10 @@ public class DacHandler implements IRequestHandler<DacRequest> {
             response = getAllDacs(request);
             break;
         default:
-            break;
-
+            throw new UnsupportedOperationException(this.getClass()
+                    .getSimpleName()
+                    + " cannot handle action "
+                    + request.getAction());
         }
 
         return response;
@@ -64,7 +67,7 @@ public class DacHandler implements IRequestHandler<DacRequest> {
 
     private DacResponse getAllDacs(DacRequest request) {
         DacResponse response = new DacResponse();
-        DacDao dao = new DacDao();
+        DacDao dao = new DacDao(request.isOperational());
         List<Dac> dacList = dao.getAll();
 
         response.setDacList(dacList);

@@ -29,11 +29,13 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 
+import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * BMH Viz utility class.
@@ -186,7 +188,9 @@ public class BmhUtils {
      * @return
      * @throws Exception
      */
-    public static Object sendRequest(IServerRequest request) throws Exception {
+    public static Object sendRequest(AbstractBMHServerRequest request)
+            throws Exception {
+        request.setOperational(CAVEMode.getMode() == CAVEMode.OPERATIONAL);
         return RequestRouter.route(request, "bmh.server");
     }
 }
