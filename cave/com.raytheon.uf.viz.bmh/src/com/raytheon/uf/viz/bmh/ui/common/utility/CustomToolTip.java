@@ -93,9 +93,6 @@ public class CustomToolTip {
     /** Height of the screen. */
     private int screenHeight = 0;
 
-    /** Rectangle bounds of the tip control. */
-    private Rectangle tipControlRect = null;
-
     /**
      * Constructor.
      * 
@@ -167,19 +164,7 @@ public class CustomToolTip {
         tipControl.addMouseMoveListener(new MouseMoveListener() {
             @Override
             public void mouseMove(MouseEvent e) {
-                if (tipShell == null) {
-                    return;
-                }
-
-                if (tipControlRect != null
-                        && tipControlRect.contains(Display.getCurrent()
-                                .getCursorLocation())) {
-
-                    tipShell.dispose();
-                    tipShell = null;
-                    tipLabel = null;
-                    tipControlRect = null;
-                }
+                forceHideToolTip();
             }
         });
 
@@ -200,15 +185,6 @@ public class CustomToolTip {
                     if (tipShell != null && !tipShell.isDisposed()) {
                         tipShell.dispose();
                     }
-
-                    // Make a rectangle of the bounds of the tip control.
-                    // This needs to be done every time in case the dialog
-                    // has been moved.
-                    Rectangle tmpRect = tipControl.getBounds();
-                    Point pt = tipControl.toDisplay(0, 0);
-
-                    tipControlRect = new Rectangle(pt.x, pt.y, tmpRect.width,
-                            tmpRect.height);
 
                     // Create the fonts and colors.
                     Font textFont = new Font(display, tipFontData);
@@ -275,15 +251,9 @@ public class CustomToolTip {
             return;
         }
 
-        if (tipControlRect != null
-                && tipControlRect.contains(Display.getCurrent()
-                        .getCursorLocation())) {
-
-            tipShell.dispose();
-            tipShell = null;
-            tipLabel = null;
-            tipControlRect = null;
-        }
+        tipShell.dispose();
+        tipShell = null;
+        tipLabel = null;
     }
 
     /**
