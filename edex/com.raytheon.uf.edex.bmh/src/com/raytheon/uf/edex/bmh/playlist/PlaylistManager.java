@@ -108,6 +108,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Sep 23, 2014  3485     bsteffen    Move queue naming logic to PlaylistUpdateNotification
  * Sep 26, 2014  3589     dgilling    Implement administrative suite change.
  * Oct 03, 2014  3485     bsteffen    Handle InputMessage with no area codes.
+ * Oct 07, 2014  3589     dgilling    Fix refresh of GENERAL suites on startup.
  * 
  * </pre>
  * 
@@ -592,9 +593,9 @@ public class PlaylistManager implements IContextStateProcessor {
                         .getMessagesByAfosid(programTrigger.getMsgType()
                                 .getAfosid()));
             }
-            if ((messages.isEmpty())
-                    && ((programSuite.getSuite().getType() != SuiteType.GENERAL) || (!programSuite
-                            .isForced()))) {
+            if (messages.isEmpty()
+                    && (programSuite.getSuite().getType() != SuiteType.GENERAL)
+                    && (!programSuite.isForced())) {
                 return Collections.emptyList();
             }
         }
