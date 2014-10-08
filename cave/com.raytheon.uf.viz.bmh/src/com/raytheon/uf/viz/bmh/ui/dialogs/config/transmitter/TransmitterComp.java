@@ -28,6 +28,8 @@ import java.util.Map;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MenuAdapter;
 import org.eclipse.swt.events.MenuEvent;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
@@ -39,6 +41,7 @@ import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
@@ -157,6 +160,7 @@ public class TransmitterComp extends Composite implements
             if (returnValue != null) {
                 populateTree(returnValue);
             }
+            getShell().setCursor(null);
         }
     };
 
@@ -451,6 +455,8 @@ public class TransmitterComp extends Composite implements
      *            true for a new transmitter, false for an edit
      */
     private void transmitterMenuAction(boolean newTransmitter) {
+        Shell shell = getShell();
+        shell.setCursor(shell.getDisplay().getSystemCursor(SWT.CURSOR_WAIT));
         if (newTransmitter) {
             TransmitterGroup group = null;
 
@@ -492,7 +498,8 @@ public class TransmitterComp extends Composite implements
      *            true for a new TransmitterGroup, false for an edit
      */
     private void groupMenuAction(boolean newGroup) {
-
+        Shell shell = getShell();
+        shell.setCursor(shell.getDisplay().getSystemCursor(SWT.CURSOR_WAIT));
         if (newGroup) {
             newEditDlg = new NewEditTransmitterDlg(getShell(),
                     TransmitterEditType.NEW_TRANSMITTER_GROUP, callback, this);
@@ -770,10 +777,37 @@ public class TransmitterComp extends Composite implements
             }
         });
 
+        tree.addMouseListener(new MouseAdapter() {
+
+            @Override
+            public void mouseDoubleClick(MouseEvent e) {
+                mouseDoubleClickAction();
+            }
+        });
+
         for (TreeTableColumn column : TreeTableColumn.values()) {
             TreeColumn col = new TreeColumn(tree, column.getAlignment());
             col.setText(column.getText());
             col.setWidth(column.getColWidth());
+        }
+    }
+
+    /**
+     * Mouse action to edit selected item.
+     */
+    private void mouseDoubleClickAction() {
+        if (tree.getSelectionCount() > 0) {
+            Object o = tree.getSelection()[0].getData();
+            if (o instanceof Transmitter) {
+                transmitterMenuAction(false);
+            } else if (o instanceof TransmitterGroup) {
+                TransmitterGroup group = (TransmitterGroup) o;
+                if (group.isStandalone()) {
+                    transmitterMenuAction(false);
+                } else {
+                    groupMenuAction(false);
+                }
+            }
         }
     }
 
@@ -902,6 +936,10 @@ public class TransmitterComp extends Composite implements
                                 t.getServiceArea(),
                                 dacStr + " / " + dacPortStr,
                                 t.getTxStatus().name(), t.getTxMode().name() });
+                        if (group.getTransmitterList().get(0)
+                                .equals(selectData)) {
+                            tree.setSelection(groupItem);
+                        }
                     } else {
                         TreeItem transItem = new TreeItem(groupItem, SWT.NONE);
                         transItem.setText(new String[] { TRANSMITTER,
