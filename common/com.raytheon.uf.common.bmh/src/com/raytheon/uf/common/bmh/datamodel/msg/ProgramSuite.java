@@ -20,9 +20,7 @@
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import javax.persistence.Column;
@@ -30,12 +28,11 @@ import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
-import javax.persistence.JoinColumns;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.MapsId;
-import javax.persistence.OneToMany;
 import javax.persistence.Table;
-import javax.persistence.Transient;
 import javax.persistence.UniqueConstraint;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -52,6 +49,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Sep 11, 2014 3587       bkowal      Initial creation
  * Sep 29, 2014 3589       dgilling    Add forced field.
+ * Oct 08, 2014 3687       bsteffen    Remove ProgramTrigger.
  * 
  * </pre>
  * 
@@ -83,15 +81,13 @@ public class ProgramSuite implements Serializable {
     @DynamicSerializeElement
     private int position;
 
-    @OneToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.EAGER)
     @DynamicSerializeElement
-    @JoinColumns({
+    @JoinTable(schema = "bmh", name = "program_trigger", joinColumns = {
             @JoinColumn(name = "program_id", referencedColumnName = "program_id"),
-            @JoinColumn(name = "suite_id", referencedColumnName = "suite_id") })
-    private Set<ProgramTrigger> triggers;
-
-    @Transient
-    private List<MessageType> triggerMsgTypes;
+            @JoinColumn(name = "suite_id", referencedColumnName = "suite_id") }, inverseJoinColumns = @JoinColumn(name = "msgtype_id", referencedColumnName = "id"), uniqueConstraints = @UniqueConstraint(columnNames = {
+            "program_id", "suite_id", "msgtype_id" }))
+    private Set<MessageType> triggers;
 
     @Column
     @DynamicSerializeElement
@@ -106,45 +102,24 @@ public class ProgramSuite implements Serializable {
 
     public void clearTriggers() {
         this.triggers.clear();
-        this.triggerMsgTypes.clear();
     }
 
-    public void addTrigger(ProgramTrigger trigger) {
+    public void addTrigger(MessageType trigger) {
         if (this.triggers == null) {
             this.triggers = new HashSet<>();
-            this.triggerMsgTypes = new ArrayList<>();
         }
-        trigger.setProgram(this.program);
-        trigger.setSuite(this.suite);
         this.triggers.add(trigger);
-        this.triggerMsgTypes.add(trigger.getMsgType());
     }
 
-    public void removeTrigger(MessageType msgType) {
-        ProgramTrigger trigger = new ProgramTrigger();
-        trigger.setProgram(this.program);
-        trigger.setSuite(this.suite);
-        trigger.setMsgType(msgType);
-
+    public void removeTrigger(MessageType trigger) {
         this.triggers.remove(trigger);
-        this.triggerMsgTypes.remove(msgType);
     }
 
     public boolean isTrigger(MessageType msgType) {
         if (this.triggers == null || this.triggers.isEmpty()) {
             return false;
         }
-        if (this.triggerMsgTypes == null) {
-            /*
-             * If the record came directly from Hibernate, the transient list
-             * would never have been initialized as part of a set method.
-             */
-            this.triggerMsgTypes = new ArrayList<>(this.triggers.size());
-            for (ProgramTrigger trigger : this.triggers) {
-                this.triggerMsgTypes.add(trigger.getMsgType());
-            }
-        }
-        return this.triggerMsgTypes.contains(msgType);
+        return this.triggers.contains(msgType);
     }
 
     public boolean triggersExist() {
@@ -218,7 +193,7 @@ public class ProgramSuite implements Serializable {
     /**
      * @return the triggers
      */
-    public Set<ProgramTrigger> getTriggers() {
+    public Set<MessageType> getTriggers() {
         return triggers;
     }
 
@@ -226,14 +201,8 @@ public class ProgramSuite implements Serializable {
      * @param triggers
      *            the triggers to set
      */
-    public void setTriggers(Set<ProgramTrigger> triggers) {
+    public void setTriggers(Set<MessageType> triggers) {
         this.triggers = triggers;
-        this.triggerMsgTypes = new ArrayList<>(triggers.size());
-        for (ProgramTrigger trigger : this.triggers) {
-            trigger.setProgram(this.program);
-            trigger.setSuite(this.suite);
-            this.triggerMsgTypes.add(trigger.getMsgType());
-        }
     }
 
     public boolean isForced() {

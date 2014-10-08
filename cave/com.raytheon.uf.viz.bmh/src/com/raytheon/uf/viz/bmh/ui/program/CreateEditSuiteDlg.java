@@ -43,7 +43,6 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
-import com.raytheon.uf.common.bmh.datamodel.msg.ProgramTrigger;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
@@ -92,6 +91,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 26, 2014  #3490      lvenable    Fixed issue found during testing, fixed issue on create in a new suite
  *                                      when creating a new program.
  * Sep 16, 2014  #3587      bkowal      Updated to only allow trigger assignment for {Program, Suite}
+ * Oct 08, 2014  #3687      bsteffen    Remove ProgramTrigger.
  * 
  * </pre>
  * 
@@ -598,13 +598,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                             if (dataMap.get(sm.getAfosid()) == false) {
                                 continue;
                             }
-
-                            ProgramTrigger trigger = new ProgramTrigger();
-                            trigger.setProgram(selectedProgram);
-                            trigger.setSuite(selectedSuite);
-                            trigger.setMsgType(sm.getMsgType());
                             selectedProgram.addTriggerMsgType(selectedSuite,
-                                    trigger);
+                                    sm.getMsgType());
                         }
                     }
 

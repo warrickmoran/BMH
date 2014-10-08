@@ -43,7 +43,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
-import com.raytheon.uf.common.bmh.datamodel.msg.ProgramTrigger;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
@@ -73,7 +72,8 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Aug 19, 2014 3411       mpduff      Implement {@link MessageTypeReplacement}
  * Sep 16, 2014 3587       bkowal      Updated to only allow trigger assignment for {Program, Suite}
  * Sep 25, 2014 3620       bsteffen    Add seconds to periodicity and duration.
- * Oct 7, 2014  3642       bkowal      Set a default time message preamble for {@link TransmitterLanguage}
+ * Oct 07, 2014 3642       bkowal      Set a default time message preamble for {@link TransmitterLanguage}
+ * Oct 08, 2014 3687       bsteffen    Remove ProgramTrigger.
  * 
  * </pre>
  * 
@@ -1169,9 +1169,7 @@ public class AsciiFileTranslator {
         // determine if there are any triggers associated with the suite.
         if (!SuiteType.GENERAL.equals(suite.getType())) {
             for (String trigger : triggers) {
-                ProgramTrigger programTrigger = new ProgramTrigger();
-                programTrigger.setMsgType(msgTypes.get(trigger));
-                programSuite.addTrigger(programTrigger);
+                programSuite.addTrigger(msgTypes.get(trigger));
             }
         }
     }

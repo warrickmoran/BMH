@@ -68,6 +68,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                    named queries for retrieving programs associated with a
  *                                    trigger.
  * Oct 01, 2014 #3589     dgilling    Add getProgramSuite().
+ * Oct 08, 2014 #3687     bsteffen    Remove ProgramTrigger.
  * 
  * </pre>
  * 
@@ -80,7 +81,6 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = Program.GET_PROGRAM_NAMES_IDS, query = Program.GET_PROGRAM_NAMES_IDS_QUERY),
         @NamedQuery(name = Program.GET_PROGRAM_SUITES, query = Program.GET_PROGRAM_SUITES_QUERY),
         @NamedQuery(name = Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP, query = Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP_QUERY),
-        @NamedQuery(name = Program.GET_TRIGGERS_FOR_PROGRAM_AND_SUITE, query = Program.GET_TRIGGERS_FOR_PROGRAM_AND_SUITE_QUERY),
         @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE_QUERY),
         @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY) })
 @Entity
@@ -110,17 +110,13 @@ public class Program {
 
     protected static final String GET_PROGRAM_SUITES_QUERY = "SELECT p.id, p.name, s.name, s.type, s.id FROM Program p inner join p.programSuites ps inner join ps.suite s";
 
-    public static final String GET_TRIGGERS_FOR_PROGRAM_AND_SUITE = "getTriggersForProgramAndSuite";
-
-    protected static final String GET_TRIGGERS_FOR_PROGRAM_AND_SUITE_QUERY = "SELECT trig FROM Program p INNER JOIN p.programSuites ps INNER JOIN ps.triggers trig WHERE trig.id.programId = :programId AND trig.id.suiteId = :suiteId";
-
     public static final String GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE = "getProgramsWithTriggerBySuiteAndMsgType";
 
-    protected static final String GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE_QUERY = "SELECT p.id, p.name FROM Program p INNER JOIN p.programSuites ps INNER JOIN ps.triggers trig WHERE trig.id.suiteId = :suiteId AND trig.id.msgTypeId = :msgTypeId";
+    protected static final String GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE_QUERY = "SELECT p.id, p.name FROM Program p INNER JOIN p.programSuites ps INNER JOIN ps.triggers trig WHERE ps.id.suiteId = :suiteId AND trig.id = :msgTypeId";
 
     public static final String GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE = "getProgramsWithTriggerByMsgType";
 
-    protected static final String GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY = "SELECT p.id, p.name FROM Program p INNER JOIN p.programSuites ps INNER JOIN ps.triggers trig WHERE trig.id.msgTypeId = :msgTypeId";;
+    protected static final String GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY = "SELECT p.id, p.name FROM Program p INNER JOIN p.programSuites ps INNER JOIN ps.triggers trig WHERE trig.id = :msgTypeId";
 
     // use surrogate key
     @Id
@@ -236,9 +232,9 @@ public class Program {
         this.suiteToProgramSuiteMap.get(suite).clearTriggers();
     }
 
-    public void addTriggerMsgType(Suite suite, ProgramTrigger trigger) {
+    public void addTriggerMsgType(Suite suite, MessageType messageType) {
         this.checkSuiteLookupMap(suite);
-        this.suiteToProgramSuiteMap.get(suite).addTrigger(trigger);
+        this.suiteToProgramSuiteMap.get(suite).addTrigger(messageType);
     }
 
     public void removeTriggerMsgType(Suite suite, MessageType msgType) {

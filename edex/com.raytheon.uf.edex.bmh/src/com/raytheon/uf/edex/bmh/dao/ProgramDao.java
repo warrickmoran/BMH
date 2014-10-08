@@ -22,10 +22,8 @@ package com.raytheon.uf.edex.bmh.dao;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 import org.springframework.orm.hibernate3.HibernateTemplate;
@@ -35,7 +33,6 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
-import com.raytheon.uf.common.bmh.datamodel.msg.ProgramTrigger;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -58,6 +55,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Sep 16, 2014  3587     bkowal      Overrode persistAll. Added getProgramTriggersForSuite.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Oct 02, 2014 #3649     rferrel     Added addGroup method.
+ * Oct 08, 2014 #3687     bsteffen    Remove ProgramTrigger.
  * 
  * </pre>
  * 
@@ -274,34 +272,6 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         return programList;
     }
 
-    public Set<ProgramTrigger> getProgramTriggersForSuite(final int programId,
-            final int suiteId) {
-        List<?> triggers = txTemplate
-                .execute(new TransactionCallback<List<?>>() {
-                    @Override
-                    public List<?> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                Program.GET_TRIGGERS_FOR_PROGRAM_AND_SUITE,
-                                new String[] { "programId", "suiteId" },
-                                new Object[] { programId, suiteId });
-                    }
-                });
-
-        if (triggers == null || triggers.isEmpty()) {
-            return null;
-        }
-
-        Set<ProgramTrigger> programTriggers = new HashSet<>(triggers.size());
-        for (Object trigger : triggers) {
-            if (trigger instanceof ProgramTrigger) {
-                programTriggers.add((ProgramTrigger) trigger);
-            }
-        }
-
-        return programTriggers;
-    }
-
     public List<Program> getProgramsWithTrigger(final int suiteId,
             final int msgTypeId) {
         return this.getProgramsWithTrigger(
@@ -409,8 +379,6 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         // bidirectional relationship
         if (programId != 0) {
             ht.bulkUpdate("DELETE ProgramSuite WHERE program_id = ?", programId);
-            ht.bulkUpdate("DELETE ProgramTrigger WHERE program_id = ?",
-                    programId);
             ht.update(program);
         } else {
             ht.save(program);
@@ -419,14 +387,6 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         if (program.getProgramSuites() != null) {
             for (ProgramSuite programSuite : program.getProgramSuites()) {
                 ht.save(programSuite);
-                if (programSuite.getTriggers() != null) {
-                    for (ProgramTrigger trigger : programSuite.getTriggers()) {
-                        if (trigger.getProgram() == null) {
-                            trigger.setProgram(program);
-                        }
-                        ht.save(trigger);
-                    }
-                }
             }
         }
     }

@@ -43,11 +43,11 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
-import com.raytheon.uf.common.bmh.datamodel.msg.ProgramTrigger;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
@@ -109,6 +109,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Sep 26, 2014  3589     dgilling    Implement administrative suite change.
  * Oct 03, 2014  3485     bsteffen    Handle InputMessage with no area codes.
  * Oct 07, 2014  3589     dgilling    Fix refresh of GENERAL suites on startup.
+ * Oct 08, 2014  3687     bsteffen    Remove ProgramTrigger.
  * 
  * </pre>
  * 
@@ -588,9 +589,9 @@ public class PlaylistManager implements IContextStateProcessor {
             Calendar expirationTime, boolean checkTrigger) {
         List<BroadcastMsg> messages = new ArrayList<>();
         if (checkTrigger) {
-            for (ProgramTrigger programTrigger : programSuite.getTriggers()) {
+            for (MessageType programTrigger : programSuite.getTriggers()) {
                 messages.addAll(broadcastMsgDao
-                        .getMessagesByAfosid(programTrigger.getMsgType()
+                        .getMessagesByAfosid(programTrigger
                                 .getAfosid()));
             }
             if (messages.isEmpty()

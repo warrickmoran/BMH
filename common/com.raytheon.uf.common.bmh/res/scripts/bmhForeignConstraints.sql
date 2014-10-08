@@ -85,20 +85,6 @@ alter table bmh.program_trigger add constraint fkb43d56fd7b42ac7a
      on delete cascade;
 
 /**
- * Program to Program Trigger
- **/
-alter table bmh.program_trigger drop constraint fkb43d56fdd483694c;
-alter table bmh.program_trigger add constraint fkb43d56fdd483694c
-     foreign key (program_id) references bmh.program(id) on delete cascade;
-
-/**
- * Suite to Program Trigger
- **/
-alter table bmh.program_trigger drop constraint fkb43d56fd87a7814c;
-alter table bmh.program_trigger add constraint fkb43d56fd87a7814c
-     foreign key (suite_id) references bmh.suite(id) on delete cascade;
-
-/**
  * Message Type to Program Trigger
  **/
 alter table bmh.program_trigger drop constraint fkb43d56fd9c6dfa92;
