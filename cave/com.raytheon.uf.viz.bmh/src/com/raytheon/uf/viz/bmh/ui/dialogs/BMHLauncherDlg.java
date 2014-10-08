@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,6 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -48,9 +52,11 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
@@ -73,6 +79,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypesDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WeatherMessagesDlg;
 import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
+import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -102,6 +109,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 14, 2014   3630     mpduff      Add the Transmitter Alignment dialog.
  * Sep 19, 2014  #3611     lvenable    Added launching of Emergency Override dialog.
  * Oct 06, 2014  #3700     lvenable    Added code for force hiding the tool tip.
+ * Oct 08, 2014  #3687     bsteffen    Add menu item to copy operational db in practice mode.
  * 
  * </pre>
  * 
@@ -769,6 +777,16 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                 DialogUtility.notImplemented(shell);
             }
         });
+        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+            MenuItem copyOperationalDB = new MenuItem(systemMenu, SWT.PUSH);
+            copyOperationalDB.setText("Copy Operational DB");
+            copyOperationalDB.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent event) {
+                    copyOperationalDb();
+                }
+            });
+        }
     }
 
     /**
@@ -917,6 +935,37 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             emergecyOverrideDlg.open();
         } else {
             emergecyOverrideDlg.bringToTop();
+        }
+    }
+
+    private void copyOperationalDb() {
+        /*
+         * TODO this dialog prevents the user from using cave while they wait,
+         * ideally it would only block BMH.
+         */
+        ProgressMonitorDialog dialog = new ProgressMonitorDialog(
+                this.getShell());
+        try {
+            dialog.run(true, false, new IRunnableWithProgress() {
+
+                @Override
+                public void run(IProgressMonitor monitor) {
+                    monitor.beginTask("Copying Operational Database",
+                            IProgressMonitor.UNKNOWN);
+                    try {
+                        BmhUtils.sendRequest(new CopyOperationalDbRequest());
+                    } catch (Exception e) {
+                        statusHandler.error("Failed to copy operational db", e);
+                    }
+                }
+
+            });
+        } catch (InvocationTargetException | InterruptedException e) {
+            /*
+             * Since no exception is thrown from run it is unlikely this ever
+             * happens
+             */
+            statusHandler.error("Failed to copy operational db", e);
         }
     }
 

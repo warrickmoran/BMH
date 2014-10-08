@@ -98,4 +98,11 @@
         <constructor-arg ref="forceSuiteHandler" />
     </bean>
 
+    <bean id="copyOperationalDbHandler" class="com.raytheon.uf.edex.bmh.handler.CopyOperationalDbHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest" />
+        <constructor-arg ref="copyOperationalDbHandler" />
+    </bean>
+
 </beans>
