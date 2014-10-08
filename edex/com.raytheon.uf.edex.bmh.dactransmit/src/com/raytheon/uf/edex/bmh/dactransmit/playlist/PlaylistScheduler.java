@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -591,7 +590,9 @@ public final class PlaylistScheduler implements
     @Override
     @Subscribe
     public void newPlaylistReceived(PlaylistUpdateNotification notification) {
-        if (!Files.exists(Paths.get(notification.getPlaylistPath()))) {
+        Path playlistPath = playlistDirectory.resolveSibling(notification
+                .getPlaylistPath());
+        if (!Files.exists(playlistPath)) {
             logger.warn(
                     "Ignoring an update for a new playlist that no longer exists: {}",
                     notification.getPlaylistPath());
@@ -599,8 +600,6 @@ public final class PlaylistScheduler implements
         }
         DacPlaylist newPlaylist = notification.parseFilepath();
         if (newPlaylist != null) {
-            Path playlistPath = playlistDirectory.resolveSibling(notification
-                    .getPlaylistPath());
             try {
                 newPlaylist = JAXB.unmarshal(playlistPath.toFile(),
                         DacPlaylist.class);
