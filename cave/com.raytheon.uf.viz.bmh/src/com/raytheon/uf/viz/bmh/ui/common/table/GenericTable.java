@@ -36,6 +36,7 @@ import org.eclipse.swt.widgets.Composite;
  * ------------ ---------- ----------- --------------------------
  * Sep 17, 2014 3631/3611  lvenable    Initial creation while working DR3611.  This code
  *                                     will be checked in under 3611.
+ * Oct 09, 2014 3646       rferrel     Constructors without size arguments.
  * 
  * </pre>
  * 
@@ -44,6 +45,9 @@ import org.eclipse.swt.widgets.Composite;
  */
 
 public class GenericTable extends TableComp {
+
+    private final static int DEFAULT_STYLE = SWT.BORDER | SWT.V_SCROLL
+            | SWT.H_SCROLL | SWT.MULTI;
 
     /**
      * Constructor.
@@ -56,8 +60,16 @@ public class GenericTable extends TableComp {
      *            Table height.
      */
     public GenericTable(Composite parentComp, int width, int height) {
-        this(parentComp, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.MULTI,
-                width, height);
+        this(parentComp, DEFAULT_STYLE, width, height);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param parentComp
+     */
+    public GenericTable(Composite parentComp) {
+        this(parentComp, DEFAULT_STYLE);
     }
 
     /**
@@ -74,6 +86,16 @@ public class GenericTable extends TableComp {
     public GenericTable(Composite parentComp, int tableStyle, int width,
             int height) {
         super(parentComp, tableStyle, width, height);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param parentComp
+     * @param tableStyle
+     */
+    public GenericTable(Composite parentComp, int tableStyle) {
+        super(parentComp, tableStyle);
     }
 
     @Override

@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -40,10 +39,10 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.request.ZoneAreaResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
@@ -65,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 11, 2014   3406     mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
+ * Oct 08,2014    #3646    rferrel     zoneTableComp now GenericTable.
  * 
  * </pre>
  * 
@@ -78,7 +78,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
             .getHandler(ListeningZoneDlg.class);
 
     /** Zone Table Composite */
-    private ListeningZoneTableComp zoneTableComp;
+    private GenericTable zoneTableComp;
 
     /** Columns for the zone table */
     private ArrayList<TableColumnData> columns;
@@ -177,8 +177,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
         GridLayout gl = new GridLayout(1, false);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.heightHint = 150;
-        zoneTableComp = new ListeningZoneTableComp(getShell(), SWT.BORDER
-                | SWT.V_SCROLL);
+        zoneTableComp = new GenericTable(getShell(), SWT.BORDER | SWT.V_SCROLL);
         zoneTableComp.setLayout(gl);
         zoneTableComp.setLayoutData(gd);
         zoneTableComp.setCallbackAction(new ITableActionCB() {
@@ -509,28 +508,6 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
         }
 
         enableZoneButtons(zoneTableComp.getSelection().size() > 0);
-    }
-
-    /**
-     * Listening Zone table composite class
-     */
-    private class ListeningZoneTableComp extends TableComp {
-
-        public ListeningZoneTableComp(Composite parent, int tableStyle) {
-            super(parent, tableStyle);
-        }
-
-        @Override
-        protected void handleTableMouseClick(MouseEvent event) {
-            // no-op
-        }
-
-        @Override
-        protected void handleTableSelection(SelectionEvent e) {
-            if (callbackAction != null) {
-                callbackAction.tableSelectionChange(table.getSelectionCount());
-            }
-        }
     }
 
     @Override
