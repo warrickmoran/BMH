@@ -666,7 +666,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (save()) {
-                    callback.dialogClosed(getReturnValue());
                     close();
                 }
             }
@@ -1058,14 +1057,16 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                             if (prevIsStandalone && !group.isStandalone()) {
                                 TransmitterGroup saGroup = previousTransmitter
                                         .getTransmitterGroup();
-                                dataManager.saveTransmitterDeleteGroup(
-                                        transmitter, saGroup);
+                                transmitter = dataManager
+                                        .saveTransmitterDeleteGroup(
+                                                transmitter, saGroup);
                                 setReturnValue(transmitter);
                                 return true;
                             } else {
                                 saveGroup = checkGroupUpdate();
                                 if (!saveGroup) {
-                                    dataManager.saveTransmitter(transmitter);
+                                    transmitter = dataManager
+                                            .saveTransmitter(transmitter);
                                     setReturnValue(transmitter);
                                     return true;
                                 }
@@ -1680,6 +1681,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     protected void disposed() {
         statusIcon.dispose();
         modeIcon.dispose();
+        callback.dialogClosed(getReturnValue());
     }
 
     private void notImplemented() {
