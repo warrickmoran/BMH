@@ -35,6 +35,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -47,7 +48,6 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -93,6 +93,9 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Aug 25, 2014  3558      rjpeter     Updated to call getEnabledTransmitterGroupList.
  * Sep 25, 2014  3589      dgilling    Hook up Change Suite feature.
  * Oct 05, 2014  3647      mpduff      Changes to color manager.
+ * Oct 08, 2014  #3479     lvenable    Added wrap and multi to the text control style and made it 
+ *                                     read-only.  Moved populating the message text to the opened()
+ *                                     method. Also added resize capability.
  * </pre>
  * 
  * @author mpduff
@@ -182,7 +185,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private PlaylistData playlistData;
 
     /** Message text area */
-    private Text messageTextArea;
+    private StyledText messageTextArea;
 
     /** The currently selected transmitter */
     private String selectedTransmitterGrp;
@@ -201,8 +204,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      *            The opend dialogs map
      */
     public BroadcastCycleDlg(Shell parent, Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "Broadcast Cycle Dialog", parent, SWT.DIALOG_TRIM,
-                CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(dlgMap, "Broadcast Cycle Dialog", parent, SWT.DIALOG_TRIM
+                | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
+                | CAVE.PERSPECTIVE_INDEPENDENT);
         this.dataManager = new BroadcastCycleDataManager();
         setText(TITLE);
     }
@@ -218,6 +222,24 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     @Override
     protected Object constructShellLayoutData() {
         return new GridData(SWT.FILL, SWT.FILL, true, true);
+    }
+
+    @Override
+    protected void opened() {
+        shell.setMinimumSize(shell.getSize());
+
+        /*
+         * Populate the transmitters and table. This code needs to be in the
+         * opened() method so the message text control is already packed when
+         * setting the text. Otherwise the control will stretch to try and fit
+         * the message if it is really long.
+         */
+        populateTransmitters();
+
+        // TODO connect to topic
+        NotificationManagerJob.addObserver(BMH_DAC_STATUS, this);
+
+        initialTablePopulation();
     }
 
     /*
@@ -245,7 +267,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         createMenus();
         createTransmitterList(mainComp);
 
-        gd = new GridData(SWT.DEFAULT, SWT.FILL, false, false);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gl = new GridLayout(1, false);
         gl.marginBottom = 0;
         Composite broadcastComp = new Composite(mainComp, SWT.NONE);
@@ -256,12 +278,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         createTable(broadcastComp);
         createMessageText(broadcastComp);
         createBottomButtons(broadcastComp);
-        populateTransmitters();
-
-        // TODO connect to topic
-        NotificationManagerJob.addObserver(BMH_DAC_STATUS, this);
-
-        initialTablePopulation();
     }
 
     private void createMenus() {
@@ -626,8 +642,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.heightHint = 90;
-        messageTextArea = new Text(comp, SWT.BORDER | SWT.V_SCROLL);
-        messageTextArea.setLayoutData(gd);
+        messageTextArea = new StyledText(comp, SWT.BORDER | SWT.WRAP
+                | SWT.MULTI | SWT.V_SCROLL | SWT.READ_ONLY);
         messageTextArea.setLayoutData(gd);
     }
 

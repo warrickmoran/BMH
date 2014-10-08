@@ -53,6 +53,7 @@ import org.eclipse.swt.widgets.Shell;
  * Aug 23, 2014 #3490      lvenable     Add a fix for finding the total screen width of
  *                                      multiple monitors.
  * Oct 06, 2014  #3700     lvenable     Added a force hide that will dispose of the tool tip text.
+ * Oct 08, 2014  #3479     lvenable     Fixed margin.
  * 
  * </pre>
  * 
@@ -199,7 +200,8 @@ public class CustomToolTip {
                             | SWT.NO_FOCUS | SWT.TOOL);
                     tipShell.setBackground(bgClr);
                     FillLayout layout = new FillLayout();
-                    layout.marginWidth = 2;
+                    layout.marginWidth = 5;
+                    layout.marginHeight = 5;
                     tipShell.setLayout(layout);
                     tipLabel = new Label(tipShell, SWT.NONE);
                     tipLabel.setFont(textFont);
