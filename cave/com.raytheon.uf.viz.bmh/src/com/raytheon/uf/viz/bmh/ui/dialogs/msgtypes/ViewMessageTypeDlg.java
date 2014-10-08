@@ -65,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 12, 2014  #3490     lvenable    Updated to view message type relationships.
  * Aug 15, 2014  #3490     lvenable    Updated to use Program and Suite data managers.
  * Aug 22, 2014  #3490     lvenable    Added resize and minimum size.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 09, 2014  #3646     rferrel     Convert programTable to GenerictTable.
  * 
  * </pre>
@@ -101,7 +102,7 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
      */
     public ViewMessageTypeDlg(Shell parentShell, MessageType msgType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL | SWT.RESIZE,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.msgType = msgType;
     }

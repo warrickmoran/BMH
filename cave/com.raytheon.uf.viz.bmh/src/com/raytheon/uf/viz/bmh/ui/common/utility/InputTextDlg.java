@@ -50,6 +50,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 22, 2014  #3490      lvenable    Updated code to handle making code all-caps.
  * Sep 25, 2014  #3649     rferrel      Allow blocking dialog.
  * Sep 28, 2014   3630     mpduff       Set the ok button as the default button.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -114,7 +115,7 @@ public class InputTextDlg extends CaveSWTDialog {
             String tfText, IInputTextValidator textValidator,
             boolean upcaseText, boolean blocking) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.MODE_INDEPENDENT
+                CAVE.PERSPECTIVE_INDEPENDENT
                         | (blocking ? CAVE.NONE : CAVE.DO_NOT_BLOCK));
 
         this.descriptionTxt = descriptionTxt;

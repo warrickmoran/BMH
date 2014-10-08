@@ -58,6 +58,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 15, 2014  #3329     lvenable     Initial creation
  * Sep 14, 2014  #3610     lvenable     Updated to show when 30 seconds of recording
  *                                      is left and fixed a couple of bugs.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 8, 2014   #3657     bkowal       Implemented audio recording and playback.
  * 
  * 
@@ -154,7 +155,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      */
     public RecordPlaybackDlg(Shell parentShell, int maxRecordingSeconds) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.maxRecordingSeconds = maxRecordingSeconds;
     }

@@ -92,6 +92,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      when creating a new program.
  * Sep 16, 2014  #3587      bkowal      Updated to only allow trigger assignment for {Program, Suite}
  * Oct 08, 2014  #3687      bsteffen    Remove ProgramTrigger.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -221,7 +222,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             Suite selectedSuite, Set<String> existingSuiteNames,
             boolean forNewProgram) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.dialogType = dlgType;
         this.showProgramControls = showProgramControls;

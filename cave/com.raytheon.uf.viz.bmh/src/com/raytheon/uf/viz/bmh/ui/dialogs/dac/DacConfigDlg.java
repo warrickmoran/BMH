@@ -55,6 +55,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 23, 2014  #3660     lvenable     Initial creation
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -91,7 +92,7 @@ public class DacConfigDlg extends AbstractBMHDialog {
     public DacConfigDlg(Shell parentShell, Map<AbstractBMHDialog, String> dlgMap) {
         super(dlgMap, "DAC Configuration Dialog", parentShell, SWT.DIALOG_TRIM
                 | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                | CAVE.MODE_INDEPENDENT);
+                | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override

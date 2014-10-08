@@ -73,6 +73,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Sep 11, 2014  #3610     lvenable     Initial creation
  * Sep 25, 2014   3620     bsteffen     Add seconds to periodicity.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -172,7 +173,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     public WeatherMessagesDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
         super(dlgMap, "Weather Messages Dialog", parentShell, SWT.DIALOG_TRIM
-                | SWT.MIN, CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                | SWT.MIN, CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override

@@ -50,6 +50,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 18, 2014    3411    mpduff      Initial creation
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -72,7 +73,7 @@ public class MessageTypeSelectionDlg extends CaveSWTDialog {
     public MessageTypeSelectionDlg(Shell parentShell,
             List<MessageType> messageTypeList, MessageType selectedMessageType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
         setText("Select Message");
         this.messageTypeList = messageTypeList;
         this.selectedMessageType = selectedMessageType;

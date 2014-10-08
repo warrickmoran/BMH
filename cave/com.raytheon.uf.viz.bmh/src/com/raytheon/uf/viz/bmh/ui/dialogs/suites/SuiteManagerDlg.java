@@ -67,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 15, 2014  #3490     lvenable     Added copy, rename, other capabilities.
  * Aug 15, 2014  #3490     lvenable     Added existing names.
  * Aug 22, 2014  #3490     lvenable     Added input dialog flag.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -103,7 +104,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
             Map<AbstractBMHDialog, String> dlgMap) {
         super(dlgMap, "Suite Manager Dialog", parentShell, SWT.DIALOG_TRIM
                 | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                | CAVE.MODE_INDEPENDENT);
+                | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override

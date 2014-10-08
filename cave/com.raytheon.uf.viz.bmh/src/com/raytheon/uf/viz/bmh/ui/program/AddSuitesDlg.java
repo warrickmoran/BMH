@@ -70,6 +70,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Sep 10, 2014  #3490     lvenable     Added check for adding duplicate suites.
  * Sep 11, 2014  #3587     bkowal       Remove validateSuiteTriggerMessages. Updated
  *                                      to only allow trigger assignment for {Program, Suite}
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -114,7 +115,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
      */
     public AddSuitesDlg(Shell parentShell, Set<String> existingNames) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.existingNames = existingNames;
     }

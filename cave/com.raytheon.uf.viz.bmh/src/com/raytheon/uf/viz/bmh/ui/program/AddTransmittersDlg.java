@@ -59,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2014  #3174     lvenable     Initial creation
  * Aug 23, 2014  #3490     lvenable     Hook up transmitter data.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -97,7 +98,7 @@ public class AddTransmittersDlg extends CaveSWTDialog {
     public AddTransmittersDlg(Shell parentShell, String programName,
             Map<String, String> transGrpProgramMap) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
-                | CAVE.MODE_INDEPENDENT);
+                | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.programName = programName;
         this.transGrpProgramMap = transGrpProgramMap;

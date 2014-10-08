@@ -74,6 +74,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 16, 2014  #3611     lvenable     Initial creation
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -134,7 +135,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     public EmergencyOverrideDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
         super(dlgMap, "Emergency Override Dialog", parentShell, SWT.DIALOG_TRIM
-                | SWT.MIN, CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                | SWT.MIN, CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override

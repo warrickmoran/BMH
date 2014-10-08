@@ -60,6 +60,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
  * Aug 12, 2014  #3490      lvenable    Updated method call.
  * Aug 21, 2014  #3490      lvenable    Added database capability.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -93,7 +94,7 @@ public class CreateNewProgram extends CaveSWTDialog {
      */
     public CreateNewProgram(Shell parentShell, Set<String> existingProgramNames) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.existingProgramNames = existingProgramNames;
     }

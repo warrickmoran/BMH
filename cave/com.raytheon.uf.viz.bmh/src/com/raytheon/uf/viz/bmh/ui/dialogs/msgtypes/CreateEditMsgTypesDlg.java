@@ -87,6 +87,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 11, 2014   3411     mpduff      Pass MessageType object to Area Selection for populating, save TransmitterGroups
  * Sep 14, 2014  #3610     lvenable    Removed unused code and renamed variable.
  * Sep 25, 2014   3620     bsteffen    Add seconds to periodicity and duration.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -206,7 +207,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
     public CreateEditMsgTypesDlg(Shell parentShell, DialogType dialogType,
             List<MessageType> messageTypeList, MessageType selectedMsgType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.dialogType = dialogType;
         this.selectedMsgType = selectedMsgType;

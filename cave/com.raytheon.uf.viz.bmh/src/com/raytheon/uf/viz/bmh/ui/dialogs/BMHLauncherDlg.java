@@ -110,6 +110,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 19, 2014  #3611     lvenable    Added launching of Emergency Override dialog.
  * Oct 06, 2014  #3700     lvenable    Added code for force hiding the tool tip.
  * Oct 08, 2014  #3687     bsteffen    Add menu item to copy operational db in practice mode.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -225,7 +226,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      */
     public BMHLauncherDlg(Shell parentShell) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.DO_NOT_BLOCK
-                | CAVE.MODE_INDEPENDENT | CAVE.INDEPENDENT_SHELL);
+                | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.INDEPENDENT_SHELL);
     }
 
     @Override

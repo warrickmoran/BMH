@@ -44,6 +44,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 7, 2014  #3360      lvenable     Initial creation
  * Jul 27, 2014 #3420      lvenable     Refactor to separate the scrolled check boxes to
  *                                      another class.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -118,7 +119,7 @@ public class CheckScrollListDlg extends CaveSWTDialog {
             CheckListData checkListData, boolean showSelectControls, int width,
             int height) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.checkListData = checkListData;
         this.showSelectControls = showSelectControls;

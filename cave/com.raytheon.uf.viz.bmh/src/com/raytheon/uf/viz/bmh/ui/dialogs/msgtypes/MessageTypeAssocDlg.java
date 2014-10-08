@@ -65,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 15, 2014  #3387     lvenable    Implemented abstract BMH dialog.
  * Aug 15, 2014   3411     mpduff      populated.
  * Sep 11, 2014   3355     mpduff      Post demo cleanup (change label)
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -133,7 +134,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
     public MessageTypeAssocDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
         super(dlgMap, TITLE, parentShell, SWT.DIALOG_TRIM | SWT.RESIZE,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override

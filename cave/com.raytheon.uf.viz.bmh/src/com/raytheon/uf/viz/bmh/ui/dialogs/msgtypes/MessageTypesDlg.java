@@ -77,6 +77,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 22, 2014   3411     lvenable    Update rename and made some tweaks.
  * Sep 18, 2014  #3587     bkowal      Notify a user when a message type is a trigger
  *                                     before they are allowed to remove it.
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -121,7 +122,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             Map<AbstractBMHDialog, String> dlgMap) {
         super(dlgMap, "Message Types Dialog", parentShell, SWT.DIALOG_TRIM
                 | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                | CAVE.MODE_INDEPENDENT);
+                | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override

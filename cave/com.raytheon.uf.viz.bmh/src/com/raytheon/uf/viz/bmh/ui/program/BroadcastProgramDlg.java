@@ -87,6 +87,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 23, 2014  #3490      lvenable    Added capability for add transmitters.
  * Aug 25, 2014  #3490      lvenable    Update suite config group when the program changes.
  * Sep 16, 2014  #3587      bkowal      Updated to only allow trigger assignment for {Program, Suite}
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * 
  * </pre>
  * 
  * @author lvenable
@@ -167,7 +169,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             Map<AbstractBMHDialog, String> dlgMap) {
         super(dlgMap, "Broadcast Program Dialog", parentShell, SWT.DIALOG_TRIM
                 | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                | CAVE.MODE_INDEPENDENT);
+                | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override

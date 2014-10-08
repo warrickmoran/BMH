@@ -43,6 +43,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 28, 2014   3630     mpduff      Initial creation
+ * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * 
  * </pre>
  * 
@@ -64,7 +65,7 @@ public class DecibelLevelSelectionDlg extends CaveSWTDialog {
 
     public DecibelLevelSelectionDlg(Shell parentShell, Integer initialValue) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
         setText("Target Decibel Level");
         this.initialValue = initialValue;
     }

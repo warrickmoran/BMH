@@ -64,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 15, 2014  #3490     lvenable     Reworked to use the data manager.
  * Aug 22, 2014  #3490     lvenable     Added resize and minimum size.
  * Sep 16, 2014  #3587     bkowal       Updated to only allow trigger assignment for {Program, Suite}
+ * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 09, 2014  #3646     rferrel      Converted programTable to GenericTable.
  * 
  * </pre>
@@ -99,7 +100,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
      */
     public ViewSuiteDlg(Shell parentShell, Suite selectedSuite) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL | SWT.RESIZE,
-                CAVE.DO_NOT_BLOCK | CAVE.MODE_INDEPENDENT);
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.selectedSuite = selectedSuite;
     }
