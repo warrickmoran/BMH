@@ -26,7 +26,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -50,9 +49,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.ZoneNameComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
@@ -72,6 +71,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 18, 2014   3432     mpduff      Removed areaObject field
  * Aug 28, 2014   3432     mpduff      Display areaCode, not areaId
  * Sep 11, 2014   3411     mpduff      Populate upon opening.
+ * Oct 09, 2014   3646     rferrel     Converted tableComp to GenerticTable.
  * </pre>
  * 
  * @author mpduff
@@ -109,7 +109,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     /**
      * Selected table composite
      */
-    private SelectedTableComp tableComp;
+    private GenericTable tableComp;
 
     /**
      * Selected table columns
@@ -546,8 +546,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         gl = new GridLayout(1, false);
         gl.marginHeight = 0;
         gl.marginWidth = 0;
-        tableComp = new SelectedTableComp(selectedComp, SWT.BORDER
-                | SWT.V_SCROLL | SWT.MULTI);
+        tableComp = new GenericTable(selectedComp, SWT.BORDER | SWT.V_SCROLL
+                | SWT.MULTI);
         tableComp.setLayout(gl);
         tableComp.setLayoutData(gd);
 
@@ -1102,27 +1102,5 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         row.setData(t);
 
         return row;
-    }
-
-    /**
-     * Selected Table Comp
-     */
-    private class SelectedTableComp extends TableComp {
-        // TODO Candidate to be replaced by a generic TableComp class
-        public SelectedTableComp(Composite parent, int tableStyle) {
-            super(parent, tableStyle, true, true);
-        }
-
-        @Override
-        protected void handleTableMouseClick(MouseEvent event) {
-            // no op
-
-        }
-
-        @Override
-        protected void handleTableSelection(SelectionEvent e) {
-            // no op
-
-        }
     }
 }
