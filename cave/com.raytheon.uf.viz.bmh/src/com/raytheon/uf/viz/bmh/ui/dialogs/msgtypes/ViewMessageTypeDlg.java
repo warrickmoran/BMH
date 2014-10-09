@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -47,7 +48,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
-import com.raytheon.uf.viz.bmh.ui.program.ProgramTable;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteTable;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
@@ -65,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 12, 2014  #3490     lvenable    Updated to view message type relationships.
  * Aug 15, 2014  #3490     lvenable    Updated to use Program and Suite data managers.
  * Aug 22, 2014  #3490     lvenable    Added resize and minimum size.
+ * Oct 09, 2014  #3646     rferrel     Convert programTable to GenerictTable.
  * 
  * </pre>
  * 
@@ -78,7 +79,7 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
             .getHandler(ViewMessageTypeDlg.class);
 
     /** Program table. */
-    private ProgramTable programTable;
+    private GenericTable programTable;
 
     /** Suite table. */
     private SuiteTable suiteTable;
@@ -187,7 +188,7 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
         nameLbl.setText("Associated Programs:");
         nameLbl.setLayoutData(gd);
 
-        programTable = new ProgramTable(controlComp, 500, 100);
+        programTable = new GenericTable(controlComp, 500, 100);
     }
 
     /**
