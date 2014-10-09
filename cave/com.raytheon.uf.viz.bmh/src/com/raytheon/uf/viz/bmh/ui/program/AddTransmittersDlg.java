@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -60,6 +61,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 16, 2014  #3174     lvenable     Initial creation
  * Aug 23, 2014  #3490     lvenable     Hook up transmitter data.
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 09, 2014  #3646     rferrel      Convert tableComp to GenericTable.
  * 
  * </pre>
  * 
@@ -76,7 +78,7 @@ public class AddTransmittersDlg extends CaveSWTDialog {
     private String programName;
 
     /** Table listing the available transmitters. */
-    private TransmitterTable tableComp;
+    private GenericTable tableComp;
 
     /** List of transmitter groups. */
     private List<TransmitterGroup> transmitterGrps = null;
@@ -145,7 +147,7 @@ public class AddTransmittersDlg extends CaveSWTDialog {
                 + programName + ": ");
         selectLbl.setLayoutData(gd);
 
-        tableComp = new TransmitterTable(shell, 650, 150);
+        tableComp = new GenericTable(shell, 650, 150);
 
         populateTransmitterTable();
     }
