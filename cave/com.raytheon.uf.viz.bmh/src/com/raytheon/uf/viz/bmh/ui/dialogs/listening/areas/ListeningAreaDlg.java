@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -40,10 +39,10 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.request.ZoneAreaResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
@@ -65,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 11, 2014   3406     mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
+ * Oct 09, 2014   #3646    rferrel     Convert transmitterTableComp to GenericTable.
  * 
  * </pre>
  * 
@@ -104,7 +104,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
     private TableData transmitterTableData;
 
     /** Transmitter table composite */
-    private TransmitterTableComp transmitterTableComp;
+    private GenericTable transmitterTableComp;
 
     /** Columns for the transmitter table */
     private ArrayList<TableColumnData> transmitterColumns;
@@ -271,8 +271,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.heightHint = 150;
         gd.horizontalSpan = 2;
-        transmitterTableComp = new TransmitterTableComp(comp, SWT.BORDER
-                | SWT.V_SCROLL);
+        transmitterTableComp = new GenericTable(comp, SWT.BORDER | SWT.V_SCROLL);
         transmitterTableComp.setLayoutData(gd);
         transmitterTableComp.setLayout(gl);
 
@@ -511,30 +510,6 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
             areaTableSelectionAction();
         }
         enableZoneButtons(areaTableComp.getSelection().size() > 0);
-    }
-
-    /**
-     * Transmitter table composite class.
-     */
-    private class TransmitterTableComp extends TableComp {
-
-        public TransmitterTableComp(Composite parent, int tableStyle) {
-            super(parent, tableStyle);
-
-        }
-
-        @Override
-        protected void handleTableMouseClick(MouseEvent event) {
-            // no-op
-
-        }
-
-        @Override
-        protected void handleTableSelection(SelectionEvent e) {
-            if (callbackAction != null) {
-                callbackAction.tableSelectionChange(table.getSelectionCount());
-            }
-        }
     }
 
     @Override
