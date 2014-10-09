@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -63,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 15, 2014  #3490     lvenable     Reworked to use the data manager.
  * Aug 22, 2014  #3490     lvenable     Added resize and minimum size.
  * Sep 16, 2014  #3587     bkowal       Updated to only allow trigger assignment for {Program, Suite}
+ * Oct 09, 2014  #3646     rferrel      Converted programTable to GenericTable.
  * 
  * </pre>
  * 
@@ -82,7 +84,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
     private Suite selectedSuite = null;
 
     /** Program table. */
-    private ProgramTable programTable;
+    private GenericTable programTable;
 
     /** Message Type table. */
     private MsgTypeTable msgTypeTable;
@@ -183,7 +185,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
         nameLbl.setText("Associated Programs:");
         nameLbl.setLayoutData(gd);
 
-        programTable = new ProgramTable(controlComp, 500, 100);
+        programTable = new GenericTable(controlComp, 500, 100);
     }
 
     /**
