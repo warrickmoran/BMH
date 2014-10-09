@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.recordplayback;
 
+import java.nio.ByteBuffer;
 import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -38,6 +39,8 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
@@ -55,15 +58,28 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 15, 2014  #3329     lvenable     Initial creation
  * Sep 14, 2014  #3610     lvenable     Updated to show when 30 seconds of recording
  *                                      is left and fixed a couple of bugs.
+ * Oct 8, 2014   #3657     bkowal       Implemented audio recording and playback.
+ * 
  * 
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
-public class RecordPlaybackDlg extends CaveSWTDialog {
+public class RecordPlaybackDlg extends CaveSWTDialog implements
+        IPlaybackCompleteListener {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(RecordPlaybackDlg.class);
 
     /** Status label. */
+    /*
+     * TODO: Still need to manage that status label display across the different
+     * states. The status text that is displayed will probably be dependent on
+     * whether this dialog was launched from the Weather Messages dialog or the
+     * Emergency Override dialog (ex: Recording Message will be 'On the Air'
+     * when started from the Emergency Override dialog).
+     */
     private Label statusLbl;
 
     /** Status label font. */
@@ -112,7 +128,21 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
         RECORD, PLAY, STOP
     };
 
-    private RecordPlayStatus recordPlayStatus = RecordPlayStatus.STOP;
+    /*
+     * This will not matter for the initial implementation which will just
+     * support recording and playback. However, we will want to optimize the
+     * number of samples read between audio live streaming segments for the live
+     * broadcast.
+     */
+    private static final int SAMPLE_COUNT = 2;
+
+    private volatile RecordPlayStatus recordPlayStatus = RecordPlayStatus.STOP;
+
+    private AudioRecorderThread recorderThread;
+
+    private AudioPlaybackThread playbackThread;
+
+    private ByteBuffer recordedAudio;
 
     /**
      * Constructor.
@@ -150,6 +180,12 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
         shutdownTimer();
         statusLabelFont.dispose();
         elapsedTimeFont.dispose();
+        if (this.playbackThread != null) {
+            this.playbackThread.dispose();
+        }
+        if (this.recorderThread != null) {
+            this.recorderThread.halt();
+        }
     }
 
     @Override
@@ -247,7 +283,6 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
         recBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                recordPlayStatus = RecordPlayStatus.RECORD;
                 recordAction();
             }
         });
@@ -261,7 +296,6 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
         stopBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                recordPlayStatus = RecordPlayStatus.STOP;
                 stopAction();
             }
         });
@@ -275,7 +309,6 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
         playBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                recordPlayStatus = RecordPlayStatus.PLAY;
                 playAction();
             }
         });
@@ -329,6 +362,10 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
             recordingProgBar.setSelection(totalElapsedSeconds);
         }
 
+        if (this.recordPlayStatus != RecordPlayStatus.RECORD) {
+            return;
+        }
+
         // If the total time equals the maximum number of seconds then the limit
         // was reached and the recording needs to stop.
         if (totalElapsedSeconds >= maxRecordingSeconds) {
@@ -357,11 +394,20 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
      * Record action.
      */
     private void recordAction() {
+        resetRecordPlayValues();
+        try {
+            this.recorderThread = new AudioRecorderThread(SAMPLE_COUNT);
+        } catch (AudioException e) {
+            statusHandler.error("Audio recording has failed.", e);
+            return;
+        }
+        this.recordingProgBar.setMaximum(this.maxRecordingSeconds);
+        this.recordPlayStatus = RecordPlayStatus.RECORD;
         stopBtn.setEnabled(true);
         recBtn.setEnabled(false);
         playBtn.setEnabled(false);
-        resetRecordPlayValues();
         timer = Executors.newSingleThreadScheduledExecutor();
+        this.recorderThread.start();
         timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, updateRate,
                 TimeUnit.MILLISECONDS);
     }
@@ -370,16 +416,44 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
      * Stop action.
      */
     private void stopAction() {
+        if (this.recordPlayStatus == RecordPlayStatus.RECORD) {
+            this.recorderThread.halt();
+            try {
+                this.recorderThread.join();
+            } catch (InterruptedException e) {
+                // Ignore.
+            }
+            this.recordedAudio = this.recorderThread.getAudioSamples();
+        } else if (this.recordPlayStatus == RecordPlayStatus.PLAY) {
+            this.playbackThread.halt();
+            try {
+                this.playbackThread.join();
+            } catch (InterruptedException e) {
+                // Ignore.
+            }
+        }
         shutdownTimer();
         recBtn.setEnabled(true);
         playBtn.setEnabled(true);
         stopBtn.setEnabled(false);
+        this.recordPlayStatus = RecordPlayStatus.STOP;
     }
 
     /**
      * Play action.
      */
     private void playAction() {
+        try {
+            this.playbackThread = new AudioPlaybackThread(this.recordedAudio);
+            this.playbackThread.setCompleteListener(this);
+        } catch (AudioException e) {
+            statusHandler.error("Audio playback has failed.", e);
+            return;
+        }
+        this.recordingProgBar.setMaximum(this.playbackThread
+                .getAudioLengthInSeconds());
+        this.recordPlayStatus = RecordPlayStatus.PLAY;
+        this.playbackThread.start();
         recBtn.setEnabled(false);
         stopBtn.setEnabled(true);
         resetRecordPlayValues();
@@ -422,7 +496,21 @@ public class RecordPlaybackDlg extends CaveSWTDialog {
                     updateRecordingTime();
                 }
             });
-
         }
+    }
+
+    @Override
+    public void notifyPlaybackComplete() {
+        this.shutdownTimer();
+        // Not on the UI Thread.
+        getDisplay().asyncExec(new Runnable() {
+            @Override
+            public void run() {
+                recBtn.setEnabled(true);
+                playBtn.setEnabled(true);
+                stopBtn.setEnabled(false);
+            }
+        });
+        this.recordPlayStatus = RecordPlayStatus.STOP;
     }
 }
