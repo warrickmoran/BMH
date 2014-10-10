@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -35,9 +34,9 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
@@ -53,6 +52,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * ------------ ---------- ----------- --------------------------
  * Jun 19, 2014    3432    mpduff      Initial creation
  * Sep 25, 2014    3589    dgilling    Return Suite object to caller.
+ * Oct 10, 2014    3646    rferrel     Convert tableComp to GenericTable.
  * 
  * </pre>
  * 
@@ -62,7 +62,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
 
 public class SuiteListDlg extends CaveSWTDialogBase {
 
-    private SuiteListTableComp tableComp;
+    private GenericTable tableComp;
 
     private final List<Suite> suiteList;
 
@@ -96,7 +96,7 @@ public class SuiteListDlg extends CaveSWTDialogBase {
         GridLayout gl = new GridLayout(1, false);
         gl.horizontalSpacing = 0;
         gl.marginWidth = 0;
-        tableComp = new SuiteListTableComp(shell, SWT.BORDER | SWT.V_SCROLL);
+        tableComp = new GenericTable(shell, SWT.BORDER | SWT.V_SCROLL);
         tableComp.setLayout(gl);
         tableComp.setLayoutData(gd);
 
@@ -158,22 +158,5 @@ public class SuiteListDlg extends CaveSWTDialogBase {
         }
 
         tableComp.populateTable(td);
-    }
-
-    private class SuiteListTableComp extends TableComp {
-
-        public SuiteListTableComp(Composite parent, int tableStyle) {
-            super(parent, tableStyle);
-        }
-
-        @Override
-        protected void handleTableMouseClick(MouseEvent event) {
-            // No op
-        }
-
-        @Override
-        protected void handleTableSelection(SelectionEvent e) {
-            // No op
-        }
     }
 }
