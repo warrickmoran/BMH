@@ -26,7 +26,6 @@ import java.util.List;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StackLayout;
-import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -48,9 +47,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -67,6 +66,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 04, 2014    3432       mpduff    Initial creation
  * Aug 14, 2014    3432       mpduff    Remaining capabilities
  * Sep 25, 2014    3620       bsteffen  Add seconds to periodicity.
+ * Oct 10, 2014    3646       rferrel   Convert to GenericTable.
  * 
  * </pre>
  * 
@@ -95,13 +95,13 @@ public class MessageDetailsDlg extends CaveSWTDialog {
      */
     private Composite stackComp;
 
-    private BroadcastAreaTableComp broadcastAreaTableComp;
+    private GenericTable broadcastAreaTableComp;
 
-    private TransmitterTableComp transmitterTableComp;
+    private GenericTable transmitterTableComp;
 
-    private SuiteTableComp suiteTableComp;
+    private GenericTable suiteTableComp;
 
-    private ProgramTableComp programTableComp;
+    private GenericTable programTableComp;
 
     /** MessageType for the details */
     private final MessageType messageType;
@@ -299,15 +299,15 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         // Broadcast Area
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gl = new GridLayout(1, false);
-        broadcastAreaTableComp = new BroadcastAreaTableComp(stackComp,
-                SWT.BORDER | SWT.V_SCROLL);
+        broadcastAreaTableComp = new GenericTable(stackComp, SWT.BORDER
+                | SWT.V_SCROLL);
         broadcastAreaTableComp.setLayout(gl);
         broadcastAreaTableComp.setLayoutData(gd);
 
         // Transmitters - name/program
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gl = new GridLayout(1, false);
-        transmitterTableComp = new TransmitterTableComp(stackComp, SWT.BORDER
+        transmitterTableComp = new GenericTable(stackComp, SWT.BORDER
                 | SWT.V_SCROLL);
         transmitterTableComp.setLayout(gl);
         transmitterTableComp.setLayoutData(gd);
@@ -315,15 +315,14 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         // Suites containing this message
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gl = new GridLayout(1, false);
-        suiteTableComp = new SuiteTableComp(stackComp, SWT.BORDER
-                | SWT.V_SCROLL);
+        suiteTableComp = new GenericTable(stackComp, SWT.BORDER | SWT.V_SCROLL);
         suiteTableComp.setLayout(gl);
         suiteTableComp.setLayoutData(gd);
 
         // Programs containing this message
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gl = new GridLayout(1, false);
-        programTableComp = new ProgramTableComp(stackComp, SWT.BORDER
+        programTableComp = new GenericTable(stackComp, SWT.BORDER
                 | SWT.V_SCROLL);
         programTableComp.setLayout(gl);
         programTableComp.setLayoutData(gd);
@@ -511,77 +510,5 @@ public class MessageDetailsDlg extends CaveSWTDialog {
             }
         }
         stackComp.layout();
-    }
-
-    // TODO candidate for replacement by generic TableComp
-    private class BroadcastAreaTableComp extends TableComp {
-
-        public BroadcastAreaTableComp(Composite parent, int tableStyle) {
-            super(parent, tableStyle);
-        }
-
-        @Override
-        protected void handleTableMouseClick(MouseEvent event) {
-            // No op
-        }
-
-        @Override
-        protected void handleTableSelection(SelectionEvent e) {
-            // No op
-        }
-    }
-
-    // TODO candidate for replacement by generic TableComp
-    private class TransmitterTableComp extends TableComp {
-
-        public TransmitterTableComp(Composite parent, int tableStyle) {
-            super(parent, tableStyle);
-        }
-
-        @Override
-        protected void handleTableMouseClick(MouseEvent event) {
-            // No op
-        }
-
-        @Override
-        protected void handleTableSelection(SelectionEvent e) {
-            // No op
-        }
-    }
-
-    // TODO candidate for replacement by generic TableComp
-    private class SuiteTableComp extends TableComp {
-
-        public SuiteTableComp(Composite parent, int tableStyle) {
-            super(parent, tableStyle);
-        }
-
-        @Override
-        protected void handleTableMouseClick(MouseEvent event) {
-            // No op
-        }
-
-        @Override
-        protected void handleTableSelection(SelectionEvent e) {
-            // No op
-        }
-    }
-
-    // TODO candidate for replacement by generic TableComp
-    private class ProgramTableComp extends TableComp {
-
-        public ProgramTableComp(Composite parent, int tableStyle) {
-            super(parent, tableStyle);
-        }
-
-        @Override
-        protected void handleTableMouseClick(MouseEvent event) {
-            // No op
-        }
-
-        @Override
-        protected void handleTableSelection(SelectionEvent e) {
-            // No op
-        }
     }
 }
