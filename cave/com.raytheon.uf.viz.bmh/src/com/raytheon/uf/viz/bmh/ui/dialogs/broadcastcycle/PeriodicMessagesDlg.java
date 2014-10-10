@@ -31,6 +31,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
@@ -45,6 +46,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014    3432    mpduff      Initial creation
  * Aug 14, 2014    3432    mpduff      Additional capabilities
+ * Oct 10, 2014    3646    rferrel     Convert tableComp to GenericTable.
  * 
  * 
  * </pre>
@@ -57,7 +59,7 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(PeriodicMessagesDlg.class);
 
-    private PeriodicMessageTableComp tableComp;
+    private GenericTable tableComp;
 
     private TableData tableData;
 
@@ -103,8 +105,7 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
         GridLayout gl = new GridLayout(1, false);
         gl.horizontalSpacing = 0;
         gl.marginWidth = 0;
-        tableComp = new PeriodicMessageTableComp(shell, SWT.BORDER
-                | SWT.V_SCROLL, true, true);
+        tableComp = new GenericTable(shell, SWT.BORDER | SWT.V_SCROLL);
         tableComp.setLayout(gl);
         tableComp.setLayoutData(gd);
     }
