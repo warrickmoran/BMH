@@ -28,10 +28,9 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
-import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
-import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
  * Handles any requests to get or modify the state of {@link Program}s
@@ -102,11 +101,8 @@ public class ProgramHandler implements IRequestHandler<ProgramRequest> {
                     + request.getAction());
         }
 
-        if (notification != null) {
-            EDEXUtil.getMessageProducer().sendAsyncUri(
-                    "jms-durable:topic:BMH.Config",
-                    SerializationUtil.transformToThrift(notification));
-        }
+        BmhMessageProducer.sendConfigMessage(notification,
+                request.isOperational());
 
         return programResponse;
     }

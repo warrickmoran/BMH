@@ -26,10 +26,9 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
-import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
-import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
  * Thrift handler for {@link TransmitterLanguage} objects.
@@ -77,13 +76,8 @@ public class TransmitterLanguageRequestHandler implements
                     + request.getAction());
         }
 
-        if (notification != null) {
-            /* Need to initiate a regeneration. */
-            EDEXUtil.getMessageProducer().sendAsyncUri(
-                    "jms-durable:topic:BMH.Config",
-                    SerializationUtil.transformToThrift(notification));
-        }
-
+        BmhMessageProducer.sendConfigMessage(notification,
+                request.isOperational());
         return response;
     }
 

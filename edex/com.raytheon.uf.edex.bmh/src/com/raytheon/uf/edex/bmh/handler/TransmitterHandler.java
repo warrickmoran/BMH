@@ -28,11 +28,10 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
-import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
-import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
  * Thrift handler for {@link Transmitter} and {@link TransmitterGroup} objects
@@ -105,9 +104,8 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
             notification = new TransmitterGroupConfigNotification(
                     ConfigChangeType.Update, request.getTransmitter()
                             .getTransmitterGroup());
-            EDEXUtil.getMessageProducer().sendAsyncUri(
-                    "jms-durable:topic:BMH.Config",
-                    SerializationUtil.transformToThrift(notification));
+            BmhMessageProducer.sendConfigMessage(notification,
+                    request.isOperational());
             notification = new TransmitterGroupConfigNotification(
                     ConfigChangeType.Delete, request.getTransmitterGroup());
             break;
@@ -117,11 +115,8 @@ public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
                     + " cannot handle action "
                     + request.getAction());
         }
-        if (notification != null) {
-            EDEXUtil.getMessageProducer().sendAsyncUri(
-                    "jms-durable:topic:BMH.Config",
-                    SerializationUtil.transformToThrift(notification));
-        }
+        BmhMessageProducer.sendConfigMessage(notification,
+                request.isOperational());
         return response;
     }
 

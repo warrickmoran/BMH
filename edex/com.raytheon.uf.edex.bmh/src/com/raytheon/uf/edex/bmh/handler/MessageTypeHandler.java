@@ -27,10 +27,9 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
 import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
-import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
-import com.raytheon.uf.edex.core.EDEXUtil;
 
 /**
  * Handles any requests to get or modify the state of {@link MessageType}s
@@ -97,11 +96,8 @@ public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
                     + request.getAction());
         }
 
-        if (notification != null) {
-            EDEXUtil.getMessageProducer().sendAsyncUri(
-                    "jms-durable:topic:BMH.Config",
-                    SerializationUtil.transformToThrift(notification));
-        }
+        BmhMessageProducer.sendConfigMessage(notification,
+                request.isOperational());
         return response;
     }
 
