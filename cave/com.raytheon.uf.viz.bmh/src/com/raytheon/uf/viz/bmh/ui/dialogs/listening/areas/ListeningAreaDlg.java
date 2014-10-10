@@ -48,7 +48,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
-import com.raytheon.uf.viz.bmh.ui.dialogs.listening.AreaTableComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -65,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
  * Oct 09, 2014   #3646    rferrel     Convert transmitterTableComp to GenericTable.
+ *                                     Convert areaTableComp to GenericTable.
  * 
  * </pre>
  * 
@@ -77,7 +77,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
             .getHandler(ListeningAreaDlg.class);
 
     /** Area Table Composite */
-    private AreaTableComp areaTableComp;
+    private GenericTable areaTableComp;
 
     /** Columns for the area table */
     private ArrayList<TableColumnData> areaColumns;
@@ -174,7 +174,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
         GridLayout gl = new GridLayout(1, false);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.heightHint = 150;
-        areaTableComp = new AreaTableComp(getShell(), SWT.BORDER | SWT.V_SCROLL);
+        areaTableComp = new GenericTable(getShell(), SWT.BORDER | SWT.V_SCROLL);
         areaTableComp.setLayout(gl);
         areaTableComp.setLayoutData(gd);
         areaTableComp.setCallbackAction(new ITableActionCB() {
