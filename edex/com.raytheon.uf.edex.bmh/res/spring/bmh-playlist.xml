@@ -40,6 +40,11 @@
               <bean ref="playlistManager" method="processProgramChange" />
           </filter>
         
+          <filter>
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification"</simple>
+              <bean ref="playlistManager" method="processTransmitterGroupChange" />
+          </filter>
+
         <doCatch>
           <exception>java.lang.Throwable</exception>
           <to uri="log:bmh?level=ERROR" />
