@@ -96,6 +96,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Oct 08, 2014  #3479     lvenable    Added wrap and multi to the text control style and made it 
  *                                     read-only.  Moved populating the message text to the opened()
  *                                     method. Also added resize capability.
+ * Oct 11, 2014  3725      mpduff      Remove the Copy Messages button.
  * </pre>
  * 
  * @author mpduff
@@ -695,7 +696,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     private void createBottomButtons(Composite comp) {
         GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
-        GridLayout gl = new GridLayout(4, false);
+        GridLayout gl = new GridLayout(3, false);
         gl.marginBottom = 0;
         Composite btnComp = new Composite(comp, SWT.NONE);
         btnComp.setLayout(gl);
@@ -721,17 +722,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 handlePeriodicAction();
-            }
-        });
-
-        gd = new GridData(btnWidth, SWT.DEFAULT);
-        Button copyBtn = new Button(btnComp, SWT.PUSH);
-        copyBtn.setText("Copy Message...");
-        copyBtn.setLayoutData(gd);
-        copyBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent event) {
-                handleCopyAction();
             }
         });
 
@@ -891,11 +881,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         // }
     }
 
-    private void handleCopyAction() {
-        // TODO
-        DialogUtility.notImplemented(getShell());
-    }
-
     private void handleExpireAction() {
         // TODO
         DialogUtility.notImplemented(getShell());
@@ -932,8 +917,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 @Override
                 protected IStatus run(IProgressMonitor monitor) {
                     ForceSuiteChangeRequest request = new ForceSuiteChangeRequest(
-                            group,
-                            suite);
+                            group, suite);
                     try {
                         BmhUtils.sendRequest(request);
                     } catch (Exception e) {
