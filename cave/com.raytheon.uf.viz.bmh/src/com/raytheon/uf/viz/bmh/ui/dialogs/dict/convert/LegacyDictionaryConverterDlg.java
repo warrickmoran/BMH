@@ -79,6 +79,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Aug 8, 2014    #3490     lvenable   Removed Override tag.
  * Sep 10, 2014     3355   mpduff      Made Dictionary combo readonly, post demo cleanup
+ * Oct 11, 2014     3704   mpduff      Set neoPhoneme field when selecting a word in the table.
  * 
  * </pre>
  * 
@@ -589,6 +590,9 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
         if (tableItem.getText(0).equalsIgnoreCase(YES)) {
             Word word = selectedDictionary.getWord(selectedWord);
             this.neoValueTxt.setText(word.getSubstitute());
+            neoPhoneme = word.getSubstitute();
+        } else {
+            neoPhoneme = null;
         }
 
         wordValueLbl.setText(selectedWord);
