@@ -16,12 +16,15 @@
     <route id="bmhCommsConfiguratorRoute">
       <from uri="jms-durable:topic:BMH.Config" />
       <doTry>
-           <bean ref="serializationUtil" method="transformFromThrift" />
+          <bean ref="serializationUtil" method="transformFromThrift" />
           <filter>
-              <simple>${body} not is "com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification"</simple>
-              <stop />
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification"</simple>
+              <bean ref="commsConfigurator" method="configure" />
           </filter>
-        <bean ref="commsConfigurator" method="configure" />
+          <filter>
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.ResetNotification"</simple>
+              <bean ref="commsConfigurator" method="configure" />
+          </filter>
         <doCatch>
           <exception>java.lang.Throwable</exception>
           <to uri="log:bmh?level=ERROR" />

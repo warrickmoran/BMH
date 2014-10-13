@@ -115,12 +115,12 @@ alter table bmh.zone_area add constraint fk1feed14081c289b1
  */
 alter table bmh.playlist drop constraint fk700681d2c38912a5;
 alter table bmh.playlist add constraint fk700681d2c38912a5
-    foreign key (transmitter_group_name) references bmh.transmitter_group(id) on delete cascade
+    foreign key (transmitter_group_name) references bmh.transmitter_group(id) on delete cascade;
 
 /**
  * Playlist message to playlist
  **/
 alter table bmh.playlist_messages drop constraint fk86d39d19a29c0d95;
 alter table bmh.playlist_messages add constraint fk86d39d19a29c0d95
-    foreign key (playlist_id) references bmh.playlist(id) on delete cascade
+    foreign key (playlist_id) references bmh.playlist(id) on delete cascade;
 

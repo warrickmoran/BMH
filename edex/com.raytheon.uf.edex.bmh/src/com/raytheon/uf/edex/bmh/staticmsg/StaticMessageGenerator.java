@@ -44,6 +44,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -72,6 +73,8 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Oct 2, 2014  3642       bkowal      Utilize the time audio generator to
  *                                     verify / generate time messages for a
  *                                     specific voice and timezone.
+ * Oct 07, 2014 3687       bsteffen    Handle reset notification
+ * 
  * 
  * </pre>
  * 
@@ -210,6 +213,20 @@ public class StaticMessageGenerator {
                 generatedMsgs.addAll(msgs);
             }
             return generatedMsgs;
+        } else if (notificationObject instanceof ResetNotification) {
+            initialize();
+            List<ValidatedMessage> generatedMsgs = new ArrayList<>();
+            for (TransmitterGroup group : this.transmitterGroupDao
+                    .getEnabledTransmitterGroups()) {
+                List<ValidatedMessage> msgs = this
+                        .generateStaticMessages(group);
+                if (msgs == null || msgs.isEmpty()) {
+                    continue;
+                }
+                generatedMsgs.addAll(msgs);
+            }
+            return generatedMsgs;
+
         }
 
         /*
@@ -220,7 +237,8 @@ public class StaticMessageGenerator {
 
     public boolean checkSkipMessage(Object notificationObject) {
         return (notificationObject instanceof MessageTypeConfigNotification
-                || notificationObject instanceof TransmitterLanguageConfigNotification || notificationObject instanceof TransmitterGroupConfigNotification) == false;
+                || notificationObject instanceof TransmitterLanguageConfigNotification
+                || notificationObject instanceof TransmitterGroupConfigNotification || notificationObject instanceof ResetNotification) == false;
     }
 
     private MessageType refreshMessageTypes(

@@ -1,0 +1,101 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+  <bean id="practice_playlistManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistManager">
+    <constructor-arg value="false" />
+    <property name="playlistDao" ref="practice_playlistDao" />
+    <property name="programDao" ref="practice_programDao" />
+    <property name="zoneDao" ref="practice_zoneDao" />
+    <property name="areaDao" ref="practice_areaDao" />
+    <property name="broadcastMsgDao" ref="practice_broadcastMsgDao" />
+    <property name="transmitterGroupDao" ref="practice_transmitterGroupDao" />
+  </bean>
+
+  <bean id="practice_playlistStateManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager">
+    <property name="broadcastMsgDao" ref="practice_broadcastMsgDao" />
+    <property name="messageTypeDao" ref="practice_messageTypeDao" />
+  </bean>
+  
+  <bean factory-bean="playlistHandler" factory-method="setPracticePlaylistStateManager">
+    <constructor-arg ref="practice_playlistStateManager" />
+  </bean>
+
+  <camelContext id="practice_bmh-playlist" xmlns="http://camel.apache.org/schema/spring"
+    errorHandlerRef="errorHandler">
+
+    <route id="practice_bmh-schedule">
+      <from uri="jms-durable:queue:BMH.Practice.Schedule" />
+      <doTry>
+        <bean ref="practice_broadcastMsgDao" method="getByID" />
+        <bean ref="practice_playlistManager" method="newMessage" />
+        <doCatch>
+          <exception>java.lang.Throwable</exception>
+          <to uri="log:bmh?level=ERROR" />
+        </doCatch>
+      </doTry>
+    </route>
+
+    <route id="practice_bmhPlaylistManagerConfig">
+      <from uri="jms-durable:topic:BMH.Practice.Config" />
+      <doTry>
+        <bean ref="serializationUtil" method="transformFromThrift" />
+        <filter>
+          <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification"
+          </simple>
+          <bean ref="practice_playlistManager" method="processSuiteChange" />
+        </filter>
+
+        <filter>
+          <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification"
+          </simple>
+          <bean ref="practice_playlistManager" method="processProgramChange" />
+        </filter>
+        
+          <filter>
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification"</simple>
+              <bean ref="practice_playlistManager" method="processTransmitterGroupChange" />
+          </filter>
+          
+          <filter>
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.ResetNotification"</simple>
+              <bean ref="practice_playlistManager" method="processResetNotification" />
+          </filter>
+
+        <doCatch>
+          <exception>java.lang.Throwable</exception>
+          <to uri="log:bmh?level=ERROR" />
+        </doCatch>
+      </doTry>
+    </route>
+
+    <route id="practice_bmhPlaylistStateRoute">
+      <from uri="jms-generic:topic:BMH.Practice.DAC.Status" />
+      <doTry>
+        <pipeline>
+          <bean ref="serializationUtil" method="transformFromThrift" />
+          <filter>
+            <simple>${body} is "com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification"
+            </simple>
+            <bean ref="practice_playlistStateManager" method="processPlaylistSwitchNotification" />
+          </filter>
+          <filter>
+            <simple>${body} is "com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification"
+            </simple>
+            <bean ref="practice_playlistStateManager" method="processMessagePlaybackStatusNotification" />
+          </filter>
+        </pipeline>
+        <doCatch>
+          <exception>java.lang.Throwable</exception>
+          <to uri="log:bmh?level=ERROR" />
+        </doCatch>
+      </doTry>
+    </route>
+  </camelContext>
+
+  <bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
+    <constructor-arg ref="practice_bmh-playlist" />
+    <constructor-arg ref="practice_playlistManager" />
+  </bean>
+</beans>

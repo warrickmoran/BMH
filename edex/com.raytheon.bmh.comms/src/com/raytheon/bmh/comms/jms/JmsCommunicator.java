@@ -57,6 +57,8 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Jul 31, 2014  3286     dgilling    Wire up DacHardwareStatusNotification.
  * Sep 23, 2014  3485     bsteffen    Enable sending anything for dac status.
  *                                    Add methods to specifically listen for playlist changes.
+ * Oct 07, 2014  3687     bsteffen    Use operational queue until practice mode
+ *                                    in comms manager is implemented
  * 
  * </pre>
  * 
@@ -108,13 +110,14 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     public void listenForPlaylistChanges(DacTransmitKey key, String group,
             DacTransmitServer server) {
-        addQueueObserver(PlaylistUpdateNotification.getQueueName(group),
+        addQueueObserver(PlaylistUpdateNotification.getQueueName(group, true),
                 new PlaylistNotificationObserver(server, key));
     }
 
     public void unlistenForPlaylistChanges(DacTransmitKey key, String group,
             DacTransmitServer server) {
-        removeQueueObserver(PlaylistUpdateNotification.getQueueName(group), null,
+        removeQueueObserver(
+                PlaylistUpdateNotification.getQueueName(group, true), null,
                 new PlaylistNotificationObserver(server, key));
     }
 

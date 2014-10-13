@@ -61,7 +61,10 @@
         <constructor-arg ref="zoneAreaHandler" />
     </bean>
 
-    <bean id="playlistHandler" class="com.raytheon.uf.edex.bmh.handler.PlaylistHandler" />
+    <bean id="playlistHandler" class="com.raytheon.uf.edex.bmh.handler.PlaylistHandler">
+        <property name="playlistStateManager" ref="playlistStateManager" />
+    </bean>
+    
     <bean factory-bean="handlerRegistry" factory-method="register">
         <constructor-arg
             value="com.raytheon.uf.common.bmh.request.PlaylistRequest" />

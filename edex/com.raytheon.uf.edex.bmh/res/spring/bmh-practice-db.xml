@@ -44,36 +44,58 @@
     </bean>
 
   <bean id="practice_inputMessageDao" class="com.raytheon.uf.edex.bmh.dao.InputMessageDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
   <bean id="practice_validatedMessageDao" class="com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
   <bean id="practice_broadcastMsgDao" class="com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
   <bean id="practice_ttsVoiceDao" class="com.raytheon.uf.edex.bmh.dao.TtsVoiceDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
   <bean id="practice_programDao" class="com.raytheon.uf.edex.bmh.dao.ProgramDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
   <bean id="practice_playlistDao" class="com.raytheon.uf.edex.bmh.dao.PlaylistDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
   <bean id="practice_zoneDao" class="com.raytheon.uf.edex.bmh.dao.ZoneDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
   <bean id="practice_areaDao" class="com.raytheon.uf.edex.bmh.dao.AreaDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
   <bean id="practice_transmitterGroupDao" class="com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
   <bean id="practice_dacDao" class="com.raytheon.uf.edex.bmh.dao.DacDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
   <bean id="practice_messageTypeDao" class="com.raytheon.uf.edex.bmh.dao.MessageTypeDao"
-    depends-on="bmh_practiceTxTemplate" />
+    depends-on="bmh_practiceTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 
 </beans>

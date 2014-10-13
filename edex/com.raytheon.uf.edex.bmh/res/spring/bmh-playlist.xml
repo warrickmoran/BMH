@@ -2,6 +2,7 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
   <bean id="playlistManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistManager">
     <property name="playlistDao" ref="playlistDao" />
     <property name="programDao" ref="programDao" />
@@ -9,6 +10,11 @@
     <property name="areaDao" ref="areaDao" />
     <property name="broadcastMsgDao" ref="broadcastMsgDao" />
     <property name="transmitterGroupDao" ref="transmitterGroupDao" />
+  </bean>
+
+  <bean id="playlistStateManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager">
+    <property name="broadcastMsgDao" ref="broadcastMsgDao" />
+    <property name="messageTypeDao" ref="messageTypeDao" />
   </bean>
 
   <camelContext id="bmh-playlist" xmlns="http://camel.apache.org/schema/spring"
@@ -45,6 +51,33 @@
               <bean ref="playlistManager" method="processTransmitterGroupChange" />
           </filter>
 
+          <filter>
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.ResetNotification"</simple>
+              <bean ref="playlistManager" method="processResetNotification" />
+          </filter>
+        <doCatch>
+          <exception>java.lang.Throwable</exception>
+          <to uri="log:bmh?level=ERROR" />
+        </doCatch>
+      </doTry>
+    </route>
+
+    <route id="bmhPlaylistStateRoute">
+      <from uri="jms-generic:topic:BMH.DAC.Status" />
+      <doTry>
+        <pipeline>
+          <bean ref="serializationUtil" method="transformFromThrift" />
+          <filter>
+            <simple>${body} is "com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification"
+            </simple>
+            <bean ref="playlistStateManager" method="processPlaylistSwitchNotification" />
+          </filter>
+          <filter>
+            <simple>${body} is "com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification"
+            </simple>
+            <bean ref="playlistStateManager" method="processMessagePlaybackStatusNotification" />
+          </filter>
+        </pipeline>
         <doCatch>
           <exception>java.lang.Throwable</exception>
           <to uri="log:bmh?level=ERROR" />

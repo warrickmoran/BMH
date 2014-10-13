@@ -43,6 +43,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jul 02, 2014  3285     bsteffen    Initial creation
  * Aug 26, 2014  3554     bsteffen    Change path to be more unique
  * Sep 23, 2014  3485     bsteffen    Add static method for defining queues consistently.
+ * Oct 07, 2014  3687     bsteffen    Add operational flag when getting queue name.
  * 
  * </pre>
  * 
@@ -155,8 +156,12 @@ public class PlaylistUpdateNotification {
         return playlist;
     }
 
-    public static String getQueueName(String group) {
-        return "BMH.Playlist." + group;
+    public static String getQueueName(String group, boolean operational) {
+        if (operational) {
+            return "BMH.Playlist." + group;
+        } else {
+            return "BMH.Practice.Playlist." + group;
+        }
     }
 
 }

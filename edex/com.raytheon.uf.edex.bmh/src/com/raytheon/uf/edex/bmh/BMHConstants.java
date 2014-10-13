@@ -20,6 +20,8 @@
 package com.raytheon.uf.edex.bmh;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -36,6 +38,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * ------------ ---------- ----------- --------------------------
  * Jun 3, 2014  3228       bkowal      Initial creation
  * Sep 29, 2014 3291       bkowal      Added the bmh home directory.
+ * Oct 07, 2014 3687       bsteffen    Add method to get practice data directory.
  * 
  * </pre>
  * 
@@ -80,6 +83,14 @@ public final class BMHConstants {
             BMH_DATA_DIRECTORY = getDataDirectory();
         }
         return BMH_DATA_DIRECTORY;
+    }
+
+    public static Path getBmhDataDirectory(boolean operational) {
+        Path result = Paths.get(getDataDirectory());
+        if (!operational) {
+            result = result.resolve("practice");
+        }
+        return result;
     }
 
     public static String getJmsConnectionString(String id) {
