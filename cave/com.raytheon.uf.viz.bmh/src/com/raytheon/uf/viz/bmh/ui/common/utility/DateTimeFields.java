@@ -56,6 +56,8 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  *                                     retrieve the data from the controls.
  * Aug 12, 2014  #3490     lvenable    Refactored code and added more functionality.
  * Aug 15, 2014   3411     mpduff      Add getFormattedValue()
+ * Oct 13, 2014  #3728     lvenable    Fixed zero-based month in the spinner and added a safety
+ *                                     check for periodicity.
  * 
  * </pre>
  * 
@@ -129,7 +131,18 @@ public class DateTimeFields extends Composite {
         this.fieldValuesMap = fieldValuesMap;
         this.setToday = setToday;
         this.showCalendarIcon = showCalendarIcon;
-        this.displayAsPeriodicity = displayAsPeriodicity;
+
+        /*
+         * If there is a month and/or year field present int the fieldValuesMap
+         * then periodicity should not be true. This is a safety check to make
+         * sure the controls operate correctly.
+         */
+        if ((this.fieldValuesMap.containsKey(DateFieldType.MONTH) || this.fieldValuesMap
+                .containsKey(DateFieldType.MONTH)) && (displayAsPeriodicity)) {
+            this.displayAsPeriodicity = false;
+        } else {
+            this.displayAsPeriodicity = displayAsPeriodicity;
+        }
 
         init();
     }
@@ -273,12 +286,12 @@ public class DateTimeFields extends Composite {
                     if (displayAsPeriodicity && dft == DateFieldType.DAY) {
                         spinners.get(dft).setSelection(0);
                     } else {
-                        spinners.get(dft).setSelection(
-                                calendar.get(dfTypeToCalMap.get(dft)));
+                        int value = calendar.get(dfTypeToCalMap.get(dft));
+                        if (dft == DateFieldType.MONTH) {
+                            value += 1;
+                        }
+                        spinners.get(dft).setSelection(value);
                     }
-
-                    spinners.get(dft).setSelection(
-                            calendar.get(dfTypeToCalMap.get(dft)));
                 }
             }
         }
@@ -423,12 +436,19 @@ public class DateTimeFields extends Composite {
         Shell shell = new Shell(display);
         shell.setLayout(new GridLayout());
         Map<DateFieldType, Integer> tmpFieldMap = new LinkedHashMap<DateFieldType, Integer>();
-        tmpFieldMap.put(DateFieldType.YEAR, 1969);
-        tmpFieldMap.put(DateFieldType.MONTH, 2);
-        tmpFieldMap.put(DateFieldType.DAY, 3);
-        tmpFieldMap.put(DateFieldType.HOUR, 4);
-        tmpFieldMap.put(DateFieldType.MINUTE, 5);
-        tmpFieldMap.put(DateFieldType.SECOND, 6);
+        // tmpFieldMap.put(DateFieldType.YEAR, 1969);
+        // tmpFieldMap.put(DateFieldType.MONTH, 2);
+        // tmpFieldMap.put(DateFieldType.DAY, 3);
+        // tmpFieldMap.put(DateFieldType.HOUR, 4);
+        // tmpFieldMap.put(DateFieldType.MINUTE, 5);
+        // tmpFieldMap.put(DateFieldType.SECOND, 6);
+
+        tmpFieldMap.put(DateFieldType.YEAR, null);
+        tmpFieldMap.put(DateFieldType.MONTH, null);
+        tmpFieldMap.put(DateFieldType.DAY, null);
+        tmpFieldMap.put(DateFieldType.HOUR, null);
+        tmpFieldMap.put(DateFieldType.MINUTE, null);
+        tmpFieldMap.put(DateFieldType.SECOND, null);
 
         DateTimeFields dtf = new DateTimeFields(shell, tmpFieldMap, false,
                 false, false);

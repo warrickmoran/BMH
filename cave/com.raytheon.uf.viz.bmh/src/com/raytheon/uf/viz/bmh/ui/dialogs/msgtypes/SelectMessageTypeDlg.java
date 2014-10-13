@@ -36,6 +36,7 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -53,6 +54,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Sep 14, 2014  #3610     lvenable     Initial creation
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 13, 2014  #3728     lvenable     Updated to return the fully populated message type object
+ *                                      that was selected in the table.
  * 
  * </pre>
  * 
@@ -113,6 +116,10 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         createOkCancelButtons();
 
         populateMsgTypeTable();
+
+        if (msgTypeTable.getItemCount() > 0) {
+            okBtn.setEnabled(true);
+        }
     }
 
     /**
@@ -123,7 +130,15 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         Label selectLbl = new Label(shell, SWT.NONE);
         selectLbl.setText("Select Message Type:");
 
-        msgTypeTable = new MsgTypeTable(shell, 450, 300);
+        msgTypeTable = new MsgTypeTable(shell, SWT.BORDER | SWT.V_SCROLL
+                | SWT.H_SCROLL | SWT.SINGLE, 450, 300);
+
+        msgTypeTable.setCallbackAction(new ITableActionCB() {
+            @Override
+            public void tableSelectionChange(int selectionCount) {
+                okBtn.setEnabled(selectionCount > 0);
+            }
+        });
     }
 
     /**
@@ -168,7 +183,21 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
      */
     private void handleOkAction() {
 
-        // TODO : get the selected message type from the table.
+        int index = msgTypeTable.getSelectedIndex();
+        MessageType selectedMsgType = messageTypeList.get(index);
+
+        MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
+
+        try {
+            MessageType mt = msgTypeDataMgr.getMessageType(selectedMsgType
+                    .getAfosid());
+            setReturnValue(mt);
+        } catch (Exception e) {
+            statusHandler
+                    .error("Error retrieving message type data from the database: ",
+                            e);
+            return;
+        }
 
         close();
     }

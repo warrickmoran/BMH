@@ -74,6 +74,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 11, 2014  #3610     lvenable     Initial creation
  * Sep 25, 2014   3620     bsteffen     Add seconds to periodicity.
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 13, 2014  #3728     lvenable     Fixed date/time field arguments and added a call back
+ *                                      to the select message type dialog.
  * 
  * </pre>
  * 
@@ -278,9 +280,18 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             public void widgetSelected(SelectionEvent e) {
                 SelectMessageTypeDlg selectMsgTypeDlg = new SelectMessageTypeDlg(
                         shell);
-                selectMsgTypeDlg.open();
+                selectMsgTypeDlg.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        if (returnValue != null) {
+                            selectedMessageType = (MessageType) returnValue;
 
-                // TODO : populate the dialog with the selected message type.
+                            // TODO : populate the dialog with the selected
+                            // message type.
+                        }
+                    }
+                });
+                selectMsgTypeDlg.open();
             }
         });
 
@@ -368,7 +379,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         creationDTFComp.setLayoutData(gd);
 
         creationDTF = new DateTimeFields(creationDTFComp, dateTimeMap, false,
-                false, true);
+                false, false);
 
         /*
          * Effective
@@ -390,7 +401,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         effectiveDTFComp.setLayoutData(gd);
 
         effectiveDTF = new DateTimeFields(effectiveDTFComp, dateTimeMap, false,
-                false, true);
+                false, false);
 
         /*
          * Expiration
@@ -410,8 +421,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.horizontalSpan = 2;
         expirationDTFComp.setLayoutData(gd);
-        effectiveDTF = new DateTimeFields(expirationDTFComp, dateTimeMap,
-                false, false, true);
+        expirationDTF = new DateTimeFields(expirationDTFComp, dateTimeMap,
+                false, false, false);
 
         /*
          * Area Selection
