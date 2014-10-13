@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -62,6 +63,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.same.SAMEOriginatorMapper;
 import com.raytheon.uf.common.bmh.same.SAMEStateCodes;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
@@ -110,6 +112,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Oct 03, 2014  3485     bsteffen    Handle InputMessage with no area codes.
  * Oct 07, 2014  3589     dgilling    Fix refresh of GENERAL suites on startup.
  * Oct 08, 2014  3687     bsteffen    Remove ProgramTrigger.
+ * Oct 10, 2014  3666     bsteffen    Do not persist disabled transmitters.
  * 
  * </pre>
  * 
@@ -159,7 +162,11 @@ public class PlaylistManager implements IContextStateProcessor {
      * 
      */
     public void processSuiteChange(SuiteConfigNotification notification) {
+        /* TODO this has the potential for optimization by performing a single request to get all groups using a particular suite. */
         for (TransmitterGroup group : transmitterGroupDao.getAll()) {
+            if(group.getEnabledTransmitters().isEmpty()){
+                continue;
+            }
             ProgramSuite programSuite = this.programDao
                     .getSuiteByIDForTransmitterGroup(group,
                             notification.getId());
@@ -173,37 +180,15 @@ public class PlaylistManager implements IContextStateProcessor {
     public void processProgramChange(ProgramConfigNotification notification) {
         Program program = programDao.getByID(notification.getId());
         for (TransmitterGroup group : program.getTransmitterGroups()) {
-            List<Playlist> currentLists = playlistDao.getByGroupName(group
-                    .getName());
-            List<ProgramSuite> programSuites = program.getProgramSuites();
-            List<Suite> suites = new ArrayList<>(programSuites.size());
-            for (ProgramSuite programSuite : programSuites) {
-                /*
-                 * Need to leave the forced flag on the GENERAL suite so we can
-                 * track what is the single true GENERAL suite since Programs
-                 * are allowed multiple GENERAL suites still at this stage.
-                 * 
-                 * FIXME: When we remove the ability to have multiple GENERAL
-                 * suites in a Program, remove this additional part of the
-                 * condition.
-                 */
-                if (programSuite.isForced()
-                        && programSuite.getSuite().getType() != SuiteType.GENERAL) {
-                    programSuite.setForced(false);
-                    programDao.persist(programSuite);
-                }
-                refreshPlaylist(group, programSuite);
-                suites.add(programSuite.getSuite());
-            }
-            for (Playlist playlist : currentLists) {
-                if (!suites.contains(playlist.getSuite())) {
-                    ProgramSuite programSuite = new ProgramSuite();
-                    programSuite.setProgram(program);
-                    programSuite.setSuite(playlist.getSuite());
+            refreshTransmitterGroup(group, program);
+        }
+    }
 
-                    deletePlaylist(group, programSuite);
-                }
-            }
+    public void processTransmitterGroupChange(
+            TransmitterGroupConfigNotification notification) {
+        for (int groupId : notification.getIds()) {
+            TransmitterGroup group = transmitterGroupDao.getByID(groupId);
+            refreshTransmitterGroup(group, null);
         }
     }
 
@@ -214,49 +199,69 @@ public class PlaylistManager implements IContextStateProcessor {
                 + "].");
 
         Program program = programDao.getProgramForTransmitterGroup(group);
-        ProgramSuite forcedProgramSuite = program.getProgramSuite(suite);
-        if ((forcedProgramSuite != null) && (program != null)) {
-            statusHandler.info("Due to forced switch, refreshing "
-                    + forcedProgramSuite.getSuite().getName());
-            forcedProgramSuite.setForced(true);
-            programDao.persist(forcedProgramSuite);
-            refreshPlaylist(group, forcedProgramSuite);
+        for (ProgramSuite programSuite : program.getProgramSuites()) {
+            boolean shouldBeForce = programSuite.getSuite().equals(suite);
+            if (shouldBeForce != programSuite.isForced()) {
+                programSuite.setForced(shouldBeForce);
+                programDao.persist(programSuite);
+            }
+        }
+        refreshTransmitterGroup(group, program);
+    }
 
-            SuiteType forcedSuiteType = suite.getType();
-            List<ProgramSuite> programSuites = program.getProgramSuites();
-            for (ProgramSuite programSuite : programSuites) {
-                SuiteType programSuiteType = programSuite.getSuite().getType();
-
-                /*
-                 * So the dactransmit playlist scheduler correctly plays our
-                 * user-selected suite, we must delete any previously forced
-                 * playlist or playlists with a higher priority than this user
-                 * selection or any other GENERAL suites if the user forced a
-                 * GENERAL suite.
-                 * 
-                 * FIXME: When we remove the ability to have multiple GENERAL
-                 * suites in a Program, remove the special case for GENERAL.
-                 */
-                if ((programSuite.isForced() && programSuiteType != SuiteType.GENERAL)
-                        || (programSuiteType.ordinal() > forcedSuiteType
-                                .ordinal())
-                        || (programSuiteType == SuiteType.GENERAL
-                                && forcedSuiteType == SuiteType.GENERAL && !forcedProgramSuite
-                                .getId().equals(programSuite.getId()))) {
-                    statusHandler.info("Due to forced switch, deleting "
-                            + programSuite.getSuite().getName());
-                    programSuite.setForced(false);
-                    programDao.persist(programSuite);
-                    deletePlaylist(group, programSuite);
+    /**
+     * Refresh all the playlists for a given group.
+     * 
+     * @param group
+     *            The Group to refresh
+     * @param program
+     *            Optional, the program for this group. This is intended only as
+     *            an optimization if null is provided it will be retrieved if
+     *            needed.
+     */
+    protected void refreshTransmitterGroup(TransmitterGroup group,
+            Program program) {
+        /*
+         * Start with the assumption that all lists should be deleted. Analyze
+         * the programs and find lists that should exist, refresh only those
+         * lists and remove them from the delete list.
+         */
+        List<Playlist> listsToDelete = playlistDao.getByGroupName(group
+                .getName());
+        if (!group.getEnabledTransmitters().isEmpty()) {
+            if (program == null) {
+                program = programDao.getProgramForTransmitterGroup(group);
+            }
+            SuiteType forcedType = null;
+            for (ProgramSuite programSuite : program.getProgramSuites()) {
+                if (programSuite.isForced()) {
+                    forcedType = programSuite.getSuite().getType();
                 }
             }
-
-        } else {
-            String msg = String
-                    .format("Could not locate suite [%s] to perform user-requested suite change.",
-                            suite.getName());
-            statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR, msg);
-            throw new IllegalArgumentException(msg);
+            for (ProgramSuite programSuite : program.getProgramSuites()) {
+                boolean shouldRefresh = forcedType == null
+                        || programSuite.isForced();
+                if (shouldRefresh == false
+                        && programSuite.getSuite().getType()
+                                .compareTo(forcedType) < 0) {
+                    shouldRefresh = true;
+                }
+                if (shouldRefresh) {
+                    refreshPlaylist(group, programSuite);
+                    Iterator<Playlist> listIterator = listsToDelete.iterator();
+                    while (listIterator.hasNext()) {
+                        if (listIterator.next().getSuite()
+                                .equals(programSuite.getSuite())) {
+                            listIterator.remove();
+                        }
+                    }
+                }
+            }
+        }
+        for (Playlist playlist : listsToDelete) {
+            ProgramSuite programSuite = new ProgramSuite();
+            programSuite.setSuite(playlist.getSuite());
+            deletePlaylist(group, programSuite);
         }
     }
 
@@ -329,6 +334,9 @@ public class PlaylistManager implements IContextStateProcessor {
 
     public void newMessage(BroadcastMsg msg) {
         TransmitterGroup group = msg.getTransmitterGroup();
+        if (group.getEnabledTransmitters().isEmpty()) {
+            return;
+        }
         Program program = programDao.getProgramForTransmitterGroup(group);
         boolean disableForcedSuite = false;
 
@@ -882,10 +890,7 @@ public class PlaylistManager implements IContextStateProcessor {
     public void preStart() {
         validateDaos();
         for (TransmitterGroup group : transmitterGroupDao.getAll()) {
-            Program program = programDao.getProgramForTransmitterGroup(group);
-            for (ProgramSuite programSuite : program.getProgramSuites()) {
-                refreshPlaylist(group, programSuite);
-            }
+            refreshTransmitterGroup(group, null);
         }
     }
 
