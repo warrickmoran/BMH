@@ -27,7 +27,6 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
 import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 
@@ -49,6 +48,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * Sep 15, 2014  3610     lvenable    Added GetAfosIdTitle capability.
  * Sep 19, 2014  3611     lvenable    Added emergency override capability..
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * 
  * </pre>
@@ -57,7 +57,8 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * @version 1.0
  */
 
-public class MessageTypeHandler implements IRequestHandler<MessageTypeRequest> {
+public class MessageTypeHandler extends
+        AbstractBMHServerRequestHandler<MessageTypeRequest> {
 
     @Override
     public Object handleRequest(MessageTypeRequest request) throws Exception {

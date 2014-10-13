@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.auth.req.AbstractPrivilegedRequest;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
@@ -35,6 +36,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Oct 07, 2014  3687     bsteffen    Initial creation
+ * Oct 13, 2014  3413     rferrel     Made AbstractPrivilegedRequest.
  * 
  * </pre>
  * 
@@ -42,7 +44,8 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public abstract class AbstractBMHServerRequest implements IServerRequest {
+public abstract class AbstractBMHServerRequest extends
+        AbstractPrivilegedRequest {
 
     @DynamicSerializeElement
     private boolean operational;

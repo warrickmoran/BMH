@@ -24,7 +24,6 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.request.DacRequest;
 import com.raytheon.uf.common.bmh.request.DacResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 
 /**
@@ -38,6 +37,7 @@ import com.raytheon.uf.edex.bmh.dao.DacDao;
  * ------------- -------- ----------- --------------------------
  * Aug 27, 2014  3137     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -45,7 +45,7 @@ import com.raytheon.uf.edex.bmh.dao.DacDao;
  * @version 1.0
  */
 
-public class DacHandler implements IRequestHandler<DacRequest> {
+public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
 
     @Override
     public Object handleRequest(DacRequest request) throws Exception {

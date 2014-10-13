@@ -25,7 +25,6 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.request.WordRequest;
 import com.raytheon.uf.common.bmh.request.WordResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.WordDao;
 import com.raytheon.uf.edex.database.DataAccessLayerException;
 import com.raytheon.uf.edex.database.query.DatabaseQuery;
@@ -44,6 +43,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Aug 05, 2014  3175     rjpeter     Added replace word.
  * Sep 10, 2014  3407     mpduff      Added break statement to delete word
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -51,7 +51,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * @version 1.0
  */
 
-public class WordHandler implements IRequestHandler<WordRequest> {
+public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
 
     @Override
     public Object handleRequest(WordRequest request) throws Exception {

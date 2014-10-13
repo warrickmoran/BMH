@@ -28,7 +28,6 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
@@ -49,6 +48,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  * Sep 23, 2014  3649     rferrel     DeleteTransmitterGroup notfication no longer
  *                                    causes null pointer exception.
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -56,7 +56,8 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  * @version 1.0
  */
 
-public class TransmitterHandler implements IRequestHandler<TransmitterRequest> {
+public class TransmitterHandler extends
+        AbstractBMHServerRequestHandler<TransmitterRequest> {
 
     @Override
     public Object handleRequest(TransmitterRequest request) throws Exception {

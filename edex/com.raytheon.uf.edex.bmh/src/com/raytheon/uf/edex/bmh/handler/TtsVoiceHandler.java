@@ -24,7 +24,6 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
 import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 
 /**
@@ -38,6 +37,7 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
  * ------------- -------- ----------- --------------------------
  * Aug 11, 2014  3490     lvenable    Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -45,11 +45,11 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
  * @version 1.0
  */
 
-public class TtsVoiceHandler implements IRequestHandler<TtsVoiceRequest> {
+public class TtsVoiceHandler extends
+        AbstractBMHServerRequestHandler<TtsVoiceRequest> {
 
     @Override
     public Object handleRequest(TtsVoiceRequest request) throws Exception {
-
         TtsVoiceResponse ttsVoiceResponce = new TtsVoiceResponse();
 
         switch (request.getAction()) {

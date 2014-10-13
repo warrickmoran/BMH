@@ -23,7 +23,6 @@ import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.request.PlaylistRequest;
 import com.raytheon.uf.common.bmh.request.PlaylistResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
 
@@ -38,6 +37,7 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
  * ------------- -------- ----------- --------------------------
  * Aug 15, 2014  3432     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -45,7 +45,8 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
  * @version 1.0
  */
 
-public class PlaylistHandler implements IRequestHandler<PlaylistRequest> {
+public class PlaylistHandler extends
+        AbstractBMHServerRequestHandler<PlaylistRequest> {
 
     private PlaylistStateManager playlistStateManager;
     
@@ -64,7 +65,8 @@ public class PlaylistHandler implements IRequestHandler<PlaylistRequest> {
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
-                    + " cannot handle action " + request.getAction());
+                    + " cannot handle action "
+                    + request.getAction());
         }
         return response;
     }
@@ -79,7 +81,8 @@ public class PlaylistHandler implements IRequestHandler<PlaylistRequest> {
         return response;
     }
 
-    private PlaylistResponse getPlaylistDataForTransmitter(PlaylistRequest request){
+    private PlaylistResponse getPlaylistDataForTransmitter(
+            PlaylistRequest request) {
         PlaylistResponse response = new PlaylistResponse();
         PlaylistStateManager playlistState = null;
         if (request.isOperational()) {

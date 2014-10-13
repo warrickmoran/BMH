@@ -24,7 +24,6 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 
 /**
@@ -38,6 +37,7 @@ import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
  * ------------- -------- ----------- --------------------------
  * Aug 15, 2014  3432     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -45,8 +45,8 @@ import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
  * @version 1.0
  */
 
-public class BroadcastMessageHandler implements
-        IRequestHandler<BroadcastMsgRequest> {
+public class BroadcastMessageHandler extends
+        AbstractBMHServerRequestHandler<BroadcastMsgRequest> {
 
     @Override
     public Object handleRequest(BroadcastMsgRequest request) throws Exception {

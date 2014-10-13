@@ -20,7 +20,6 @@
 package com.raytheon.uf.edex.bmh.handler;
 
 import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 
 /**
  * 
@@ -33,14 +32,15 @@ import com.raytheon.uf.common.serialization.comm.IRequestHandler;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Oct 08, 2014  3687     bsteffen    Initial creation.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class CopyOperationalDbHandler implements
-        IRequestHandler<CopyOperationalDbRequest> {
+public class CopyOperationalDbHandler extends
+        AbstractBMHServerRequestHandler<CopyOperationalDbRequest> {
 
     @Override
     public Boolean handleRequest(CopyOperationalDbRequest request)

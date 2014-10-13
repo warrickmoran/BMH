@@ -29,7 +29,6 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 
@@ -51,13 +50,16 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * Oct 02, 2014  3649     rferrel     Added addGroup.
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3654     rjpeter     Updated to use ProgramSummary.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * 
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
 
-public class ProgramHandler implements IRequestHandler<ProgramRequest> {
+public class ProgramHandler extends
+        AbstractBMHServerRequestHandler<ProgramRequest> {
 
     @Override
     public Object handleRequest(ProgramRequest request) throws Exception {

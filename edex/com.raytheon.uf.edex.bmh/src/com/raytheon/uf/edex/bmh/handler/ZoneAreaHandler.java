@@ -26,7 +26,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.request.ZoneAreaRequest;
 import com.raytheon.uf.common.bmh.request.ZoneAreaResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
@@ -43,6 +42,7 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
  * ------------- -------- ----------- --------------------------
  * Jul 15, 2014  3406     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -50,7 +50,8 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
  * @version 1.0
  */
 
-public class ZoneAreaHandler implements IRequestHandler<ZoneAreaRequest> {
+public class ZoneAreaHandler extends
+        AbstractBMHServerRequestHandler<ZoneAreaRequest> {
 
     @Override
     public Object handleRequest(ZoneAreaRequest request) throws Exception {

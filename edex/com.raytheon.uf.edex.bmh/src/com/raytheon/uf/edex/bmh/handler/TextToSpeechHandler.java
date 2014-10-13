@@ -22,7 +22,6 @@ package com.raytheon.uf.edex.bmh.handler;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.tts.TTSManager;
 import com.raytheon.uf.edex.bmh.tts.TTSReturn;
 
@@ -42,6 +41,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSReturn;
  *                                     now hidden from the client.
  * Oct 2, 2014     3642    bkowal      Use the tts synthesis timeout provided
  *                                     in the request.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -49,8 +49,8 @@ import com.raytheon.uf.edex.bmh.tts.TTSReturn;
  * @version 1.0
  */
 
-public class TextToSpeechHandler implements
-        IRequestHandler<TextToSpeechRequest> {
+public class TextToSpeechHandler extends
+        AbstractBMHServerRequestHandler<TextToSpeechRequest> {
     private final TTSManager ttsManager;
 
     public TextToSpeechHandler(TTSManager ttsManager) {

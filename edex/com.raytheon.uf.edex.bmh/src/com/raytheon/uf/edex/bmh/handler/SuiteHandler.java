@@ -26,7 +26,6 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.request.SuiteRequest;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.SuiteDao;
 
@@ -46,6 +45,7 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * Sep 03, 2014  3554     bsteffen    Post notification of updates.
  * Sep 05, 2014  3554     bsteffen    Send more specific config change notification.
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -53,7 +53,7 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * @version 1.0
  */
 
-public class SuiteHandler implements IRequestHandler<SuiteRequest> {
+public class SuiteHandler extends AbstractBMHServerRequestHandler<SuiteRequest> {
 
     @Override
     public Object handleRequest(SuiteRequest request) throws Exception {

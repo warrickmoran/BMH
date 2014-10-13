@@ -26,7 +26,6 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 
@@ -41,6 +40,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
  * ------------- -------- ----------- --------------------------
  * Aug 29, 2014  3568     bkowal     Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -48,8 +48,8 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
  * @version 1.0
  */
 
-public class TransmitterLanguageRequestHandler implements
-        IRequestHandler<TransmitterLanguageRequest> {
+public class TransmitterLanguageRequestHandler extends
+        AbstractBMHServerRequestHandler<TransmitterLanguageRequest> {
 
     @Override
     public Object handleRequest(TransmitterLanguageRequest request)

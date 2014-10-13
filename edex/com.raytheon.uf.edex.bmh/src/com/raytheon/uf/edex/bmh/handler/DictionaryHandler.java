@@ -24,7 +24,6 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest;
 import com.raytheon.uf.common.bmh.request.DictionaryResponse;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 
 /**
@@ -39,6 +38,7 @@ import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
  * Jul 02, 2014  3355     mpduff      Initial creation
  * Jul 21, 2014  3407     mpduff      Added delete dictionary action
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
+ * Oct 13, 2014  3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -46,7 +46,8 @@ import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
  * @version 1.0
  */
 
-public class DictionaryHandler implements IRequestHandler<DictionaryRequest> {
+public class DictionaryHandler extends
+        AbstractBMHServerRequestHandler<DictionaryRequest> {
 
     @Override
     public Object handleRequest(DictionaryRequest request) throws Exception {

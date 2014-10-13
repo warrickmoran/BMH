@@ -20,7 +20,6 @@
 package com.raytheon.uf.edex.bmh.handler;
 
 import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.edex.bmh.playlist.PlaylistManager;
 
 /**
@@ -33,6 +32,7 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 25, 2014  #3589     dgilling     Initial creation
+ * Oct 13, 2014  #3413     rferrel     Implement User roles.
  * 
  * </pre>
  * 
@@ -40,8 +40,8 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistManager;
  * @version 1.0
  */
 
-public final class ForceSuiteChangeHandler implements
-        IRequestHandler<ForceSuiteChangeRequest> {
+public final class ForceSuiteChangeHandler extends
+        AbstractBMHServerRequestHandler<ForceSuiteChangeRequest> {
 
     private final PlaylistManager playlistMgr;
 

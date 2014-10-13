@@ -29,6 +29,8 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 
+import com.raytheon.uf.common.auth.exception.AuthorizationException;
+import com.raytheon.uf.common.auth.resp.SuccessfulExecution;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
@@ -49,6 +51,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jun 25, 2014    3355    mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Oct 2, 2014  3642       bkowal      Specify the Synthesizer Timeout
+ * Oct 13, 2014 3413       rferrel     Support of user roles in sendRequest.
  * </pre>
  * 
  * @author mpduff
@@ -191,6 +194,14 @@ public class BmhUtils {
     public static Object sendRequest(AbstractBMHServerRequest request)
             throws Exception {
         request.setOperational(CAVEMode.getMode() == CAVEMode.OPERATIONAL);
-        return RequestRouter.route(request, "bmh.server");
+        Object obj = RequestRouter.route(request, "bmh.server");
+        if (obj instanceof SuccessfulExecution) {
+            SuccessfulExecution se = (SuccessfulExecution) obj;
+            obj = se.getResponse();
+        } else {
+            throw new AuthorizationException(
+                    "User not authorized to perform request.");
+        }
+        return obj;
     }
 }
