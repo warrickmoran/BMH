@@ -43,6 +43,7 @@ import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.bmh.comms.broadcast.BroadcastStreamServer;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
@@ -81,6 +82,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * 
  * Oct 2, 2014   3642     bkowal      Pass the timezone associated with the transmitter
  *                                    group as an argument to the Dac Transmitter.
+ * Oct 10, 2014  3656     bkowal      Initial implementation of live audio streaming from
+ *                                    Viz to the Comms Manager.
  * 
  * </pre>
  * 
@@ -129,6 +132,8 @@ public class CommsManager {
     private final LineTapServer lineTapServer;
 
     private final ClusterServer clusterServer;
+
+    private final BroadcastStreamServer broadcastStreamServer;
 
     /**
      * This is the thread currently executing in a loop in the {@link #run()}
@@ -184,6 +189,13 @@ public class CommsManager {
                     e);
         }
         try {
+            this.broadcastStreamServer = new BroadcastStreamServer(
+                    clusterServer, transmitServer, config);
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Unable to start the broadcast stream server.", e);
+        }
+        try {
             if (config.getJmsConnection() != null) {
                 jms = new JmsCommunicator(config);
             } else {
@@ -216,6 +228,7 @@ public class CommsManager {
         transmitServer.start();
         clusterServer.start();
         lineTapServer.start();
+        broadcastStreamServer.start();
         if (jms != null) {
             jms.connect();
         }
@@ -230,7 +243,7 @@ public class CommsManager {
             /* Just start processing right away. */
         }
         while (transmitServer.isAlive() && lineTapServer.isAlive()
-                && clusterServer.isAlive()) {
+                && clusterServer.isAlive() && broadcastStreamServer.isAlive()) {
             int sleeptime = NORMAL_SLEEP_TIME;
             clusterServer.attempClusterConnections(config);
             try {
@@ -542,10 +555,12 @@ public class CommsManager {
     public void shutdown() {
         logger.info("Comms manager is shutting down.");
         transmitServer.shutdown();
+        broadcastStreamServer.shutdown();
         clusterServer.shutdown();
         lineTapServer.shutdown();
         try {
             transmitServer.join();
+            broadcastStreamServer.join();
             clusterServer.join();
             transmitServer.join();
         } catch (InterruptedException e) {
@@ -560,5 +575,4 @@ public class CommsManager {
     public static void main(String[] args) {
         new CommsManager().run();
     }
-
 }

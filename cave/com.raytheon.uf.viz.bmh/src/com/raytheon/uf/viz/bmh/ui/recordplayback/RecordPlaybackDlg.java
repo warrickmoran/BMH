@@ -60,6 +60,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      is left and fixed a couple of bugs.
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 8, 2014   #3657     bkowal       Implemented audio recording and playback.
+ * Oct 10, 2014  #3656     bkowal       Adjustments to allow for extension.
  * 
  * 
  * </pre>
@@ -81,7 +82,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      * Emergency Override dialog (ex: Recording Message will be 'On the Air'
      * when started from the Emergency Override dialog).
      */
-    private Label statusLbl;
+    protected Label statusLbl;
 
     /** Status label font. */
     private Font statusLabelFont;
@@ -117,13 +118,13 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     private ScheduledExecutorService timer;
 
     /** Record button. */
-    private Button recBtn;
+    protected Button recBtn;
 
     /** Stop button. */
-    private Button stopBtn;
+    protected Button stopBtn;
 
     /** Play button. */
-    private Button playBtn;
+    protected Button playBtn;
 
     private enum RecordPlayStatus {
         RECORD, PLAY, STOP
@@ -394,7 +395,17 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     /**
      * Record action.
      */
-    private void recordAction() {
+    protected void recordAction() {
+        this.recordAction(null);
+    }
+
+    /**
+     * Record action.
+     * 
+     * @param listener
+     *            the optional audio recording listener.
+     */
+    protected void recordAction(final IAudioRecorderListener listener) {
         resetRecordPlayValues();
         try {
             this.recorderThread = new AudioRecorderThread(SAMPLE_COUNT);
@@ -402,6 +413,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
             statusHandler.error("Audio recording has failed.", e);
             return;
         }
+        this.recorderThread.setRecordingListener(listener);
         this.recordingProgBar.setMaximum(this.maxRecordingSeconds);
         this.recordPlayStatus = RecordPlayStatus.RECORD;
         stopBtn.setEnabled(true);
@@ -416,7 +428,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     /**
      * Stop action.
      */
-    private void stopAction() {
+    protected void stopAction() {
         if (this.recordPlayStatus == RecordPlayStatus.RECORD) {
             this.recorderThread.halt();
             try {
@@ -443,7 +455,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     /**
      * Play action.
      */
-    private void playAction() {
+    protected void playAction() {
         try {
             this.playbackThread = new AudioPlaybackThread(this.recordedAudio);
             this.playbackThread.setCompleteListener(this);

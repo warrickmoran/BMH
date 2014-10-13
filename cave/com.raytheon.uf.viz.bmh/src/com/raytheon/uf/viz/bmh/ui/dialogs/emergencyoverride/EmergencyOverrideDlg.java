@@ -63,6 +63,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybackDlg;
 
 /**
  * Emergency Override dialog.
@@ -75,6 +76,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
  * ------------ ---------- ----------- --------------------------
  * Sep 16, 2014  #3611     lvenable     Initial creation
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 10, 2014  #3656     bkowal       Initial transmit capability implementation.
  * 
  * </pre>
  * 
@@ -325,7 +327,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         transmitBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO : add transmit capability.
+                handleTransmitAction();
             }
         });
     }
@@ -430,5 +432,11 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             trd.addTableCellData(new TableCellData(mt.getTitle()));
             msgTypeTableData.addDataRow(trd);
         }
+    }
+
+    private void handleTransmitAction() {
+        LiveBroadcastRecordPlaybackDlg dlg = new LiveBroadcastRecordPlaybackDlg(
+                this.shell, 120);
+        dlg.open();
     }
 }

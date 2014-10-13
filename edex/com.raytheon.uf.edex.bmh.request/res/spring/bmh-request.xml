@@ -9,8 +9,12 @@
     </bean>
 
     <bean factory-bean="serverLocationRegistry" factory-method="register">
-        <constructor-arg value="bmh.comms.manager" />
-        <constructor-arg value="tcp://${bmh.host}:${bmh.comms.manager.port}/" />
+        <constructor-arg value="bmh.comms.manager.linetap" />
+        <constructor-arg value="tcp://${bmh.host}:${bmh.comms.manager.port.linetap}/" />
     </bean>
 
+    <bean factory-bean="serverLocationRegistry" factory-method="register">
+        <constructor-arg value="bmh.comms.manager.broadcast" />
+        <constructor-arg value="tcp://${bmh.host}:${bmh.comms.manager.port.broadcast}/" />
+    </bean>
 </beans>

@@ -34,6 +34,7 @@ import com.raytheon.uf.common.bmh.dac.DacLiveStreamer;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.core.VizServers;
 
 /**
@@ -48,6 +49,7 @@ import com.raytheon.uf.viz.core.VizServers;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Aug 04, 2014  2487     bsteffen    Initial creation
+ * Oct 10, 2014  3656     bkowal      Use the BMH Servers constants.
  * 
  * </pre>
  * 
@@ -73,7 +75,7 @@ public class MonitorInlineThread extends Thread {
     @Override
     public void run() {
         String commsLoc = VizServers.getInstance().getServerLocation(
-                "bmh.comms.manager");
+                BMHServers.LINETAP_SERVER);
         if (commsLoc == null) {
             Exception e = new IllegalStateException(
                     "No address for comms manager, unable to monitor "
@@ -118,7 +120,7 @@ public class MonitorInlineThread extends Thread {
             statusHandler.error("Unexpected error while monitoring "
                     + transmitterGroup, e);
             disconnect(e);
-            if(listener != null){
+            if (listener != null) {
                 listener.dispose();
             }
         }

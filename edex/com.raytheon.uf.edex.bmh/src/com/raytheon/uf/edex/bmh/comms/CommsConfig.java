@@ -48,6 +48,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Aug 04, 2014  2487     bsteffen    Rename config options.
  * Sep 25, 2014  3485     bsteffen    Add cluster options
  * Sep 29, 2014  3291     bkowal      Updated to use the bmh home directory.
+ * Oct 10, 2014  3656     bkowal      Added broadcastLivePort
  * 
  * </pre>
  * 
@@ -66,6 +67,9 @@ public class CommsConfig {
 
     @XmlAttribute
     private int lineTapPort = 58260;
+    
+    @XmlAttribute
+    private int broadcastLivePort = 58269;
 
     @XmlElement
     private String dacTransmitStarter = BMHConstants.getBmhHomeDirectory()
@@ -110,6 +114,20 @@ public class CommsConfig {
 
     public void setLineTapPort(int lineTapPort) {
         this.lineTapPort = lineTapPort;
+    }
+
+    /**
+     * @return the broadcastLivePort
+     */
+    public int getBroadcastLivePort() {
+        return broadcastLivePort;
+    }
+
+    /**
+     * @param broadcastLivePort the broadcastLivePort to set
+     */
+    public void setBroadcastLivePort(int broadcastLivePort) {
+        this.broadcastLivePort = broadcastLivePort;
     }
 
     public String getDacTransmitStarter() {

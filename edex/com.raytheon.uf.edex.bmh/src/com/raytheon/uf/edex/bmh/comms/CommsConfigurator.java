@@ -65,6 +65,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Sep 25, 2014  3485     bsteffen    Preserve cluster options and write dac receiveAddress.
  * Oct 2, 2014   3642     bkowal      Added transmitter timezone
  * Oct 03, 2014  3485     bsteffen    Better handling of poorly configured dacs.
+ * Oct 13, 2014  3656     bkowal      Copy broadcast live port from old config to new.
  * 
  * 
  * </pre>
@@ -111,6 +112,7 @@ public class CommsConfigurator implements IContextStateProcessor {
             config.setDacTransmitPort(prevConfig.getDacTransmitPort());
             config.setLineTapPort(prevConfig.getLineTapPort());
             config.setClusterPort(prevConfig.getClusterPort());
+            config.setBroadcastLivePort(prevConfig.getBroadcastLivePort());
             config.setDacTransmitStarter(prevConfig.getDacTransmitStarter());
             config.setClusterHosts(prevConfig.getClusterHosts());
             if (prevConfig.getDacs() != null) {

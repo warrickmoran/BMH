@@ -51,6 +51,8 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Sep 17, 2014  3399     bsteffen    Initial creation
+ * Oct 10, 2014  3656     bkowal      Updates to allow sending other message
+ *                                    types to cluster members.
  * 
  * </pre>
  * 
@@ -203,11 +205,39 @@ public class ClusterServer extends AbstractServerThread {
         while (it.hasNext()) {
             ClusterCommunicator communicator = it.next();
             if (communicator.isAlive()) {
-                communicator.sendState(state);
+                if (communicator.sendState(state) == false) {
+                    it.remove();
+                }
             } else {
                 it.remove();
             }
         }
     }
 
+    /**
+     * Used to share the specified data with all cluster members
+     * 
+     * @param data
+     *            the data to shared
+     * @return the number of cluster members that the data has been successfully
+     *         shared with
+     */
+    public int sendDataToAll(Object data) {
+        Iterator<ClusterCommunicator> it = communicators.values().iterator();
+        int recipients = 0;
+        while (it.hasNext()) {
+            ClusterCommunicator communicator = it.next();
+            if (communicator.isAlive()) {
+                if (communicator.send(data)) {
+                    ++recipients;
+                } else {
+                    it.remove();
+                }
+            } else {
+                it.remove();
+            }
+        }
+
+        return recipients;
+    }
 }

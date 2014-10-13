@@ -42,6 +42,8 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Sep 25, 2014  3399     bsteffen    Initial creation
+ * Oct 10, 2014  3656     bkowal      Updates to allow sending other message
+ *                                    types to cluster members.
  * 
  * </pre>
  * 
@@ -120,20 +122,36 @@ public class ClusterCommunicator extends Thread {
         }
     }
 
-    private void send(Object toSend) {
+    public boolean send(Object toSend) {
         synchronized (sendLock) {
+            if (this.isConnected() == false) {
+                // No usable connection. Initiate cleanup.
+                this.disconnect();
+                logger.error("No active connection(s) to cluster member: {}.",
+                        this.getClusterId());
+                return false;
+            }
             try {
                 SerializationUtil.transformToThriftUsingStream(toSend,
                         socket.getOutputStream());
             } catch (SerializationException | IOException e) {
                 logger.error("Error communicating with cluster member: {}",
                         getClusterId(), e);
+                this.disconnect();
+                return false;
             }
+
+            return true;
         }
     }
 
-    public void sendState(ClusterStateMessage state) {
-        send(state);
+    public boolean sendState(ClusterStateMessage state) {
+        return send(state);
+    }
+
+    private boolean isConnected() {
+        return this.socket != null && this.socket.isClosed() == false
+                && this.socket.isOutputShutdown() == false;
     }
 
     public void disconnect() {
