@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * ------------ ---------- ----------- --------------------------
  * Aug 20, 2014    3411    mpduff      Initial creation
  * Oct 05, 2014    3411    mpduff      getTransmitters now returns an empty set rather than null
+ * Oct 14, 2014   #3728    lvenable    Added a set of area codes.
  * 
  * </pre>
  * 
@@ -45,6 +47,10 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  */
 
 public class AreaSelectionSaveData {
+
+    /** All of the areas that were selected. */
+    private Set<String> allSelectedAreaCodes = new HashSet<String>();
+
     /**
      * Selected Areas
      */
@@ -68,18 +74,18 @@ public class AreaSelectionSaveData {
     }
 
     /**
-     * @param areaList
-     *            the areaList to set
+     * Add Area.
+     * 
+     * @param a
+     *            Area.
      */
-    public void setAreas(Set<Area> areas) {
-        this.areas = areas;
-    }
-
     public void addArea(Area a) {
         if (areas == null) {
             areas = new HashSet<>();
         }
+
         areas.add(a);
+        allSelectedAreaCodes.add(a.getAreaCode());
     }
 
     /**
@@ -90,19 +96,24 @@ public class AreaSelectionSaveData {
     }
 
     /**
-     * @param zoneList
-     *            the zoneList to set
+     * Add zone.
+     * 
+     * @param z
+     *            Zone.
      */
-    public void setZones(Set<Zone> zones) {
-        this.zones = zones;
-    }
-
     public void addZone(Zone z) {
         if (zones == null) {
             zones = new HashSet<>();
         }
 
         zones.add(z);
+
+        // Add the area codes from the selected zone.
+        if (z.getAreas() != null) {
+            for (Area a : z.getAreas()) {
+                allSelectedAreaCodes.add(a.getAreaCode());
+            }
+        }
     }
 
     /**
@@ -116,17 +127,44 @@ public class AreaSelectionSaveData {
     }
 
     /**
-     * @param transmitters
-     *            the transmitterList to set
+     * Add the transmitter to the transmitter set and save off the areas
+     * associated with this transmitter.
+     * 
+     * @param t
+     *            Transmitter.
+     * @param transmitterAreaList
+     *            Areas associated with the transmitter.
      */
-    public void setTransmitters(Set<Transmitter> transmitters) {
-        this.transmitters = transmitters;
-    }
-
-    public void addTransmitter(Transmitter t) {
+    public void addTransmitter(Transmitter t, List<Area> transmitterAreaList) {
         if (transmitters == null) {
             transmitters = new HashSet<>();
         }
         transmitters.add(t);
+
+        if (transmitterAreaList != null && !transmitterAreaList.isEmpty()) {
+            addTransmitterAreas(transmitterAreaList);
+        }
     }
+
+    /**
+     * Add the area codes from the selected transmitter to the set of area
+     * codes.
+     * 
+     * @param transmitterAreaList
+     */
+    private void addTransmitterAreas(List<Area> transmitterAreaList) {
+        for (Area a : transmitterAreaList) {
+            allSelectedAreaCodes.add(a.getAreaCode());
+        }
+    }
+
+    /**
+     * Get a list of all the areas.
+     * 
+     * @return List of areas.
+     */
+    public Set<String> getSelectedAreaCodes() {
+        return allSelectedAreaCodes;
+    }
+
 }

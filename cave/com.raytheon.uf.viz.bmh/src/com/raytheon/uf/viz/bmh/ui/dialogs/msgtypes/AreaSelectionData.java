@@ -40,6 +40,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
  * ------------ ---------- ----------- --------------------------
  * Aug 13, 2014    3411    mpduff      Initial creation
  * Aug 18, 2014    3432    mpduff      More implementation.
+ * Oct 14, 2014   #3728    lvenable    Added a map of area codes and areas.
  * 
  * </pre>
  * 
@@ -48,6 +49,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
  */
 
 public class AreaSelectionData {
+
     private List<Zone> zoneList;
 
     private List<Transmitter> transmitterList;
@@ -55,6 +57,9 @@ public class AreaSelectionData {
     private final Map<Transmitter, List<Area>> transmitterToAreaMap = new HashMap<>();
 
     private final Map<String, Area> areaNameMap = new HashMap<>();
+
+    /** Map of areas codes and related areas. */
+    private final Map<String, Area> areaCodeMap = new HashMap<>();
 
     private final ZonesAreasDataManager dataManager = new ZonesAreasDataManager();
 
@@ -108,7 +113,7 @@ public class AreaSelectionData {
      * @throws Exception
      */
     public void populate() throws Exception {
-        List<Area> areaList = dataManager.getAreas();
+        List<Area> allAreas = dataManager.getAreas();
         this.zoneList = dataManager.getZones();
         this.transmitterList = dataManager.getTransmitters();
 
@@ -118,12 +123,13 @@ public class AreaSelectionData {
             this.transmitterToAreaMap.put(t, al);
         }
 
-        for (Area a : areaList) {
+        for (Area a : allAreas) {
             for (Transmitter t : a.getTransmitters()) {
                 this.transmitterToAreaMap.get(t).add(a);
             }
 
             areaNameMap.put(a.getAreaName(), a);
+            areaCodeMap.put(a.getAreaCode(), a);
         }
     }
 
@@ -147,5 +153,14 @@ public class AreaSelectionData {
      */
     public Area getAreaByName(String areaName) {
         return areaNameMap.get(areaName);
+    }
+
+    /**
+     * Get the map of area codes and areas.
+     * 
+     * @return Map of all the area codes and areas.
+     */
+    public Map<String, Area> getAllAreaCodes() {
+        return areaCodeMap;
     }
 }

@@ -19,8 +19,13 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +81,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 13, 2014  #3728     lvenable     Fixed date/time field arguments and added a call back
  *                                      to the select message type dialog.
+ * Oct 14, 2014  #3728     lvenable     Added reading in a text file and displaying the Message
+ *                                      Text Contents dialog.
  * 
  * </pre>
  * 
@@ -742,7 +749,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      */
     private void handleContentsFromFileAction() {
 
-        String[] filterNames = { "Text (*.txt)", "All Files (*.*)" };
+        String[] filterNames = { "Text (*.txt)", "All Extensions (*.*)",
+                "All Files (*)" };
 
         // These filter extensions are used to filter which files are displayed.
         String[] filterExtentions = { "*.txt", "*.*", "*" };
@@ -752,7 +760,64 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         dlg.setFilterExtensions(filterExtentions);
         String fn = dlg.open();
         if (fn != null) {
-            // TODO : open the file and put in the Message Text Contents dialog.
+            File f = new File(fn);
+
+            try {
+                List<String> fileContents = Files.readAllLines(f.toPath(),
+                        Charset.defaultCharset());
+
+                if (fileContents.size() == 0) {
+                    StringBuilder msg = new StringBuilder();
+
+                    msg.append("The file: \n");
+                    msg.append(fn).append("\n");
+                    msg.append("does not have any text to read in.");
+
+                    DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING
+                            | SWT.OK, "No Text Error", msg.toString());
+                    return;
+                }
+
+                StringBuilder sb = new StringBuilder();
+                Iterator<String> iter = fileContents.iterator();
+
+                while (iter.hasNext()) {
+                    sb.append(iter.next());
+
+                    if (iter.hasNext()) {
+                        sb.append("\n");
+                    }
+                }
+
+                MessageTextContentsDlg mtcd = new MessageTextContentsDlg(shell,
+                        sb.toString());
+                mtcd.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        if (returnValue instanceof String) {
+                            // TODO - handle getting text back...
+
+                            System.out.println((String) returnValue);
+                        }
+
+                    }
+                });
+                mtcd.open();
+
+            } catch (IOException e) {
+                statusHandler.error("Error reading data from file: " + fn
+                        + " --- ", e);
+
+                StringBuilder msg = new StringBuilder();
+
+                msg.append("The file: \n");
+                msg.append(fn).append("\n");
+                msg.append("could not be read in.  The file must be an ASCII text file.");
+
+                DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING
+                        | SWT.OK, "File Read Error", msg.toString());
+                return;
+            }
         }
     }
 

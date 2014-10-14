@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
@@ -72,6 +73,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 28, 2014   3432     mpduff      Display areaCode, not areaId
  * Sep 11, 2014   3411     mpduff      Populate upon opening.
  * Oct 09, 2014   3646     rferrel     Converted tableComp to GenerticTable.
+ * Oct 14, 2014  #3728     lvenable    Updated to support weather messages functionality
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -114,7 +117,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     /**
      * Selected table columns
      */
-    private ArrayList<TableColumnData> columns;
+    private java.util.List<TableColumnData> columns;
 
     /**
      * The selected table TableData object
@@ -134,7 +137,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     /**
      * Data backing this dialog
      */
-    private AreaSelectionData data;
+    private AreaSelectionData areaSelectionData;
 
     /**
      * Zone list in zone tab
@@ -161,7 +164,15 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     private List areaList;
 
     /** The Message Type */
-    private final MessageType messageType;
+    private MessageType messageType = null;
+
+    /**
+     * String of areas codes.
+     * 
+     * Example: "NEZ024-NEZ005-NEZ023-NEZ025-NEZ036-NEZ094"
+     * 
+     */
+    private String areasCodesStr = null;
 
     /**
      * Constructor.
@@ -172,9 +183,26 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     public AreaSelectionDlg(Shell parentShell, MessageType messageType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
-        setText("Area Selection");
 
         this.messageType = messageType;
+    }
+
+    /**
+     * Constructor that take a string of area codes that will be parsed and
+     * displayed.
+     * 
+     * Example of area code string: "NEZ024-NEZ005-NEZ023-NEZ025-NEZ036-NEZ094"
+     * 
+     * @param parentShell
+     *            Parent shell.
+     * @param areaCodes
+     *            String of areas codes.
+     */
+    public AreaSelectionDlg(Shell parentShell, String areaCodes) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
+                CAVE.PERSPECTIVE_INDEPENDENT);
+
+        this.areasCodesStr = areaCodes;
     }
 
     @Override
@@ -190,6 +218,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
+        setText("Area Selection");
+
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         GridLayout gl = new GridLayout(3, false);
         mainComp = new Composite(shell, SWT.NONE);
@@ -634,11 +664,11 @@ public class AreaSelectionDlg extends CaveSWTDialog {
      * Populate the tabs with data
      */
     private void populateTabs() {
-        if (data == null) {
+        if (areaSelectionData == null) {
             gatherData();
         }
 
-        this.transmitterObjectList = data.getTransmitterList();
+        this.transmitterObjectList = areaSelectionData.getTransmitterList();
         Collections
                 .sort(transmitterObjectList, new TransmitterNameComparator());
         java.util.List<String> transmitterNameList = new ArrayList<>(
@@ -653,7 +683,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
             populateAreasForTransmitter();
         }
 
-        this.zoneObjectList = data.getZoneList();
+        this.zoneObjectList = areaSelectionData.getZoneList();
         Collections.sort(zoneObjectList, new ZoneNameComparator());
         java.util.List<String> zoneNameList = new ArrayList<>(
                 zoneObjectList.size());
@@ -667,7 +697,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
             populateAreasForZone();
         }
 
-        java.util.List<Area> areaObjectList = data.getAreaList();
+        java.util.List<Area> areaObjectList = areaSelectionData.getAreaList();
         Collections.sort(areaObjectList, new AreaNameComparator());
         String[] areaNames = new String[areaObjectList.size()];
         int idx = 0;
@@ -686,20 +716,39 @@ public class AreaSelectionDlg extends CaveSWTDialog {
      * Populate the TableData object.
      */
     private void populateTableData() {
-        for (Area area : messageType.getDefaultAreas()) {
-            TableRowData row = createAreaRow(area);
-            tableData.addDataRow(row);
-        }
 
-        for (Zone zone : messageType.getDefaultZones()) {
-            TableRowData row = createZoneRow(zone);
-            tableData.addDataRow(row);
-        }
-
-        for (TransmitterGroup group : messageType.getDefaultTransmitterGroups()) {
-            for (Transmitter t : group.getTransmitters()) {
-                TableRowData row = createTransmitterRow(t);
+        if (messageType != null) {
+            for (Area area : messageType.getDefaultAreas()) {
+                TableRowData row = createAreaRow(area);
                 tableData.addDataRow(row);
+            }
+
+            for (Zone zone : messageType.getDefaultZones()) {
+                TableRowData row = createZoneRow(zone);
+                tableData.addDataRow(row);
+            }
+
+            for (TransmitterGroup group : messageType
+                    .getDefaultTransmitterGroups()) {
+                for (Transmitter t : group.getTransmitters()) {
+                    TableRowData row = createTransmitterRow(t);
+                    tableData.addDataRow(row);
+                }
+            }
+        } else if (areasCodesStr != null && areasCodesStr.length() > 0) {
+
+            // Split the area codes.
+            String[] areaCodes = areasCodesStr.split("-");
+
+            Map<String, Area> areaCodesMap = areaSelectionData
+                    .getAllAreaCodes();
+
+            // Populate the table with the areas that match the area codes.
+            for (String areaCode : areaCodes) {
+                if (areaCodesMap.containsKey(areaCode)) {
+                    TableRowData row = createAreaRow(areaCodesMap.get(areaCode));
+                    tableData.addDataRow(row);
+                }
             }
         }
     }
@@ -748,7 +797,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         java.util.List<Area> areas = new ArrayList<Area>();
         for (int i : indices) {
             Transmitter t = this.transmitterObjectList.get(i);
-            areas.addAll(data.getAreasForTransmitter(t));
+            areas.addAll(areaSelectionData.getAreasForTransmitter(t));
         }
 
         String[] areaNames = new String[areas.size()];
@@ -770,7 +819,9 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         java.util.List<Area> areas = new ArrayList<Area>();
         for (int i : indices) {
             Zone z = this.zoneObjectList.get(i);
-            areas.addAll(z.getAreas());
+            if (z.getAreas() != null) {
+                areas.addAll(z.getAreas());
+            }
         }
 
         String[] areaNames = new String[areas.size()];
@@ -786,9 +837,9 @@ public class AreaSelectionDlg extends CaveSWTDialog {
      * Populate the data object.
      */
     private void gatherData() {
-        data = new AreaSelectionData();
+        areaSelectionData = new AreaSelectionData();
         try {
-            data.populate();
+            areaSelectionData.populate();
         } catch (Exception e) {
             statusHandler.error("Error accessing BMH database", e);
         }
@@ -825,7 +876,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     private void moveTransmitterArea(boolean moveAll) {
         if (moveAll) {
             for (String areaName : transmitterAreaList.getItems()) {
-                Area area = data.getAreaByName(areaName);
+                Area area = areaSelectionData.getAreaByName(areaName);
                 if (area != null) {
                     addAreaRow(area);
                 }
@@ -833,7 +884,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         } else {
             int[] indices = transmitterAreaList.getSelectionIndices();
             for (int i : indices) {
-                Area area = data.getAreaByName(transmitterAreaList.getItem(i));
+                Area area = areaSelectionData.getAreaByName(transmitterAreaList
+                        .getItem(i));
                 if (area != null) {
                     addAreaRow(area);
                 }
@@ -875,12 +927,13 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     private void moveZoneArea(boolean moveAll) {
         if (moveAll) {
             for (String areaName : zoneAreaList.getItems()) {
-                addAreaRow(data.getAreaByName(areaName));
+                addAreaRow(areaSelectionData.getAreaByName(areaName));
             }
         } else {
             int[] indices = zoneAreaList.getSelectionIndices();
             for (int i : indices) {
-                addAreaRow(data.getAreaByName(zoneAreaList.getItem(i)));
+                addAreaRow(areaSelectionData.getAreaByName(zoneAreaList
+                        .getItem(i)));
             }
         }
 
@@ -897,12 +950,12 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     private void moveArea(boolean moveAll) {
         if (moveAll) {
             for (String areaName : areaList.getItems()) {
-                addAreaRow(data.getAreaByName(areaName));
+                addAreaRow(areaSelectionData.getAreaByName(areaName));
             }
         } else {
             int[] indices = areaList.getSelectionIndices();
             for (int i : indices) {
-                addAreaRow(data.getAreaByName(areaList.getItem(i)));
+                addAreaRow(areaSelectionData.getAreaByName(areaList.getItem(i)));
             }
         }
 
@@ -996,8 +1049,10 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 listOfAffectedTransmitters.addAll(a.getTransmitters());
             } else if (o instanceof Zone) {
                 Zone z = (Zone) o;
-                for (Area a : z.getAreas()) {
-                    listOfAffectedTransmitters.addAll(a.getTransmitters());
+                if (z.getAreas() != null) {
+                    for (Area a : z.getAreas()) {
+                        listOfAffectedTransmitters.addAll(a.getTransmitters());
+                    }
                 }
             }
         }
@@ -1025,16 +1080,19 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         AreaSelectionSaveData saveData = new AreaSelectionSaveData();
         java.util.List<TableRowData> rows = tableData.getTableRows();
         for (TableRowData row : rows) {
-            Object data = row.getData();
-            if (data instanceof Area) {
-                saveData.addArea((Area) data);
-            } else if (data instanceof Zone) {
-                saveData.addZone((Zone) data);
-            } else if (data instanceof Transmitter) {
-                saveData.addTransmitter((Transmitter) data);
+            Object rowData = row.getData();
+            if (rowData instanceof Area) {
+                saveData.addArea((Area) rowData);
+            } else if (rowData instanceof Zone) {
+                saveData.addZone((Zone) rowData);
+            } else if (rowData instanceof Transmitter) {
+                Transmitter t = (Transmitter) rowData;
+                java.util.List<Area> areaList = areaSelectionData
+                        .getTransmitterToAreaMap().get(t);
+                saveData.addTransmitter(t, areaList);
             } else {
                 throw new IllegalArgumentException("Invalid data type: "
-                        + data.getClass());
+                        + rowData.getClass());
             }
         }
 

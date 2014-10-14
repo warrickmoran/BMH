@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +41,7 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Spinner;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -57,8 +57,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListComp;
-import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
-import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
@@ -77,6 +75,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * Sep 16, 2014  #3611     lvenable     Initial creation
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 10, 2014  #3656     bkowal       Initial transmit capability implementation.
+ * Oct 14, 2014  #3728     lvenable     Change table to single selection and fixed the duration
+ *                                      spinners since they are a special case.
  * 
  * </pre>
  * 
@@ -123,8 +123,14 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     /** Duration label. */
     private Label durationLbl;
 
-    /** Duration date/time field. */
-    private DateTimeFields durationDTF;
+    /** Duration hour spinner. */
+    private Spinner durHourSpnr;
+
+    /** Duration minute spinner. */
+    private Spinner durMinuteSpnr;
+
+    /** Maximum number of hours for the duration. */
+    private final int hourMax = 6;
 
     /**
      * Constructor.
@@ -210,7 +216,9 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         messageTypeGroup.setLayoutData(gd);
         messageTypeGroup.setText(" Emergency Message Types: ");
 
-        emerMsgTypeTable = new GenericTable(messageTypeGroup, 400, 175);
+        int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
+        emerMsgTypeTable = new GenericTable(messageTypeGroup, tableStyle, 400,
+                175);
 
         emerMsgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
@@ -288,13 +296,20 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         autoScheduleChk.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                durationLbl.setEnabled(autoScheduleChk.getSelection());
-                durationDTF.enableControls(autoScheduleChk.getSelection());
+                boolean enabled = autoScheduleChk.getSelection();
+                durationLbl.setEnabled(enabled);
+                durHourSpnr.setEnabled(enabled);
+
+                if (enabled && durHourSpnr.getSelection() == hourMax) {
+                    durMinuteSpnr.setEnabled(false);
+                } else {
+                    durMinuteSpnr.setEnabled(enabled);
+                }
             }
         });
 
         Composite autoSchedComp = new Composite(controlComp, SWT.SHADOW_OUT);
-        gl = new GridLayout(2, false);
+        gl = new GridLayout(3, false);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         autoSchedComp.setLayout(gl);
         autoSchedComp.setLayoutData(gd);
@@ -306,13 +321,32 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         durationLbl.setLayoutData(gd);
         durationLbl.setEnabled(false);
 
-        Map<DateFieldType, Integer> durationMap = new LinkedHashMap<DateFieldType, Integer>();
-        durationMap.put(DateFieldType.HOUR, 0);
-        durationMap.put(DateFieldType.MINUTE, 0);
+        gd = new GridData(30, SWT.DEFAULT);
+        gd.horizontalIndent = 10;
+        durHourSpnr = new Spinner(autoSchedComp, SWT.BORDER);
+        durHourSpnr.setLayoutData(gd);
+        durHourSpnr.setTextLimit(2);
+        durHourSpnr.setMinimum(0);
+        durHourSpnr.setMaximum(hourMax);
+        durHourSpnr.setEnabled(false);
+        durHourSpnr.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (durHourSpnr.getSelection() == hourMax) {
+                    durMinuteSpnr.setSelection(0);
+                    durMinuteSpnr.setEnabled(false);
+                } else {
+                    durMinuteSpnr.setEnabled(true);
+                }
+            }
+        });
 
-        durationDTF = new DateTimeFields(autoSchedComp, durationMap, false,
-                false, true);
-        durationDTF.enableControls(false);
+        durMinuteSpnr = new Spinner(autoSchedComp, SWT.BORDER);
+        durMinuteSpnr.setLayoutData(new GridData(30, SWT.DEFAULT));
+        durMinuteSpnr.setTextLimit(2);
+        durMinuteSpnr.setMinimum(0);
+        durMinuteSpnr.setMaximum(59);
+        durMinuteSpnr.setEnabled(false);
 
         /*
          * Transmit button
