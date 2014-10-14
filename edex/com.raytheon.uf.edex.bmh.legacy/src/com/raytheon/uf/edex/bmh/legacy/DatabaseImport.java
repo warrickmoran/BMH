@@ -35,21 +35,13 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
-import com.raytheon.uf.common.bmh.notify.config.ConfigNotification;
-import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
-import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
-import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
-import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
-import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
-import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.util.Pair;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
@@ -62,8 +54,6 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
-import com.raytheon.uf.edex.core.EDEXUtil;
-import com.raytheon.uf.edex.core.IMessageProducer;
 
 /**
  * Imports legacy database and stores it. Will only run on start up. Moves
@@ -82,6 +72,8 @@ import com.raytheon.uf.edex.core.IMessageProducer;
  * Sep 05, 2014 3554       bsteffen    Send more specific config change notification.
  * Sep 08, 2014 3568       bkowal      Updated to send message type and transmitter group
  *                                     config change notifications.
+ * Oct 13, 2014 3687       bsteffen    Send ResetNotification instead of individual notifications.
+ * 
  * 
  * </pre>
  * 
@@ -89,7 +81,6 @@ import com.raytheon.uf.edex.core.IMessageProducer;
  * @version 1.0
  */
 public class DatabaseImport {
-    private static final String JMS_CONFIG_TOPIC = "jms-durable:topic:BMH.Config";
 
     // Default voice information if there is not one currently in the database
     protected static final int DEFAULT_VOICE_NUMBER = 101;
@@ -268,43 +259,8 @@ public class DatabaseImport {
                                                             + file.getAbsolutePath()
                                                             + "]");
                                 }
-                                IMessageProducer producer = EDEXUtil
-                                        .getMessageProducer();
-                                ConfigNotification notification = new TransmitterGroupConfigNotification(
-                                        ConfigChangeType.Update,
-                                        new ArrayList<>(data.getTransmitters()
-                                                .values()));
-                                producer.sendAsyncUri(
-                                        JMS_CONFIG_TOPIC,
-                                        SerializationUtil
-                                                .transformToThrift(notification));
-                                for (Suite suite : data.getSuites().values()) {
-                                    notification = new SuiteConfigNotification(
-                                            ConfigChangeType.Update, suite);
-                                    producer.sendAsyncUri(
-                                            JMS_CONFIG_TOPIC,
-                                            SerializationUtil
-                                                    .transformToThrift(notification));
-                                }
-                                for (MessageType messageType : data
-                                        .getMsgTypes().values()) {
-                                    notification = new MessageTypeConfigNotification(
-                                            ConfigChangeType.Update,
-                                            messageType);
-                                    producer.sendAsyncUri(
-                                            JMS_CONFIG_TOPIC,
-                                            SerializationUtil
-                                                    .transformToThrift(notification));
-                                }
-                                for (TransmitterLanguage language : data
-                                        .getTransmitterLanguages()) {
-                                    notification = new TransmitterLanguageConfigNotification(
-                                            ConfigChangeType.Update, language);
-                                    producer.sendAsyncUri(
-                                            JMS_CONFIG_TOPIC,
-                                            SerializationUtil
-                                                    .transformToThrift(notification));
-                                }
+                                BmhMessageProducer.sendConfigMessage(
+                                        new ResetNotification(), true);
                             } catch (Throwable e) {
                                 statusHandler
                                         .error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,

@@ -49,6 +49,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Aug 23, 2014    3432    mpduff      Initial creation.
  * Aug 24, 2014    3432    mpduff      Added thread safety.
  * Aug 24, 2014    3558    rjpeter     Fixed population of MessagePlaybackPrediction.
+ * Oct 07, 2014    3687    bsteffen    Remove singleton and inject daos to allow practice mode.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -59,25 +61,31 @@ public class PlaylistStateManager {
     private static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(PlaylistStateManager.class);
 
-    // Making a singleton for now since this is just for demo purposes
-    private static final PlaylistStateManager instance = new PlaylistStateManager();
-
     /** Map of Transmitter -> PlaylistData for that transmitter */
     private final Map<String, PlaylistDataStructure> playlistDataMap = new HashMap<>();
 
-    private PlaylistStateManager() {
+    private BroadcastMsgDao broadcastMsgDao;
 
-    }
+    private MessageTypeDao messageTypeDao;
 
-    public synchronized static final PlaylistStateManager getInstance() {
-        return instance;
+    public PlaylistStateManager() {
+
     }
 
     public synchronized void processPlaylistSwitchNotification(
             PlaylistSwitchNotification notification) {
         String tg = notification.getTransmitterGroup();
-        statusHandler.info("PlaylistSwitchNotification arrived for "
-                + notification.getTransmitterGroup());
+        statusHandler.info("PlaylistSwitchNotification arrived for " + tg);
+        if (messageTypeDao == null) {
+            statusHandler
+                    .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no MessageTypeDao.");
+            return;
+        }
+        if (broadcastMsgDao == null) {
+            statusHandler
+                    .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no BroadcastMsgDao.");
+            return;
+        }
         List<DacPlaylistMessageId> playlist = notification.getPlaylist();
         List<MessagePlaybackPrediction> messageList = notification
                 .getMessages();
@@ -102,8 +110,6 @@ public class PlaylistStateManager {
 
         Map<Long, MessageType> messageTypeMap = playlistData
                 .getMessageTypeMap();
-        BroadcastMsgDao broadcastMsgDao = new BroadcastMsgDao();
-        MessageTypeDao messageTypeDao = new MessageTypeDao();
 
         for (DacPlaylistMessageId id : playlist) {
             List<BroadcastMsg> broadcastMessageList = broadcastMsgDao
@@ -160,4 +166,13 @@ public class PlaylistStateManager {
             return new PlaylistDataStructure();
         }
     }
+
+    public void setBroadcastMsgDao(BroadcastMsgDao broadcastMsgDao) {
+        this.broadcastMsgDao = broadcastMsgDao;
+    }
+
+    public void setMessageTypeDao(MessageTypeDao messageTypeDao) {
+        this.messageTypeDao = messageTypeDao;
+    }
+
 }

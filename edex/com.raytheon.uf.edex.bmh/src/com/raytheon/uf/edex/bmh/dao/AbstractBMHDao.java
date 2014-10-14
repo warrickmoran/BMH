@@ -55,6 +55,14 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
 
     public static final String BMH_PRACTICE_DATABASE_NAME = "bmh_practice";
 
+    public static String getDatabaseName(boolean operational) {
+        if (operational) {
+            return BMH_DATABASE_NAME;
+        } else {
+            return BMH_PRACTICE_DATABASE_NAME;
+        }
+    }
+
     private final Class<T> daoClass;
 
     /**
@@ -76,8 +84,7 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
      *            The class that this dao is responsible for persisting.
      */
     public AbstractBMHDao(boolean operational, Class<T> daoClass) {
-        super(DaoConfig.forClass(operational ? BMH_DATABASE_NAME
-                : BMH_PRACTICE_DATABASE_NAME, daoClass));
+        super(DaoConfig.forClass(getDatabaseName(operational), daoClass));
         this.daoClass = daoClass;
     }
 

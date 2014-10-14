@@ -41,6 +41,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
+import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
@@ -57,6 +60,7 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.dao.WordDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
+import com.raytheon.uf.edex.core.EdexException;
 
 /**
  * 
@@ -95,7 +99,7 @@ public class BmhDatabaseCopier {
 
     private Map<Integer, InputMessage> inputMessageMap;
 
-    public void copyAll() {
+    public void copyAll() throws EdexException, SerializationException {
         clearAllPracticeTables();
         copyTtsVoices();
         copyTransmitterGroups();
@@ -109,9 +113,11 @@ public class BmhDatabaseCopier {
         copyDictionaries();
         copyInputMessages();
         copyBroadcastMsgs();
+        BmhMessageProducer.sendConfigMessage(new ResetNotification(), false);
     }
 
     private void clearAllPracticeTables() {
+        clearTable(new PlaylistDao(false));
         clearTable(new ProgramDao(false));
         clearTable(new SuiteDao(false));
         clearTable(new MessageTypeReplacementDao(false));
@@ -119,14 +125,13 @@ public class BmhDatabaseCopier {
         clearTable(new ZoneDao(false));
         clearTable(new AreaDao(false));
         clearTable(new TransmitterLanguageDao(false));
-        clearTable(new TransmitterGroupDao(false));
-        clearTable(new TtsVoiceDao(false));
         clearTable(new BroadcastMsgDao(false));
+        clearTable(new TtsVoiceDao(false));
+        clearTable(new TransmitterGroupDao(false));
         clearTable(new ValidatedMessageDao(false));
         clearTable(new InputMessageDao(false));
         clearTable(new DictionaryDao(false));
         clearTable(new WordDao(false));
-        clearTable(new PlaylistDao(false));
     }
 
     private void clearTable(AbstractBMHDao<?, ?> dao) {

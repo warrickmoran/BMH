@@ -47,6 +47,10 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
 
 public class PlaylistHandler implements IRequestHandler<PlaylistRequest> {
 
+    private PlaylistStateManager playlistStateManager;
+    
+    private PlaylistStateManager practicePlaylistStateManager;
+    
     @Override
     public Object handleRequest(PlaylistRequest request) {
         PlaylistResponse response = null;
@@ -77,11 +81,37 @@ public class PlaylistHandler implements IRequestHandler<PlaylistRequest> {
 
     private PlaylistResponse getPlaylistDataForTransmitter(PlaylistRequest request){
         PlaylistResponse response = new PlaylistResponse();
-        PlaylistStateManager playlistState = PlaylistStateManager.getInstance();
+        PlaylistStateManager playlistState = null;
+        if (request.isOperational()) {
+            playlistState = playlistStateManager;
+        } else {
+            playlistState = practicePlaylistStateManager;
+        }
+        if (playlistState == null) {
+            if (request.isOperational()) {
+                throw new IllegalStateException(
+                        "No operational playlist state manager is available for handling playlist requests. ");
+            } else {
+                throw new IllegalStateException(
+                        "No non-operational playlist state manager is available for handling playlist requests. ");
+            }
+
+        }
         PlaylistDataStructure data = playlistState
                 .getPlaylistDataStructure(request.getTransmitterName());
         response.setPlaylistData(data);
         return response;
+    }
+
+    public void setPlaylistStateManager(
+            PlaylistStateManager playlistStateManager) {
+        this.playlistStateManager = playlistStateManager;
+    }
+
+    public PlaylistStateManager setPracticePlaylistStateManager(
+            PlaylistStateManager practicePlaylistStateManager) {
+        this.practicePlaylistStateManager = practicePlaylistStateManager;
+        return practicePlaylistStateManager;
     }
 
 }
