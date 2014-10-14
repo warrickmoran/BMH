@@ -30,7 +30,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -46,9 +45,8 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
@@ -77,6 +75,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
+import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
@@ -116,7 +115,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Oct 07, 2014  3589     dgilling    Fix refresh of GENERAL suites on startup.
  * Oct 08, 2014  3687     bsteffen    Remove ProgramTrigger.
  * Oct 10, 2014  3666     bsteffen    Do not persist disabled transmitters.
- * 
+ * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author bsteffen
@@ -144,6 +143,8 @@ public class PlaylistManager implements IContextStateProcessor {
     private BroadcastMsgDao broadcastMsgDao;
 
     private TransmitterGroupDao transmitterGroupDao;
+
+    private MessageTypeDao messageTypeDao;
 
     private final SAMEStateCodes stateCodes = new SAMEStateCodes();
 
@@ -256,11 +257,11 @@ public class PlaylistManager implements IContextStateProcessor {
                 }
             }
             for (ProgramSuite programSuite : program.getProgramSuites()) {
-                boolean shouldRefresh = forcedType == null
+                boolean shouldRefresh = (forcedType == null)
                         || programSuite.isForced();
-                if (shouldRefresh == false
-                        && programSuite.getSuite().getType()
-                                .compareTo(forcedType) < 0) {
+                if ((shouldRefresh == false)
+                        && (programSuite.getSuite().getType()
+                                .compareTo(forcedType) < 0)) {
                     shouldRefresh = true;
                 }
                 if (shouldRefresh) {
@@ -389,10 +390,10 @@ public class PlaylistManager implements IContextStateProcessor {
         ProgramSuite forcedHigher = null;
         for (ProgramSuite programSuite : program.getProgramSuites()) {
             if (programSuite.isForced()
-                    && programSuite.getSuite().getType() == SuiteType.GENERAL) {
+                    && (programSuite.getSuite().getType() == SuiteType.GENERAL)) {
                 forcedGeneral = programSuite;
             } else if (programSuite.isForced()
-                    && programSuite.getSuite().getType() != SuiteType.GENERAL) {
+                    && (programSuite.getSuite().getType() != SuiteType.GENERAL)) {
                 forcedHigher = programSuite;
             }
         }
@@ -413,13 +414,15 @@ public class PlaylistManager implements IContextStateProcessor {
                     && (!programSuite.getId().equals(forcedGeneral.getId()))) {
                 continue;
             }
+            Map<String, Set<String>> matReplacementMap = new HashMap<>();
 
             for (SuiteMessage smessage : programSuite.getSuite()
                     .getSuiteMessages()) {
                 if (smessage.getAfosid().equals(msg.getAfosid())) {
                     boolean isTrigger = programSuite.isTrigger(smessage
-                            .getMsgType());
-                    addMessageToPlaylist(msg, group, programSuite, isTrigger);
+                            .getMsgTypeSummary());
+                    addMessageToPlaylist(msg, group, programSuite, isTrigger,
+                            matReplacementMap);
 
                     if ((isTrigger)
                             && (forcedHigher != null)
@@ -441,7 +444,8 @@ public class PlaylistManager implements IContextStateProcessor {
     }
 
     private void addMessageToPlaylist(BroadcastMsg msg, TransmitterGroup group,
-            ProgramSuite programSuite, boolean trigger) {
+            ProgramSuite programSuite, boolean trigger,
+            Map<String, Set<String>> matReplacementMap) {
         ClusterTask ct = null;
         do {
             ct = locker.lock("playlist", group.getName() + "-"
@@ -465,8 +469,8 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setTransmitterGroup(group);
             }
             playlist.setModTime(currentTime);
-            List<BroadcastMsg> messages = mergeMessage(programSuite.getSuite(),
-                    msg, playlist.getMessages());
+            List<BroadcastMsg> messages = mergeMessage(msg,
+                    playlist.getMessages(), matReplacementMap);
             sortAndPersistPlaylist(playlist, messages, programSuite);
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
@@ -496,6 +500,7 @@ public class PlaylistManager implements IContextStateProcessor {
             }
             afosMessages.add(message);
         }
+
         /*
          * Add messages back into the list in the same order as the suite
          * messages, also calculate the start and end time of the playlist by
@@ -512,7 +517,8 @@ public class PlaylistManager implements IContextStateProcessor {
             if (afosMessages != null) {
                 messages.addAll(afosMessages);
 
-                Designation msgType = smessage.getMsgType().getDesignation();
+                Designation msgType = smessage.getMsgTypeSummary()
+                        .getDesignation();
 
                 /*
                  * We need to exert control over how the start time and expire
@@ -525,9 +531,9 @@ public class PlaylistManager implements IContextStateProcessor {
                  * playlist expires when all messages but those routine messages
                  * have expired.
                  */
-                if ((programSuite.isTrigger(smessage.getMsgType()))
+                if ((programSuite.isTrigger(smessage.getMsgTypeSummary()))
                         || (suite.getType() == SuiteType.GENERAL)
-                        || (programSuite.isForced() && (msgType != Designation.TimeAnnouncement && msgType != Designation.StationID))) {
+                        || (programSuite.isForced() && ((msgType != Designation.TimeAnnouncement) && (msgType != Designation.StationID)))) {
                     for (BroadcastMsg bmessage : afosMessages) {
                         Calendar messageStart = bmessage.getInputMessage()
                                 .getEffectiveTime();
@@ -612,7 +618,7 @@ public class PlaylistManager implements IContextStateProcessor {
             Calendar expirationTime, boolean checkTrigger) {
         List<BroadcastMsg> messages = new ArrayList<>();
         if (checkTrigger) {
-            for (MessageType programTrigger : programSuite.getTriggers()) {
+            for (MessageTypeSummary programTrigger : programSuite.getTriggers()) {
                 messages.addAll(broadcastMsgDao
                         .getMessagesByAfosid(programTrigger.getAfosid()));
             }
@@ -623,7 +629,7 @@ public class PlaylistManager implements IContextStateProcessor {
             }
         }
         for (SuiteMessage smessage : programSuite.getSuite().getSuiteMessages()) {
-            if (programSuite.isTrigger(smessage.getMsgType()) == false) {
+            if (programSuite.isTrigger(smessage.getMsgTypeSummary()) == false) {
                 messages.addAll(broadcastMsgDao
                         .getUnexpiredMessagesByAfosidAndGroup(
                                 smessage.getAfosid(), expirationTime, group));
@@ -638,9 +644,17 @@ public class PlaylistManager implements IContextStateProcessor {
 
         });
         List<BroadcastMsg> result = Collections.emptyList();
+
+        /*
+         * TODO: potential enhancment would be to load all replacement afos ides
+         * for current set of broadcast messages in one go
+         */
+        Map<String, Set<String>> matReplacementMap = new HashMap<>();
+
         for (BroadcastMsg message : messages) {
-            result = mergeMessage(programSuite.getSuite(), message, result);
+            result = mergeMessage(message, result, matReplacementMap);
         }
+
         return result;
     }
 
@@ -651,37 +665,35 @@ public class PlaylistManager implements IContextStateProcessor {
      * 
      * @param msg
      * @param list
+     * @param matReplacements
      * @return
      */
-    private List<BroadcastMsg> mergeMessage(Suite suite, BroadcastMsg msg,
-            List<BroadcastMsg> list) {
+    private List<BroadcastMsg> mergeMessage(BroadcastMsg msg,
+            List<BroadcastMsg> list, Map<String, Set<String>> matReplacementMap) {
         list = new ArrayList<>(list);
         boolean added = false;
+        String afosid = msg.getAfosid();
 
         List<Integer> mrdReplacements = Ints.asList(msg.getInputMessage()
                 .getMrdReplacements());
-        Set<String> matReplacements = new HashSet<>();
-        matReplacements.add(msg.getAfosid());
-        for (SuiteMessage smsg : suite.getSuiteMessages()) {
-            if (smsg.getAfosid().equals(msg.getAfosid())) {
-                for (MessageTypeReplacement rep : smsg.getMsgType()
-                        .getReplacementMsgs()) {
-                    matReplacements.add(rep.getReplaceMsgType().getAfosid());
-                }
-                break;
-            }
+        Set<String> matReplacements = matReplacementMap.get(afosid);
+        if (matReplacements == null) {
+            matReplacements = messageTypeDao
+                    .getReplacementAfosIdsForAfosId(afosid);
+            matReplacementMap.put(afosid, matReplacements);
         }
+        matReplacements.add(afosid);
 
         ListIterator<BroadcastMsg> messageIterator = list.listIterator();
         while (messageIterator.hasNext()) {
             BroadcastMsg potentialReplacee = messageIterator.next();
             int mrd = potentialReplacee.getInputMessage().getMrdId();
             String msgCodes = msg.getInputMessage().getAreaCodes();
-            boolean areaCodesEqual = msgCodes != null
+            boolean areaCodesEqual = (msgCodes != null)
                     && msgCodes.equals(potentialReplacee.getInputMessage()
                             .getAreaCodes());
             boolean mrdReplacement = mrdReplacements.contains(mrd);
-            boolean matReplacement = mrd == -1
+            boolean matReplacement = (mrd == -1)
                     && matReplacements.contains(potentialReplacee.getAfosid());
             matReplacement = matReplacement && areaCodesEqual;
             if (mrdReplacement || matReplacement) {
@@ -873,6 +885,14 @@ public class PlaylistManager implements IContextStateProcessor {
         this.transmitterGroupDao = transmitterGroupDao;
     }
 
+    public MessageTypeDao getMessageTypeDao() {
+        return messageTypeDao;
+    }
+
+    public void setMessageTypeDao(MessageTypeDao messageTypeDao) {
+        this.messageTypeDao = messageTypeDao;
+    }
+
     /**
      * Validate all DAOs are set correctly and throw an exception if any are not
      * set.
@@ -898,6 +918,9 @@ public class PlaylistManager implements IContextStateProcessor {
         } else if (transmitterGroupDao == null) {
             throw new IllegalStateException(
                     "TransmitterGroupDao has not been set on the PlaylistManager");
+        } else if (messageTypeDao == null) {
+            throw new IllegalStateException(
+                    "MessageTypeDao has not been set on the PlaylistManager");
         }
     }
 

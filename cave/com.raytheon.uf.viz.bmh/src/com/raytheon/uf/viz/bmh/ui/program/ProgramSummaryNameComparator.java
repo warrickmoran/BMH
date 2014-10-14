@@ -17,17 +17,32 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
+package com.raytheon.uf.viz.bmh.ui.program;
+
+import java.util.Comparator;
+
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
+
 /**
+ * Comparator for ProgramSummary sorting by name.
+ * 
+ * <pre>
+ * 
  * SOFTWARE HISTORY
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 28, 2014 3175       rjpeter     Initial creation.
- * Sep 16, 2014 3587       bkowal      Updated to reference the new program suite table.
- **/
-CREATE OR REPLACE VIEW bmh.program_message_view AS 
- SELECT p.name AS program, s.name AS suite, s.type, m.afosid
-   FROM bmh.program p, bmh.program_suite ps, bmh.suite s, bmh.suite_message sm, 
-    bmh.message_type m
-  WHERE p.id = ps.program_id AND s.id = ps.suite_id AND s.id = sm.suite_id AND sm.msgtype_id = m.id;
+ * Oct 13, 2014            rjpeter     Initial creation
+ * 
+ * </pre>
+ * 
+ * @author rjpeter
+ * @version 1.0
+ */
 
+public class ProgramSummaryNameComparator implements Comparator<ProgramSummary> {
+    @Override
+    public int compare(ProgramSummary p1, ProgramSummary p2) {
+        return p1.getName().compareTo(p2.getName());
+    }
+}

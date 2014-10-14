@@ -67,7 +67,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 22, 2014  #3490     lvenable    Added resize and minimum size.
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 09, 2014  #3646     rferrel     Convert programTable to GenerictTable.
- * 
+ * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author lvenable
@@ -86,7 +86,7 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
     private SuiteTable suiteTable;
 
     /** The selected message type. */
-    private MessageType msgType;
+    private final MessageType msgType;
 
     /** Programs associated with the message type. */
     List<Program> assocProgs = new ArrayList<Program>();
@@ -333,7 +333,8 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
         for (Suite s : allSuitesArray) {
             List<SuiteMessage> msgTypesInSuite = s.getSuiteMessages();
             for (SuiteMessage sm : msgTypesInSuite) {
-                if (sm.getMsgType().getAfosid().equals(msgType.getAfosid())) {
+                if (sm.getMsgTypeSummary().getAfosid()
+                        .equals(msgType.getAfosid())) {
                     assocSuites.add(s);
                     break;
                 }

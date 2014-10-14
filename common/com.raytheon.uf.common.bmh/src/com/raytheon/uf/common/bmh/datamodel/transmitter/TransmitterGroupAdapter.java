@@ -22,6 +22,7 @@ package com.raytheon.uf.common.bmh.datamodel.transmitter;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.serialization.IDeserializationContext;
 import com.raytheon.uf.common.serialization.ISerializationContext;
 import com.raytheon.uf.common.serialization.ISerializationTypeAdapter;
@@ -39,7 +40,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
  * Aug 6, 2014    3173     mpduff      Initial creation
  * Aug 24, 2014   3432     mpduff      Add min/max db values
  * Sep 4, 2014    3532     bkowal      Replace min/max db with a target
- * 
+ * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
  * </pre>
  * 
  * @author mpduff
@@ -104,6 +105,7 @@ public class TransmitterGroupAdapter implements
         serializer.writeObject(group.getTimeZone());
         serializer.writeObject(group.getTone());
         serializer.writeDouble(group.getAudioDBTarget());
+        serializer.writeObject(group.getProgram());
     }
 
     /**
@@ -126,6 +128,7 @@ public class TransmitterGroupAdapter implements
         tg.setTimeZone((String) deserializer.readObject());
         tg.setTone((Tone) deserializer.readObject());
         tg.setAudioDBTarget(deserializer.readDouble());
+        tg.setProgram((ProgramSummary) deserializer.readObject());
 
         return tg;
     }

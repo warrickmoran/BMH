@@ -34,6 +34,7 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
@@ -41,6 +42,7 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
@@ -67,7 +69,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Aug 25, 2014  3558      rjpeter     Added query for enabled transmitter groups.
  * Sep 4, 2014   3532      bkowal      Use a decibel target instead of a range.
  * Oct 07, 2014  3649      rferrel     addTrasmitter now replaces old entry with new.
- * 
+ * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
  * </pre>
  * 
  * @author rjpeter
@@ -132,6 +134,9 @@ public class TransmitterGroup {
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
     private Set<Transmitter> transmitters;
+
+    @ManyToOne
+    private ProgramSummary program;
 
     /**
      * @return the id
@@ -298,10 +303,19 @@ public class TransmitterGroup {
         return false;
     }
 
+    public ProgramSummary getProgram() {
+        return program;
+    }
+
+    public void setProgram(ProgramSummary program) {
+        this.program = program;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
+
         result = (prime * result) + ((name == null) ? 0 : name.hashCode());
         return result;
     }
@@ -318,12 +332,18 @@ public class TransmitterGroup {
             return false;
         }
         TransmitterGroup other = (TransmitterGroup) obj;
-        if (name == null) {
-            if (other.name != null) {
+        if (id != other.id) {
+            return false;
+        }
+        // Comparing new groups not in database.
+        if (id == 0) {
+            if (name == null) {
+                if (other.name != null) {
+                    return false;
+                }
+            } else if (!name.equals(other.name)) {
                 return false;
             }
-        } else if (!name.equals(other.name)) {
-            return false;
         }
         return true;
     }
@@ -353,6 +373,8 @@ public class TransmitterGroup {
         stringBuilder.append(this.position);
         stringBuilder.append(", audioDBTarget=");
         stringBuilder.append(this.audioDBTarget);
+        stringBuilder.append(", program=");
+        stringBuilder.append(this.program);
         stringBuilder.append(", transmitters=");
         stringBuilder.append(this.transmitters);
         stringBuilder.append("]");

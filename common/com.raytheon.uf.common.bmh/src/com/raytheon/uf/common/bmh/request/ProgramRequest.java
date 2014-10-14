@@ -40,7 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 18, 2014  3587     bkowal      Added GetProgramsWithTrigger
  * Oct 02, 2014  3649     rferrel     Added AddGroup.
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
- * 
+ * Oct 13, 2014  3654     rjpeter     Updated to use ProgramSummary.
  * </pre>
  * 
  * @author lvenable
@@ -50,7 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class ProgramRequest extends AbstractBMHServerRequest {
 
     public enum ProgramAction {
-        Save, ListNamesIDs, AllPrograms, ProgramSuites, Delete, GetProgramForTransmitterGroup, GetProgramsWithTrigger, AddGroup;
+        Save, AllProgramSummaries, AllPrograms, ProgramSuites, Delete, GetProgramForTransmitterGroup, GetProgramsWithTrigger, AddGroup;
     }
 
     @DynamicSerializeElement

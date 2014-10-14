@@ -50,7 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 11, 2014 3587       bkowal      Initial creation
  * Sep 29, 2014 3589       dgilling    Add forced field.
  * Oct 08, 2014 3687       bsteffen    Remove ProgramTrigger.
- * 
+ * Oct 13, 2014 3654       rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author bkowal
@@ -87,7 +87,7 @@ public class ProgramSuite implements Serializable {
             @JoinColumn(name = "program_id", referencedColumnName = "program_id"),
             @JoinColumn(name = "suite_id", referencedColumnName = "suite_id") }, inverseJoinColumns = @JoinColumn(name = "msgtype_id", referencedColumnName = "id"), uniqueConstraints = @UniqueConstraint(columnNames = {
             "program_id", "suite_id", "msgtype_id" }))
-    private Set<MessageType> triggers;
+    private Set<MessageTypeSummary> triggers;
 
     @Column
     @DynamicSerializeElement
@@ -104,26 +104,26 @@ public class ProgramSuite implements Serializable {
         this.triggers.clear();
     }
 
-    public void addTrigger(MessageType trigger) {
+    public void addTrigger(MessageTypeSummary trigger) {
         if (this.triggers == null) {
             this.triggers = new HashSet<>();
         }
         this.triggers.add(trigger);
     }
 
-    public void removeTrigger(MessageType trigger) {
+    public void removeTrigger(MessageTypeSummary trigger) {
         this.triggers.remove(trigger);
     }
 
-    public boolean isTrigger(MessageType msgType) {
-        if (this.triggers == null || this.triggers.isEmpty()) {
+    public boolean isTrigger(MessageTypeSummary msgType) {
+        if ((this.triggers == null) || this.triggers.isEmpty()) {
             return false;
         }
         return this.triggers.contains(msgType);
     }
 
     public boolean triggersExist() {
-        return this.triggers != null && this.triggers.isEmpty() == false;
+        return (this.triggers != null) && (this.triggers.isEmpty() == false);
     }
 
     /**
@@ -193,7 +193,7 @@ public class ProgramSuite implements Serializable {
     /**
      * @return the triggers
      */
-    public Set<MessageType> getTriggers() {
+    public Set<MessageTypeSummary> getTriggers() {
         return triggers;
     }
 
@@ -201,7 +201,7 @@ public class ProgramSuite implements Serializable {
      * @param triggers
      *            the triggers to set
      */
-    public void setTriggers(Set<MessageType> triggers) {
+    public void setTriggers(Set<MessageTypeSummary> triggers) {
         this.triggers = triggers;
     }
 

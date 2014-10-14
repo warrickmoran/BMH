@@ -33,6 +33,7 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -54,9 +55,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  *                                    will used the query passed it to retrieve the data.
  * Sep 16, 2014  3587     bkowal      Overrode persistAll. Added getProgramTriggersForSuite.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
- * Oct 02, 2014 #3649     rferrel     Added addGroup method.
- * Oct 08, 2014 #3687     bsteffen    Remove ProgramTrigger.
- * 
+ * Oct 02, 2014  3649     rferrel     Added addGroup method.
+ * Oct 08, 2014  3687     bsteffen    Remove ProgramTrigger.
+ * Oct 13, 2014  3654     rjpeter     Updated to use ProgramSummary.
  * </pre>
  * 
  * @author bsteffen
@@ -140,7 +141,7 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
                     }
                 });
 
-        if (results == null || results.isEmpty()) {
+        if ((results == null) || results.isEmpty()) {
             return null;
         }
 
@@ -190,20 +191,20 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
     }
 
     /**
-     * Get a list of programs populated with program name and IDs.
+     * Get a list of program summaries.
      * 
-     * @return A list of programs populated with program name and IDs.
+     * @return A list of program summaries.
      */
-    public List<Program> getProgramNameIDs() {
-        List<Object[]> objectList = getProgramByQuery(Program.GET_PROGRAM_NAMES_IDS);
-
-        if (objectList == null) {
-            return Collections.emptyList();
-        }
-
-        List<Program> programList = createProgramNameIDs(objectList);
-
-        return programList;
+    public List<ProgramSummary> getProgramSummaries() {
+        return txTemplate
+                .execute(new TransactionCallback<List<ProgramSummary>>() {
+                    @Override
+                    public List<ProgramSummary> doInTransaction(
+                            TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht.loadAll(ProgramSummary.class);
+                    }
+                });
     }
 
     /**
@@ -298,13 +299,13 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
                     }
                 });
 
-        if (programs == null || programs.isEmpty()) {
+        if ((programs == null) || programs.isEmpty()) {
             return null;
         }
 
         List<Program> triggeredPrograms = new ArrayList<>(programs.size());
         for (Object object : programs) {
-            if (object instanceof Object[] == false) {
+            if ((object instanceof Object[]) == false) {
                 continue;
             }
 
@@ -313,8 +314,8 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
                 continue;
             }
 
-            if (objects[0] instanceof Integer == false
-                    || objects[1] instanceof String == false) {
+            if (((objects[0] instanceof Integer) == false)
+                    || ((objects[1] instanceof String) == false)) {
                 continue;
             }
 
@@ -325,25 +326,6 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         }
 
         return triggeredPrograms;
-    }
-
-    /**
-     * Get a list of programs populated with program name and IDs.
-     * 
-     * @param objectList
-     *            Object list.
-     * @return A list of programs populated with program name and IDs.
-     */
-    private List<Program> createProgramNameIDs(List<Object[]> objectList) {
-        List<Program> programList = new ArrayList<Program>(objectList.size());
-        for (Object[] objArray : objectList) {
-            Program p = new Program();
-            p.setName((String) objArray[0]);
-            p.setId((Integer) objArray[1]);
-            programList.add(p);
-        }
-
-        return programList;
     }
 
     @Override

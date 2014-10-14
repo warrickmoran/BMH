@@ -38,6 +38,7 @@ import java.util.regex.Pattern;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3175       rjpeter     Initial creation.
+ * Oct 13, 2014 3654       rjpeter     Fixed words running together on line break.
  * </pre>
  * 
  * @author rjpeter
@@ -302,6 +303,11 @@ public class AsciiFileParser implements Closeable {
                 if (next >= 0) {
                     if (next > 0) {
                         // append text, ignore quote
+                        if ((field.length() > 1)
+                                || ((field.length() == 1) && (field.charAt(0) != '>'))) {
+                            field.append(' ');
+                        }
+
                         field.append(currentLine.substring(currentLineIndex,
                                 next));
                     }
@@ -310,6 +316,11 @@ public class AsciiFileParser implements Closeable {
                     currentLineIndex = next + 1;
                     fieldDone = true;
                 } else {
+                    if ((field.length() > 1)
+                            || ((field.length() == 1) && (field.charAt(0) != '>'))) {
+                        field.append(' ');
+                    }
+
                     field.append(currentLine.substring(currentLineIndex));
                     if (!goToNextLineInSection()) {
                         throw new ParseException(

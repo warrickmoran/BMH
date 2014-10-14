@@ -65,8 +65,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 15, 2014  #3387     lvenable    Implemented abstract BMH dialog.
  * Aug 15, 2014   3411     mpduff      populated.
  * Sep 11, 2014   3355     mpduff      Post demo cleanup (change label)
- * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * 
+ * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author lvenable
@@ -487,8 +487,9 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         Set<MessageTypeReplacement> set = new HashSet<>();
         for (TableRowData trd : rows) {
             MessageTypeReplacement replacement = new MessageTypeReplacement();
-            replacement.setMsgType(selectedMessageType);
-            replacement.setReplaceMsgType((MessageType) trd.getData());
+            replacement.setMsgType(selectedMessageType.getSummary());
+            replacement.setReplaceMsgType(((MessageType) trd.getData())
+                    .getSummary());
             set.add(replacement);
         }
 

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -35,9 +36,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 5, 2014  #3490      lvenable     Initial creation
- * Aug 17, 2014 #3490     lvenable      Added addProgram method.
- * 
+ * Aug 5, 2014  #3490      lvenable    Initial creation
+ * Aug 17, 2014 #3490      lvenable    Added addProgram method.
+ * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
  * </pre>
  * 
  * @author lvenable
@@ -48,6 +49,9 @@ public class ProgramResponse {
 
     @DynamicSerializeElement
     private List<Program> programList;
+
+    @DynamicSerializeElement
+    private List<ProgramSummary> programSummaryList;
 
     /**
      * Set the list of programs.
@@ -79,4 +83,13 @@ public class ProgramResponse {
         }
         programList.add(p);
     }
+
+    public List<ProgramSummary> getProgramSummaryList() {
+        return programSummaryList;
+    }
+
+    public void setProgramSummaryList(List<ProgramSummary> programSummaryList) {
+        this.programSummaryList = programSummaryList;
+    }
+
 }

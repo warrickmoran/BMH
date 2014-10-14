@@ -32,6 +32,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
@@ -77,7 +78,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Oct 08, 2014  3687     bsteffen    Initial creation.
- * 
+ * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author bsteffen
@@ -93,7 +94,7 @@ public class BmhDatabaseCopier {
 
     private Map<Integer, Zone> zoneMap;
 
-    private Map<Integer, MessageType> messageTypeMap;
+    private Map<Integer, MessageTypeSummary> messageTypeMap;
 
     private Map<Integer, Suite> suiteMap;
 
@@ -136,7 +137,7 @@ public class BmhDatabaseCopier {
 
     private void clearTable(AbstractBMHDao<?, ?> dao) {
         List<?> all = dao.getAll();
-        if (all != null && !all.isEmpty()) {
+        if ((all != null) && !all.isEmpty()) {
             dao.deleteAll(all);
         }
     }
@@ -220,7 +221,7 @@ public class BmhDatabaseCopier {
         MessageTypeDao opDao = new MessageTypeDao(true);
         MessageTypeDao prDao = new MessageTypeDao(false);
         List<MessageType> messageTypes = opDao.getAll();
-        Map<Integer, MessageType> messageTypeMap = new HashMap<>(
+        Map<Integer, MessageTypeSummary> messageTypeMap = new HashMap<>(
                 messageTypes.size(), 1.0f);
         for (MessageType messageType : messageTypes) {
             Set<Transmitter> transmitters = new HashSet<>(messageType
@@ -249,7 +250,7 @@ public class BmhDatabaseCopier {
                         .getId()));
             }
             messageType.setDefaultTransmitterGroups(transmitterGroups);
-            messageTypeMap.put(messageType.getId(), messageType);
+            messageTypeMap.put(messageType.getId(), messageType.getSummary());
             messageType.setId(0);
         }
         prDao.persistAll(messageTypes);
@@ -276,8 +277,8 @@ public class BmhDatabaseCopier {
         Map<Integer, Suite> suiteMap = new HashMap<>(suites.size(), 1.0f);
         for (Suite suite : suites) {
             for (SuiteMessage suiteMessage : suite.getSuiteMessages()) {
-                suiteMessage.setMsgType(messageTypeMap.get(suiteMessage
-                        .getMsgType().getId()));
+                suiteMessage.setMsgTypeSummary(messageTypeMap.get(suiteMessage
+                        .getMsgTypeSummary().getId()));
             }
             suiteMap.put(suite.getId(), suite);
             suite.setId(0);
@@ -294,9 +295,10 @@ public class BmhDatabaseCopier {
             for (ProgramSuite programSuite : program.getProgramSuites()) {
                 programSuite.setSuite(suiteMap.get(programSuite.getSuite()
                         .getId()));
-                Set<MessageType> messageTypes = new HashSet<>(programSuite
-                        .getTriggers().size(), 1.0f);
-                for (MessageType messageType : programSuite.getTriggers()) {
+                Set<MessageTypeSummary> messageTypes = new HashSet<>(
+                        programSuite.getTriggers().size(), 1.0f);
+                for (MessageTypeSummary messageType : programSuite
+                        .getTriggers()) {
                     messageTypes.add(messageTypeMap.get(messageType.getId()));
                 }
                 programSuite.setTriggers(messageTypes);

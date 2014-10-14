@@ -69,7 +69,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                    trigger.
  * Oct 01, 2014 #3589     dgilling    Add getProgramSuite().
  * Oct 08, 2014 #3687     bsteffen    Remove ProgramTrigger.
- * 
+ * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary and ProgramSummary.
  * </pre>
  * 
  * @author rjpeter
@@ -104,7 +104,7 @@ public class Program {
 
     public static final String GET_GROUPS_FOR_MSG_TYPE = "getGroupsForMsgType";
 
-    protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY = "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.programSuites ps inner join ps.suite s inner join s.suiteMessages sm inner join sm.msgType mt WHERE mt.afosid = :afosid";
+    protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY = "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.programSuites ps inner join ps.suite s inner join s.suiteMessages sm inner join sm.msgTypeSummary mt WHERE mt.afosid = :afosid";
 
     public static final String GET_PROGRAM_SUITES = "getProgramsAndSuites";
 
@@ -169,8 +169,8 @@ public class Program {
          * Look for changes that were made directly to the program suites list
          * via pass-by-reference.
          */
-        if (this.suiteToProgramSuiteMap.size() != this.programSuites.size()
-                || this.suiteToProgramSuiteMap.containsKey(suite) == false) {
+        if ((this.suiteToProgramSuiteMap.size() != this.programSuites.size())
+                || (this.suiteToProgramSuiteMap.containsKey(suite) == false)) {
             for (ProgramSuite pg : this.programSuites) {
                 this.suiteToProgramSuiteMap.put(pg.getSuite(), pg);
             }
@@ -203,7 +203,7 @@ public class Program {
     /*
      * BEGIN: Convenience methods for interacting with triggers
      */
-    public boolean isTriggerMsgType(Suite suite, MessageType messageType) {
+    public boolean isTriggerMsgType(Suite suite, MessageTypeSummary messageType) {
         this.checkSuiteLookupMap(suite);
         if (suite.getType() == SuiteType.GENERAL) {
             /*
@@ -232,12 +232,12 @@ public class Program {
         this.suiteToProgramSuiteMap.get(suite).clearTriggers();
     }
 
-    public void addTriggerMsgType(Suite suite, MessageType messageType) {
+    public void addTriggerMsgType(Suite suite, MessageTypeSummary messageType) {
         this.checkSuiteLookupMap(suite);
         this.suiteToProgramSuiteMap.get(suite).addTrigger(messageType);
     }
 
-    public void removeTriggerMsgType(Suite suite, MessageType msgType) {
+    public void removeTriggerMsgType(Suite suite, MessageTypeSummary msgType) {
         this.checkSuiteLookupMap(suite);
         if (this.isTriggerMsgType(suite, msgType) == false) {
             return;
@@ -387,5 +387,9 @@ public class Program {
     public ProgramSuite getProgramSuite(final Suite suite) {
         checkSuiteLookupMap(suite);
         return suiteToProgramSuiteMap.get(suite);
+    }
+
+    public ProgramSummary getProgramSummary() {
+        return new ProgramSummary(this);
     }
 }

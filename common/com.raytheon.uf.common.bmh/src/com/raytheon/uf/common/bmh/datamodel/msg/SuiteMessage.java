@@ -22,6 +22,7 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
+import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.MapsId;
 import javax.persistence.Table;
@@ -43,9 +44,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation.
  * Aug 05, 2014 3175       rjpeter     Fixed mapping.
- * Aug 17, 2014 #3490     lvenable    Added batch size.
+ * Aug 17, 2014 #3490      lvenable    Added batch size.
  * Sep 11, 2014 #3587      bkowal      Remove trigger.
- * 
+ * Oct 13, 2014 3654       rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author rjpeter
@@ -67,8 +68,9 @@ public class SuiteMessage {
 
     @ManyToOne(optional = false)
     @MapsId("msgTypeId")
+    @JoinColumn(name = "msgtype_id")
     @DynamicSerializeElement
-    private MessageType msgType;
+    private MessageTypeSummary msgTypeSummary;
 
     @Column(nullable = false)
     @DynamicSerializeElement
@@ -95,17 +97,17 @@ public class SuiteMessage {
         id.setSuiteId(suite != null ? suite.getId() : 0);
     }
 
-    public MessageType getMsgType() {
-        return msgType;
+    public MessageTypeSummary getMsgTypeSummary() {
+        return msgTypeSummary;
     }
 
-    public void setMsgType(MessageType msgType) {
-        this.msgType = msgType;
+    public void setMsgTypeSummary(MessageTypeSummary msgTypeSummary) {
+        this.msgTypeSummary = msgTypeSummary;
         if (id == null) {
             id = new SuiteMessagePk();
         }
 
-        id.setMsgTypeId(msgType != null ? msgType.getId() : 0);
+        id.setMsgTypeId(msgTypeSummary != null ? msgTypeSummary.getId() : 0);
     }
 
     public int getPosition() {
@@ -123,8 +125,8 @@ public class SuiteMessage {
      * @return
      */
     public String getAfosid() {
-        if (msgType != null) {
-            return msgType.getAfosid();
+        if (msgTypeSummary != null) {
+            return msgTypeSummary.getAfosid();
         }
 
         return null;
@@ -135,7 +137,7 @@ public class SuiteMessage {
         final int prime = 31;
         int result = 1;
         result = (prime * result)
-                + ((msgType == null) ? 0 : msgType.hashCode());
+                + ((msgTypeSummary == null) ? 0 : msgTypeSummary.hashCode());
         result = (prime * result) + ((suite == null) ? 0 : suite.hashCode());
         return result;
     }
@@ -152,11 +154,11 @@ public class SuiteMessage {
             return false;
         }
         SuiteMessage other = (SuiteMessage) obj;
-        if (msgType == null) {
-            if (other.msgType != null) {
+        if (msgTypeSummary == null) {
+            if (other.msgTypeSummary != null) {
                 return false;
             }
-        } else if (!msgType.equals(other.msgType)) {
+        } else if (!msgTypeSummary.equals(other.msgTypeSummary)) {
             return false;
         }
         if (suite == null) {

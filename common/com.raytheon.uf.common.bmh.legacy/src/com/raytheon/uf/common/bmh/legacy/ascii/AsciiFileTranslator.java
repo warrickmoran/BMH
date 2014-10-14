@@ -41,6 +41,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
@@ -74,7 +75,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Sep 25, 2014 3620       bsteffen    Add seconds to periodicity and duration.
  * Oct 07, 2014 3642       bkowal      Set a default time message preamble for {@link TransmitterLanguage}
  * Oct 08, 2014 3687       bsteffen    Remove ProgramTrigger.
- * 
+ * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author rjpeter
@@ -812,8 +813,8 @@ public class AsciiFileTranslator {
                 }
 
                 MessageTypeReplacement replacement = new MessageTypeReplacement();
-                replacement.setMsgType(current);
-                replacement.setReplaceMsgType(replaces);
+                replacement.setMsgType(current.getSummary());
+                replacement.setReplaceMsgType(replaces.getSummary());
 
                 bmhData.addReplacementMsg(replacement);
             }
@@ -912,7 +913,7 @@ public class AsciiFileTranslator {
                     for (MessageType msgType : group.getMessageTypes()) {
                         if (!msgTypesInSuite.contains(msgType)) {
                             SuiteMessage msg = new SuiteMessage();
-                            msg.setMsgType(msgType);
+                            msg.setMsgTypeSummary(msgType.getSummary());
                             suite.addSuiteMessage(msg);
                             msgTypesInSuite.add(msgType);
                         }
@@ -930,7 +931,7 @@ public class AsciiFileTranslator {
                 if (msgType != null) {
                     if (!msgTypesInSuite.contains(msgType)) {
                         SuiteMessage msg = new SuiteMessage();
-                        msg.setMsgType(msgType);
+                        msg.setMsgTypeSummary(msgType.getSummary());
                         suite.addSuiteMessage(msg);
                         msgTypesInSuite.add(msgType);
                     }
@@ -971,7 +972,7 @@ public class AsciiFileTranslator {
         List<String> triggers = new ArrayList<>();
 
         // optimized look up for triggers
-        Map<MessageType, SuiteMessage> suiteMessages = new HashMap<>();
+        Map<MessageTypeSummary, SuiteMessage> suiteMessages = new HashMap<>();
 
         // validation set for suite types
         Set<String> suiteTypes = new HashSet<>();
@@ -1018,7 +1019,7 @@ public class AsciiFileTranslator {
                             // optimize look up of messages for triggers
                             for (SuiteMessage suiteMsg : suite
                                     .getSuiteMessages()) {
-                                suiteMessages.put(suiteMsg.getMsgType(),
+                                suiteMessages.put(suiteMsg.getMsgTypeSummary(),
                                         suiteMsg);
                             }
                         }
@@ -1042,7 +1043,8 @@ public class AsciiFileTranslator {
                     MessageGroupData group = msgGroups.get(triggerGroup);
                     if (group != null) {
                         for (MessageType msgType : group.getMessageTypes()) {
-                            SuiteMessage suiteMsg = suiteMessages.get(msgType);
+                            SuiteMessage suiteMsg = suiteMessages.get(msgType
+                                    .getSummary());
                             if (suiteMsg != null) {
                                 triggers.add(triggerGroup);
                             } else {
@@ -1065,7 +1067,8 @@ public class AsciiFileTranslator {
                 } else {
                     MessageType msgType = msgTypes.get(field);
                     if (msgType != null) {
-                        SuiteMessage suiteMsg = suiteMessages.get(msgType);
+                        SuiteMessage suiteMsg = suiteMessages.get(msgType
+                                .getSummary());
                         if (suiteMsg != null) {
                             triggers.add(field);
                         } else {
@@ -1169,7 +1172,7 @@ public class AsciiFileTranslator {
         // determine if there are any triggers associated with the suite.
         if (!SuiteType.GENERAL.equals(suite.getType())) {
             for (String trigger : triggers) {
-                programSuite.addTrigger(msgTypes.get(trigger));
+                programSuite.addTrigger(msgTypes.get(trigger).getSummary());
             }
         }
     }

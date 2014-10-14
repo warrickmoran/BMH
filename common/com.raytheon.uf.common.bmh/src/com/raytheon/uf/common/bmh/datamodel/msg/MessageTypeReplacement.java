@@ -58,13 +58,13 @@ public class MessageTypeReplacement {
 
     @ManyToOne(optional = false)
     @MapsId("msgId")
-    // No dynamic serialize due to bi-directional relationship
-    private MessageType msgType;
+    @DynamicSerializeElement
+    private MessageTypeSummary msgType;
 
     @ManyToOne(optional = false)
     @MapsId("replaceId")
     @DynamicSerializeElement
-    private MessageType replaceMsgType;
+    private MessageTypeSummary replaceMsgType;
 
     /**
      * @return the id
@@ -84,7 +84,7 @@ public class MessageTypeReplacement {
     /**
      * @return the msgType
      */
-    public MessageType getMsgType() {
+    public MessageTypeSummary getMsgType() {
         return msgType;
     }
 
@@ -92,7 +92,7 @@ public class MessageTypeReplacement {
      * @param msgType
      *            the msgType to set
      */
-    public void setMsgType(MessageType msgType) {
+    public void setMsgType(MessageTypeSummary msgType) {
         this.msgType = msgType;
         if (id == null) {
             id = new MessageTypeReplacementPK();
@@ -104,7 +104,7 @@ public class MessageTypeReplacement {
     /**
      * @return the replaceMsgType
      */
-    public MessageType getReplaceMsgType() {
+    public MessageTypeSummary getReplaceMsgType() {
         return replaceMsgType;
     }
 
@@ -112,7 +112,7 @@ public class MessageTypeReplacement {
      * @param replaceMsgType
      *            the replaceMsgType to set
      */
-    public void setReplaceMsgType(MessageType replaceMsgType) {
+    public void setReplaceMsgType(MessageTypeSummary replaceMsgType) {
         this.replaceMsgType = replaceMsgType;
         if (id == null) {
             id = new MessageTypeReplacementPK();
@@ -130,8 +130,9 @@ public class MessageTypeReplacement {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((msgType == null) ? 0 : msgType.hashCode());
-        result = prime * result
+        result = (prime * result)
+                + ((msgType == null) ? 0 : msgType.hashCode());
+        result = (prime * result)
                 + ((replaceMsgType == null) ? 0 : replaceMsgType.hashCode());
         return result;
     }

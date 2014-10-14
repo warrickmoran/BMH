@@ -75,20 +75,20 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 20, 2014  #3174      lvenable     Initial creation
- * Aug 01, 2014  #3479      lvenable    Added additional capability for managing the controls.
- * Aug 03, 2014  #3479      lvenable    Updated code for validator changes.
- * Aug 06, 2014  #3490      lvenable    Update to populate controls with data from the database.
- * Aug 8,  2014  #3490      lvenable    Updated populate table method call.
- * Aug 12, 2014  #3490      lvenable    Updated to use data from the database.
- * Aug 15, 2014  #3490      lvenable    Updated to use data managers, added rename capability.
- * Aug 21, 2014  #3490      lvenable    Updated for program changes.
- * Aug 22, 2014  #3490      lvenable    Added input dialog flag.
- * Aug 23, 2014  #3490      lvenable    Added capability for add transmitters.
- * Aug 25, 2014  #3490      lvenable    Update suite config group when the program changes.
- * Sep 16, 2014  #3587      bkowal      Updated to only allow trigger assignment for {Program, Suite}
- * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * 
+ * Jul 20, 2014  #3174     lvenable    Initial creation
+ * Aug 01, 2014  #3479     lvenable    Added additional capability for managing the controls.
+ * Aug 03, 2014  #3479     lvenable    Updated code for validator changes.
+ * Aug 06, 2014  #3490     lvenable    Update to populate controls with data from the database.
+ * Aug 8,  2014  #3490     lvenable    Updated populate table method call.
+ * Aug 12, 2014  #3490     lvenable    Updated to use data from the database.
+ * Aug 15, 2014  #3490     lvenable    Updated to use data managers, added rename capability.
+ * Aug 21, 2014  #3490     lvenable    Updated for program changes.
+ * Aug 22, 2014  #3490     lvenable    Added input dialog flag.
+ * Aug 23, 2014  #3490     lvenable    Added capability for add transmitters.
+ * Aug 25, 2014  #3490     lvenable    Update suite config group when the program changes.
+ * Sep 16, 2014  #3587     bkowal      Updated to only allow trigger assignment for {Program, Suite}
+ * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author lvenable
@@ -131,7 +131,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     private Group messageTypeGroup;
 
     /** List of program controls. */
-    private List<Control> programControls = new ArrayList<Control>();
+    private final List<Control> programControls = new ArrayList<Control>();
 
     /** List of program and associated data. */
     private List<Program> programsArray = new ArrayList<Program>();
@@ -146,13 +146,13 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     private Program selectedProgram = null;
 
     /** List of transmitters for the program. */
-    private List<Transmitter> transmitterList = new ArrayList<Transmitter>();
+    private final List<Transmitter> transmitterList = new ArrayList<Transmitter>();
 
     /** Program data manager. */
-    private ProgramDataManager programDataMgr = new ProgramDataManager();
+    private final ProgramDataManager programDataMgr = new ProgramDataManager();
 
     /** Set of existing program names. */
-    private Set<String> existingProgramNames = new HashSet<String>();
+    private final Set<String> existingProgramNames = new HashSet<String>();
 
     /** Custom tool tip. */
     private CustomToolTip transmitterToolTip = null;
@@ -258,8 +258,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                 cnp.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
-                        if (returnValue != null
-                                && returnValue instanceof String) {
+                        if ((returnValue != null)
+                                && (returnValue instanceof String)) {
                             handleNewProgram((String) returnValue);
                         }
                     }
@@ -292,8 +292,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                 inputDlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
-                        if (returnValue != null
-                                && returnValue instanceof String) {
+                        if ((returnValue != null)
+                                && (returnValue instanceof String)) {
                             handleProgramRename((String) returnValue);
                         }
                     }
@@ -362,8 +362,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                 atd.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
-                        if (returnValue != null
-                                && returnValue instanceof List<?>) {
+                        if ((returnValue != null)
+                                && (returnValue instanceof List<?>)) {
 
                             List<TransmitterGroup> selectedTransmitters = (List<TransmitterGroup>) returnValue;
 
@@ -505,8 +505,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      * Update the suite group text with the currently selected program name.
      */
     private void updateSuiteGroupText() {
-        if (programCbo.getItemCount() > 0
-                && programCbo.getSelectionIndex() >= 0) {
+        if ((programCbo.getItemCount() > 0)
+                && (programCbo.getSelectionIndex() >= 0)) {
             suiteConfigGroup.updateSuiteGroupText(suiteGroupTextPrefix
                     + programCbo.getItem(programCbo.getSelectionIndex()));
         } else {
@@ -664,7 +664,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     private void handleSuiteDeleted(Suite suite) {
 
         // Safety check in case the selected suite is null;
-        if (suite == null || selectedProgram == null) {
+        if ((suite == null) || (selectedProgram == null)) {
             return;
         }
 
@@ -963,10 +963,13 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
             TableRowData trd = new TableRowData();
 
-            trd.addTableCellData(new TableCellData(sm.getMsgType().getAfosid()));
-            trd.addTableCellData(new TableCellData(sm.getMsgType().getTitle()));
+            trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()
+                    .getAfosid()));
+            trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()
+                    .getTitle()));
             trd.addTableCellData(new TableCellData(this.selectedProgram
-                    .isTriggerMsgType(suite, sm.getMsgType()) ? "Yes" : "No"));
+                    .isTriggerMsgType(suite, sm.getMsgTypeSummary()) ? "Yes"
+                    : "No"));
 
             msgTypeTableData.addDataRow(trd);
         }

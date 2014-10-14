@@ -65,7 +65,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 21, 2014 #3490     lvenable    Remove cascade all.
  * Sep 18, 2014 #3587     bkowal      Added a transient to track messages types associated
  *                                    with triggers that are no longer associated with the suite.
- * 
+ * Oct 13, 2014 3654       rjpeter    Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author rjpeter
@@ -90,7 +90,7 @@ public class Suite {
 
     public static final String GET_SUITE_MSG_TYPES = "getSuiteMessageTypes";
 
-    protected static final String GET_SUITE_MSG_TYPES_QUERY = "select s.id, s.name, s.type, mt.afosid FROM Suite s inner join s.suiteMessages sm inner join sm.msgType mt";
+    protected static final String GET_SUITE_MSG_TYPES_QUERY = "select s.id, s.name, s.type, mt.afosid FROM Suite s inner join s.suiteMessages sm inner join sm.msgTypeSummary mt";
 
     static final String GEN = "Suite Id Generator";
 

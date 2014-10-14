@@ -58,15 +58,15 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 21, 2014  #3174     lvenable     Initial creation
- * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
- * Aug 12, 2014  #3490     lvenable     Update to use data from the database.
- * Aug 15, 2014  #3490     lvenable     Reworked to use the data manager.
- * Aug 22, 2014  #3490     lvenable     Added resize and minimum size.
- * Sep 16, 2014  #3587     bkowal       Updated to only allow trigger assignment for {Program, Suite}
- * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * Oct 09, 2014  #3646     rferrel      Converted programTable to GenericTable.
- * 
+ * Jul 21, 2014  #3174     lvenable    Initial creation
+ * Jul 24, 2014  #3433     lvenable    Updated for Suite manager
+ * Aug 12, 2014  #3490     lvenable    Update to use data from the database.
+ * Aug 15, 2014  #3490     lvenable    Reworked to use the data manager.
+ * Aug 22, 2014  #3490     lvenable    Added resize and minimum size.
+ * Sep 16, 2014  #3587     bkowal      Updated to only allow trigger assignment for {Program, Suite}
+ * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 09, 2014  #3646     rferrel     Converted programTable to GenericTable.
+ * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author lvenable
@@ -320,8 +320,10 @@ public class ViewSuiteDlg extends CaveSWTDialog {
         for (SuiteMessage sm : suiteMsgMap.values()) {
             TableRowData trd = new TableRowData();
 
-            trd.addTableCellData(new TableCellData(sm.getMsgType().getAfosid()));
-            trd.addTableCellData(new TableCellData(sm.getMsgType().getTitle()));
+            trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()
+                    .getAfosid()));
+            trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()
+                    .getTitle()));
 
             msgTypeTableData.addDataRow(trd);
         }

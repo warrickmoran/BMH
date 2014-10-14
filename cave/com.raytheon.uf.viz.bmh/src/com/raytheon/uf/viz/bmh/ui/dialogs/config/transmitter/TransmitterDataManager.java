@@ -22,7 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
-import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.DacRequest;
@@ -48,7 +48,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Jul 30, 2014    3173    mpduff      Initial creation
  * Aug 18, 2014    3173    mpduff      Added getPrograms()
  * Aug 27, 2014    3432    mpduff      Added dac methods
- * 
+ * Oct 13, 2014    3654    rjpeter     Updated to use ProgramSummary.
  * </pre>
  * 
  * @author mpduff
@@ -198,19 +198,18 @@ public class TransmitterDataManager {
     }
 
     /**
-     * Get all {@link Program}s. This only populates the name and id fields for
-     * each program.
+     * Get all {@link ProgramSummary}s.
      * 
-     * @return List of Programs
+     * @return List of ProgramSummary
      * @throws Exception
      */
-    public List<Program> getPrograms() throws Exception {
+    public List<ProgramSummary> getProgramSummaries() throws Exception {
         ProgramRequest req = new ProgramRequest();
-        req.setAction(ProgramAction.ListNamesIDs);
+        req.setAction(ProgramAction.AllProgramSummaries);
 
         ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(req);
 
-        return response.getProgramList();
+        return response.getProgramSummaryList();
     }
 
     /**

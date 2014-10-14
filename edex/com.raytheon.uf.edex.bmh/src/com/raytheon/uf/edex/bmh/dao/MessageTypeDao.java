@@ -21,7 +21,9 @@ package com.raytheon.uf.edex.bmh.dao;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.orm.hibernate3.HibernateTemplate;
 import org.springframework.transaction.TransactionStatus;
@@ -29,6 +31,7 @@ import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 
 /**
  * BMH DAO for {@link MessageType}.
@@ -46,7 +49,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
  *                                    Afos ID and title.
  * Sep 19, 2014  3611     lvenable    Added emergency override.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
- * 
+ * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author bkowal
@@ -111,6 +114,7 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
 
         List<Object[]> objectList = txTemplate
                 .execute(new TransactionCallback<List<Object[]>>() {
+                    @SuppressWarnings("unchecked")
                     @Override
                     public List<Object[]> doInTransaction(
                             TransactionStatus status) {
@@ -201,6 +205,13 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         return types;
     }
 
+    /**
+     * Returns a list of {@link MessageType} for the specified
+     * {@link Designation}.
+     * 
+     * @param designation
+     * @return
+     */
     public List<MessageType> getMessageTypeForDesignation(
             final Designation designation) {
         List<?> types = txTemplate.execute(new TransactionCallback<List<?>>() {
@@ -214,7 +225,7 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
             }
         });
 
-        if (types == null || types.isEmpty()) {
+        if ((types == null) || types.isEmpty()) {
             return null;
         }
 
@@ -226,5 +237,35 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         }
 
         return messageTypes;
+    }
+
+    /**
+     * Returns a set of replacement afos ids for a given afos id.
+     * 
+     * @param afosId
+     * @return
+     */
+    public Set<String> getReplacementAfosIdsForAfosId(final String afosId) {
+        List<MessageTypeSummary> msgTypes = txTemplate
+                .execute(new TransactionCallback<List<MessageTypeSummary>>() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public List<MessageTypeSummary> doInTransaction(
+                            TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht.findByNamedQuery(
+                                MessageType.GET_REPLACEMENT_AFOSIDS, afosId);
+                    }
+                });
+        Set<String> rval = new HashSet<>(
+                msgTypes == null ? 1 : msgTypes.size(), 1);
+
+        if (msgTypes != null) {
+            for (MessageTypeSummary msgType : msgTypes) {
+                rval.add(msgType.getAfosid());
+            }
+        }
+
+        return rval;
     }
 }

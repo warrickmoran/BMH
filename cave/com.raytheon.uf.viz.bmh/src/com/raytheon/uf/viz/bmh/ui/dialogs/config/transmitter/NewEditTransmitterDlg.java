@@ -45,7 +45,7 @@ import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
-import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -57,8 +57,7 @@ import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
-import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
-import com.raytheon.uf.viz.bmh.ui.program.ProgramNameComparator;
+import com.raytheon.uf.viz.bmh.ui.program.ProgramSummaryNameComparator;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -77,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 25, 2014     3558   rjpeter     Fix saving groups.
  * Aug 28, 2014     3432   mpduff      Added Dac info from db.
  * Sep 23, 2014     3649   rferrel     Changes to handle all types of groups.
+ * Oct 13, 2014     3654   rjpeter     Updated to use ProgramSummary.
  * </pre>
  * 
  * @author mpduff
@@ -132,15 +132,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     /** The transmitter group being created/edited */
     private TransmitterGroup group;
 
-    /** The program the transmitter group originally belonged to */
-    private Program origProgram;
-
     /** The action type */
     private final TransmitterEditType type;
 
     private final TransmitterDataManager dataManager;
-
-    private final ProgramDataManager programManager;
 
     private List<TransmitterGroup> groupList;
 
@@ -222,7 +217,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         this.callback = callback;
         this.statusChange = statusChange;
         dataManager = new TransmitterDataManager();
-        programManager = new ProgramDataManager();
 
         if (group != null) {
             prevIsStandalone = group.isStandalone();
@@ -894,13 +888,11 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             /*
              * This programList only has id and name populated for each program.
              */
-            List<Program> programList = dataManager.getPrograms();
-            Collections.sort(programList, new ProgramNameComparator());
+            List<ProgramSummary> programList = dataManager
+                    .getProgramSummaries();
+            Collections.sort(programList, new ProgramSummaryNameComparator());
 
-            /*
-             * Fully populated Program. Only need name, id and group list.
-             */
-            origProgram = programManager.getProgramForTransmitterGroup(group);
+            ProgramSummary origProgram = group.getProgram();
             int groupProgramId = -1;
             if (origProgram != null) {
                 groupProgramId = origProgram.getId();
@@ -909,7 +901,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             String[] programs = new String[programList.size()];
             int select = -1;
             int i = 0;
-            for (Program p : programList) {
+            for (ProgramSummary p : programList) {
                 programs[i] = p.getName();
                 if (groupProgramId == p.getId()) {
                     select = i;
@@ -1010,6 +1002,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             if ((type == TransmitterEditType.NEW_TRANSMITTER)
                     || (type == TransmitterEditType.EDIT_TRANSMITTER)) {
                 this.previousTransmitter = new Transmitter(transmitter);
+
                 if (validateTransmitter()) {
                     if (!prevIsStandalone
                             && STANDALONE.equals(grpNameCbo.getText())) {
@@ -1031,11 +1024,33 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                         saveGroup = true;
                     }
 
+                    if (programCombo.getSelectionIndex() > 0) {
+                        @SuppressWarnings("unchecked")
+                        List<ProgramSummary> progList = (List<ProgramSummary>) programCombo
+                                .getData();
+                        ProgramSummary p = progList.get(programCombo
+                                .getSelectionIndex() - 1);
+                        ProgramSummary origProgram = group.getProgram();
+
+                        if ((origProgram == null)
+                                || (p.getId() != origProgram.getId())) {
+                            group.setProgram(p);
+                            saveGroup = true;
+                        }
+                    } else if (group.getProgram() != null) {
+                        /*
+                         * None selected and a program used to assigned
+                         */
+                        group.setProgram(null);
+                        saveGroup = true;
+                    }
+
                     Integer selectedPort = null;
                     if (this.dacPortCbo.getSelectionIndex() > 0) {
                         selectedPort = Integer.parseInt(this.dacPortCbo
                                 .getText());
                     }
+
                     transmitter.setDacPort(selectedPort);
                     transmitter.setFipsCode(this.fipsTxt.getText().trim());
                     transmitter.setFrequency(Float.parseFloat(this.frequencyTxt
@@ -1109,6 +1124,27 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     group.setSilenceAlarm(this.disableSilenceChk.getSelection());
                     group.setDaylightSaving(this.noDstChk.getSelection());
 
+                    if (programCombo.getSelectionIndex() > 0) {
+                        @SuppressWarnings("unchecked")
+                        List<ProgramSummary> progList = (List<ProgramSummary>) programCombo
+                                .getData();
+                        ProgramSummary p = progList.get(programCombo
+                                .getSelectionIndex() - 1);
+                        ProgramSummary origProgram = group.getProgram();
+
+                        if ((origProgram == null)
+                                || (p.getId() != origProgram.getId())) {
+                            group.setProgram(p);
+                            saveGroup = true;
+                        }
+                    } else if (group.getProgram() != null) {
+                        /*
+                         * None selected and a program used to assigned
+                         */
+                        group.setProgram(null);
+                        saveGroup = true;
+                    }
+
                     try {
                         if (transmitter != null) {
                             group.addTransmitter(transmitter);
@@ -1120,7 +1156,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                                 .saveTransmitterGroup(group);
                         if ((savedGroup != null) && !savedGroup.isEmpty()) {
                             group = savedGroup.get(0);
-                            updateProgram();
                         }
 
                         setReturnValue(group);
@@ -1158,8 +1193,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             return true;
         }
 
-        Program groupProgram = programManager
-                .getProgramForTransmitterGroup(group);
+        ProgramSummary groupProgram = group.getProgram();
         if (groupProgram == null) {
             if (programCombo.getSelectionIndex() > 0) {
                 return true;
@@ -1168,43 +1202,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Check to see if group's program has changed and if needed update
-     * program's group list.
-     */
-    @SuppressWarnings("unchecked")
-    private void updateProgram() {
-        Object obj = programCombo.getData();
-        if (obj instanceof List<?>) {
-            List<Program> progList = (List<Program>) obj;
-            ProgramDataManager pdm = new ProgramDataManager();
-            try {
-                if (programCombo.getSelectionIndex() > 0) {
-                    Program p = progList
-                            .get(programCombo.getSelectionIndex() - 1);
-                    if ((origProgram == null)
-                            || (p.getId() != origProgram.getId())) {
-                        pdm.addGroup(p, group);
-                    }
-                } else if (group.getId() != 0) {
-                    /*
-                     * None selected and not a new group, clear this group from
-                     * original program
-                     */
-                    if (origProgram != null) {
-                        origProgram.getTransmitterGroups().remove(group);
-                        pdm.saveProgram(origProgram);
-                    }
-                }
-            } catch (Exception e) {
-                statusHandler.handle(
-                        Priority.PROBLEM,
-                        "Update Program groups failed: "
-                                + e.getLocalizedMessage(), e);
-            }
-        }
     }
 
     /**

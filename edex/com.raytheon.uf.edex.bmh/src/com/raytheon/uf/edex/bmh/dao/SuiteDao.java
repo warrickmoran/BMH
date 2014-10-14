@@ -31,7 +31,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
@@ -55,7 +55,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessagePk;
  * Aug 21, 2014  3490     lvenable    Added code from Richard to fix a hibernate issue for save/update.
  * Sep 18, 2014  3587     bkowal      Added code to manually cleanup triggers due to hibernate bug.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
- * 
+ * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author bsteffen
@@ -194,9 +194,9 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
             }
 
             SuiteMessage sm = new SuiteMessage();
-            MessageType mt = new MessageType();
+            MessageTypeSummary mt = new MessageTypeSummary();
             mt.setAfosid(msgTypeAfosId);
-            sm.setMsgType(mt);
+            sm.setMsgTypeSummary(mt);
             suite.addSuiteMessage(sm);
         }
 
@@ -264,8 +264,8 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
              * associated with SuiteMessage(s) that have been removed.
              */
 
-            if (suite.getRemovedTriggerSuiteMessages() != null
-                    && suite.getRemovedTriggerSuiteMessages().isEmpty() == false) {
+            if ((suite.getRemovedTriggerSuiteMessages() != null)
+                    && (suite.getRemovedTriggerSuiteMessages().isEmpty() == false)) {
 
                 for (SuiteMessagePk id : suite.getRemovedTriggerSuiteMessages()) {
                     ht.bulkUpdate(

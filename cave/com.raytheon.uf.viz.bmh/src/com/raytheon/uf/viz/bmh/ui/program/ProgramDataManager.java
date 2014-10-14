@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -41,11 +42,11 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 17, 2014  #3490     lvenable     Initial creation
- * Sep 18, 2014  #3587     bkowal       Added methods to retrieve programs associated
+ * Aug 17, 2014  #3490     lvenable    Initial creation
+ * Sep 18, 2014  #3587     bkowal      Added methods to retrieve programs associated
  *                                      with a trigger.
- * Oct 02, 2014  #3649     rferrel      Added methods addGroup and getProgramForTransmitterGroup.
- * 
+ * Oct 02, 2014  #3649     rferrel     Added methods addGroup and getProgramForTransmitterGroup.
+ * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author lvenable
@@ -55,7 +56,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
 public class ProgramDataManager {
 
     /**
-     * Let a list of fully populated programs.
+     * Get a list of fully populated programs.
      * 
      * @param comparator
      *            Comparator used for sorting, null for no sorting.
@@ -73,7 +74,7 @@ public class ProgramDataManager {
         progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
         programList = progResponse.getProgramList();
 
-        if (comparator != null && programList.isEmpty() == false) {
+        if ((comparator != null) && (programList.isEmpty() == false)) {
             Collections.sort(programList, comparator);
         }
 
@@ -93,17 +94,6 @@ public class ProgramDataManager {
         ProgramRequest pr = new ProgramRequest();
         pr.setProgram(selectedProgram);
         pr.setAction(ProgramAction.Save);
-
-        ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(pr);
-        return response;
-    }
-
-    public ProgramResponse addGroup(Program program, TransmitterGroup group)
-            throws Exception {
-        ProgramRequest pr = new ProgramRequest();
-        pr.setProgram(program);
-        pr.setTransmitterGroup(group);
-        pr.setAction(ProgramAction.AddGroup);
 
         ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(pr);
         return response;
@@ -129,11 +119,11 @@ public class ProgramDataManager {
 
     public List<Program> getProgramsWithTrigger(MessageType msgType)
             throws Exception {
-        return this.getProgramsWithTrigger(null, msgType);
+        return this.getProgramsWithTrigger(null, msgType.getSummary());
     }
 
-    public List<Program> getProgramsWithTrigger(Suite suite, MessageType msgType)
-            throws Exception {
+    public List<Program> getProgramsWithTrigger(Suite suite,
+            MessageTypeSummary msgType) throws Exception {
         ProgramRequest pr = new ProgramRequest();
         pr.setAction(ProgramAction.GetProgramsWithTrigger);
         if (suite != null) {

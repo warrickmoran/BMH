@@ -70,7 +70,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 2, 2014   3568      bkowal      Added the getMessageTypeForDesignation named query
  * Sep 15, 2014   #3610    lvenable    Added query for getting Afos ID and Title.
  * Sep 19, 2014   #3611    lvenable    Added query for getting emergency override message types.
- * 
+ * Oct 13, 2014  3654      rjpeter     Added additional queries.
  * </pre>
  * 
  * @author rjpeter
@@ -80,7 +80,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_AFOSID_TITLE, query = MessageType.GET_MESSAGETYPE_AFOSID_TITLE_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_AFOSID, query = MessageType.GET_MESSAGETYPE_FOR_AFOSID_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE, query = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE_QUERY),
-        @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, query = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION_QUERY) })
+        @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, query = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION_QUERY),
+        @NamedQuery(name = MessageType.GET_REPLACEMENT_AFOSIDS, query = MessageType.GET_REPLACEMENT_AFOSIDS_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "message_type", schema = "bmh")
@@ -108,6 +109,10 @@ public class MessageType {
     public static final String GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE = "getMessageTypeForEmergencyOverride";
 
     protected static final String GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE_QUERY = "FROM MessageType m WHERE m.emergencyOverride = :emergencyOverride";
+
+    public static final String GET_REPLACEMENT_AFOSIDS = "getReplacementAfosids";
+
+    protected static final String GET_REPLACEMENT_AFOSIDS_QUERY = "SELECT mr.replaceMsgType FROM MessageType mt inner join mt.replacementMsgs mr WHERE mt.afosid = ?";
 
     // use surrogate key
     @Id
@@ -348,7 +353,7 @@ public class MessageType {
 
         if (replacementMsgs != null) {
             for (MessageTypeReplacement mtr : replacementMsgs) {
-                mtr.setMsgType(this);
+                mtr.setMsgType(this.getSummary());
             }
         }
     }
@@ -359,7 +364,7 @@ public class MessageType {
                 replacementMsgs = new HashSet<>();
             }
 
-            replaceMsg.setMsgType(this);
+            replaceMsg.setMsgType(this.getSummary());
             replacementMsgs.add(replaceMsg);
         }
     }
@@ -417,6 +422,16 @@ public class MessageType {
 
             defaultTransmitterGroups.add(transmitterGroup);
         }
+    }
+
+    /**
+     * Returns a summary view of this object. Note changes to the summary object
+     * will be reflected in this object and vice versa.
+     * 
+     * @return
+     */
+    public MessageTypeSummary getSummary() {
+        return new MessageTypeSummary(this);
     }
 
     @Override

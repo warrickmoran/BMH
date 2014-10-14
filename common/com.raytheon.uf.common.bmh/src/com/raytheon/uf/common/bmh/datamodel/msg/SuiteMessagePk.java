@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import java.io.Serializable;
 
+import javax.persistence.Column;
 import javax.persistence.Embeddable;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3175       rjpeter     Initial creation
  * Aug 05, 2014 3175       rjpeter     Fixed bidirectional mappings.
+ * Oct 13, 2014 3654       rjpeter     Added Column annotation.
  * </pre>
  * 
  * @author rjpeter
@@ -47,9 +49,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class SuiteMessagePk implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    @Column
     @DynamicSerializeElement
     private int suiteId;
 
+    @Column
     @DynamicSerializeElement
     private int msgTypeId;
 

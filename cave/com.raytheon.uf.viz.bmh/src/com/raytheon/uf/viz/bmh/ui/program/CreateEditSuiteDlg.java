@@ -78,22 +78,22 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 20, 2014  #3174      lvenable    Initial creation
- * Jul 24, 2014  #3433      lvenable    Updated for Suite manager
- * Aug 01, 2014  #3479      lvenable    Added additional capability.
- * Aug 12, 2014  #3490      lvenable    Updated to use data from the database.
- * Aug 15, 2014  #3490      lvenable    Sort the list of message types, use data manager.
- * Aug 18, 2014  #3490      lvenable    Added save, create, add, remove, sort capabilities.
- * Aug 21, 2014  #3490      lvenable    Updated suite capabilities.
- * Aug 22, 2014  #3490      lvenable    Updated controls that disable/enable.
- * Aug 24, 2014  #3490      lvenable    Added assign programs capability and check for triggers on general type.
- * Aug 25, 2014  #3490      lvenable    Added validation code.
- * Aug 26, 2014  #3490      lvenable    Fixed issue found during testing, fixed issue on create in a new suite
+ * Jul 20, 2014  #3174     lvenable    Initial creation
+ * Jul 24, 2014  #3433     lvenable    Updated for Suite manager
+ * Aug 01, 2014  #3479     lvenable    Added additional capability.
+ * Aug 12, 2014  #3490     lvenable    Updated to use data from the database.
+ * Aug 15, 2014  #3490     lvenable    Sort the list of message types, use data manager.
+ * Aug 18, 2014  #3490     lvenable    Added save, create, add, remove, sort capabilities.
+ * Aug 21, 2014  #3490     lvenable    Updated suite capabilities.
+ * Aug 22, 2014  #3490     lvenable    Updated controls that disable/enable.
+ * Aug 24, 2014  #3490     lvenable    Added assign programs capability and check for triggers on general type.
+ * Aug 25, 2014  #3490     lvenable    Added validation code.
+ * Aug 26, 2014  #3490     lvenable    Fixed issue found during testing, fixed issue on create in a new suite
  *                                      when creating a new program.
- * Sep 16, 2014  #3587      bkowal      Updated to only allow trigger assignment for {Program, Suite}
- * Oct 08, 2014  #3687      bsteffen    Remove ProgramTrigger.
- * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * 
+ * Sep 16, 2014  #3587     bkowal      Updated to only allow trigger assignment for {Program, Suite}
+ * Oct 08, 2014  #3687     bsteffen    Remove ProgramTrigger.
+ * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * </pre>
  * 
  * @author lvenable
@@ -109,15 +109,15 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private List<MessageType> allMsgTypesList;
 
     /** List of message types in the suite. */
-    private List<SuiteMessage> msgTypesInSuiteList = new ArrayList<SuiteMessage>();
+    private final List<SuiteMessage> msgTypesInSuiteList = new ArrayList<SuiteMessage>();
 
     /**
      * List of suite messages corresponding to a message type that is associated
      * with a trigger that have been removed from the suite.
      **/
-    private List<SuiteMessagePk> triggerSuiteMsgsRemoved = new ArrayList<SuiteMessagePk>();
+    private final List<SuiteMessagePk> triggerSuiteMsgsRemoved = new ArrayList<SuiteMessagePk>();
 
-    private Set<String> msgTypeNames = new HashSet<String>();
+    private final Set<String> msgTypeNames = new HashSet<String>();
 
     /** Message type table data. */
     private TableData selectedMsgTypeTableData;
@@ -191,16 +191,16 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private List<Program> programsArray = new ArrayList<Program>();
 
     /** Array of Programs to save the create suite to. */
-    private List<Program> newAssignedProgramsArray = new ArrayList<Program>();
+    private final List<Program> newAssignedProgramsArray = new ArrayList<Program>();
 
     /** List of assigned program for this suite. */
-    private List<Program> assignedPrograms = new ArrayList<Program>();
+    private final List<Program> assignedPrograms = new ArrayList<Program>();
 
     /** Existing suite names. */
     private Set<String> existingSuiteNames = null;
 
     /** Assign program names to the current suite. */
-    private Set<String> assignedProgramNames = new TreeSet<String>();
+    private final Set<String> assignedProgramNames = new TreeSet<String>();
 
     private boolean forNewProgram = false;
 
@@ -562,8 +562,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         // If the suite type is GENERAL then the trigger button is disable else
         // the enabled feature is determined if there are selected message
         // types.
-        if (getSelectedSuiteType() == SuiteType.GENERAL
-                || this.selectedProgram == null) {
+        if ((getSelectedSuiteType() == SuiteType.GENERAL)
+                || (this.selectedProgram == null)) {
             setTriggersBtn.setEnabled(false);
         } else {
             setTriggersBtn
@@ -579,7 +579,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         for (SuiteMessage sm : msgTypesInSuiteList) {
             cld.addDataItem(sm.getAfosid(), this.selectedProgram
-                    .isTriggerMsgType(this.selectedSuite, sm.getMsgType()));
+                    .isTriggerMsgType(this.selectedSuite,
+                            sm.getMsgTypeSummary()));
         }
 
         CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
@@ -588,7 +589,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         checkListDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if (returnValue != null && returnValue instanceof CheckListData) {
+                if ((returnValue != null)
+                        && (returnValue instanceof CheckListData)) {
                     CheckListData listData = (CheckListData) returnValue;
                     Map<String, Boolean> dataMap = listData.getDataMap();
 
@@ -600,7 +602,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                                 continue;
                             }
                             selectedProgram.addTriggerMsgType(selectedSuite,
-                                    sm.getMsgType());
+                                    sm.getMsgTypeSummary());
                         }
                     }
 
@@ -632,7 +634,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * @return
      */
     private boolean validateTriggerMessagesGeneralType() {
-        if (getSelectedSuiteType() == SuiteType.GENERAL && hasTriggerMessages()) {
+        if ((getSelectedSuiteType() == SuiteType.GENERAL)
+                && hasTriggerMessages()) {
 
             String msg = "You have trigger message(s) for the GENERAL suite type.  Select OK "
                     + "to remove the triggers and continue saving or Cancel to edit the suite.";
@@ -790,7 +793,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         checkListDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if (returnValue != null && returnValue instanceof CheckListData) {
+                if ((returnValue != null)
+                        && (returnValue instanceof CheckListData)) {
                     if (dialogType == DialogType.EDIT) {
                         saveSuiteToPrograms((CheckListData) returnValue);
                     } else if (dialogType == DialogType.CREATE) {
@@ -828,7 +832,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         for (Program p : progs) {
             if (checkedPrograms.containsKey(p.getName())
-                    && checkedPrograms.get(p.getName()) == true) {
+                    && (checkedPrograms.get(p.getName()) == true)) {
                 p.addSuite(selectedSuite);
 
                 try {
@@ -870,7 +874,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         for (Program p : progs) {
             if (checkedPrograms.containsKey(p.getName())
-                    && checkedPrograms.get(p.getName()) == true) {
+                    && (checkedPrograms.get(p.getName()) == true)) {
                 newAssignedProgramsArray.add(p);
             }
         }
@@ -903,7 +907,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             }
 
             SuiteMessage newSuiteMessage = new SuiteMessage();
-            newSuiteMessage.setMsgType(mt);
+            newSuiteMessage.setMsgTypeSummary(mt.getSummary());
 
             msgTypesInSuiteList.add(selectedMsgTypeIndex, newSuiteMessage);
             msgTypeNames.add(mt.getAfosid());
@@ -931,19 +935,20 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             try {
                 triggeredPrograms = pdm.getProgramsWithTrigger(
                         removalCandidate.getSuite(),
-                        removalCandidate.getMsgType());
+                        removalCandidate.getMsgTypeSummary());
             } catch (Exception e) {
                 statusHandler.error(
                         "Error checking for programs with trigger: '"
-                                + removalCandidate.getMsgType().getAfosid()
-                                + "'!", e);
+                                + removalCandidate.getMsgTypeSummary()
+                                        .getAfosid() + "'!", e);
                 continue;
             }
 
-            if (triggeredPrograms != null
-                    && triggeredPrograms.isEmpty() == false) {
+            if ((triggeredPrograms != null)
+                    && (triggeredPrograms.isEmpty() == false)) {
                 StringBuilder stringBuilder = new StringBuilder("Message Type ");
-                stringBuilder.append(removalCandidate.getMsgType().getAfosid());
+                stringBuilder.append(removalCandidate.getMsgTypeSummary()
+                        .getAfosid());
                 stringBuilder
                         .append(" is currently a Trigger for the following programs:\n\n");
                 for (Program triggeredProgram : triggeredPrograms) {
@@ -977,7 +982,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             msgTypesInSuiteList.remove(indices[i]);
             if (this.selectedProgram != null) {
                 this.selectedProgram.removeTriggerMsgType(this.selectedSuite,
-                        removalCandidate.getMsgType());
+                        removalCandidate.getMsgTypeSummary());
             }
         }
 
@@ -1050,7 +1055,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         }
 
         assignedProgramNames.clear();
-        if (selectedProgram == null && selectedSuite != null) {
+        if ((selectedProgram == null) && (selectedSuite != null)) {
             for (Program p : programsArray) {
                 List<Suite> suitesInProgram = p.getSuites();
                 for (Suite s : suitesInProgram) {
@@ -1178,13 +1183,14 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         for (SuiteMessage sm : msgTypesInSuiteList) {
             TableRowData trd = new TableRowData();
 
-            trd.addTableCellData(new TableCellData(sm.getMsgType().getAfosid()));
-            trd.addTableCellData(new TableCellData(sm.getMsgType().getTitle()));
-            if (this.selectedProgram != null && this.selectedSuite != null) {
-                trd.addTableCellData(new TableCellData(
-                        this.selectedProgram.isTriggerMsgType(
-                                this.selectedSuite, sm.getMsgType()) ? "Yes"
-                                : "No"));
+            trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()
+                    .getAfosid()));
+            trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()
+                    .getTitle()));
+            if ((this.selectedProgram != null) && (this.selectedSuite != null)) {
+                trd.addTableCellData(new TableCellData(this.selectedProgram
+                        .isTriggerMsgType(this.selectedSuite,
+                                sm.getMsgTypeSummary()) ? "Yes" : "No"));
             }
 
             selectedMsgTypeTableData.addDataRow(trd);

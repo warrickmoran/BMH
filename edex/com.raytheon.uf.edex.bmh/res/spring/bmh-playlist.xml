@@ -10,6 +10,7 @@
     <property name="areaDao" ref="areaDao" />
     <property name="broadcastMsgDao" ref="broadcastMsgDao" />
     <property name="transmitterGroupDao" ref="transmitterGroupDao" />
+    <property name="messageTypeDao" ref="messageTypeDao" />
   </bean>
 
   <bean id="playlistStateManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager">
