@@ -56,6 +56,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                    generated static messages and ingested messages.
  * Sep 09, 2014  2585     bsteffen    Implement MAT
  * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
+ * Oct 15, 2014  3728     lvenable    Added name column.
  * 
  * </pre>
  * 
@@ -82,6 +83,13 @@ public class InputMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     private int id;
+
+    /**
+     * Name for the input message. TODO : change when message parser is updated.
+     */
+    @Column(length = 40, nullable = true)
+    @DynamicSerializeElement
+    private String name;
 
     @Column(length = Language.LENGTH)
     @Enumerated(EnumType.STRING)
@@ -224,6 +232,18 @@ public class InputMessage {
 
     public void setId(int id) {
         this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        if (name != null) {
+            this.name = name;
+        } else {
+            this.name = "";
+        }
     }
 
     public Language getLanguage() {
