@@ -31,6 +31,7 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
@@ -48,6 +49,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Jul 17, 2014  3406     mpduff      Added id pk column, named query, removed cascade
  * Aug 04, 2014  3173     mpduff      Added DAC and Fips, changed to use serialization adapter
  * Oct 06, 2014  3649     rferrel     Methods hashCode and equals now use id.
+ * Oct 16, 2014  3636     rferrel     Added logEntry.
  * 
  * </pre>
  * 
@@ -337,6 +339,118 @@ public class Transmitter {
                 + transmitterGroup + ", position=" + position + ", txStatus="
                 + txStatus + ", txMode=" + txMode + ", dacPort=" + dacPort
                 + "]";
+    }
+
+    /**
+     * Get log entry.
+     * 
+     * @param oldTrans
+     *            - When null assume this is a new transmitter.
+     * @param user
+     *            - Who is making the change
+     * @return entry - empty string when no differences.
+     */
+    public String logEntry(Transmitter oldTrans, String user) {
+        boolean logChanges = false;
+        StringBuilder sb = new StringBuilder();
+        sb.append("User ").append(user);
+        if (oldTrans == null) {
+            sb.append(" New Transmitter id: ").append(getId()).append("; ")
+                    .append(toString());
+        } else {
+            Object oldValue = null;
+            Object newValue = null;
+            sb.append(" Update fields Transmitter mnemonic/id: \"")
+                    .append(getMnemonic()).append("\"/").append(getId())
+                    .append(" [");
+            if (!oldTrans.getMnemonic().equals(getMnemonic())) {
+                BMHLoggerUtils.logFieldChange(sb, "mnemonic",
+                        oldTrans.getMnemonic(), getMnemonic());
+                logChanges = true;
+            }
+
+            oldValue = oldTrans.getDacPort();
+            if (oldValue == null) {
+                oldValue = "None";
+            }
+
+            newValue = getDacPort();
+            if (newValue == null) {
+                newValue = "None";
+            }
+            if (!oldValue.equals(newValue)) {
+                BMHLoggerUtils.logFieldChange(sb, "DAC Port", oldValue,
+                        newValue);
+                logChanges = true;
+            }
+
+            if (!oldTrans.getName().equals(getName())) {
+                BMHLoggerUtils.logFieldChange(sb, "name", oldTrans.getName(),
+                        getName());
+                logChanges = true;
+            }
+            if (oldTrans.getFrequency() != getFrequency()) {
+                BMHLoggerUtils.logFieldChange(sb, "frequency", new Float(
+                        oldTrans.getFrequency()), new Float(getFrequency()));
+                logChanges = true;
+            }
+            if (!oldTrans.getCallSign().equals(getCallSign())) {
+                BMHLoggerUtils.logFieldChange(sb, "callSign",
+                        oldTrans.getCallSign(), getCallSign());
+                logChanges = true;
+            }
+            if (!oldTrans.getLocation().equals(getLocation())) {
+                BMHLoggerUtils.logFieldChange(sb, "location",
+                        oldTrans.getLocation(), getLocation());
+                logChanges = true;
+            }
+            if (!oldTrans.getServiceArea().equals(getServiceArea())) {
+                BMHLoggerUtils.logFieldChange(sb, "serviceArea",
+                        oldTrans.getServiceArea(), getServiceArea());
+                logChanges = true;
+            }
+            oldValue = oldTrans.getFipsCode();
+            if (oldValue == null) {
+                oldValue = "";
+            }
+            newValue = getFipsCode();
+            if (newValue == null) {
+                newValue = "";
+            }
+            if (!oldValue.equals(newValue)) {
+                BMHLoggerUtils.logFieldChange(sb, "fipsCode", oldValue,
+                        newValue);
+                logChanges = true;
+            }
+            if (!oldTrans.getTransmitterGroup().equals(getTransmitterGroup())) {
+                BMHLoggerUtils.logFieldChange(sb, "transmitterGroup", oldTrans
+                        .getTransmitterGroup().getName(), getTransmitterGroup()
+                        .getName());
+                logChanges = true;
+            }
+            oldValue = oldTrans.getTxStatus().name();
+            newValue = getTxStatus().name();
+            if (!oldValue.equals(newValue)) {
+                BMHLoggerUtils.logFieldChange(sb, "txStatus", oldValue,
+                        newValue);
+                logChanges = true;
+            }
+
+            oldValue = oldTrans.getTxMode().name();
+            newValue = getTxMode().name();
+            if (!oldValue.equals(newValue)) {
+                BMHLoggerUtils.logFieldChange(sb, "txMode", oldValue, newValue);
+                logChanges = true;
+            }
+
+            // No changes made
+            if (!logChanges) {
+                return "";
+            }
+
+            sb.setCharAt(sb.length() - 2, ']');
+        }
+        return sb.toString();
     }
 
 }
