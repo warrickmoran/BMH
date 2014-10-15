@@ -20,6 +20,7 @@
 		    <doTry>
 				<pipeline>
 				    <bean ref="inputMessageParser" method="parse" />
+                    <to uri="language:simple:${body.setName(${headers.CamelFileNameOnly})}?transform=false"/> 
 				    <bean ref="inputMessageDao" method="persist" />
 				    <filter>
   						<simple>${body.validHeader} == false</simple>

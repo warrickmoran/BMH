@@ -85,9 +85,9 @@ public class InputMessage {
     private int id;
 
     /**
-     * Name for the input message. TODO : change when message parser is updated.
+     * Name for the input message.
      */
-    @Column(length = 40, nullable = true)
+    @Column(length = 40, nullable = false)
     @DynamicSerializeElement
     private String name;
 
