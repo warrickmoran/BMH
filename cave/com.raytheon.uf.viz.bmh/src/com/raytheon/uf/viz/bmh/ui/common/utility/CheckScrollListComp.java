@@ -46,6 +46,9 @@ import org.eclipse.swt.widgets.Label;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 27, 2014 #3420      lvenable     Initial creation - part of refactor.
+ * Oct 15, 2014 #3728      lvenable     Added ability to lock the controls from being edited and
+ *                                      allow selection/deselection of all the check boxes via
+ *                                      method call.
  * 
  * </pre>
  * 
@@ -81,6 +84,9 @@ public class CheckScrollListComp extends Composite {
     /** Button composite holding all of the check boxes. */
     private Composite checkBtnComp;
 
+    /** Lock the controls from being changed. */
+    private boolean lockControls = false;
+
     /**
      * Constructor.
      * 
@@ -100,6 +106,33 @@ public class CheckScrollListComp extends Composite {
     public CheckScrollListComp(Composite parentComp, String msgText,
             CheckListData checkListData, boolean showSelectControls, int width,
             int height) {
+
+        this(parentComp, msgText, checkListData, showSelectControls, width,
+                height, false);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param parentComp
+     *            Parent composite.
+     * @param msgText
+     *            Message text.
+     * @param checkListData
+     *            Check list data for the check boxes.
+     * @param showSelectControls
+     *            Flag indicating if the select controls should be shown.
+     * @param width
+     *            Width of the scrolled composite.
+     * @param height
+     *            Height of the scrolled composite.
+     * @param lockControls
+     *            Lock the controls from being edited. If lockControls is true
+     *            then the select/unselect controls are not displayed.
+     */
+    public CheckScrollListComp(Composite parentComp, String msgText,
+            CheckListData checkListData, boolean showSelectControls, int width,
+            int height, boolean lockControls) {
         super(parentComp, SWT.NONE);
 
         this.checkListData = checkListData;
@@ -108,6 +141,7 @@ public class CheckScrollListComp extends Composite {
         this.msgText = msgText;
         compWidth = width;
         compHeight = height;
+        this.lockControls = lockControls;
 
         init();
     }
@@ -120,6 +154,10 @@ public class CheckScrollListComp extends Composite {
         this.setLayout(new GridLayout(1, false));
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         this.setLayoutData(gd);
+
+        if (lockControls) {
+            this.setEnabled(false);
+        }
 
         Label messageLbl = new Label(this, SWT.NONE);
         messageLbl.setText(msgText);
@@ -168,8 +206,12 @@ public class CheckScrollListComp extends Composite {
      */
     private void createSelectControls() {
 
-        // Determine if the controls should be displayed.
-        if (!showSelectControls) {
+        /*
+         * Determine if the controls should be displayed. If the controls are
+         * locked then it doesn't make sense to give the user the ability to
+         * select/unselect the checkboxed.
+         */
+        if (!showSelectControls || lockControls) {
             return;
         }
 
@@ -231,5 +273,40 @@ public class CheckScrollListComp extends Composite {
         }
 
         return cld;
+    }
+
+    /**
+     * This method will unselect all of the checkboxes and then select the ones
+     * that are in the check list data.
+     * 
+     * @param cld
+     *            Check list data.
+     */
+    public void selectCheckboxes(CheckListData cld) {
+        if (cld == null) {
+            return;
+        }
+
+        Map<String, Boolean> cldDataMap = cld.getDataMap();
+
+        for (Button btn : checkboxArray) {
+            btn.setSelection(false);
+
+            if (cldDataMap.containsKey(btn.getText())) {
+                btn.setSelection(cldDataMap.get(btn.getText()));
+            }
+        }
+    }
+
+    /**
+     * Select or unselect all of the check boxes.
+     * 
+     * @param selectAll
+     *            True to select all, false to unselect all of the checkboxes.
+     */
+    public void selectCheckboxes(boolean selectAll) {
+        for (Button btn : checkboxArray) {
+            btn.setSelection(selectAll);
+        }
     }
 }
