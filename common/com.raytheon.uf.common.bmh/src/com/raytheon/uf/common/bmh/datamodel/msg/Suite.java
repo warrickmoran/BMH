@@ -66,6 +66,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 18, 2014 #3587     bkowal      Added a transient to track messages types associated
  *                                    with triggers that are no longer associated with the suite.
  * Oct 13, 2014 3654       rjpeter    Updated to use MessageTypeSummary.
+ * Oct 15, 2014 3715      bkowal      Supporting adding program triggers to completely
+ *                                    new {@link Suite}(s).
  * </pre>
  * 
  * @author rjpeter
@@ -123,6 +125,15 @@ public class Suite {
      * orphanRemoval bug.
      */
     private List<SuiteMessagePk> removedTriggerSuiteMessages;
+
+    @Transient
+    /*
+     * Trigger messages that were added to a completely new suite. This field is
+     * only populated and used within Viz. The reason for creating this field
+     * was so that the triggers would be able to cross the {@link Suite} to
+     * {@link Program} boundary as objects are passed from dialog to dialog.
+     */
+    private List<MessageTypeSummary> newTriggerSuiteMessages;
 
     public int getId() {
         return id;
@@ -203,6 +214,15 @@ public class Suite {
     public void setRemovedTriggerSuiteMessages(
             List<SuiteMessagePk> removedTriggerSuiteMessages) {
         this.removedTriggerSuiteMessages = removedTriggerSuiteMessages;
+    }
+
+    public List<MessageTypeSummary> getNewTriggerSuiteMessages() {
+        return newTriggerSuiteMessages;
+    }
+
+    public void setNewTriggerSuiteMessages(
+            List<MessageTypeSummary> newTriggerSuiteMessages) {
+        this.newTriggerSuiteMessages = newTriggerSuiteMessages;
     }
 
     /**

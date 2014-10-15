@@ -51,6 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 29, 2014 3589       dgilling    Add forced field.
  * Oct 08, 2014 3687       bsteffen    Remove ProgramTrigger.
  * Oct 13, 2014 3654       rjpeter     Updated to use MessageTypeSummary.
+ * Oct 15, 2014 3715       bkowal      Prevent potential Null Pointer Exception for triggers.
  * </pre>
  * 
  * @author bkowal
@@ -101,6 +102,9 @@ public class ProgramSuite implements Serializable {
     }
 
     public void clearTriggers() {
+        if (this.triggers == null) {
+            return;
+        }
         this.triggers.clear();
     }
 
