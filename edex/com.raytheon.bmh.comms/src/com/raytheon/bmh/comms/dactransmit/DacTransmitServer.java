@@ -41,6 +41,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
 
 /**
  * 
@@ -58,6 +59,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange
  * Sep 5,  2014  3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
  * Sep 23, 2014  3485     bsteffen    Bug fixes and changes to notification processing to support clustering
+ * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * 
  * </pre>
  * 
@@ -167,6 +169,25 @@ public class DacTransmitServer extends AbstractServerThread {
         if (communicators != null) {
             for (DacTransmitCommunicator communicator : communicators) {
                 communicator.sendPlaylistUpdate(notification);
+            }
+        }
+    }
+
+    /**
+     * Send the specified data to the dac associated with the specified
+     * {@link DacTransmitKey}.
+     * 
+     * @param key
+     *            the specified {@link DacTransmitKey}
+     * @param data
+     *            the specified data
+     */
+    public void sendToDac(DacTransmitKey key, IDacLiveBroadcastMsg msg) {
+        List<DacTransmitCommunicator> communicators = this.communicators
+                .get(key);
+        if (communicators != null) {
+            for (DacTransmitCommunicator communicator : communicators) {
+                communicator.sendLiveBroadcastMsg(msg);
             }
         }
     }

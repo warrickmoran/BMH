@@ -39,6 +39,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
 
 /**
  * 
@@ -60,6 +61,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange.
  * Sep 5, 2014   3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
  * Sep 23, 2014  3485     bsteffen    Ensure the manager gets notified of any state changes.
+ * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * 
  * </pre>
  * 
@@ -158,6 +160,8 @@ public class DacTransmitCommunicator extends Thread {
                 lastStatus = null;
                 manager.dacDisconnectedLocal(key, groupName);
             }
+        } else if (message instanceof IDacLiveBroadcastMsg) {
+            manager.forwardDacBroadcastMsg((IDacLiveBroadcastMsg) message);
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",
                     message.getClass().getSimpleName());
@@ -197,6 +201,10 @@ public class DacTransmitCommunicator extends Thread {
 
     public void sendPlaylistUpdate(PlaylistUpdateNotification notification) {
         send(notification);
+    }
+    
+    public void sendLiveBroadcastMsg(IDacLiveBroadcastMsg msg) {
+        send(msg);
     }
 
     private void send(Object toSend) {

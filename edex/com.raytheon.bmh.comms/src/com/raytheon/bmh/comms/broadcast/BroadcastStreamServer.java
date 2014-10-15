@@ -28,13 +28,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.AbstractServerThread;
+import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.cluster.IClusterMessageListener;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastRequest;
-import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastResponse;
+import com.raytheon.uf.common.bmh.comms.LiveBroadcastClientStatus;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
 
 /**
  * Listens for and handles @{link StartLiveBroadcastRequest}. Creates a
@@ -47,6 +49,8 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 8, 2014  3656       bkowal      Initial creation
+ * Oct 15, 2015 3655       bkowal      Support live broadcasting to the DAC.
+ * 
  * 
  * </pre>
  * 
@@ -69,7 +73,14 @@ public class BroadcastStreamServer extends AbstractServerThread implements
 
     private final DacTransmitServer transmitServer;
 
-    private ConcurrentMap<String, BroadcastStreamTask> broadcastStreamingTasks;
+    private ConcurrentMap<String, BroadcastStreamTask> broadcastStreamingTasksMap;
+
+    /*
+     * TODO: will need to update the implementation if the message directory is
+     * ever updated to be keyed by id.
+     */
+
+    private ConcurrentMap<String, DacTransmitKey> availableDacConnectionsMap;
 
     /**
      * @param port
@@ -81,7 +92,8 @@ public class BroadcastStreamServer extends AbstractServerThread implements
         super(config.getBroadcastLivePort());
         this.clusterServer = clusterServer;
         this.transmitServer = transmitServer;
-        this.broadcastStreamingTasks = new ConcurrentHashMap<>();
+        this.broadcastStreamingTasksMap = new ConcurrentHashMap<>();
+        this.availableDacConnectionsMap = new ConcurrentHashMap<>();
     }
 
     /*
@@ -106,14 +118,44 @@ public class BroadcastStreamServer extends AbstractServerThread implements
     @Override
     public void shutdown() {
         super.shutdown();
-        for (BroadcastStreamTask task : this.broadcastStreamingTasks.values()) {
+        for (BroadcastStreamTask task : this.broadcastStreamingTasksMap
+                .values()) {
             task.shutdown();
             try {
                 task.join();
             } catch (InterruptedException e) {
-                // Ignore.
+                logger.warn(
+                        "Interrupted while waiting for broadcast task {} to shutdown.",
+                        task.getName());
             }
         }
+    }
+
+    /**
+     * {@link BroadcastStreamServer#dacConnected()} and
+     * {@link BroadcastStreamServer#dacDisconnected()} are only interested in
+     * local activity because the {@link DacTransmitCommunicator} currently only
+     * allows for local connections.
+     */
+    public void dacConnected(final DacTransmitKey key, final String group) {
+        if (this.availableDacConnectionsMap.containsKey(group)) {
+            logger.info(
+                    "Dac connection to transmitter {} has been replaced with connection: {}.",
+                    group, key.toString());
+            this.availableDacConnectionsMap.replace(group, key);
+        } else {
+            logger.info("Adding transmitter {} connection: {}.", group,
+                    key.toString());
+            this.availableDacConnectionsMap.put(group, key);
+        }
+    }
+
+    public void dacDisconnected(final DacTransmitKey key, final String group) {
+        this.availableDacConnectionsMap.remove(group, key);
+    }
+
+    public DacTransmitKey getLocalDacCommunicationKey(final String group) {
+        return this.availableDacConnectionsMap.get(group);
     }
 
     private void startBroadcastTask(Socket socket,
@@ -124,29 +166,42 @@ public class BroadcastStreamServer extends AbstractServerThread implements
 
         logger.info("Started broadcast streaming task {} for {}.",
                 task.getName(), request.getWsid());
-        this.broadcastStreamingTasks.put(task.getName(), task);
+        this.broadcastStreamingTasksMap.put(task.getName(), task);
     }
 
     public void broadcastTaskFinished(final String broadcastId) {
-        this.broadcastStreamingTasks.remove(broadcastId);
+        this.broadcastStreamingTasksMap.remove(broadcastId);
+    }
+
+    public void handleDacBroadcastMsg(IDacLiveBroadcastMsg msg) {
+        BroadcastStreamTask task = this.broadcastStreamingTasksMap.get(msg
+                .getBroadcastId());
+        if (task == null) {
+            // TODO: standardize messaging across: client -> comms manager ->
+            // dac transmit during SAME tone playback changeset.
+            logger.warn(
+                    "Ignoring dac live broadcast {} msg. Broadcast {} does not exist or is no longer active.",
+                    msg.getClass().getName(), msg.getBroadcastId());
+
+            return;
+        }
+        task.handleDacBroadcastMsg(msg);
     }
 
     private void handleRemoteBroadcastTaskReady(
-            final StartLiveBroadcastResponse response) {
-        if (this.broadcastStreamingTasks.containsKey(response.getBroadcastId()) == false) {
+            final LiveBroadcastClientStatus response) {
+        if (this.broadcastStreamingTasksMap.containsKey(response
+                .getBroadcastId()) == false) {
             return;
         }
-
-        this.broadcastStreamingTasks.get(response.getBroadcastId())
-                .handleRemoteReadyNotification(response);
     }
 
     @Override
     public void clusterMessageReceived(Socket socket, Object object) {
         if (object instanceof StartLiveBroadcastRequest) {
             this.startBroadcastTask(socket, (StartLiveBroadcastRequest) object);
-        } else if (object instanceof StartLiveBroadcastResponse) {
-            this.handleRemoteBroadcastTaskReady((StartLiveBroadcastResponse) object);
+        } else if (object instanceof LiveBroadcastClientStatus) {
+            this.handleRemoteBroadcastTaskReady((LiveBroadcastClientStatus) object);
         }
     }
 }

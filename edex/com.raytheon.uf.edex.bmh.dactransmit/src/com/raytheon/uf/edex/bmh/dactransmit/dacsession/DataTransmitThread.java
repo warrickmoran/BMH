@@ -19,32 +19,20 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Collection;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
-import com.google.common.primitives.Ints;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
-import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
-import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
-import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
-import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IInterruptMessageReceivedHandler;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.DacMessagePlaybackData;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
-import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
 
 /**
  * Thread for sending audio data to the DAC. Runs on a cycle time of 20 ms.
@@ -76,6 +64,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Aug 26, 2014  #3286     dgilling     Pause transmission when there is no
  *                                      data to send.
  * Oct 03, 2014  #3485     bsteffen     End playback after playing a message.
+ * Oct 15, 2014  #3655     bkowal       Updated to use AbstractTransmitThread abstraction.
  * 
  * </pre>
  * 
@@ -83,38 +72,22 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * @version 1.0
  */
 
-public final class DataTransmitThread extends Thread implements
-        IDacStatusUpdateEventHandler, IInterruptMessageReceivedHandler {
-
-    private final Logger logger = LoggerFactory.getLogger(getClass());
-
-    private final EventBus eventBus;
-
-    private final InetAddress address;
-
-    private final int port;
-
-    private Collection<Integer> transmitters;
-
-    private final DatagramSocket socket;
+public final class DataTransmitThread extends AbstractTransmitThread implements
+        IInterruptMessageReceivedHandler {
 
     private final PlaylistScheduler playlistMgr;
 
-    private RtpPacketIn previousPacket;
-
     private volatile boolean keepRunning;
-
-    private long nextCycleTime;
 
     private final AtomicInteger interruptsAvailable;
 
     private boolean playingInterrupt;
 
-    private volatile boolean hasSync;
-
-    private volatile boolean onSyncRestartMessage;
-
     private volatile boolean warnNoData;
+
+    private volatile boolean pausePlayback;
+
+    private Semaphore pauseLock = new Semaphore(1);
 
     /**
      * Constructor for this thread. Attempts to open a {@code DatagramSocket}
@@ -138,20 +111,11 @@ public final class DataTransmitThread extends Thread implements
     public DataTransmitThread(final EventBus eventBus,
             final PlaylistScheduler playlistMgr, InetAddress address, int port,
             Collection<Integer> transmitters) throws SocketException {
-        super("DataTransmitThread");
-        this.eventBus = eventBus;
-        this.address = address;
-        this.port = port;
-        this.transmitters = transmitters;
+        super("DataTransmitThread", eventBus, address, port, transmitters);
         this.playlistMgr = playlistMgr;
-        this.previousPacket = null;
         this.keepRunning = true;
-        this.nextCycleTime = DataTransmitConstants.INITIAL_CYCLE_TIME;
-        this.socket = new DatagramSocket();
         this.interruptsAvailable = new AtomicInteger(0);
         this.playingInterrupt = false;
-        this.hasSync = true;
-        this.onSyncRestartMessage = false;
         this.warnNoData = true;
     }
 
@@ -167,6 +131,13 @@ public final class DataTransmitThread extends Thread implements
 
             OUTER_LOOP: while (keepRunning) {
                 try {
+                    while (this.pausePlayback) {
+                        logger.info("Pausing the playback of the current playlist.");
+                        this.pauseLock.acquire();
+                        this.pauseLock.release();
+                        logger.info("Resuming the playback of the current playlist.");
+                    }
+
                     if (interruptsAvailable.get() > 0) {
                         interruptsAvailable.decrementAndGet();
                     }
@@ -203,7 +174,7 @@ public final class DataTransmitThread extends Thread implements
                     while ((playbackData.hasRemaining())
                             && (playingInterrupt || (interruptsAvailable.get() == 0))) {
                         try {
-                            while (!hasSync && keepRunning) {
+                            while (!hasSync && keepRunning && !pausePlayback) {
                                 Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
 
                                 if (hasSync && onSyncRestartMessage) {
@@ -211,7 +182,7 @@ public final class DataTransmitThread extends Thread implements
                                 }
                             }
 
-                            if (!keepRunning) {
+                            if (!keepRunning || pausePlayback) {
                                 continue OUTER_LOOP;
                             }
 
@@ -266,55 +237,23 @@ public final class DataTransmitThread extends Thread implements
         keepRunning = false;
     }
 
-    private RtpPacketIn buildRtpPacket(final RtpPacketIn previousPacket,
-            final byte[] nextPayload) {
-        RtpPacketInFactory factory = RtpPacketInFactory.getInstance();
-        if (previousPacket != null) {
-            factory.fromPacket(previousPacket, false)
-                    .setPreviousPayload(previousPacket.getCurrentPayload())
-                    .setCurrentPayload(nextPayload)
-                    .incrementSequenceNum(
-                            DataTransmitConstants.SEQUENCE_INCREMENT)
-                    .incrementTimestamp(
-                            DataTransmitConstants.TIMESTAMP_INCREMENT)
-                    .setTransmitters(transmitters);
-        } else {
-            factory = factory.setCurrentPayload(nextPayload)
-                    .setSequenceNumber(0).setTimestamp(0)
-                    .setTransmitters(transmitters);
-        }
-
-        return factory.create();
-    }
-
-    private void sendPacket(final RtpPacketIn packet) {
+    public void pausePlayback() {
         try {
-            byte[] rawPacket = packet.encode();
-            DatagramPacket finalizedPacket = buildPacket(rawPacket);
-            socket.send(finalizedPacket);
-        } catch (IOException e) {
-            logger.error("Error sending RTP packet to DAC.", e);
+            this.pauseLock.acquire();
+        } catch (InterruptedException e) {
+            // TODO: actually throw exception to notify that current audio
+            // stream could not be paused.
         }
+        this.pausePlayback = true;
     }
 
-    private DatagramPacket buildPacket(byte[] buf) {
-        return new DatagramPacket(buf, buf.length, address, port);
+    public void resumePlayback() {
+        this.pausePlayback = false;
+        this.pauseLock.release();
     }
 
-    @Override
-    @Subscribe
-    public void receivedDacStatus(DacStatusUpdateEvent e) {
-        int differenceFromWatermark = DataTransmitConstants.WATERMARK_PACKETS_IN_BUFFER
-                - e.getStatus().getBufferSize();
-
-        if (differenceFromWatermark <= 0) {
-            nextCycleTime = DataTransmitConstants.DEFAULT_CYCLE_TIME;
-        } else {
-            int packetsToSendUntilNextStatus = Math
-                    .abs(differenceFromWatermark) + 5;
-            nextCycleTime = 100L / packetsToSendUntilNextStatus;
-            // logger.debug("Speeding up cycle time to: " + nextCycleTime);
-        }
+    public boolean isPlayingInterrupt() {
+        return this.playingInterrupt;
     }
 
     @Override
@@ -322,28 +261,5 @@ public final class DataTransmitThread extends Thread implements
     public void handleInterruptMessage(InterruptMessageReceivedEvent e) {
         interruptsAvailable.incrementAndGet();
         logger.info("Received new interrupt: " + e.getPlaylist().toString());
-    }
-
-    @Subscribe
-    public void lostDacSync(LostSyncEvent e) {
-        logger.error("Application has lost sync with the DAC. Terminating data transmission.");
-        hasSync = false;
-    }
-
-    @Subscribe
-    public void regainDacSync(RegainSyncEvent e) {
-        if (e.getDownTime() >= DataTransmitConstants.SYNC_DOWNTIME_RESTART_THRESHOLD) {
-            logger.info("Application has re-gained sync with the DAC. Restarting transmission from beginning of current message.");
-            onSyncRestartMessage = true;
-        } else {
-            logger.info("Application has re-gained sync with the DAC. Resuming transmission.");
-            onSyncRestartMessage = false;
-        }
-        hasSync = true;
-    }
-
-    @Subscribe
-    public void changeTransmitters(ChangeTransmitters changeEvent) {
-        transmitters = Ints.asList(changeEvent.getTransmitters());
     }
 }

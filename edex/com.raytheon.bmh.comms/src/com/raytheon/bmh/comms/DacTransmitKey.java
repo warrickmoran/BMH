@@ -22,7 +22,6 @@ package com.raytheon.bmh.comms;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
 
-
 /**
  * 
  * Unique map key for finding config information about connected DAC transmit
@@ -35,6 +34,7 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Aug 12, 2014  3486     bsteffen    Initial Creation
+ * Oct 15, 2014  3655     bkowal      Added toString
  * 
  * </pre>
  * 
@@ -50,8 +50,7 @@ public class DacTransmitKey {
 
     private final int hashCode;
 
-    public DacTransmitKey(String inputDirectory, int dataPort,
-            String dacAddress) {
+    public DacTransmitKey(String inputDirectory, int dataPort, String dacAddress) {
         super();
         this.inputDirectory = inputDirectory;
         this.dataPort = dataPort;
@@ -61,15 +60,14 @@ public class DacTransmitKey {
         hashCode = prime * hashCode + dataPort;
         hashCode = prime * hashCode
                 + ((dacAddress == null) ? 0 : dacAddress.hashCode());
-        hashCode = prime
-                * hashCode
+        hashCode = prime * hashCode
                 + ((inputDirectory == null) ? 0 : inputDirectory.hashCode());
         this.hashCode = hashCode;
     }
 
     public DacTransmitKey(DacConfig dac, DacChannelConfig channel) {
-        this(channel.getInputDirectory().toString(), channel.getDataPort(),
-                dac.getIpAddress());
+        this(channel.getInputDirectory().toString(), channel.getDataPort(), dac
+                .getIpAddress());
     }
 
     public String getInputDirectory() {
@@ -113,4 +111,19 @@ public class DacTransmitKey {
         return true;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder("DacTransmitKey [");
+        stringBuilder.append("inputDirectory=");
+        stringBuilder.append(this.inputDirectory);
+        stringBuilder.append(", dataPort=");
+        stringBuilder.append(this.dataPort);
+        stringBuilder.append(", dacAddress=");
+        stringBuilder.append(this.dacAddress);
+        stringBuilder.append(", hashCode=");
+        stringBuilder.append(this.hashCode);
+        stringBuilder.append("]");
+
+        return stringBuilder.toString();
+    }
 }

@@ -27,8 +27,8 @@ import java.net.URISyntaxException;
 import com.raytheon.uf.common.bmh.comms.BroadcastAudioRequest;
 import com.raytheon.uf.common.bmh.comms.LiveBroadcastStopRequest;
 import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastRequest;
-import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastResponse;
-import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastResponse.STATUS;
+import com.raytheon.uf.common.bmh.comms.LiveBroadcastClientStatus;
+import com.raytheon.uf.common.bmh.comms.LiveBroadcastClientStatus.STATUS;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -48,6 +48,7 @@ import com.raytheon.uf.viz.core.VizServers;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 9, 2014  3656       bkowal      Initial creation
+ * Oct 15, 2014 3655       bkowal      Update for msg type renaming.
  * 
  * </pre>
  * 
@@ -202,13 +203,16 @@ public class LiveBroadcastThread extends Thread implements
             return;
         }
 
-        if (responseObject instanceof StartLiveBroadcastResponse) {
-            StartLiveBroadcastResponse response = (StartLiveBroadcastResponse) responseObject;
+        if (responseObject instanceof LiveBroadcastClientStatus) {
+            LiveBroadcastClientStatus response = (LiveBroadcastClientStatus) responseObject;
             if (response.getStatus() == STATUS.READY) {
                 this.state = BROADCAST_STATE.LIVE;
                 this.broadcastId = response.getBroadcastId();
             } else if (response.getStatus() == STATUS.FAILED) {
                 this.state = BROADCAST_STATE.ERROR;
+                this.notifyListener();
+                statusHandler.error("Failed to start live broadcast! REASON = "
+                        + response.getDetail());
             }
         } else {
             BroadcastException exc = new BroadcastException(

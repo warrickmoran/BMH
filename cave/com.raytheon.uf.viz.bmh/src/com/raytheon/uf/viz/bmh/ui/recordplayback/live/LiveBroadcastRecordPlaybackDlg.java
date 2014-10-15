@@ -28,8 +28,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastThread.BROADC
 import com.raytheon.uf.viz.core.VizApp;
 
 /**
- * An extension of the @{link RecordPlaybackDlg} that supports live streaming the
- * audio to the Comms Manager as it is recorded.
+ * An extension of the @{link RecordPlaybackDlg} that supports live streaming
+ * the audio to the Comms Manager as it is recorded.
  * 
  * <pre>
  * 
@@ -38,6 +38,7 @@ import com.raytheon.uf.viz.core.VizApp;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 9, 2014  3656       bkowal      Initial creation
+ * Oct 15, 2014 3655       bkowal      Reset the dialog on ERROR.
  * 
  * </pre>
  * 
@@ -71,9 +72,9 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
 
         this.initializeBroadcastLive();
     }
-    
+
     @Override
-    protected void stopAction() { 
+    protected void stopAction() {
         super.stopAction();
         if (this.broadcastThread == null) {
             return;
@@ -117,6 +118,16 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
                 @Override
                 public void run() {
                     startBroadcastLive();
+                }
+            });
+        } else if (state == BROADCAST_STATE.ERROR) {
+            getDisplay().asyncExec(new Runnable() {
+                @Override
+                public void run() {
+                    // reset the dialog
+                    stopBtn.setEnabled(false);
+                    recBtn.setEnabled(true);
+                    playBtn.setEnabled(false);
                 }
             });
         }
