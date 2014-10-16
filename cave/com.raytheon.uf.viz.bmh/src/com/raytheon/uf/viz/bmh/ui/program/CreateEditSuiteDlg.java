@@ -42,6 +42,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
@@ -94,6 +95,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08, 2014  #3687     bsteffen    Remove ProgramTrigger.
  * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
+ * Oct 15, 2014  3715      bkowal      Create temporary data objects that can be used when
+ *                                     a new {@link Suite} is created.
  * </pre>
  * 
  * @author lvenable
@@ -251,6 +254,9 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
     @Override
     protected void disposed() {
+        if (dialogType == DialogType.CREATE) {
+            selectedProgram.cancelNewSuite(selectedSuite);
+        }
     }
 
     @Override
@@ -669,8 +675,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         SuiteDataManager sdm = new SuiteDataManager();
 
-        selectedSuite.setType(suiteType);
-        selectedSuite.setSuiteMessages(msgTypesInSuiteList);
         if (this.triggerSuiteMsgsRemoved.isEmpty() == false) {
             this.selectedSuite
                     .setRemovedTriggerSuiteMessages(this.triggerSuiteMsgsRemoved);
@@ -701,11 +705,11 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      */
     private void handleCreateAction() {
 
+        this.createNewSuite();
+
         SuiteNameValidator snv = new SuiteNameValidator(existingSuiteNames);
 
-        String suiteName = suiteNameTF.getText().trim();
-
-        if (!snv.validateInputText(shell, suiteName)) {
+        if (!snv.validateInputText(shell, this.selectedSuite.getName())) {
             return;
         }
 
@@ -713,36 +717,36 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             return;
         }
 
-        String categoryName = categoryCbo.getItem(categoryCbo
-                .getSelectionIndex());
-        SuiteType suiteType = SuiteType.valueOf(categoryName);
-
-        if (!validMessageTypes(suiteType)) {
+        if (!validMessageTypes(this.selectedSuite.getType())) {
             return;
         }
 
-        /*
-         * Save the Suite.
-         */
-        Suite suite = new Suite();
-        suite.setName(suiteName);
-        suite.setType(suiteType);
-
-        suite.setSuiteMessages(msgTypesInSuiteList);
+        List<MessageTypeSummary> newTriggerMsgTypes = new ArrayList<>(
+                this.selectedSuite.getSuiteMessages().size());
+        for (SuiteMessage suiteMsg : this.selectedSuite.getSuiteMessages()) {
+            if (this.selectedProgram.isTriggerMsgType(this.selectedSuite,
+                    suiteMsg.getMsgTypeSummary())) {
+                newTriggerMsgTypes.add(suiteMsg.getMsgTypeSummary());
+            }
+        }
 
         SuiteDataManager sdm = new SuiteDataManager();
 
         Suite savedSuite = null;
         try {
-            SuiteResponse suiteReponse = sdm.saveSuite(suite);
+            SuiteResponse suiteReponse = sdm.saveSuite(this.selectedSuite);
             if (suiteReponse.getSuiteList().isEmpty()) {
                 return;
             }
             savedSuite = suiteReponse.getSuiteList().get(0);
         } catch (Exception e) {
-            statusHandler.error("Error creating the suite: " + suite.getName(),
-                    e);
+            statusHandler.error("Error creating the suite: "
+                    + this.selectedSuite.getName(), e);
             return;
+        }
+
+        if (newTriggerMsgTypes.isEmpty() == false) {
+            savedSuite.setNewTriggerSuiteMessages(newTriggerMsgTypes);
         }
 
         /*
@@ -764,6 +768,20 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         setReturnValue(savedSuite);
         close();
+    }
+
+    private void createNewSuite() {
+        if (this.selectedSuite == null) {
+            this.selectedSuite = new Suite();
+        }
+
+        this.selectedSuite.setName(suiteNameTF.getText().trim());
+        this.selectedSuite.setType(getSelectedSuiteType());
+
+        if (this.msgTypesInSuiteList != null
+                && this.msgTypesInSuiteList.isEmpty() == false) {
+            this.selectedSuite.setSuiteMessages(this.msgTypesInSuiteList);
+        }
     }
 
     /**
@@ -886,6 +904,9 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * Add message types to the selected message type table.
      */
     private void handleAddMessageTypes() {
+        if (this.dialogType == DialogType.CREATE) {
+            this.createNewSuite();
+        }
 
         int[] indices = availableMsgTypeTable.getSelectedIndices();
 
@@ -921,6 +942,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * Remove selected message types from the selected message types table.
      */
     private void handleRemoveMessageTypes() {
+        if (this.dialogType == DialogType.CREATE) {
+            this.createNewSuite();
+        }
+
         int[] indices = selectedMsgTypeTable.getSelectedIndices();
 
         if (indices.length == 0) {

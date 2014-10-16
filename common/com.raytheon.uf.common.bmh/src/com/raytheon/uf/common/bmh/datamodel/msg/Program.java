@@ -70,6 +70,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 01, 2014 #3589     dgilling    Add getProgramSuite().
  * Oct 08, 2014 #3687     bsteffen    Remove ProgramTrigger.
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary and ProgramSummary.
+ * Oct 15, 2014  3715     bkowal      Support adding / editing program triggers for
+ *                                    completely new {@link Suite}(s).
  * </pre>
  * 
  * @author rjpeter
@@ -166,11 +168,26 @@ public class Program {
         }
 
         /*
+         * if it is a new suite, add it to the map. This map is transient so
+         * differences between it and the actual data will have no impact.
+         */
+        if (suite.getId() <= 0) {
+            if (this.suiteToProgramSuiteMap.containsKey(suite) == false) {
+                ProgramSuite newProgramSuite = new ProgramSuite();
+                newProgramSuite.setProgram(this);
+                newProgramSuite.setSuite(suite);
+                this.suiteToProgramSuiteMap.put(suite, newProgramSuite);
+            }
+            return;
+        }
+
+        /*
          * Look for changes that were made directly to the program suites list
          * via pass-by-reference.
          */
         if ((this.suiteToProgramSuiteMap.size() != this.programSuites.size())
                 || (this.suiteToProgramSuiteMap.containsKey(suite) == false)) {
+            this.suiteToProgramSuiteMap.clear();
             for (ProgramSuite pg : this.programSuites) {
                 this.suiteToProgramSuiteMap.put(pg.getSuite(), pg);
             }
@@ -198,6 +215,13 @@ public class Program {
         }
 
         return suites;
+    }
+
+    public void cancelNewSuite(Suite suite) {
+        if (this.suiteToProgramSuiteMap == null) {
+            return;
+        }
+        this.suiteToProgramSuiteMap.remove(suite);
     }
 
     /*
@@ -272,6 +296,13 @@ public class Program {
             programSuite.setProgram(this);
             programSuite.setSuite(suite);
             programSuite.setPosition(this.programSuites.size());
+            // check for new trigger messages for new suites.
+            if (suite.getNewTriggerSuiteMessages() != null) {
+                for (MessageTypeSummary msgType : suite
+                        .getNewTriggerSuiteMessages()) {
+                    programSuite.addTrigger(msgType);
+                }
+            }
             this.programSuites.add(programSuite);
         }
     }
