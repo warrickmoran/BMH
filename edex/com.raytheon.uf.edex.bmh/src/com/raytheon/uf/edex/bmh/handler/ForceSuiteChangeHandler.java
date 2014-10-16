@@ -19,7 +19,12 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.playlist.PlaylistManager;
 
 /**
@@ -33,6 +38,7 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistManager;
  * ------------ ---------- ----------- --------------------------
  * Sep 25, 2014  #3589     dgilling     Initial creation
  * Oct 13, 2014  #3413     rferrel     Implement User roles.
+ * Oct 15, 2014, #3635     rferrel     Implement Logging
  * 
  * </pre>
  * 
@@ -59,8 +65,21 @@ public final class ForceSuiteChangeHandler extends
     @Override
     public Boolean handleRequest(ForceSuiteChangeRequest request)
             throws Exception {
-        playlistMgr.processForceSuiteSwitch(request.getTransmitterGroup(),
-                request.getSelectedSuite());
+        TransmitterGroup group = request.getTransmitterGroup();
+        Suite suite = request.getSelectedSuite();
+        playlistMgr.processForceSuiteSwitch(group, suite);
+
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            logger.info("User "
+                    + user
+                    + " Force Suite Change Request for TransmitterGroup name/id: "
+                    + group.getName() + "/" + group.getId()
+                    + ", Suite name/id: " + suite.getName() + "/"
+                    + suite.getId() + " type: " + suite.getType());
+        }
 
         return Boolean.TRUE;
     }

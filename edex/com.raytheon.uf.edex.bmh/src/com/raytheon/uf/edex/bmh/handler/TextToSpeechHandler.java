@@ -41,7 +41,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSReturn;
  *                                     now hidden from the client.
  * Oct 2, 2014     3642    bkowal      Use the tts synthesis timeout provided
  *                                     in the request.
- * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 13, 2014    3413    rferrel     Implement User roles.
  * 
  * </pre>
  * 
