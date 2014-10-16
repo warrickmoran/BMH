@@ -17,4 +17,14 @@
         <constructor-arg value="bmh.comms.manager.broadcast" />
         <constructor-arg value="tcp://${bmh.host}:${bmh.comms.manager.port.broadcast}/" />
     </bean>
+    
+    <bean factory-bean="serverLocationRegistry" factory-method="register">
+        <constructor-arg value="bmh.practice.comms.manager.linetap" />
+        <constructor-arg value="tcp://${bmh.host}:${bmh.practice.comms.manager.port.linetap}/" />
+    </bean>
+
+    <bean factory-bean="serverLocationRegistry" factory-method="register">
+        <constructor-arg value="bmh.practice.comms.manager.broadcast" />
+        <constructor-arg value="tcp://${bmh.host}:${bmh.practice.comms.manager.port.broadcast}/" />
+    </bean>
 </beans>

@@ -27,7 +27,7 @@
     errorHandlerRef="errorHandler">
 
     <route id="practice_bmh-schedule">
-      <from uri="jms-durable:queue:BMH.Practice.Schedule" />
+      <from uri="jms-generic:queue:BMH.Practice.Schedule" />
       <doTry>
         <bean ref="practice_broadcastMsgDao" method="getByID" />
         <bean ref="practice_playlistManager" method="newMessage" />
@@ -39,7 +39,7 @@
     </route>
 
     <route id="practice_bmhPlaylistManagerConfig">
-      <from uri="jms-durable:topic:BMH.Practice.Config" />
+      <from uri="jms-generictopic:BMH.Practice.Config" />
       <doTry>
         <bean ref="serializationUtil" method="transformFromThrift" />
         <filter>

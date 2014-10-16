@@ -27,8 +27,6 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 
-import com.raytheon.uf.edex.bmh.BMHConstants;
-
 /**
  * 
  * Config for a single group on the DAC.
@@ -44,6 +42,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Aug 18, 2014  3532     bkowal      Added transmitter decibel range
  * Sep 5, 2014   3532     bkowal      Replaced decibel range with decibel target
  * Oct 2, 2014   3642     bkowal      Added transmitter timezone.
+ * Oct 16, 2014  3687     bsteffen    Add playlistDirectory to xml.
  * 
  * </pre>
  * 
@@ -55,6 +54,9 @@ public class DacChannelConfig {
 
     @XmlAttribute
     private String transmitterGroup;
+
+    @XmlAttribute
+    private String playlistDirectory;
 
     @XmlAttribute
     private double dbTarget;
@@ -72,8 +74,7 @@ public class DacChannelConfig {
     private Integer controlPort;
 
     public Path getInputDirectory() {
-        return Paths.get(BMHConstants.getBmhDataDirectory(), "playlist",
-                transmitterGroup);
+        return Paths.get(playlistDirectory);
     }
 
     public String getTransmitterGroup() {
@@ -82,6 +83,18 @@ public class DacChannelConfig {
 
     public void setTransmitterGroup(String transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    public String getPlaylistDirectory() {
+        return playlistDirectory;
+    }
+
+    public void setPlaylistDirectory(String playlistDirectory) {
+        this.playlistDirectory = playlistDirectory;
+    }
+
+    public void setPlaylistDirectoryPath(Path playlistDirectory) {
+        this.playlistDirectory = playlistDirectory.toString();
     }
 
     /**

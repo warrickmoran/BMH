@@ -49,6 +49,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Sep 25, 2014  3485     bsteffen    Add cluster options
  * Sep 29, 2014  3291     bkowal      Updated to use the bmh home directory.
  * Oct 10, 2014  3656     bkowal      Added broadcastLivePort
+ * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * 
  * </pre>
  * 
@@ -146,9 +147,14 @@ public class CommsConfig {
         this.jmsConnection = jmsConnection;
     }
 
-    public static Path getDefaultPath() {
-        return Paths.get(BMHConstants.getBmhHomeDirectory()).resolve("conf")
-                .resolve("comms.xml");
+    public static Path getDefaultPath(boolean operational) {
+        Path confDir = Paths.get(BMHConstants.getBmhHomeDirectory()).resolve(
+                "conf");
+        if (operational) {
+            return confDir.resolve("comms.xml");
+        } else {
+            return confDir.resolve("comms-practice.xml");
+        }
     }
 
     public Set<CommsHostConfig> getClusterHosts() {

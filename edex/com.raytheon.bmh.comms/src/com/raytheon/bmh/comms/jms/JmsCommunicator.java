@@ -57,8 +57,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Jul 31, 2014  3286     dgilling    Wire up DacHardwareStatusNotification.
  * Sep 23, 2014  3485     bsteffen    Enable sending anything for dac status.
  *                                    Add methods to specifically listen for playlist changes.
- * Oct 07, 2014  3687     bsteffen    Use operational queue until practice mode
- *                                    in comms manager is implemented
+ * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * 
  * </pre>
  * 
@@ -72,14 +71,18 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     private static final int MAX_UNSENT_SIZE = 100;
 
+    private final boolean operational;
+
     private Session producerSession;
 
     private MessageProducer producer;
 
     private Deque<Object> unsent = new LinkedBlockingDeque<>(MAX_UNSENT_SIZE);
 
-    public JmsCommunicator(CommsConfig config) throws URLSyntaxException {
+    public JmsCommunicator(CommsConfig config, boolean operational)
+            throws URLSyntaxException {
         super(new AMQConnectionFactory(config.getJmsConnection()));
+        this.operational = operational;
     }
 
     public void sendDacStatus(Object notification) {
@@ -110,14 +113,16 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     public void listenForPlaylistChanges(DacTransmitKey key, String group,
             DacTransmitServer server) {
-        addQueueObserver(PlaylistUpdateNotification.getQueueName(group, true),
+        addQueueObserver(
+                PlaylistUpdateNotification.getQueueName(group, operational),
                 new PlaylistNotificationObserver(server, key));
     }
 
     public void unlistenForPlaylistChanges(DacTransmitKey key, String group,
             DacTransmitServer server) {
         removeQueueObserver(
-                PlaylistUpdateNotification.getQueueName(group, true), null,
+                PlaylistUpdateNotification.getQueueName(group, operational),
+                null,
                 new PlaylistNotificationObserver(server, key));
     }
 
@@ -126,7 +131,11 @@ public class JmsCommunicator extends JmsNotificationManager {
             try {
                 producerSession = createSession();
                 if (producerSession != null) {
-                    Topic t = producerSession.createTopic("BMH.DAC.Status");
+                    String topic = "BMH.DAC.Status";
+                    if (!operational) {
+                        topic = "BMH.Practice.DAC.Status";
+                    }
+                    Topic t = producerSession.createTopic(topic);
                     producer = producerSession.createProducer(t);
                 }
             } catch (JMSException e) {

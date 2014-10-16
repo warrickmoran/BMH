@@ -54,5 +54,11 @@ export PATH=${awips_home}/bin:${JAVA_HOME}/bin:${PATH}
 t=`date "+%Y%m%d"`
 export logfile=/awips2/bmh/logs/commsmanager-$t.log
 
+
+WRAPPER_ARGS=""
+if [ $# -ne 0 ]; then
+  WRAPPER_ARGS="wrapper.app.parameter.1=$@"
+fi
+
 $JAVA -Xmx32m -XX:MaxPermSize=12m -XX:ReservedCodeCacheSize=4m -jar \
-	${BMH_HOME}/bin/yajsw/wrapper.jar -c ${BMH_HOME}/conf/${CONF_FILE}
+	${BMH_HOME}/bin/yajsw/wrapper.jar -c ${BMH_HOME}/conf/${CONF_FILE} ${WRAPPER_ARGS}

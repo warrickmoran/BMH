@@ -1,0 +1,42 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans
+                      http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+                      http://camel.apache.org/schema/spring
+                      http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+  <bean id="practice_commsConfigurator" class="com.raytheon.uf.edex.bmh.comms.CommsConfigurator">
+    <constructor-arg value="false" />
+    <property name="dacDao" ref="practice_dacDao" />
+    <property name="transmitterGroupDao" ref="practice_transmitterGroupDao" />
+  </bean>
+
+  <camelContext id="practice_bmhCommsConfigurator" xmlns="http://camel.apache.org/schema/spring"
+    errorHandlerRef="errorHandler">
+
+    <route id="practice_bmhCommsConfiguratorRoute">
+      <from uri="jms-generic:topic:BMH.Config" />
+      <doTry>
+          <bean ref="serializationUtil" method="transformFromThrift" />
+          <filter>
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification"</simple>
+              <bean ref="practice_commsConfigurator" method="configure" />
+          </filter>
+          <filter>
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.ResetNotification"</simple>
+              <bean ref="practice_commsConfigurator" method="configure" />
+          </filter>
+        <doCatch>
+          <exception>java.lang.Throwable</exception>
+          <to uri="log:bmh?level=ERROR" />
+        </doCatch>
+      </doTry>
+    </route>
+
+  </camelContext>
+  
+  <bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
+    <constructor-arg ref="practice_bmhCommsConfigurator" />
+    <constructor-arg ref="practice_commsConfigurator" />
+  </bean>
+</beans>

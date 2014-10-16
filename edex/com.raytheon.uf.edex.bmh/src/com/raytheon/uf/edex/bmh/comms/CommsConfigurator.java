@@ -66,7 +66,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 2, 2014   3642     bkowal      Added transmitter timezone
  * Oct 03, 2014  3485     bsteffen    Better handling of poorly configured dacs.
  * Oct 13, 2014  3656     bkowal      Copy broadcast live port from old config to new.
- * 
+ * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * 
  * </pre>
  * 
@@ -78,21 +78,32 @@ public class CommsConfigurator implements IContextStateProcessor {
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(CommsConfigurator.class);
 
+    private final boolean operational;
+
     private DacDao dacDao;
 
     private TransmitterGroupDao transmitterGroupDao;
 
+    public CommsConfigurator() {
+        this(true);
+    }
+
+    public CommsConfigurator(boolean operational) {
+        this.operational = operational;
+    }
+
+
     public CommsConfig configure() {
+        Path configFilePath = CommsConfig.getDefaultPath(operational);
         List<Dac> dacs = dacDao.getAll();
         Map<Integer, DacConfig> dacMap = createDacConfigs(dacs);
         populateChannels(dacMap);
         Map<String, DacConfig> prevDacMap = new HashMap<>();
 
-        Path configPath = CommsConfig.getDefaultPath();
         CommsConfig prevConfig = null;
-        if (Files.exists(configPath)) {
+        if (Files.exists(configFilePath)) {
             try {
-                prevConfig = JAXB.unmarshal(configPath.toFile(),
+                prevConfig = JAXB.unmarshal(configFilePath.toFile(),
                         CommsConfig.class);
             } catch (DataBindingException e) {
                 statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
@@ -100,7 +111,7 @@ public class CommsConfigurator implements IContextStateProcessor {
             }
         } else {
             try {
-                Files.createDirectories(configPath.getParent());
+                Files.createDirectories(configFilePath.getParent());
             } catch (IOException e) {
                 statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
                         "Cannot save comms config file.", e);
@@ -120,6 +131,12 @@ public class CommsConfigurator implements IContextStateProcessor {
                     prevDacMap.put(dconf.getIpAddress(), dconf);
                 }
             }
+        } else if (!operational) {
+            /* Change the default ports so it does not conflict with operational mode.*/
+            config.setDacTransmitPort(config.getDacTransmitPort() + 100);
+            config.setLineTapPort(config.getLineTapPort() + 100);
+            config.setClusterPort(config.getClusterPort() + 100);
+            config.setBroadcastLivePort(config.getBroadcastLivePort() + 100);
         }
         assignPorts(dacs, dacMap, prevDacMap);
         config.setJmsConnection(BMHConstants
@@ -133,7 +150,7 @@ public class CommsConfigurator implements IContextStateProcessor {
                         "Writing comms conf file with no dacs.");
             }
             try {
-                JAXB.marshal(config, configPath.toFile());
+                JAXB.marshal(config, configFilePath.toFile());
             } catch (DataBindingException e) {
                 statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
                         "Cannot save comms config file.", e);
@@ -166,6 +183,8 @@ public class CommsConfigurator implements IContextStateProcessor {
      * @param dacMap
      */
     protected void populateChannels(Map<Integer, DacConfig> dacMap) {
+        Path playlistDirectoryPath = BMHConstants.getBmhDataDirectory(
+                operational).resolve("playlist");
         for (TransmitterGroup group : transmitterGroupDao.getAll()) {
             Set<Transmitter> transmitters = group.getEnabledTransmitters();
             if (transmitters.isEmpty()) {
@@ -180,6 +199,8 @@ public class CommsConfigurator implements IContextStateProcessor {
             }
             DacChannelConfig channel = new DacChannelConfig();
             channel.setTransmitterGroup(group.getName());
+            channel.setPlaylistDirectoryPath(playlistDirectoryPath
+                    .resolve(group.getName()));
             channel.setDbTarget(group.getAudioDBTarget());
             channel.setTimezone(group.getTimeZone());
 

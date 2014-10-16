@@ -79,12 +79,12 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
  * Sep 23, 2014  3485     bsteffen    Additional event handling to support clustering.
  * Sep 29, 2014  3291     bkowal      Use bmh home to look for configuration.
  * Oct 01, 2014  3665     bsteffen    Add force start flag to dac transmit starter.
- * 
  * Oct 2, 2014   3642     bkowal      Pass the timezone associated with the transmitter
  *                                    group as an argument to the Dac Transmitter.
  * Oct 10, 2014  3656     bkowal      Initial implementation of live audio streaming from
  *                                    Viz to the Comms Manager.
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
+ * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * 
  * </pre>
  * 
@@ -126,6 +126,8 @@ public class CommsManager {
     private final SimpleDateFormat logDateFormat = new SimpleDateFormat(
             "yyyyMMdd");
 
+    private final boolean operational;
+
     private final Path configPath;
 
     private final DacTransmitServer transmitServer;
@@ -161,15 +163,20 @@ public class CommsManager {
      * Create a comms manager, this will fail if there are problems starting
      * servers.
      */
-    public CommsManager() {
-        configPath = CommsConfig.getDefaultPath();
+    public CommsManager(boolean operational) {
+        this.operational = operational;
+        configPath = CommsConfig.getDefaultPath(operational);
         if (Files.exists(configPath)) {
             config = JAXB.unmarshal(configPath.toFile(), CommsConfig.class);
             logger.info("Successfully loaded config file at {}", configPath);
-        } else {
-            logger.error("No config found, using default values.");
+        } else if (operational) {
+            logger.error("No config found at {}, using default values.",
+                    configPath);
             config = new CommsConfig();
             JAXB.marshal(config, configPath.toFile());
+        } else {
+            throw new IllegalStateException("No config file found at "
+                    + configPath);
         }
         try {
             transmitServer = new DacTransmitServer(this, config);
@@ -198,7 +205,7 @@ public class CommsManager {
         }
         try {
             if (config.getJmsConnection() != null) {
-                jms = new JmsCommunicator(config);
+                jms = new JmsCommunicator(config, operational);
             } else {
                 logger.warn("No jms connection specified, jms will be disabled.");
             }
@@ -346,7 +353,7 @@ public class CommsManager {
         lineTapServer.reconfigure(config);
         if (jms == null && config.getJmsConnection() != null) {
             try {
-                jms = new JmsCommunicator(config);
+                jms = new JmsCommunicator(config, operational);
                 jms.connect();
             } catch (URLSyntaxException e) {
                 logger.error(
@@ -580,6 +587,18 @@ public class CommsManager {
     }
 
     public static void main(String[] args) {
-        new CommsManager().run();
+        boolean operational = true;
+        for (String arg : args) {
+            if (arg.equals("-p")) {
+                operational = false;
+            } else {
+                logger.error(
+                        "Unsupported argument: {}.\n  The only supported argument is -p for practice mode.",
+                        arg);
+                System.exit(1);
+            }
+        }
+
+        new CommsManager(operational).run();
     }
 }

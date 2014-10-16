@@ -44,9 +44,9 @@ import com.raytheon.uf.edex.core.EdexException;
  */
 public class BmhMessageProducer {
 
-    private static final String OPERATIONAL_CONFIG_URI = "jms-durable:topic:BMH.Config";
+    private static final String OPERATIONAL_CONFIG_URI = "jms-generic:topic:BMH.Config";
 
-    private static final String PRACTICE_CONFIG_URI = "jms-durable:topic:BMH.Practice.Config";
+    private static final String PRACTICE_CONFIG_URI = "jms-generic:topic:BMH.Practice.Config";
 
     public static void sendConfigMessage(ConfigNotification notification,
             boolean operational)
