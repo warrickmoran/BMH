@@ -22,9 +22,12 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.request.WordRequest;
 import com.raytheon.uf.common.bmh.request.WordResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.dao.WordDao;
 import com.raytheon.uf.edex.database.DataAccessLayerException;
 import com.raytheon.uf.edex.database.query.DatabaseQuery;
@@ -44,6 +47,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Sep 10, 2014  3407     mpduff      Added break statement to delete word
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 16, 2014  3636     rferrel     Implement logging.
  * 
  * </pre>
  * 
@@ -92,26 +96,71 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
     private WordResponse saveWord(WordRequest request) {
         WordDao dao = new WordDao(request.isOperational());
         WordResponse response = new WordResponse();
-        dao.saveOrUpdate(request.getWord());
+        Word newWord = request.getWord();
+
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
+        Word oldWord = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            oldWord = dao.getByID(newWord.getId());
+        }
+
+        dao.saveOrUpdate(newWord);
         List<Word> wordList = new ArrayList<Word>(1);
-        wordList.add(request.getWord());
+        wordList.add(newWord);
         response.setWordList(wordList);
+
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            logWordChange(user, oldWord, newWord, logger);
+        }
+
         return response;
     }
 
     private WordResponse replaceWord(WordRequest request) {
         WordDao dao = new WordDao(request.isOperational());
         Word word = request.getWord();
+
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
+        Word oldWord = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            oldWord = dao.getByID(word.getId());
+        }
+
         dao.replaceWord(word);
         WordResponse response = new WordResponse();
         List<Word> wordList = new ArrayList<Word>(1);
         wordList.add(word);
         response.setWordList(wordList);
+
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            logWordChange(user, oldWord, word, logger);
+        }
+
         return response;
     }
 
     private void deleteWord(WordRequest request) {
         WordDao dao = new WordDao(request.isOperational());
-        dao.delete(request.getWord());
+        Word word = request.getWord();
+        dao.delete(word);
+
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            logger.info("User " + user + " Deleted Word " + word.toString());
+        }
+    }
+
+    private void logWordChange(String user, Word oldWord, Word newWord,
+            IUFStatusHandler logger) {
+        String entry = newWord.logEntry(oldWord, user);
+        if (entry.length() > 0) {
+            logger.info(entry);
+        }
     }
 }

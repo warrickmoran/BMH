@@ -37,6 +37,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.Word;
  * Jul 03, 2014  3355     mpduff      Initial creation.
  * Aug 05, 2014  3175     rjpeter     Added replaceWord.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Oct 16, 2014  3636     rferrel     Changed Id from String to and Integer.
  * 
  * </pre>
  * 
@@ -44,7 +45,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.Word;
  * @version 1.0
  */
 
-public class WordDao extends AbstractBMHDao<Word, String> {
+public class WordDao extends AbstractBMHDao<Word, Integer> {
     protected static final String DELETE_BY_WORD_DICT_QUERY = "delete from Word w where w.word = :word and w.dictionary = :dict";
 
     public WordDao() {
