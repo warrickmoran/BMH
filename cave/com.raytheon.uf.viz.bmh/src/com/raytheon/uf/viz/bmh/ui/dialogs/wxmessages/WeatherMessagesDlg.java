@@ -84,6 +84,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 14, 2014  #3728     lvenable     Added reading in a text file and displaying the Message
  *                                      Text Contents dialog.
  * Oct 15, 2014 #3728      lvenable     Added code to populate message type controls.
+ * Oct 15, 2014 #3728      lvenable     Added New/Edit buttons and call to select input message.
  * 
  * </pre>
  * 
@@ -225,6 +226,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         return true;
     }
 
+    /**
+     * Create the New and Edit buttons.
+     */
     private void createNewEditButtons() {
         Composite btnComp = new Composite(shell, SWT.NONE);
         btnComp.setLayout(new GridLayout(2, false));
@@ -242,7 +246,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                  * TODO : add new functionality
                  */
 
-                String msg = "Creating a new weather message will lose any changes.  Continue?";
+                String msg = "Creating a new weather message will lose any existing changes.  Continue?";
                 int choice = DialogUtility.showMessageBox(shell,
                         SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
                         "New Weather Message", msg);
@@ -266,6 +270,25 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                  * TODO : add edit functionality and put in confirmation that
                  * selecting edit will lose any unsaved changes
                  */
+                String msg = "Editing a weather message will lose any existing changes.  Continue?";
+                int choice = DialogUtility.showMessageBox(shell,
+                        SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                        "Edit Weather Message", msg);
+
+                if (choice == SWT.CANCEL) {
+                    return;
+                }
+
+                SelectInputMsgDlg simd = new SelectInputMsgDlg(shell);
+                simd.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        // TODO : add functionality to handle selected input
+                        // message
+
+                    }
+                });
+                simd.open();
             }
         });
 
@@ -463,7 +486,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
         gd.verticalIndent = 5;
         Label expirationLbl = new Label(controlComp, SWT.CENTER);
-        expirationLbl.setText("Effective Date/Time\n(YYMMDDHHmm): ");
+        expirationLbl.setText("Expiration Date/Time\n(YYMMDDHHmm): ");
         expirationLbl.setLayoutData(gd);
 
         Composite expirationDTFComp = new Composite(controlComp, SWT.NONE);
