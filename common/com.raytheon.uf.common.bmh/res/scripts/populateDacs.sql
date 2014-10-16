@@ -28,8 +28,8 @@
  * Sep 22, 2014 3652       lvenable    Added name.
  **/
 
-insert into bmh.dac_address (id, name, address, receiveport) values (1, 'dac1', '147.18.136.46', 21000);
-insert into bmh.dac_address (id, name, address, receiveport) values (2, 'dac2', '147.18.136.47', 22000);
+insert into bmh.dac_address (id, name, address, receiveport,receiveaddress) values (1, 'dac1', '147.18.136.46', 21000, '239.255.86.75');
+insert into bmh.dac_address (id, name, address, receiveport,receiveaddress) values (2, 'dac2', '147.18.136.47', 22000, '239.255.86.75');
 --insert into bmh.dac_ports (dac_id, dataport) values (1, 21002);
 --insert into bmh.dac_ports (dac_id, dataport) values (1, 21004);
 --insert into bmh.dac_ports (dac_id, dataport) values (1, 21006);
