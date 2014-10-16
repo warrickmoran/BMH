@@ -76,6 +76,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 21, 2014  #3490     lvenable     Added capability when creating new programs.
  * Aug 25, 2014  #3490     lvenable     Method to set the selected program.
  * Sep 10, 2014  #3490     lvenable     Fixed existing suite name problem.
+ * Oct 15, 2014  #3716     bkowal       Display 'Remove' instead of 'Delete' when within the
+ *                                      Broadcast Program Dialog.
  * 
  * </pre>
  * 
@@ -440,6 +442,7 @@ public class SuiteConfigGroup extends Composite {
                     AddSuitesDlg asd = new AddSuitesDlg(getShell(),
                             existingNames);
                     asd.setCloseCallback(new ICloseCallback() {
+                        @SuppressWarnings("unchecked")
                         @Override
                         public void dialogClosed(Object returnValue) {
                             if (returnValue != null
@@ -542,7 +545,11 @@ public class SuiteConfigGroup extends Composite {
             gd = new GridData(SWT.LEFT, SWT.CENTER, true, true);
             gd.widthHint = minButtonWidth;
             Button deleteSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
-            deleteSuiteBtn.setText("Delete");
+            if (suiteGroupType != SuiteGroupType.BROADCAST_PROGRAM) {
+                deleteSuiteBtn.setText("Delete");
+            } else {
+                deleteSuiteBtn.setText("Remove");
+            }
             deleteSuiteBtn.setLayoutData(gd);
             deleteSuiteBtn.addSelectionListener(new SelectionAdapter() {
                 @Override

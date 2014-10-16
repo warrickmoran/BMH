@@ -59,6 +59,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
@@ -97,6 +98,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  *                                     read-only.  Moved populating the message text to the opened()
  *                                     method. Also added resize capability.
  * Oct 11, 2014  3725      mpduff      Remove the Copy Messages button.
+ * Oct 15, 2014  3716      bkowal      Listen for and update based on Program Config Changes.
  * </pre>
  * 
  * @author mpduff
@@ -110,6 +112,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private final SimpleDateFormat timeFormatter = new SimpleDateFormat("mm:ss");
 
     private final String BMH_DAC_STATUS = "BMH.DAC.Status";
+
+    private final String BMH_CONFIG = "BMH.Config";
 
     private final String TITLE = "Broadcast Cycle";
 
@@ -239,6 +243,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         // TODO connect to topic
         NotificationManagerJob.addObserver(BMH_DAC_STATUS, this);
+        NotificationManagerJob.addObserver(BMH_CONFIG, this);
 
         initialTablePopulation();
     }
@@ -797,15 +802,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         }
         this.dacValueLbl.setText(dac);
 
-        try {
-            programObj = dataManager
-                    .getProgramForTransmitterGroup(selectedTransmitterGroupObject);
-            if (programObj != null) {
-                progValueLbl.setText(programObj.getName());
-            }
-        } catch (Exception e) {
-            statusHandler.error("Error accessing BMH database", e);
-        }
+        this.retrieveProgram();
 
         messageTextArea.setText("");
         initialTablePopulation();
@@ -816,6 +813,18 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         handleMonitorInlineEvent();
         suiteValueLbl.setText("");
         cycleDurValueLbl.setText("");
+    }
+
+    private void retrieveProgram() {
+        try {
+            programObj = dataManager
+                    .getProgramForTransmitterGroup(selectedTransmitterGroupObject);
+            if (programObj != null) {
+                progValueLbl.setText(programObj.getName());
+            }
+        } catch (Exception e) {
+            statusHandler.error("Error accessing BMH database", e);
+        }
     }
 
     /**
@@ -1019,6 +1028,30 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                         .getTransmitterGroup());
                         updateTable(tableData);
                     }
+                } else if (o instanceof ProgramConfigNotification) {
+                    ProgramConfigNotification pgmConfigNotification = (ProgramConfigNotification) o;
+                    /*
+                     * does this apply to the program we have selected?
+                     */
+                    if (this.programObj.getId() != pgmConfigNotification
+                            .getId()) {
+                        return;
+                    }
+                    /*
+                     * Refresh the selected program object.
+                     */
+                    VizApp.runAsync(new Runnable() {
+                        @Override
+                        public void run() {
+                            retrieveProgram();
+
+                            if (changeSuiteDlg != null
+                                    && changeSuiteDlg.isDisposed() == false) {
+                                changeSuiteDlg.updateSuites(programObj
+                                        .getSuites());
+                            }
+                        }
+                    });
                 }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing update notification", e);

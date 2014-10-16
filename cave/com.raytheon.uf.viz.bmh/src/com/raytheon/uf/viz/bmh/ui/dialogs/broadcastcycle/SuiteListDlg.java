@@ -53,6 +53,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * Jun 19, 2014    3432    mpduff      Initial creation
  * Sep 25, 2014    3589    dgilling    Return Suite object to caller.
  * Oct 10, 2014    3646    rferrel     Convert tableComp to GenericTable.
+ * Oct 15, 2014    3716    bkowal      Allow updates of the suite list table.
  * 
  * </pre>
  * 
@@ -64,13 +65,30 @@ public class SuiteListDlg extends CaveSWTDialogBase {
 
     private GenericTable tableComp;
 
-    private final List<Suite> suiteList;
+    private List<Suite> suiteList;
+
+    private Button okBtn;
+
+    private Button cancelBtn;
 
     public SuiteListDlg(Shell parent, List<Suite> suiteList) {
         super(parent, SWT.MIN | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
                 | CAVE.PERSPECTIVE_INDEPENDENT);
         this.suiteList = suiteList;
         setText("Change Suite");
+    }
+
+    public void updateSuites(List<Suite> suiteList) {
+        /* Disable controls during update. */
+        this.okBtn.setEnabled(false);
+        this.cancelBtn.setEnabled(false);
+        this.suiteList = suiteList;
+        this.populateTable();
+        /* pre-select the first row. */
+        this.tableComp.select(0);
+        /* Re-enable controls. */
+        this.okBtn.setEnabled(true);
+        this.cancelBtn.setEnabled(true);
     }
 
     @Override
@@ -107,7 +125,7 @@ public class SuiteListDlg extends CaveSWTDialogBase {
         btnComp.setLayoutData(gd);
 
         gd = new GridData(75, SWT.DEFAULT);
-        Button okBtn = new Button(btnComp, SWT.PUSH);
+        okBtn = new Button(btnComp, SWT.PUSH);
         okBtn.setText("OK");
         okBtn.setLayoutData(gd);
         okBtn.addSelectionListener(new SelectionAdapter() {
@@ -119,7 +137,7 @@ public class SuiteListDlg extends CaveSWTDialogBase {
         });
 
         gd = new GridData(75, SWT.DEFAULT);
-        Button cancelBtn = new Button(btnComp, SWT.PUSH);
+        cancelBtn = new Button(btnComp, SWT.PUSH);
         cancelBtn.setText("Cancel");
         cancelBtn.setLayoutData(gd);
         cancelBtn.addSelectionListener(new SelectionAdapter() {
