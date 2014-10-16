@@ -22,12 +22,15 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
@@ -45,10 +48,11 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  * Aug 19, 2014  3486     bsteffen    Send change notification over jms.
  * Aug 24, 2014  3432     mpduff      Added getEnabledTransmitterGroups()
  * Sep 05, 2014  3554     bsteffen    Send more specific config change notification.
- * Sep 23, 2014  3649     rferrel     DeleteTransmitterGroup notfication no longer
+ * Sep 23, 2014  3649     rferrel     DeleteTransmitterGroup notification no longer
  *                                    causes null pointer exception.
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 15, 2014  3636     rferrel     Implement logging of changes.
  * 
  * </pre>
  * 
@@ -132,37 +136,106 @@ public class TransmitterHandler extends
     }
 
     private TransmitterResponse saveTransmitter(TransmitterRequest request) {
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
         TransmitterResponse response = new TransmitterResponse();
-        Transmitter t = request.getTransmitter();
+        Transmitter newTrans = request.getTransmitter();
         TransmitterDao dao = new TransmitterDao(request.isOperational());
-        dao.saveOrUpdate(t);
-        response.setTransmitter(t);
+
+        Transmitter oldTrans = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            oldTrans = dao.getByID(newTrans.getId());
+        }
+
+        dao.saveOrUpdate(newTrans);
+
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            logTransmitterChange(user, oldTrans, newTrans, logger);
+        }
+
+        response.setTransmitter(newTrans);
 
         return response;
     }
 
     private TransmitterResponse saveTransmitterGroup(TransmitterRequest request) {
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
         TransmitterResponse response = new TransmitterResponse();
         TransmitterDao dao = new TransmitterDao(request.isOperational());
         TransmitterGroup group = request.getTransmitterGroup();
+
+        TransmitterGroup oldGroup = null;
+        TransmitterGroupDao tgDao = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            tgDao = new TransmitterGroupDao(request.isOperational());
+            oldGroup = tgDao.getByID(group.getId());
+        }
+
         dao.saveOrUpdate(group);
         List<TransmitterGroup> list = new ArrayList<TransmitterGroup>();
         list.add(group);
         response.setTransmitterGroupList(list);
 
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            if (group.isStandalone() && (oldGroup == null)) {
+                // New stand alone transmitter
+                Transmitter newTrans = tgDao.getByGroupName(group.getName())
+                        .getTransmitterList().get(0);
+                logTransmitterChange(user, null, newTrans, logger);
+            } else {
+                logTransmitterGroupChange(user, oldGroup, group, logger);
+            }
+        }
+
         return response;
     }
 
     private void deleteTransmitter(TransmitterRequest request) {
-        TransmitterDao dao = new TransmitterDao(request.isOperational());
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
         Transmitter transmitter = request.getTransmitter();
+        TransmitterDao dao = new TransmitterDao(request.isOperational());
+
+        TransmitterGroupDao gtdao = null;
+        int groupId = -1;
+        TransmitterGroup oldGroup = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            gtdao = new TransmitterGroupDao(request.isOperational());
+            groupId = transmitter.getTransmitterGroup().getId();
+            oldGroup = gtdao.getByID(groupId);
+        }
+
         dao.delete(transmitter);
+
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            logger.info("User " + user + " Delete transmitter id:"
+                    + transmitter.getId() + ": " + transmitter.toString());
+            TransmitterGroup newGroup = gtdao.getByID(groupId);
+            logTransmitterGroupChange(user, oldGroup, newGroup, logger);
+        }
     }
 
     private void deleteTransmitterGroup(TransmitterRequest request) {
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
         TransmitterDao dao = new TransmitterDao(request.isOperational());
         TransmitterGroup group = request.getTransmitterGroup();
+        List<Transmitter> transList = group.getTransmitterList();
         dao.delete(group);
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            StringBuilder sb = new StringBuilder();
+            sb.append("User ").append(user).append(" Delete ")
+                    .append(group.toString());
+            for (Transmitter trans : transList) {
+                sb.append("\n\t").append("Delete ").append(trans.toString());
+            }
+            logger.info(sb.toString());
+        }
     }
 
     private TransmitterResponse getTransmitters(TransmitterRequest request) {
@@ -198,12 +271,53 @@ public class TransmitterHandler extends
 
     private TransmitterResponse saveTransmitterDeleteGroup(
             TransmitterRequest request) {
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
         TransmitterResponse response = new TransmitterResponse();
         TransmitterDao dao = new TransmitterDao(request.isOperational());
-        Transmitter transmitter = dao.saveTransmitterDeleteGroup(
-                request.getTransmitter(), request.getTransmitterGroup());
+        Transmitter transmitter = request.getTransmitter();
+
+        TransmitterGroupDao tgdao = null;
+        TransmitterGroup delGroup = null;
+        Transmitter oldTrans = null;
+        TransmitterGroup oldGroup = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            tgdao = new TransmitterGroupDao(request.isOperational());
+            delGroup = request.getTransmitterGroup();
+            oldTrans = dao.getByID(transmitter.getId());
+            oldGroup = tgdao.getByID(transmitter.getTransmitterGroup().getId());
+        }
+
+        transmitter = dao.saveTransmitterDeleteGroup(request.getTransmitter(),
+                request.getTransmitterGroup());
         response.setTransmitter(transmitter);
 
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            TransmitterGroup newGroup = tgdao.getByID(transmitter
+                    .getTransmitterGroup().getId());
+            String user = BMHLoggerUtils.getUser(request);
+            logger.info("User " + user + " Delete " + delGroup.toString());
+            logTransmitterGroupChange(user, oldGroup, newGroup, logger);
+            logTransmitterChange(user, oldTrans, transmitter, logger);
+        }
+
         return response;
+    }
+
+    private void logTransmitterChange(String user, Transmitter oldTrans,
+            Transmitter newTrans, IUFStatusHandler logger) {
+        String entry = newTrans.logEntry(oldTrans, user);
+        if (entry.length() > 0) {
+            logger.info(entry);
+        }
+    }
+
+    private void logTransmitterGroupChange(String user,
+            TransmitterGroup oldGroup, TransmitterGroup newGroup,
+            IUFStatusHandler logger) {
+        String entry = newGroup.logEntry(oldGroup, user);
+        if (entry.length() > 0) {
+            logger.info(entry);
+        }
     }
 }
