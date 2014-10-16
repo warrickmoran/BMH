@@ -83,6 +83,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      to the select message type dialog.
  * Oct 14, 2014  #3728     lvenable     Added reading in a text file and displaying the Message
  *                                      Text Contents dialog.
+ * Oct 15, 2014 #3728      lvenable     Added code to populate message type controls.
  * 
  * </pre>
  * 
@@ -162,14 +163,13 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     /** Map of all the transmitters. */
     private final Map<String, Transmitter> transmitterMap = new HashMap<>();
 
-    /** Selected message type. */
-    private MessageType selectedMsgType = null;
-
     /** Area data from the Area Selection dialog. */
     private AreaSelectionSaveData areaData;
 
     /** Selected Message Type */
     private MessageType selectedMessageType = null;
+
+    private Button changeMsgTypeBtn;
 
     /**
      * Constructor.
@@ -203,6 +203,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     protected void initializeComponents(Shell shell) {
         setText("Weather Messages");
 
+        createNewEditButtons();
         createMainControls();
     }
 
@@ -222,6 +223,53 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
          * to save before closing, etc).
          */
         return true;
+    }
+
+    private void createNewEditButtons() {
+        Composite btnComp = new Composite(shell, SWT.NONE);
+        btnComp.setLayout(new GridLayout(2, false));
+        btnComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true, false));
+
+        int buttonWidth = 70;
+        GridData gd = new GridData(buttonWidth, SWT.DEFAULT);
+        Button newBtn = new Button(btnComp, SWT.PUSH);
+        newBtn.setText("New");
+        newBtn.setLayoutData(gd);
+        newBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                /*
+                 * TODO : add new functionality
+                 */
+
+                String msg = "Creating a new weather message will lose any changes.  Continue?";
+                int choice = DialogUtility.showMessageBox(shell,
+                        SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                        "New Weather Message", msg);
+
+                if (choice == SWT.CANCEL) {
+                    return;
+                }
+
+                resetControls();
+            }
+        });
+
+        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        Button editBtn = new Button(btnComp, SWT.PUSH);
+        editBtn.setText("Edit...");
+        editBtn.setLayoutData(gd);
+        editBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                /*
+                 * TODO : add edit functionality and put in confirmation that
+                 * selecting edit will lose any unsaved changes
+                 */
+            }
+        });
+
+        DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
     }
 
     /**
@@ -280,7 +328,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         msgTypeLbl = new Label(controlComp, SWT.BORDER);
         msgTypeLbl.setLayoutData(gd);
 
-        Button changeMsgTypeBtn = new Button(controlComp, SWT.PUSH);
+        changeMsgTypeBtn = new Button(controlComp, SWT.PUSH);
         changeMsgTypeBtn.setText(" Change... ");
         changeMsgTypeBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -293,8 +341,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                         if (returnValue != null) {
                             selectedMessageType = (MessageType) returnValue;
 
-                            // TODO : populate the dialog with the selected
-                            // message type.
+                            updateMessageTypeControls();
                         }
                     }
                 });
@@ -475,7 +522,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         CheckListData cld = createTransmitterListData();
 
         sameTransmitters = new CheckScrollListComp(mainComp, "SAME: ", cld,
-                false, 80, 250);
+                false, 80, 250, true);
     }
 
     /**
@@ -510,8 +557,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         Map<DateFieldType, Integer> periodicityMap = null;
         String periodicityDateTimeStr = null;
 
-        if (selectedMsgType != null) {
-            periodicityDateTimeStr = selectedMsgType.getPeriodicity();
+        if (selectedMessageType != null) {
+            periodicityDateTimeStr = selectedMessageType.getPeriodicity();
         }
 
         periodicityMap = generateDayHourMinuteSecondMap(periodicityDateTimeStr);
@@ -661,24 +708,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             return cld;
         }
 
-        if (selectedMsgType != null) {
-            Set<Transmitter> transSet = selectedMsgType.getSameTransmitters();
-            if (transSet != null) {
-                for (Transmitter t : transmitters) {
-                    cld.addDataItem(t.getMnemonic(), transSet.contains(t));
-                    transmitterMap.put(t.getMnemonic(), t);
-                }
-            } else {
-                for (Transmitter t : transmitters) {
-                    cld.addDataItem(t.getMnemonic(), false);
-                    transmitterMap.put(t.getMnemonic(), t);
-                }
-            }
-        } else {
-            for (Transmitter t : transmitters) {
-                cld.addDataItem(t.getMnemonic(), false);
-                transmitterMap.put(t.getMnemonic(), t);
-            }
+        for (Transmitter t : transmitters) {
+            cld.addDataItem(t.getMnemonic(), false);
+            transmitterMap.put(t.getMnemonic(), t);
         }
 
         return cld;
@@ -766,7 +798,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 List<String> fileContents = Files.readAllLines(f.toPath(),
                         Charset.defaultCharset());
 
-                if (fileContents.size() == 0) {
+                if (fileContents.isEmpty()) {
                     StringBuilder msg = new StringBuilder();
 
                     msg.append("The file: \n");
@@ -827,5 +859,45 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     private void handleContentsMicrophoneAction() {
         RecordPlaybackDlg recPlaybackDlg = new RecordPlaybackDlg(shell, 600);
         recPlaybackDlg.open();
+    }
+
+    private void updateMessageTypeControls() {
+        if (selectedMessageType == null) {
+            return;
+        }
+
+        // Message Type
+        msgTypeLbl.setText(selectedMessageType.getAfosid());
+        msgTitleLbl.setText(selectedMessageType.getTitle());
+        languageLbl
+                .setText(selectedMessageType.getVoice().getLanguage().name());
+        designationLbl.setText(selectedMessageType.getDesignation().name());
+        String eo = (selectedMessageType.isEmergencyOverride()) ? "Yes" : "No";
+        emergenyOverrideLbl.setText(eo);
+
+        CheckListData cld = new CheckListData();
+        Set<Transmitter> transSet = selectedMessageType.getSameTransmitters();
+        if (transSet != null) {
+            for (Transmitter t : transSet) {
+                cld.addDataItem(t.getMnemonic(), transSet.contains(t));
+                transmitterMap.put(t.getMnemonic(), t);
+            }
+        }
+
+        sameTransmitters.selectCheckboxes(cld);
+
+        // TODO: get input message data and populate controls.
+    }
+
+    private void resetControls() {
+        // Message Type
+        msgTypeLbl.setText("");
+        msgTitleLbl.setText("");
+        languageLbl.setText("");
+        designationLbl.setText("");
+        emergenyOverrideLbl.setText("");
+        sameTransmitters.selectCheckboxes(false);
+
+        submitMsgBtn.setEnabled(false);
     }
 }
