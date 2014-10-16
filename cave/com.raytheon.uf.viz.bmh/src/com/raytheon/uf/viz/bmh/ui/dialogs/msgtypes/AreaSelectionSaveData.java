@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * Aug 20, 2014    3411    mpduff      Initial creation
  * Oct 05, 2014    3411    mpduff      getTransmitters now returns an empty set rather than null
  * Oct 14, 2014   #3728    lvenable    Added a set of area codes.
+ * Oct 16, 2014    3657    bkowal      Added affectedTransmitters
  * 
  * </pre>
  * 
@@ -65,6 +66,14 @@ public class AreaSelectionSaveData {
      * Selected Transmitters
      */
     private Set<Transmitter> transmitters;
+
+    /**
+     * The affected transmitters based on the Area, Zone, and Transmitter
+     * selections. The dialog has already determined which transmitters should
+     * be included in this list so there is no reason for an external component
+     * to complete the same process.
+     */
+    private List<String> affectedTransmitters;
 
     /**
      * @return the areaList
@@ -156,6 +165,14 @@ public class AreaSelectionSaveData {
         for (Area a : transmitterAreaList) {
             allSelectedAreaCodes.add(a.getAreaCode());
         }
+    }
+
+    public List<String> getAffectedTransmitters() {
+        return affectedTransmitters;
+    }
+
+    public void setAffectedTransmitters(List<String> affectedTransmitters) {
+        this.affectedTransmitters = affectedTransmitters;
     }
 
     /**

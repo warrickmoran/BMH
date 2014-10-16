@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -91,6 +90,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 25, 2014   3620     bsteffen    Add seconds to periodicity and duration.
  * Oct 05, 2014   3411     mpduff      Added null checks and added transmitter to the group that contains it
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 16, 2014  3657      bkowal      Relocated duration parsing methods.
  * 
  * </pre>
  * 
@@ -412,7 +412,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             durDateTimeStr = selectedMsgType.getDuration();
         }
 
-        durMap = generateDayHourMinuteSecondMap(durDateTimeStr);
+        durMap = BmhUtils.generateDayHourMinuteSecondMap(durDateTimeStr);
 
         durationDTF = new DateTimeFields(defaultsGroup, durMap, false, false,
                 true);
@@ -429,7 +429,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             periodicityDateTimeStr = selectedMsgType.getPeriodicity();
         }
 
-        periodicityMap = generateDayHourMinuteSecondMap(periodicityDateTimeStr);
+        periodicityMap = BmhUtils
+                .generateDayHourMinuteSecondMap(periodicityDateTimeStr);
 
         periodicityDTF = new DateTimeFields(defaultsGroup, periodicityMap,
                 false, false, true);
@@ -547,7 +548,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             boStartDateTimeStr = selectedMsgType.getToneBlackOutStart();
         }
 
-        boStartMap = generateHourMinuteMap(boStartDateTimeStr);
+        boStartMap = BmhUtils.generateHourMinuteMap(boStartDateTimeStr);
 
         blackoutStartDTF = new DateTimeFields(blackoutComp, boStartMap, false,
                 false, false);
@@ -567,7 +568,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             boEndDateTimeStr = selectedMsgType.getToneBlackOutEnd();
         }
 
-        boEndMap = generateHourMinuteMap(boEndDateTimeStr);
+        boEndMap = BmhUtils.generateHourMinuteMap(boEndDateTimeStr);
 
         blackoutEndDTF = new DateTimeFields(blackoutComp, boEndMap, false,
                 false, false);
@@ -953,87 +954,5 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             statusHandler.error("Error retrieving voices from the database: ",
                     e);
         }
-    }
-
-    /**
-     * Generate a Map of DateFieldType Day/Hour/Minute keys with values pulled
-     * from the provided string.
-     * 
-     * @param dateTimeStr
-     *            Date/Time string (DDHHMMSS).
-     * @return Map of DateFieldTypes and the associated values.
-     */
-    private Map<DateFieldType, Integer> generateDayHourMinuteSecondMap(
-            String dateTimeStr) {
-        Map<DateFieldType, Integer> dateTimeMap = new LinkedHashMap<DateFieldType, Integer>();
-
-        if (dateTimeStr == null || dateTimeStr.length() != 6) {
-            dateTimeMap.put(DateFieldType.DAY, 0);
-            dateTimeMap.put(DateFieldType.HOUR, 0);
-            dateTimeMap.put(DateFieldType.MINUTE, 0);
-            dateTimeMap.put(DateFieldType.SECOND, 0);
-        } else {
-            int[] dtArray = splitDateTimeString(dateTimeStr);
-            dateTimeMap.put(DateFieldType.DAY, dtArray[0]);
-            dateTimeMap.put(DateFieldType.HOUR, dtArray[1]);
-            dateTimeMap.put(DateFieldType.MINUTE, dtArray[2]);
-            dateTimeMap.put(DateFieldType.MINUTE, dtArray[3]);
-        }
-
-        return dateTimeMap;
-    }
-
-    /**
-     * Generate a Map of DateFieldType Hour/Minute keys with values pulled from
-     * the provided string.
-     * 
-     * @param timeStr
-     *            Time string (HHMM).
-     * @return Map of DateFieldTypes and the associated values.
-     */
-    private Map<DateFieldType, Integer> generateHourMinuteMap(String timeStr) {
-        Map<DateFieldType, Integer> durmap = new LinkedHashMap<DateFieldType, Integer>();
-
-        if (timeStr == null || timeStr.length() != 4) {
-            durmap.put(DateFieldType.HOUR, 0);
-            durmap.put(DateFieldType.MINUTE, 0);
-        } else {
-            int[] dtArray = splitDateTimeString(timeStr);
-            durmap.put(DateFieldType.HOUR, dtArray[0]);
-            durmap.put(DateFieldType.MINUTE, dtArray[1]);
-        }
-
-        return durmap;
-    }
-
-    /**
-     * This method will split the date/time string into an array of integers for
-     * each element in the array.
-     * 
-     * If the string passed in is 013422, the return int array will contain 3
-     * elements: 1, 34, 22
-     * 
-     * @param dateTimeStr
-     *            Date/Time string.
-     * @return Array of numbers.
-     */
-    private int[] splitDateTimeString(String dateTimeStr) {
-        int arraySize = dateTimeStr.length() / 2;
-        int[] intArray = new int[arraySize];
-
-        int idx = 0;
-        for (int i = 0; i < arraySize; i++) {
-            String subStr = dateTimeStr.substring(idx, idx + 2);
-
-            try {
-                intArray[i] = Integer.valueOf(subStr);
-            } catch (NumberFormatException nfe) {
-                intArray[i] = 0;
-            }
-
-            idx += 2;
-        }
-
-        return intArray;
     }
 }

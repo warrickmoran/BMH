@@ -21,6 +21,8 @@ package com.raytheon.uf.viz.bmh.data;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioFormat.Encoding;
@@ -37,6 +39,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
@@ -52,6 +55,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Oct 2, 2014  3642       bkowal      Specify the Synthesizer Timeout
  * Oct 13, 2014 3413       rferrel     Support of user roles in sendRequest.
+ * Oct 16, 2014 3657       bkowal      Relocated duration parsing methods.
  * </pre>
  * 
  * @author mpduff
@@ -203,5 +207,88 @@ public class BmhUtils {
                     "User not authorized to perform request.");
         }
         return obj;
+    }
+
+    /**
+     * Generate a Map of DateFieldType Day/Hour/Minute keys with values pulled
+     * from the provided string.
+     * 
+     * @param dateTimeStr
+     *            Date/Time string (DDHHMMSS).
+     * @return Map of DateFieldTypes and the associated values.
+     */
+    public static Map<DateFieldType, Integer> generateDayHourMinuteSecondMap(
+            String dateTimeStr) {
+        Map<DateFieldType, Integer> dateTimeMap = new LinkedHashMap<DateFieldType, Integer>();
+
+        if (dateTimeStr == null || dateTimeStr.length() != 6) {
+            dateTimeMap.put(DateFieldType.DAY, 0);
+            dateTimeMap.put(DateFieldType.HOUR, 0);
+            dateTimeMap.put(DateFieldType.MINUTE, 0);
+            dateTimeMap.put(DateFieldType.SECOND, 0);
+        } else {
+            int[] dtArray = splitDateTimeString(dateTimeStr);
+            dateTimeMap.put(DateFieldType.DAY, dtArray[0]);
+            dateTimeMap.put(DateFieldType.HOUR, dtArray[1]);
+            dateTimeMap.put(DateFieldType.MINUTE, dtArray[2]);
+            dateTimeMap.put(DateFieldType.SECOND, dtArray[3]);
+        }
+
+        return dateTimeMap;
+    }
+
+    /**
+     * Generate a Map of DateFieldType Hour/Minute keys with values pulled from
+     * the provided string.
+     * 
+     * @param timeStr
+     *            Time string (HHMM).
+     * @return Map of DateFieldTypes and the associated values.
+     */
+    public static Map<DateFieldType, Integer> generateHourMinuteMap(
+            String timeStr) {
+        Map<DateFieldType, Integer> durmap = new LinkedHashMap<DateFieldType, Integer>();
+
+        if (timeStr == null || timeStr.length() != 4) {
+            durmap.put(DateFieldType.HOUR, 0);
+            durmap.put(DateFieldType.MINUTE, 0);
+        } else {
+            int[] dtArray = splitDateTimeString(timeStr);
+            durmap.put(DateFieldType.HOUR, dtArray[0]);
+            durmap.put(DateFieldType.MINUTE, dtArray[1]);
+        }
+
+        return durmap;
+    }
+
+    /**
+     * This method will split the date/time string into an array of integers for
+     * each element in the array.
+     * 
+     * If the string passed in is 013422, the return int array will contain 3
+     * elements: 1, 34, 22
+     * 
+     * @param dateTimeStr
+     *            Date/Time string.
+     * @return Array of numbers.
+     */
+    private static int[] splitDateTimeString(String dateTimeStr) {
+        int arraySize = dateTimeStr.length() / 2;
+        int[] intArray = new int[arraySize];
+
+        int idx = 0;
+        for (int i = 0; i < arraySize; i++) {
+            String subStr = dateTimeStr.substring(idx, idx + 2);
+
+            try {
+                intArray[i] = Integer.valueOf(subStr);
+            } catch (NumberFormatException nfe) {
+                intArray[i] = 0;
+            }
+
+            idx += 2;
+        }
+
+        return intArray;
     }
 }

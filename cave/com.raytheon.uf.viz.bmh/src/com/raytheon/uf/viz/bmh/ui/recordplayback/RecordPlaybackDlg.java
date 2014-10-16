@@ -61,6 +61,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 8, 2014   #3657     bkowal       Implemented audio recording and playback.
  * Oct 10, 2014  #3656     bkowal       Adjustments to allow for extension.
+ * Oct 16, 2014  #3657     bkowal       Block until close to capture recorded audio.
  * 
  * 
  * </pre>
@@ -156,7 +157,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      */
     public RecordPlaybackDlg(Shell parentShell, int maxRecordingSeconds) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
-                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.maxRecordingSeconds = maxRecordingSeconds;
     }
@@ -188,6 +189,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         if (this.recorderThread != null) {
             this.recorderThread.halt();
         }
+        this.setReturnValue(this.recordedAudio);
     }
 
     @Override

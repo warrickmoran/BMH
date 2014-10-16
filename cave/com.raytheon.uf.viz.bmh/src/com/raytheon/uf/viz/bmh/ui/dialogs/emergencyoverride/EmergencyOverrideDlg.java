@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,6 +49,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
@@ -57,8 +59,12 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListComp;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybackDlg;
@@ -77,6 +83,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * Oct 10, 2014  #3656     bkowal       Initial transmit capability implementation.
  * Oct 14, 2014  #3728     lvenable     Change table to single selection and fixed the duration
  *                                      spinners since they are a special case.
+ * Oct 16, 2014  #3657     bkowal       Implemented Message Type and Area Selection.
  * 
  * </pre>
  * 
@@ -100,6 +107,12 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     private List<MessageType> emerOverrideMsgTypes;
 
     /** List of SAME transmitters. */
+    /*
+     * Currently all selections will be overwritten whenever the user changes
+     * the selected areas via the Area Selection Dialog or whenever the user
+     * selects a new message type. This will undo any changes that the user
+     * manually made to the selection.
+     */
     private CheckScrollListComp sameTransmitters;
 
     /** Map of all the transmitters. */
@@ -224,11 +237,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             @Override
             public void tableSelectionChange(int selectionCount) {
                 if (selectionCount > 0) {
-                    // TODO : update the dialog with the new message type
-                    // selection
-                } else {
-                    // TODO : Not sure if this is needed as there should always
-                    // be an item selected in the database.
+                    // only one item can be selected.
+                    handleMsgTypeSelection();
                 }
             }
         });
@@ -272,7 +282,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         areaSelectionBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO : add area selection capability.
+                handleAreaSelection();
             }
         });
 
@@ -293,20 +303,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         autoScheduleChk = new Button(controlComp, SWT.CHECK);
         autoScheduleChk.setText("Auto Schedule");
         autoScheduleChk.setLayoutData(gd);
-        autoScheduleChk.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                boolean enabled = autoScheduleChk.getSelection();
-                durationLbl.setEnabled(enabled);
-                durHourSpnr.setEnabled(enabled);
-
-                if (enabled && durHourSpnr.getSelection() == hourMax) {
-                    durMinuteSpnr.setEnabled(false);
-                } else {
-                    durMinuteSpnr.setEnabled(enabled);
-                }
-            }
-        });
 
         Composite autoSchedComp = new Composite(controlComp, SWT.SHADOW_OUT);
         gl = new GridLayout(3, false);
@@ -328,7 +324,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         durHourSpnr.setTextLimit(2);
         durHourSpnr.setMinimum(0);
         durHourSpnr.setMaximum(hourMax);
-        durHourSpnr.setEnabled(false);
         durHourSpnr.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -346,7 +341,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         durMinuteSpnr.setTextLimit(2);
         durMinuteSpnr.setMinimum(0);
         durMinuteSpnr.setMaximum(59);
-        durMinuteSpnr.setEnabled(false);
 
         /*
          * Transmit button
@@ -464,13 +458,108 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             TableRowData trd = new TableRowData();
             trd.addTableCellData(new TableCellData(mt.getAfosid()));
             trd.addTableCellData(new TableCellData(mt.getTitle()));
+            trd.setData(mt);
             msgTypeTableData.addDataRow(trd);
         }
     }
 
+    private void handleMsgTypeSelection() {
+        List<TableRowData> selections = this.emerMsgTypeTable.getSelection();
+        this.selectedMsgType = (MessageType) selections.get(0).getData();
+
+        // Update Alert checkbox
+        this.alertChk.setSelection(this.selectedMsgType.isAlert());
+
+        // Update the duration
+        Map<DateFieldType, Integer> timeMap = BmhUtils
+                .generateHourMinuteMap(this.selectedMsgType.getDuration());
+        final int durationHour = timeMap.get(DateFieldType.HOUR);
+        if (durationHour > hourMax) {
+            this.durHourSpnr.setSelection(hourMax);
+            this.durMinuteSpnr.setSelection(0);
+            this.durMinuteSpnr.setEnabled(false);
+        } else {
+            this.durHourSpnr.setSelection(durationHour);
+            final int durationMinute = timeMap.get(DateFieldType.MINUTE);
+            // assuming the data insertion / update validation will ensure that
+            // the minute is within the proper range.
+            this.durMinuteSpnr.setSelection(durationMinute);
+            this.durMinuteSpnr.setEnabled(true);
+        }
+
+        // Update the selected transmitters
+
+        this.sameTransmitters
+                .selectCheckboxes(this.createTransmitterListData());
+    }
+
+    private void handleAreaSelection() {
+        AreaSelectionDlg areaSelectionDlg = new AreaSelectionDlg(this.shell,
+                this.selectedMsgType);
+        AreaSelectionSaveData areaData = (AreaSelectionSaveData) areaSelectionDlg
+                .open();
+
+        this.sameTransmitters.selectCheckboxes(false);
+        CheckListData cld = this.sameTransmitters.getCheckedItems();
+        for (String selectedTransmitter : areaData.getAffectedTransmitters()) {
+            cld.getDataMap().put(selectedTransmitter, true);
+        }
+        this.sameTransmitters.selectCheckboxes(cld);
+    }
+
     private void handleTransmitAction() {
+        if (this.validateSelections() == false) {
+            return;
+        }
         LiveBroadcastRecordPlaybackDlg dlg = new LiveBroadcastRecordPlaybackDlg(
                 this.shell, 120);
-        dlg.open();
+        /*
+         * We will need the audio that was recorded for potential rebroadcast
+         * scheduling.
+         */
+        this.handleTransmitComplete((ByteBuffer) dlg.open());
+    }
+
+    private boolean validateSelections() {
+        /* Message Type always has to be selected based on how the table works. */
+
+        /*
+         * In legacy code, an entire day was added for a duration of 0 hours 0
+         * minutes - CI_emerg.c.
+         */
+
+        /*
+         * Verify that at least one transmitter has been selected.
+         */
+        if (this.sameTransmitters.getCheckedItems().getCheckedItems().size() <= 0) {
+            DialogUtility
+                    .showMessageBox(
+                            this.shell,
+                            SWT.ICON_ERROR | SWT.OK,
+                            "Emergency Override - Transmitters",
+                            "No transmitters have been selected. At least one transmitter must be selected.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private void handleTransmitComplete(ByteBuffer recordedAudio) {
+        if (recordedAudio == null) {
+            // recording and/or broadcasting has failed.
+            return;
+        }
+        if (this.autoScheduleChk.getSelection()) {
+            // TODO: handle auto scheduling.
+        } else {
+            this.handleManualMsgScheduling();
+        }
+    }
+
+    private void handleManualMsgScheduling() {
+        MessageScheduleDlg scheduleDlg = new MessageScheduleDlg(this.shell);
+        scheduleDlg.open();
+
+        // TODO: finish message scheduling.
     }
 }

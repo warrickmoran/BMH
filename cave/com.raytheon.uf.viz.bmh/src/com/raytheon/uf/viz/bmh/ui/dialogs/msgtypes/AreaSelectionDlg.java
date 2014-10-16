@@ -74,6 +74,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Sep 11, 2014   3411     mpduff      Populate upon opening.
  * Oct 09, 2014   3646     rferrel     Converted tableComp to GenerticTable.
  * Oct 14, 2014  #3728     lvenable    Updated to support weather messages functionality
+ * Oct 16, 2014   3657     bkowal      Include affected transmitters in the return object
  * 
  * </pre>
  * 
@@ -735,6 +736,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                     tableData.addDataRow(row);
                 }
             }
+            this.updateAffectedTransmitters();
         } else if (areasCodesStr != null && areasCodesStr.length() > 0) {
 
             // Split the area codes.
@@ -1095,6 +1097,9 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                         + rowData.getClass());
             }
         }
+
+        saveData.setAffectedTransmitters(Arrays
+                .asList(this.affectedTransmitterList.getItems()));
 
         setReturnValue(saveData);
     }
