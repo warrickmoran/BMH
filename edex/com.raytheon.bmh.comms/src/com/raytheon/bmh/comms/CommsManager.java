@@ -32,12 +32,15 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXB;
+
 import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,6 +171,7 @@ public class CommsManager {
         configPath = CommsConfig.getDefaultPath(operational);
         if (Files.exists(configPath)) {
             config = JAXB.unmarshal(configPath.toFile(), CommsConfig.class);
+            validateConfig(config);
             logger.info("Successfully loaded config file at {}", configPath);
         } else if (operational) {
             logger.error("No config found at {}, using default values.",
@@ -213,6 +217,61 @@ public class CommsManager {
             logger.error(
                     "Error parsing jms connection url, jms will be disabled.",
                     e);
+        }
+    }
+
+    /**
+     * Log various config errors and remove dacs and channels that are not
+     * useable. When the config file is being properly generated from edex there
+     * should never be problems.
+     * 
+     * @param config
+     */
+    protected void validateConfig(CommsConfig config) {
+        if (config.getDacTransmitStarter() == null) {
+            logger.error("No dac transmit starter in the config file, dac transmits will not be started.");
+        }
+        Set<DacConfig> dacs = config.getDacs();
+        if (dacs != null) {
+            Iterator<DacConfig> dacIt = dacs.iterator();
+            while (dacIt.hasNext()) {
+                DacConfig dac = dacIt.next();
+                if (dac.getIpAddress() == null) {
+                    logger.error("A dac has been configured with no address. This dac will not be used.");
+                    dacIt.remove();
+                    continue;
+                }
+                List<DacChannelConfig> channels = dac.getChannels();
+                if (channels != null) {
+                    Iterator<DacChannelConfig> channelIt = channels.iterator();
+                    while (channelIt.hasNext()) {
+                        DacChannelConfig channel = channelIt.next();
+                        if (channel.getTransmitterGroup() == null) {
+                            logger.error(
+                                    "A channel for dac at {} has been configured with no group. This channel will not be used.",
+                                    dac.getIpAddress());
+                            channelIt.remove();
+                            continue;
+                        }
+                        if (channel.getPlaylistDirectory() == null) {
+                            logger.error(
+                                    "Group {} on dac at {} has no playlistDirectory and will not be used.",
+                                    channel.getTransmitterGroup(),
+                                    dac.getIpAddress());
+                            channelIt.remove();
+                            continue;
+                        }
+                        if (channel.getRadios() == null) {
+                            logger.error(
+                                    "Group {} on dac at {} has no radios and will not be used.",
+                                    channel.getTransmitterGroup(),
+                                    dac.getIpAddress());
+                            channelIt.remove();
+                            continue;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -312,6 +371,7 @@ public class CommsManager {
     }
 
     protected void reconfigure(CommsConfig newConfig) {
+        validateConfig(newConfig);
         if (newConfig.equals(this.config)) {
             return;
         }
@@ -382,14 +442,17 @@ public class CommsManager {
                 int status = p.exitValue();
                 logger.error("Dac transmit process has unexpectedly exited for "
                         + group + " with a status of " + status);
-                force = true;
             } catch (IllegalThreadStateException e) {
                 logger.info("Dac transmit process is running but unconnected for "
                         + group);
-                return;
+                force = true;
             }
         }
         logger.info("Starting dac transmit for: " + group);
+        if (config.getDacTransmitStarter() == null) {
+            /* validateConfig should have already handled this. */
+            return;
+        }
         List<String> args = new ArrayList<>();
         args.add(config.getDacTransmitStarter());
         if (force) {
@@ -415,8 +478,10 @@ public class CommsManager {
         args.add(Integer.toString(config.getDacTransmitPort()));
         args.add("-" + DacTransmitArgParser.TRANSMISSION_DB_TARGET_KEY);
         args.add(Double.toString(channel.getDbTarget()));
-        args.add("-" + DacTransmitArgParser.TIMEZONE_KEY);
-        args.add(channel.getTimezone());
+        if (channel.getTimezone() != null) {
+            args.add("-" + DacTransmitArgParser.TIMEZONE_KEY);
+            args.add(channel.getTimezone());
+        }
 
         ProcessBuilder startCommand = new ProcessBuilder(args);
         startCommand.environment().put("TRANSMITTER_GROUP", group);
