@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
 import java.io.IOException;
+import java.io.PipedOutputStream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -37,6 +38,12 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IShutdownRequestEventHandler;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.LiveBroadcastAudioRequest;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.PrepareLiveBroadcastRequest;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.LiveBroadcastStatus;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.StopLiveBroadcastRequest;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.TriggerLiveBroadcast;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistDirectoryObserver;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
@@ -73,6 +80,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      observer optional.
  * Sep 4, 2014   #3532     bkowal       Use a decibel target instead of a range.
  * Oct 2, 2014   #3642     bkowal       Add transmitter timezone
+ * Oct 15, 2014  #3655     bkowal       Support live broadcasting to the DAC.
  * 
  * </pre>
  * 
@@ -94,6 +102,10 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     private final EventBus eventBus;
 
     private final DataTransmitThread dataThread;
+
+    private LiveBroadcastTransmitThread broadcastThread;
+
+    private PipedOutputStream liveBroadcastDataPipe;
 
     private final ControlStatusThread controlThread;
 
@@ -187,7 +199,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
      *             all the child threads to die.
      */
     public void shutdown() throws InterruptedException {
-        logger.info("Intiating shutdown...");
+        logger.info("Initiating shutdown...");
 
         dataThread.shutdown();
         playlistMgr.shutdown();
@@ -264,4 +276,190 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
             logger.error("Shutdown interrupted.", e1);
         }
     }
+
+    /*
+     * 
+     * BEGIN Live Broadcast Handling Methods
+     */
+
+    @Subscribe
+    public void handlePrepareLiveBroadcastStartRequest(
+            PrepareLiveBroadcastRequest request) {
+        logger.info("Received live broadcast start request for broadcast {}.",
+                request.getBroadcastId());
+
+        /*
+         * Is an interrupt currently playing?
+         */
+        // also need to verify that a live broadcast streaming session is not
+        // already running.
+        if (this.dataThread.isPlayingInterrupt()) {
+            logger.info(
+                    "Unable to fulfill live broadcast request; an interrupt is currently playing for transmitter {}.",
+                    request.getData().getTransmitterGroup());
+            /*
+             * unable to start a live broadcast on this transmitter.
+             */
+            this.notifyLiveClientFailure(request, request.getData()
+                    .getTransmitterGroup(),
+                    "An interrupt is currently already playing on Transmitter "
+                            + request.getData().getTransmitterGroup() + ".");
+            return;
+        }
+
+        /*
+         * Delay any further interrupts ...
+         */
+
+        /*
+         * Prepare the live streaming thread.
+         */
+        try {
+            this.liveBroadcastDataPipe = new PipedOutputStream();
+            this.broadcastThread = new LiveBroadcastTransmitThread(
+                    this.eventBus, this.config.getDacAddress(),
+                    this.config.getDataPort(), this.config.getTransmitters(),
+                    request.getBroadcastId(), this.dataThread,
+                    this.commsManager, request.getData(),
+                    this.liveBroadcastDataPipe, this.config.getDbTarget());
+        } catch (IOException e) {
+            logger.error(
+                    "Failed to create a thread for broadcast "
+                            + request.getBroadcastId() + "!", e);
+
+            // failure - notify the client.
+            this.notifyLiveClientFailure(request, request.getData()
+                    .getTransmitterGroup(),
+                    "Failed to create a broadcast thread.");
+
+            this.broadcastThread = null;
+            return;
+        }
+
+        LiveBroadcastStatus response = new LiveBroadcastStatus();
+        response.setBroadcastId(request.getBroadcastId());
+        response.setTransmitterGroup(request.getData().getTransmitterGroup());
+        response.setReady(true);
+        commsManager.sendDacLiveBroadcastMsg(response);
+    }
+
+    @Subscribe
+    public void handleLiveBroadcastTrigger(TriggerLiveBroadcast trigger) {
+        logger.info("Received live broadcast trigger for broadcast {}.",
+                trigger.getBroadcastId());
+        if (this.broadcastThread == null) {
+            logger.error(
+                    "Failed to start live broadcast {}. The broadcast has not been initialized yet.",
+                    trigger.getBroadcastId());
+            this.notifyLiveClientFailure(trigger, null,
+                    "The broadcast has not been initialized yet.");
+            return;
+        }
+        this.broadcastThread.start();
+    }
+
+    @Subscribe
+    public void handleLiveBroadcastData(LiveBroadcastAudioRequest request) {
+        IOException recoveryException = null;
+        try {
+            this.liveBroadcastDataPipe.write(request.getAudioData());
+        } catch (IOException e) {
+            recoveryException = e;
+            logger.error(
+                    "Failed to write data to the broadcast thread for broadcast "
+                            + request.getBroadcastId()
+                            + "! Attempting to recover ...", e);
+        }
+
+        if (recoveryException == null) {
+            return;
+        }
+
+        /*
+         * Attempt to recover from the write failure.
+         * 
+         * According to the JavaDoc, a write error will occur if the pipe is
+         * close, if the pipe is disconnected, or due to some other I/O error.
+         */
+        // Attempt to re-open and re-connect the pipe.
+        this.liveBroadcastDataPipe = new PipedOutputStream();
+        try {
+            this.broadcastThread
+                    .attemptPipeReconnection(this.liveBroadcastDataPipe);
+        } catch (IOException e) {
+            logger.error("Broadcast " + request.getBroadcastId()
+                    + " recovery has failed! Terminating the broadcast.", e);
+
+            this.notifyLiveClientFailure(request,
+                    this.broadcastThread.getTransmitter(),
+                    "Failed to write data to the broadcast thread.");
+            this.shutdownLiveBroadcast(request);
+        }
+
+        logger.info(
+                "Broadcast {} recovery was successful. Re-attempting data write.",
+                request.getBroadcastId());
+
+        // attempt the write one final time.
+        try {
+            this.liveBroadcastDataPipe.write(request.getAudioData());
+        } catch (IOException e) {
+            logger.error(
+                    "Failed to write data to the broadcast thread for broadcast "
+                            + request.getBroadcastId() + " (Second Attempt)!",
+                    e);
+            this.notifyLiveClientFailure(request,
+                    this.broadcastThread.getTransmitter(),
+                    "Failed to write data to the broadcast thread.");
+            this.shutdownLiveBroadcast(request);
+        }
+    }
+
+    @Subscribe
+    public void handleLiveBroadcastStop(StopLiveBroadcastRequest request) {
+        logger.info("Received live broadcast stop request for broadcast {}.",
+                request.getBroadcastId());
+        this.shutdownLiveBroadcast(request);
+    }
+
+    private void notifyLiveClientFailure(IDacLiveBroadcastMsg request,
+            final String transmitter, final String detail) {
+        LiveBroadcastStatus response = new LiveBroadcastStatus();
+        response.setBroadcastId(request.getBroadcastId());
+        response.setTransmitterGroup(transmitter);
+        response.setReady(false);
+        response.setDetail(detail);
+
+        commsManager.sendDacLiveBroadcastMsg(response);
+    }
+
+    private void shutdownLiveBroadcast(IDacLiveBroadcastMsg request) {
+        if (this.liveBroadcastDataPipe != null) {
+            try {
+                this.liveBroadcastDataPipe.close();
+            } catch (IOException e) {
+                logger.error(
+                        "Failed to close the output data stream during shutdown of broadcast "
+                                + request.getBroadcastId() + ".", e);
+            }
+        }
+        if (this.broadcastThread != null) {
+            this.broadcastThread.shutdown();
+            try {
+                this.broadcastThread.join();
+            } catch (InterruptedException e) {
+                logger.warn(
+                        "Interrupted while waiting for the live broadcast thread to stop for broadcast {}.",
+                        request.getBroadcastId());
+            }
+        }
+
+        this.liveBroadcastDataPipe = null;
+        this.broadcastThread = null;
+    }
+
+    /*
+     * 
+     * END Live Broadcast Handling Methods
+     */
 }

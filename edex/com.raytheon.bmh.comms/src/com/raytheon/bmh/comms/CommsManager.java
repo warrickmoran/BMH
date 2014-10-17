@@ -38,7 +38,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXB;
-
 import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +53,7 @@ import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
 
 /**
  * 
@@ -84,6 +84,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  *                                    group as an argument to the Dac Transmitter.
  * Oct 10, 2014  3656     bkowal      Initial implementation of live audio streaming from
  *                                    Viz to the Comms Manager.
+ * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * 
  * </pre>
  * 
@@ -474,6 +475,7 @@ public class CommsManager {
         }
         transmitServer.dacConnected(key);
         clusterServer.dacConnectedLocal(key);
+        broadcastStreamServer.dacConnected(key, group);
     }
 
     /**
@@ -495,6 +497,7 @@ public class CommsManager {
     public void dacTransmitDisconnected(DacTransmitKey key, String group) {
         logger.info("dac transmit disconnected for {}", group);
         transmitServer.dacTransmitDisconnected(key);
+        broadcastStreamServer.dacDisconnected(key, group);
         attemptLaunchDacTransmits();
     }
 
@@ -547,6 +550,10 @@ public class CommsManager {
         logger.error(
                 "Critical error received from group: " + group + ": "
                         + e.getErrorMessage(), e.getThrowable());
+    }
+
+    public void forwardDacBroadcastMsg(IDacLiveBroadcastMsg msg) {
+        broadcastStreamServer.handleDacBroadcastMsg(msg);
     }
 
     /**

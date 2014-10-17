@@ -48,6 +48,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
@@ -74,6 +75,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Aug 18, 2014  3532     bkowal      Support ChangeDecibelRange.
  * Aug 26, 2014  3486     bsteffen    Stop writerThread in shutdown.
  * Sep 4, 2014   3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
+ * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * 
  * </pre>
  * 
@@ -219,6 +221,8 @@ public final class CommsManagerCommunicator extends Thread {
             eventBus.post(message);
         } else if (message instanceof ChangeDecibelTarget) {
             eventBus.post(message);
+        } else if (message instanceof IDacLiveBroadcastMsg) {
+            eventBus.post(message);
         } else {
             logger.error("Unrecognized message from comms manager of type "
                     + message.getClass().getSimpleName());
@@ -232,6 +236,10 @@ public final class CommsManagerCommunicator extends Thread {
 
     public void sendDacHardwareStatus(DacHardwareStatusNotification status) {
         sendMessageToCommsManager(status);
+    }
+
+    public void sendDacLiveBroadcastMsg(IDacLiveBroadcastMsg msg) {
+        sendMessageToCommsManager(msg);
     }
 
     @Subscribe

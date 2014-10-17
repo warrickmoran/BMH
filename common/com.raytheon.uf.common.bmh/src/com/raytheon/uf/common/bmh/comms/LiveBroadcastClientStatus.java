@@ -23,8 +23,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Used to indicate whether or not the Comms Manager is ready to start receiving
- * streamed audio for a live broadcast.
+ * Used to report status information regarding the live broadcast to viz from the
+ * comms manager.
  * 
  * <pre>
  * 
@@ -33,6 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 10, 2014 3656       bkowal      Initial creation
+ * Oct 15, 2014 3655       bkowal      Rename for general status usage.
  * 
  * </pre>
  * 
@@ -41,7 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 
 @DynamicSerialize
-public class StartLiveBroadcastResponse {
+public class LiveBroadcastClientStatus {
 
     public static enum STATUS {
         READY, FAILED
@@ -65,7 +66,7 @@ public class StartLiveBroadcastResponse {
     /**
      * 
      */
-    public StartLiveBroadcastResponse() {
+    public LiveBroadcastClientStatus() {
     }
 
     /**
