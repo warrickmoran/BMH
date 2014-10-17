@@ -62,6 +62,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
  * Sep 5, 2014   3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
  * Sep 23, 2014  3485     bsteffen    Ensure the manager gets notified of any state changes.
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
+ * Oct 16, 2014  3687     bsteffen    Fix disconnect of dac transmits not connected to dac.
  * 
  * </pre>
  * 
@@ -117,10 +118,6 @@ public class DacTransmitCommunicator extends Thread {
                     logger.error("Error reading message from DacTransmit: {}",
                             groupName, e);
                     disconnect();
-                    if (isConnectedToDac()) {
-                        lastStatus = null;
-                        manager.dacDisconnectedLocal(key, groupName);
-                    }
                 }
             }
         } finally {
@@ -156,10 +153,6 @@ public class DacTransmitCommunicator extends Thread {
             manager.errorReceived(notification, groupName);
         } else if (message instanceof DacTransmitShutdown) {
             disconnect();
-            if (isConnectedToDac()) {
-                lastStatus = null;
-                manager.dacDisconnectedLocal(key, groupName);
-            }
         } else if (message instanceof IDacLiveBroadcastMsg) {
             manager.forwardDacBroadcastMsg((IDacLiveBroadcastMsg) message);
         } else {
@@ -215,15 +208,21 @@ public class DacTransmitCommunicator extends Thread {
             } catch (SerializationException | IOException e) {
                 logger.error("Error communicating with DacTransmit: {}",
                         groupName, e);
+                disconnect();
             }
         }
     }
 
     private void disconnect() {
+        boolean wasConnectedToDac = isConnectedToDac();
+        lastStatus = null;
         try {
             socket.close();
         } catch (IOException e) {
             logger.error("Error disconnecting from comms manager", e);
+        }
+        if (wasConnectedToDac) {
+            manager.dacDisconnectedLocal(key, groupName);
         }
     }
 }
