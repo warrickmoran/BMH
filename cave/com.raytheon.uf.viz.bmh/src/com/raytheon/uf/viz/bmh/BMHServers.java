@@ -19,28 +19,58 @@
  **/
 package com.raytheon.uf.viz.bmh;
 
+import com.raytheon.uf.viz.core.VizServers;
+import com.raytheon.viz.core.mode.CAVEMode;
+
 /**
  * Constants for the BMH Servers
  * 
  * <pre>
- *
+ * 
  * SOFTWARE HISTORY
- *
+ * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 9, 2014  3656       bkowal      Initial creation
- *
+ * Oct 09, 2014 3656       bkowal      Initial creation
+ * Oct 17, 2014 3687       bsteffen    Support practice servers.
+ * 
  * </pre>
- *
+ * 
  * @author bkowal
- * @version 1.0	
+ * @version 1.0
  */
 
 public final class BMHServers {
 
-    public static final String LINETAP_SERVER = "bmh.comms.manager.linetap";
+    private static final String LINETAP_SERVER = "bmh.comms.manager.linetap";
     
-    public static final String BROADCAST_SERVER = "bmh.comms.manager.broadcast";
+    private static final String BROADCAST_SERVER = "bmh.comms.manager.broadcast";
+
+    private static final String PRACTICE_LINETAP_SERVER = "bmh.practice.comms.manager.linetap";
+
+    private static final String PRACTICE_BROADCAST_SERVER = "bmh.practice.comms.manager.broadcast";
+
+    public static String getLineTapServer() {
+        String key = LINETAP_SERVER;
+        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+            key = PRACTICE_LINETAP_SERVER;
+        }
+        return VizServers.getInstance().getServerLocation(key);
+    }
+
+    public static String getBroadcastServerKey() {
+        String key = BROADCAST_SERVER;
+        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+            key = PRACTICE_BROADCAST_SERVER;
+        }
+        return key;
+    }
+
+    public static String getBroadcastServer() {
+        return VizServers.getInstance().getServerLocation(
+                getBroadcastServerKey());
+    }
+
     /**
      * 
      */

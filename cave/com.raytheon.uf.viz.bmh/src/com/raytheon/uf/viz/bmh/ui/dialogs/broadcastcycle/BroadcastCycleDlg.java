@@ -77,6 +77,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.DisconnectListener;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * Broadcast cycle dialog.
@@ -99,6 +100,8 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  *                                     method. Also added resize capability.
  * Oct 11, 2014  3725      mpduff      Remove the Copy Messages button.
  * Oct 15, 2014  3716      bkowal      Listen for and update based on Program Config Changes.
+ * Oct 17, 2014  3687      bsteffen    Support practice servers.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -114,6 +117,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private final String BMH_DAC_STATUS = "BMH.DAC.Status";
 
     private final String BMH_CONFIG = "BMH.Config";
+
+    private final String BMH_PRACTICE_DAC_STATUS = "BMH.Practice.DAC.Status";
+
+    private final String BMH_PRACTICE_CONFIG = "BMH.Practice.Config";
 
     private final String TITLE = "Broadcast Cycle";
 
@@ -241,9 +248,13 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
          */
         populateTransmitters();
 
-        // TODO connect to topic
-        NotificationManagerJob.addObserver(BMH_DAC_STATUS, this);
-        NotificationManagerJob.addObserver(BMH_CONFIG, this);
+        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
+            NotificationManagerJob.addObserver(BMH_DAC_STATUS, this);
+            NotificationManagerJob.addObserver(BMH_CONFIG, this);
+        } else {
+            NotificationManagerJob.addObserver(BMH_PRACTICE_DAC_STATUS, this);
+            NotificationManagerJob.addObserver(BMH_PRACTICE_CONFIG, this);
+        }
 
         initialTablePopulation();
     }
@@ -963,7 +974,14 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             monitorThread.removeDisconnectListener(this);
             monitorThread = null;
         }
-        NotificationManagerJob.removeObserver(BMH_DAC_STATUS, this);
+        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
+            NotificationManagerJob.removeObserver(BMH_DAC_STATUS, this);
+            NotificationManagerJob.removeObserver(BMH_CONFIG, this);
+        } else {
+            NotificationManagerJob
+                    .removeObserver(BMH_PRACTICE_DAC_STATUS, this);
+            NotificationManagerJob.removeObserver(BMH_PRACTICE_CONFIG, this);
+        }
     }
 
     @Override
