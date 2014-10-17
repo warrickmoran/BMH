@@ -74,6 +74,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  *                                     verify / generate time messages for a
  *                                     specific voice and timezone.
  * Oct 07, 2014 3687       bsteffen    Handle reset notification
+ * Oct 17, 2014 3642       bkowal      Set input msg name for static messages.
  * 
  * 
  * </pre>
@@ -490,6 +491,14 @@ public class StaticMessageGenerator {
 
         /* create an InputMessage */
         InputMessage inputMsg = new InputMessage();
+        
+        String inputMsgName = "StaticMsg-" + messageType.getAfosid();
+        // TODO: use annotation scanning to get the max field length
+        if (inputMsgName.length() > 40) {
+            inputMsgName = inputMsgName.substring(0, 39);
+        }
+        inputMsg.setName(inputMsgName);
+        
         inputMsg.setLanguage(language.getLanguage());
         inputMsg.setAfosid(messageType.getAfosid());
         inputMsg.setCreationTime(now);
