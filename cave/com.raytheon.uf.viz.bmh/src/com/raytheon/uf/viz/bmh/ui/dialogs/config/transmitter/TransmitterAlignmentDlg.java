@@ -38,6 +38,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
@@ -68,7 +69,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             .getHandler(TransmitterAlignmentDlg.class);
 
     /** Constant */
-    private final String STATUS_PREFIX = "Transmitter is ";
+    private final String STATUS_PREFIX = "Transmitter Group ";
 
     /** List widget of transmitter groups */
     private List transmitterList;
@@ -83,13 +84,19 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     private Label statusLbl;
 
     /** Selected TransmitterGroup object */
-    protected TransmitterGroup transmitterGrp;
+    protected TransmitterGroup selectedTransmitterGrp;
 
     /** Decibel value label */
     private Label dbValueLbl;
 
     /** Duration ScaleSpinner composite */
     private ScaleSpinnerComp durScaleComp;
+
+    /** Enable Button */
+    private Button enableTransmitterBtn;
+
+    /** Disable Button */
+    private Button disableTransmitterBtn;
 
     /**
      * Constructor.
@@ -143,8 +150,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         right.setLayout(gl);
         right.setLayoutData(gd);
 
-        createDbLevelGroup(right);
         createTransmitterStatusGroup(right);
+        createDbLevelGroup(right);
 
         createComp(right);
 
@@ -197,7 +204,6 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         changeBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // Use this one if double values needed
                 DecibelLevelValidator validator = new DecibelLevelValidator();
                 InputTextDlg dlg = new InputTextDlg(shell, "Target dB Value",
                         "Enter the Target dB Value:", validator, true);
@@ -208,27 +214,21 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                                 && returnValue instanceof String) {
                             String dbLevelStr = (String) returnValue;
                             System.out.println("dB Level: " + dbLevelStr);
+                            selectedTransmitterGrp.setAudioDBTarget(Double
+                                    .parseDouble(dbLevelStr));
+                            try {
+                                dataManager
+                                        .saveTransmitterGroup(selectedTransmitterGrp);
+                                dbValueLbl.setText(String
+                                        .valueOf(selectedTransmitterGrp
+                                                .getAudioDBTarget()));
+                            } catch (Exception e) {
+                                statusHandler.error(
+                                        "Error saving Target Decibel Level", e);
+                            }
                         }
                     }
                 });
-
-                // Use this one if int value needed
-                // // TODO find out if this is int or double
-                // DecibelLevelSelectionDlg dlg = new DecibelLevelSelectionDlg(
-                // getShell(), (int) Math.round(transmitterGrp
-                // .getAudioDBTarget()));
-                // dlg.setCloseCallback(new ICloseCallback() {
-                // @Override
-                // public void dialogClosed(Object returnValue) {
-                // if (returnValue != null
-                // && returnValue instanceof Integer) {
-                // int dbLevel = (int) returnValue;
-                // // TODO save value to DB
-                // dbValueLbl.setText(String.valueOf(dbLevel));
-                // }
-                // }
-                // });
-
                 dlg.open();
             }
         });
@@ -238,12 +238,13 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         GridLayout gl = new GridLayout(1, false);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Group statusGrp = new Group(comp, SWT.BORDER);
-        statusGrp.setText(" Transmitter Status ");
+        statusGrp.setText(" Transmitter Group Status ");
         statusGrp.setLayout(gl);
         statusGrp.setLayoutData(gd);
 
-        gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-        gd.horizontalAlignment = SWT.CENTER;
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.horizontalAlignment = SWT.LEFT;
+        gd.widthHint = 285;
         statusLbl = new Label(statusGrp, SWT.NONE);
         statusLbl.setLayoutData(gd);
 
@@ -256,45 +257,43 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         int btnWidth = 130;
         gd = new GridData(btnWidth, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.CENTER;
-        Button enableTransmitterBtn = new Button(btnComp, SWT.PUSH);
-        enableTransmitterBtn.setText("Enable Transmitter");
+        enableTransmitterBtn = new Button(btnComp, SWT.PUSH);
+        enableTransmitterBtn.setText("Enable Group");
         enableTransmitterBtn.setLayoutData(gd);
         enableTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO trigger changes
                 int answer = DialogUtility.showMessageBox(getShell(),
                         SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
                         "Enable Transmitter",
-                        "Are you sure you want to enable Transmitter "
-                                + transmitterGrp.getName() + "?");
+                        "Are you sure you want to enable Transmitter Group "
+                                + selectedTransmitterGrp.getName() + "?");
                 if (answer == SWT.NO) {
                     return;
                 }
-                // TODO set these
-                // setTransmitterStatus(TxStatus.ENABLED);
+
+                enableTransmitterGroup();
             }
         });
 
         gd = new GridData(btnWidth, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.CENTER;
-        Button disableTransmitterBtn = new Button(btnComp, SWT.PUSH);
-        disableTransmitterBtn.setText("Disable Transmitter");
+        disableTransmitterBtn = new Button(btnComp, SWT.PUSH);
+        disableTransmitterBtn.setText("Disable Group");
         disableTransmitterBtn.setLayoutData(gd);
         disableTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO trigger changes
                 int answer = DialogUtility.showMessageBox(getShell(),
                         SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                        "Enable Transmitter",
-                        "Are you sure you want to disable Transmitter "
-                                + transmitterGrp.getName() + "?");
+                        "Disable Group",
+                        "Are you sure you want to disable Transmitter Group "
+                                + selectedTransmitterGrp.getName() + "?");
                 if (answer == SWT.NO) {
                     return;
                 }
-                // TODO set these
-                // setTransmitterStatus(TxStatus.DISABLED);
+
+                disableTransmitterGroup();
             }
         });
     }
@@ -377,10 +376,30 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
      * Populate the dialog for the selected transmitter
      */
     private void populate() {
-        String grpName = transmitterList.getSelection()[0];
-        TransmitterGroup transGrp = transmitterGroupNameMap.get(grpName);
-        dbValueLbl.setText(String.valueOf(transGrp.getAudioDBTarget()));
-        // TODO set status label here when populating
+        if (transmitterList.getSelectionCount() > 0) {
+            String grpName = transmitterList.getSelection()[0];
+            selectedTransmitterGrp = transmitterGroupNameMap.get(grpName);
+            dbValueLbl.setText(String.valueOf(selectedTransmitterGrp
+                    .getAudioDBTarget()));
+
+            if (selectedTransmitterGrp.isEnabled()) {
+                this.statusLbl.setText(STATUS_PREFIX
+                        + selectedTransmitterGrp.getName() + " "
+                        + TxStatus.ENABLED.toString());
+                this.enableTransmitterBtn.setEnabled(false);
+                this.disableTransmitterBtn.setEnabled(true);
+            } else {
+                this.statusLbl.setText(STATUS_PREFIX
+                        + selectedTransmitterGrp.getName() + " "
+                        + TxStatus.DISABLED.toString());
+                /*
+                 * If transmitter is disabled then it should not be enabled from
+                 * this dialog
+                 */
+                this.enableTransmitterBtn.setEnabled(false);
+                this.disableTransmitterBtn.setEnabled(false);
+            }
+        }
     }
 
     /**
@@ -406,12 +425,43 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         }
         if (transmitterList.getItemCount() > 0) {
             transmitterList.select(0);
+            String grpName = transmitterList.getItem(transmitterList
+                    .getSelectionIndex());
+            this.selectedTransmitterGrp = transmitterGroupNameMap.get(grpName);
+        }
+    }
+
+    private void enableTransmitterGroup() {
+        selectedTransmitterGrp.enableGroup(false);
+
+        try {
+            dataManager.saveTransmitterGroup(selectedTransmitterGrp);
+            enableTransmitterBtn.setEnabled(false);
+            disableTransmitterBtn.setEnabled(true);
+            statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
+                    + " " + TxStatus.ENABLED.toString());
+        } catch (Exception e) {
+            statusHandler.error("Error enabling Transmitter Group", e);
+        }
+    }
+
+    private void disableTransmitterGroup() {
+        selectedTransmitterGrp.disableGroup();
+
+        try {
+            dataManager.saveTransmitterGroup(selectedTransmitterGrp);
+            enableTransmitterBtn.setEnabled(true);
+            disableTransmitterBtn.setEnabled(false);
+            statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
+                    + " " + TxStatus.DISABLED.toString());
+        } catch (Exception e) {
+            statusHandler.error("Error enabling Transmitter Group", e);
         }
     }
 
     @Override
     public boolean okToClose() {
-        // TODO Fix this
-        return false;
+        // no need to block closing
+        return true;
     }
 }

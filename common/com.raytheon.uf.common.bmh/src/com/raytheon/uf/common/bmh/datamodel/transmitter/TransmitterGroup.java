@@ -73,9 +73,12 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Aug 25, 2014 3558       rjpeter     Added query for enabled transmitter groups.
  * Sep 4, 2014  3532       bkowal      Use a decibel target instead of a range.
  * Oct 07, 2014 3649       rferrel     addTrasmitter now replaces old entry with new.
+ * Oct 11, 2014  3630      mpduff      Add enable/disable group
  * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
  * Oct 13, 2014 3636       rferrel     For logging modified toString to show transmitters' mnemonic add LogEntry.
+ * Oct 13, 2014  3636      rferrel     For logging modified toString to show transmitters' mnemonic add LogEntry.
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -144,6 +147,11 @@ public class TransmitterGroup {
 
     @ManyToOne
     private ProgramSummary program;
+
+    /**
+     * Set of transmitters enabled when the whole group is disabled.
+     */
+    private final Set<Integer> prevEnabledTransmitters = new HashSet<>();
 
     /**
      * @return the id
@@ -293,6 +301,64 @@ public class TransmitterGroup {
         }
 
         return transList;
+    }
+
+    /**
+     * Determine if the group is enabled, one or more enabled transmitters means
+     * the group is enabled.
+     * 
+     * @return true if one or more transmitters is enabled
+     */
+    public boolean isEnabled() {
+        for (Transmitter t : getTransmitters()) {
+            if (t.getTxStatus() == TxStatus.ENABLED) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Disables all transmitters in the group. Keeps track of which transmitters
+     * were enabled before this call so that the same transmitters can be
+     * re-enabled.
+     */
+    public void disableGroup() {
+        if (!transmitters.isEmpty()) {
+            for (Transmitter t : transmitters) {
+                if (t.getTxStatus() == TxStatus.ENABLED) {
+                    prevEnabledTransmitters.add(t.id);
+                    t.setTxStatus(TxStatus.DISABLED);
+                }
+            }
+        }
+    }
+
+    /**
+     * Enables transmitters in the group.
+     * 
+     * If enableAll is true then all transmitters are enabled, otherwise only
+     * those that were previously enabled are re-enabled.
+     * 
+     * @param enableAll
+     *            true to enable all transmitters, false to enable those
+     *            previously enabled
+     */
+    public void enableGroup(boolean enableAll) {
+        if (!transmitters.isEmpty()) {
+            for (Transmitter t : transmitters) {
+                if (enableAll) {
+                    t.setTxStatus(TxStatus.ENABLED);
+                } else {
+                    if (prevEnabledTransmitters.contains(t.getId())) {
+                        t.setTxStatus(TxStatus.ENABLED);
+                    }
+                }
+            }
+
+            prevEnabledTransmitters.clear();
+        }
     }
 
     /**
