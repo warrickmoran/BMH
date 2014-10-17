@@ -58,6 +58,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Aug 13, 2014  #3286     dgilling     Do not clear buffer ever when sync-ing.
  * Sep 04, 2014  #3584     dgilling     Use same local UDP port always to fix DAC
  *                                      reconnects.
+ * Oct 17, 2014  #3688     dgilling     Use PORT_OFFSET to allow DacTransmit and
+ *                                      DacSimulator to run on same host.
  * 
  * 
  * </pre>
@@ -79,6 +81,13 @@ public class ControlStatusThread extends Thread {
 
     private static final byte[] HEARTBEAT_SYNC_MSG = "00000"
             .getBytes(StandardCharsets.US_ASCII);
+
+    /**
+     * Need to offset the port this thread binds on so that DacTransmit and
+     * DacSimulator don't try to bind the same port if both are running on the
+     * same host.
+     */
+    private static final int PORT_OFFSET = 100;
 
     private final EventBus eventBus;
 
@@ -119,7 +128,7 @@ public class ControlStatusThread extends Thread {
         this.dacAddress = dacAdress;
         this.port = controlPort;
         this.keepRunning = true;
-        this.socket = new DatagramSocket(this.port);
+        this.socket = new DatagramSocket(this.port + PORT_OFFSET);
         this.heartbeatsMissed = 0;
     }
 
