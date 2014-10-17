@@ -42,6 +42,7 @@ import com.raytheon.uf.common.jms.notification.NotificationMessage;
  * ------------- -------- ----------- --------------------------
  * Jul 24, 2014  3399     bsteffen    Initial creation
  * Sep 23, 2014  3485     bsteffen    Send notification to the DacTransmitServer
+ * Oct 17, 2014  3687     bsteffen    Add info log statement for normal playlist updates.
  * 
  * </pre>
  * 
@@ -71,6 +72,8 @@ public class PlaylistNotificationObserver implements INotificationObserver {
                 Object payload = message.getMessagePayload();
                 if (payload instanceof PlaylistUpdateNotification) {
                     PlaylistUpdateNotification update = (PlaylistUpdateNotification) payload;
+                    logger.info("A new playlist is at {}",
+                            update.getPlaylistPath());
                     server.playlistNotificationArrived(key, update);
                 } else if (payload != null) {
                     logger.error("Unexpected notification of type: "

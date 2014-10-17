@@ -1,0 +1,27 @@
+<configuration debug="false" scan="true">
+   <!-- general application log -->
+   <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+         <pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
+      </encoder>
+   </appender>
+
+   <appender name="asyncConsole" class="ch.qos.logback.classic.AsyncAppender">
+      <appender-ref ref="console" />
+   </appender>
+
+   <logger name="org.apache.qpid">
+      <level value="INFO"/>
+   </logger>
+
+   <logger name="org.apache.qpid.client.BasicMessageProducer_0_10">
+      <level value="WARN"/>
+   </logger>
+
+   <!-- default logging -->
+   <root>
+      <level value="DEBUG"/>
+      <appender-ref ref="asyncConsole"/>
+   </root>
+</configuration>
+

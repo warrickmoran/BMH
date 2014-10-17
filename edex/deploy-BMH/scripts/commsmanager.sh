@@ -31,6 +31,7 @@
 #    08/25/14        3558          rjpeter        Added qpid flag so queues auto created,
 #                                                 redirect to log file, and background script.
 #    09/09/14        3456          bkowal         Use yajsw to start.
+#    10/17/14        3687          bsteffen       Practice mode.
 ##############################################################################
 
 CONF_FILE="wrapper.conf"
@@ -54,11 +55,16 @@ export PATH=${awips_home}/bin:${JAVA_HOME}/bin:${PATH}
 t=`date "+%Y%m%d"`
 export logfile=/awips2/bmh/logs/commsmanager-$t.log
 
-
 WRAPPER_ARGS=""
-if [ $# -ne 0 ]; then
-  WRAPPER_ARGS="wrapper.app.parameter.1=$@"
-fi
+for arg in $@
+do
+  case $arg in
+    -p) 
+       export logfile=/awips2/bmh/logs/commsmanager-practice-$t.log
+       WRAPPER_ARGS="wrapper.app.parameter.1=-p"
+       ;;
+  esac
+done
 
 $JAVA -Xmx32m -XX:MaxPermSize=12m -XX:ReservedCodeCacheSize=4m -jar \
 	${BMH_HOME}/bin/yajsw/wrapper.jar -c ${BMH_HOME}/conf/${CONF_FILE} ${WRAPPER_ARGS}
