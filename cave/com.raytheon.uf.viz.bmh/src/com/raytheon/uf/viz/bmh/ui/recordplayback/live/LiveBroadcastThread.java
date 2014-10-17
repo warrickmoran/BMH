@@ -25,17 +25,16 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 import com.raytheon.uf.common.bmh.comms.BroadcastAudioRequest;
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastStopRequest;
-import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastRequest;
 import com.raytheon.uf.common.bmh.comms.LiveBroadcastClientStatus;
 import com.raytheon.uf.common.bmh.comms.LiveBroadcastClientStatus.STATUS;
+import com.raytheon.uf.common.bmh.comms.LiveBroadcastStopRequest;
+import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastRequest;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
-import com.raytheon.uf.viz.core.VizServers;
 
 /**
  * Attempts to start the live broadcast and streams the audio to the comms
@@ -49,6 +48,7 @@ import com.raytheon.uf.viz.core.VizServers;
  * ------------ ---------- ----------- --------------------------
  * Oct 9, 2014  3656       bkowal      Initial creation
  * Oct 15, 2014 3655       bkowal      Update for msg type renaming.
+ * Oct 17, 2014 3687       bsteffen    Support practice servers.
  * 
  * </pre>
  * 
@@ -108,7 +108,7 @@ public class LiveBroadcastThread extends Thread implements
                                 && this.state != BROADCAST_STATE.STOPPED) {
                             statusHandler
                                     .error("comms manager "
-                                            + BMHServers.BROADCAST_SERVER
+                                            + BMHServers.getBroadcastServer()
                                             + " unexpectedly dropped the connection during the live broadcast!");
                             this.state = BROADCAST_STATE.ERROR;
                         }
@@ -144,12 +144,11 @@ public class LiveBroadcastThread extends Thread implements
     }
 
     private void initialize() {
-        String commsLoc = VizServers.getInstance().getServerLocation(
-                BMHServers.BROADCAST_SERVER);
+        String commsLoc = BMHServers.getBroadcastServer();
         if (commsLoc == null) {
             Exception e = new IllegalStateException(
                     "No address has been specified for comms manager "
-                            + BMHServers.BROADCAST_SERVER + ".");
+                            + BMHServers.getBroadcastServerKey() + ".");
             statusHandler.error("Failed to start live broadcast!", e);
             this.state = BROADCAST_STATE.ERROR;
             return;
@@ -161,7 +160,8 @@ public class LiveBroadcastThread extends Thread implements
         } catch (URISyntaxException e) {
             Exception exc = new IllegalStateException(
                     "Invalid address specified for comms manager "
-                            + BMHServers.BROADCAST_SERVER + ": " + commsLoc
+                            + BMHServers.getBroadcastServerKey() + ": "
+                            + commsLoc
                             + ".", e);
             statusHandler.error("Failed to start live broadcast!", exc);
             this.state = BROADCAST_STATE.ERROR;
@@ -174,7 +174,8 @@ public class LiveBroadcastThread extends Thread implements
         } catch (IOException e) {
             Exception exc = new BroadcastException(
                     "Failed to connect to comms manager "
-                            + BMHServers.BROADCAST_SERVER + ": " + commsLoc
+                            + BMHServers.getBroadcastServerKey() + ": "
+                            + commsLoc
                             + ".", e);
             statusHandler.error("Failed to start live broadcast!", exc);
             this.state = BROADCAST_STATE.ERROR;
@@ -231,7 +232,7 @@ public class LiveBroadcastThread extends Thread implements
         } catch (SerializationException | IOException e) {
             throw new BroadcastException(
                     "Failed to send data to comms manager "
-                            + BMHServers.BROADCAST_SERVER + ".", e);
+                            + BMHServers.getBroadcastServer() + ".", e);
         }
     }
 
@@ -243,7 +244,7 @@ public class LiveBroadcastThread extends Thread implements
         } catch (SerializationException | IOException e) {
             throw new BroadcastException(
                     "Failed to receive data from comms manager "
-                            + BMHServers.BROADCAST_SERVER + ".", e);
+                            + BMHServers.getBroadcastServer() + ".", e);
         }
         return object;
     }
