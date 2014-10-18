@@ -48,6 +48,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
@@ -63,6 +64,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -85,6 +87,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      Text Contents dialog.
  * Oct 15, 2014 #3728      lvenable     Added code to populate message type controls.
  * Oct 15, 2014 #3728      lvenable     Added New/Edit buttons and call to select input message.
+ * Oct 18, 2014  #3728     lvenable     Hooked in more functionality.
  * 
  * </pre>
  * 
@@ -242,9 +245,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         newBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                /*
-                 * TODO : add new functionality
-                 */
 
                 String msg = "Creating a new weather message will lose any existing changes.  Continue?";
                 int choice = DialogUtility.showMessageBox(shell,
@@ -266,10 +266,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         editBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                /*
-                 * TODO : add edit functionality and put in confirmation that
-                 * selecting edit will lose any unsaved changes
-                 */
                 String msg = "Editing a weather message will lose any existing changes.  Continue?";
                 int choice = DialogUtility.showMessageBox(shell,
                         SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
@@ -283,9 +279,14 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 simd.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
-                        // TODO : add functionality to handle selected input
-                        // message
+                        if (returnValue == null) {
+                            return;
+                        }
 
+                        if ((returnValue != null)
+                                && (returnValue instanceof InputMessage)) {
+                            populateControlsForEdit((InputMessage) returnValue);
+                        }
                     }
                 });
                 simd.open();
@@ -849,7 +850,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 mtcd.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
-                        if (returnValue instanceof String) {
+                        if (returnValue != null
+                                && returnValue instanceof String) {
                             // TODO - handle getting text back...
 
                             System.out.println((String) returnValue);
@@ -884,6 +886,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         recPlaybackDlg.open();
     }
 
+    /**
+     * Set the message type controls using the selected message type.
+     */
     private void updateMessageTypeControls() {
         if (selectedMessageType == null) {
             return;
@@ -908,12 +913,16 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         }
 
         sameTransmitters.selectCheckboxes(cld);
-
-        // TODO: get input message data and populate controls.
     }
 
+    /**
+     * Reset the controls to "default" values.
+     */
     private void resetControls() {
-        // Message Type
+
+        /*
+         * Message Type Controls
+         */
         msgTypeLbl.setText("");
         msgTitleLbl.setText("");
         languageLbl.setText("");
@@ -922,5 +931,82 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         sameTransmitters.selectCheckboxes(false);
 
         submitMsgBtn.setEnabled(false);
+        changeMsgTypeBtn.setEnabled(false);
+
+        /*
+         * Input Message controls.
+         */
+        interruptChk.setSelection(false);
+        alertChk.setSelection(false);
+        confirmChk.setSelection(false);
+
+        activeRdo.setSelection(true);
+        inactiveRdo.setSelection(false);
+
+        microphoneRdo.setSelection(true);
+        fromFileRdo.setSelection(false);
+
+        periodicityDTF.setFieldValue(DateFieldType.DAY, 0);
+        periodicityDTF.setFieldValue(DateFieldType.HOUR, 0);
+        periodicityDTF.setFieldValue(DateFieldType.MINUTE, 0);
+        periodicityDTF.setFieldValue(DateFieldType.SECOND, 0);
+    }
+
+    /**
+     * Populate the controls when in the "edit state".
+     * 
+     * @param inputMessage
+     *            Selected input message.
+     */
+    private void populateControlsForEdit(InputMessage inputMessage) {
+        changeMsgTypeBtn.setEnabled(false);
+
+        // Message type controls.
+        getMessageType(inputMessage.getAfosid());
+        updateMessageTypeControls();
+
+        interruptChk.setSelection(inputMessage.getInterrupt());
+        alertChk.setSelection(inputMessage.getAlertTone());
+        confirmChk.setSelection(inputMessage.getConfirm());
+
+        boolean messageActive = inputMessage.getActive();
+        activeRdo.setSelection(messageActive);
+        inactiveRdo.setSelection(!messageActive);
+
+        /*
+         * TODO : need to determine if the input message is from file or
+         * microphone and set the control appropriately
+         * 
+         * get information to allow the user to play back recorded voice for
+         * view/edit text.
+         */
+
+        // Creation, Expiration, Effective date time fields.
+        creationDTF.setDateTimeSpinners(inputMessage.getCreationTime());
+        effectiveDTF.setDateTimeSpinners(inputMessage.getEffectiveTime());
+        expirationDTF.setDateTimeSpinners(inputMessage.getExpirationTime());
+
+        /*
+         * TODO : need to update periodic date time field.
+         */
+
+    }
+
+    /**
+     * Get the message type associated with the AFOS Id passed in.
+     * 
+     * @param afosId
+     *            AFOS Id.
+     */
+    private void getMessageType(String afosId) {
+        MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
+
+        try {
+            selectedMessageType = msgTypeDataMgr.getMessageType(afosId);
+        } catch (Exception e) {
+            statusHandler
+                    .error("Error retrieving message type data from the database: ",
+                            e);
+        }
     }
 }

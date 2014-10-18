@@ -58,6 +58,8 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  * Aug 15, 2014   3411     mpduff      Add getFormattedValue()
  * Oct 13, 2014  #3728     lvenable    Fixed zero-based month in the spinner and added a safety
  *                                     check for periodicity.
+ * Oct 18, 2014  #3728     lvenable    Added capability to set the spinner values using Calendar or
+ *                                     by individual field.
  * 
  * </pre>
  * 
@@ -429,6 +431,65 @@ public class DateTimeFields extends Composite {
         dfTypeToCalMap.put(DateFieldType.HOUR, Calendar.HOUR_OF_DAY);
         dfTypeToCalMap.put(DateFieldType.MINUTE, Calendar.MINUTE);
         dfTypeToCalMap.put(DateFieldType.SECOND, Calendar.SECOND);
+    }
+
+    /**
+     * Set the value of the spinner with the specified value. If the value is
+     * out side the min/max range of the spinner then nothing is changed.
+     * 
+     * @param fieldType
+     *            Date/Time field type.
+     * @param value
+     *            New value.
+     */
+    public void setFieldValue(DateFieldType fieldType, int value) {
+        Spinner spnr = spinners.get(fieldType);
+
+        if (validValueForSpinner(spnr, value) == false) {
+            return;
+        }
+
+        spnr.setSelection(value);
+    }
+
+    /**
+     * Set the spinners with the data from the calendar. If the values are not
+     * valid for the spinner no action is taken.
+     * 
+     * @param cal
+     *            Calendar.
+     */
+    public void setDateTimeSpinners(Calendar cal) {
+        /*
+         * Loop over the spinners and set them with the values from the
+         * calendar.
+         */
+        for (DateFieldType dft : fieldValuesMap.keySet()) {
+            Spinner spnr = spinners.get(dft);
+            int calendarFieldValue = cal.get(dfTypeToCalMap.get(dft));
+
+            if (validValueForSpinner(spnr, calendarFieldValue)) {
+                spnr.setSelection(calendarFieldValue);
+            }
+        }
+    }
+
+    /**
+     * Validate if the value is in the spinner's range.
+     * 
+     * @param spnr
+     *            Spinner control.
+     * @param value
+     *            Value.
+     * @return True if the value is in the range, false otherwise.
+     */
+    private boolean validValueForSpinner(Spinner spnr, int value) {
+        if ((spnr == null) || (value < spnr.getMinimum())
+                || (value > spnr.getMaximum())) {
+            return false;
+        }
+
+        return true;
     }
 
     public static void main(String[] args) {

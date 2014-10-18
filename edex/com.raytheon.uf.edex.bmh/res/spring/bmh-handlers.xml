@@ -17,6 +17,13 @@
         <constructor-arg ref="programHandler" />
     </bean>
     
+    <bean id="inputMessageHandler" class="com.raytheon.uf.edex.bmh.handler.InputMessageHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.InputMessageRequest" />
+        <constructor-arg ref="inputMessageHandler" />
+    </bean>
+    
     <bean id="suiteHandler" class="com.raytheon.uf.edex.bmh.handler.SuiteHandler" />
     <bean factory-bean="handlerRegistry" factory-method="register">
         <constructor-arg
