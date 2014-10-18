@@ -39,7 +39,7 @@
     </route>
 
     <route id="practice_bmhPlaylistManagerConfig">
-      <from uri="jms-generictopic:BMH.Practice.Config" />
+      <from uri="jms-generic:topic:BMH.Practice.Config" />
       <doTry>
         <bean ref="serializationUtil" method="transformFromThrift" />
         <filter>
