@@ -117,5 +117,4 @@ public class DacDataManager {
         request.setDac(dac);
         BmhUtils.sendRequest(request);
     }
-
 }

@@ -19,6 +19,12 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.dac;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -31,6 +37,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
@@ -48,6 +55,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Sep 24, 2014  #3660     lvenable     Initial creation
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 19, 2014  #3699     mpduff       Implement dialog
  * 
  * </pre>
  * 
@@ -56,6 +64,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 
 public class CreateEditDacConfigDlg extends CaveSWTDialog {
+
+    private final String CHANNEL_BASE_PORT = "Channel Base Port:";
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
@@ -84,6 +94,12 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
 
     /** Channel 4 text control. */
     private Text channel4TF;
+
+    /** The new/edited dac */
+    private Dac dac;
+
+    /** List of the port text fields */
+    private final List<Text> dacPortTxtFldList = new ArrayList<>(4);
 
     /** Enumeration of dialog types. */
     public enum DialogType {
@@ -139,6 +155,13 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         createBottomActionButtons();
     }
 
+    @Override
+    protected void opened() {
+        if (dac != null) {
+            populate();
+        }
+    }
+
     /**
      * Create the input text controls and labels.
      */
@@ -151,8 +174,8 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         int textFieldMinWidth = 200;
 
         // DAC ID
-        Label dacIdDescLbl = new Label(controlComp, SWT.NONE);
-        dacIdDescLbl.setText("DAC Name:");
+        Label dacNameDescLbl = new Label(controlComp, SWT.NONE);
+        dacNameDescLbl.setText("DAC Name:");
 
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         dacNameTF = new Text(controlComp, SWT.BORDER);
@@ -188,36 +211,40 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
 
         // Channels
         Label channel1DescLbl = new Label(controlComp, SWT.NONE);
-        channel1DescLbl.setText("Channel 1:");
+        channel1DescLbl.setText(CHANNEL_BASE_PORT);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.minimumWidth = textFieldMinWidth;
         channel1TF = new Text(controlComp, SWT.BORDER);
         channel1TF.setLayoutData(gd);
+        dacPortTxtFldList.add(channel1TF);
 
         Label channel2DescLbl = new Label(controlComp, SWT.NONE);
-        channel2DescLbl.setText("Channel 2:");
+        channel2DescLbl.setText(CHANNEL_BASE_PORT);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.minimumWidth = textFieldMinWidth;
         channel2TF = new Text(controlComp, SWT.BORDER);
         channel2TF.setLayoutData(gd);
+        dacPortTxtFldList.add(channel2TF);
 
         Label channel3DescLbl = new Label(controlComp, SWT.NONE);
-        channel3DescLbl.setText("Channel 3:");
+        channel3DescLbl.setText(CHANNEL_BASE_PORT);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.minimumWidth = textFieldMinWidth;
         channel3TF = new Text(controlComp, SWT.BORDER);
         channel3TF.setLayoutData(gd);
+        dacPortTxtFldList.add(channel3TF);
 
         Label channel4DescLbl = new Label(controlComp, SWT.NONE);
-        channel4DescLbl.setText("Channel 4:");
+        channel4DescLbl.setText(CHANNEL_BASE_PORT);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.minimumWidth = textFieldMinWidth;
         channel4TF = new Text(controlComp, SWT.BORDER);
         channel4TF.setLayoutData(gd);
+        dacPortTxtFldList.add(channel4TF);
     }
 
     /**
@@ -244,10 +271,15 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         createSaveBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                boolean success = true;
                 if (dialogType == DialogType.CREATE) {
-                    handleCreateAction();
+                    success = handleCreateAction();
                 } else if (dialogType == DialogType.EDIT) {
-                    handleSaveAction();
+                    success = handleSaveAction();
+                }
+
+                if (success) {
+                    close();
                 }
             }
         });
@@ -265,11 +297,137 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         });
     }
 
-    private void handleCreateAction() {
-        // TODO : add create action code and verify the user input
+    /**
+     * Populate the dialog.
+     */
+    private void populate() {
+        this.dacNameTF.setText(dac.getName());
+        this.dacIpTF.setText(dac.getAddress());
+        this.receiveAddressTF.setText(dac.getReceiveAddress());
+        this.receivePortTF.setText(String.valueOf(dac.getReceivePort()));
+        List<Integer> ports = new ArrayList<Integer>(dac.getDataPorts());
+        Collections.sort(ports);
+
+        if (ports.size() > dacPortTxtFldList.size()) {
+            statusHandler
+                    .warn("The DAC's only have 4 ports.  The database has "
+                            + ports.size()
+                            + " ports configured.  This should be investigated");
+        }
+
+        for (int i = 0; i < ports.size(); i++) {
+            int port = ports.get(i);
+            Text tf = dacPortTxtFldList.get(i);
+            tf.setText(String.valueOf(port));
+        }
     }
 
-    private void handleSaveAction() {
-        // TODO : add save action code and verify the user input
+    /**
+     * Create a new dac and save it.
+     * 
+     * @return true if successful
+     */
+    private boolean handleCreateAction() {
+        dac = new Dac();
+        return handleSaveAction();
+    }
+
+    /**
+     * Save the dac.
+     * 
+     * @return true if successful
+     */
+    private boolean handleSaveAction() {
+        boolean isValid = true;
+        StringBuilder errMsg = new StringBuilder("Invalid values entered \n\n");
+
+        String name = dacNameTF.getText().trim();
+        if (name.length() == 0) {
+            isValid = false;
+            errMsg.append("DAC name is required\n");
+        }
+
+        DacDataManager dm = new DacDataManager();
+        if (this.dialogType == DialogType.CREATE) {
+            try {
+                // TODO create a getDacNames query
+                List<Dac> dacs = dm.getDacs();
+                for (Dac d : dacs) {
+                    if (name.equals(d.getName())) {
+                        isValid = false;
+                        errMsg.append("Dac name must be unique. Use a different name\n");
+                        break;
+                    }
+                }
+            } catch (Exception e1) {
+                statusHandler.error("Error connecting to database.", e1);
+                return false;
+            }
+        }
+
+        String address = this.dacIpTF.getText().trim();
+        String receiveAddress = this.receiveAddressTF.getText().trim();
+
+        String receivePort = this.receivePortTF.getText().trim();
+        int receivePortInt = 0;
+        if (receivePort.length() > 0) {
+            try {
+                receivePortInt = Integer.parseInt(receivePort);
+            } catch (NumberFormatException e) {
+                isValid = false;
+                errMsg.append("Receive port must be an integer value\n");
+            }
+        }
+
+        Set<Integer> ports = new HashSet<Integer>();
+
+        int portNum = 1;
+        try {
+            for (int i = 0; i < dacPortTxtFldList.size(); i++) {
+                String text = this.dacPortTxtFldList.get(i).getText().trim();
+                if (text.length() > 0) {
+                    ports.add(Integer.valueOf(text));
+                }
+                portNum++;
+            }
+        } catch (NumberFormatException e) {
+            isValid = false;
+            errMsg.append("Channel " + portNum + " must be an integer value");
+        }
+
+        if (isValid) {
+            dac.setAddress(address);
+            dac.setName(name);
+            dac.setReceiveAddress(receiveAddress);
+            dac.setReceivePort(receivePortInt);
+            dac.setDataPorts(ports);
+
+            try {
+                dm.saveDac(dac);
+                setReturnValue(dac);
+            } catch (Exception e) {
+                statusHandler.error("Error saving DAC configuation.", e);
+            }
+        } else {
+            DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR,
+                    "Invalid entries", errMsg.toString());
+        }
+
+        return isValid;
+    }
+
+    /**
+     * @return the dac
+     */
+    public Dac getDac() {
+        return dac;
+    }
+
+    /**
+     * @param dac
+     *            the dac to set
+     */
+    public void setDac(Dac dac) {
+        this.dac = dac;
     }
 }

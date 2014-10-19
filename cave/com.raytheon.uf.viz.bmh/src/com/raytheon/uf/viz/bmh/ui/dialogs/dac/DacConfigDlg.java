@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.dac;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -34,9 +35,11 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
+import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -56,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Sep 23, 2014  #3660     lvenable     Initial creation
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 19, 2014  #3699     mpduff       Implement dialog
  * 
  * </pre>
  * 
@@ -63,7 +67,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 
-public class DacConfigDlg extends AbstractBMHDialog {
+public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
@@ -80,6 +84,9 @@ public class DacConfigDlg extends AbstractBMHDialog {
 
     /** Delete button. */
     private Button deleteBtn;
+
+    /** Data access manager */
+    private DacDataManager dataManager;
 
     /**
      * Constructor.
@@ -134,7 +141,8 @@ public class DacConfigDlg extends AbstractBMHDialog {
     protected void initializeComponents(Shell shell) {
         setText("DAC Configuration");
 
-        createAvailableDacsGroup();
+        dataManager = new DacDataManager();
+        createDacTable();
         createBottomActionButtons();
         populateDacTable();
     }
@@ -142,7 +150,7 @@ public class DacConfigDlg extends AbstractBMHDialog {
     /**
      * Create the available DACs table and controls.
      */
-    private void createAvailableDacsGroup() {
+    private void createDacTable() {
         Group dacGrp = new Group(shell, SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         dacGrp.setLayout(gl);
@@ -176,7 +184,10 @@ public class DacConfigDlg extends AbstractBMHDialog {
 
                     @Override
                     public void dialogClosed(Object returnValue) {
-                        // TODO : add callback code for creating
+                        Dac dac = (Dac) returnValue;
+                        if (dac != null) {
+                            updateTable(dac);
+                        }
                     }
                 });
                 createDacConfigDlg.open();
@@ -197,10 +208,18 @@ public class DacConfigDlg extends AbstractBMHDialog {
 
                     @Override
                     public void dialogClosed(Object returnValue) {
-                        // TODO : add callback code for editing
+                        Dac dac = (Dac) returnValue;
+                        if (dac != null) {
+                            updateTable(dac);
+                        }
                     }
                 });
-                createDacConfigDlg.open();
+                if (dacTable.getSelectedIndex() >= 0) {
+                    TableRowData rowdata = dacTableData.getTableRow(dacTable
+                            .getSelectedIndex());
+                    createDacConfigDlg.setDac((Dac) rowdata.getData());
+                    createDacConfigDlg.open();
+                }
             }
         });
 
@@ -212,7 +231,7 @@ public class DacConfigDlg extends AbstractBMHDialog {
         deleteBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO : add delete code
+                handleDeleteAction();
             }
         });
     }
@@ -246,7 +265,7 @@ public class DacConfigDlg extends AbstractBMHDialog {
      */
     private void populateDacTable() {
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("DAC Id", 70);
+        TableColumnData tcd = new TableColumnData("DAC Name", 125);
         tcd.setAlignment(SWT.LEFT);
         columnNames.add(tcd);
         tcd = new TableColumnData("DAC IP", 110);
@@ -272,23 +291,81 @@ public class DacConfigDlg extends AbstractBMHDialog {
      * Populate the DAC table data.
      */
     private void populateDacTableData() {
-        /*
-         * TODO : Use real data when implementing the dialog.
-         */
-        TableRowData trd = new TableRowData();
-        trd.addTableCellData(new TableCellData(1, "%d"));
-        trd.addTableCellData(new TableCellData("192.168.21.41"));
-        trd.addTableCellData(new TableCellData("12345"));
-        trd.addTableCellData(new TableCellData("192.168.88.88"));
-        trd.addTableCellData(new TableCellData("12345, 23456, 34567, 45678"));
-        dacTableData.addDataRow(trd);
+        try {
+            List<Dac> dacs = dataManager.getDacs();
+            Collections.sort(dacs, new DacNameComparator());
 
-        trd = new TableRowData();
-        trd.addTableCellData(new TableCellData(2, "%d"));
-        trd.addTableCellData(new TableCellData("192.168.33.33"));
-        trd.addTableCellData(new TableCellData("23456"));
-        trd.addTableCellData(new TableCellData("192.168.77.77"));
-        trd.addTableCellData(new TableCellData("12345, 23456, 34567, 45678"));
-        dacTableData.addDataRow(trd);
+            for (Dac dac : dacs) {
+                TableRowData trd = createTableRow(dac);
+                dacTableData.addDataRow(trd);
+            }
+        } catch (Exception e) {
+            statusHandler.error("Error getting DAC data.", e);
+        }
+    }
+
+    @Override
+    public void tableSelectionChange(int selectionCount) {
+        editBtn.setEnabled(selectionCount > 0);
+    }
+
+    private void updateTable(Dac dac) {
+        for (TableRowData row : dacTableData.getTableRows()) {
+            if (row.getData().equals(dac)) {
+                row.setCellDataFromString(0, dac.getName());
+                row.setCellDataFromString(1, dac.getAddress());
+                row.setCellDataFromString(2,
+                        String.valueOf(dac.getReceivePort()));
+                row.setCellDataFromString(3, dac.getReceiveAddress());
+                StringBuilder sb = new StringBuilder();
+                for (Integer port : dac.getDataPorts()) {
+                    sb.append(port).append(" ");
+                }
+                row.setCellDataFromString(4, sb.toString());
+                row.setData(dac);
+
+                dacTable.populateTable(dacTableData);
+                return;
+            }
+        }
+
+        // New Dac
+        TableRowData row = createTableRow(dac);
+        dacTableData.addDataRow(row);
+        dacTable.populateTable(dacTableData);
+    }
+
+    private TableRowData createTableRow(Dac dac) {
+        StringBuilder sb = new StringBuilder();
+        TableRowData trd = new TableRowData();
+        trd.addTableCellData(new TableCellData(dac.getName()));
+        trd.addTableCellData(new TableCellData(dac.getAddress()));
+        trd.addTableCellData(new TableCellData(String.valueOf(dac
+                .getReceivePort())));
+        trd.addTableCellData(new TableCellData(dac.getReceiveAddress()));
+        List<Integer> ports = new ArrayList<Integer>(dac.getDataPorts());
+        Collections.sort(ports);
+        for (int port : ports) {
+            sb.append(port).append(" ");
+        }
+        trd.addTableCellData(new TableCellData(sb.toString()));
+        trd.setData(dac);
+
+        return trd;
+    }
+
+    private void handleDeleteAction() {
+        if (dacTable.getSelectedIndex() >= 0) {
+            TableRowData rowData = dacTableData.getTableRow(dacTable
+                    .getSelectedIndex());
+            Dac dac = (Dac) rowData.getData();
+            try {
+                dataManager.deleteDac(dac);
+                dacTableData.deleteRow(rowData);
+                dacTable.populateTable(dacTableData);
+            } catch (Exception e) {
+                statusHandler.error("Error deleting DAC " + dac.getName(), e);
+            }
+        }
     }
 }
