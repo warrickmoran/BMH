@@ -355,7 +355,7 @@ public class Transmitter {
         StringBuilder sb = new StringBuilder();
         sb.append("User ").append(user);
         if (oldTrans == null) {
-            sb.append(" New Transmitter id: ").append(getId()).append("; ")
+            sb.append(" New Transmitter id: ").append(getId()).append(" ")
                     .append(toString());
         } else {
             Object oldValue = null;

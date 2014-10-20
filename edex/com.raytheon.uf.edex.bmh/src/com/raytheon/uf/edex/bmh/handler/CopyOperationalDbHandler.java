@@ -19,7 +19,10 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 
 /**
  * 
@@ -33,6 +36,7 @@ import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
  * ------------- -------- ----------- --------------------------
  * Oct 08, 2014  3687     bsteffen    Initial creation.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 16, 2014  3636     rferrel     Added logger information.
  * 
  * </pre>
  * 
@@ -50,6 +54,12 @@ public class CopyOperationalDbHandler extends
                     "Cannot copy operational db while in operational mode.");
         }
         new BmhDatabaseCopier().copyAll();
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            logger.info("User " + user + " performed BMH database copy all.");
+        }
         return true;
     }
 
