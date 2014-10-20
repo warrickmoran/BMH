@@ -23,8 +23,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TimeZone;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
@@ -56,6 +58,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
@@ -201,6 +204,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private final boolean prevIsStandalone;
 
+    private final TransmitterGroup prevGroup;
+
     /**
      * Edit Transmitter constructor.
      * 
@@ -229,10 +234,13 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
         if (group != null) {
             prevIsStandalone = group.isStandalone();
+            prevGroup = group;
         } else if (transmitter != null) {
-            prevIsStandalone = transmitter.getTransmitterGroup().isStandalone();
+            prevGroup = transmitter.getTransmitterGroup();
+            prevIsStandalone = prevGroup.isStandalone();
         } else {
             prevIsStandalone = false;
+            prevGroup = null;
         }
 
         switch (type) {
@@ -588,11 +596,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 }
                 setCboSelect(dacPortCbo, dacPort);
             }
-            if (group.getTimeZone() != null) {
-                int index = timeZoneCbo.indexOf(timeZoneMap.get(group
-                        .getTimeZone()));
-                timeZoneCbo.select(index);
-            }
+
+            setTimeZoneCbo();
 
             if (group.getSilenceAlarm() != null) {
                 disableSilenceChk.setSelection(group.getSilenceAlarm());
@@ -737,7 +742,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     .getProgramSummaries();
             Collections.sort(programList, new ProgramSummaryNameComparator());
 
-            ProgramSummary origProgram = group.getProgram();
+            ProgramSummary origProgram = null;
+            if (group != null) {
+                origProgram = group.getProgram();
+            }
             int groupProgramId = -1;
             if (origProgram != null) {
                 groupProgramId = origProgram.getId();
@@ -770,6 +778,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         String groupName = grpNameCbo.getText();
         if (groupName.equals(STANDALONE)) {
             enableGroupControls(true);
+            groupName = prevGroup.getName();
         } else {
             enableGroupControls(false);
         }
@@ -806,10 +815,13 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 group = tg;
                 setCboSelect(dacCombo, group.getDac());
                 handleDacSelection();
-                if (group.getTimeZone() != null) {
-                    int index = timeZoneCbo.indexOf(timeZoneMap.get(group
-                            .getTimeZone()));
-                    timeZoneCbo.select(index);
+                setTimeZoneCbo();
+
+                if (group.getProgram() == null) {
+                    programCombo.select(0);
+                } else {
+                    programCombo.select(programCombo.indexOf(group.getProgram()
+                            .getName()));
                 }
 
                 if (group.getSilenceAlarm() != null) {
@@ -1374,7 +1386,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if (type == TransmitterEditType.EDIT_TRANSMITTER) {
             if (!mnemonicTxt.getText().trim()
                     .equals(this.transmitter.getMnemonic())) {
-                if (prevIsStandalone) {
+                if (prevIsStandalone && (grpNameCbo.getSelectionIndex() == 0)) {
                     // Rename group too
                     group.setName(mnemonicTxt.getText().trim());
                     saveGroup = true;
@@ -1539,6 +1551,21 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         timeZoneMap.put("MST", TIME_ZONES[3]);
         timeZoneMap.put("CST", TIME_ZONES[4]);
         timeZoneMap.put("EST", TIME_ZONES[5]);
+    }
+
+    /**
+     * Set the selection on the Time Zone Combo based on zone value in group.
+     */
+    private void setTimeZoneCbo() {
+        String timeZoneAbbr = group.getTimeZone();
+        if (timeZoneAbbr == null) {
+            // Use local time zone to determine key.
+            TimeZone tz = TimeUtil.newCalendar().getTimeZone();
+            timeZoneAbbr = tz.getDisplayName(false, TimeZone.SHORT, Locale.US);
+        }
+        String timeZone = timeZoneMap.get(timeZoneAbbr);
+        int index = timeZoneCbo.indexOf(timeZone);
+        timeZoneCbo.select(index);
     }
 
     /**
