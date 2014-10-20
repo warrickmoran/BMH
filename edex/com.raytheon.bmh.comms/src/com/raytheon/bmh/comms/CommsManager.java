@@ -50,6 +50,11 @@ import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.bmh.comms.linetap.LineTapServer;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
+import com.raytheon.uf.common.jms.notification.INotificationObserver;
+import com.raytheon.uf.common.jms.notification.NotificationException;
+import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
@@ -298,6 +303,7 @@ public class CommsManager {
         broadcastStreamServer.start();
         if (jms != null) {
             jms.connect();
+            addPracticeJmsShutdownListener();
         }
         clusterServer.attempClusterConnections(config);
         try {
@@ -415,6 +421,7 @@ public class CommsManager {
             try {
                 jms = new JmsCommunicator(config, operational);
                 jms.connect();
+                addPracticeJmsShutdownListener();
             } catch (URLSyntaxException e) {
                 logger.error(
                         "Error parsing jms connection url, jms will be disabled.",
@@ -637,6 +644,7 @@ public class CommsManager {
         broadcastStreamServer.shutdown();
         clusterServer.shutdown();
         lineTapServer.shutdown();
+        jms.shutdown();
         try {
             transmitServer.join();
             broadcastStreamServer.join();
@@ -648,6 +656,31 @@ public class CommsManager {
         Thread mainThread = this.mainThread;
         if (mainThread != null) {
             mainThread.interrupt();
+        }
+    }
+
+    private void addPracticeJmsShutdownListener() {
+        if (jms != null && !operational) {
+            jms.addObserver("BMH.Practice.Config", new INotificationObserver() {
+
+                @Override
+                public void notificationArrived(NotificationMessage[] messages) {
+                    for (NotificationMessage message : messages) {
+                        try {
+                            Object payload = message.getMessagePayload();
+                            if (payload instanceof PracticeModeConfigNotification) {
+                                PracticeModeConfigNotification notif = (PracticeModeConfigNotification) payload;
+                                if (notif.getType() == ConfigChangeType.Delete) {
+                                    shutdown();
+                                }
+                            }
+                        } catch (NotificationException e) {
+                            logger.error("Cannot handle notification", e);
+                        }
+                    }
+
+                }
+            });
         }
     }
 
