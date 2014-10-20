@@ -21,7 +21,10 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
@@ -77,6 +80,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 28, 2014     3432   mpduff      Added Dac info from db.
  * Sep 23, 2014     3649   rferrel     Changes to handle all types of groups.
  * Oct 13, 2014     3654   rjpeter     Updated to use ProgramSummary.
+ * Oct 18, 2014    #3728   lvenable    Updated to use time zone abbreviations outside
+ *                                     the time zone combo box.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -101,6 +107,9 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private final String[] TIME_ZONES = { "ALASKA", "HAWAIIAN", "PACIFIC",
             "MOUNTAIN", "CENTRAL", "EASTERN" };
+
+    /** Map of time zone abbreviations to full time zone names. */
+    private Map<String, String> timeZoneMap = null;
 
     private final String STATUS_PREFIX = "     Transmitter is ";
 
@@ -266,6 +275,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
+        populateTimeZoneMap();
         loadImages();
 
         GridLayout gl = new GridLayout(1, false);
@@ -281,173 +291,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         createBottomButtons();
 
         populate();
-    }
-
-    // TODO Remove upon approval of removal of status/mode buttons.
-    /**
-     * Create the Transmitter status composite
-     * 
-     * @param mainComp
-     */
-    private void createStatusComp(Composite mainComp) {
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        GridLayout gl = new GridLayout(2, false);
-        Composite statusModeComp = new Composite(mainComp, SWT.NONE);
-        statusModeComp.setLayout(gl);
-        statusModeComp.setLayoutData(gd);
-
-        // Status group
-        gl = new GridLayout(1, false);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        statusGrp = new Group(statusModeComp, SWT.BORDER);
-        statusGrp.setText(" Transmitter Status ");
-        statusGrp.setLayout(gl);
-        statusGrp.setLayoutData(gd);
-
-        gl = new GridLayout(2, false);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        Composite top = new Composite(statusGrp, SWT.NONE);
-        top.setLayout(gl);
-        top.setLayoutData(gd);
-
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        Label statusIconLbl = new Label(top, SWT.NONE);
-        statusIconLbl.setImage(this.statusIcon);
-        statusIconLbl.setLayoutData(gd);
-
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        gd.widthHint = 200;
-        statusLbl = new Label(top, SWT.NONE);
-        statusLbl.setLayoutData(gd);
-
-        gl = new GridLayout(2, false);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        Composite bottom = new Composite(statusGrp, SWT.NONE);
-        bottom.setLayout(gl);
-        bottom.setLayoutData(gd);
-
-        int btnWidth = 130;
-        gd = new GridData(btnWidth, SWT.DEFAULT);
-        enableTransmitterBtn = new Button(bottom, SWT.PUSH);
-        enableTransmitterBtn.setText("Enable Transmitter");
-        enableTransmitterBtn.setLayoutData(gd);
-        enableTransmitterBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                // TODO trigger changes
-                if (type != TransmitterEditType.NEW_TRANSMITTER) {
-                    int answer = DialogUtility.showMessageBox(getShell(),
-                            SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                            "Enable Transmitter",
-                            "Are you sure you want to enable Transmitter "
-                                    + transmitter.getMnemonic() + "?");
-                    if (answer == SWT.NO) {
-                        return;
-                    }
-                }
-                setTransmitterStatus(TxStatus.ENABLED);
-            }
-        });
-        transmitterControlList.add(enableTransmitterBtn);
-
-        disableTransmitterBtn = new Button(bottom, SWT.PUSH);
-        disableTransmitterBtn.setText("Disable Transmitter");
-        disableTransmitterBtn.setLayoutData(gd);
-        disableTransmitterBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                // TODO trigger changes
-                if (type != TransmitterEditType.NEW_TRANSMITTER) {
-                    int answer = DialogUtility.showMessageBox(getShell(),
-                            SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                            "Disable Transmitter",
-                            "Are you sure you want to disable Transmitter "
-                                    + transmitter.getMnemonic() + "?");
-                    if (answer == SWT.NO) {
-                        return;
-                    }
-                }
-                setTransmitterStatus(TxStatus.DISABLED);
-            }
-        });
-        transmitterControlList.add(disableTransmitterBtn);
-
-        // Mode Group
-        gl = new GridLayout(1, false);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        modeGrp = new Group(statusModeComp, SWT.BORDER);
-        modeGrp.setText(" Transmitter Mode ");
-        modeGrp.setLayout(gl);
-        modeGrp.setLayoutData(gd);
-
-        gl = new GridLayout(2, false);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        Composite modeTop = new Composite(modeGrp, SWT.NONE);
-        modeTop.setLayout(gl);
-        modeTop.setLayoutData(gd);
-
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        Label modeIconLbl = new Label(modeTop, SWT.NONE);
-        modeIconLbl.setImage(this.modeIcon);
-        modeIconLbl.setLayoutData(gd);
-
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        gd.widthHint = 200;
-        modeLbl = new Label(modeTop, SWT.NONE);
-        modeLbl.setLayoutData(gd);
-
-        gl = new GridLayout(2, false);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        Composite modeBottom = new Composite(modeGrp, SWT.NONE);
-        modeBottom.setLayout(gl);
-        modeBottom.setLayoutData(gd);
-
-        gd = new GridData(btnWidth, SWT.DEFAULT);
-        primaryTransmitterBtn = new Button(modeBottom, SWT.PUSH);
-        primaryTransmitterBtn.setText("Set As Primary");
-        primaryTransmitterBtn.setLayoutData(gd);
-        primaryTransmitterBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                // TODO trigger changes
-                if (type != TransmitterEditType.NEW_TRANSMITTER) {
-                    int answer = DialogUtility.showMessageBox(getShell(),
-                            SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                            TxMode.PRIMARY.name() + " Transmitter Mode",
-                            "Are you sure you want to set Transmitter "
-                                    + transmitter.getMnemonic() + " as "
-                                    + TxMode.PRIMARY.name() + "?");
-                    if (answer == SWT.NO) {
-                        return;
-                    }
-                }
-                setTransmitterMode(TxMode.PRIMARY);
-            }
-        });
-        transmitterControlList.add(primaryTransmitterBtn);
-
-        secondaryTransmitterBtn = new Button(modeBottom, SWT.PUSH);
-        secondaryTransmitterBtn.setText("Set As Secondary");
-        secondaryTransmitterBtn.setLayoutData(gd);
-        secondaryTransmitterBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                // TODO trigger changes
-                if (type != TransmitterEditType.NEW_TRANSMITTER) {
-                    int answer = DialogUtility.showMessageBox(getShell(),
-                            SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                            TxMode.SECONDARY.name() + " Transmitter Mode",
-                            "Are you sure you want to set Transmitter "
-                                    + transmitter.getMnemonic() + " as "
-                                    + TxMode.SECONDARY.name() + "?");
-                    if (answer == SWT.NO) {
-                        return;
-                    }
-                }
-                setTransmitterMode(TxMode.SECONDARY);
-            }
-        });
-        transmitterControlList.add(secondaryTransmitterBtn);
     }
 
     /**
@@ -746,7 +589,9 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 setCboSelect(dacPortCbo, dacPort);
             }
             if (group.getTimeZone() != null) {
-                timeZoneCbo.select(timeZoneCbo.indexOf(group.getTimeZone()));
+                int index = timeZoneCbo.indexOf(timeZoneMap.get(group
+                        .getTimeZone()));
+                timeZoneCbo.select(index);
             }
 
             if (group.getSilenceAlarm() != null) {
@@ -962,8 +807,9 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 setCboSelect(dacCombo, group.getDac());
                 handleDacSelection();
                 if (group.getTimeZone() != null) {
-                    timeZoneCbo
-                            .select(timeZoneCbo.indexOf(group.getTimeZone()));
+                    int index = timeZoneCbo.indexOf(timeZoneMap.get(group
+                            .getTimeZone()));
+                    timeZoneCbo.select(index);
                 }
 
                 if (group.getSilenceAlarm() != null) {
@@ -1120,7 +966,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                         dac = new Integer(dacCombo.getText());
                     }
                     group.setDac(dac);
-                    group.setTimeZone(this.timeZoneCbo.getText());
+                    group.setTimeZone(getTimeZoneAbbreviation(timeZoneCbo
+                            .getText()));
                     group.setSilenceAlarm(this.disableSilenceChk.getSelection());
                     group.setDaylightSaving(this.noDstChk.getSelection());
 
@@ -1182,7 +1029,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      * @throws Exception
      */
     private boolean checkGroupUpdate() throws Exception {
-        String tz = timeZoneCbo.getText();
+        String tz = getTimeZoneAbbreviation(timeZoneCbo.getText());
         if (!tz.equals(group.getTimeZone())) {
             return true;
         }
@@ -1681,8 +1528,35 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         callback.dialogClosed(getReturnValue());
     }
 
-    private void notImplemented() {
-        DialogUtility.showMessageBox(getShell(), SWT.ICON_INFORMATION | SWT.OK,
-                "Not Implemented", "This function is not yet implemented");
+    /**
+     * Populate the time zone map.
+     */
+    private void populateTimeZoneMap() {
+        timeZoneMap = new LinkedHashMap<String, String>();
+        timeZoneMap.put("AKST", TIME_ZONES[0]);
+        timeZoneMap.put("HST", TIME_ZONES[1]);
+        timeZoneMap.put("PST", TIME_ZONES[2]);
+        timeZoneMap.put("MST", TIME_ZONES[3]);
+        timeZoneMap.put("CST", TIME_ZONES[4]);
+        timeZoneMap.put("EST", TIME_ZONES[5]);
+    }
+
+    /**
+     * Get the time zone abbreviation using the full time zone name.
+     * 
+     * Example: Passing in "HAWAIIAN" will return "HST"
+     * 
+     * @param timeZone
+     *            Time zone.
+     * @return Time Zone abbreviation.
+     */
+    private String getTimeZoneAbbreviation(String timeZone) {
+        for (Entry<String, String> entry : timeZoneMap.entrySet()) {
+            if (timeZone.equals(entry.getValue())) {
+                return entry.getKey();
+            }
+        }
+
+        return "";
     }
 }

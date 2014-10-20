@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.dao;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 
@@ -124,5 +125,92 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
         }
 
         return messageList;
+    }
+
+    /**
+     * Get all of the input messages fully populated.
+     * 
+     * @return List of Input Messages.
+     */
+    public List<InputMessage> getInputMessages() {
+        List<Object> allObjects = this.loadAll();
+        if (allObjects == null) {
+            return Collections.emptyList();
+        }
+
+        List<InputMessage> inputMessageList = new ArrayList<InputMessage>(
+                allObjects.size());
+        for (Object obj : allObjects) {
+            InputMessage im = (InputMessage) obj;
+            inputMessageList.add(im);
+        }
+
+        return inputMessageList;
+    }
+
+    /**
+     * Get all of the input messages with only the Id, Name, Afos Id, and
+     * Creation time populated.
+     * 
+     * @return List of input messages.
+     */
+    public List<InputMessage> getInputMsgsIdNameAfosCreation() {
+        List<Object[]> objectList = getInputMessagesByQuery(InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION);
+
+        if (objectList == null) {
+            return Collections.emptyList();
+        }
+
+        List<InputMessage> inputMessages = createInputMessageIdNameAfosCreation(objectList);
+
+        return inputMessages;
+    }
+
+    /**
+     * Get the input messages using the specified query.
+     * 
+     * @param inputMessageQuery
+     *            Query.
+     * @return List of input message objects.
+     */
+    private List<Object[]> getInputMessagesByQuery(
+            final String inputMessageQuery) {
+        List<Object[]> objectList = txTemplate
+                .execute(new TransactionCallback<List<Object[]>>() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public List<Object[]> doInTransaction(
+                            TransactionStatus status) {
+                        HibernateTemplate ht = getHibernateTemplate();
+                        return ht.findByNamedQuery(inputMessageQuery);
+                    }
+                });
+
+        return objectList;
+    }
+
+    /**
+     * Create the list of input messages.
+     * 
+     * @param objectList
+     *            List of object arrays.
+     * @return List of input messages.
+     */
+    private List<InputMessage> createInputMessageIdNameAfosCreation(
+            List<Object[]> objectList) {
+
+        List<InputMessage> imList = new ArrayList<InputMessage>(
+                objectList.size());
+
+        for (Object[] objArray : objectList) {
+            InputMessage im = new InputMessage();
+            im.setId((int) objArray[0]);
+            im.setName((String) objArray[1]);
+            im.setAfosid((String) objArray[2]);
+            im.setCreationTime((Calendar) objArray[3]);
+            imList.add(im);
+        }
+
+        return imList;
     }
 }

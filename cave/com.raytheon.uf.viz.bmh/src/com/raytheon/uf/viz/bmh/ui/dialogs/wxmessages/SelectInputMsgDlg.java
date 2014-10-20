@@ -19,7 +19,9 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
@@ -33,12 +35,20 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.request.InputMessageRequest;
+import com.raytheon.uf.common.bmh.request.InputMessageRequest.InputMessageAction;
+import com.raytheon.uf.common.bmh.request.InputMessageResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
@@ -52,6 +62,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 16, 2014  #3728     lvenable     Initial creation
+ * Oct 18, 2014  #3728     lvenable     Hooked into database and returns the selected
+ *                                      input message.
  * 
  * </pre>
  * 
@@ -72,6 +84,9 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
 
     /** Message Type table data. */
     private TableData inputMsgTableData = null;
+
+    /** List of all the input messages. */
+    private List<InputMessage> inputMessageList = null;
 
     /**
      * 
@@ -104,6 +119,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         createInputMsgTable();
         createOkCancelButtons();
 
+        retrieveInputMessages();
         populateInputMsgTable();
 
         if (inputMsgTable.getItemCount() > 0) {
@@ -124,14 +140,12 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
 
         int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
 
-        inputMsgTable = new GenericTable(inputTableGroup, tableStyle, 400, 175);
+        inputMsgTable = new GenericTable(inputTableGroup, tableStyle, 650, 250);
 
         inputMsgTable.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {
-                if (selectionCount > 0) {
-                    // TODO
-                }
+                okBtn.setEnabled(selectionCount > 0);
             }
         });
     }
@@ -173,8 +187,57 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         });
     }
 
+    /**
+     * Handle the OK button action.
+     */
     private void handleOkAction() {
-        // TODO
+        int index = inputMsgTable.getSelectedIndex();
+
+        if (index < 0) {
+            return;
+        }
+        InputMessage im = inputMessageList.get(index);
+
+        InputMessage fullInputMessage = null;
+
+        try {
+            fullInputMessage = getInputMessageById(im.getId());
+
+            if (fullInputMessage == null) {
+                StringBuilder msg = new StringBuilder();
+
+                msg.append("No data retrieved for: ");
+                msg.append(im.getName()).append("\n\n");
+                msg.append("Click OK to close the selection dialog or Cancel to go back and try again.");
+
+                int choice = DialogUtility.showMessageBox(getShell(),
+                        SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                        "No Data Returned", msg.toString());
+
+                if (choice == SWT.CANCEL) {
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving input message from the database: ", e);
+
+            StringBuilder msg = new StringBuilder();
+
+            msg.append("Error retrieving: ");
+            msg.append(im.getName()).append("\n\n");
+            msg.append("Click OK to close the selection dialog or Cancel to go back and try again.");
+
+            int choice = DialogUtility.showMessageBox(getShell(),
+                    SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                    "Date Retrieve Error", msg.toString());
+
+            if (choice == SWT.CANCEL) {
+                return;
+            }
+        }
+
+        setReturnValue(fullInputMessage);
 
         close();
     }
@@ -183,12 +246,12 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
      * Populate the message type table.
      */
     private void populateInputMsgTable() {
-
-        // TODO : need to determine what information the user will need.
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
         TableColumnData tcd = new TableColumnData("Name", 250);
         columnNames.add(tcd);
-        tcd = new TableColumnData("AFOS ID");
+        tcd = new TableColumnData("AFOS ID", 100);
+        columnNames.add(tcd);
+        tcd = new TableColumnData("Creation Date");
         columnNames.add(tcd);
 
         inputMsgTableData = new TableData(columnNames);
@@ -200,7 +263,65 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
      * Populate the message type table data.
      */
     private void populateInputMsgTableData() {
+        SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 
-        // TODO : populate table
+        for (InputMessage im : inputMessageList) {
+            TableRowData trd = new TableRowData();
+
+            trd.addTableCellData(new TableCellData(im.getName()));
+            trd.addTableCellData(new TableCellData(im.getAfosid()));
+            trd.addTableCellData(new TableCellData(dateFmt.format(im
+                    .getCreationTime().getTime())));
+
+            inputMsgTableData.addDataRow(trd);
+        }
+    }
+
+    /**
+     * Retrieve the Input Messages from the database with only the ID, Name,
+     * Afos Id, and Creation times populate.
+     */
+    private void retrieveInputMessages() {
+
+        InputMessageRequest imRequest = new InputMessageRequest();
+        imRequest.setAction(InputMessageAction.ListIdNameAfosCreation);
+        InputMessageResponse imResponse = null;
+
+        try {
+            imResponse = (InputMessageResponse) BmhUtils.sendRequest(imRequest);
+            inputMessageList = imResponse.getInputMessageList();
+
+            if (inputMessageList == null) {
+                inputMessageList = Collections.emptyList();
+            }
+
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving input messages from the database: ", e);
+            return;
+        }
+    }
+
+    /**
+     * Get the Input Message from the database using the primary key Id.
+     * 
+     * @param id
+     *            Primary Key Id.
+     * @return The input message.
+     */
+    private InputMessage getInputMessageById(int id) throws Exception {
+        InputMessageRequest imRequest = new InputMessageRequest();
+        imRequest.setAction(InputMessageAction.GetByPkId);
+        imRequest.setPkId(id);
+
+        InputMessageResponse imResponse = (InputMessageResponse) BmhUtils
+                .sendRequest(imRequest);
+        inputMessageList = imResponse.getInputMessageList();
+
+        if (inputMessageList == null || inputMessageList.isEmpty()) {
+            return null;
+        }
+
+        return inputMessageList.get(0);
     }
 }

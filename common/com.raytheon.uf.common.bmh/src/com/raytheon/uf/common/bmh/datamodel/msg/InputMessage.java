@@ -57,13 +57,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 09, 2014  2585     bsteffen    Implement MAT
  * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
  * Oct 15, 2014  3728     lvenable    Added name column.
+ * Oct 18, 2014  3728     lvenable    Added query to retrieve the Id, Name, Afos Id, and
+ *                                    creation time.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-@NamedQueries({ @NamedQuery(name = InputMessage.DUP_QUERY_NAME, query = InputMessage.DUP_QUERY) })
+@NamedQueries({
+        @NamedQuery(name = InputMessage.DUP_QUERY_NAME, query = InputMessage.DUP_QUERY),
+        @NamedQuery(name = InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION, query = InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "input_msg", schema = "bmh")
@@ -71,6 +75,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class InputMessage {
 
     protected static final String GEN = "Input Messsage Id Generator";
+
+    public static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION = "getInputMsgIdNameAfosCreation";
+
+    protected static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY = "select id, name, afosid, creationTime FROM InputMessage im";
 
     /**
      * Named query to pull all messages with a matching afosid and with a valid
@@ -82,6 +90,7 @@ public class InputMessage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
+    @DynamicSerializeElement
     private int id;
 
     /**
