@@ -24,7 +24,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Random;
 
-import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
+import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 
 /**
  * Factory class for building {@code RtpPacketIn} objects.
@@ -36,6 +36,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 2, 2014   #3268    dgilling     Initial creation
+ * Oct 17, 2014  #3655    bkowal       Move tones to common.
  * 
  * </pre>
  * 

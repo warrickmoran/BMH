@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
@@ -60,6 +61,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  *                                      reconnects.
  * Oct 17, 2014  #3688     dgilling     Use PORT_OFFSET to allow DacTransmit and
  *                                      DacSimulator to run on same host.
+ * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * 
  * 
  * </pre>

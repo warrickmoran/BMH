@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IInterruptMessageReceivedHandler;
@@ -65,6 +66,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  *                                      data to send.
  * Oct 03, 2014  #3485     bsteffen     End playback after playing a message.
  * Oct 15, 2014  #3655     bkowal       Updated to use AbstractTransmitThread abstraction.
+ * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * 
  * </pre>
  * 

@@ -22,7 +22,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.rtp;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 
-import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
+import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.edex.bmh.dactransmit.util.PrimitiveTypeConversion;
 
 /**
@@ -35,6 +35,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.PrimitiveTypeConversion;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 1, 2014   #3268    dgilling     Initial creation
+ * Oct 17, 2014  #3655    bkowal       Move tones to common.
  * 
  * </pre>
  * 

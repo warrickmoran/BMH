@@ -25,11 +25,11 @@ import java.util.HashMap;
 import org.apache.commons.configuration.Configuration;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
+import com.raytheon.uf.common.bmh.tones.TonesManager;
+import com.raytheon.uf.common.bmh.tones.TonesManager.TRANSFER_TYPE;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
-import com.raytheon.uf.edex.bmh.generate.tones.TonesManager;
-import com.raytheon.uf.edex.bmh.generate.tones.TonesManager.TRANSFER_TYPE;
 import com.raytheon.uf.edex.bmh.test.AbstractWavFileGeneratingTest;
 import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
 
@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014 3304       bkowal      Initial creation
  * Jul 17, 2014 3383       bkowal      Updated to use the Audio Conversion API.
+ * Oct 17, 2014 3655       bkowal      Move tones to common.
  * 
  * </pre>
  * 
@@ -53,6 +54,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * @version 1.0
  */
 
+@Deprecated
 public class ToneGenerationTester extends AbstractWavFileGeneratingTest {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ToneGenerationTester.class);

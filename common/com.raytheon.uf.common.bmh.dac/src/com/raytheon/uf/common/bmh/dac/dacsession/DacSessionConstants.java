@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
+package com.raytheon.uf.common.bmh.dac.dacsession;
 
 import com.raytheon.uf.common.time.util.TimeUtil;
 
@@ -35,6 +35,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 08, 2014  #3286     dgilling     Add/update constants to support sync
  *                                      lost and regain events.
  * Sep 04, 2014  #3584     dgilling     Add SYNC_RETRY_PERIOD.
+ * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * 
  * </pre>
  * 

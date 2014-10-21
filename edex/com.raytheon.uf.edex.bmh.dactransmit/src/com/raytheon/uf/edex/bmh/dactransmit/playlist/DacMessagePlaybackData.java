@@ -33,10 +33,10 @@ import javax.xml.bind.JAXB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
 
 /**
@@ -56,6 +56,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  * Aug 08, 2014  #3286     dgilling     Add resetAudio().
  * Aug 13, 2014  #3286     dgilling     Send status for tones playback.
  * Oct 01, 2014  #3485     bsteffen     Add ability to resume.
+ * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * 
  * </pre>
  * 

@@ -19,10 +19,16 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.recordplayback.live;
 
+import java.util.Map;
+
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.comms.LiveBroadcastStartData;
 import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastRequest;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride.LiveBroadcastSettings;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastThread.BROADCAST_STATE;
 import com.raytheon.uf.viz.core.VizApp;
@@ -39,6 +45,8 @@ import com.raytheon.uf.viz.core.VizApp;
  * ------------ ---------- ----------- --------------------------
  * Oct 9, 2014  3656       bkowal      Initial creation
  * Oct 15, 2014 3655       bkowal      Reset the dialog on ERROR.
+ * Oct 17, 2014 3655       bkowal      Prepare configuration for the live broadcast
+ *                                     based on a {@link LiveBroadcastSettings}.
  * 
  * </pre>
  * 
@@ -49,7 +57,12 @@ import com.raytheon.uf.viz.core.VizApp;
 public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
         IBroadcastStateListener {
 
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(LiveBroadcastRecordPlaybackDlg.class);
+
     private LiveBroadcastThread broadcastThread;
+
+    private final LiveBroadcastSettings settings;
 
     /**
      * @param parentShell
@@ -59,18 +72,26 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
      *            on the Emergency Override dialog.
      */
     public LiveBroadcastRecordPlaybackDlg(Shell parentShell,
-            int maxRecordingSeconds) {
+            int maxRecordingSeconds, LiveBroadcastSettings settings) {
         super(parentShell, maxRecordingSeconds);
+        this.settings = settings;
     }
 
     @Override
     protected void recordAction() {
+        try {
+            this.initializeBroadcastLive();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to generate tones for the live broadcast!", e);
+            this.statusLbl.setText("ERROR");
+            return;
+        }
+
         stopBtn.setEnabled(false);
         recBtn.setEnabled(false);
         playBtn.setEnabled(false);
         this.statusLbl.setText("Initializing ...");
-
-        this.initializeBroadcastLive();
     }
 
     @Override
@@ -88,7 +109,11 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
         this.broadcastThread = null;
     }
 
-    private void initializeBroadcastLive() {
+    private void initializeBroadcastLive() throws Exception {
+        this.configureBroadcastLive();
+
+        // TODO: implement new request objects based on the configuration.
+
         /* Prepare the request objects. */
         // Create the start broadcast request.
         StartLiveBroadcastRequest request = new StartLiveBroadcastRequest();
@@ -104,6 +129,16 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
         this.broadcastThread = new LiveBroadcastThread(request);
         this.broadcastThread.setListener(this);
         this.broadcastThread.start();
+    }
+
+    private void configureBroadcastLive() throws Exception {
+        /*
+         * first build the SAME tones.
+         */
+        Map<Transmitter, byte[]> transmitterToneMap = this.settings
+                .getTransmitterSAMETones();
+
+        // TODO: calculate delays ...
     }
 
     private void startBroadcastLive() {

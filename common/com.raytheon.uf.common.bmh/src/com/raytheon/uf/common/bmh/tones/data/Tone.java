@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.generate.tones.data;
+package com.raytheon.uf.common.bmh.tones.data;
 
 /**
  * A data structure representing a generic tone.
@@ -29,6 +29,7 @@ package com.raytheon.uf.edex.bmh.generate.tones.data;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014 3304       bkowal      Initial creation
+ * Oct 17, 2014 3655       bkowal      Move tones to common.
  * 
  * </pre>
  * 

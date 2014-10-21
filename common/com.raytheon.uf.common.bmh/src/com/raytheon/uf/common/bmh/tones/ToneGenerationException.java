@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.generate.tones;
+package com.raytheon.uf.common.bmh.tones;
 
 /**
  * Exception indicating that tone generation has failed.
@@ -29,6 +29,7 @@ package com.raytheon.uf.edex.bmh.generate.tones;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3383       bkowal      Initial creation
+ * Oct 17, 2014 3655       bkowal      Move tones to common.
  * 
  * </pre>
  * 

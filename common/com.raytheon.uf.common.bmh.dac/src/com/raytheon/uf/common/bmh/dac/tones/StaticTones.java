@@ -17,14 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dactransmit.tones;
+package com.raytheon.uf.common.bmh.dac.tones;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
-import com.raytheon.uf.edex.bmh.generate.tones.ToneGenerationException;
-import com.raytheon.uf.edex.bmh.generate.tones.TonesManager;
+import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
+import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
+import com.raytheon.uf.common.bmh.tones.TonesManager;
 
 /**
  * Container class for static tone patterns.
@@ -36,6 +36,7 @@ import com.raytheon.uf.edex.bmh.generate.tones.TonesManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 12, 2014  #3286     dgilling     Initial creation
+ * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * 
  * </pre>
  * 

@@ -75,6 +75,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 09, 2014   3646     rferrel     Converted tableComp to GenerticTable.
  * Oct 14, 2014  #3728     lvenable    Updated to support weather messages functionality
  * Oct 16, 2014   3657     bkowal      Include affected transmitters in the return object
+ * Oct 17, 2014   3655     bkowal      Store transmitter information in the swt data.
  * 
  * </pre>
  * 
@@ -1068,6 +1069,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         int idx = 0;
         for (Transmitter t : listOfAffectedTransmitters) {
             transmitterNames[idx] = t.getMnemonic();
+            affectedTransmitterList.setData(t.getMnemonic(), t);
             idx++;
         }
 
@@ -1098,8 +1100,16 @@ public class AreaSelectionDlg extends CaveSWTDialog {
             }
         }
 
-        saveData.setAffectedTransmitters(Arrays
-                .asList(this.affectedTransmitterList.getItems()));
+        HashSet<Transmitter> affectedTransmitters = new HashSet<>(
+                (int) Math.ceil(this.affectedTransmitterList.getItems().length / 0.75));
+        for (String t : this.affectedTransmitterList.getItems()) {
+            // Skipping NULL check. We believe the map and list will always be
+            // in sync.
+            affectedTransmitters.add((Transmitter) this.affectedTransmitterList
+                    .getData(t));
+        }
+
+        saveData.setAffectedTransmitters(affectedTransmitters);
 
         setReturnValue(saveData);
     }

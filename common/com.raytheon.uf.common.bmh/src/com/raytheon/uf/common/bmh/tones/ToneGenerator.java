@@ -17,9 +17,9 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.generate.tones;
+package com.raytheon.uf.common.bmh.tones;
 
-import com.raytheon.uf.edex.bmh.generate.tones.data.Tone;
+import com.raytheon.uf.common.bmh.tones.data.Tone;
 
 /**
  * Used to encode a {@link Tone} into an audio signal.
@@ -31,6 +31,7 @@ import com.raytheon.uf.edex.bmh.generate.tones.data.Tone;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014 3304       bkowal      Initial creation
+ * Oct 17, 2014 3655       bkowal      Move tones to common.
  * 
  * </pre>
  * 

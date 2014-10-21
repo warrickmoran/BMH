@@ -84,6 +84,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * Oct 14, 2014  #3728     lvenable     Change table to single selection and fixed the duration
  *                                      spinners since they are a special case.
  * Oct 16, 2014  #3657     bkowal       Implemented Message Type and Area Selection.
+ * Oct 17, 2014  #3655     bkowal       Create a {@link LiveBroadcastSettings} based on
+ *                                      the dialog information for the Live Broadcast.
  * 
  * </pre>
  * 
@@ -488,7 +490,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         }
 
         // Update the selected transmitters
-
         this.sameTransmitters
                 .selectCheckboxes(this.createTransmitterListData());
     }
@@ -501,8 +502,9 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
         this.sameTransmitters.selectCheckboxes(false);
         CheckListData cld = this.sameTransmitters.getCheckedItems();
-        for (String selectedTransmitter : areaData.getAffectedTransmitters()) {
-            cld.getDataMap().put(selectedTransmitter, true);
+        for (Transmitter selectedTransmitter : areaData
+                .getAffectedTransmitters()) {
+            cld.getDataMap().put(selectedTransmitter.getMnemonic(), true);
         }
         this.sameTransmitters.selectCheckboxes(cld);
     }
@@ -511,8 +513,33 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         if (this.validateSelections() == false) {
             return;
         }
+
+        // get the selected transmitters.
+        List<String> transmitterNames = this.sameTransmitters.getCheckedItems()
+                .getCheckedItems();
+        List<Transmitter> transmitters = new ArrayList<>(
+                transmitterNames.size());
+        for (String transmitterName : transmitterNames) {
+            /*
+             * only transmitters associated with the selected message type
+             * should be available for selection.
+             */
+            transmitters.add(this.transmitterMap.get(transmitterName));
+        }
+
+        LiveBroadcastSettings settings = new LiveBroadcastSettings();
+        try {
+            settings.populate(this.selectedMsgType, transmitters,
+                    this.alertChk.getSelection(),
+                    this.durHourSpnr.getSelection(),
+                    this.durMinuteSpnr.getSelection());
+        } catch (Exception e) {
+            statusHandler.error("Failed to configure the live broadcast!", e);
+            return;
+        }
+
         LiveBroadcastRecordPlaybackDlg dlg = new LiveBroadcastRecordPlaybackDlg(
-                this.shell, 120);
+                this.shell, 120, settings);
         /*
          * We will need the audio that was recorded for potential rebroadcast
          * scheduling.

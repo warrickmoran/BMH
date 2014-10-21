@@ -17,13 +17,13 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.generate.tones;
+package com.raytheon.uf.common.bmh.tones;
 
 import java.util.BitSet;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.raytheon.uf.edex.bmh.generate.tones.data.AFSKTone;
+import com.raytheon.uf.common.bmh.tones.data.AFSKTone;
 
 /**
  * Used to encode a Specific Area Message into sound based on {@link AFSKTone}
@@ -39,6 +39,7 @@ import com.raytheon.uf.edex.bmh.generate.tones.data.AFSKTone;
  * Aug 04, 2014 3286       dgilling    Fix UnsupportedEncodingException in
  *                                     encode().
  * Aug 12, 2014 3286       dgilling    Modify method signature for encode().
+ * Oct 17, 2014 3655       bkowal      Move tones to common.
  * 
  * </pre>
  * 

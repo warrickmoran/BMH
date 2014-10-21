@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.generate.tones;
+package com.raytheon.uf.common.bmh.tones;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,7 +30,7 @@ import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
-import com.raytheon.uf.edex.bmh.generate.tones.data.Tone;
+import com.raytheon.uf.common.bmh.tones.data.Tone;
 
 /**
  * Used to generate the various tones that may be precede the broadcast of
@@ -49,6 +49,7 @@ import com.raytheon.uf.edex.bmh.generate.tones.data.Tone;
  *                                     generateSAMETone().
  * Aug 12, 2014 3286       dgilling    Add second generateSAMETone() that 
  *                                     supports encoding an arbitrary byte string.
+ * Aug 17, 2014 3655       bkowal      Move tones to common.  
  * 
  * </pre>
  * 

@@ -22,7 +22,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
+import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 
 /**
  * A slightly modified {@code ByteBufer} that buffers the contents of an audio
@@ -43,6 +43,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConstants;
  * Sep 12, 2014  #3588     bsteffen     Support audio fragments.
  * Oct 01, 2014  #3485     bsteffen     Add skip() and isInTones()
  * Oct 2, 2014   #3642     bkowal       Abstract to support dynamic audio fragments.
+ * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * 
  * </pre>
  * 
