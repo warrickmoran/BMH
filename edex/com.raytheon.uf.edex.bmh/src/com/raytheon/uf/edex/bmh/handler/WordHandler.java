@@ -152,7 +152,7 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
                 .isOperational());
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            logger.info("User " + user + " Deleted Word " + word.toString());
+            logger.info("User " + user + " Deleted " + word.toString());
         }
     }
 

@@ -1,5 +1,7 @@
 package com.raytheon.uf.common.bmh;
 
+import java.util.Set;
+
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -84,13 +86,49 @@ public class BMHLoggerUtils {
         String oldStr = oldValue.toString();
         String newStr = newValue.toString();
         sb.append(title);
-        if (oldStr.startsWith("[")) {
+        if (oldStr.matches("^[+-]{0,1}\\[.*$")) {
             sb.append(": ").append(oldStr).append(" | ").append(newStr)
                     .append(", ");
         } else {
             sb.append(": \"").append(oldStr).append("\" | \"").append(newStr)
                     .append("\", ");
         }
+    }
+
+    /**
+     * Determine if the two sets are different.
+     * 
+     * @param set1
+     * @param set2
+     * @return true when sets are different
+     */
+    public static <T> boolean setsDiffer(Set<T> set1, Set<T> set2) {
+        // Null and empty sets are the same.
+        if (set1 == null) {
+            return ((set2 != null) && (set2.size() > 0));
+        }
+
+        if (set2 == null) {
+            return (set1.size() > 0);
+        }
+
+        if (set1.size() != set2.size()) {
+            return true;
+        }
+
+        // containsAll doesn't always return true for 2 empty sets.
+        if (set1.size() > 0) {
+            return !set1.containsAll(set2);
+        }
+
+        return false;
+    }
+
+    public static String nullCheck(String value, String none) {
+        if ((value == null) || (value.trim().length() == 0)) {
+            return none;
+        }
+        return "\"" + value + "\"";
     }
 
     private BMHLoggerUtils() {

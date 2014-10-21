@@ -22,11 +22,14 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
 import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 
@@ -49,6 +52,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * Sep 19, 2014  3611     lvenable    Added emergency override capability..
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 20, 2014  3636     rferrel     Implement Logging.
  * 
  * 
  * </pre>
@@ -136,17 +140,46 @@ public class MessageTypeHandler extends
      */
     private void deleteMessageType(MessageTypeRequest request) {
         MessageTypeDao dao = new MessageTypeDao(request.isOperational());
-        dao.delete(request.getMessageType());
+        MessageType messageType = request.getMessageType();
+        dao.delete(messageType);
+
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            logger.info("User " + user
+                    + " Delete MessageType afoisId/title/id "
+                    + messageType.getAfosid() + "/" + messageType.getTitle()
+                    + "/" + messageType.getId() + " " + messageType.toString());
+        }
     }
 
     private MessageTypeResponse saveMessageType(MessageTypeRequest request) {
         MessageTypeDao dao = new MessageTypeDao(request.isOperational());
-        dao.saveOrUpdate(request.getMessageType());
+        MessageType messageType = request.getMessageType();
+
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
+
+        MessageType oldType = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            oldType = dao.getByID(messageType.getId());
+        }
+
+        dao.saveOrUpdate(messageType);
 
         MessageTypeResponse response = new MessageTypeResponse();
         List<MessageType> list = new ArrayList<>(1);
         list.add(request.getMessageType());
         response.setMessageTypeList(list);
+
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            String entry = messageType.logEntry(oldType, user);
+            if (entry.length() > 0) {
+                logger.info(entry);
+            }
+        }
 
         return response;
     }
