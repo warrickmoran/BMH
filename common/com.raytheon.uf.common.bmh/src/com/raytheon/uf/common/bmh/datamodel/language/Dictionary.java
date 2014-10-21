@@ -34,6 +34,7 @@ import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
@@ -52,6 +53,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Jul 08, 2014 3355       mpduff      Updated mappings between dictionary and words
  * Jul 29, 2014 3407       mpduff      Removed orphanRemoval from words field, added toString()
  * Aug 04, 2014 3175       rjpeter     Added serialization adapter to fix circular reference.
+ * Oct 16, 2014 3636       rferrel     Added logging.
  * </pre>
  * 
  * @author rjpeter
@@ -148,5 +150,43 @@ public class Dictionary {
     @Override
     public String toString() {
         return "Dictionary [name=" + name + ", language=" + language + "]";
+    }
+
+    /**
+     * Get log entry.
+     * 
+     * @param oldDic
+     *            - When null assume this is a new Dictionary.
+     * @param user
+     *            - Who is making the change
+     * @return entry - empty string when no differences.
+     */
+    public String logEntry(Dictionary oldDic, String user) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("User ").append(user);
+        if (oldDic == null) {
+            sb.append(" New ").append(toString());
+        } else {
+            boolean logChanges = false;
+            sb.append(" Updates to Dictionary ").append(getName()).append(" [");
+            if (!name.equals(oldDic.getName())) {
+                BMHLoggerUtils.logFieldChange(sb, "name", oldDic.getName(),
+                        getName());
+                logChanges = true;
+            }
+            if (!getLanguage().equals(oldDic.getLanguage())) {
+                BMHLoggerUtils.logFieldChange(sb, "language",
+                        oldDic.getLanguage(), getLanguage());
+                logChanges = true;
+            }
+
+            // No changes made
+            if (!logChanges) {
+                return "";
+            }
+
+            sb.setCharAt(sb.length() - 2, ']');
+        }
+        return sb.toString();
     }
 }

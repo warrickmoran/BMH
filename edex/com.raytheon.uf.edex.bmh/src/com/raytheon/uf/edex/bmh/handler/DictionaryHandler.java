@@ -21,9 +21,12 @@ package com.raytheon.uf.edex.bmh.handler;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest;
 import com.raytheon.uf.common.bmh.request.DictionaryResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 
 /**
@@ -39,6 +42,7 @@ import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
  * Jul 21, 2014  3407     mpduff      Added delete dictionary action
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 16, 2014  3636     rferrel     Implement logging.
  * 
  * </pre>
  * 
@@ -97,7 +101,24 @@ public class DictionaryHandler extends
     private DictionaryResponse saveDictionary(DictionaryRequest request) {
         DictionaryResponse response = new DictionaryResponse();
         DictionaryDao dao = new DictionaryDao(request.isOperational());
+        Dictionary newDic = request.getDictionary();
+
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                .isOperational());
+        Dictionary oldDic = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            oldDic = dao.getByID(newDic.getName());
+        }
+
         dao.saveOrUpdate(request.getDictionary());
+
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            String entry = newDic.logEntry(oldDic, user);
+            if (entry.length() > 0) {
+                logger.info(entry);
+            }
+        }
         response.setDictionary(request.getDictionary());
 
         return response;
@@ -105,9 +126,17 @@ public class DictionaryHandler extends
 
     private void deleteDictionary(DictionaryRequest request) {
         DictionaryResponse response = getDictionaryByName(request);
-        if (response.getDictionary() != null) {
+        Dictionary dictionary = response.getDictionary();
+        if (dictionary != null) {
             DictionaryDao dao = new DictionaryDao(request.isOperational());
             dao.delete(response.getDictionary());
+
+            IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
+                    .isOperational());
+            if (logger.isPriorityEnabled(Priority.INFO)) {
+                String user = BMHLoggerUtils.getUser(request);
+                logger.info("User " + user + " Delete " + dictionary.toString());
+            }
         }
     }
 }
