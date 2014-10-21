@@ -33,6 +33,9 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -50,7 +53,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 27, 2014  3432     mpduff      Added Serialization annotation.
  * Sep 22, 2014  #3652    lvenable    Added name column and a sequence generator for the ID.
  * Sep 25, 2014  3485     bsteffen    Add receiveAddress
- * 
+ * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author bsteffen
@@ -92,6 +95,7 @@ public class Dac {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "dac_ports", schema = "bmh")
     @Column(name = "dataPort")
+    @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private Set<Integer> dataPorts;
 

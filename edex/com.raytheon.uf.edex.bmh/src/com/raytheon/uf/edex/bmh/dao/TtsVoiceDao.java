@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -60,15 +59,9 @@ public class TtsVoiceDao extends AbstractBMHDao<TtsVoice, Integer> {
      * @return List of voices.
      */
     public List<TtsVoice> getVoices() {
-        List<Object> allObjects = this.loadAll();
-        if (allObjects == null) {
+        List<TtsVoice> voiceList = this.loadAll();
+        if (voiceList == null) {
             return Collections.emptyList();
-        }
-
-        List<TtsVoice> voiceList = new ArrayList<TtsVoice>(allObjects.size());
-        for (Object obj : allObjects) {
-            TtsVoice voice = (TtsVoice) obj;
-            voiceList.add(voice);
         }
 
         return voiceList;

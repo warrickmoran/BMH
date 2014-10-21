@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
-import org.springframework.orm.hibernate3.HibernateTemplate;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
@@ -60,11 +59,11 @@ public class WordDao extends AbstractBMHDao<Word, Integer> {
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             public void doInTransactionWithoutResult(TransactionStatus status) {
-                HibernateTemplate ht = getHibernateTemplate();
-                // delete can't be in a named query, use direct hql
-                ht.bulkUpdate(
-                        "delete from Word w where w.word = ? and w.dictionary = ?",
-                        word.getWord(), word.getDictionary());
+                getCurrentSession()
+                        .createQuery(
+                                "delete from Word w where w.word = ? and w.dictionary = ?")
+                        .setParameter(0, word.getWord())
+                        .setParameter(1, word.getDictionary()).executeUpdate();
                 saveOrUpdate(word);
             }
         });

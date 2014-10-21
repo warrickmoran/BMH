@@ -34,6 +34,9 @@ import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
@@ -54,6 +57,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Jul 29, 2014 3407       mpduff      Removed orphanRemoval from words field, added toString()
  * Aug 04, 2014 3175       rjpeter     Added serialization adapter to fix circular reference.
  * Oct 16, 2014 3636       rferrel     Added logging.
+ * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author rjpeter
@@ -77,6 +81,7 @@ public class Dictionary {
     private Language language = Language.ENGLISH;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "dictionary", fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SELECT)
     private Set<Word> words;
 
     public String getName() {

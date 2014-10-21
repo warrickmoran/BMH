@@ -287,7 +287,7 @@ public class DatabaseImport {
         String availablePortsProp = System.getProperty("bmh.dac.ports");
 
         DacDao dacDao = new DacDao();
-        List<Object> rows = dacDao.loadAll();
+        List<Dac> rows = dacDao.loadAll();
         if ((rows == null) || rows.isEmpty()) {
             return Collections.emptyList();
         }

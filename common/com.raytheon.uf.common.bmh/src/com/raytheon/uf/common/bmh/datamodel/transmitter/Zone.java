@@ -37,6 +37,9 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -52,7 +55,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014 3175       rjpeter     Initial creation
  * Jul 17, 2014  3406      mpduff      Added id pk column, named query, removed cascade
  * Aug 14, 2014  3411      mpduff      Added zoneName to unique constraint
- * 
+ * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author rjpeter
@@ -96,6 +99,7 @@ public class Zone {
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "zone_area", schema = "bmh", joinColumns = { @JoinColumn(name = "zoneId") }, inverseJoinColumns = { @JoinColumn(name = "areaId") })
+    @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private Set<Area> areas;
 

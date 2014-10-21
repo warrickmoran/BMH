@@ -21,10 +21,6 @@ package com.raytheon.uf.edex.bmh.dao;
 
 import java.util.List;
 
-import org.springframework.orm.hibernate3.HibernateTemplate;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
-
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
@@ -57,22 +53,11 @@ public class TransmitterLanguageDao extends
         super(operational, TransmitterLanguage.class);
     }
 
+    @SuppressWarnings("unchecked")
     public List<TransmitterLanguage> getLanguagesForTransmitterGroup(
             final TransmitterGroup group) {
-        List<TransmitterLanguage> languages = txTemplate
-                .execute(new TransactionCallback<List<TransmitterLanguage>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<TransmitterLanguage> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-
-                        return ht.findByNamedQueryAndNamedParam(
-                                TransmitterLanguage.GET_LANGUAGES_FOR_GROUP,
-                                "group", group);
-                    }
-                });
-
-        return languages;
+        return (List<TransmitterLanguage>) findByNamedQueryAndNamedParam(
+                TransmitterLanguage.GET_LANGUAGES_FOR_GROUP,
+                new String[]{"group"}, new Object[]{group});
     }
 }

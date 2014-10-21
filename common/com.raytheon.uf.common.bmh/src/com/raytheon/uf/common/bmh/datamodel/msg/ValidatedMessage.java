@@ -38,6 +38,9 @@ import javax.persistence.OneToOne;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
@@ -57,6 +60,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  *                                    errors with lazy loading.
  * Jul 17, 2014  3175     rjpeter     Updated query to match field name.
  * Sep 2, 2014   3568     bkowal      Added the getValidatedMsgForInputMsg named query.
+ * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author bsteffen
@@ -108,6 +112,7 @@ public class ValidatedMessage {
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(schema = "bmh", name = "validated_msg_transmitter_groups", joinColumns = @JoinColumn(name = "validated_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_id"))
+    @Fetch(FetchMode.SELECT)
     private Set<TransmitterGroup> transmitterGroups;
 
     @Column(nullable = false)

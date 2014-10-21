@@ -37,6 +37,9 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -53,7 +56,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 10, 2014  3283     bsteffen    Change transmitters from map to set.
  * Jul 17, 2014  3406     mpduff      Added id pk column, named query, removed cascade
  * Aug 14, 2014  3411     mpduff      Add areaName to unique constraint
- * 
+ * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author rjpeter
@@ -97,6 +100,7 @@ public class Area {
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "area_tx", schema = "bmh", joinColumns = @JoinColumn(name = "areaId"), inverseJoinColumns = @JoinColumn(name = "transmitterId"))
+    @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private Set<Transmitter> transmitters;
 

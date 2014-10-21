@@ -19,13 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import org.springframework.orm.hibernate3.HibernateTemplate;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 
@@ -65,18 +60,11 @@ public class AreaDao extends AbstractBMHDao<Area, Integer> {
      * @return
      */
     public Area getByAreaCode(final String areaCode) {
-        List<Area> types = txTemplate
-                .execute(new TransactionCallback<List<Area>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<Area> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                Area.GET_AREA_FOR_CODE,
-                                new String[] { "areaCode" },
-                                new Object[] { areaCode });
-                    }
-                });
+        @SuppressWarnings("unchecked")
+        List<Area> types = (List<Area>) findByNamedQueryAndNamedParam(
+                Area.GET_AREA_FOR_CODE,
+                new String[] { "areaCode" },
+                new Object[] { areaCode });
         if ((types != null) && !types.isEmpty()) {
             return types.get(0);
         }
@@ -85,17 +73,10 @@ public class AreaDao extends AbstractBMHDao<Area, Integer> {
     }
 
     public List<Area> getAllAreas() {
-        List<Object> names = this.loadAll();
-        if (names == null) {
+        List<Area> areaList = this.loadAll();
+        if (areaList == null) {
             return Collections.emptyList();
         }
-
-        List<Area> areaList = new ArrayList<Area>(names.size());
-        for (Object obj : names) {
-            Area a = (Area) obj;
-            areaList.add(a);
-        }
-
         return areaList;
     }
 }

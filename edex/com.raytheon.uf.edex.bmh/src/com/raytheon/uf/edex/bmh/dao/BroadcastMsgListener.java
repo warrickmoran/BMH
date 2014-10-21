@@ -19,7 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
-import org.hibernate.event.SaveOrUpdateEvent;
+
+import org.hibernate.event.spi.SaveOrUpdateEvent;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.time.util.TimeUtil;

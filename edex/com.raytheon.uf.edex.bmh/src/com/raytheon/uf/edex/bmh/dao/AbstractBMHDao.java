@@ -22,8 +22,9 @@ package com.raytheon.uf.edex.bmh.dao;
 import java.io.Serializable;
 import java.util.List;
 
+import org.hibernate.Query;
+import org.hibernate.Session;
 import org.springframework.dao.DataAccessException;
-import org.springframework.orm.hibernate3.HibernateTemplate;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 
@@ -97,8 +98,9 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
      * @throws DataAccessException
      *             when retrieval fails
      */
+    @SuppressWarnings("unchecked")
     public T getByID(I id) throws DataAccessException {
-        return super.getHibernateTemplate().get(this.daoClass, id);
+        return (T) getSession().get(this.daoClass, id);
     }
 
     /**
@@ -107,11 +109,70 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
      * @return
      */
     public List<T> getAll() {
+        return loadAll();
+    }
+
+    /**
+     * Loads all persistent instances of the daoClass
+     * 
+     * @return All persistent instances of the daoClass
+     */
+    @SuppressWarnings("unchecked")
+    public List<T> loadAll() {
+        return (List<T>) loadAll(daoClass);
+    }
+
+    public List<?> loadAll(final Class<?> clazz) {
         return txTemplate.execute(new TransactionCallback<List<T>>() {
+            @SuppressWarnings("unchecked")
             @Override
             public List<T> doInTransaction(TransactionStatus status) {
-                HibernateTemplate ht = getHibernateTemplate();
-                return ht.loadAll(daoClass);
+                return getCurrentSession().createCriteria(clazz).list();
+            }
+        });
+    }
+
+    public List<?> findByNamedQueryAndNamedParam(final String queryName,
+            final String[] names, final Object[] values) {
+        if ((names == null) || (values == null)
+                || (names.length != values.length)) {
+            throw new IllegalArgumentException(
+                    "Length of parameter names and parameter value arrays must match!");
+
+        }
+        return txTemplate.execute(new TransactionCallback<List<T>>() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public List<T> doInTransaction(TransactionStatus status) {
+                Session session = getSession();
+                Query query = session.getNamedQuery(queryName);
+                for (int i = 0; i < names.length; i++) {
+                    query.setParameter(names[i], values[i]);
+                }
+                return query.list();
+            }
+        });
+    }
+
+    public List<?> findByNamedQuery(final String queryName) {
+        return txTemplate.execute(new TransactionCallback<List<T>>() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public List<T> doInTransaction(TransactionStatus status) {
+                return getCurrentSession().getNamedQuery(queryName).list();
+            }
+        });
+    }
+
+    public List<?> findByNamedQuery(final String queryName,
+            final Object parameter) {
+        return txTemplate.execute(new TransactionCallback<List<T>>() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public List<T> doInTransaction(TransactionStatus status) {
+                Session session = getCurrentSession();
+                Query query = session.getNamedQuery(queryName);
+                return query.setParameter(0, parameter).list();
             }
         });
     }

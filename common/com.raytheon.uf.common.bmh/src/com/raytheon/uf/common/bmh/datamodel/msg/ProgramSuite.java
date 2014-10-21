@@ -35,6 +35,9 @@ import javax.persistence.MapsId;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -52,6 +55,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 08, 2014 3687       bsteffen    Remove ProgramTrigger.
  * Oct 13, 2014 3654       rjpeter     Updated to use MessageTypeSummary.
  * Oct 15, 2014 3715       bkowal      Prevent potential Null Pointer Exception for triggers.
+ * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author bkowal
@@ -88,6 +92,7 @@ public class ProgramSuite implements Serializable {
             @JoinColumn(name = "program_id", referencedColumnName = "program_id"),
             @JoinColumn(name = "suite_id", referencedColumnName = "suite_id") }, inverseJoinColumns = @JoinColumn(name = "msgtype_id", referencedColumnName = "id"), uniqueConstraints = @UniqueConstraint(columnNames = {
             "program_id", "suite_id", "msgtype_id" }))
+    @Fetch(FetchMode.SUBSELECT)
     private Set<MessageTypeSummary> triggers;
 
     @Column

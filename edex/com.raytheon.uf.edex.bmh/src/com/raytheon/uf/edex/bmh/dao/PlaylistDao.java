@@ -21,10 +21,6 @@ package com.raytheon.uf.edex.bmh.dao;
 
 import java.util.List;
 
-import org.springframework.orm.hibernate3.HibernateTemplate;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
-
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 
 /**
@@ -56,38 +52,21 @@ public class PlaylistDao extends AbstractBMHDao<Playlist, Integer> {
         super(operational, Playlist.class);
     }
 
+    @SuppressWarnings("unchecked")
     public List<Playlist> getByGroupName(final String transmitterGroupName) {
-        List<?> playlists = txTemplate
-                .execute(new TransactionCallback<List<?>>() {
-                    @Override
-                    public List<?> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                Playlist.QUERY_BY_GROUP_NAME,
-                                new String[] { "groupName" },
-                                new String[] { transmitterGroupName });
-                    }
-                });
-        @SuppressWarnings("unchecked")
-        List<Playlist> result = (List<Playlist>) playlists;
-        return result;
+        return (List<Playlist>) findByNamedQueryAndNamedParam(
+                Playlist.QUERY_BY_GROUP_NAME,
+                new String[] { "groupName" },
+                new String[] { transmitterGroupName });
     }
 
     public Playlist getBySuiteAndGroupName(final String suiteName,
             final String transmitterGroupName) {
-        List<?> playlists = txTemplate
-                .execute(new TransactionCallback<List<?>>() {
-                    @Override
-                    public List<?> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht
-                                .findByNamedQueryAndNamedParam(
-                                        Playlist.QUERY_BY_SUITE_GROUP_NAMES,
-                                        new String[] { "suiteName", "groupName" },
-                                        new String[] { suiteName,
-                                                transmitterGroupName });
-                    }
-                });
+        List<?> playlists = findByNamedQueryAndNamedParam(
+                Playlist.QUERY_BY_SUITE_GROUP_NAMES,
+                new String[] { "suiteName", "groupName" },
+                new String[] { suiteName,
+                        transmitterGroupName });
         if (playlists.isEmpty()) {
             return null;
         } else {

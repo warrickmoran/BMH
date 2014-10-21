@@ -20,13 +20,13 @@
 package com.raytheon.uf.edex.bmh.dao;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
-import org.hibernate.event.SaveOrUpdateEvent;
-import org.hibernate.event.def.DefaultSaveOrUpdateEventListener;
 import org.apache.commons.lang.ClassUtils;
+import org.hibernate.event.internal.DefaultSaveOrUpdateEventListener;
+import org.hibernate.event.spi.SaveOrUpdateEvent;
 
 /**
  * Generic update listener wrapper. Allows for the registration of a listener

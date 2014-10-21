@@ -40,6 +40,8 @@ import javax.persistence.Table;
 import javax.persistence.Transient;
 
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -65,9 +67,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 21, 2014 #3490     lvenable    Remove cascade all.
  * Sep 18, 2014 #3587     bkowal      Added a transient to track messages types associated
  *                                    with triggers that are no longer associated with the suite.
- * Oct 13, 2014 3654       rjpeter    Updated to use MessageTypeSummary.
+ * Oct 13, 2014 3654      rjpeter     Updated to use MessageTypeSummary.
  * Oct 15, 2014 3715      bkowal      Supporting adding program triggers to completely
  *                                    new {@link Suite}(s).
+ * Oct 21, 2014 3746      rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author rjpeter
@@ -115,6 +118,7 @@ public class Suite {
     // updating position broken https://hibernate.atlassian.net/browse/HHH-5732
     @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
+    @Fetch(FetchMode.SUBSELECT)
     private List<SuiteMessage> suiteMessages;
 
     @Transient

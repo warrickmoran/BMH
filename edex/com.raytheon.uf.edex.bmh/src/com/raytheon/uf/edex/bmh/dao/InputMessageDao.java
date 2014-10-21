@@ -24,10 +24,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 
-import org.springframework.orm.hibernate3.HibernateTemplate;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
-
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 
 /**
@@ -69,21 +65,14 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
      * @see InputMessage#equalsExceptId(Object)
      */
     public boolean checkDuplicate(final InputMessage message) {
-        List<?> messages = txTemplate
-                .execute(new TransactionCallback<List<?>>() {
-                    @Override
-                    public List<?> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                InputMessage.DUP_QUERY_NAME,
-                                new String[] { "id", "afosid", "mrd",
-                                        "effectiveTime", "expirationTime" },
-                                new Object[] { message.getId(),
-                                        message.getAfosid(), message.getMrd(),
-                                        message.getEffectiveTime(),
-                                        message.getExpirationTime() });
-                    }
-                });
+        List<?> messages = findByNamedQueryAndNamedParam(
+                InputMessage.DUP_QUERY_NAME,
+                new String[] { "id", "afosid", "mrd",
+                        "effectiveTime", "expirationTime" },
+                new Object[] { message.getId(),
+                        message.getAfosid(), message.getMrd(),
+                        message.getEffectiveTime(),
+                        message.getExpirationTime() });
         for (Object obj : messages) {
             InputMessage dup = (InputMessage) obj;
             if (dup.getId() == message.getId()) {
@@ -111,7 +100,7 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
      */
     public List<InputMessage> getPeriodicMessages() {
         // TODO optimize this query
-        List<Object> allObjects = this.loadAll();
+        List<InputMessage> allObjects = this.loadAll();
         if (allObjects == null) {
             return Collections.emptyList();
         }
@@ -133,18 +122,10 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
      * @return List of Input Messages.
      */
     public List<InputMessage> getInputMessages() {
-        List<Object> allObjects = this.loadAll();
-        if (allObjects == null) {
+        List<InputMessage> inputMessageList = this.loadAll();
+        if (inputMessageList == null) {
             return Collections.emptyList();
         }
-
-        List<InputMessage> inputMessageList = new ArrayList<InputMessage>(
-                allObjects.size());
-        for (Object obj : allObjects) {
-            InputMessage im = (InputMessage) obj;
-            inputMessageList.add(im);
-        }
-
         return inputMessageList;
     }
 
@@ -173,20 +154,10 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
      *            Query.
      * @return List of input message objects.
      */
+    @SuppressWarnings("unchecked")
     private List<Object[]> getInputMessagesByQuery(
             final String inputMessageQuery) {
-        List<Object[]> objectList = txTemplate
-                .execute(new TransactionCallback<List<Object[]>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<Object[]> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQuery(inputMessageQuery);
-                    }
-                });
-
-        return objectList;
+        return (List<Object[]>) findByNamedQuery(inputMessageQuery);
     }
 
     /**

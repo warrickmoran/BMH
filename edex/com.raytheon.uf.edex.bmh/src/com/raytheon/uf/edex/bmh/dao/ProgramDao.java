@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.springframework.orm.hibernate3.HibernateTemplate;
+import org.hibernate.Query;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
@@ -80,21 +80,12 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
      * @param msgType
      * @return
      */
+    @SuppressWarnings("unchecked")
     public List<TransmitterGroup> getGroupsForMsgType(final String msgType) {
-        List<TransmitterGroup> groups = txTemplate
-                .execute(new TransactionCallback<List<TransmitterGroup>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<TransmitterGroup> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                Program.GET_GROUPS_FOR_MSG_TYPE,
-                                new String[] { "afosid" },
-                                new Object[] { msgType });
-                    }
-                });
-        return groups;
+        return (List<TransmitterGroup>) findByNamedQueryAndNamedParam(
+                Program.GET_GROUPS_FOR_MSG_TYPE,
+                new String[] { "afosid" },
+                new Object[] { msgType });
     }
 
     /**
@@ -105,19 +96,11 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
      */
     public Program getProgramForTransmitterGroup(
             final TransmitterGroup transmitterGroup) {
-        List<Program> programs = txTemplate
-                .execute(new TransactionCallback<List<Program>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<Program> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                Program.GET_PROGRAM_FOR_TRANSMITTER_GROUP,
-                                new String[] { "group" },
-                                new Object[] { transmitterGroup });
-                    }
-                });
+        @SuppressWarnings("unchecked")
+        List<Program> programs = (List<Program>) findByNamedQueryAndNamedParam(
+                Program.GET_PROGRAM_FOR_TRANSMITTER_GROUP,
+                new String[] { "group" },
+                new Object[] { transmitterGroup });
 
         if ((programs != null) && (programs.size() > 0)) {
             // should only be one entry
@@ -129,17 +112,10 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
 
     public ProgramSuite getSuiteByIDForTransmitterGroup(
             final TransmitterGroup transmitterGroup, final int suiteId) {
-        List<?> results = txTemplate
-                .execute(new TransactionCallback<List<?>>() {
-                    @Override
-                    public List<?> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP,
-                                new String[] { "group", "suiteId" },
-                                new Object[] { transmitterGroup, suiteId });
-                    }
-                });
+        List<?> results = findByNamedQueryAndNamedParam(
+                Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP,
+                new String[] { "group", "suiteId" },
+                new Object[] { transmitterGroup, suiteId });
 
         if ((results == null) || results.isEmpty()) {
             return null;
@@ -158,15 +134,9 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
      * @return List of programs.
      */
     public List<Program> getPrograms() {
-        List<Object> allObjects = this.loadAll();
-        if (allObjects == null) {
+        List<Program> programList = this.loadAll();
+        if (programList == null) {
             return Collections.emptyList();
-        }
-
-        List<Program> programList = new ArrayList<Program>(allObjects.size());
-        for (Object obj : allObjects) {
-            Program prog = (Program) obj;
-            programList.add(prog);
         }
 
         return programList;
@@ -195,16 +165,9 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
      * 
      * @return A list of program summaries.
      */
+    @SuppressWarnings("unchecked")
     public List<ProgramSummary> getProgramSummaries() {
-        return txTemplate
-                .execute(new TransactionCallback<List<ProgramSummary>>() {
-                    @Override
-                    public List<ProgramSummary> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.loadAll(ProgramSummary.class);
-                    }
-                });
+        return (List<ProgramSummary>) loadAll(ProgramSummary.class);
     }
 
     /**
@@ -212,20 +175,9 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
      * 
      * @return A list of objects.
      */
+    @SuppressWarnings("unchecked")
     private List<Object[]> getProgramByQuery(final String programQuery) {
-
-        List<Object[]> objectList = txTemplate
-                .execute(new TransactionCallback<List<Object[]>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<Object[]> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQuery(programQuery);
-                    }
-                });
-
-        return objectList;
+        return (List<Object[]>) findByNamedQuery(programQuery);
     }
 
     /**
@@ -289,15 +241,8 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
 
     public List<Program> getProgramsWithTrigger(final String namedQuery,
             final String[] queryParams, final Object[] paramValues) {
-        List<?> programs = txTemplate
-                .execute(new TransactionCallback<List<?>>() {
-                    @Override
-                    public List<?> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(namedQuery,
-                                queryParams, paramValues);
-                    }
-                });
+        List<?> programs = findByNamedQueryAndNamedParam(namedQuery,
+                queryParams, paramValues);
 
         if ((programs == null) || programs.isEmpty()) {
             return null;
@@ -333,12 +278,11 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(TransactionStatus status) {
-                HibernateTemplate ht = getHibernateTemplate();
                 for (Object obj : objs) {
                     if (obj instanceof Program) {
                         saveOrUpdate((Program) obj);
                     } else {
-                        ht.saveOrUpdate(obj);
+                        persist(obj);
                     }
                 }
             }
@@ -349,28 +293,25 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(TransactionStatus status) {
-                HibernateTemplate ht = getHibernateTemplate();
-                saveOrUpdate(ht, program);
+                final int programId = program.getId();
+                // work around to orphanRemoval not working correctly in
+                // bidirectional relationship
+                if (programId != 0) {
+                    Query query = getCurrentSession().createQuery("DELETE ProgramSuite WHERE program_id = ?");
+                    query.setParameter(0, programId);
+                    query.executeUpdate();
+                    persist(program);
+                } else {
+                    create(program);;
+                }
+
+                if (program.getProgramSuites() != null) {
+                    for (ProgramSuite programSuite : program.getProgramSuites()) {
+                        create(programSuite);
+                    }
+                }
             }
         });
-    }
-
-    private void saveOrUpdate(HibernateTemplate ht, final Program program) {
-        final int programId = program.getId();
-        // work around to orphanRemoval not working correctly in
-        // bidirectional relationship
-        if (programId != 0) {
-            ht.bulkUpdate("DELETE ProgramSuite WHERE program_id = ?", programId);
-            ht.update(program);
-        } else {
-            ht.save(program);
-        }
-
-        if (program.getProgramSuites() != null) {
-            for (ProgramSuite programSuite : program.getProgramSuites()) {
-                ht.save(programSuite);
-            }
-        }
     }
 
     public Program addGroup(final int programId, final TransmitterGroup group) {
@@ -379,10 +320,9 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
 
                     @Override
                     public Program doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
                         Program program = getByID(programId);
                         program.getTransmitterGroups().add(group);
-                        ht.save(program);
+                        persist(program);
                         return program;
                     }
                 });

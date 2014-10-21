@@ -19,13 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import org.springframework.orm.hibernate3.HibernateTemplate;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
@@ -66,20 +61,11 @@ public class TransmitterGroupDao extends
      * @return
      */
     public TransmitterGroup getByGroupName(final String name) {
-        List<TransmitterGroup> types = txTemplate
-                .execute(new TransactionCallback<List<TransmitterGroup>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<TransmitterGroup> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht
-                                .findByNamedQueryAndNamedParam(
-                                        TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME,
-                                        new String[] { "name" },
-                                        new Object[] { name });
-                    }
-                });
+        @SuppressWarnings("unchecked")
+        List<TransmitterGroup> types = (List<TransmitterGroup>) findByNamedQueryAndNamedParam(
+                TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME,
+                new String[] { "name" },
+                new Object[] { name });
 
         if ((types != null) && !types.isEmpty()) {
             return types.get(0);
@@ -89,33 +75,17 @@ public class TransmitterGroupDao extends
     }
 
     public List<TransmitterGroup> getTransmitterGroups() {
-        List<Object> objList = this.loadAll();
-        if ((objList == null) || objList.isEmpty()) {
+        List<TransmitterGroup> tGroup = this.loadAll();
+        if ((tGroup == null) || tGroup.isEmpty()) {
             // No data
             return Collections.emptyList();
-        }
-
-        List<TransmitterGroup> tGroup = new ArrayList<TransmitterGroup>();
-        for (Object o : objList) {
-            tGroup.add((TransmitterGroup) o);
         }
 
         return tGroup;
     }
 
+    @SuppressWarnings("unchecked")
     public List<TransmitterGroup> getEnabledTransmitterGroups() {
-        List<TransmitterGroup> groups = txTemplate
-                .execute(new TransactionCallback<List<TransmitterGroup>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<TransmitterGroup> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht
-                                .findByNamedQuery(TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS);
-                    }
-                });
-
-        return groups;
+        return (List<TransmitterGroup>) findByNamedQuery(TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS);
     }
 }

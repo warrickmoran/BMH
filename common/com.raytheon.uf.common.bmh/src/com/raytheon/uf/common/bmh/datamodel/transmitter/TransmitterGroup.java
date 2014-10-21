@@ -42,6 +42,9 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -62,17 +65,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  *                                     Languages map.
  * Jul 8, 2014  3302       bkowal      Use eager fetching to eliminate session closed
  *                                     errors with lazy loading.
- * Jul 17, 2014  3406      mpduff      Added id pk column
- * Aug 04, 2014  3173      mpduff      Changed rcs to dac, added position and convenience methods, using serialization adapter
- * Aug 13, 2014  3486      bsteffen    Add getEnabledTransmitters
- * Aug 18, 2014  3532      bkowal      Added adjustAudioMinDB and adjustAudioMaxDB
- * Aug 21, 2014  3486      lvenable    Initialized silence alram to false.
- * Aug 25, 2014  3558      rjpeter     Added query for enabled transmitter groups.
- * Sep 4, 2014   3532      bkowal      Use a decibel target instead of a range.
- * Oct 07, 2014  3649      rferrel     addTrasmitter now replaces old entry with new.
+ * Jul 17, 2014 3406       mpduff      Added id pk column
+ * Aug 04, 2014 3173       mpduff      Changed rcs to dac, added position and convenience methods, using serialization adapter
+ * Aug 13, 2014 3486       bsteffen    Add getEnabledTransmitters
+ * Aug 18, 2014 3532       bkowal      Added adjustAudioMinDB and adjustAudioMaxDB
+ * Aug 21, 2014 3486       lvenable    Initialized silence alram to false.
+ * Aug 25, 2014 3558       rjpeter     Added query for enabled transmitter groups.
+ * Sep 4, 2014  3532       bkowal      Use a decibel target instead of a range.
+ * Oct 07, 2014 3649       rferrel     addTrasmitter now replaces old entry with new.
  * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
- * Oct 13, 2014  3636      rferrel     For logging modified toString to show transmitters' mnemonic add LogEntry.
- * 
+ * Oct 13, 2014 3636       rferrel     For logging modified toString to show transmitters' mnemonic add LogEntry.
+ * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author rjpeter
@@ -136,6 +139,7 @@ public class TransmitterGroup {
     private double audioDBTarget = -10.0;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
+    @Fetch(FetchMode.SUBSELECT)
     private Set<Transmitter> transmitters;
 
     @ManyToOne

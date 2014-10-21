@@ -23,10 +23,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import org.springframework.orm.hibernate3.HibernateTemplate;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
-
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -64,58 +60,33 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
         super(operational, BroadcastMsg.class);
     }
 
+    @SuppressWarnings("unchecked")
     public List<BroadcastMsg> getMessagesByAfosid(final String afosid) {
-        List<?> messages = txTemplate
-                .execute(new TransactionCallback<List<?>>() {
-                    @Override
-                    public List<?> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                BroadcastMsg.GET_MSGS_BY_AFOS_ID,
-                                new String[] { "afosId" },
-                                new String[] { afosid });
-                    }
-                });
-        @SuppressWarnings("unchecked")
-        List<BroadcastMsg> result = (List<BroadcastMsg>) messages;
-        return result;
+        return (List<BroadcastMsg>) findByNamedQueryAndNamedParam(
+                BroadcastMsg.GET_MSGS_BY_AFOS_ID,
+                new String[] { "afosId" },
+                new String[] { afosid });
     }
 
+    @SuppressWarnings("unchecked")
     public List<BroadcastMsg> getUnexpiredMessagesByAfosidAndGroup(
             final String afosid, final Calendar expirationTime,
             final TransmitterGroup group) {
-        List<?> messages = txTemplate
-                .execute(new TransactionCallback<List<?>>() {
-                    @Override
-                    public List<?> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                        BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP,
-                                        new String[] {
-                                        "afosID", "expirationTime", "group" },
-                                new Object[] { afosid, expirationTime, group });
-                    }
-                });
-        @SuppressWarnings("unchecked")
-        List<BroadcastMsg> result = (List<BroadcastMsg>) messages;
-        return result;
+        return (List<BroadcastMsg>) findByNamedQueryAndNamedParam(
+                BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP,
+                new String[] {
+                "afosID", "expirationTime", "group" },
+        new Object[] { afosid, expirationTime, group });
     }
 
     public BroadcastMsg getMessageExistence(final TransmitterGroup group,
             final String afosId, final Language language) {
-        List<?> messages = txTemplate
-                .execute(new TransactionCallback<List<?>>() {
-                    @Override
-                    public List<?> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht
-                                .findByNamedQueryAndNamedParam(
-                                        BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE,
-                                        new String[] { "afosId", "group",
-                                                "language" }, new Object[] {
-                                                afosId, group, language });
-                    }
-                });
+        @SuppressWarnings("unchecked")
+        List<BroadcastMsg> messages = (List<BroadcastMsg>) findByNamedQueryAndNamedParam(
+                        BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE,
+                        new String[] { "afosId", "group",
+                                "language" }, new Object[] {
+                                afosId, group, language });
 
         if (messages == null || messages.isEmpty()) {
             return null;

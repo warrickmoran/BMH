@@ -19,10 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.orm.hibernate3.HibernateTemplate;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 
@@ -63,13 +61,7 @@ public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
      * @return transmitters
      */
     public List<Transmitter> getAllTransmitters() {
-        List<Object> results = this.loadAll();
-        List<Transmitter> tList = new ArrayList<Transmitter>(results.size());
-        for (Object o : results) {
-            tList.add((Transmitter) o);
-        }
-
-        return tList;
+        return this.loadAll();
     }
 
     /**
@@ -87,15 +79,14 @@ public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
                 .execute(new TransactionCallback<Transmitter>() {
                     @Override
                     public Transmitter doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        ht.saveOrUpdate(transmitter);
+                        saveOrUpdate(transmitter);
 
                         /*
                          * Remove transmitter from the group to prevent deleting
                          * it along with the group.
                          */
                         transmitterGroup.getTransmitters().remove(transmitter);
-                        ht.delete(transmitterGroup);
+                        delete(transmitterGroup);
                         return transmitter;
                     }
                 });

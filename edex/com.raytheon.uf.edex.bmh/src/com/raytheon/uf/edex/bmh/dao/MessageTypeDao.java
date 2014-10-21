@@ -25,10 +25,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.springframework.orm.hibernate3.HibernateTemplate;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
-
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
@@ -72,18 +68,10 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
      * @return List of message types.
      */
     public List<MessageType> getMessgeTypes() {
-        List<Object> allObjects = this.loadAll();
-        if (allObjects == null) {
+        List<MessageType> messageTypeList = this.loadAll();
+        if (messageTypeList == null) {
             return Collections.emptyList();
         }
-
-        List<MessageType> messageTypeList = new ArrayList<MessageType>(
-                allObjects.size());
-        for (Object obj : allObjects) {
-            MessageType mt = (MessageType) obj;
-            messageTypeList.add(mt);
-        }
-
         return messageTypeList;
     }
 
@@ -110,20 +98,9 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
      *            Message type query to use.
      * @return List of data objects.
      */
+    @SuppressWarnings("unchecked")
     private List<Object[]> getMessageTypeByQuery(final String messageTypeQuery) {
-
-        List<Object[]> objectList = txTemplate
-                .execute(new TransactionCallback<List<Object[]>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<Object[]> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQuery(messageTypeQuery);
-                    }
-                });
-
-        return objectList;
+        return (List<Object[]>) findByNamedQuery(messageTypeQuery);
     }
 
     /**
@@ -155,19 +132,11 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
      * @return
      */
     public MessageType getByAfosId(final String afosId) {
-        List<MessageType> types = txTemplate
-                .execute(new TransactionCallback<List<MessageType>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<MessageType> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                MessageType.GET_MESSAGETYPE_FOR_AFOSID,
-                                new String[] { "afosid" },
-                                new Object[] { afosId });
-                    }
-                });
+        @SuppressWarnings("unchecked")
+        List<MessageType> types = (List<MessageType>) findByNamedQueryAndNamedParam(
+                MessageType.GET_MESSAGETYPE_FOR_AFOSID,
+                new String[] { "afosid" },
+                new Object[] { afosId });
         if ((types != null) && !types.isEmpty()) {
             return types.get(0);
         }
@@ -184,20 +153,11 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
      * @return List of message types.
      */
     public List<MessageType> getEmergencyOverride(final boolean eoFlag) {
-        List<MessageType> types = txTemplate
-                .execute(new TransactionCallback<List<MessageType>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<MessageType> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht
-                                .findByNamedQueryAndNamedParam(
-                                        MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE,
-                                        new String[] { "emergencyOverride" },
-                                        new Object[] { eoFlag });
-                    }
-                });
+        @SuppressWarnings("unchecked")
+        List<MessageType> types =(List<MessageType>) findByNamedQueryAndNamedParam(
+                MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE,
+                new String[] { "emergencyOverride" },
+                new Object[] { eoFlag });
         if (types == null) {
             return Collections.emptyList();
         }
@@ -214,16 +174,10 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
      */
     public List<MessageType> getMessageTypeForDesignation(
             final Designation designation) {
-        List<?> types = txTemplate.execute(new TransactionCallback<List<?>>() {
-            @Override
-            public List<?> doInTransaction(TransactionStatus status) {
-                HibernateTemplate ht = getHibernateTemplate();
-                return ht.findByNamedQueryAndNamedParam(
-                        MessageType.GET_MESSAGETYPE_FOR_DESIGNATION,
-                        new String[] { "designation" },
-                        new Object[] { designation });
-            }
-        });
+        List<?> types = findByNamedQueryAndNamedParam(
+                MessageType.GET_MESSAGETYPE_FOR_DESIGNATION,
+                new String[] { "designation" },
+                new Object[] { designation });
 
         if ((types == null) || types.isEmpty()) {
             return null;
@@ -245,18 +199,10 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
      * @param afosId
      * @return
      */
+    @SuppressWarnings("unchecked")
     public Set<String> getReplacementAfosIdsForAfosId(final String afosId) {
-        List<MessageTypeSummary> msgTypes = txTemplate
-                .execute(new TransactionCallback<List<MessageTypeSummary>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<MessageTypeSummary> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQuery(
-                                MessageType.GET_REPLACEMENT_AFOSIDS, afosId);
-                    }
-                });
+        List<MessageTypeSummary> msgTypes = (List<MessageTypeSummary>) findByNamedQuery(
+                MessageType.GET_REPLACEMENT_AFOSIDS, afosId);
         Set<String> rval = new HashSet<>(
                 msgTypes == null ? 1 : msgTypes.size(), 1);
 

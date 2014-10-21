@@ -26,9 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.springframework.orm.hibernate3.HibernateTemplate;
 import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
@@ -77,15 +75,9 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
      * @return List of suites.
      */
     public List<Suite> getSuites() {
-        List<Object> allObjects = this.loadAll();
-        if (allObjects == null) {
+        List<Suite> suiteList = this.loadAll();
+        if (suiteList == null) {
             return Collections.emptyList();
-        }
-
-        List<Suite> suiteList = new ArrayList<Suite>(allObjects.size());
-        for (Object obj : allObjects) {
-            Suite suite = (Suite) obj;
-            suiteList.add(suite);
         }
 
         return suiteList;
@@ -128,20 +120,9 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
      * 
      * @return A list of objects.
      */
+    @SuppressWarnings("unchecked")
     private List<Object[]> getSuiteByQuery(final String suiteQuery) {
-
-        List<Object[]> objectList = txTemplate
-                .execute(new TransactionCallback<List<Object[]>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<Object[]> doInTransaction(
-                            TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQuery(suiteQuery);
-                    }
-                });
-
-        return objectList;
+        return (List<Object[]>) findByNamedQuery(suiteQuery);
     }
 
     /**
@@ -225,12 +206,11 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             public void doInTransactionWithoutResult(TransactionStatus status) {
-                HibernateTemplate ht = getHibernateTemplate();
                 for (Object obj : objs) {
                     if (obj instanceof Suite) {
-                        saveOrUpdateSuite(ht, (Suite) obj);
+                        saveOrUpdateSuite((Suite) obj);
                     } else {
-                        ht.saveOrUpdate(obj);
+                        saveOrUpdate(obj);
                     }
                 }
             }
@@ -242,49 +222,52 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
      * 
      * @param suite
      */
-    public void saveOrUpdate(final Suite suite) {
+    public void saveOrUpdateSuite(final Suite suite) {
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             public void doInTransactionWithoutResult(TransactionStatus status) {
-                HibernateTemplate ht = getHibernateTemplate();
-                saveOrUpdateSuite(ht, suite);
-            }
-        });
-    }
+                // work around to orphanRemoval not working correctly in
+                // bidirectional relationship
+                if (suite.getId() != 0) {
+                    getCurrentSession()
+                            .createQuery(
+                                    "delete from SuiteMessage where suite_id = ?")
+                            .setParameter(0, suite.getId()).executeUpdate();
 
-    private void saveOrUpdateSuite(HibernateTemplate ht, final Suite suite) {
-        // work around to orphanRemoval not working correctly in
-        // bidirectional relationship
-        if (suite.getId() != 0) {
-            ht.bulkUpdate("delete from SuiteMessage where suite_id = ?",
-                    suite.getId());
+                    /*
+                     * special case due to orphanRemoval bug. Remove any
+                     * triggers associated with SuiteMessage(s) that have been
+                     * removed.
+                     */
 
-            /*
-             * special case due to orphanRemoval bug. Remove any triggers
-             * associated with SuiteMessage(s) that have been removed.
-             */
+                    if ((suite.getRemovedTriggerSuiteMessages() != null)
+                            && (suite.getRemovedTriggerSuiteMessages()
+                                    .isEmpty() == false)) {
 
-            if ((suite.getRemovedTriggerSuiteMessages() != null)
-                    && (suite.getRemovedTriggerSuiteMessages().isEmpty() == false)) {
+                        for (SuiteMessagePk id : suite
+                                .getRemovedTriggerSuiteMessages()) {
+                            getCurrentSession()
+                                    .createQuery(
+                                            "DELETE FROM ProgramTrigger WHERE suite_id = ? AND msgtype_id = ?")
+                                    .setParameter(0, id.getSuiteId())
+                                    .setParameter(1, id.getMsgTypeId())
+                                    .executeUpdate();
+                        }
 
-                for (SuiteMessagePk id : suite.getRemovedTriggerSuiteMessages()) {
-                    ht.bulkUpdate(
-                            "DELETE FROM ProgramTrigger WHERE suite_id = ? AND msgtype_id = ?",
-                            id.getSuiteId(), id.getMsgTypeId());
+                        suite.getRemovedTriggerSuiteMessages().clear();
+                    }
+
+                    saveOrUpdate(suite);
+                } else {
+                    create(suite);
                 }
 
-                suite.getRemovedTriggerSuiteMessages().clear();
+                if (suite.getSuiteMessages() != null) {
+                    for (SuiteMessage sm : suite.getSuiteMessages()) {
+                        create(sm);
+                    }
+                }
             }
-
-            ht.update(suite);
-        } else {
-            ht.save(suite);
-        }
-
-        if (suite.getSuiteMessages() != null) {
-            for (SuiteMessage sm : suite.getSuiteMessages()) {
-                ht.save(sm);
-            }
-        }
+        });
     }
 }

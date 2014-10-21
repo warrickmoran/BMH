@@ -19,7 +19,9 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
-import org.hibernate.event.SaveOrUpdateEvent;
+import org.hibernate.event.spi.SaveOrUpdateEvent;
+
+
 
 /**
  * Defines the BMH Database Listener.

@@ -39,6 +39,9 @@ import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -59,7 +62,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 03, 2014  3554     bsteffen    Add getUnexpiredBroadcastMsgsByAfosIDAndGroup
  * Sep 10, 2014  2585     bsteffen    Implement MAT
  * Sep 12, 2014  3588     bsteffen    Support audio fragments.
- * 
+ * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author bkowal
@@ -124,6 +127,7 @@ public class BroadcastMsg {
 
     @OneToMany(mappedBy = "message", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @OrderColumn(name = "position", nullable = false)
+    @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private List<BroadcastFragment> fragments;
 

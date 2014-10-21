@@ -34,7 +34,6 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
@@ -42,6 +41,9 @@ import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.Transient;
+
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -72,6 +74,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary and ProgramSummary.
  * Oct 15, 2014  3715     bkowal      Support adding / editing program triggers for
  *                                    completely new {@link Suite}(s).
+ * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author rjpeter
@@ -131,6 +134,7 @@ public class Program {
     private String name;
 
     @OneToMany(mappedBy = "program", fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SUBSELECT)
     @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
     private List<ProgramSuite> programSuites;
@@ -142,7 +146,7 @@ public class Program {
     private Map<Suite, ProgramSuite> suiteToProgramSuiteMap;
 
     @OneToMany(fetch = FetchType.EAGER)
-    @JoinColumn(name = "program_id")
+    @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<TransmitterGroup> transmitterGroups;
 

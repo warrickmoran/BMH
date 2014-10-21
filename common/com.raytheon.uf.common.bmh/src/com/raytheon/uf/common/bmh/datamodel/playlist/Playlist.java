@@ -39,6 +39,9 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -58,6 +61,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Jun 30, 2014  3285     bsteffen    Initial creation
  * Aug 15, 2014  3515     rjpeter     Add eager fetch.
  * Sep 09, 2014  3554     bsteffen    Add QUERY_BY_GROUP_NAME
+ * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author bsteffen
@@ -111,6 +115,7 @@ public class Playlist {
     @JoinTable(schema = "bmh", name = "playlist_messages", joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "message_id", referencedColumnName = "id"), uniqueConstraints = @UniqueConstraint(columnNames = {
             "playlist_id", "message_position" }))
     @OrderColumn(name = "message_position", nullable = false)
+    @Fetch(FetchMode.SELECT)
     private List<BroadcastMsg> messages;
 
     public int getId() {

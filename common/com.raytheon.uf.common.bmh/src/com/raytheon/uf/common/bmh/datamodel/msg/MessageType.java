@@ -41,6 +41,8 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
@@ -63,16 +65,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
- * Aug 06, 2014 #3490      lvenable    Added fetch type eagar to fields and changed
+ * Aug 06, 2014 3490       lvenable    Added fetch type eagar to fields and changed
  *                                     same transmitters to a Set.
- * Aug 12, 2014 #3490      lvenable    Added wxr and enable tone blackout fields.
- * Aug 17, 2014 #3490      lvenable    Added batch size, removed cascade all.
- * Aug 18, 2014  3411      mpduff      Added {@link MessageTypeReplacement}
- * Sep 2, 2014   3568      bkowal      Added the getMessageTypeForDesignation named query
- * Sep 15, 2014   #3610    lvenable    Added query for getting Afos ID and Title.
- * Sep 19, 2014   #3611    lvenable    Added query for getting emergency override message types.
- * Oct 13, 2014  3654      rjpeter     Added additional queries.
- * Oct 16, 2014  3636      rferrel     Add logging.
+ * Aug 12, 2014 3490       lvenable    Added wxr and enable tone blackout fields.
+ * Aug 17, 2014 3490       lvenable    Added batch size, removed cascade all.
+ * Aug 18, 2014 3411       mpduff      Added {@link MessageTypeReplacement}
+ * Sep 2, 2014  3568       bkowal      Added the getMessageTypeForDesignation named query
+ * Sep 15, 2014 3610       lvenable    Added query for getting Afos ID and Title.
+ * Sep 19, 2014 3611       lvenable    Added query for getting emergency override message types.
+ * Oct 13, 2014 3654       rjpeter     Added additional queries.
+ * Oct 16, 2014 3636       rferrel     Add logging.
+ * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * </pre>
  * 
  * @author rjpeter
@@ -182,25 +185,30 @@ public class MessageType {
     @ManyToMany(fetch = FetchType.EAGER)
     @MapKey(name = "mnemonic")
     @JoinTable(name = "message_same_tx", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
+    @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private Set<Transmitter> sameTransmitters;
 
-    @OneToMany(fetch = FetchType.EAGER, mappedBy = "msgType", cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private Set<MessageTypeReplacement> replacementMsgs;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_areas", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "areacode"))
+    @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private Set<Area> defaultAreas;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_zones", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "zonecode"))
+    @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private Set<Zone> defaultZones;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_transmitters", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
+    @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private Set<TransmitterGroup> defaultTransmitterGroups;
 

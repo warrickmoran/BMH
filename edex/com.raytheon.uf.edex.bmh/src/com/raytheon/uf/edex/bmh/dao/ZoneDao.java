@@ -19,13 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import org.springframework.orm.hibernate3.HibernateTemplate;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 
@@ -65,18 +60,11 @@ public class ZoneDao extends AbstractBMHDao<Zone, Integer> {
      * @return
      */
     public Zone getByZoneCode(final String zoneCode) {
-        List<Zone> types = txTemplate
-                .execute(new TransactionCallback<List<Zone>>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public List<Zone> doInTransaction(TransactionStatus status) {
-                        HibernateTemplate ht = getHibernateTemplate();
-                        return ht.findByNamedQueryAndNamedParam(
-                                Zone.GET_ZONE_FOR_CODE,
-                                new String[] { "zoneCode" },
-                                new Object[] { zoneCode });
-                    }
-                });
+        @SuppressWarnings("unchecked")
+        List<Zone> types = (List<Zone>) findByNamedQueryAndNamedParam(
+                Zone.GET_ZONE_FOR_CODE,
+                new String[] { "zoneCode" },
+                new Object[] { zoneCode });
         if ((types != null) && !types.isEmpty()) {
             return types.get(0);
         }
@@ -85,17 +73,10 @@ public class ZoneDao extends AbstractBMHDao<Zone, Integer> {
     }
 
     public List<Zone> getAllZones() {
-        List<Object> names = this.loadAll();
-        if (names == null) {
+        List<Zone> zoneList = this.loadAll();
+        if (zoneList == null) {
             return Collections.emptyList();
         }
-
-        List<Zone> zoneList = new ArrayList<Zone>(names.size());
-        for (Object obj : names) {
-            Zone a = (Zone) obj;
-            zoneList.add(a);
-        }
-
         return zoneList;
     }
 }
