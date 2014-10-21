@@ -41,7 +41,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * Oct 14, 2014   #3728    lvenable    Added a set of area codes.
  * Oct 16, 2014    3657    bkowal      Added affectedTransmitters
  * Oct 17, 2014    3655    bkowal      Change affectedTransmitters from {@link String} 
- *                                     to {@link Transmitter}
+                                       to {@link Transmitter}
+ * Oct 21, 2014   #3728    lvenable    Added set of zonecodes and area codes.
+ *                                    
  * 
  * </pre>
  * 
@@ -52,7 +54,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 public class AreaSelectionSaveData {
 
     /** All of the areas that were selected. */
-    private Set<String> allSelectedAreaCodes = new HashSet<String>();
+    private Set<String> allSelectedZonesAreaCodes = new HashSet<String>();
 
     /**
      * Selected Areas
@@ -96,7 +98,7 @@ public class AreaSelectionSaveData {
         }
 
         areas.add(a);
-        allSelectedAreaCodes.add(a.getAreaCode());
+        allSelectedZonesAreaCodes.add(a.getAreaCode());
     }
 
     /**
@@ -119,12 +121,8 @@ public class AreaSelectionSaveData {
 
         zones.add(z);
 
-        // Add the area codes from the selected zone.
-        if (z.getAreas() != null) {
-            for (Area a : z.getAreas()) {
-                allSelectedAreaCodes.add(a.getAreaCode());
-            }
-        }
+        // Add the zone code.
+        allSelectedZonesAreaCodes.add(z.getZoneCode());
     }
 
     /**
@@ -165,7 +163,7 @@ public class AreaSelectionSaveData {
      */
     private void addTransmitterAreas(List<Area> transmitterAreaList) {
         for (Area a : transmitterAreaList) {
-            allSelectedAreaCodes.add(a.getAreaCode());
+            allSelectedZonesAreaCodes.add(a.getAreaCode());
         }
     }
 
@@ -183,7 +181,7 @@ public class AreaSelectionSaveData {
      * @return List of areas.
      */
     public Set<String> getSelectedAreaCodes() {
-        return allSelectedAreaCodes;
+        return allSelectedZonesAreaCodes;
     }
 
 }

@@ -51,11 +51,13 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 25, 2014    3355    mpduff      Initial creation
- * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
- * Oct 2, 2014  3642       bkowal      Specify the Synthesizer Timeout
- * Oct 13, 2014 3413       rferrel     Support of user roles in sendRequest.
- * Oct 16, 2014 3657       bkowal      Relocated duration parsing methods.
+ * Jun 25, 2014   3355      mpduff      Initial creation
+ * Aug 05, 2014   3414      rjpeter     Added BMH Thrift interface.
+ * Oct 2, 2014    3642      bkowal      Specify the Synthesizer Timeout
+ * Oct 13, 2014   3413      rferrel     Support of user roles in sendRequest.
+ * Oct 16, 2014   3657      bkowal      Relocated duration parsing methods.
+ * Oct 21, 2014   3728      lvenable    Make splitDateTimeString public.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -272,7 +274,7 @@ public class BmhUtils {
      *            Date/Time string.
      * @return Array of numbers.
      */
-    private static int[] splitDateTimeString(String dateTimeStr) {
+    public static int[] splitDateTimeString(String dateTimeStr) {
         int arraySize = dateTimeStr.length() / 2;
         int[] intArray = new int[arraySize];
 

@@ -54,6 +54,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListComp;
@@ -88,6 +89,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 15, 2014 #3728      lvenable     Added code to populate message type controls.
  * Oct 15, 2014 #3728      lvenable     Added New/Edit buttons and call to select input message.
  * Oct 18, 2014  #3728     lvenable     Hooked in more functionality.
+ * Oct 21, 2014   #3728    lvenable     Added code for area selection and populating the input message controls.
  * 
  * </pre>
  * 
@@ -173,6 +175,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     /** Selected Message Type */
     private MessageType selectedMessageType = null;
 
+    /** Input message selected by the user. */
+    private InputMessage userInputMessage = null;
+
+    /** Button used to change the message type. */
     private Button changeMsgTypeBtn;
 
     /**
@@ -209,6 +215,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
         createNewEditButtons();
         createMainControls();
+        resetControls();
     }
 
     /**
@@ -255,6 +262,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                     return;
                 }
 
+                userInputMessage = new InputMessage();
                 resetControls();
             }
         });
@@ -366,6 +374,11 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                             selectedMessageType = (MessageType) returnValue;
 
                             updateMessageTypeControls();
+                        } else {
+                            if (selectedMessageType == null) {
+                                areaSelectionBtn.setEnabled(false);
+                                submitMsgBtn.setEnabled(false);
+                            }
                         }
                     }
                 });
@@ -507,31 +520,17 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
          */
         DialogUtility.addSeparator(controlComp, SWT.HORIZONTAL);
 
-        /*
-         * TODO : if the area data has been set for the selected message type
-         * then this button needs to be disabled.
-         */
-
         gd = new GridData();
         gd.horizontalSpan = 3;
         gd.verticalIndent = 7;
         areaSelectionBtn = new Button(controlComp, SWT.PUSH);
         areaSelectionBtn.setText("Area Selection...");
         areaSelectionBtn.setLayoutData(gd);
+        areaSelectionBtn.setEnabled(false);
         areaSelectionBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                AreaSelectionDlg dlg = new AreaSelectionDlg(getShell(),
-                        selectedMessageType);
-                dlg.setCloseCallback(new ICloseCallback() {
-                    @Override
-                    public void dialogClosed(Object returnValue) {
-                        areaData = (AreaSelectionSaveData) returnValue;
-                    }
-                });
-                dlg.open();
-
-                // TODO: Handle the data from the dialog.
+                handleAreadSelectionAction();
             }
         });
     }
@@ -585,7 +584,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             periodicityDateTimeStr = selectedMessageType.getPeriodicity();
         }
 
-        periodicityMap = generateDayHourMinuteSecondMap(periodicityDateTimeStr);
+        periodicityMap = BmhUtils
+                .generateDayHourMinuteSecondMap(periodicityDateTimeStr);
 
         periodicityDTF = new DateTimeFields(defaultsGrp, periodicityMap, false,
                 false, true);
@@ -741,65 +741,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     }
 
     /**
-     * Generate a Map of DateFieldType Day/Hour/Minute keys with values pulled
-     * from the provided string.
-     * 
-     * @param dateTimeStr
-     *            Date/Time string (DDHHMM).
-     * @return Map of DateFieldTypes and the associated values.
-     */
-    private Map<DateFieldType, Integer> generateDayHourMinuteSecondMap(
-            String dateTimeStr) {
-        Map<DateFieldType, Integer> durMap = new LinkedHashMap<DateFieldType, Integer>();
-
-        if (dateTimeStr == null || dateTimeStr.length() != 8) {
-            durMap.put(DateFieldType.DAY, 0);
-            durMap.put(DateFieldType.HOUR, 0);
-            durMap.put(DateFieldType.MINUTE, 0);
-            durMap.put(DateFieldType.SECOND, 0);
-        } else {
-            int[] dtArray = splitDateTimeString(dateTimeStr);
-            durMap.put(DateFieldType.DAY, dtArray[0]);
-            durMap.put(DateFieldType.HOUR, dtArray[1]);
-            durMap.put(DateFieldType.MINUTE, dtArray[2]);
-            durMap.put(DateFieldType.SECOND, dtArray[3]);
-        }
-
-        return durMap;
-    }
-
-    /**
-     * This method will split the date/time string into an array of integers for
-     * each element in the array.
-     * 
-     * If the string passed in is 013422, the return int array will contain 3
-     * elements: 1, 34, 22
-     * 
-     * @param dateTimeStr
-     *            Date/Time string.
-     * @return Array of numbers.
-     */
-    private int[] splitDateTimeString(String dateTimeStr) {
-        int arraySize = dateTimeStr.length() / 2;
-        int[] intArray = new int[arraySize];
-
-        int idx = 0;
-        for (int i = 0; i < arraySize; i++) {
-            String subStr = dateTimeStr.substring(idx, idx + 2);
-
-            try {
-                intArray[i] = Integer.valueOf(subStr);
-            } catch (NumberFormatException nfe) {
-                intArray[i] = 0;
-            }
-
-            idx += 2;
-        }
-
-        return intArray;
-    }
-
-    /**
      * Open a file dialog and let this user select a file to edit. If the file
      * is valid then open the Message Contents dialog.
      */
@@ -887,6 +828,49 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     }
 
     /**
+     * Handle the area selection action.
+     */
+    private void handleAreadSelectionAction() {
+        AreaSelectionDlg dlg = null;
+
+        if (userInputMessage != null) {
+            dlg = new AreaSelectionDlg(getShell(),
+                    userInputMessage.getAreaCodes());
+        } else {
+            dlg = new AreaSelectionDlg(getShell(), selectedMessageType);
+        }
+
+        dlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue == null) {
+                    return;
+                }
+
+                areaData = (AreaSelectionSaveData) returnValue;
+                Set<String> areaCodes = areaData.getSelectedAreaCodes();
+
+                if (areaCodes == null || areaCodes.isEmpty()) {
+                    return;
+                }
+
+                StringBuilder sb = new StringBuilder();
+                Iterator<String> iter = areaCodes.iterator();
+                while (iter.hasNext()) {
+                    sb.append(iter.next());
+
+                    if (iter.hasNext()) {
+                        sb.append("-");
+                    }
+                }
+
+                userInputMessage.setAreaCodes(sb.toString());
+            }
+        });
+        dlg.open();
+    }
+
+    /**
      * Set the message type controls using the selected message type.
      */
     private void updateMessageTypeControls() {
@@ -919,6 +903,13 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      * Reset the controls to "default" values.
      */
     private void resetControls() {
+        selectedMessageType = null;
+        userInputMessage = new InputMessage();
+
+        // Input message name.
+        msgNameTF.setText("");
+        msgNameTF.setEditable(true);
+        msgNameTF.setBackground(null);
 
         /*
          * Message Type Controls
@@ -958,18 +949,40 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      * @param inputMessage
      *            Selected input message.
      */
-    private void populateControlsForEdit(InputMessage inputMessage) {
+    private void populateControlsForEdit(InputMessage im) {
+        userInputMessage = im;
+        selectedMessageType = null;
+
         changeMsgTypeBtn.setEnabled(false);
 
-        // Message type controls.
-        getMessageType(inputMessage.getAfosid());
+        // Input message name.
+        msgNameTF.setText(userInputMessage.getName());
+        msgNameTF.setEditable(false);
+        msgNameTF.setBackground(getDisplay().getSystemColor(
+                SWT.COLOR_WIDGET_BACKGROUND));
+
+        /*
+         * Message type controls.
+         */
+        getMessageType(userInputMessage.getAfosid());
+        if (selectedMessageType == null) {
+            areaSelectionBtn.setEnabled(false);
+            submitMsgBtn.setEnabled(false);
+        } else {
+            areaSelectionBtn.setEnabled(true);
+            submitMsgBtn.setEnabled(true);
+        }
+
         updateMessageTypeControls();
 
-        interruptChk.setSelection(inputMessage.getInterrupt());
-        alertChk.setSelection(inputMessage.getAlertTone());
-        confirmChk.setSelection(inputMessage.getConfirm());
+        /*
+         * Input Message controls.
+         */
+        interruptChk.setSelection(userInputMessage.getInterrupt());
+        alertChk.setSelection(userInputMessage.getAlertTone());
+        confirmChk.setSelection(userInputMessage.getConfirm());
 
-        boolean messageActive = inputMessage.getActive();
+        boolean messageActive = userInputMessage.getActive();
         activeRdo.setSelection(messageActive);
         inactiveRdo.setSelection(!messageActive);
 
@@ -982,14 +995,30 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
          */
 
         // Creation, Expiration, Effective date time fields.
-        creationDTF.setDateTimeSpinners(inputMessage.getCreationTime());
-        effectiveDTF.setDateTimeSpinners(inputMessage.getEffectiveTime());
-        expirationDTF.setDateTimeSpinners(inputMessage.getExpirationTime());
+        creationDTF.setDateTimeSpinners(userInputMessage.getCreationTime());
+        effectiveDTF.setDateTimeSpinners(userInputMessage.getEffectiveTime());
+        expirationDTF.setDateTimeSpinners(userInputMessage.getExpirationTime());
 
-        /*
-         * TODO : need to update periodic date time field.
-         */
-
+        // Update periodicity
+        String peridicityStr = userInputMessage.getPeriodicity();
+        if (peridicityStr == null || peridicityStr.length() == 0
+                || peridicityStr.length() != 8) {
+            periodicityDTF.setFieldValue(DateFieldType.DAY, 0);
+            periodicityDTF.setFieldValue(DateFieldType.HOUR, 0);
+            periodicityDTF.setFieldValue(DateFieldType.MINUTE, 0);
+            periodicityDTF.setFieldValue(DateFieldType.SECOND, 0);
+        } else {
+            int[] periodicityValues = BmhUtils
+                    .splitDateTimeString(peridicityStr);
+            periodicityDTF.setFieldValue(DateFieldType.DAY,
+                    periodicityValues[0]);
+            periodicityDTF.setFieldValue(DateFieldType.HOUR,
+                    periodicityValues[1]);
+            periodicityDTF.setFieldValue(DateFieldType.MINUTE,
+                    periodicityValues[2]);
+            periodicityDTF.setFieldValue(DateFieldType.SECOND,
+                    periodicityValues[3]);
+        }
     }
 
     /**
@@ -1007,6 +1036,17 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             statusHandler
                     .error("Error retrieving message type data from the database: ",
                             e);
+
+            StringBuilder msg = new StringBuilder();
+            msg.append("The message type for AFOS ID: ");
+            msg.append(afosId).append("\n");
+            msg.append("could not be read in.");
+
+            DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING | SWT.OK,
+                    "Error Retrieving Message Type", msg.toString());
+
+            selectedMessageType = null;
+            return;
         }
     }
 }
