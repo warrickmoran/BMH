@@ -15,6 +15,8 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    09/09/14        3456          bkowal         Initial Creation.
+#    10/21/14        3687          bsteffen       Enable comms manager to run in both
+                                                  operational and practice mode simultaneously
 ##############################################################################
 
 # Source function library.
@@ -35,6 +37,10 @@ BMH_BIN=${BMH_HOME}/bin
 BMH_LOGS=${BMH_HOME}/logs
 CONF_FILE=${BMH_HOME}/conf/wrapper.conf
 
+if [ "$2" = "practice" ]; then
+  CONF_FILE=${BMH_HOME}/conf/wrapper_practice.conf
+fi
+
 TODAY=`/bin/date +%Y%m%d`
 COMMS_LOG=${BMH_LOGS}/commsmanager-start-${TODAY}.log
 
@@ -51,7 +57,7 @@ getWrapperPid() {
 }
 
 getCommsMgrPid() {
-	comms_pid=`pgrep -f "java.*-Dbmh.component=CommsManager"`
+	comms_pid=`pgrep -f "java.*-Dwrapper.config=${CONF_FILE}"`
 	comms_pid_found=$?
 }
 

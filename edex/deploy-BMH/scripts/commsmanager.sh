@@ -36,6 +36,15 @@
 
 CONF_FILE="wrapper.conf"
 
+for arg in $@
+do
+  case $arg in
+    -p) 
+       CONF_FILE="wrapper_practice.conf"
+       ;;
+  esac
+done
+
 export BMH_DATA=/awips2/bmh/data
 
 path_to_script=`readlink -f $0`
@@ -48,23 +57,16 @@ export EDEX_HOME="${awips_home}/edex"
 export JAVA_HOME="${awips_home}/java"
 export JAVA=${JAVA_HOME}/bin/java
 export CONSOLE_LOGLEVEL=DEBUG
+comms_pid=`pgrep -f "java.*-c ${BMH_HOME}/conf/${CONF_FILE}"`
+if [ $? -eq 0 ]; then
+  echo "Comms manager (pid ${comms_pid}) is already running."
+  exit 1
+fi
+
+
 
 # set Java into the path
 export PATH=${awips_home}/bin:${JAVA_HOME}/bin:${PATH}
 
-t=`date "+%Y%m%d"`
-export logfile=/awips2/bmh/logs/commsmanager-$t.log
-
-WRAPPER_ARGS=""
-for arg in $@
-do
-  case $arg in
-    -p) 
-       export logfile=/awips2/bmh/logs/commsmanager-practice-$t.log
-       WRAPPER_ARGS="wrapper.app.parameter.1=-p wrapper.on_exit.default=SHUTDOWN"
-       ;;
-  esac
-done
-
 $JAVA -Xmx32m -XX:MaxPermSize=12m -XX:ReservedCodeCacheSize=4m -jar \
-	${BMH_HOME}/bin/yajsw/wrapper.jar -c ${BMH_HOME}/conf/${CONF_FILE} ${WRAPPER_ARGS}
+	${BMH_HOME}/bin/yajsw/wrapper.jar -c ${BMH_HOME}/conf/${CONF_FILE}

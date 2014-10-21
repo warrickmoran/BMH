@@ -492,6 +492,9 @@ public class CommsManager {
 
         ProcessBuilder startCommand = new ProcessBuilder(args);
         startCommand.environment().put("TRANSMITTER_GROUP", group);
+        if (!operational) {
+            startCommand.environment().put("BMH_PRACTICE_MODE", "TRUE");
+        }
 
         /*
          * Send console output to a file. This is quite rudimentary, the dac
@@ -501,10 +504,17 @@ public class CommsManager {
          * logs and we do not want them to be silently discarded.
          */
         String logDate = logDateFormat.format(new Date());
-        String logFileName = "dactransmit-" + group + "-console-" + logDate
-                + ".log";
+        StringBuilder logFileName = new StringBuilder(64);
+        logFileName.append("dactransmit-");
+        if (!operational) {
+            logFileName.append("practice-");
+        }
+        logFileName.append(group);
+        logFileName.append("-console-");
+        logFileName.append(logDate);
+        logFileName.append(".log");
         Path logFilePath = Paths.get(BMHConstants.getBmhHomeDirectory())
-                .resolve("logs").resolve(logFileName);
+                .resolve("logs").resolve(logFileName.toString());
         startCommand.redirectOutput(Redirect.appendTo(logFilePath.toFile()));
         startCommand.redirectError(Redirect.appendTo(logFilePath.toFile()));
         try {

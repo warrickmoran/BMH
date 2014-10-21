@@ -37,6 +37,7 @@
 #    08/11/14        3286          dgilling       Remove unneeded dependencies.
 #    08/18/14        3286          dgilling       Add org.apache.commons.lang.
 #    09/01/14        3665          bsteffen       Dont allow multiple instances
+#    10/21/14        3687          bsteffen       Log practice mode to a different file.
 ##############################################################################
 
 path_to_script=`readlink -f $0`
@@ -83,6 +84,12 @@ if [ -n "$DAC_ADDRESS" ] && [ -n "$DAC_PORT" ]; then
 		    exit 1
 		fi
 	fi
+fi
+
+if [[ -z "$BMH_PRACTICE_MODE" ]]; then
+  export logfile_base=dactransmit
+else
+  export logfile_base=dactransmit-practice
 fi
 
 export BMH_HOME=$(dirname $dir)
