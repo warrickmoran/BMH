@@ -23,16 +23,15 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
+import java.util.Collection;
 import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.bmh.dacsimulator.channel.JitterBuffer;
+import com.raytheon.bmh.dacsimulator.channel.output.DacSimulatedBroadcast;
 
 /**
  * This thread simulates the rebroadcast feature of the DAC device. It combines
@@ -46,6 +45,7 @@ import com.raytheon.bmh.dacsimulator.channel.JitterBuffer;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 03, 2014  #3688     dgilling     Initial creation
+ * Oct 21, 2014  #3688     dgilling     Support packet addressing.
  * 
  * </pre>
  * 
@@ -71,17 +71,15 @@ public class DacRebroadcastThread extends Thread {
 
     private static final int PACKET_HEADER_SIZE = 12; // bytes
 
-    private static final byte SILENCE = (byte) 0xFF;
-
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final DatagramSocket socket;
 
-    private final InetAddress destination;
+    private final InetSocketAddress destination;
 
-    private final int port;
+    private final DacSimulatedBroadcast broadcaster;
 
-    private final List<JitterBuffer> buffers;
+    private final int numChannels;
 
     /**
      * RTP spec's synchronization source identifier. Provides a means to
@@ -101,14 +99,6 @@ public class DacRebroadcastThread extends Thread {
      */
     private int timestamp;
 
-    /*
-     * When a channel has not begun or has stopped transmission, we will
-     * rebroadcast silence instead.
-     * 
-     * TODO??? Simulate the maintenance message.
-     */
-    private final byte[] silencePayload;
-
     /**
      * Constructor.
      * 
@@ -116,25 +106,27 @@ public class DacRebroadcastThread extends Thread {
      *            Host name of IP address to broadcast the audio streams to.
      * @param port
      *            Port to send the audio streams to.
-     * @param buffers
-     *            {@code JitterBuffer} instances to read for audio packets to
-     *            rebroadcast.
-     * @throws SocketException
+     * @param broadcaster
+     *            {@code DacSimulatedBroadcast} instance needed for getting the
+     *            audio packets being broadcast.
+     * @param numChannels
+     *            Number of output channels.
+     * @throws IOException
      *             If the socket could not be opened, or the socket could not
      *             bind to a local port.
      */
     public DacRebroadcastThread(InetAddress destAddress, int port,
-            List<JitterBuffer> buffers) throws SocketException {
+            DacSimulatedBroadcast broadcaster, int numChannels)
+            throws IOException {
         super("DacRebroadcastThread");
+        this.destination = new InetSocketAddress(destAddress, port);
         this.socket = new DatagramSocket();
-        this.destination = destAddress;
-        this.port = port;
-        this.buffers = buffers;
+        this.broadcaster = broadcaster;
+        this.numChannels = numChannels;
+
         this.ssrc = new Random().nextInt();
         this.sequenceNumber = 0;
         this.timestamp = 0;
-        this.silencePayload = new byte[CHANNEL_PAYLOAD_SIZE];
-        Arrays.fill(this.silencePayload, SILENCE);
     }
 
     @Override
@@ -148,18 +140,19 @@ public class DacRebroadcastThread extends Thread {
 
                     byte[] payload = buildPacket();
                     DatagramPacket packet = new DatagramPacket(payload,
-                            payload.length, destination, port);
+                            payload.length, destination);
                     socket.send(packet);
 
                     long t1 = System.currentTimeMillis();
 
                     nextSleepTime = DEFAULT_CYCLE_TIME - (t1 - t0);
                     if (nextSleepTime < 0) {
+                        logger.warn("Building rebroadcast packet is taking too long. Audio stream playback may be affected.");
                         nextSleepTime = 0;
                     }
                 } catch (IOException e) {
                     String msg = "Error sending packet to "
-                            + destination.getHostAddress() + ":" + port + ".";
+                            + destination.toString() + ".";
                     logger.error(msg, e);
                 }
 
@@ -176,7 +169,7 @@ public class DacRebroadcastThread extends Thread {
 
     private byte[] buildPacket() {
         int packetSize = PACKET_HEADER_SIZE
-                + (buffers.size() * CHANNEL_PAYLOAD_SIZE);
+                + (numChannels * CHANNEL_PAYLOAD_SIZE);
         ByteBuffer packet = ByteBuffer.allocate(packetSize);
 
         packet.put(FLAGS);
@@ -188,14 +181,9 @@ public class DacRebroadcastThread extends Thread {
         sequenceNumber++;
         timestamp += 20;
 
-        /*
-         * TODO: If we need to support one stream going to multiple output
-         * channels, there are some changes that are needed here too...
-         */
-        for (JitterBuffer buffer : buffers) {
-            byte[] audio = buffer.isReadyForBroadcast() ? buffer.get()
-                    : silencePayload;
-            packet.put(audio);
+        Collection<byte[]> audioData = broadcaster.broadcast();
+        for (byte[] audioChannel : audioData) {
+            packet.put(audioChannel);
         }
 
         return packet.array();

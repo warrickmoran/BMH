@@ -1,0 +1,39 @@
+<configuration debug="false" scan="true">
+   <!-- general application log -->
+   <appender name="logfile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+         <!--  TODO: Create an environment variable that can be used to discriminate
+               between multiple instances of the simulator running on the same system.
+          -->
+         <fileNamePattern>${BMH_HOME}/logs/dacsimulator-%d{yyyyMMdd}.log</fileNamePattern>
+         <maxHistory>30</maxHistory>
+      </rollingPolicy> 
+
+      <encoder>
+         <pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
+      </encoder>
+   </appender>
+
+   <appender name="asyncLog" class="ch.qos.logback.classic.AsyncAppender">
+      <appender-ref ref="logfile" />
+   </appender>
+
+   <logger name="com.raytheon">
+      <level value="DEBUG"/>
+   </logger>
+   
+   <logger name="org.apache">
+      <level value="INFO"/>
+   </logger>
+   
+   <logger name="com.google">
+      <level value="INFO"/>
+   </logger>
+
+   <!-- default logging -->
+   <root>
+      <level value="DEBUG"/>
+      <appender-ref ref="asyncLog"/>
+   </root>
+</configuration>
+

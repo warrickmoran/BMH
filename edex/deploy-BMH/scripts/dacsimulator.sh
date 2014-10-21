@@ -28,6 +28,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    10/17/14        3688          dgilling       Initial Creation.
+#    10/20/14        3688          dgilling       Add logging, fix dependencies.
 #
 ##############################################################################
 
@@ -43,7 +44,7 @@ export JAVA_HOME="${awips_home}/java"
 # set Java into the path
 export PATH=${awips_home}/bin:${JAVA_HOME}/bin
 
-DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j org.apache.commons.collections"
+DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j org.apache.commons.collections com.google.guava"
 
 ENTRY_POINT="com.raytheon.bmh.dacsimulator.DacSimulatorMain"
 CLASSPATH="${EDEX_HOME}/lib/plugins/*"
@@ -52,7 +53,7 @@ for dependency in $DEPENDENCIES; do
 done;
 
 JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
-JVM_PROPS="-Duser.timezone=GMT"
+JVM_PROPS="-Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dacsimulator.xml"
 
 
 java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "$@"

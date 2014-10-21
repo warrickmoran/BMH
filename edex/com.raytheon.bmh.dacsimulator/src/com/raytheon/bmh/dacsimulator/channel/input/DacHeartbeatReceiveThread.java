@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.bmh.dacsimulator.channel;
+package com.raytheon.bmh.dacsimulator.channel.input;
 
 import java.io.IOException;
 import java.net.DatagramPacket;

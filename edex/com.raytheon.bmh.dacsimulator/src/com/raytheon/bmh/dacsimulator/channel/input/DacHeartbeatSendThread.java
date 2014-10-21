@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.bmh.dacsimulator.channel;
+package com.raytheon.bmh.dacsimulator.channel.input;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -25,7 +25,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.bmh.dacsimulator.channel.output.DacSimulatedBroadcast;
 import com.raytheon.bmh.dacsimulator.events.SyncLostEvent;
 import com.raytheon.bmh.dacsimulator.events.SyncObtainedEvent;
 
@@ -72,6 +72,7 @@ import com.raytheon.bmh.dacsimulator.events.SyncObtainedEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 15, 2014  #3688     dgilling     Initial creation
+ * Oct 21, 2014  #3688     dgilling     Use output channels to get voice status.
  * 
  * </pre>
  * 
@@ -80,12 +81,6 @@ import com.raytheon.bmh.dacsimulator.events.SyncObtainedEvent;
  */
 
 public class DacHeartbeatSendThread extends Thread {
-
-    private static final int VOICE_STATUS_SILENCE = 0;
-
-    private static final int VOICE_STATUS_IP_AUDIO = 1;
-
-    private static final int VOICE_STATUS_MAINTENANCE = 2;
 
     private static final String VOLTAGE_LEVEL = "12.0";
 
@@ -109,7 +104,7 @@ public class DacHeartbeatSendThread extends Thread {
 
     private final JitterBuffer myBuffer;
 
-    private final List<JitterBuffer> allBuffers;
+    private final DacSimulatedBroadcast broadcaster;
 
     /**
      * Constructor.
@@ -118,17 +113,18 @@ public class DacHeartbeatSendThread extends Thread {
      *            Channel number this thread is simulating for.
      * @param myBuffer
      *            This channel's {@code JitterBuffer}.
-     * @param allBuffers
-     *            The {@code JitterBuffer}s for all channels.
      * @param eventBus
      *            {@code EventBus} instance so this thread knows when sync is
      *            gained or lost.
+     * @param broadcaster
+     *            {@code DacSimulatedBroadcast} instance which is needed to get
+     *            channel status information for the heartbeat message.
      * @throws SocketException
      *             If the socket could not be opened, or the socket could not
      *             bind to a local port.
      */
     public DacHeartbeatSendThread(int channelNumber, JitterBuffer myBuffer,
-            List<JitterBuffer> allBuffers, EventBus eventBus)
+            EventBus eventBus, DacSimulatedBroadcast broadcaster)
             throws SocketException {
         super("DacHeartbeatSendThread-Channel" + channelNumber);
         this.socket = new DatagramSocket();
@@ -136,7 +132,7 @@ public class DacHeartbeatSendThread extends Thread {
         this.syncHost = new AtomicReference<>();
         this.syncPort = new AtomicInteger();
         this.myBuffer = myBuffer;
-        this.allBuffers = allBuffers;
+        this.broadcaster = broadcaster;
         this.eventBus = eventBus;
         this.eventBus.register(this);
     }
@@ -197,27 +193,13 @@ public class DacHeartbeatSendThread extends Thread {
                 .append(DELIMITER).append(OUTPUT_GAIN).append(DELIMITER)
                 .append(OUTPUT_GAIN).append(DELIMITER);
 
-        /*
-         * We're faking how to get voice status at the moment. Because the DAC
-         * has the ability to send 1 data stream to multiple channels, directly
-         * mapping each jitter buffer to a channel's voice status isn't always
-         * correct.
-         * 
-         * FIXME: support a multiple output addressing feature of DAC.
-         */
-        for (JitterBuffer buffer : allBuffers) {
-            int voiceStatus = buffer.isReadyForBroadcast() ? VOICE_STATUS_IP_AUDIO
-                    : VOICE_STATUS_SILENCE;
-            statusMsg.append(voiceStatus);
-        }
+        statusMsg.append(broadcaster.getVoiceStatus());
         statusMsg.append(DELIMITER);
 
         statusMsg.append(0).append(DELIMITER);
         statusMsg.append(0);
 
-        String retVal = statusMsg.toString();
-        logger.debug("Sending back status message: {}.", retVal);
-        return retVal;
+        return statusMsg.toString();
     }
 
     private void setSyncPartner(InetAddress host, int port) {

@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.bmh.dacsimulator.channel;
+package com.raytheon.bmh.dacsimulator.channel.input;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -25,6 +25,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -33,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.google.common.primitives.Ints;
 import com.raytheon.bmh.dacsimulator.events.SyncLostEvent;
 import com.raytheon.bmh.dacsimulator.events.SyncObtainedEvent;
 
@@ -47,6 +50,7 @@ import com.raytheon.bmh.dacsimulator.events.SyncObtainedEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 03, 2014  #3688     dgilling     Initial creation
+ * Oct 21, 2014  #3688     dgilling     Support RTP packet's addressing bits.
  * 
  * </pre>
  * 
@@ -69,6 +73,19 @@ public class DacReceiveDataThread extends Thread {
      * Offset into the RTP packet structure where the audio data is located.
      */
     public static final int AUDIO_DATA_OFFSET = 20;
+
+    /**
+     * Offset into the RTP packet structure where the bytes for output channel
+     * addressing are located.
+     */
+    public static final int ADDRESSING_BYTES_OFFSET = 16;
+
+    /**
+     * Number of bytes used to store addressing information. Right now only the
+     * last 4 bits of the last byte can be set, but we'll extract the whole 4
+     * bytes for future support.
+     */
+    private static final int ADDRESSING_BYTES_LENGTH = 4;
 
     /**
      * The size (in bytes) of one of the payload fields that is part of the
@@ -128,7 +145,7 @@ public class DacReceiveDataThread extends Thread {
                     socket.receive(packet);
 
                     if (syncHost.get().equals(packet.getAddress())) {
-                        byte[] nextAudioPacket = extractAudioPacket(packet);
+                        AudioPacket nextAudioPacket = extractAudioPacket(packet);
                         if (nextAudioPacket != null) {
                             buffer.add(nextAudioPacket);
                         }
@@ -146,15 +163,34 @@ public class DacReceiveDataThread extends Thread {
         }
     }
 
-    private byte[] extractAudioPacket(DatagramPacket packet) {
-        // TODO: add intelligence to re-order packets if we miss something
+    private AudioPacket extractAudioPacket(DatagramPacket packet) {
+        /*
+         * TODO: extract sequencing values when we upgrade JitterBuffer to
+         * support packet reordering
+         */
 
         if (packet.getLength() >= RTP_PACKET_SIZE) {
             byte[] payload = packet.getData();
-            byte[] retVal = Arrays.copyOfRange(payload, AUDIO_DATA_OFFSET
+
+            int addressValues = Ints.fromByteArray(Arrays.copyOfRange(payload,
+                    ADDRESSING_BYTES_OFFSET, ADDRESSING_BYTES_OFFSET
+                            + ADDRESSING_BYTES_LENGTH));
+
+            Collection<Integer> outputChannels = new HashSet<>();
+            int channelNum = 1;
+            while (addressValues != 0) {
+                if ((addressValues & 1) == 1) {
+                    outputChannels.add(channelNum);
+                }
+                addressValues = addressValues >>> 1;
+                channelNum++;
+            }
+
+            byte[] audioData = Arrays.copyOfRange(payload, AUDIO_DATA_OFFSET
                     + SINGLE_PAYLOAD_SIZE, AUDIO_DATA_OFFSET
                     + SINGLE_PAYLOAD_SIZE + SINGLE_PAYLOAD_SIZE);
-            return retVal;
+
+            return new AudioPacket(audioData, outputChannels);
         }
 
         return null;

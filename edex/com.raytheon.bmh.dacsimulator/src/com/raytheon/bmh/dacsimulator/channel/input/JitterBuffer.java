@@ -17,11 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.bmh.dacsimulator.channel;
+package com.raytheon.bmh.dacsimulator.channel.input;
 
 import org.apache.commons.collections.Buffer;
 import org.apache.commons.collections.BufferUtils;
 import org.apache.commons.collections.buffer.CircularFifoBuffer;
+
 
 /**
  * Simulates the buffer that received audio data packets are stored in. This
@@ -39,6 +40,8 @@ import org.apache.commons.collections.buffer.CircularFifoBuffer;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 09, 2014  #3688     dgilling     Initial creation
+ * Oct 21, 2014  #3688     dgilling     Support audio streams that can go
+ *                                      to specified output channel(s).
  * 
  * </pre>
  * 
@@ -71,7 +74,7 @@ public class JitterBuffer {
     }
 
     @SuppressWarnings("unchecked")
-    public boolean add(byte[] element) {
+    public boolean add(AudioPacket element) {
         boolean retVal = buffer.add(element);
 
         if (!readyForBroadcast) {
@@ -81,8 +84,8 @@ public class JitterBuffer {
         return retVal;
     }
 
-    public byte[] get() {
-        byte[] retVal = (byte[]) buffer.remove();
+    public AudioPacket get() {
+        AudioPacket retVal = (AudioPacket) buffer.remove();
 
         if (readyForBroadcast && buffer.isEmpty()) {
             readyForBroadcast = false;
