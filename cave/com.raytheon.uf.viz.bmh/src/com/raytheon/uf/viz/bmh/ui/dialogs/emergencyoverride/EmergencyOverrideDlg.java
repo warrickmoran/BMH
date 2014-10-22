@@ -59,8 +59,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListComp;
-import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
@@ -68,6 +68,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybackDlg;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * Emergency Override dialog.
@@ -86,6 +87,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * Oct 16, 2014  #3657     bkowal       Implemented Message Type and Area Selection.
  * Oct 17, 2014  #3655     bkowal       Create a {@link LiveBroadcastSettings} based on
  *                                      the dialog information for the Live Broadcast.
+ * Oct 22, 2014  #3745     lvenable     Fixed UELE with the Area Selection Dialog.
  * 
  * </pre>
  * 
@@ -494,19 +496,34 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                 .selectCheckboxes(this.createTransmitterListData());
     }
 
+    /**
+     * Display the area selection dialog.
+     */
     private void handleAreaSelection() {
         AreaSelectionDlg areaSelectionDlg = new AreaSelectionDlg(this.shell,
                 this.selectedMsgType);
-        AreaSelectionSaveData areaData = (AreaSelectionSaveData) areaSelectionDlg
-                .open();
+        areaSelectionDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue == null) {
+                    return;
+                }
 
-        this.sameTransmitters.selectCheckboxes(false);
-        CheckListData cld = this.sameTransmitters.getCheckedItems();
-        for (Transmitter selectedTransmitter : areaData
-                .getAffectedTransmitters()) {
-            cld.getDataMap().put(selectedTransmitter.getMnemonic(), true);
-        }
-        this.sameTransmitters.selectCheckboxes(cld);
+                AreaSelectionSaveData areaData = (AreaSelectionSaveData) returnValue;
+                sameTransmitters.selectCheckboxes(false);
+                CheckListData cld = sameTransmitters.getCheckedItems();
+
+                for (Transmitter selectedTransmitter : areaData
+                        .getAffectedTransmitters()) {
+                    cld.getDataMap().put(selectedTransmitter.getMnemonic(),
+                            true);
+                }
+
+                sameTransmitters.selectCheckboxes(cld);
+            }
+        });
+
+        areaSelectionDlg.open();
     }
 
     private void handleTransmitAction() {
