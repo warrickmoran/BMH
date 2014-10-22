@@ -41,6 +41,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
  * Aug 13, 2014    3411    mpduff      Initial creation
  * Aug 18, 2014    3432    mpduff      More implementation.
  * Oct 14, 2014   #3728    lvenable    Added a map of area codes and areas.
+ * Oct 21, 2014   #3728    lvenable    Added zone map.
  * 
  * </pre>
  * 
@@ -61,6 +62,9 @@ public class AreaSelectionData {
     /** Map of areas codes and related areas. */
     private final Map<String, Area> areaCodeMap = new HashMap<>();
 
+    /** Map of areas codes and related areas. */
+    private final Map<String, Zone> zoneCodeMap = new HashMap<>();
+
     private final ZonesAreasDataManager dataManager = new ZonesAreasDataManager();
 
     /**
@@ -78,11 +82,11 @@ public class AreaSelectionData {
     }
 
     /**
-     * @param zoneList
-     *            the zoneList to set
+     * 
+     * @return Map of zone codes and zones.
      */
-    public void setZoneList(List<Zone> zoneList) {
-        this.zoneList = zoneList;
+    public Map<String, Zone> getZonesMap() {
+        return zoneCodeMap;
     }
 
     /**
@@ -130,6 +134,10 @@ public class AreaSelectionData {
 
             areaNameMap.put(a.getAreaName(), a);
             areaCodeMap.put(a.getAreaCode(), a);
+        }
+
+        for (Zone z : zoneList) {
+            zoneCodeMap.put(z.getZoneCode(), z);
         }
     }
 

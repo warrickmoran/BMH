@@ -76,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 14, 2014  #3728     lvenable    Updated to support weather messages functionality
  * Oct 16, 2014   3657     bkowal      Include affected transmitters in the return object
  * Oct 17, 2014   3655     bkowal      Store transmitter information in the swt data.
+ * Oct 21, 2014   #3728    lvenable    Updated to handle a string of area codes and zone codes.
  * 
  * </pre>
  * 
@@ -169,12 +170,12 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     private MessageType messageType = null;
 
     /**
-     * String of areas codes.
+     * String of areas codes and/or zone codes.
      * 
      * Example: "NEZ024-NEZ005-NEZ023-NEZ025-NEZ036-NEZ094"
      * 
      */
-    private String areasCodesStr = null;
+    private String areasZoneCodesStr = null;
 
     /**
      * Constructor.
@@ -204,7 +205,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
 
-        this.areasCodesStr = areaCodes;
+        this.areasZoneCodesStr = areaCodes;
     }
 
     @Override
@@ -738,18 +739,26 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 }
             }
             this.updateAffectedTransmitters();
-        } else if (areasCodesStr != null && areasCodesStr.length() > 0) {
+        } else if (areasZoneCodesStr != null && areasZoneCodesStr.length() > 0) {
 
             // Split the area codes.
-            String[] areaCodes = areasCodesStr.split("-");
+            String[] areaCodes = areasZoneCodesStr.split("-");
 
             Map<String, Area> areaCodesMap = areaSelectionData
                     .getAllAreaCodes();
 
-            // Populate the table with the areas that match the area codes.
-            for (String areaCode : areaCodes) {
-                if (areaCodesMap.containsKey(areaCode)) {
-                    TableRowData row = createAreaRow(areaCodesMap.get(areaCode));
+            Map<String, Zone> zoneCodesMap = areaSelectionData.getZonesMap();
+
+            // Populate the table with the areas that match the area codes or
+            // zone codes.
+            for (String areaZoneCode : areaCodes) {
+                if (areaCodesMap.containsKey(areaZoneCode)) {
+                    TableRowData row = createAreaRow(areaCodesMap
+                            .get(areaZoneCode));
+                    tableData.addDataRow(row);
+                } else if (zoneCodesMap.containsKey(areaZoneCode)) {
+                    TableRowData row = createZoneRow(zoneCodesMap
+                            .get(areaZoneCode));
                     tableData.addDataRow(row);
                 }
             }
