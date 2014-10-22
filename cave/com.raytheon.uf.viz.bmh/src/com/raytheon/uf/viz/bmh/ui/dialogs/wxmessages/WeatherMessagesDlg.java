@@ -67,6 +67,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.MessageTextContentsDlg.DialogType;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -90,6 +91,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 15, 2014 #3728      lvenable     Added New/Edit buttons and call to select input message.
  * Oct 18, 2014  #3728     lvenable     Hooked in more functionality.
  * Oct 21, 2014   #3728    lvenable     Added code for area selection and populating the input message controls.
+ * Oct 21, 2014   #3728    lvenable     Added Preview and Play buttons.
  * 
  * </pre>
  * 
@@ -180,6 +182,15 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
     /** Button used to change the message type. */
     private Button changeMsgTypeBtn;
+
+    /** Preview button to preview the message text. */
+    private Button previewBtn;
+
+    /** Play button to play the audio. */
+    private Button playBtn;
+
+    /** Message text selected from file. */
+    private String messageContent = null;
 
     /**
      * Constructor.
@@ -644,9 +655,42 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         fromFileRdo = new Button(contentSourceGrp, SWT.RADIO);
         fromFileRdo.setText("From File");
 
+        int buttonWidth = 80;
+        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        gd.horizontalIndent = 5;
+        previewBtn = new Button(contentSourceGrp, SWT.PUSH);
+        previewBtn.setText(" Preview... ");
+        previewBtn.setLayoutData(gd);
+        previewBtn.setEnabled(false);
+        previewBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (messageContent == null) {
+                    return;
+                }
+
+                MessageTextContentsDlg mtcd = new MessageTextContentsDlg(shell,
+                        messageContent, DialogType.PREVIEW);
+                mtcd.open();
+            }
+        });
+
         microphoneRdo = new Button(contentSourceGrp, SWT.RADIO);
         microphoneRdo.setText("Microphone");
         microphoneRdo.setSelection(true);
+
+        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        gd.horizontalIndent = 5;
+        playBtn = new Button(contentSourceGrp, SWT.PUSH);
+        playBtn.setText(" Play ");
+        playBtn.setLayoutData(gd);
+        playBtn.setEnabled(false);
+        playBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                // TODO : add code to play the audio
+            }
+        });
 
         /*
          * Contents button
@@ -787,7 +831,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 }
 
                 MessageTextContentsDlg mtcd = new MessageTextContentsDlg(shell,
-                        sb.toString());
+                        sb.toString(), DialogType.EDIT);
                 mtcd.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
@@ -795,9 +839,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                                 && returnValue instanceof String) {
                             // TODO - handle getting text back...
 
-                            System.out.println((String) returnValue);
+                            messageContent = (String) returnValue;
+                            previewBtn.setEnabled(true);
                         }
-
                     }
                 });
                 mtcd.open();
@@ -825,6 +869,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     private void handleContentsMicrophoneAction() {
         RecordPlaybackDlg recPlaybackDlg = new RecordPlaybackDlg(shell, 600);
         recPlaybackDlg.open();
+
+        // TODO - need to determine if the Play button needs to be enabled....
     }
 
     /**
@@ -941,6 +987,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         periodicityDTF.setFieldValue(DateFieldType.HOUR, 0);
         periodicityDTF.setFieldValue(DateFieldType.MINUTE, 0);
         periodicityDTF.setFieldValue(DateFieldType.SECOND, 0);
+
+        previewBtn.setEnabled(false);
+        playBtn.setEnabled(false);
     }
 
     /**
@@ -1019,6 +1068,11 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             periodicityDTF.setFieldValue(DateFieldType.SECOND,
                     periodicityValues[3]);
         }
+
+        // TODO : if the input message has audio then we do not want to have the
+        // preview button enabled
+
+        // previewBtn.setEnabled(false);
     }
 
     /**
