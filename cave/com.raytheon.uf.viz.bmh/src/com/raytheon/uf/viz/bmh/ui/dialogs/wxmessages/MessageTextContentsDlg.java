@@ -32,6 +32,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
@@ -46,6 +47,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 13, 2014  #3728     lvenable     Initial creation
+ * Oct 22, 2014  #3728     lvenable     Added a preview mode where the text can't be edited.
  * 
  * </pre>
  * 
@@ -65,6 +67,12 @@ public class MessageTextContentsDlg extends CaveSWTDialog {
     /** Message text to be displayed/edited. */
     private String messageText;
 
+    public enum DialogType {
+        PREVIEW, EDIT;
+    };
+
+    private boolean preview = false;;
+
     /**
      * Constructor.
      * 
@@ -73,11 +81,16 @@ public class MessageTextContentsDlg extends CaveSWTDialog {
      * @param messageText
      *            Message text to be displayed/edited.
      */
-    public MessageTextContentsDlg(Shell parentShell, String messageText) {
+    public MessageTextContentsDlg(Shell parentShell, String messageText,
+            DialogType dialogType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.messageText = messageText;
+
+        if (dialogType == DialogType.PREVIEW) {
+            preview = true;
+        }
     }
 
     @Override
@@ -96,7 +109,11 @@ public class MessageTextContentsDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("Message Text Contents");
+        if (preview) {
+            setText("Message Text Preview");
+        } else {
+            setText("Message Text Contents");
+        }
 
         createTextControl();
         createActionButtons();
@@ -115,6 +132,10 @@ public class MessageTextContentsDlg extends CaveSWTDialog {
                 | SWT.V_SCROLL);
         messageSt.setWordWrap(true);
         messageSt.setLayoutData(gd);
+
+        if (preview) {
+            messageSt.setEditable(false);
+        }
     }
 
     /**
@@ -122,31 +143,55 @@ public class MessageTextContentsDlg extends CaveSWTDialog {
      */
     private void createActionButtons() {
 
+        int columns = (preview) ? 2 : 3;
+
         Composite buttonComp = new Composite(shell, SWT.NONE);
-        buttonComp.setLayout(new GridLayout(3, false));
+        buttonComp.setLayout(new GridLayout(columns, false));
         buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
         int buttonWidth = 75;
+        GridData gd = null;
 
         // OK
-        GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
-        Button okBtn = new Button(buttonComp, SWT.PUSH);
-        okBtn.setText("OK");
+        if (preview == false) {
+            gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
+            gd.widthHint = buttonWidth;
+            Button okBtn = new Button(buttonComp, SWT.PUSH);
+            okBtn.setText("OK");
 
-        okBtn.setLayoutData(gd);
-        okBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                // TODO - add OK action.
+            okBtn.setLayoutData(gd);
+            okBtn.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    String text = messageSt.getText().trim();
 
-                close();
-            }
-        });
+                    if (text.length() == 0) {
+                        StringBuilder msg = new StringBuilder();
+
+                        msg.append("The message does not contain any text.\n");
+                        msg.append("Please enter text in the message.");
+
+                        DialogUtility.showMessageBox(getShell(),
+                                SWT.ICON_WARNING | SWT.OK, "No Text Error",
+                                msg.toString());
+                        return;
+                    }
+
+                    setReturnValue(text);
+
+                    close();
+                }
+            });
+        }
 
         // Play
-        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        if (preview) {
+            gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
+            gd.widthHint = buttonWidth;
+        } else {
+            gd = new GridData(buttonWidth, SWT.DEFAULT);
+        }
         Button playBtn = new Button(buttonComp, SWT.PUSH);
         playBtn.setText("Play");
         playBtn.setLayoutData(gd);
@@ -166,6 +211,7 @@ public class MessageTextContentsDlg extends CaveSWTDialog {
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                setReturnValue(null);
                 close();
             }
         });
