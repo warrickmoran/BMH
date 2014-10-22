@@ -28,9 +28,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -56,11 +53,11 @@ import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
-import com.raytheon.uf.common.bmh.request.PracticeModeRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.viz.bmh.practice.PracticeKeepAliveJob;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
@@ -223,6 +220,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     /** Tool tip for the Emergency Override button. */
     private CustomToolTip emergencyOverrideTip;
 
+    private PracticeKeepAliveJob practiceJob;
+
     /**
      * Constructor.
      * 
@@ -233,20 +232,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.DO_NOT_BLOCK
                 | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.INDEPENDENT_SHELL);
         if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
-            new Job("Starting BMH Practice Mode") {
-
-                @Override
-                protected IStatus run(IProgressMonitor monitor) {
-                    try {
-                        BmhUtils.sendRequest(new PracticeModeRequest(true));
-                    } catch (Exception e) {
-                        statusHandler.error(
-                                "Unable to start BMH practice mode.", e);
-                    }
-                    return Status.OK_STATUS;
-                }
-
-            }.schedule();
+            practiceJob = new PracticeKeepAliveJob();
+            practiceJob.schedule();
         }
     }
 
@@ -270,26 +257,6 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         weatherMessageImg.dispose();
         emergencyOverrideImg.dispose();
         broadcastCycleImg.dispose();
-        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
-            /*
-             * TODO When practice mode timeout is implemented it would be good
-             * to ask the user if this is what they want.
-             */
-            new Job("Stopping BMH Practice Mode") {
-
-                @Override
-                protected IStatus run(IProgressMonitor monitor) {
-                    try {
-                        BmhUtils.sendRequest(new PracticeModeRequest(false));
-                    } catch (Exception e) {
-                        statusHandler.error(
-                                "Unable to stop BMH practice mode.", e);
-                    }
-                    return Status.OK_STATUS;
-                }
-
-            }.schedule();
-        }
     }
 
     @Override
@@ -312,6 +279,11 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
                 if (openDialogs.size() > 0) {
                     e.doit = confirmCloseOpenDialogs(openDialogs);
+                    if (e.doit && CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+                        e.doit = confirmClosePracticeMode();
+                    }
+                } else if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+                    e.doit = confirmClosePracticeMode();
                 } else {
                     e.doit = confirmClose();
                 }
@@ -377,8 +349,29 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             closeDialogs();
             return true;
         }
-
         return false;
+    }
+
+    /**
+     * Confirm closing BMH when in practice mode
+     * 
+     * @return True to close BMH, false to keep it open.
+     */
+    private boolean confirmClosePracticeMode() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Would you like to shutdown the practice mode services running on the bmh server also?");
+
+        MessageBox mb = new MessageBox(shell, SWT.ICON_QUESTION | SWT.YES
+                | SWT.NO | SWT.CANCEL);
+        mb.setText("Prompt Close Server");
+        mb.setMessage(sb.toString());
+        int response = mb.open();
+        if (response == SWT.YES) {
+            practiceJob.shutdown();
+        } else if (response == SWT.NO) {
+            practiceJob.cancel();
+        }
+        return response != SWT.CANCEL;
     }
 
     /**

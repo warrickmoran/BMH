@@ -20,12 +20,17 @@
 package com.raytheon.uf.edex.bmh.practice;
 
 import java.io.IOException;
+import java.lang.ProcessBuilder.Redirect;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +43,14 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
+import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
+import com.raytheon.uf.edex.core.EdexException;
+import com.raytheon.uf.edex.database.cluster.ClusterLocker;
+import com.raytheon.uf.edex.database.cluster.ClusterTask;
 
 /**
  * 
@@ -63,11 +75,28 @@ public class PracticeManager {
     private static final Logger logger = LoggerFactory
             .getLogger(PracticeManager.class);
 
-    private String commsManagerStarter = "/awips2/bmh/bin/commsmanager.sh";
+    private static final String LOCK_NAME = "practice";
 
-    private String dacSimulatorStarter = "/awips2/bmh/bin/dacsimulator.sh";
+    private static final String LOCK_DETAILS = "start_time";
 
-    private String dacSimulatorStopper = "/awips2/bmh/bin/stop_dacsimulator.sh";
+    private final SimpleDateFormat logDateFormat = new SimpleDateFormat(
+            "yyyyMMdd");
+
+    private final ClusterLocker locker = new ClusterLocker(
+            AbstractBMHDao.BMH_PRACTICE_DATABASE_NAME);
+
+    private String commsManagerStarter;
+
+    private String dacSimulatorStarter;
+
+    private String dacSimulatorStopper;
+
+    private int timeoutMinutes;
+
+    /**
+     * Boolean to make it easier not to start practice mode twice.
+     */
+    private volatile boolean running = false;
 
     public void handleNotification(PracticeModeConfigNotification notification) {
         if (notification.getType() == ConfigChangeType.Update) {
@@ -77,7 +106,34 @@ public class PracticeManager {
         }
     }
 
-    private void handlePracticeStartup() {
+    public void checkPracticeTimeout() {
+        long time = System.currentTimeMillis();
+        ClusterTask task = locker.lookupLock(LOCK_NAME, LOCK_DETAILS);
+        long runTime = time - task.getLastExecution();
+        if (task.isRunning() && runTime > timeoutMinutes * 60 * 1000l) {
+            logger.info("Practice mode has timed out after {} minutes",
+                    runTime / 1000 / 60);
+            try {
+                BmhMessageProducer.sendConfigMessage(
+                        new PracticeModeConfigNotification(
+                                ConfigChangeType.Delete), false);
+            } catch (EdexException | SerializationException e) {
+                logger.error("Unable to stop practice mode.", e);
+            }
+        }
+    }
+
+    private synchronized void handlePracticeStartup() {
+
+        logger.info("Starting practice mode.");
+        /*
+         * No timeout will allow us to always set running to true and update the
+         * time.
+         */
+        locker.lock(LOCK_NAME, LOCK_DETAILS, 0l, false);
+        if (running) {
+            return;
+        }
         boolean startedDac = false;
         DacDao dacDao = new DacDao(false);
         for (Dac dac : dacDao.getAll()) {
@@ -136,10 +192,14 @@ public class PracticeManager {
 
         }
         launchCommsManager();
+        running = true;
     }
 
-    private void handlePracticeShutdown() {
+    private synchronized void handlePracticeShutdown() {
+        logger.info("Stopping practice mode.");
+        running = false;
         stopDacSimulators();
+        locker.unlock(LOCK_NAME, LOCK_DETAILS);
         /* Comms manager is listening to jms and will stop itself. */
     }
 
@@ -169,7 +229,18 @@ public class PracticeManager {
         command.add(Integer.toString(dac.getReceivePort()));
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
-            pb.inheritIO();
+            String logDate = logDateFormat.format(new Date());
+            StringBuilder logFileName = new StringBuilder(64);
+            logFileName.append("dacsimulator-");
+            logFileName.append(dac.getName());
+            logFileName.append("-console-");
+            logFileName.append(logDate);
+            logFileName.append(".log");
+            Path logFilePath = Paths.get(BMHConstants.getBmhHomeDirectory())
+                    .resolve("logs").resolve(logFileName.toString());
+            pb.redirectOutput(Redirect.appendTo(logFilePath.toFile()));
+            pb.redirectError(Redirect.appendTo(logFilePath.toFile()));
+            pb.environment().put("DAC_NAME", dac.getName());
             pb.start();
         } catch (IOException e) {
             logger.error("Unable to start dac simulator.", e);
@@ -178,7 +249,7 @@ public class PracticeManager {
 
     private void stopDacSimulators() {
         try {
-            new ProcessBuilder(dacSimulatorStopper).start();
+            new ProcessBuilder(dacSimulatorStopper).inheritIO().start();
         } catch (IOException e) {
             logger.error("Unable to start practice comms manager.", e);
         }
@@ -186,10 +257,36 @@ public class PracticeManager {
 
     private void launchCommsManager() {
         try {
-            new ProcessBuilder(commsManagerStarter, "-p").start();
+            ProcessBuilder pb = new ProcessBuilder(commsManagerStarter, "-p");
+            String logDate = logDateFormat.format(new Date());
+            StringBuilder logFileName = new StringBuilder(64);
+            logFileName.append("commsmanager-practice-console-");
+            logFileName.append(logDate);
+            logFileName.append(".log");
+            Path logFilePath = Paths.get(BMHConstants.getBmhHomeDirectory())
+                    .resolve("logs").resolve(logFileName.toString());
+            pb.redirectOutput(Redirect.appendTo(logFilePath.toFile()));
+            pb.redirectError(Redirect.appendTo(logFilePath.toFile()));
+            pb.start();
         } catch (IOException e) {
             logger.error("Unable to start practice comms manager.", e);
         }
+    }
+
+    public void setCommsManagerStarter(String commsManagerStarter) {
+        this.commsManagerStarter = commsManagerStarter;
+    }
+
+    public void setDacSimulatorStarter(String dacSimulatorStarter) {
+        this.dacSimulatorStarter = dacSimulatorStarter;
+    }
+
+    public void setDacSimulatorStopper(String dacSimulatorStopper) {
+        this.dacSimulatorStopper = dacSimulatorStopper;
+    }
+
+    public void setTimeoutMinutes(int timeoutMinutes) {
+        this.timeoutMinutes = timeoutMinutes;
     }
 
 }
