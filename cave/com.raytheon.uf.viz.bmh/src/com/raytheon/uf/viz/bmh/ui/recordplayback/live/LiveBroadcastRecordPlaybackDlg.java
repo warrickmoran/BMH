@@ -50,6 +50,10 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastThread.BROADC
  *                                     based on a {@link LiveBroadcastSettings}.
  * Oct 21, 2014 3655       bkowal      Send tone information to the broadcast live
  *                                     streamer.
+ * Oct 21, 2014 3655       bkowal      Add additional information to the 
+ *                                     {@link BroadcastTransmitterConfiguration} so
+ *                                     that it can be used in a 
+ *                                     {@link LiveBroadcastSwitchNotification}.
  * 
  * </pre>
  * 
@@ -162,11 +166,16 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
         startCommand.setMsgSource(ILiveBroadcastMessage.SOURCE_VIZ);
         for (Transmitter transmitter : transmitterToneMap.keySet()) {
             BroadcastTransmitterConfiguration config = new BroadcastTransmitterConfiguration();
+            config.setSelectedMessageType(this.settings
+                    .getSelectedMessageType());
             config.setTransmitter(transmitter);
             byte[] tonesAudio = transmitterToneMap.get(transmitter);
             long duration = tonesAudio.length / 160L * 20L;
             config.setToneAudio(transmitterToneMap.get(transmitter));
             config.setDelayMilliseconds(longestDurationMS - duration);
+            config.setEffectiveTime(this.settings.getEffectiveTime());
+            config.setExpireTime(this.settings.getExpireTime());
+            config.setPlayAlertTones(this.settings.isPlayAlertTones());
             startCommand.addTransmitterConfiguration(config);
         }
         startCommand.addAllTransmitter(startCommand.getRequestedTransmitters());

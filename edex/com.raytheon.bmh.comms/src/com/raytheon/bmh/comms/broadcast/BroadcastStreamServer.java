@@ -110,6 +110,11 @@ public class BroadcastStreamServer extends AbstractServerThread {
 
         logger.info("Handling {} request.", command.getClass().getName());
 
+        /*
+         * TODO: verify that there are not already active broadcast tasks for
+         * any of the specified transmitters.
+         */
+
         this.startBroadcastTask(socket, command);
     }
 

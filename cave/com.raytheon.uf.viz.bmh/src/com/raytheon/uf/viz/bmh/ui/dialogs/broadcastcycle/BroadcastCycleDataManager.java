@@ -24,7 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
+import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
@@ -75,6 +75,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Sep 15, 2014   #3610    lvenable    Moved getMessageType functionality into the
  *                                     MessageTypeDataManager class.
  * Sep 12, 2014    3588    bsteffen    Broadcast msg support audio fragments.
+ * Oct 21, 2014    3655    bkowal      Updated to use {@link IPlaylistData}.
  * 
  * </pre>
  * 
@@ -367,8 +368,8 @@ public class BroadcastCycleDataManager {
         return assocSuites;
     }
 
-    public PlaylistDataStructure getPlaylistDataForTransmitter(
-            String transmitterName) throws Exception {
+    public IPlaylistData getPlaylistDataForTransmitter(String transmitterName)
+            throws Exception {
         PlaylistRequest request = new PlaylistRequest();
         request.setAction(PlaylistAction.GET_PLAYLIST_DATA_FOR_TRANSMITTER);
         request.setTransmitterName(transmitterName);

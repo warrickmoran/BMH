@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
-import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
+import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.request.PlaylistRequest;
 import com.raytheon.uf.common.bmh.request.PlaylistResponse;
@@ -38,6 +38,7 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
  * Aug 15, 2014  3432     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 21, 2014  3655     bkowal      Updated to use {@link IPlaylistData}.
  * 
  * </pre>
  * 
@@ -49,9 +50,9 @@ public class PlaylistHandler extends
         AbstractBMHServerRequestHandler<PlaylistRequest> {
 
     private PlaylistStateManager playlistStateManager;
-    
+
     private PlaylistStateManager practicePlaylistStateManager;
-    
+
     @Override
     public Object handleRequest(PlaylistRequest request) {
         PlaylistResponse response = null;
@@ -100,8 +101,8 @@ public class PlaylistHandler extends
             }
 
         }
-        PlaylistDataStructure data = playlistState
-                .getPlaylistDataStructure(request.getTransmitterName());
+        IPlaylistData data = playlistState.getPlaylistDataStructure(request
+                .getTransmitterName());
         response.setPlaylistData(data);
         return response;
     }

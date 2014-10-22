@@ -28,10 +28,12 @@ import java.util.Map;
 
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
@@ -53,6 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * ------------ ---------- ----------- --------------------------
  * Aug 21, 2014   3432     mpduff      Initial creation
  * Aug 23, 2014   3432     mpduff      Add data
+ * Oct 21, 2014   3655     bkowal      Updated to use {@link IPlaylistData}.     
  * 
  * </pre>
  * 
@@ -259,6 +262,28 @@ public class PlaylistData {
             tableData.addDataRow(row);
         }
         return tableData;
+    }
+
+    public TableData getLiveTableData(
+            LiveBroadcastSwitchNotification notification) {
+        TableData liveTableData = new TableData(columns);
+
+        final String[] columnText = new String[] {
+                sdf.format(notification.getTransitTime().getTime()),
+                notification.getMessageType().getAfosid(),
+                notification.getMessageType().getTitle(), "-",
+                sdf.format(notification.getExpirationTime().getTime()),
+                notification.getAlertTone(), notification.getSameTone(), "1" };
+        TableRowData tableRowData = new TableRowData();
+        for (String text : columnText) {
+            TableCellData tableCellData = new TableCellData(text);
+            tableCellData.setBackgroundColor(this.colorManager
+                    .getLiveBroadcastColor());
+            tableRowData.addTableCellData(tableCellData);
+        }
+        liveTableData.addDataRow(tableRowData);
+
+        return liveTableData;
     }
 
     /**

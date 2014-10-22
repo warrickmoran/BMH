@@ -49,6 +49,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -57,6 +58,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
@@ -101,6 +103,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 11, 2014  3725      mpduff      Remove the Copy Messages button.
  * Oct 15, 2014  3716      bkowal      Listen for and update based on Program Config Changes.
  * Oct 17, 2014  3687      bsteffen    Support practice servers.
+ * Oct 21, 2014  3655      bkowal      Added support for live broadcast messages.
  * 
  * </pre>
  * 
@@ -206,6 +209,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private Label cycleDurValueLbl;
 
     private String selectedSuite;
+
+    private Button messageDetailBtn;
 
     /**
      * Constructor.
@@ -666,17 +671,25 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     private void initialTablePopulation() {
         try {
-            PlaylistDataStructure dataStruct = dataManager
+            IPlaylistData playlistDataRecord = this.dataManager
                     .getPlaylistDataForTransmitter(selectedTransmitterGrp);
-            if (dataStruct != null) {
-                playlistData.setData(selectedTransmitterGrp, dataStruct);
-                tableData = playlistData
-                        .getUpdatedTableData(selectedTransmitterGrp);
-                tableComp.populateTable(tableData);
-                if (tableData.getTableRowCount() > 0) {
-                    tableComp.select(0);
+            if (playlistDataRecord instanceof PlaylistDataStructure) {
+                PlaylistDataStructure dataStruct = (PlaylistDataStructure) playlistDataRecord;
+                if (dataStruct != null) {
+                    playlistData.setData(selectedTransmitterGrp, dataStruct);
+                    tableData = playlistData
+                            .getUpdatedTableData(selectedTransmitterGrp);
+                    tableComp.populateTable(tableData);
+                    if (tableData.getTableRowCount() > 0) {
+                        tableComp.select(0);
+                    }
+                    handleTableSelection();
                 }
-                handleTableSelection();
+            } else if (playlistDataRecord instanceof LiveBroadcastSwitchNotification) {
+                LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) playlistDataRecord;
+                TableData tableData = playlistData
+                        .getLiveTableData(notification);
+                this.updateDisplayForLiveBroadcast(tableData);
             }
         } catch (Exception e) {
             statusHandler.error("Error getting initial playback data", e);
@@ -720,10 +733,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         int btnWidth = 135;
         gd = new GridData(btnWidth, SWT.DEFAULT);
-        Button detailBtn = new Button(btnComp, SWT.PUSH);
-        detailBtn.setText("Message Details...");
-        detailBtn.setLayoutData(gd);
-        detailBtn.addSelectionListener(new SelectionAdapter() {
+        messageDetailBtn = new Button(btnComp, SWT.PUSH);
+        messageDetailBtn.setText("Message Details...");
+        messageDetailBtn.setLayoutData(gd);
+        messageDetailBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
                 handleMessageDetails();
@@ -1029,6 +1042,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
                             @Override
                             public void run() {
+                                messageDetailBtn.setEnabled(true);
                                 suiteValueLbl.setText(selectedSuite);
                                 String time = timeFormatter.format(new Date(
                                         notification.getPlaybackCycleTime()));
@@ -1045,6 +1059,13 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                 .getUpdatedTableData(notification
                                         .getTransmitterGroup());
                         updateTable(tableData);
+                        VizApp.runAsync(new Runnable() {
+
+                            @Override
+                            public void run() {
+                                messageDetailBtn.setEnabled(true);
+                            }
+                        });
                     }
                 } else if (o instanceof ProgramConfigNotification) {
                     ProgramConfigNotification pgmConfigNotification = (ProgramConfigNotification) o;
@@ -1070,11 +1091,41 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                             }
                         }
                     });
+                } else if (o instanceof LiveBroadcastSwitchNotification) {
+                    LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) o;
+                    if (notification.getTransmitterGroup().equals(
+                            this.selectedTransmitterGrp) == false) {
+                        return;
+                    }
+
+                    final TableData liveTableData = this.playlistData
+                            .getLiveTableData(notification);
+
+                    VizApp.runAsync(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateDisplayForLiveBroadcast(liveTableData);
+                        }
+                    });
                 }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing update notification", e);
             }
         }
+    }
+
+    private void updateDisplayForLiveBroadcast(final TableData liveTableData) {
+        this.messageDetailBtn.setEnabled(false);
+        suiteValueLbl.setText("N/A");
+        cycleDurValueLbl.setText("N/A");
+
+        tableComp.populateTable(liveTableData);
+        if (tableComp.getSelectedIndex() == -1) {
+            tableComp.select(0);
+        }
+        // Do NOT invoke handleTableSelection.
+
+        messageTextArea.setText("*** LIVE BROADCAST MESSAGE - NO TEXT ***");
     }
 
     /**
@@ -1088,6 +1139,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             @Override
             public void run() {
                 tableComp.populateTable(tableData);
+                if (tableComp.getSelectedIndex() == -1) {
+                    tableComp.select(0);
+                }
+                handleTableSelection();
             }
         });
     }

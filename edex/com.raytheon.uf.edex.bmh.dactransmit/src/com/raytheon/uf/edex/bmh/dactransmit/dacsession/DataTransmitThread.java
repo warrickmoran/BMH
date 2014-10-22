@@ -67,6 +67,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Oct 03, 2014  #3485     bsteffen     End playback after playing a message.
  * Oct 15, 2014  #3655     bkowal       Updated to use AbstractTransmitThread abstraction.
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
+ * Oct 21, 2014  #3655     bkowal       Support delaying interrupts.
  * 
  * </pre>
  * 
@@ -84,6 +85,13 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
     private final AtomicInteger interruptsAvailable;
 
     private boolean playingInterrupt;
+
+    /**
+     * Flag indicating that any interrupts should be ignored until further
+     * notice. This flag is used to ensure that interrupts will not interfere
+     * with the initialization of a live broadcast.
+     */
+    private volatile boolean delayInterrupts;
 
     private volatile boolean warnNoData;
 
@@ -140,7 +148,8 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                         logger.info("Resuming the playback of the current playlist.");
                     }
 
-                    if (interruptsAvailable.get() > 0) {
+                    if (this.delayInterrupts == false
+                            && interruptsAvailable.get() > 0) {
                         interruptsAvailable.decrementAndGet();
                     }
 
@@ -263,5 +272,15 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
     public void handleInterruptMessage(InterruptMessageReceivedEvent e) {
         interruptsAvailable.incrementAndGet();
         logger.info("Received new interrupt: " + e.getPlaylist().toString());
+    }
+
+    public void lockInterrupts() {
+        logger.info("Delaying interrupt playback. No interrupts will be played until further notice.");
+        this.delayInterrupts = true;
+    }
+
+    public void resumeInterrupts() {
+        logger.info("Resuming interrupt playback.");
+        this.delayInterrupts = false;
     }
 }

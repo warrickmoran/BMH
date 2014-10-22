@@ -22,11 +22,15 @@ package com.raytheon.uf.edex.bmh.playlist;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
+import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
@@ -50,6 +54,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Aug 24, 2014    3432    mpduff      Added thread safety.
  * Aug 24, 2014    3558    rjpeter     Fixed population of MessagePlaybackPrediction.
  * Oct 07, 2014    3687    bsteffen    Remove singleton and inject daos to allow practice mode.
+ * Oct 21, 2014    3655    bkowal      Support LiveBroadcastSwitchNotification.
  * 
  * </pre>
  * 
@@ -64,12 +69,23 @@ public class PlaylistStateManager {
     /** Map of Transmitter -> PlaylistData for that transmitter */
     private final Map<String, PlaylistDataStructure> playlistDataMap = new HashMap<>();
 
+    private final ConcurrentMap<String, LiveBroadcastSwitchNotification> liveBroadcastDataMap = new ConcurrentHashMap<>();
+
     private BroadcastMsgDao broadcastMsgDao;
 
     private MessageTypeDao messageTypeDao;
 
     public PlaylistStateManager() {
 
+    }
+
+    public synchronized void processLiveBroadcastSwitchNotification(
+            LiveBroadcastSwitchNotification notification) {
+        statusHandler
+                .info("Received a Live Broadcast Switch Notification for Transmitter "
+                        + notification.getTransmitterGroup() + ".");
+        this.liveBroadcastDataMap.put(notification.getTransmitterGroup(),
+                notification);
     }
 
     public synchronized void processPlaylistSwitchNotification(
@@ -86,6 +102,19 @@ public class PlaylistStateManager {
                     .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no BroadcastMsgDao.");
             return;
         }
+
+        /*
+         * any playlist notifications received for transmitters that were
+         * previously in a live broadcast state eliminates the live broadcast
+         * state because all playlist / message switching is paused during a
+         * live broadcast.
+         */
+        if (this.liveBroadcastDataMap.remove(tg) != null) {
+            statusHandler
+                    .info("Evicting Live Broadcast information for Transmitter "
+                            + tg + ".");
+        }
+
         List<DacPlaylistMessageId> playlist = notification.getPlaylist();
         List<MessagePlaybackPrediction> messageList = notification
                 .getMessages();
@@ -130,6 +159,20 @@ public class PlaylistStateManager {
             MessagePlaybackStatusNotification notification) {
         statusHandler.info("MessagePlaybackStatusNotification arrived for "
                 + notification.getTransmitterGroup());
+
+        /*
+         * any playlist notifications received for transmitters that were
+         * previously in a live broadcast state eliminates the live broadcast
+         * state because all playlist / message switching is paused during a
+         * live broadcast.
+         */
+        if (this.liveBroadcastDataMap
+                .remove(notification.getTransmitterGroup()) != null) {
+            statusHandler
+                    .info("Evicting Live Broadcast information for Transmitter "
+                            + notification.getTransmitterGroup() + ".");
+        }
+
         PlaylistDataStructure playlistData = playlistDataMap.get(notification
                 .getTransmitterGroup());
         if (playlistData == null) {
@@ -155,8 +198,11 @@ public class PlaylistStateManager {
         pred.setPlayedSameTone(notification.isPlayedSameTone());
     }
 
-    public synchronized PlaylistDataStructure getPlaylistDataStructure(
+    public synchronized IPlaylistData getPlaylistDataStructure(
             String transmitterGrpName) {
+        if (this.liveBroadcastDataMap.containsKey(transmitterGrpName)) {
+            return this.liveBroadcastDataMap.get(transmitterGrpName);
+        }
         // return a copy of the map to avoid concurrent issues during
         // serialization
         if (playlistDataMap.containsKey(transmitterGrpName)) {

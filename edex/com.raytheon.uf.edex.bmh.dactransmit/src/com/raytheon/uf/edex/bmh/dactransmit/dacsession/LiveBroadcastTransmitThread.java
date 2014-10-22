@@ -33,6 +33,7 @@ import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
 import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
@@ -54,6 +55,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Oct 17, 2014 3655       bkowal      Move tones to common.
  * Oct 21, 2014 3655       bkowal      Support tone playback prior to the live
  *                                     broadcast.
+ * Oct 21, 2014 3655       bkowal      Broadcast a LiveBroadcastSwitchNotification
+ *                                     before the live stream begins.
  * 
  * </pre>
  * 
@@ -107,6 +110,17 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         }
 
         this.dataThread.pausePlayback();
+
+        // Build playlist switch notification
+        LiveBroadcastSwitchNotification notification = new LiveBroadcastSwitchNotification();
+        notification.setTransmitterGroup(this.config.getTransmitter()
+                .getMnemonic());
+        notification.setMessageType(this.config.getSelectedMessageType());
+        notification.setTransitTime(this.config.getEffectiveTime());
+        notification.setExpirationTime(this.config.getExpireTime());
+        notification.setSameTone(true);
+        notification.setAlertTone(this.config.isPlayAlertTones());
+        eventBus.post(notification);
 
         // play the Alert / SAME tones.
         ByteArrayInputStream tonesInputStream = new ByteArrayInputStream(

@@ -86,6 +86,11 @@
             </simple>
             <bean ref="practice_playlistStateManager" method="processMessagePlaybackStatusNotification" />
           </filter>
+		  <filter>
+			<simple>${body} is "com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification"
+			</simple>
+			<bean ref="practice_playlistStateManager" method="processLiveBroadcastSwitchNotification" />
+		 </filter>
         </pipeline>
         <doCatch>
           <exception>java.lang.Throwable</exception>
