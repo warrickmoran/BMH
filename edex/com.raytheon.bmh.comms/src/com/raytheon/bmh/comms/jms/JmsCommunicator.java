@@ -187,4 +187,9 @@ public class JmsCommunicator extends JmsNotificationManager {
             }
         }
     }
+
+    public void shutdown() {
+        disconnect();
+        executorService.shutdown();
+    }
 }

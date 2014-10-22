@@ -79,6 +79,8 @@ import com.raytheon.uf.edex.core.EdexException;
  * ------------- -------- ----------- --------------------------
  * Oct 08, 2014  3687     bsteffen    Initial creation.
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
+ * Oct 08, 2014  3687     bsteffen    Null out some fields during copy.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -163,6 +165,8 @@ public class BmhDatabaseCopier {
                 transmitterMap.put(transmitter.getId(), transmitter);
                 transmitter.setId(0);
             }
+            group.setDac(null);
+            group.setProgram(null);
         }
         prDao.persistAll(groups);
         this.transmitterMap = transmitterMap;
@@ -250,6 +254,7 @@ public class BmhDatabaseCopier {
                         .getId()));
             }
             messageType.setDefaultTransmitterGroups(transmitterGroups);
+            messageType.setReplacementMsgs(null);
             messageTypeMap.put(messageType.getId(), messageType.getSummary());
             messageType.setId(0);
         }

@@ -28,6 +28,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -53,6 +56,7 @@ import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
+import com.raytheon.uf.common.bmh.request.PracticeModeRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
@@ -111,6 +115,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 06, 2014  #3700     lvenable    Added code for force hiding the tool tip.
  * Oct 08, 2014  #3687     bsteffen    Add menu item to copy operational db in practice mode.
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 21, 2014  #3687     bsteffen    Automatically notify edex when starting/stopping in practice mode.
  * 
  * </pre>
  * 
@@ -227,6 +232,22 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     public BMHLauncherDlg(Shell parentShell) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.DO_NOT_BLOCK
                 | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.INDEPENDENT_SHELL);
+        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+            new Job("Starting BMH Practice Mode") {
+
+                @Override
+                protected IStatus run(IProgressMonitor monitor) {
+                    try {
+                        BmhUtils.sendRequest(new PracticeModeRequest(true));
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "Unable to start BMH practice mode.", e);
+                    }
+                    return Status.OK_STATUS;
+                }
+
+            }.schedule();
+        }
     }
 
     @Override
@@ -249,6 +270,26 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         weatherMessageImg.dispose();
         emergencyOverrideImg.dispose();
         broadcastCycleImg.dispose();
+        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+            /*
+             * TODO When practice mode timeout is implemented it would be good
+             * to ask the user if this is what they want.
+             */
+            new Job("Stopping BMH Practice Mode") {
+
+                @Override
+                protected IStatus run(IProgressMonitor monitor) {
+                    try {
+                        BmhUtils.sendRequest(new PracticeModeRequest(false));
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "Unable to stop BMH practice mode.", e);
+                    }
+                    return Status.OK_STATUS;
+                }
+
+            }.schedule();
+        }
     }
 
     @Override

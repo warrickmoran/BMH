@@ -15,7 +15,7 @@
     errorHandlerRef="errorHandler">
 
     <route id="practice_bmhCommsConfiguratorRoute">
-      <from uri="jms-generic:topic:BMH.Config" />
+      <from uri="jms-generic:topic:BMH.Practice.Config" />
       <doTry>
           <bean ref="serializationUtil" method="transformFromThrift" />
           <filter>

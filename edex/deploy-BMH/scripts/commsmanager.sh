@@ -61,7 +61,7 @@ do
   case $arg in
     -p) 
        export logfile=/awips2/bmh/logs/commsmanager-practice-$t.log
-       WRAPPER_ARGS="wrapper.app.parameter.1=-p"
+       WRAPPER_ARGS="wrapper.app.parameter.1=-p wrapper.on_exit.default=SHUTDOWN"
        ;;
   esac
 done

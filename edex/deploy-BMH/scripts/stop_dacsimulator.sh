@@ -21,39 +21,16 @@
 ##
 
 ##############################################################################
-# Start script for BMH DacSimulator application.
+# Script to stop all running dac simulators
 #
 #     SOFTWARE HISTORY
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    10/17/14        3688          dgilling       Initial Creation.
+#    10/20/14        3687          bsteffen       Initial Creation.
 #
 ##############################################################################
 
-path_to_script=`readlink -f $0`
-dir=$(dirname $path_to_script)
+pkill -f "java.*DacSimulatorMain"
 
-export BMH_HOME=$(dirname $dir)
-awips_home=$(dirname $BMH_HOME)
-export EDEX_HOME="${awips_home}/edex"
-
-export JAVA_HOME="${awips_home}/java"
-
-# set Java into the path
-export PATH=${awips_home}/bin:${JAVA_HOME}/bin
-
-DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j org.apache.commons.collections"
-
-ENTRY_POINT="com.raytheon.bmh.dacsimulator.DacSimulatorMain"
-CLASSPATH="${EDEX_HOME}/lib/plugins/*"
-for dependency in $DEPENDENCIES; do
-  CLASSPATH="${CLASSPATH}:/awips2/edex/lib/dependencies/${dependency}/*"
-done;
-
-JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
-JVM_PROPS="-Duser.timezone=GMT"
-
-
-java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "$@"
 
