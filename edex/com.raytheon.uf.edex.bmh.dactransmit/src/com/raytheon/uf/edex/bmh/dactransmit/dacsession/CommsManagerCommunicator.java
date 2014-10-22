@@ -37,6 +37,7 @@ import com.google.common.primitives.Ints;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
@@ -77,6 +78,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Sep 4, 2014   3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * Oct 21, 2014  3655     bkowal      Use the new message types.
+ * Oct 21, 2014  3655     bkowal      Support LiveBroadcastSwitchNotification.
  * 
  * </pre>
  * 
@@ -224,6 +226,8 @@ public final class CommsManagerCommunicator extends Thread {
             eventBus.post(message);
         } else if (message instanceof ILiveBroadcastMessage) {
             eventBus.post(message);
+        } else if (message instanceof LiveBroadcastSwitchNotification) {
+            eventBus.post(message);
         } else {
             logger.error("Unrecognized message from comms manager of type "
                     + message.getClass().getSimpleName());
@@ -251,6 +255,11 @@ public final class CommsManagerCommunicator extends Thread {
 
     @Subscribe
     public void sendPlaylistSwitch(PlaylistSwitchNotification notification) {
+        sendMessageToCommsManager(notification);
+    }
+
+    @Subscribe
+    public void sendPlaylistSwitch(LiveBroadcastSwitchNotification notification) {
         sendMessageToCommsManager(notification);
     }
 

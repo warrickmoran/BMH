@@ -47,6 +47,9 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * ------------ ---------- ----------- --------------------------
  * Oct 17, 2014 3655       bkowal      Initial creation
  * Oct 21, 2014 3655       bkowal      Calculate the tone duration delays.
+ * Oct 21, 2014 3655       bkowal      Updated to include more information that
+ *                                     will be used to populate a 
+ *                                     {@link LiveBroadcastSwitchNotification}.
  * 
  * </pre>
  * 
@@ -66,11 +69,13 @@ public class LiveBroadcastSettings {
 
     private int durationMinutes;
 
-    private boolean durationSet;
-
     private final SAMEOriginatorMapper originatorMapping = new SAMEOriginatorMapper();
 
     private final SAMEStateCodes stateCodes = new SAMEStateCodes();
+
+    private Calendar effectiveTime;
+
+    private Calendar expireTime;
 
     /**
      * 
@@ -87,7 +92,23 @@ public class LiveBroadcastSettings {
         this.playAlertTones = playAlertTones;
         this.durationHours = durationHours;
         this.durationMinutes = durationMinutes;
-        this.durationSet = this.durationHours != 0 || this.durationMinutes != 0;
+
+        final boolean durationSet = this.durationHours != 0
+                || this.durationMinutes != 0;
+        this.effectiveTime = TimeUtil.newGmtCalendar();
+        this.expireTime = TimeUtil.newCalendar(this.effectiveTime);
+        if (durationSet == false) {
+            /*
+             * increase by one day when the duration has not been specified.
+             */
+            this.expireTime.add(Calendar.DATE, 1);
+        } else {
+            /*
+             * increase by the duration when specified.
+             */
+            this.expireTime.add(Calendar.HOUR, this.durationHours);
+            this.expireTime.add(Calendar.MINUTE, this.durationMinutes);
+        }
     }
 
     private void populateTransmitterAreaMap(
@@ -121,23 +142,8 @@ public class LiveBroadcastSettings {
             for (Area area : this.selectedTransmitterAreasMap.get(transmitter)) {
                 toneBuilder.addAreaFromUGC(area.getAreaCode());
             }
-            // set effective based on the current time.
-            Calendar effectiveTime = TimeUtil.newGmtCalendar();
-            Calendar expireTime = effectiveTime;
-            if (this.durationSet == false) {
-                /*
-                 * increase by one day when the duration has not been specified.
-                 */
-                expireTime.add(Calendar.DATE, 1);
-            } else {
-                /*
-                 * increase by the duration when specified.
-                 */
-                expireTime.add(Calendar.HOUR, this.durationHours);
-                expireTime.add(Calendar.MINUTE, this.durationMinutes);
-            }
-            toneBuilder.setEffectiveTime(effectiveTime);
-            toneBuilder.setExpireTime(expireTime);
+            toneBuilder.setEffectiveTime(this.effectiveTime);
+            toneBuilder.setExpireTime(this.expireTime);
             // TODO this needs to be read from configuration.
             toneBuilder.setNwsIcao("K"
                     + LocalizationManager.getInstance().getSite());
@@ -154,5 +160,33 @@ public class LiveBroadcastSettings {
         }
 
         return longestDuration;
+    }
+
+    /**
+     * @return the selectedMessageType
+     */
+    public MessageType getSelectedMessageType() {
+        return selectedMessageType;
+    }
+
+    /**
+     * @return the playAlertTones
+     */
+    public boolean isPlayAlertTones() {
+        return playAlertTones;
+    }
+
+    /**
+     * @return the effectiveTime
+     */
+    public Calendar getEffectiveTime() {
+        return effectiveTime;
+    }
+
+    /**
+     * @return the expireTime
+     */
+    public Calendar getExpireTime() {
+        return expireTime;
     }
 }

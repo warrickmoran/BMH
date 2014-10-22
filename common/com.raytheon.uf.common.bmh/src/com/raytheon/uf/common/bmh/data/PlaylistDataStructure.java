@@ -39,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Aug 22, 2014     3432   mpduff      Initial creation
  * Aug 24, 2014     3432   mpduff      Added Copy constructor
+ * Oct 21, 2014     3655   bkowal      Updated to use {@link IPlaylistData}.
  * 
  * </pre>
  * 
@@ -46,7 +47,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class PlaylistDataStructure {
+public class PlaylistDataStructure implements IPlaylistData {
     /**
      * DacPlaylistMessageId -> BroadcastMsg
      */

@@ -31,6 +31,7 @@ import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
@@ -64,6 +65,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * Oct 16, 2014  3687     bsteffen    Fix disconnect of dac transmits not connected to dac.
  * Oct 21, 2014  3655     bkowal      Use the new message types.
+ * Oct 21, 2014  3655     bkowal      Support LiveBroadcastSwitchNotification.
  * 
  * </pre>
  * 
@@ -156,6 +158,9 @@ public class DacTransmitCommunicator extends Thread {
             disconnect();
         } else if (message instanceof ILiveBroadcastMessage) {
             manager.forwardDacBroadcastMsg((ILiveBroadcastMessage) message);
+        } else if (message instanceof LiveBroadcastSwitchNotification) {
+            LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) message;
+            manager.transmitDacStatus(notification);
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",
                     message.getClass().getSimpleName());

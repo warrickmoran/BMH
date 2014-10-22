@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.common.bmh.broadcast;
 
+import java.util.Calendar;
+
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -34,6 +37,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 20, 2014 3655       bkowal      Initial creation
+ * Oct 21, 2014 3655       bkowal      Added additional information about
+ *                                     the broadcast.
  * 
  * </pre>
  * 
@@ -44,6 +49,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class BroadcastTransmitterConfiguration {
 
     @DynamicSerializeElement
+    private MessageType selectedMessageType;
+    
+    @DynamicSerializeElement
     private Transmitter transmitter;
 
     @DynamicSerializeElement
@@ -51,6 +59,15 @@ public class BroadcastTransmitterConfiguration {
 
     @DynamicSerializeElement
     private long delayMilliseconds;
+    
+    @DynamicSerializeElement
+    private Calendar effectiveTime;
+
+    @DynamicSerializeElement
+    private Calendar expireTime;
+    
+    @DynamicSerializeElement
+    private boolean playAlertTones;
 
     /**
      * 
@@ -80,5 +97,61 @@ public class BroadcastTransmitterConfiguration {
 
     public void setDelayMilliseconds(long delayMilliseconds) {
         this.delayMilliseconds = delayMilliseconds;
+    }
+
+    /**
+     * @return the selectedMessageType
+     */
+    public MessageType getSelectedMessageType() {
+        return selectedMessageType;
+    }
+
+    /**
+     * @param selectedMessageType the selectedMessageType to set
+     */
+    public void setSelectedMessageType(MessageType selectedMessageType) {
+        this.selectedMessageType = selectedMessageType;
+    }
+
+    /**
+     * @return the effectiveTime
+     */
+    public Calendar getEffectiveTime() {
+        return effectiveTime;
+    }
+
+    /**
+     * @param effectiveTime the effectiveTime to set
+     */
+    public void setEffectiveTime(Calendar effectiveTime) {
+        this.effectiveTime = effectiveTime;
+    }
+
+    /**
+     * @return the expireTime
+     */
+    public Calendar getExpireTime() {
+        return expireTime;
+    }
+
+    /**
+     * @param expireTime the expireTime to set
+     */
+    public void setExpireTime(Calendar expireTime) {
+        this.expireTime = expireTime;
+    }
+
+    /**
+     * @return the playAlertTones
+     */
+    public boolean isPlayAlertTones() {
+        return playAlertTones;
+    }
+
+    /**
+     * @param playAlertTones the playAlertTones to set
+     */
+    public void setPlayAlertTones(boolean playAlertTones) {
+        this.playAlertTones = playAlertTones;
     }
 }

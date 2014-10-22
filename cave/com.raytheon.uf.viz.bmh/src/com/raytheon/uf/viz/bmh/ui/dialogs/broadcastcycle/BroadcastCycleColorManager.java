@@ -37,6 +37,7 @@ import org.eclipse.swt.widgets.Shell;
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014   3432     mpduff      Initial creation
  * Oct 05, 2014   3647     mpduff      Add dispose listener to provided shell
+ * Oct 21, 2014   3655     bkowal      Added a color to signify live broadcasts.
  * 
  * </pre>
  * 
@@ -55,7 +56,9 @@ public class BroadcastCycleColorManager {
     private final Color predictedTransmitTimeColor;
 
     private final Color periodicColor;
-    
+
+    private final Color liveBroadcastColor;
+
     public BroadcastCycleColorManager(Shell shell) {
         shell.addDisposeListener(new DisposeListener() {
             @Override
@@ -63,13 +66,14 @@ public class BroadcastCycleColorManager {
                 dispose();
             }
         });
-        
+
         Display display = shell.getDisplay();
         actualTransmitTimeColor = new Color(display, 154, 205, 50);
         interruptColor = new Color(display, 255, 0, 0);
         replaceColor = new Color(display, 0, 191, 255);
         predictedTransmitTimeColor = new Color(display, 240, 230, 140);
         periodicColor = new Color(display, 128, 128, 0);
+        liveBroadcastColor = new Color(display, 255, 165, 0);
     }
 
     /**
@@ -107,6 +111,13 @@ public class BroadcastCycleColorManager {
         return periodicColor;
     }
 
+    /**
+     * @return the liveBroadcastColor
+     */
+    public Color getLiveBroadcastColor() {
+        return liveBroadcastColor;
+    }
+
     private void dispose() {
         if (actualTransmitTimeColor != null
                 && !actualTransmitTimeColor.isDisposed()) {
@@ -124,6 +135,10 @@ public class BroadcastCycleColorManager {
         }
         if (replaceColor != null && !replaceColor.isDisposed()) {
             this.replaceColor.dispose();
+        }
+        if (this.liveBroadcastColor != null
+                && this.liveBroadcastColor.isDisposed() == false) {
+            this.liveBroadcastColor.dispose();
         }
     }
 }

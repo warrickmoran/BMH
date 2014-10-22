@@ -85,6 +85,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Oct 15, 2014  #3655     bkowal       Support live broadcasting to the DAC.
  * Oct 21, 2014  #3655     bkowal       Use the new message types. Improve error
  *                                      handling.
+ * Oct 21, 2014  #3655     bkowal       Delay the playback of interrupts during a live
+ *                                      broadcast.
  * 
  * </pre>
  * 
@@ -319,7 +321,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         // already running.
         if (this.dataThread.isPlayingInterrupt()) {
             logger.info(
-                    "Unable to fulfill live broadcast request; an interrupt is currently playing for transmitter {}.",
+                    "Unable to fulfill live broadcast request; an interrupt is currently playing on transmitter {}.",
                     config.getTransmitter().getMnemonic());
             this.notifyLiveClientFailure(startCommand.getBroadcastId(),
                     startCommand.getTransmitterGroups(),
@@ -331,6 +333,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         /*
          * Delay any further interrupts ...
          */
+        this.playlistMgr.lockInterrupts();
+        this.dataThread.lockInterrupts();
 
         /*
          * Prepare the live streaming thread.
@@ -476,6 +480,12 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
 
         this.liveBroadcastDataPipe = null;
         this.broadcastThread = null;
+
+        /*
+         * Resume interrupts.
+         */
+        this.playlistMgr.resumeInterrupts();
+        this.dataThread.resumeInterrupts();
     }
 
     /*

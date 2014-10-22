@@ -109,6 +109,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
  * Oct 01, 2014  #3485     bsteffen     Allow playlist to resume on startup.
  * Oct 2, 2014   #3642     bkowal       Updated to use the transmitter timezone and the
  *                                      audio buffer abstraction.
+ * Oct 21, 2014  #3655     bkowal       Support delaying interrupts.
  * 
  * </pre>
  * 
@@ -194,6 +195,13 @@ public final class PlaylistScheduler implements
      * time next() is called.
      */
     private volatile boolean startup = true;
+
+    /**
+     * Flag indicating that any interrupts should be queued until further
+     * notice. This flag is used to ensure that interrupts will not interfere
+     * with the initialization of a live broadcast.
+     */
+    private volatile boolean delayInterrupts;
 
     /**
      * Reads the specified directory for valid playlist files (ones that have
@@ -373,7 +381,7 @@ public final class PlaylistScheduler implements
              * first. After completing the INTERRUPT, playback will resume at
              * the beginning of the highest priority playlist.
              */
-            if (!interrupts.isEmpty()) {
+            if (this.delayInterrupts == false && !interrupts.isEmpty()) {
                 nextPlaylist = interrupts.poll();
                 logger.debug("Switching to playlist: "
                         + nextPlaylist.toString());
@@ -958,5 +966,15 @@ public final class PlaylistScheduler implements
             playlists.addAll(activePlaylists);
         }
         return playlists;
+    }
+
+    public void lockInterrupts() {
+        logger.info("Delaying interrupt playback. No interrupts will be played until further notice.");
+        this.delayInterrupts = true;
+    }
+
+    public void resumeInterrupts() {
+        logger.info("Resuming interrupt playback.");
+        this.delayInterrupts = false;
     }
 }
