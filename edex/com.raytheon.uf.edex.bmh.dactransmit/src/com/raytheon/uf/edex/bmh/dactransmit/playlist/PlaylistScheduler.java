@@ -651,8 +651,8 @@ public final class PlaylistScheduler implements
                             currentPlaylist = null;
                             currentMessages = Collections.emptyList();
                         }
+                        activePlaylists.remove(expiredActive);
                     }
-
                     expirePlaylists(expired);
                     return;
                 } else if (!newPlaylist.isValid()) {
