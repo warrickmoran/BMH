@@ -800,7 +800,8 @@ public class PlaylistManager implements IContextStateProcessor {
                 dac.setPeriodicity(input.getPeriodicity());
                 dac.setMessageText(input.getContent());
                 dac.setAlertTone(input.getAlertTone());
-                if (input.getAreaCodes() != null) {
+                if (input.getAreaCodes() != null
+                        && Boolean.TRUE.equals(input.getNwrsameTone())) {
                     Set<Transmitter> transmitters = broadcast
                             .getTransmitterGroup().getTransmitters();
 
