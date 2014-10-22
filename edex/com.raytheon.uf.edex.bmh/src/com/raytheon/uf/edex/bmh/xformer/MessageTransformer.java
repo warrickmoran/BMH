@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.xformer;
 
 import java.nio.file.Paths;
+import java.util.Calendar;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
@@ -47,6 +48,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.Sentence;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
@@ -83,6 +85,7 @@ import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
  *                                     letter in the message is not capitalized).
  * Sep 12, 2014 3588       bsteffen    Support audio fragments.
  * Oct 2, 2014  3642       bkowal      Updated to recognize and handle static time fragments.
+ * Oct 22, 2014 3747       bkowal      Set creation / update time manually.
  * 
  * </pre>
  * 
@@ -452,6 +455,9 @@ public class MessageTransformer {
 
         /* Create the Broadcast Message */
         BroadcastMsg message = new BroadcastMsg();
+        final Calendar current = TimeUtil.newGmtCalendar();
+        message.setCreationDate(current);
+        message.setUpdateDate(current);
         /* Message Header */
         message.setTransmitterGroup(group);
         message.setInputMessage(inputMessage);

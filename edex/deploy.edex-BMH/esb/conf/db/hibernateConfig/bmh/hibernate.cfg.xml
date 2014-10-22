@@ -76,10 +76,6 @@
 		<property name="hibernate.cache.use_second_level_cache">false</property>
 		<property name="hibernate.jdbc.use_streams_for_binary">false</property>
 		<property name="hibernate.cache.use_query_cache">false</property>
-		
-		<event type="save-update">
-			<listener class="com.raytheon.uf.edex.bmh.dao.ProxyBMHSaveOrUpdateListener" />
-		</event>
 
 	</session-factory>
 </hibernate-configuration>

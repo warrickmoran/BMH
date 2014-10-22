@@ -58,15 +58,6 @@
         <property name="transactionManager" ref="bmhTxManager" />
     </bean>
 
-    <bean id="proxyBMHSaveOrUpdateListener" factory-method="getInstance"
-        class="com.raytheon.uf.edex.bmh.dao.ProxyBMHSaveOrUpdateListener" />
-
-    <bean id="broadcastMsgListener" class="com.raytheon.uf.edex.bmh.dao.BroadcastMsgListener" />
-
-    <bean factory-bean="proxyBMHSaveOrUpdateListener" factory-method="registerListener">
-        <constructor-arg ref="broadcastMsgListener" />
-    </bean>
-
   <bean id="inputMessageDao" class="com.raytheon.uf.edex.bmh.dao.InputMessageDao"
     depends-on="bmhTxTemplate" />
 

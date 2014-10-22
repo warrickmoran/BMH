@@ -43,6 +43,8 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * Jun 24, 2014  3302     bkowal      Initial creation.
  * Jul 17, 2014  3175     rjpeter     Added getAll.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Oct 22, 2014  3747     bkowal      Wrap all database actions in txTemplate with
+ *                                    getCurrentSession.
  * 
  * </pre>
  * 
@@ -99,8 +101,13 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
      *             when retrieval fails
      */
     @SuppressWarnings("unchecked")
-    public T getByID(I id) throws DataAccessException {
-        return (T) getSession().get(this.daoClass, id);
+    public T getByID(final I id) throws DataAccessException {
+        return txTemplate.execute(new TransactionCallback<T>() {
+            @Override
+            public T doInTransaction(TransactionStatus status) {
+                return (T) getCurrentSession().get(daoClass, id);
+            }
+        });
     }
 
     /**
@@ -144,7 +151,7 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
             @SuppressWarnings("unchecked")
             @Override
             public List<T> doInTransaction(TransactionStatus status) {
-                Session session = getSession();
+                Session session = getCurrentSession();
                 Query query = session.getNamedQuery(queryName);
                 for (int i = 0; i < names.length; i++) {
                     query.setParameter(names[i], values[i]);

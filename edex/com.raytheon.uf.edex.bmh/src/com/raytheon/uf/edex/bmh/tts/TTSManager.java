@@ -75,6 +75,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Sep 29, 2014 3291       bkowal      Cleanup. Do not depend on properties that are not
  *                                     directly used.
  * Oct 2, 2014  3642       bkowal      Updated for compatibility with other changes
+ * Oct 21, 2014 3747       bkowal      Set update time manually.
  * 
  * </pre>
  * 
@@ -381,8 +382,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         if (this.disabled) {
             statusHandler
                     .info("TTS Manager is currently disabled. No messages can be processed.");
-            for (BroadcastFragment fragemnt : message.getFragments()) {
-                fragemnt.setSuccess(false);
+            for (BroadcastFragment fragment : message.getFragments()) {
+                fragment.setSuccess(false);
             }
             return message;
         }
@@ -529,6 +530,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             }
             fragment.setSuccess(success);
         }
+        message.setUpdateDate(TimeUtil.newGmtCalendar());
+
         return message;
     }
 
