@@ -97,6 +97,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Oct 15, 2014  3715      bkowal      Create temporary data objects that can be used when
  *                                     a new {@link Suite} is created.
+ * Oct 21, 2014  3715      bkowal      Verify that there is an associated program before 
+ *                                     accessing it.
  * </pre>
  * 
  * @author lvenable
@@ -254,7 +256,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
     @Override
     protected void disposed() {
-        if (dialogType == DialogType.CREATE) {
+        if (dialogType == DialogType.CREATE && this.selectedProgram != null) {
             selectedProgram.cancelNewSuite(selectedSuite);
         }
     }
@@ -723,10 +725,12 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         List<MessageTypeSummary> newTriggerMsgTypes = new ArrayList<>(
                 this.selectedSuite.getSuiteMessages().size());
-        for (SuiteMessage suiteMsg : this.selectedSuite.getSuiteMessages()) {
-            if (this.selectedProgram.isTriggerMsgType(this.selectedSuite,
-                    suiteMsg.getMsgTypeSummary())) {
-                newTriggerMsgTypes.add(suiteMsg.getMsgTypeSummary());
+        if (this.selectedProgram != null) {
+            for (SuiteMessage suiteMsg : this.selectedSuite.getSuiteMessages()) {
+                if (this.selectedProgram.isTriggerMsgType(this.selectedSuite,
+                        suiteMsg.getMsgTypeSummary())) {
+                    newTriggerMsgTypes.add(suiteMsg.getMsgTypeSummary());
+                }
             }
         }
 

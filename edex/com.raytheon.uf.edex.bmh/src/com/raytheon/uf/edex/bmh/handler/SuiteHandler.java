@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * Sep 05, 2014  3554     bsteffen    Send more specific config change notification.
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 21, 2014  3715     bkowal      Updates due to hibernate upgrade.
  * 
  * </pre>
  * 
@@ -162,7 +163,7 @@ public class SuiteHandler extends AbstractBMHServerRequestHandler<SuiteRequest> 
         SuiteDao dao = new SuiteDao(request.isOperational());
         SuiteResponse suiteResponse = new SuiteResponse();
         if (request.getSuite() != null) {
-            dao.saveOrUpdate(request.getSuite());
+            dao.saveOrUpdateSuite(request.getSuite());
             suiteResponse.addSuite(request.getSuite());
         }
 
