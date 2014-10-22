@@ -34,6 +34,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
+import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -41,7 +42,6 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
 
 /**
  * 
@@ -60,6 +60,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
  * Sep 5,  2014  3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
  * Sep 23, 2014  3485     bsteffen    Bug fixes and changes to notification processing to support clustering
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
+ * Oct 21, 2014  3655     bkowal      Use the new message types.
  * 
  * </pre>
  * 
@@ -182,7 +183,7 @@ public class DacTransmitServer extends AbstractServerThread {
      * @param data
      *            the specified data
      */
-    public void sendToDac(DacTransmitKey key, IDacLiveBroadcastMsg msg) {
+    public void sendToDac(DacTransmitKey key, ILiveBroadcastMessage msg) {
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(key);
         if (communicators != null) {

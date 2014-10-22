@@ -46,6 +46,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 17, 2014 3655       bkowal      Initial creation
+ * Oct 21, 2014 3655       bkowal      Calculate the tone duration delays.
  * 
  * </pre>
  * 
@@ -107,9 +108,9 @@ public class LiveBroadcastSettings {
         }
     }
 
-    public Map<Transmitter, byte[]> getTransmitterSAMETones() throws Exception {
-        Map<Transmitter, byte[]> transmitterToneMap = new HashMap<>();
-
+    public long getTransmitterSAMETones(
+            Map<Transmitter, byte[]> transmitterToneMap) throws Exception {
+        long longestDuration = 0;
         for (Transmitter transmitter : this.selectedTransmitterAreasMap
                 .keySet()) {
             SAMEToneTextBuilder toneBuilder = new SAMEToneTextBuilder();
@@ -143,10 +144,15 @@ public class LiveBroadcastSettings {
             final String sameTone = toneBuilder.build().toString();
 
             // convert the same tone
-            transmitterToneMap.put(transmitter, TonesGenerator
-                    .getSAMEAlertTones(sameTone, this.playAlertTones).array());
+            byte[] tonesAudio = TonesGenerator.getSAMEAlertTones(sameTone,
+                    this.playAlertTones).array();
+            long duration = tonesAudio.length / 160L * 20L;
+            if (duration > longestDuration) {
+                longestDuration = duration;
+            }
+            transmitterToneMap.put(transmitter, tonesAudio);
         }
 
-        return transmitterToneMap;
+        return longestDuration;
     }
 }

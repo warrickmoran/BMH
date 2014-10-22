@@ -30,13 +30,11 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
-import com.raytheon.bmh.comms.cluster.IClusterMessageListener;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
-import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastRequest;
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastClientStatus;
+import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
 
 /**
  * Listens for and handles @{link StartLiveBroadcastRequest}. Creates a
@@ -49,7 +47,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 8, 2014  3656       bkowal      Initial creation
- * Oct 15, 2015 3655       bkowal      Support live broadcasting to the DAC.
+ * Oct 15, 2014 3655       bkowal      Support live broadcasting to the DAC.
+ * Oct 21, 2014 3655       bkowal      Use the new message types. Improved
+ *                                     error handling.
  * 
  * 
  * </pre>
@@ -63,8 +63,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
  * additional hardware to validate, verify and optimize implementation.
  */
 
-public class BroadcastStreamServer extends AbstractServerThread implements
-        IClusterMessageListener {
+public class BroadcastStreamServer extends AbstractServerThread {
 
     private static final Logger logger = LoggerFactory
             .getLogger(BroadcastStreamServer.class);
@@ -105,14 +104,13 @@ public class BroadcastStreamServer extends AbstractServerThread implements
      */
     @Override
     protected void handleConnection(Socket socket) throws Exception {
-        StartLiveBroadcastRequest request = SerializationUtil
-                .transformFromThrift(StartLiveBroadcastRequest.class,
+        LiveBroadcastStartCommand command = SerializationUtil
+                .transformFromThrift(LiveBroadcastStartCommand.class,
                         socket.getInputStream());
 
-        logger.info("Handling {} request from {}.", request.getClass()
-                .getName(), request.getWsid());
+        logger.info("Handling {} request.", command.getClass().getName());
 
-        this.startBroadcastTask(socket, request);
+        this.startBroadcastTask(socket, command);
     }
 
     @Override
@@ -159,13 +157,12 @@ public class BroadcastStreamServer extends AbstractServerThread implements
     }
 
     private void startBroadcastTask(Socket socket,
-            StartLiveBroadcastRequest request) {
-        BroadcastStreamTask task = new BroadcastStreamTask(socket, request,
+            LiveBroadcastStartCommand command) {
+        BroadcastStreamTask task = new BroadcastStreamTask(socket, command,
                 this, this.clusterServer, this.transmitServer);
         task.start();
 
-        logger.info("Started broadcast streaming task {} for {}.",
-                task.getName(), request.getWsid());
+        logger.info("Started broadcast streaming task {}.", task.getName());
         this.broadcastStreamingTasksMap.put(task.getName(), task);
     }
 
@@ -173,12 +170,10 @@ public class BroadcastStreamServer extends AbstractServerThread implements
         this.broadcastStreamingTasksMap.remove(broadcastId);
     }
 
-    public void handleDacBroadcastMsg(IDacLiveBroadcastMsg msg) {
+    public void handleDacBroadcastMsg(ILiveBroadcastMessage msg) {
         BroadcastStreamTask task = this.broadcastStreamingTasksMap.get(msg
                 .getBroadcastId());
         if (task == null) {
-            // TODO: standardize messaging across: client -> comms manager ->
-            // dac transmit during SAME tone playback changeset.
             logger.warn(
                     "Ignoring dac live broadcast {} msg. Broadcast {} does not exist or is no longer active.",
                     msg.getClass().getName(), msg.getBroadcastId());
@@ -186,22 +181,5 @@ public class BroadcastStreamServer extends AbstractServerThread implements
             return;
         }
         task.handleDacBroadcastMsg(msg);
-    }
-
-    private void handleRemoteBroadcastTaskReady(
-            final LiveBroadcastClientStatus response) {
-        if (this.broadcastStreamingTasksMap.containsKey(response
-                .getBroadcastId()) == false) {
-            return;
-        }
-    }
-
-    @Override
-    public void clusterMessageReceived(Socket socket, Object object) {
-        if (object instanceof StartLiveBroadcastRequest) {
-            this.startBroadcastTask(socket, (StartLiveBroadcastRequest) object);
-        } else if (object instanceof LiveBroadcastClientStatus) {
-            this.handleRemoteBroadcastTaskReady((LiveBroadcastClientStatus) object);
-        }
     }
 }

@@ -17,15 +17,15 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.comms;
+package com.raytheon.uf.common.bmh.broadcast;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Issued by a {@link BroadcastStreamTask} running in a Comms Manager to other
- * cluster members to indicate that the {@link BroadcastStreamTask} has
- * encountered an issue that caused it to abort the live broadcast.
+ * Used to store information that will be used to prepare a transmitter for a
+ * live broadcast.
  * 
  * <pre>
  * 
@@ -33,56 +33,52 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 10, 2014 3656       bkowal      Initial creation
+ * Oct 20, 2014 3655       bkowal      Initial creation
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
-
 @DynamicSerialize
-public class BroadcastProblemMsg {
+public class BroadcastTransmitterConfiguration {
 
     @DynamicSerializeElement
-    private String broadcastId;
+    private Transmitter transmitter;
 
     @DynamicSerializeElement
-    private String detail;
+    private byte[] toneAudio;
+
+    @DynamicSerializeElement
+    private long delayMilliseconds;
 
     /**
      * 
      */
-    public BroadcastProblemMsg() {
+    public BroadcastTransmitterConfiguration() {
     }
 
-    /**
-     * @return the broadcastId
-     */
-    public String getBroadcastId() {
-        return broadcastId;
+    public Transmitter getTransmitter() {
+        return transmitter;
     }
 
-    /**
-     * @param broadcastId
-     *            the broadcastId to set
-     */
-    public void setBroadcastId(String broadcastId) {
-        this.broadcastId = broadcastId;
+    public void setTransmitter(Transmitter transmitter) {
+        this.transmitter = transmitter;
     }
 
-    /**
-     * @return the detail
-     */
-    public String getDetail() {
-        return detail;
+    public byte[] getToneAudio() {
+        return toneAudio;
     }
 
-    /**
-     * @param detail
-     *            the detail to set
-     */
-    public void setDetail(String detail) {
-        this.detail = detail;
+    public void setToneAudio(byte[] toneAudio) {
+        this.toneAudio = toneAudio;
+    }
+
+    public long getDelayMilliseconds() {
+        return delayMilliseconds;
+    }
+
+    public void setDelayMilliseconds(long delayMilliseconds) {
+        this.delayMilliseconds = delayMilliseconds;
     }
 }

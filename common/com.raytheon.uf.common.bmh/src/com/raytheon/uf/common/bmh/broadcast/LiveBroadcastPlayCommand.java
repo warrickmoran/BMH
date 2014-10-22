@@ -17,14 +17,13 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dactransmit.ipc;
+package com.raytheon.uf.common.bmh.broadcast;
 
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastStartData;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Used to request a potential live broadcast session from Dac Transmit.
+ * Used to stream audio data to a live broadcast.
  * 
  * <pre>
  * 
@@ -32,56 +31,32 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 14, 2014 3655       bkowal      Initial creation
+ * Oct 20, 2014 3655       bkowal      Initial creation
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
-
 @DynamicSerialize
-public class PrepareLiveBroadcastRequest implements IDacLiveBroadcastMsg {
+public class LiveBroadcastPlayCommand extends LiveBroadcastCommand {
 
     @DynamicSerializeElement
-    private String broadcastId;
-    
-    @DynamicSerializeElement
-    private LiveBroadcastStartData data;
-    
+    private byte[] audio;
+
     /**
      * 
      */
-    public PrepareLiveBroadcastRequest() {
+    public LiveBroadcastPlayCommand() {
+        super();
+        super.setAction(ACTION.PLAY);
     }
 
-    /*
-     * (non-Javadoc)
-     * @see com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg#getBroadcastId()
-     */
-    @Override
-    public String getBroadcastId() {
-        return broadcastId;
+    public byte[] getAudio() {
+        return audio;
     }
 
-    /**
-     * @param broadcastId the broadcastId to set
-     */
-    public void setBroadcastId(String broadcastId) {
-        this.broadcastId = broadcastId;
-    }
-
-    /**
-     * @return the data
-     */
-    public LiveBroadcastStartData getData() {
-        return data;
-    }
-
-    /**
-     * @param data the data to set
-     */
-    public void setData(LiveBroadcastStartData data) {
-        this.data = data;
+    public void setAudio(byte[] audio) {
+        this.audio = audio;
     }
 }

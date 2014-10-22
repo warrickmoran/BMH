@@ -17,51 +17,41 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.comms;
+package com.raytheon.uf.common.bmh.broadcast;
 
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import java.util.List;
 
 /**
- * Used to request the termination of a live broadcast session.
+ * Definition of a live broadcast message.
  * 
  * <pre>
- *
+ * 
  * SOFTWARE HISTORY
- *
+ * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 10, 2014 3656       bkowal      Initial creation
- *
+ * Oct 20, 2014 3655       bkowal      Initial creation
+ * 
  * </pre>
- *
+ * 
  * @author bkowal
- * @version 1.0	
+ * @version 1.0
  */
 
-@DynamicSerialize
-public class LiveBroadcastStopRequest {
+public interface ILiveBroadcastMessage {
 
-    @DynamicSerializeElement
-    private String broadcastId;
-    
-    /**
-     * 
-     */
-    public LiveBroadcastStopRequest() {
-    }
+    public static final String SOURCE_VIZ = "Viz";
 
-    /**
-     * @return the broadcastId
-     */
-    public String getBroadcastId() {
-        return broadcastId;
-    }
+    public static final String SOURCE_COMMS_MANAGER = "CommsManager";
 
-    /**
-     * @param broadcastId the broadcastId to set
-     */
-    public void setBroadcastId(String broadcastId) {
-        this.broadcastId = broadcastId;
-    }
+    public static final String SOURCE_DAC_TRANSMIT = "DacTransmit";
+
+    public String getMsgSource();
+
+    public Boolean getStatus();
+
+    public String getBroadcastId();
+
+    public List<Transmitter> getTransmitterGroups();
 }

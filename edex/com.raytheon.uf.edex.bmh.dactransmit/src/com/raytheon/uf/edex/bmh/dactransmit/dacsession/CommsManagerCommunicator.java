@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.common.primitives.Ints;
+import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
@@ -48,7 +49,6 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
@@ -76,6 +76,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Aug 26, 2014  3486     bsteffen    Stop writerThread in shutdown.
  * Sep 4, 2014   3532     bkowal      Replace ChangeDecibelRange with ChangeDecibelTarget.
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
+ * Oct 21, 2014  3655     bkowal      Use the new message types.
  * 
  * </pre>
  * 
@@ -221,7 +222,7 @@ public final class CommsManagerCommunicator extends Thread {
             eventBus.post(message);
         } else if (message instanceof ChangeDecibelTarget) {
             eventBus.post(message);
-        } else if (message instanceof IDacLiveBroadcastMsg) {
+        } else if (message instanceof ILiveBroadcastMessage) {
             eventBus.post(message);
         } else {
             logger.error("Unrecognized message from comms manager of type "
@@ -238,7 +239,7 @@ public final class CommsManagerCommunicator extends Thread {
         sendMessageToCommsManager(status);
     }
 
-    public void sendDacLiveBroadcastMsg(IDacLiveBroadcastMsg msg) {
+    public void sendDacLiveBroadcastMsg(ILiveBroadcastMessage msg) {
         sendMessageToCommsManager(msg);
     }
 

@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -28,11 +29,12 @@ import java.util.Collection;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastStartData;
+import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
+import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
+import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
 import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.LiveBroadcastStatus;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
 
 /**
@@ -50,6 +52,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * ------------ ---------- ----------- --------------------------
  * Oct 14, 2014 3655       bkowal      Initial creation
  * Oct 17, 2014 3655       bkowal      Move tones to common.
+ * Oct 21, 2014 3655       bkowal      Support tone playback prior to the live
+ *                                     broadcast.
  * 
  * </pre>
  * 
@@ -65,104 +69,127 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
 
     private final CommsManagerCommunicator commsManager;
 
-    private final LiveBroadcastStartData data;
+    private final BroadcastTransmitterConfiguration config;
 
     private final PipedInputStream dataStream;
 
     private final double dbTarget;
+
+    private volatile boolean error;
 
     public LiveBroadcastTransmitThread(final EventBus eventBus,
             final InetAddress address, final int port,
             final Collection<Integer> transmitters, final String broadcastId,
             final DataTransmitThread dataThread,
             final CommsManagerCommunicator commsManager,
-            final LiveBroadcastStartData data, final PipedOutputStream src,
-            final double dbTarget) throws IOException {
+            final BroadcastTransmitterConfiguration config,
+            final PipedOutputStream src, final double dbTarget)
+            throws IOException {
         super("LiveBroadcastTransmitThread", eventBus, address, port,
                 transmitters);
         this.broadcastId = broadcastId;
         this.dataThread = dataThread;
         this.commsManager = commsManager;
-        this.data = data;
+        this.config = config;
         this.dataStream = new PipedInputStream(src);
         this.dbTarget = dbTarget;
     }
 
     @Override
     public void run() {
+        if (config.getDelayMilliseconds() > 0) {
+            try {
+                Thread.sleep(config.getDelayMilliseconds());
+            } catch (InterruptedException e) {
+                logger.warn(
+                        "LiveBroadcastTransmitThread sleep was interrupted.", e);
+            }
+        }
+
         this.dataThread.pausePlayback();
 
-        if (data.isPlayAlertTone()) {
-            if (data.getTonesDelay() > 0) {
-                /*
-                 * Need additional functionality in the EO dialog to handle this
-                 * case to allow for using real information.
-                 */
-            }
-
-            // play tone.
-        }
-        LiveBroadcastStatus response = new LiveBroadcastStatus();
-        response.setBroadcastId(broadcastId);
-        response.setTransmitterGroup(this.data.getTransmitterGroup());
-        response.setReady(true);
-        this.commsManager.sendDacLiveBroadcastMsg(response);
-
+        // play the Alert / SAME tones.
+        ByteArrayInputStream tonesInputStream = new ByteArrayInputStream(
+                this.config.getToneAudio());
         byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
+        try {
+            while (tonesInputStream.read(nextPayload) != -1) {
+                this.streamAudio(nextPayload);
+            }
+        } catch (IOException | AudioOverflowException
+                | UnsupportedAudioFormatException | AudioConversionException
+                | InterruptedException e) {
+            this.notifyDacError("Failed to stream the SAME / Alert Tones!", e);
+        }
+
+        BroadcastStatus status = new BroadcastStatus();
+        status.setMsgSource(ILiveBroadcastMessage.SOURCE_DAC_TRANSMIT);
+        status.setStatus(true);
+        status.setBroadcastId(this.broadcastId);
+        status.addTransmitter(this.config.getTransmitter());
+        this.commsManager.sendDacLiveBroadcastMsg(status);
+
         try {
             int bytesCount = 0;
             while (bytesCount != -1) {
-                while (!hasSync) {
-                    Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
-
-                    // cannot restart audio. should 'onSyncRestartMessage'
-                    // indicate an error condition in the case of live
-                    // broadcasting?
-                    if (hasSync && onSyncRestartMessage) {
-                        logger.warn("Application has re-gained sync with the DAC. Unable to restart audio stream!");
-                    }
-                }
-
                 bytesCount = this.dataStream.read(nextPayload);
                 if (bytesCount <= 0) {
                     continue;
                 }
 
-                /*
-                 * Adjust the audio based on the decibel target.
-                 */
-                byte[] regulatedAudio = this.adjustAudio(nextPayload);
-
-                RtpPacketIn rtpPacket = buildRtpPacket(previousPacket,
-                        regulatedAudio);
-
-                sendPacket(rtpPacket);
-
-                previousPacket = rtpPacket;
-
-                Thread.sleep(nextCycleTime);
+                this.streamAudio(nextPayload);
             }
         } catch (IOException e) {
-            logger.error("Audio Data I/O has failed!", e);
-            this.notifyDacError("Audio Data I/O has failed!");
+            this.notifyDacError("Audio Data I/O has failed!", e);
         } catch (InterruptedException e) {
             logger.error("Thread sleep interrupted.", e);
         } catch (AudioOverflowException | UnsupportedAudioFormatException
                 | AudioConversionException e) {
-            logger.error("Audio regulation failed!", e);
-            this.notifyDacError("Audio regulation failed!");
+            this.notifyDacError("Audio regulation failed!", e);
         }
 
         this.dataThread.resumePlayback();
     }
 
-    private void notifyDacError(final String detail) {
-        LiveBroadcastStatus response = new LiveBroadcastStatus();
-        response.setBroadcastId(broadcastId);
-        response.setTransmitterGroup(this.data.getTransmitterGroup());
-        response.setReady(false);
-        response.setDetail(detail);
-        this.commsManager.sendDacLiveBroadcastMsg(response);
+    private void streamAudio(byte[] data) throws AudioOverflowException,
+            UnsupportedAudioFormatException, AudioConversionException,
+            InterruptedException {
+        /*
+         * Adjust the audio based on the decibel target.
+         */
+        byte[] regulatedAudio = this.adjustAudio(data);
+
+        RtpPacketIn rtpPacket = buildRtpPacket(previousPacket, regulatedAudio);
+
+        sendPacket(rtpPacket);
+
+        previousPacket = rtpPacket;
+
+        Thread.sleep(nextCycleTime);
+
+        while (!hasSync) {
+            Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
+
+            // cannot restart audio. should 'onSyncRestartMessage'
+            // indicate an error condition in the case of live
+            // broadcasting?
+            if (hasSync && onSyncRestartMessage) {
+                logger.warn("Application has re-gained sync with the DAC. Unable to restart audio stream!");
+            }
+        }
+    }
+
+    private void notifyDacError(final String detail, final Exception e) {
+        this.error = true;
+        logger.error(detail, e);
+        BroadcastStatus status = new BroadcastStatus();
+        status.setMsgSource(ILiveBroadcastMessage.SOURCE_DAC_TRANSMIT);
+        status.setStatus(false);
+        status.setBroadcastId(this.broadcastId);
+        status.addTransmitter(this.config.getTransmitter());
+        status.setMessage(detail);
+        status.setException(e);
+        this.commsManager.sendDacLiveBroadcastMsg(status);
     }
 
     private byte[] adjustAudio(final byte[] sourceAudio)
@@ -189,10 +216,6 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         }
     }
 
-    public String getTransmitter() {
-        return this.data.getTransmitterGroup();
-    }
-
     /**
      * @param watermarkPackets
      *            the watermarkPackets to set
@@ -207,5 +230,12 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
     public void attemptPipeReconnection(final PipedOutputStream out)
             throws IOException {
         this.dataStream.connect(out);
+    }
+
+    /**
+     * @return the error
+     */
+    public boolean isError() {
+        return error;
     }
 }

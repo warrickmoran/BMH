@@ -17,13 +17,13 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dactransmit.ipc;
+package com.raytheon.uf.common.bmh.broadcast;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Used to transfer audio data to DAC Transmit for transmission.
+ * Used to control a live broadcast.
  * 
  * <pre>
  * 
@@ -31,7 +31,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 15, 2014 3655       bkowal      Initial creation
+ * Oct 20, 2014 3655       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -39,52 +39,28 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class LiveBroadcastAudioRequest implements IDacLiveBroadcastMsg {
+public class LiveBroadcastCommand extends AbstractLiveBroadcastMessage {
+
+    public static enum ACTION {
+        PREPARE, TRIGGER, PLAY, STOP
+    }
 
     @DynamicSerializeElement
-    private String broadcastId;
-
-    @DynamicSerializeElement
-    private byte[] audioData;
+    private ACTION action;
 
     /**
      * 
      */
-    public LiveBroadcastAudioRequest() {
+    public LiveBroadcastCommand() {
+        super();
+        super.setStatus(null);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg#getBroadcastId
-     * ()
-     */
-    @Override
-    public String getBroadcastId() {
-        return this.broadcastId;
+    public ACTION getAction() {
+        return action;
     }
 
-    /**
-     * @param broadcastId
-     *            the broadcastId to set
-     */
-    public void setBroadcastId(String broadcastId) {
-        this.broadcastId = broadcastId;
-    }
-
-    /**
-     * @return the audioData
-     */
-    public byte[] getAudioData() {
-        return audioData;
-    }
-
-    /**
-     * @param audioData
-     *            the audioData to set
-     */
-    public void setAudioData(byte[] audioData) {
-        this.audioData = audioData;
+    public void setAction(ACTION action) {
+        this.action = action;
     }
 }
