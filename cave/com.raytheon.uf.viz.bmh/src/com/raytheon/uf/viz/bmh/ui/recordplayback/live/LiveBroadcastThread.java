@@ -24,11 +24,11 @@ import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-import com.raytheon.uf.common.bmh.comms.BroadcastAudioRequest;
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastClientStatus;
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastClientStatus.STATUS;
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastStopRequest;
-import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastRequest;
+import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
+import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand.ACTION;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -49,6 +49,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  * Oct 9, 2014  3656       bkowal      Initial creation
  * Oct 15, 2014 3655       bkowal      Update for msg type renaming.
  * Oct 17, 2014 3687       bsteffen    Support practice servers.
+ * Oct 21, 2014 3655       bkowal      Use the new message types. Improved error handling.
  * 
  * </pre>
  * 
@@ -66,7 +67,7 @@ public class LiveBroadcastThread extends Thread implements
         INITIALIZING, LIVE, STOPPED, ERROR
     }
 
-    private final StartLiveBroadcastRequest request;
+    private final ILiveBroadcastMessage command;
 
     private IBroadcastStateListener listener;
 
@@ -79,9 +80,9 @@ public class LiveBroadcastThread extends Thread implements
     /**
      * 
      */
-    public LiveBroadcastThread(final StartLiveBroadcastRequest request) {
+    public LiveBroadcastThread(final ILiveBroadcastMessage command) {
         super(LiveBroadcastThread.class.getName());
-        this.request = request;
+        this.command = command;
         this.state = BROADCAST_STATE.INITIALIZING;
     }
 
@@ -111,6 +112,19 @@ public class LiveBroadcastThread extends Thread implements
                                             + BMHServers.getBroadcastServer()
                                             + " unexpectedly dropped the connection during the live broadcast!");
                             this.state = BROADCAST_STATE.ERROR;
+                        } else if (object instanceof BroadcastStatus) {
+                            BroadcastStatus status = (BroadcastStatus) object;
+                            if (status.getStatus() == false) {
+                                statusHandler.error(
+                                        "The live broadcast has failed and must be terminated: "
+                                                + status.getMessage() + "!",
+                                        status.getException());
+                                this.state = BROADCAST_STATE.ERROR;
+                            }
+                        } else {
+                            statusHandler.warn("Received unexpected message "
+                                    + object.getClass().getName()
+                                    + " from comms manager.");
                         }
                     } catch (BroadcastException e) {
                         if (this.state != BROADCAST_STATE.ERROR
@@ -124,6 +138,7 @@ public class LiveBroadcastThread extends Thread implements
                     break;
                 case STOPPED:
                 case ERROR:
+                    // Do Nothing.
                     break;
                 }
             } catch (Exception e) {
@@ -132,6 +147,15 @@ public class LiveBroadcastThread extends Thread implements
                         e);
                 this.state = BROADCAST_STATE.ERROR;
             }
+        }
+
+        if (this.state == BROADCAST_STATE.ERROR) {
+            /*
+             * stop the recording which will trigger the proper shutdown of
+             * everything else.
+             */
+            this.notifyListener();
+            return;
         }
 
         if (this.socket != null && this.socket.isClosed() == false) {
@@ -161,8 +185,7 @@ public class LiveBroadcastThread extends Thread implements
             Exception exc = new IllegalStateException(
                     "Invalid address specified for comms manager "
                             + BMHServers.getBroadcastServerKey() + ": "
-                            + commsLoc
-                            + ".", e);
+                            + commsLoc + ".", e);
             statusHandler.error("Failed to start live broadcast!", exc);
             this.state = BROADCAST_STATE.ERROR;
             return;
@@ -175,15 +198,14 @@ public class LiveBroadcastThread extends Thread implements
             Exception exc = new BroadcastException(
                     "Failed to connect to comms manager "
                             + BMHServers.getBroadcastServerKey() + ": "
-                            + commsLoc
-                            + ".", e);
+                            + commsLoc + ".", e);
             statusHandler.error("Failed to start live broadcast!", exc);
             this.state = BROADCAST_STATE.ERROR;
             return;
         }
 
         try {
-            this.writeToCommsManager(this.request);
+            this.writeToCommsManager(this.command);
         } catch (BroadcastException e) {
             statusHandler.error("Failed to start live broadcast!", e);
             this.state = BROADCAST_STATE.ERROR;
@@ -199,21 +221,24 @@ public class LiveBroadcastThread extends Thread implements
         try {
             responseObject = this.readFromCommsManager();
         } catch (BroadcastException e) {
-            statusHandler.error("Failed to start live broadcast!", e);
-            this.state = BROADCAST_STATE.ERROR;
+            if (this.state != BROADCAST_STATE.STOPPED
+                    && this.state != BROADCAST_STATE.ERROR) {
+                statusHandler.error("Failed to start live broadcast!", e);
+                this.state = BROADCAST_STATE.ERROR;
+            }
             return;
         }
 
-        if (responseObject instanceof LiveBroadcastClientStatus) {
-            LiveBroadcastClientStatus response = (LiveBroadcastClientStatus) responseObject;
-            if (response.getStatus() == STATUS.READY) {
+        if (responseObject instanceof BroadcastStatus) {
+            BroadcastStatus status = (BroadcastStatus) responseObject;
+            if (status.getStatus() == true) {
                 this.state = BROADCAST_STATE.LIVE;
-                this.broadcastId = response.getBroadcastId();
-            } else if (response.getStatus() == STATUS.FAILED) {
+                this.broadcastId = status.getBroadcastId();
+            } else if (status.getStatus() == false) {
                 this.state = BROADCAST_STATE.ERROR;
                 this.notifyListener();
                 statusHandler.error("Failed to start live broadcast! REASON = "
-                        + response.getDetail());
+                        + status.getMessage(), status.getException());
             }
         } else {
             BroadcastException exc = new BroadcastException(
@@ -224,10 +249,13 @@ public class LiveBroadcastThread extends Thread implements
         }
     }
 
-    private synchronized void writeToCommsManager(Object object)
+    private synchronized void writeToCommsManager(Object broadcastMsg)
             throws BroadcastException {
+        if (this.socket == null || this.socket.isClosed()) {
+            return;
+        }
         try {
-            SerializationUtil.transformToThriftUsingStream(object,
+            SerializationUtil.transformToThriftUsingStream(broadcastMsg,
                     this.socket.getOutputStream());
         } catch (SerializationException | IOException e) {
             throw new BroadcastException(
@@ -250,12 +278,15 @@ public class LiveBroadcastThread extends Thread implements
     }
 
     public void halt() {
-        LiveBroadcastStopRequest request = new LiveBroadcastStopRequest();
-        request.setBroadcastId(this.broadcastId);
+        LiveBroadcastCommand command = new LiveBroadcastCommand();
+        command.setBroadcastId(this.broadcastId);
+        command.setMsgSource(ILiveBroadcastMessage.SOURCE_VIZ);
+        command.setTransmitterGroups(this.command.getTransmitterGroups());
+        command.setAction(ACTION.STOP);
 
         this.state = BROADCAST_STATE.STOPPED;
         try {
-            this.writeToCommsManager(request);
+            this.writeToCommsManager(command);
         } catch (BroadcastException e) {
             statusHandler.error("Failed to stop live broadcast!", e);
             this.state = BROADCAST_STATE.ERROR;
@@ -279,12 +310,19 @@ public class LiveBroadcastThread extends Thread implements
 
     @Override
     public void audioReady(byte[] audioData) {
-        BroadcastAudioRequest request = new BroadcastAudioRequest();
-        request.setBroadcastId(this.broadcastId);
-        request.setAudioData(audioData);
+        if (this.state == BROADCAST_STATE.ERROR
+                || this.state == BROADCAST_STATE.STOPPED) {
+            return;
+        }
+
+        LiveBroadcastPlayCommand playCommand = new LiveBroadcastPlayCommand();
+        playCommand.setMsgSource(ILiveBroadcastMessage.SOURCE_VIZ);
+        playCommand.setBroadcastId(this.broadcastId);
+        playCommand.setTransmitterGroups(this.command.getTransmitterGroups());
+        playCommand.setAudio(audioData);
 
         try {
-            this.writeToCommsManager(request);
+            this.writeToCommsManager(playCommand);
         } catch (BroadcastException e) {
             statusHandler.error(
                     "Failed to stream audio during live broadcast!", e);

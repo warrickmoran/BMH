@@ -62,6 +62,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 8, 2014   #3657     bkowal       Implemented audio recording and playback.
  * Oct 10, 2014  #3656     bkowal       Adjustments to allow for extension.
  * Oct 16, 2014  #3657     bkowal       Block until close to capture recorded audio.
+ * Oct 21, 2014  #3655     bkowal       Handle forced dialog closures.
  * 
  * 
  * </pre>
@@ -127,6 +128,14 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     /** Play button. */
     protected Button playBtn;
 
+    /*
+     * TODO: may want to update okBtn so that it is only enabled after a
+     * successful recording / broadcast.
+     */
+    protected Button okBtn;
+
+    protected Button cancelBtn;
+
     private enum RecordPlayStatus {
         RECORD, PLAY, STOP
     };
@@ -145,7 +154,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
 
     private AudioPlaybackThread playbackThread;
 
-    private ByteBuffer recordedAudio;
+    protected ByteBuffer recordedAudio;
 
     /**
      * Constructor.
@@ -185,11 +194,21 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         elapsedTimeFont.dispose();
         if (this.playbackThread != null) {
             this.playbackThread.dispose();
+            try {
+                this.playbackThread.join();
+            } catch (InterruptedException e) {
+                // Do Nothing.
+            }
+            this.playbackThread = null;
         }
         if (this.recorderThread != null) {
             this.recorderThread.halt();
+            try {
+                this.recorderThread.join();
+            } catch (InterruptedException e) {
+                // Do Nothing.
+            }
         }
-        this.setReturnValue(this.recordedAudio);
     }
 
     @Override
@@ -331,24 +350,26 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
 
         GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        Button okBtn = new Button(buttonComp, SWT.PUSH);
+        okBtn = new Button(buttonComp, SWT.PUSH);
         okBtn.setText("OK");
         okBtn.setLayoutData(gd);
         okBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                setReturnValue(recordedAudio);
                 close();
             }
         });
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        Button cancelBtn = new Button(buttonComp, SWT.PUSH);
+        cancelBtn = new Button(buttonComp, SWT.PUSH);
         cancelBtn.setText("Cancel");
         cancelBtn.setLayoutData(gd);
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                setReturnValue(null);
                 close();
             }
         });
@@ -408,6 +429,9 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      *            the optional audio recording listener.
      */
     protected void recordAction(final IAudioRecorderListener listener) {
+        if (this.isDisposed()) {
+            return;
+        }
         resetRecordPlayValues();
         try {
             this.recorderThread = new AudioRecorderThread(SAMPLE_COUNT);
@@ -418,6 +442,8 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         this.recorderThread.setRecordingListener(listener);
         this.recordingProgBar.setMaximum(this.maxRecordingSeconds);
         this.recordPlayStatus = RecordPlayStatus.RECORD;
+        okBtn.setEnabled(false);
+        cancelBtn.setEnabled(false);
         stopBtn.setEnabled(true);
         recBtn.setEnabled(false);
         playBtn.setEnabled(false);
@@ -447,10 +473,17 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
                 // Ignore.
             }
         }
+        if (this.isDisposed()) {
+            return;
+        }
         shutdownTimer();
         recBtn.setEnabled(true);
         playBtn.setEnabled(true);
         stopBtn.setEnabled(false);
+        if (this.recordedAudio != null) {
+            this.okBtn.setEnabled(true);
+        }
+        this.cancelBtn.setEnabled(true);
         this.recordPlayStatus = RecordPlayStatus.STOP;
     }
 
@@ -471,6 +504,9 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         this.playbackThread.start();
         recBtn.setEnabled(false);
         stopBtn.setEnabled(true);
+        if (this.isDisposed()) {
+            return;
+        }
         resetRecordPlayValues();
         timer = Executors.newSingleThreadScheduledExecutor();
         timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, updateRate,

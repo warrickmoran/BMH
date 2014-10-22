@@ -17,15 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.comms;
+package com.raytheon.uf.common.bmh.broadcast;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Request object sent to the comms manager with audio that should be streamed
- * by the existing {@link BroadcastStreamTask} associated with the specified
- * {@code BroadcastAudioRequest#broadcastId}.
+ * Used to report status information about the live broadcast - both good and
+ * bad.
  * 
  * <pre>
  * 
@@ -33,7 +32,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 10, 2014 3656       bkowal      Initial creation
+ * Oct 20, 2014 3655       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -41,47 +40,33 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class BroadcastAudioRequest {
+public class BroadcastStatus extends AbstractLiveBroadcastMessage {
 
     @DynamicSerializeElement
-    private String broadcastId;
+    private String message;
 
     @DynamicSerializeElement
-    private byte[] audioData;
+    private Exception exception;
 
     /**
      * 
      */
-    public BroadcastAudioRequest() {
+    public BroadcastStatus() {
     }
 
-    /**
-     * @return the broadcastId
-     */
-    public String getBroadcastId() {
-        return broadcastId;
+    public String getMessage() {
+        return message;
     }
 
-    /**
-     * @param broadcastId
-     *            the broadcastId to set
-     */
-    public void setBroadcastId(String broadcastId) {
-        this.broadcastId = broadcastId;
+    public void setMessage(String message) {
+        this.message = message;
     }
 
-    /**
-     * @return the audioData
-     */
-    public byte[] getAudioData() {
-        return audioData;
+    public Exception getException() {
+        return exception;
     }
 
-    /**
-     * @param audioData
-     *            the audioData to set
-     */
-    public void setAudioData(byte[] audioData) {
-        this.audioData = audioData;
+    public void setException(Exception exception) {
+        this.exception = exception;
     }
 }

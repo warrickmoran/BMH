@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
+import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
@@ -39,7 +40,6 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
 
 /**
  * 
@@ -63,6 +63,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
  * Sep 23, 2014  3485     bsteffen    Ensure the manager gets notified of any state changes.
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * Oct 16, 2014  3687     bsteffen    Fix disconnect of dac transmits not connected to dac.
+ * Oct 21, 2014  3655     bkowal      Use the new message types.
  * 
  * </pre>
  * 
@@ -153,8 +154,8 @@ public class DacTransmitCommunicator extends Thread {
             manager.errorReceived(notification, groupName);
         } else if (message instanceof DacTransmitShutdown) {
             disconnect();
-        } else if (message instanceof IDacLiveBroadcastMsg) {
-            manager.forwardDacBroadcastMsg((IDacLiveBroadcastMsg) message);
+        } else if (message instanceof ILiveBroadcastMessage) {
+            manager.forwardDacBroadcastMsg((ILiveBroadcastMessage) message);
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",
                     message.getClass().getSimpleName());
@@ -195,8 +196,8 @@ public class DacTransmitCommunicator extends Thread {
     public void sendPlaylistUpdate(PlaylistUpdateNotification notification) {
         send(notification);
     }
-    
-    public void sendLiveBroadcastMsg(IDacLiveBroadcastMsg msg) {
+
+    public void sendLiveBroadcastMsg(ILiveBroadcastMessage msg) {
         send(msg);
     }
 

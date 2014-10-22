@@ -34,20 +34,15 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
-import com.raytheon.uf.common.bmh.comms.BroadcastAudioRequest;
-import com.raytheon.uf.common.bmh.comms.BroadcastProblemMsg;
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastStartData;
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastStopRequest;
-import com.raytheon.uf.common.bmh.comms.StartLiveBroadcastRequest;
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastClientStatus;
-import com.raytheon.uf.common.bmh.comms.LiveBroadcastClientStatus.STATUS;
+import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
+import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
+import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand.ACTION;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.serialization.SerializationUtil;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.LiveBroadcastAudioRequest;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.PrepareLiveBroadcastRequest;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.LiveBroadcastStatus;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.StopLiveBroadcastRequest;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.TriggerLiveBroadcast;
 
 /**
  * Used to manage a live broadcast. Executes the SAME tones and will continue
@@ -62,6 +57,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.TriggerLiveBroadcast;
  * ------------ ---------- ----------- --------------------------
  * Oct 9, 2014  3656       bkowal      Initial creation
  * Oct 15, 2014 3655       bkowal      Support live broadcasting to the DAC.
+ * Oct 21, 2014 3655       bkowal      Use the new message types. Improved
+ *                                     error handling.
  * 
  * </pre>
  * 
@@ -86,15 +83,15 @@ public class BroadcastStreamTask extends Thread {
 
     private final DacTransmitServer dacServer;
 
-    private final StartLiveBroadcastRequest request;
+    private final LiveBroadcastStartCommand command;
 
-    private List<String> managedTransmitterGroups;
+    private List<Transmitter> managedTransmitterGroups;
 
     private volatile boolean live;
 
     private CountDownLatch responseLock;
 
-    private List<IDacLiveBroadcastMsg> responses;
+    private List<ILiveBroadcastMessage> responses;
 
     private volatile STATE state;
 
@@ -102,23 +99,23 @@ public class BroadcastStreamTask extends Thread {
      * 
      */
     public BroadcastStreamTask(final Socket socket,
-            final StartLiveBroadcastRequest request,
+            final LiveBroadcastStartCommand command,
             final BroadcastStreamServer streamingServer,
             final ClusterServer clusterServer, final DacTransmitServer dacServer) {
-        super(determineName(request));
+        super(determineName(command));
         this.socket = socket;
         this.streamingServer = streamingServer;
         this.clusterServer = clusterServer;
         this.dacServer = dacServer;
-        this.request = request;
-        this.managedTransmitterGroups = new ArrayList<>(this.request
+        this.command = command;
+        this.managedTransmitterGroups = new ArrayList<>(this.command
                 .getRequestedTransmitters().size());
     }
 
-    private static String determineName(final StartLiveBroadcastRequest request) {
-        return request.getBroadcastId() == null ? request.getWsid() + "-"
-                + UUID.randomUUID().toString().toUpperCase() : request
-                .getBroadcastId();
+    private static String determineName(final LiveBroadcastStartCommand command) {
+        return command.getMsgSource().equals(
+                ILiveBroadcastMessage.SOURCE_COMMS_MANAGER) ? command
+                .getBroadcastId() : UUID.randomUUID().toString().toUpperCase();
     }
 
     @Override
@@ -130,8 +127,9 @@ public class BroadcastStreamTask extends Thread {
          * First need to notify other Comms Managers of the existence of the
          * streaming task.
          */
-        this.request.setBroadcastId(this.getName());
-        int count = this.clusterServer.sendDataToAll(this.request);
+        this.command.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+        this.command.setBroadcastId(this.getName());
+        int count = this.clusterServer.sendDataToAll(this.command);
 
         // Determine which transmitter(s) we are responsible for.
         /*
@@ -139,9 +137,10 @@ public class BroadcastStreamTask extends Thread {
          * transmitters across multiple systems?
          * ..........................................
          */
-        for (String transmitterGroup : this.request.getRequestedTransmitters()) {
+        for (Transmitter transmitterGroup : this.command
+                .getRequestedTransmitters()) {
             DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup);
+                    .getLocalDacCommunicationKey(transmitterGroup.getMnemonic());
             if (key == null) {
                 continue;
             }
@@ -184,16 +183,17 @@ public class BroadcastStreamTask extends Thread {
          * ALL that can be managed by the cluster members prior to completing
          * this verification when clustering is involved.
          */
-        if (this.managedTransmitterGroups.size() != this.request
+        if (this.managedTransmitterGroups.size() != this.command
                 .getRequestedTransmitters().size()) {
             final String clientMsg = this.buildMissingTransmittersMsg(
                     this.managedTransmitterGroups,
-                    this.request.getRequestedTransmitters());
+                    this.command.getRequestedTransmitters());
 
             // failure
-            this.notifyClientProblem(clientMsg.toString());
-            logger.error("Failed to start broadcast {}! {}", this.getName(),
-                    clientMsg.toString());
+            this.notifyShareholdersProblem(
+                    "Failed to start broadcast " + this.getName() + ". "
+                            + clientMsg.toString(), null,
+                    this.command.getTransmitterGroups());
             return;
         }
 
@@ -207,24 +207,26 @@ public class BroadcastStreamTask extends Thread {
          * notified, the live broadcast will fail.
          */
 
-        for (String transmitterGroup : this.managedTransmitterGroups) {
+        for (Transmitter transmitterGroup : this.managedTransmitterGroups) {
             DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup);
+                    .getLocalDacCommunicationKey(transmitterGroup.getMnemonic());
             if (key == null) {
                 this.dacMsgFailed(transmitterGroup);
                 continue;
             }
-            LiveBroadcastStartData startData = this.request
-                    .getLiveBroadcastDataMap().get(transmitterGroup);
-            if (startData == null) {
+            BroadcastTransmitterConfiguration config = this.command
+                    .getTransmitterConfigurationMap().get(transmitterGroup);
+            if (config == null) {
                 continue;
             }
-            // TODO: simplify messaging with an ACTION enum.
-            PrepareLiveBroadcastRequest request = new PrepareLiveBroadcastRequest();
-            request.setBroadcastId(this.getName());
-            request.setData(startData);
+            LiveBroadcastStartCommand startCommand = new LiveBroadcastStartCommand();
+            startCommand.setBroadcastId(this.getName());
+            startCommand
+                    .setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+            startCommand.addTransmitterConfiguration(config);
+            startCommand.addTransmitter(transmitterGroup);
 
-            this.dacServer.sendToDac(key, request);
+            this.dacServer.sendToDac(key, startCommand);
         }
 
         this.responseLock = new CountDownLatch(
@@ -247,16 +249,18 @@ public class BroadcastStreamTask extends Thread {
 
         this.state = STATE.TRIGGER;
         this.noteStateTransition();
-        for (String transmitterGroup : this.managedTransmitterGroups) {
+        for (Transmitter transmitterGroup : this.managedTransmitterGroups) {
             DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup);
+                    .getLocalDacCommunicationKey(transmitterGroup.getMnemonic());
             if (key == null) {
                 this.dacMsgFailed(transmitterGroup);
                 continue;
             }
-            TriggerLiveBroadcast trigger = new TriggerLiveBroadcast();
-            trigger.setBroadcastId(this.request.getBroadcastId());
-            this.dacServer.sendToDac(key, trigger);
+            LiveBroadcastCommand command = new LiveBroadcastCommand();
+            command.setBroadcastId(this.getName());
+            command.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+            command.setAction(ACTION.TRIGGER);
+            this.dacServer.sendToDac(key, command);
         }
 
         this.responseLock = new CountDownLatch(
@@ -285,24 +289,29 @@ public class BroadcastStreamTask extends Thread {
          * All SAME tones were submitted successfully. Notify the client and
          * prepare to start streaming audio.
          */
-        LiveBroadcastClientStatus response = new LiveBroadcastClientStatus();
-        response.setBroadcastId(this.getName());
-        response.setStatus(STATUS.READY);
-        response.setTransmitterGroups(this.managedTransmitterGroups
-                .toArray(new String[0]));
+        BroadcastStatus status = new BroadcastStatus();
+        status.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+        status.setStatus(true);
+        status.setBroadcastId(this.getName());
+        status.setTransmitterGroups(this.managedTransmitterGroups);
 
         this.state = STATE.LIVE;
         this.noteStateTransition();
-        this.live = this.sendClientReplyMessage(response);
+        this.live = this.sendClientReplyMessage(status);
         while (this.live) {
             Object object = null;
             try {
                 object = SerializationUtil.transformFromThrift(Object.class,
                         this.socket.getInputStream());
             } catch (Exception e) {
-                this.notifyMembersProblem(e);
+                this.notifyShareholdersProblem(
+                        "Failed to read data from the socket connection.", e,
+                        this.command.getTransmitterGroups());
+                this.live = false;
             }
-            this.handleMessageInternal(object);
+            if (object instanceof ILiveBroadcastMessage) {
+                this.handleMessageInternal((ILiveBroadcastMessage) object);
+            }
         }
 
         /*
@@ -339,49 +348,35 @@ public class BroadcastStreamTask extends Thread {
         }
 
         if (ready == false) {
-            logger.error("Failed to receive a response from all transmitters in a reasonable amount of time.");
-            this.notifyClientProblem("Failed to receive a response from all transmitters in a reasonable amount of time.");
-            this.notifyMembersProblem("Failed to receive a response from all transmitters in a reasonable amount of time.");
+            this.notifyShareholdersProblem(
+                    "Failed to receive a response from all transmitters in a reasonable amount of time.",
+                    null, this.command.getTransmitterGroups());
             return ready;
         }
 
-        List<String> readyTransmitters = new ArrayList<String>(
+        List<Transmitter> readyTransmitters = new ArrayList<Transmitter>(
                 this.managedTransmitterGroups.size());
-        List<String> clientResponseMsgs = new ArrayList<>(this.responses.size());
         // analyze the responses to our latest request.
         synchronized (this.responses) {
-            for (IDacLiveBroadcastMsg responseMsg : this.responses) {
-                LiveBroadcastStatus responseImpl = (LiveBroadcastStatus) responseMsg;
+            for (ILiveBroadcastMessage responseMsg : this.responses) {
+                BroadcastStatus status = (BroadcastStatus) responseMsg;
 
-                if (responseImpl.isReady() == false) {
-                    StringBuilder clientMsg = new StringBuilder("Transmitter ");
-                    clientMsg.append(responseImpl.getTransmitterGroup())
-                            .append(": ").append(responseImpl.getDetail())
-                            .append(".");
-                    clientResponseMsgs.add(clientMsg.toString());
-                    this.notifyClientProblem(clientMsg.toString());
-                    logger.error("Failed to start broadcast {}! {}",
-                            this.getName(), clientMsg.toString());
+                if (status.getStatus() == false) {
+                    this.notifyShareholdersProblem(status);
                     continue;
                 }
 
                 // verify it is actually one of the transmitters we are
                 // interested in.
-                if (this.managedTransmitterGroups.contains(responseImpl
-                        .getTransmitterGroup())) {
-                    readyTransmitters.add(responseImpl.getTransmitterGroup());
+                for (Transmitter transmitter : status.getTransmitterGroups()) {
+                    if (this.managedTransmitterGroups.contains(transmitter)) {
+                        readyTransmitters.add(transmitter);
+                    }
                 }
             }
         }
 
-        if (clientResponseMsgs.isEmpty() == false) {
-            StringBuilder clientMsg = new StringBuilder(
-                    "Failed to start the broadcast due to the following issues with the listed transmitters:");
-            for (String msg : clientResponseMsgs) {
-                clientMsg.append("\n* ").append(msg);
-            }
-            this.notifyClientProblem(clientMsg.toString());
-
+        if (ready == false) {
             return false;
         }
 
@@ -389,29 +384,29 @@ public class BroadcastStreamTask extends Thread {
         if (readyTransmitters.size() != this.managedTransmitterGroups.size()) {
             final String clientMsg = this.buildMissingTransmittersMsg(
                     readyTransmitters, this.managedTransmitterGroups);
-            this.notifyClientProblem(clientMsg);
-            this.notifyMembersProblem(clientMsg);
-            logger.error("Failed to start broadcast {}! {}", this.getName(),
-                    clientMsg);
+            this.notifyShareholdersProblem(
+                    "Failed to start broadcast " + this.getName() + "! "
+                            + clientMsg, null,
+                    this.command.getTransmitterGroups());
             return false;
         }
 
         return true;
     }
 
-    private String buildMissingTransmittersMsg(final List<String> actual,
-            final Collection<String> expected) {
+    private String buildMissingTransmittersMsg(final List<Transmitter> actual,
+            final Collection<Transmitter> expected) {
         StringBuilder clientMsg = new StringBuilder(
                 "Unable to access the following transmitters: ");
         int counter = 0;
-        for (String transmitterGroup : expected) {
+        for (Transmitter transmitterGroup : expected) {
             if (actual.contains(transmitterGroup) == false) {
                 if (counter > 0) {
                     clientMsg.append(", ");
                 }
-                clientMsg.append(transmitterGroup);
+                clientMsg.append(transmitterGroup.getMnemonic());
+                ++counter;
             }
-            ++counter;
         }
         clientMsg.append(".");
 
@@ -428,48 +423,61 @@ public class BroadcastStreamTask extends Thread {
      *            the reply msg to send
      * @return true if the reply was successful; false, otherwise
      */
-    public synchronized boolean sendClientReplyMessage(Object msg) {
+    private synchronized boolean sendClientReplyMessage(BroadcastStatus msg) {
         try {
             SerializationUtil.transformToThriftUsingStream(msg,
                     this.socket.getOutputStream());
-        } catch (Throwable e) {
-            this.notifyMembersProblem(e);
+        } catch (Exception e) {
+            final String errorText = "Failed to send reply message "
+                    + msg.getClass().getName() + " to the client.";
+
+            logger.error(errorText, e);
+            BroadcastStatus errorStatus = this.buildErrorStatus(errorText, e,
+                    msg.getTransmitterGroups());
+            this.clusterServer.sendDataToAll(errorStatus);
             return false;
         }
 
         return true;
     }
 
-    private void streamDacAudio(byte[] audioData) {
-        logger.info("Streaming {} bytes of audio to the dac (Broadcast {}).",
-                audioData.length, this.getName());
-        LiveBroadcastAudioRequest request = new LiveBroadcastAudioRequest();
-        request.setBroadcastId(this.getName());
-        request.setAudioData(audioData);
+    private void streamDacAudio(LiveBroadcastPlayCommand playCommand) {
+        logger.info("Streaming {} bytes of audio to the dac for Broadcast {}.",
+                playCommand.getAudio().length, this.getName());
+
         // TODO: thread audio data transmissions to the managed dacs.
-        for (String transmitterGroup : this.managedTransmitterGroups) {
-            this.dacServer.sendToDac(this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup), request);
+        for (Transmitter transmitterGroup : this.managedTransmitterGroups) {
+            this.dacServer.sendToDac(
+                    this.streamingServer
+                            .getLocalDacCommunicationKey(transmitterGroup
+                                    .getMnemonic()), playCommand);
         }
     }
 
-    private void handleMessageInternal(Object object) {
-        if (object == null) {
+    private void handleMessageInternal(ILiveBroadcastMessage command) {
+        if (command == null) {
             return;
         }
-        logger.info("Handling {} request (Broadcast {}).", object.getClass()
-                .getName(), this.getName());
-        if (object instanceof BroadcastAudioRequest) {
-            this.clusterServer.sendDataToAll(object);
-            this.handleAudioRequest((BroadcastAudioRequest) object);
-        } else if (object instanceof LiveBroadcastStopRequest) {
-            this.clusterServer.sendDataToAll(object);
-            this.shutdownDacLiveBroadcasts();
-            this.handleStopRequest((LiveBroadcastStopRequest) object);
+        if (command instanceof LiveBroadcastCommand) {
+            LiveBroadcastCommand liveCommand = (LiveBroadcastCommand) command;
+            logger.info("Handling {} command for Broadcast {}.", liveCommand
+                    .getAction().toString(), this.getName());
+            switch (liveCommand.getAction()) {
+            case STOP:
+                this.handleStopCommand(liveCommand);
+                break;
+            case PLAY:
+                this.handlePlayCommand((LiveBroadcastPlayCommand) liveCommand);
+                break;
+            case PREPARE:
+            case TRIGGER:
+                // Do Nothing.
+                break;
+            }
         }
     }
 
-    public void handleDacBroadcastMsg(IDacLiveBroadcastMsg msg) {
+    public void handleDacBroadcastMsg(ILiveBroadcastMessage msg) {
         logger.info("Handling dac live broadcast {} msg (Broadcast {}).", msg
                 .getClass().getName(), this.getName());
         switch (this.state) {
@@ -491,32 +499,17 @@ public class BroadcastStreamTask extends Thread {
             /*
              * Process messages in this state immediately.
              */
-            if (msg instanceof LiveBroadcastStatus) {
+            if (msg instanceof BroadcastStatus) {
                 /*
                  * Set to error state to avoid multiple status notifications.
                  */
-                this.state = STATE.ERROR;
-                LiveBroadcastStatus status = (LiveBroadcastStatus) msg;
-                if (status.isReady() == false) {
-                    /*
-                     * presently all errors indicate that a portion of the
-                     * broadcast has failed to one or multiple transmitters.
-                     */
-                    logger.error(
-                            "A problem has been encountered during live broadcast {}. REASON = {}! Terminating broadcast ...",
-                            this.getName(), status.getDetail());
+                final BroadcastStatus status = (BroadcastStatus) msg;
+                if (status.getStatus() == false) {
+                    this.state = STATE.ERROR;
 
-                    // Notify cluster members.
-                    this.notifyMembersProblem(status.getDetail());
+                    this.notifyShareholdersProblem(status);
 
-                    // Notify the client.
-                    this.notifyClientProblem(status.getDetail());
-
-                    // Stop the current broadcasts.
                     this.shutdownDacLiveBroadcasts();
-
-                    // Stop the broadcast.
-                    this.shutdown();
                 }
             } else {
                 /* message unexpected. */
@@ -534,7 +527,7 @@ public class BroadcastStreamTask extends Thread {
         }
     }
 
-    private void dacMsgFailed(final String transmitterGroup) {
+    private void dacMsgFailed(final Transmitter transmitterGroup) {
         /*
          * TODO: handle. Should the entire live broadcast be stopped? Should
          * other potential comms manager(s) be checked to determine if they can
@@ -542,80 +535,93 @@ public class BroadcastStreamTask extends Thread {
          * continued on the transmitters that are still available?
          */
 
-        this.notifyClientProblem("Broadcast " + this.getName()
+        this.notifyShareholdersProblem("Broadcast " + this.getName()
                 + " is no longer able to communicate with transmitter "
-                + transmitterGroup + ".");
-        logger.error(
-                "Broadcast {} is no longer able to communicate with transmitter {}!",
-                this.getName(), transmitterGroup);
+                + transmitterGroup.getMnemonic() + ".", null, transmitterGroup);
     }
 
     private void shutdownDacLiveBroadcasts() {
         /*
          * Shutdown the transmitter live streams.
          */
-        StopLiveBroadcastRequest request = new StopLiveBroadcastRequest();
-        request.setBroadcastId(this.getName());
-        for (String transmitterGroup : this.managedTransmitterGroups) {
+        LiveBroadcastCommand command = new LiveBroadcastCommand();
+        command.setBroadcastId(this.getName());
+        command.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+        command.setAction(ACTION.STOP);
+
+        for (Transmitter transmitterGroup : this.managedTransmitterGroups) {
             DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup);
+                    .getLocalDacCommunicationKey(transmitterGroup.getMnemonic());
             if (key == null) {
                 this.dacMsgFailed(transmitterGroup);
                 continue;
             }
-            this.dacServer.sendToDac(key, request);
+            this.dacServer.sendToDac(key, command);
         }
     }
 
-    private void notifyMembersProblem(Throwable e) {
-        this.notifyMembersProblem(e.getMessage() != null ? e.getMessage() : e
-                .getLocalizedMessage());
+    private BroadcastStatus buildErrorStatus(final String message,
+            final Exception exception, final List<Transmitter> transmitters) {
+        BroadcastStatus status = new BroadcastStatus();
+        status.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+        status.setBroadcastId(this.getName());
+        status.setStatus(false);
+        status.setTransmitterGroups(transmitters);
+        status.setMessage(message);
+        status.setException(exception);
+
+        return status;
     }
 
-    private void notifyMembersProblem(final String detail) {
-        /*
-         * attempt to notify other comms manager instances.
-         */
-        BroadcastProblemMsg msg = new BroadcastProblemMsg();
-        msg.setBroadcastId(this.getName());
-        msg.setDetail(detail);
-        this.clusterServer.sendDataToAll(msg);
+    private void notifyShareholdersProblem(final String message,
+            final Exception exception, Transmitter transmitter) {
+        List<Transmitter> transmitters = new ArrayList<>(1);
+        transmitters.add(transmitter);
+        this.notifyShareholdersProblem(message, exception, transmitters);
+    }
+
+    private void notifyShareholdersProblem(final String message,
+            final Exception exception, final List<Transmitter> transmitters) {
+        this.notifyShareholdersProblem(this.buildErrorStatus(message,
+                exception, transmitters));
+    }
+
+    private void notifyShareholdersProblem(final BroadcastStatus status) {
+        this.clusterServer.sendDataToAll(status);
+        this.sendClientReplyMessage(status);
+        logger.error(status.getMessage(), status.getException());
 
         /*
          * dropping the connection will propagate back up to the Live Broadcast
          * Thread running on the client machine.
          */
-        this.live = false;
         this.state = STATE.ERROR;
     }
 
-    private void notifyClientProblem(final String detail) {
-        LiveBroadcastClientStatus status = new LiveBroadcastClientStatus();
-        status.setBroadcastId(this.getName());
-        status.setStatus(STATUS.FAILED);
-        status.setDetail(detail);
-        this.sendClientReplyMessage(status);
-    }
-
-    public void handleAudioRequest(BroadcastAudioRequest request) {
+    public void handlePlayCommand(LiveBroadcastPlayCommand playCommand) {
         /*
          * Verify that the request is actually for us.
          */
-        if (request.getBroadcastId().equals(this.getName()) == false) {
+        if (playCommand.getBroadcastId().equals(this.getName()) == false
+                || this.live == false) {
             return;
         }
-        this.clusterServer.sendDataToAll(request);
-        this.streamDacAudio(request.getAudioData());
+        playCommand.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+        this.clusterServer.sendDataToAll(playCommand);
+        this.streamDacAudio(playCommand);
     }
 
-    public void handleStopRequest(LiveBroadcastStopRequest request) {
-        /*
-         * Verify that the request is actually for us.
-         */
-        if (request.getBroadcastId().equals(this.getName()) == false) {
-            return;
+    public void handleStopCommand(LiveBroadcastCommand command) {
+        if (command.getBroadcastId() == null) {
+            /*
+             * In the rare case that the user immediately closes the dialog
+             * after starting a broadcast. Close method is final so it cannot be
+             * prevented.
+             */
+            command.setBroadcastId(this.getName());
         }
-        this.clusterServer.sendDataToAll(request);
+        this.clusterServer.sendDataToAll(command);
+        this.shutdownDacLiveBroadcasts();
         this.live = false;
     }
 

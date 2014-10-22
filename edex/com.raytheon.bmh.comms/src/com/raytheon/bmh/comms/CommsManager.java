@@ -50,6 +50,7 @@ import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.bmh.comms.linetap.LineTapServer;
+import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
@@ -61,7 +62,6 @@ import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
 
 /**
  * 
@@ -93,6 +93,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.IDacLiveBroadcastMsg;
  *                                    Viz to the Comms Manager.
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
+ * Oct 21, 2014  3655     bkowal      Use the new message types.
  * 
  * </pre>
  * 
@@ -641,7 +642,7 @@ public class CommsManager {
                         + e.getErrorMessage(), e.getThrowable());
     }
 
-    public void forwardDacBroadcastMsg(IDacLiveBroadcastMsg msg) {
+    public void forwardDacBroadcastMsg(ILiveBroadcastMessage msg) {
         broadcastStreamServer.handleDacBroadcastMsg(msg);
     }
 
