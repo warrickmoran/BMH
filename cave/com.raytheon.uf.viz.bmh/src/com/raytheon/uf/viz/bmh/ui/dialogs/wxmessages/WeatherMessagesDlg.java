@@ -922,7 +922,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         sameTransmitters.selectCheckboxes(false);
 
         submitMsgBtn.setEnabled(false);
-        changeMsgTypeBtn.setEnabled(false);
+        changeMsgTypeBtn.setEnabled(true);
 
         /*
          * Input Message controls.
