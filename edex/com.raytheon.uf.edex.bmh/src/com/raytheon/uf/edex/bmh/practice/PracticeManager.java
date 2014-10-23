@@ -183,7 +183,16 @@ public class PracticeManager {
                 dac.setReceivePort(31000);
                 dac.setDataPorts(new HashSet<>(Arrays.<Integer> asList(31002,
                         31004, 31006, 31008)));
-                dac.setName(address.getHostName());
+                String name = address.getHostName();
+                if (name != null) {
+                    int index = name.indexOf('.');
+                    if (index > 0) {
+                        name = name.substring(0, index);
+                    }
+                    dac.setName(name);
+                } else {
+                    dac.setName(address.getHostAddress());
+                }
                 dacDao.persist(dac);
                 // TODO if we send notification of dac changes then this needs
                 // to do that.

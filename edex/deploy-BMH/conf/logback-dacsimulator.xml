@@ -5,7 +5,7 @@
          <!--  TODO: Create an environment variable that can be used to discriminate
                between multiple instances of the simulator running on the same system.
           -->
-         <fileNamePattern>${BMH_HOME}/logs/dacsimulator-%d{yyyyMMdd}.log</fileNamePattern>
+         <fileNamePattern>${BMH_HOME}/logs/dacsimulator-${DAC_NAME}-%d{yyyyMMdd}.log</fileNamePattern>
          <maxHistory>30</maxHistory>
       </rollingPolicy> 
 
