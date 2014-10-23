@@ -43,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Sep 11, 2014  3588     bsteffen    Initial creation
+ * Oct 23, 2014  3748     bkowal      Make the TTS Voice optional
  * 
  * </pre>
  * 
@@ -76,7 +77,7 @@ public class BroadcastFragment {
     private String ssml;
 
     /* The Voice that should be used to transform the SSML text. */
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = true)
     @JoinColumn(name = "voice_id")
     @DynamicSerializeElement
     private TtsVoice voice;

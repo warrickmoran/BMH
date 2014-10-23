@@ -107,5 +107,13 @@
             value="com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest" />
         <constructor-arg ref="forceSuiteHandler" />
     </bean>
+    
+    <bean id="newBroadcastMsgHandler" class="com.raytheon.uf.edex.bmh.handler.NewBroadcastMsgHandler" 
+    	init-method="initialize" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest" />
+        <constructor-arg ref="newBroadcastMsgHandler" />
+    </bean>
 
 </beans>

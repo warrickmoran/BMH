@@ -21,8 +21,10 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -48,6 +50,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -92,6 +95,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 18, 2014  #3728     lvenable     Hooked in more functionality.
  * Oct 21, 2014   #3728    lvenable     Added code for area selection and populating the input message controls.
  * Oct 21, 2014   #3728    lvenable     Added Preview and Play buttons.
+ * Oct 23, 2014   #3748    bkowal       Support sending weather messages to the server so that
+ *                                      they can be broadcasted (initial implementation).
  * 
  * </pre>
  * 
@@ -191,6 +196,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
     /** Message text selected from file. */
     private String messageContent = null;
+
+    /** Recorded or retrieved audio associated with the message. */
+    private byte[] messageAudio = null;
 
     /**
      * Constructor.
@@ -746,6 +754,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                  * can we submit again? -- clear the dialog? -- what happens if
                  * I record voice for microphone and load a file?
                  */
+                handleSubmitAction();
             }
         });
     }
@@ -782,6 +791,40 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         }
 
         return cld;
+    }
+
+    private void handleSubmitAction() {
+        // TODO: dialog validation! - both text content and audio content
+
+        // TODO: need to handle submits of audio messages.
+
+        /*
+         * WARNING: this partial implementation may only demonstrate altering
+         * the message content.
+         */
+
+        NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
+
+        this.userInputMessage.setName(this.msgNameTF.getText());
+        this.userInputMessage.setContent(this.messageContent);
+        if (this.microphoneRdo.getSelection()) {
+            request.setMessageAudio(this.messageAudio);
+        }
+
+        request.setInputMessage(this.userInputMessage);
+
+        List<Transmitter> selectedTransmitters = new ArrayList<Transmitter>();
+        for (String transmitterMnemonic : this.sameTransmitters
+                .getCheckedItems().getCheckedItems()) {
+            selectedTransmitters.add(this.transmitterMap
+                    .get(transmitterMnemonic));
+        }
+        request.setSelectedTransmitters(selectedTransmitters);
+        try {
+            BmhUtils.sendRequest(request);
+        } catch (Exception e) {
+            statusHandler.error("Failed to submit the weather message.", e);
+        }
     }
 
     /**
@@ -868,6 +911,20 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      */
     private void handleContentsMicrophoneAction() {
         RecordPlaybackDlg recPlaybackDlg = new RecordPlaybackDlg(shell, 600);
+        recPlaybackDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue == null) {
+                    return;
+                }
+
+                if (returnValue instanceof ByteBuffer == false) {
+                    return;
+                }
+
+                messageAudio = ((ByteBuffer) returnValue).array();
+            }
+        });
         recPlaybackDlg.open();
 
         // TODO - need to determine if the Play button needs to be enabled....
@@ -955,7 +1012,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         // Input message name.
         msgNameTF.setText("");
         msgNameTF.setEditable(true);
-        msgNameTF.setBackground(null);
 
         /*
          * Message Type Controls
@@ -1006,9 +1062,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
         // Input message name.
         msgNameTF.setText(userInputMessage.getName());
-        msgNameTF.setEditable(false);
-        msgNameTF.setBackground(getDisplay().getSystemColor(
-                SWT.COLOR_WIDGET_BACKGROUND));
 
         /*
          * Message type controls.
@@ -1068,6 +1121,14 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             periodicityDTF.setFieldValue(DateFieldType.SECOND,
                     periodicityValues[3]);
         }
+
+        /*
+         * currently all input messages will always be text.
+         */
+        microphoneRdo.setSelection(false);
+        fromFileRdo.setSelection(true);
+        this.messageContent = im.getContent();
+        this.previewBtn.setEnabled(true);
 
         // TODO : if the input message has audio then we do not want to have the
         // preview button enabled

@@ -63,6 +63,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 10, 2014  2585     bsteffen    Implement MAT
  * Sep 12, 2014  3588     bsteffen    Support audio fragments.
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
+ * Oct 23, 2014  3748     bkowal      Added getBroadcastMsgsByInputMsg.
  * </pre>
  * 
  * @author bkowal
@@ -72,6 +73,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({
         @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID, query = BroadcastMsg.GET_MSGS_BY_AFOS_ID_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE, query = BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY),
+        @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_INPUT_MSG, query = BroadcastMsg.GET_MSGS_BY_INPUT_MSG_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP, query = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosID AND m.inputMessage.expirationTime > :expirationTime AND m.transmitterGroup = :group") })
 @Entity
 @DynamicSerialize
@@ -89,6 +91,10 @@ public class BroadcastMsg {
     public static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE = "getBroadcastMsgsByAfosIdGroupAndLanguage";
 
     protected static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosId AND m.transmitterGroup = :group AND m.inputMessage.language = :language ORDER BY m.inputMessage.creationTime DESC";
+
+    public static final String GET_MSGS_BY_INPUT_MSG = "getBroadcastMsgsByInputMsg";
+
+    protected static final String GET_MSGS_BY_INPUT_MSG_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.id = :inputMsgId";
 
     /* A unique auto-generated numerical id. Long = SQL BIGINT */
     @Id

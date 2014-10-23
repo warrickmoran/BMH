@@ -19,11 +19,19 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
 import com.raytheon.uf.common.bmh.request.InputMessageResponse;
+import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 
 /**
@@ -36,6 +44,7 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 16, 2014  #3728     lvenable     Initial creation
+ * Oct 23, 2014  #3748     bkowal       Retrieve audio for audio input messages
  * 
  * </pre>
  * 
@@ -113,14 +122,81 @@ public class InputMessageHandler extends
      * @param request
      *            Input Message request.
      * @return Input message response containing the requested information.
+     * @throws AudioRetrievalException
      */
-    private InputMessageResponse getByPkId(InputMessageRequest request) {
+    private InputMessageResponse getByPkId(InputMessageRequest request)
+            throws AudioRetrievalException {
         InputMessageDao dao = new InputMessageDao(request.isOperational());
         InputMessageResponse response = new InputMessageResponse();
 
-        InputMessage im = dao.getByID((int) request.getPkId());
+        InputMessage im = dao.getByID(request.getPkId());
+        // retrieve audio
         response.addInputMessage(im);
 
         return response;
+    }
+
+    private byte[] getAudioContent(InputMessageRequest request)
+            throws AudioRetrievalException {
+        // TODO: finalize retrieve audio.
+        
+        BroadcastMsgDao broadcastMsgDao = new BroadcastMsgDao(
+                request.isOperational());
+        List<BroadcastMsg> msgs = broadcastMsgDao
+                .getMessagesByInputMsgId(request.getPkId());
+        if (msgs.isEmpty()) {
+            throw new AudioRetrievalException(
+                    "Unable to find a broadcast msg associated with input msg: "
+                            + request.getPkId() + ".");
+        }
+
+        /*
+         * Based on how these messages are currently generated, there should
+         * only be one broadcast msg in the list.
+         */
+        BroadcastMsg broadcastMsg = msgs.get(0);
+        /*
+         * Verify that fragments exist.
+         */
+        if (broadcastMsg.getFragments() == null
+                || broadcastMsg.getFragments().isEmpty()) {
+            throw new AudioRetrievalException(
+                    "Unable to find audio information associated with broadcast msg: "
+                            + broadcastMsg.getId() + " for input msg: "
+                            + request.getPkId() + ".");
+        }
+
+        /*
+         * Based on how these messages are currently generated, there should
+         * only be one broadcast fragment in the list.
+         */
+        BroadcastFragment fragment = broadcastMsg.getFragments().get(0);
+        /*
+         * Verify that file information exists.
+         */
+        if (fragment.getOutputName() == null
+                || fragment.getOutputName().trim().isEmpty()) {
+            throw new AudioRetrievalException(
+                    "Unable to find file information associated with broadcast fragment: "
+                            + fragment.getId()
+                            + " associated with broadcast msg: "
+                            + broadcastMsg.getId() + " for input msg: "
+                            + request.getPkId() + ".");
+        }
+
+        /*
+         * Attempt to retrieve the audio.
+         */
+        Path audioFilePath = Paths.get(fragment.getOutputName());
+        byte[] data = null;
+        try {
+            data = Files.readAllBytes(audioFilePath);
+        } catch (IOException e) {
+            throw new AudioRetrievalException("Failed to read audio file: "
+                    + audioFilePath.toString() + " for input msg: "
+                    + request.getPkId() + ".");
+        }
+
+        return data;
     }
 }
