@@ -46,6 +46,7 @@ import com.raytheon.bmh.dacsimulator.channel.output.DacSimulatedBroadcast;
  * ------------ ---------- ----------- --------------------------
  * Oct 03, 2014  #3688     dgilling     Initial creation
  * Oct 21, 2014  #3688     dgilling     Support packet addressing.
+ * Oct 23, 2014  #3687     bsteffen     Fix rebroadcast timing.
  * 
  * </pre>
  * 
@@ -131,38 +132,31 @@ public class DacRebroadcastThread extends Thread {
 
     @Override
     public void run() {
+        long nextPacketTime = System.currentTimeMillis();
         while (true) {
             try {
-                long nextSleepTime = DEFAULT_CYCLE_TIME;
+                byte[] payload = buildPacket();
+                DatagramPacket packet = new DatagramPacket(payload,
+                        payload.length, destination);
+                socket.send(packet);
 
-                try {
-                    long t0 = System.currentTimeMillis();
-
-                    byte[] payload = buildPacket();
-                    DatagramPacket packet = new DatagramPacket(payload,
-                            payload.length, destination);
-                    socket.send(packet);
-
-                    long t1 = System.currentTimeMillis();
-
-                    nextSleepTime = DEFAULT_CYCLE_TIME - (t1 - t0);
-                    if (nextSleepTime < 0) {
-                        logger.warn("Building rebroadcast packet is taking too long. Audio stream playback may be affected.");
-                        nextSleepTime = 0;
-                    }
-                } catch (IOException e) {
-                    String msg = "Error sending packet to "
-                            + destination.toString() + ".";
-                    logger.error(msg, e);
-                }
-
+            } catch (IOException e) {
+                String msg = "Error sending packet to "
+                        + destination.toString() + ".";
+                logger.error(msg, e);
+            }
+            nextPacketTime += DEFAULT_CYCLE_TIME;
+            long nextSleepTime = nextPacketTime - System.currentTimeMillis();
+            if (nextSleepTime > 1) {
                 try {
                     Thread.sleep(nextSleepTime);
                 } catch (InterruptedException e) {
                     logger.error("Something interrupted our sleep.", e);
                 }
-            } catch (Exception e) {
-                logger.error("Unhandled exception in DacRebroadcastThread.", e);
+            } else {
+                logger.warn(
+                        "Building rebroadcast packet is taking too long({}). Audio stream playback may be affected.",
+                        nextSleepTime);
             }
         }
     }
