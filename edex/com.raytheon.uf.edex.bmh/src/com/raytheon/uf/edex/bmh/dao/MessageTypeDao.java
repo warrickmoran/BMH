@@ -46,6 +46,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
  * Sep 19, 2014  3611     lvenable    Added emergency override.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
+ * Oct 23, 2014  3728     lvenable    Added method to get AFOS IDs by designation.
+ * 
  * </pre>
  * 
  * @author bkowal
@@ -135,8 +137,7 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         @SuppressWarnings("unchecked")
         List<MessageType> types = (List<MessageType>) findByNamedQueryAndNamedParam(
                 MessageType.GET_MESSAGETYPE_FOR_AFOSID,
-                new String[] { "afosid" },
-                new Object[] { afosId });
+                new String[] { "afosid" }, new Object[] { afosId });
         if ((types != null) && !types.isEmpty()) {
             return types.get(0);
         }
@@ -154,10 +155,9 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
      */
     public List<MessageType> getEmergencyOverride(final boolean eoFlag) {
         @SuppressWarnings("unchecked")
-        List<MessageType> types =(List<MessageType>) findByNamedQueryAndNamedParam(
+        List<MessageType> types = (List<MessageType>) findByNamedQueryAndNamedParam(
                 MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE,
-                new String[] { "emergencyOverride" },
-                new Object[] { eoFlag });
+                new String[] { "emergencyOverride" }, new Object[] { eoFlag });
         if (types == null) {
             return Collections.emptyList();
         }
@@ -176,8 +176,7 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
             final Designation designation) {
         List<?> types = findByNamedQueryAndNamedParam(
                 MessageType.GET_MESSAGETYPE_FOR_DESIGNATION,
-                new String[] { "designation" },
-                new Object[] { designation });
+                new String[] { "designation" }, new Object[] { designation });
 
         if ((types == null) || types.isEmpty()) {
             return null;
@@ -213,5 +212,35 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         }
 
         return rval;
+    }
+
+    /**
+     * Get a list of message types that match the specified designation.
+     * 
+     * @param designation
+     *            Message Type designation.
+     * @return List of message types.
+     */
+    @SuppressWarnings("unchecked")
+    public List<MessageType> getAfosIdDesignation(final Designation designation) {
+        List<Object[]> objectList = (List<Object[]>) findByNamedQueryAndNamedParam(
+                MessageType.GET_MESSAGETYPE_AFOSID_DESIGNATION,
+                new String[] { "designation" }, new Object[] { designation });
+
+        if (objectList == null) {
+            return Collections.emptyList();
+        }
+
+        List<MessageType> messageTypeList = new ArrayList<MessageType>(
+                objectList.size());
+
+        for (Object[] objArray : objectList) {
+            MessageType mt = new MessageType();
+            mt.setAfosid((String) objArray[0]);
+            mt.setDesignation(Designation.valueOf((String) objArray[1]));
+            messageTypeList.add(mt);
+        }
+
+        return messageTypeList;
     }
 }

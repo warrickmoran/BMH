@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -36,6 +37,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest.InputMessageAction;
 import com.raytheon.uf.common.bmh.request.InputMessageResponse;
@@ -49,6 +51,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
@@ -64,6 +67,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 16, 2014  #3728     lvenable     Initial creation
  * Oct 18, 2014  #3728     lvenable     Hooked into database and returns the selected
  *                                      input message.
+ * Oct 23, 2014  #3728     lvenable     Updated to not display input messages for time
+ *                                      announcement message types.
  * 
  * </pre>
  * 
@@ -89,6 +94,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
     private List<InputMessage> inputMessageList = null;
 
     /**
+     * Constructor.
      * 
      * @param parentShell
      */
@@ -286,19 +292,31 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         InputMessageRequest imRequest = new InputMessageRequest();
         imRequest.setAction(InputMessageAction.ListIdNameAfosCreation);
         InputMessageResponse imResponse = null;
+        List<InputMessage> tmpInputMsgList = null;
 
         try {
             imResponse = (InputMessageResponse) BmhUtils.sendRequest(imRequest);
-            inputMessageList = imResponse.getInputMessageList();
+            tmpInputMsgList = imResponse.getInputMessageList();
 
-            if (inputMessageList == null) {
+            if (tmpInputMsgList == null) {
                 inputMessageList = Collections.emptyList();
+                return;
             }
 
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving input messages from the database: ", e);
+            inputMessageList = Collections.emptyList();
             return;
+        }
+
+        inputMessageList = new ArrayList<InputMessage>(tmpInputMsgList.size());
+        Set<String> timeAfosSet = getTimeAnnouncementMessageTypes();
+
+        for (InputMessage im : tmpInputMsgList) {
+            if (timeAfosSet.contains(im.getAfosid()) == false) {
+                inputMessageList.add(im);
+            }
         }
     }
 
@@ -323,5 +341,28 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         }
 
         return inputMessageList.get(0);
+    }
+
+    /**
+     * Get the AFOS IDs of the message types that are time announcement.
+     * 
+     * @return Set of AFOS IDs.
+     */
+    private Set<String> getTimeAnnouncementMessageTypes() {
+        Set<String> timeAnnouncementSet = null;
+
+        MessageTypeDataManager mtdm = new MessageTypeDataManager();
+
+        try {
+            timeAnnouncementSet = mtdm
+                    .getAfosIdsByDesignation(Designation.TimeAnnouncement);
+            return timeAnnouncementSet;
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving message types from the database: ", e);
+
+        }
+
+        return Collections.emptySet();
     }
 }

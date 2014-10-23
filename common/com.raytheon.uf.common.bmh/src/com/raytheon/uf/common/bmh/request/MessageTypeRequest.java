@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.request;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -39,6 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 15, 2014  3610     lvenable    Added GetAfosIdTitle.
  * Sep 19, 2014  3611     lvenable    Added emergency override.
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Oct 23, 2014  3728     lvenable    Added GetAfosDesignation and designation variable.
  * 
  * </pre>
  * 
@@ -48,7 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class MessageTypeRequest extends AbstractBMHServerRequest {
     public enum MessageTypeAction {
-        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle, GetEmergencyOverrideMsgTypes;
+        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle, GetEmergencyOverrideMsgTypes, GetAfosDesignation;
     }
 
     @DynamicSerializeElement
@@ -65,6 +67,9 @@ public class MessageTypeRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private boolean emergencyOverride;
+
+    @DynamicSerializeElement
+    private Designation designation;
 
     /**
      * @return the action
@@ -125,5 +130,13 @@ public class MessageTypeRequest extends AbstractBMHServerRequest {
 
     public void setEmergencyOverride(boolean emergencyOverride) {
         this.emergencyOverride = emergencyOverride;
+    }
+
+    public Designation getDesignation() {
+        return designation;
+    }
+
+    public void setDesignation(Designation designation) {
+        this.designation = designation;
     }
 }
