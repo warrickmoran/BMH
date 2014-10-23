@@ -2,9 +2,11 @@ package com.raytheon.uf.common.bmh;
 
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.diff.LoggerUtils;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 
 /**
  * This software was developed and / or modified by Raytheon Company,
@@ -96,12 +98,14 @@ public class BMHLoggerUtils {
     }
 
     /**
-     * Determine if the two sets are different.
+     * Determine if the two sets are different. Remove once all handlers use
+     * annotation.
      * 
      * @param set1
      * @param set2
      * @return true when sets are different
      */
+    @Deprecated
     public static <T> boolean setsDiffer(Set<T> set1, Set<T> set2) {
         // Null and empty sets are the same.
         if (set1 == null) {
@@ -124,6 +128,14 @@ public class BMHLoggerUtils {
         return false;
     }
 
+    /**
+     * Remove once all handlers converted to use annotation.
+     * 
+     * @param value
+     * @param none
+     * @return
+     */
+    @Deprecated
     public static String nullCheck(String value, String none) {
         if ((value == null) || (value.trim().length() == 0)) {
             return none;
@@ -132,5 +144,28 @@ public class BMHLoggerUtils {
     }
 
     private BMHLoggerUtils() {
+    }
+
+    public static <T> void logSave(boolean isOperational, String user,
+            T oldObj, T newObj) {
+        LoggerUtils.logSave(getSrvLogger(isOperational), user, oldObj, newObj);
+    }
+
+    public static <T> void logDelete(boolean isOperational, String user,
+            T delObj) {
+        LoggerUtils.logDelete(getSrvLogger(isOperational), user, delObj);
+    }
+
+    public static <T> void logDelete(boolean isOperational, String user,
+            T delObj, Priority priority) {
+        IUFStatusHandler logger = getSrvLogger(isOperational);
+        if (!logger.isPriorityEnabled(priority)) {
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("rlf-- User ").append(user).append(" Deleted ")
+                .append(delObj);
+        logger.handle(priority, sb.toString());
     }
 }

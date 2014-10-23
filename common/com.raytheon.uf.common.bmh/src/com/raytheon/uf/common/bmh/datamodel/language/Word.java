@@ -30,7 +30,8 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
-import com.raytheon.uf.common.bmh.BMHLoggerUtils;
+import com.raytheon.uf.common.bmh.diff.DiffKey;
+import com.raytheon.uf.common.bmh.diff.DiffKeyOverride;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
@@ -67,8 +68,11 @@ public class Word {
     // use surrogate key instead
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
+    @DiffKey(position = 3)
     protected int id;
 
+    @DiffKey(position = 2, title = "WORD")
+    @DiffKeyOverride
     @Column(length = 150)
     private String word;
 
@@ -78,6 +82,7 @@ public class Word {
     /** An identifier used to link this Word to its Dictionary */
     @ManyToOne
     @JoinColumn(name = "dictionary", nullable = false)
+    @DiffKey(position = 1)
     private Dictionary dictionary;
 
     public int getId() {
@@ -135,54 +140,5 @@ public class Word {
     public String toString() {
         return "Word [id=" + id + ", word=" + word + ", substitute="
                 + substitute + ", dictionary=" + dictionary.getName() + "]";
-    }
-
-    /**
-     * Get log entry.
-     * 
-     * @param oldWord
-     *            - When null assume this is a new word.
-     * @param user
-     *            - Who is making the change
-     * @return entry - empty string when no differences.
-     */
-    public String logEntry(Word oldWord, String user) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("User ").append(user);
-        if (oldWord == null) {
-            sb.append(" New Word id: ").append(getId()).append(" ")
-                    .append(toString());
-        } else {
-            boolean logChanges = false;
-            sb.append(" Update Word dictionary/word/id: ")
-                    .append(getDictionary().getName()).append("/")
-                    .append(getWord()).append("/").append(getId()).append(" [");
-            if (!getWord().equals(oldWord.getWord())) {
-                BMHLoggerUtils.logFieldChange(sb, "Word", oldWord.getWord(),
-                        getWord());
-                logChanges = true;
-            }
-            if (!getSubstitute().equals(oldWord.getSubstitute())) {
-                BMHLoggerUtils.logFieldChange(sb, "Substitute",
-                        oldWord.getSubstitute(), getSubstitute());
-                logChanges = true;
-            }
-
-            String oldValue = oldWord.getDictionary().getName();
-            String newValue = getDictionary().getName();
-            if (!newValue.equals(oldValue)) {
-                BMHLoggerUtils.logFieldChange(sb, "Dictionary", oldValue,
-                        newValue);
-                logChanges = true;
-            }
-
-            // No changes made
-            if (!logChanges) {
-                return "";
-            }
-
-            sb.setCharAt(sb.length() - 2, ']');
-        }
-        return sb.toString();
     }
 }

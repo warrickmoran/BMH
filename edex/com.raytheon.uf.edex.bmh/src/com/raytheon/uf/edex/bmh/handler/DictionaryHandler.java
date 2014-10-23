@@ -114,10 +114,8 @@ public class DictionaryHandler extends
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            String entry = newDic.logEntry(oldDic, user);
-            if (entry.length() > 0) {
-                logger.info(entry);
-            }
+            BMHLoggerUtils.logSave(request.isOperational(), user, oldDic,
+                    newDic);
         }
         response.setDictionary(request.getDictionary());
 
@@ -135,7 +133,8 @@ public class DictionaryHandler extends
                     .isOperational());
             if (logger.isPriorityEnabled(Priority.INFO)) {
                 String user = BMHLoggerUtils.getUser(request);
-                logger.info("User " + user + " Delete " + dictionary.toString());
+                BMHLoggerUtils.logDelete(request.isOperational(), user,
+                        dictionary);
             }
         }
     }

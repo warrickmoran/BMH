@@ -112,7 +112,8 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            logWordChange(user, oldWord, newWord, logger);
+            BMHLoggerUtils.logSave(request.isOperational(), user, oldWord,
+                    newWord);
         }
 
         return response;
@@ -137,7 +138,8 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            logWordChange(user, oldWord, word, logger);
+            BMHLoggerUtils
+                    .logSave(request.isOperational(), user, oldWord, word);
         }
 
         return response;
@@ -152,15 +154,7 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
                 .isOperational());
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            logger.info("User " + user + " Deleted " + word.toString());
-        }
-    }
-
-    private void logWordChange(String user, Word oldWord, Word newWord,
-            IUFStatusHandler logger) {
-        String entry = newWord.logEntry(oldWord, user);
-        if (entry.length() > 0) {
-            logger.info(entry);
+            BMHLoggerUtils.logDelete(request.isOperational(), user, word);
         }
     }
 }
