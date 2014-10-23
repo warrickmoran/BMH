@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -33,6 +34,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Aug 27, 2014  3173     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Oct 19, 2014  3699     mpduff      Added Dac object
  * 
  * </pre>
  * 
@@ -42,11 +44,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class DacRequest extends AbstractBMHServerRequest {
     public enum DacRequestAction {
-        GetAllDacs
+        GetAllDacs, DeleteDac, SaveDac
     }
 
     @DynamicSerializeElement
     private DacRequestAction action;
+
+    @DynamicSerializeElement
+    private Dac dac;
 
     /**
      * @return the action
@@ -61,5 +66,20 @@ public class DacRequest extends AbstractBMHServerRequest {
      */
     public void setAction(DacRequestAction action) {
         this.action = action;
+    }
+
+    /**
+     * @return the dac
+     */
+    public Dac getDac() {
+        return dac;
+    }
+
+    /**
+     * @param dac
+     *            the dac to set
+     */
+    public void setDac(Dac dac) {
+        this.dac = dac;
     }
 }

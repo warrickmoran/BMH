@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.DacConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
@@ -63,7 +64,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * 
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
- * Oct 21, 2014  2687     bsteffen     Initial creation
+ * Oct 21, 2014  3687     bsteffen     Initial creation
  * 
  * </pre>
  * 
@@ -98,11 +99,27 @@ public class PracticeManager {
      */
     private volatile boolean running = false;
 
-    public void handleNotification(PracticeModeConfigNotification notification) {
+    public void handleModeNotification(
+            PracticeModeConfigNotification notification) {
         if (notification.getType() == ConfigChangeType.Update) {
             handlePracticeStartup();
         } else {
             handlePracticeShutdown();
+        }
+    }
+
+    public void handleDacNotification(DacConfigNotification notification) {
+        try {
+            InetAddress address = InetAddress.getByName(notification
+                    .getAddress());
+            if (NetworkInterface.getByInetAddress(address) != null) {
+                /* This is a local address. */
+                logger.info("Restarting dac simulators.");
+                stopDacSimulators();
+                startDacSimulators();
+            }
+        } catch (UnknownHostException | SocketException e) {
+            logger.error("Unable to process dac notification.");
         }
     }
 
@@ -134,24 +151,9 @@ public class PracticeManager {
         if (running) {
             return;
         }
-        boolean startedDac = false;
-        DacDao dacDao = new DacDao(false);
-        for (Dac dac : dacDao.getAll()) {
-            InetAddress address;
-            try {
-                address = InetAddress.getByName(dac.getAddress());
-                if (NetworkInterface.getByInetAddress(address) != null) {
-                    launchDacSimulator(dac);
-                    startedDac = true;
-                }
-            } catch (UnknownHostException e) {
-                logger.error("Ignoring unknown Host({}) for practice mode.",
-                        dac.getAddress(), e);
-            } catch (SocketException e) {
-                logger.error("Ignoring host({}) for practice mode.",
-                        dac.getAddress(), e);
-            }
-        }
+
+        boolean startedDac = startDacSimulators();
+
         if (!startedDac) {
             NetworkInterface nic = null;
             InetAddress address = null;
@@ -193,15 +195,42 @@ public class PracticeManager {
                 } else {
                     dac.setName(address.getHostAddress());
                 }
-                dacDao.persist(dac);
-                // TODO if we send notification of dac changes then this needs
-                // to do that.
-                launchDacSimulator(dac);
+                logger.info("Creating a new dac for {}", dac.getName());
+                new DacDao(false).persist(dac);
+                try {
+                    BmhMessageProducer.sendConfigMessage(
+                            new DacConfigNotification(ConfigChangeType.Update,
+                                    dac), false);
+                } catch (EdexException | SerializationException e) {
+                    logger.error("Unable to properly configure new dac.", e);
+                }
             }
 
         }
         launchCommsManager();
         running = true;
+    }
+
+    private boolean startDacSimulators() {
+        boolean startedDac = false;
+        DacDao dacDao = new DacDao(false);
+        for (Dac dac : dacDao.getAll()) {
+            InetAddress address;
+            try {
+                address = InetAddress.getByName(dac.getAddress());
+                if (NetworkInterface.getByInetAddress(address) != null) {
+                    launchDacSimulator(dac);
+                    startedDac = true;
+                }
+            } catch (UnknownHostException e) {
+                logger.error("Ignoring unknown Host({}) for practice mode.",
+                        dac.getAddress(), e);
+            } catch (SocketException e) {
+                logger.error("Ignoring host({}) for practice mode.",
+                        dac.getAddress(), e);
+            }
+        }
+        return startedDac;
     }
 
     private synchronized void handlePracticeShutdown() {

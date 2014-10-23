@@ -24,7 +24,11 @@
           <bean ref="serializationUtil" method="transformFromThrift" />
           <filter>
               <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification"</simple>
-              <bean ref="practiceManager" method="handleNotification" />
+              <bean ref="practiceManager" method="handleModeNotification" />
+          </filter>
+          <filter>
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.DacConfigNotification"</simple>
+              <bean ref="practiceManager" method="handleDacNotification" />
           </filter>
         <doCatch>
           <exception>java.lang.Throwable</exception>

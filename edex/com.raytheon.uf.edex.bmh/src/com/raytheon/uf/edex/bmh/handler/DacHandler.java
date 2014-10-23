@@ -22,8 +22,11 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.DacConfigNotification;
 import com.raytheon.uf.common.bmh.request.DacRequest;
 import com.raytheon.uf.common.bmh.request.DacResponse;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 
 /**
@@ -38,6 +41,8 @@ import com.raytheon.uf.edex.bmh.dao.DacDao;
  * Aug 27, 2014  3137     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 19, 2014  3699     mpduff      Added save and delete actions
+ * Oct 22, 2014  3687     bsteffen    Send notifications.
  * 
  * </pre>
  * 
@@ -54,6 +59,18 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
         switch (request.getAction()) {
         case GetAllDacs:
             response = getAllDacs(request);
+            break;
+        case SaveDac:
+            response = saveDac(request);
+            BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
+                    ConfigChangeType.Update, request.getDac()), request
+                    .isOperational());
+            break;
+        case DeleteDac:
+            deleteDac(request);
+            BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
+                    ConfigChangeType.Delete, request.getDac()), request
+                    .isOperational());
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -72,5 +89,20 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
 
         response.setDacList(dacList);
         return response;
+    }
+
+    private DacResponse saveDac(DacRequest request) {
+        DacResponse response = new DacResponse();
+        DacDao dao = new DacDao(request.isOperational());
+        Dac dac = request.getDac();
+        dao.saveOrUpdate(dac);
+        response.addDac(dac);
+
+        return response;
+    }
+
+    private void deleteDac(DacRequest request) {
+        DacDao dao = new DacDao(request.isOperational());
+        dao.delete(request.getDac());
     }
 }
