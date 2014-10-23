@@ -21,9 +21,12 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest.MessageTypeAction;
 import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
@@ -43,6 +46,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Sep 15, 2014   #3610    lvenable    Moved getMessageType functionality into this
  *                                     class from the BroadcastCycleDataManager.
  * Sep 19, 2014   #3611    lvenable    Added method to get emergency override message types.
+ * Oct 23, 2014   #3728    lvenable    Updated for getting AFOS IDs via designation.
  * 
  * </pre>
  * 
@@ -112,6 +116,36 @@ public class MessageTypeDataManager {
         }
 
         return messageTypeList;
+    }
+
+    /**
+     * Get a set of Message Type AFOS IDs by the specified designation.
+     * 
+     * @param designation
+     *            Message Type designation
+     * @return Set of AFOS IDs.
+     * @throws Exception
+     */
+    public Set<String> getAfosIdsByDesignation(Designation designation)
+            throws Exception {
+
+        MessageTypeRequest mtRequest = new MessageTypeRequest();
+        mtRequest.setAction(MessageTypeAction.GetAfosDesignation);
+
+        MessageTypeResponse mtResponse = (MessageTypeResponse) BmhUtils
+                .sendRequest(mtRequest);
+        List<MessageType> messageTypeList = mtResponse.getMessageTypeList();
+
+        if (messageTypeList == null) {
+            return Collections.emptySet();
+        }
+
+        Set<String> afosIdSet = new HashSet<String>(messageTypeList.size(), 1);
+        for (MessageType mt : messageTypeList) {
+            afosIdSet.add(mt.getAfosid());
+        }
+
+        return afosIdSet;
     }
 
     /**

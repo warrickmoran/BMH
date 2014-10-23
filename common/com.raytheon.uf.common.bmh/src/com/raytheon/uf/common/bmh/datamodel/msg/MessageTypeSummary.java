@@ -21,6 +21,8 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.persistence.Transient;
@@ -39,6 +41,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 10, 2014            rjpeter     Initial creation
+ * Oct 23, 2014  #3728     lvenable    Added Enumerated tag for designation
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -116,6 +120,7 @@ public class MessageTypeSummary {
         }
     }
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     public Designation getDesignation() {
         return (parent == null ? designation : parent.getDesignation());

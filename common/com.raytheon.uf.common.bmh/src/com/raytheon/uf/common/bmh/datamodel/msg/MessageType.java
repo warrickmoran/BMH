@@ -25,6 +25,8 @@ import java.util.Set;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -76,6 +78,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 13, 2014 3654       rjpeter     Added additional queries.
  * Oct 16, 2014 3636       rferrel     Add logging.
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
+ * Oct 23, 2014  #3728     lvenable    Added query for getting AFOS IDs by designation.
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -84,6 +88,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_AFOSID_TITLE, query = MessageType.GET_MESSAGETYPE_AFOSID_TITLE_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_AFOSID, query = MessageType.GET_MESSAGETYPE_FOR_AFOSID_QUERY),
+        @NamedQuery(name = MessageType.GET_MESSAGETYPE_AFOSID_DESIGNATION, query = MessageType.GET_MESSAGETYPE_AFOSID_DESIGNATION_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE, query = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, query = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION_QUERY),
         @NamedQuery(name = MessageType.GET_REPLACEMENT_AFOSIDS, query = MessageType.GET_REPLACEMENT_AFOSIDS_QUERY) })
@@ -102,6 +107,10 @@ public class MessageType {
     public static final String GET_MESSAGETYPE_AFOSID_TITLE = "getMessageTypeAfosTitle";
 
     protected static final String GET_MESSAGETYPE_AFOSID_TITLE_QUERY = "select afosid, title FROM MessageType m";
+
+    public static final String GET_MESSAGETYPE_AFOSID_DESIGNATION = "getMessageTypeAfosDesignation";
+
+    protected static final String GET_MESSAGETYPE_AFOSID_DESIGNATION_QUERY = "select afosid, designation FROM MessageType m WHERE m.designation = :designation";
 
     public static final String GET_MESSAGETYPE_FOR_AFOSID = "getMessageTypeForAfosId";
 
@@ -149,6 +158,7 @@ public class MessageType {
     @DynamicSerializeElement
     private boolean interrupt;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @DynamicSerializeElement
     private Designation designation;

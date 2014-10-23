@@ -53,7 +53,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 20, 2014  3636     rferrel     Implement Logging.
- * 
+ * Oct 23, 2014  3728     lvenable    Added method to get AFOS IDs by designation.
  * 
  * </pre>
  * 
@@ -94,6 +94,9 @@ public class MessageTypeHandler extends
         case GetEmergencyOverrideMsgTypes:
             response = getEmergencyOverrideMsgTypes(request);
             break;
+        case GetAfosDesignation:
+            response = getAfosDesignation(request);
+            break;
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -103,6 +106,24 @@ public class MessageTypeHandler extends
 
         BmhMessageProducer.sendConfigMessage(notification,
                 request.isOperational());
+        return response;
+    }
+
+    /**
+     * Get a list of message types that have a specific designation.
+     * 
+     * @param request
+     *            Message Type Request.
+     * @return Message Type Response.
+     */
+    private MessageTypeResponse getAfosDesignation(MessageTypeRequest request) {
+        MessageTypeDao dao = new MessageTypeDao(request.isOperational());
+        MessageTypeResponse response = new MessageTypeResponse();
+
+        List<MessageType> messageTypeList = dao.getAfosIdDesignation(request
+                .getDesignation());
+        response.setMessageTypeList(messageTypeList);
+
         return response;
     }
 
