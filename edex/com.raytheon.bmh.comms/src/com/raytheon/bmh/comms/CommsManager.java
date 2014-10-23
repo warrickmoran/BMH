@@ -412,7 +412,7 @@ public class CommsManager {
         if (jms != null
                 && !config.getJmsConnection().equals(
                         newConfig.getJmsConnection())) {
-            jms.disconnect();
+            jms.close();
             jms = null;
         }
         this.config = newConfig;
@@ -655,7 +655,7 @@ public class CommsManager {
         broadcastStreamServer.shutdown();
         clusterServer.shutdown();
         lineTapServer.shutdown();
-        jms.shutdown();
+        jms.close();
         try {
             transmitServer.join();
             broadcastStreamServer.join();
