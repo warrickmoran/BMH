@@ -41,7 +41,7 @@ import java.util.TimeZone;
  * Aug 18, 2014  #3532     bkowal       Add transmitter decibel range.
  * Sep 4, 2014   #3532     bkowal       Use a decibel target instead of a range.
  * Oct 2, 2014   #3642     bkowal       Add transmitter timezone.
- * 
+ * Oct 22, 2014  #3687     bsteffen    keep original dac hostname
  * </pre>
  * 
  * @author dgilling
@@ -51,6 +51,8 @@ import java.util.TimeZone;
 public final class DacSessionConfig {
 
     private final boolean printHelp;
+
+    private final String dacHostname;
 
     private final InetAddress dacAddress;
 
@@ -69,15 +71,18 @@ public final class DacSessionConfig {
     private final TimeZone timezone;
 
     public DacSessionConfig(boolean printHelp) {
-        this(printHelp, null, -1, -1, null, null, -1, Double.NEGATIVE_INFINITY,
+        this(printHelp, null, null, -1, -1, null, null, -1,
+                Double.NEGATIVE_INFINITY,
                 null);
     }
 
-    public DacSessionConfig(boolean printHelp, InetAddress dacAddress,
+    public DacSessionConfig(boolean printHelp, String dacHostname,
+            InetAddress dacAddress,
             int dataPort, int controlPort, Collection<Integer> transmitters,
             Path inputDirectory, int managerPort, double dbTarget,
             TimeZone timezone) {
         this.printHelp = printHelp;
+        this.dacHostname = dacHostname;
         this.dacAddress = dacAddress;
         this.dataPort = dataPort;
         this.controlPort = controlPort;
@@ -96,8 +101,8 @@ public final class DacSessionConfig {
     @Override
     public String toString() {
         StringBuilder stringBuilder = new StringBuilder(
-                "DacSessionConfig [dacAddress=");
-        stringBuilder.append(this.dacAddress);
+                "DacSessionConfig [dacHostname=");
+        stringBuilder.append(this.dacHostname);
         stringBuilder.append(", dataPort=");
         stringBuilder.append(this.dataPort);
         stringBuilder.append(", controlPort=");
@@ -119,6 +124,23 @@ public final class DacSessionConfig {
         return printHelp;
     }
 
+    /**
+     * The original hostname for the dac as it was received from the command
+     * line. This may be an actual hostname or a string representation of the IP
+     * address. Depending on the format this may be equivelant to
+     * {@link #getDacAddress()}.getHostName() but this is not guaranteed.
+     * 
+     * @return
+     */
+    public String getDacHostname() {
+        return dacHostname;
+    }
+
+    /**
+     * The resolved address of the {@link #dacHostname}.
+     * 
+     * @return
+     */
     public InetAddress getDacAddress() {
         return dacAddress;
     }

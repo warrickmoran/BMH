@@ -59,6 +59,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  *                                      playlist directory.
  * Sep 4, 2014   #3532     bkowal       Use a decibel target instead of a range.
  * Oct 2, 2014   #3642     bkowal       Added transmitter timezone argument.
+ * Oct 22, 2014  #3687     bsteffen    keep original dac hostname
+ * 
  * 
  * </pre>
  * 
@@ -113,11 +115,12 @@ public final class DacTransmitArgParser {
             return new DacSessionConfig(true);
         }
 
+        String dacHostname = null;
         InetAddress dacAddress = null;
         if (cmd.hasOption(DAC_HOSTNAME_OPTION_KEY)) {
             try {
-                dacAddress = InetAddress.getByName(cmd
-                        .getOptionValue(DAC_HOSTNAME_OPTION_KEY));
+                dacHostname = cmd.getOptionValue(DAC_HOSTNAME_OPTION_KEY);
+                dacAddress = InetAddress.getByName(dacHostname);
             } catch (UnknownHostException e) {
                 throw new ParseException("Invalid DAC address specified: "
                         + e.getLocalizedMessage());
@@ -205,9 +208,9 @@ public final class DacTransmitArgParser {
                             + timezoneStr + ".");
         }
 
-        DacSessionConfig config = new DacSessionConfig(false, dacAddress,
-                dataPort, controlPort, transmitters, inputDirectory,
-                managerPort, dbTarget, timeZone);
+        DacSessionConfig config = new DacSessionConfig(false, dacHostname,
+                dacAddress, dataPort, controlPort, transmitters,
+                inputDirectory, managerPort, dbTarget, timeZone);
         return config;
     }
 

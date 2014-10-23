@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
+import com.raytheon.bmh.comms.dactransmit.DacTransmitCommunicator;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
@@ -50,7 +51,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Oct 15, 2014 3655       bkowal      Support live broadcasting to the DAC.
  * Oct 21, 2014 3655       bkowal      Use the new message types. Improved
  *                                     error handling.
- * 
+ * Oct 22, 2014 3687       bsteffen    Fix NPE in edge case.
  * 
  * </pre>
  * 
@@ -154,6 +155,13 @@ public class BroadcastStreamServer extends AbstractServerThread {
     }
 
     public void dacDisconnected(final DacTransmitKey key, final String group) {
+        if (group == null) {
+            /*
+             * Can occur if the config is changed while comms manager is
+             * rebooting and dac transmits are running.
+             */
+            return;
+        }
         this.availableDacConnectionsMap.remove(group, key);
     }
 

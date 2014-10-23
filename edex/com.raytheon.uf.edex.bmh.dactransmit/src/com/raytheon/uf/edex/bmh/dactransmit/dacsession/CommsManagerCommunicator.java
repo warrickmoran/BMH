@@ -79,6 +79,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * Oct 21, 2014  3655     bkowal      Use the new message types.
  * Oct 21, 2014  3655     bkowal      Support LiveBroadcastSwitchNotification.
+ * Oct 22, 2014  3687     bsteffen    Send hostname instead of address back to comms manager.
  * 
  * </pre>
  * 
@@ -138,8 +139,8 @@ public final class CommsManagerCommunicator extends Thread {
 
                             DacTransmitRegister registration = new DacTransmitRegister(
                                     config.getInputDirectory().toString(),
-                                    config.getDataPort(), config
-                                            .getDacAddress().getHostAddress(),
+                                    config.getDataPort(),
+                                    config.getDacHostname(),
                                     Ints.toArray(config.getTransmitters()),
                                     config.getDbTarget());
                             SerializationUtil.transformToThriftUsingStream(
