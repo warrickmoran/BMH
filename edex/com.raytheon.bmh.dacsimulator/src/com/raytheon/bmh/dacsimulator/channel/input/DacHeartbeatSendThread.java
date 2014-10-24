@@ -73,6 +73,7 @@ import com.raytheon.bmh.dacsimulator.events.SyncObtainedEvent;
  * ------------ ---------- ----------- --------------------------
  * Oct 15, 2014  #3688     dgilling     Initial creation
  * Oct 21, 2014  #3688     dgilling     Use output channels to get voice status.
+ * Oct 24, 2014  #3688     dgilling     Fix ability to disconnect/reconnect.
  * 
  * </pre>
  * 
@@ -106,6 +107,10 @@ public class DacHeartbeatSendThread extends Thread {
 
     private final DacSimulatedBroadcast broadcaster;
 
+    private volatile boolean keepRunning;
+
+    private Object wakeMonitor;
+
     /**
      * Constructor.
      * 
@@ -135,31 +140,47 @@ public class DacHeartbeatSendThread extends Thread {
         this.broadcaster = broadcaster;
         this.eventBus = eventBus;
         this.eventBus.register(this);
+        this.keepRunning = true;
+        this.wakeMonitor = new Object();
     }
 
     @Override
     public void run() {
-        while (hasSync.get()) {
+        while (keepRunning) {
             try {
-                String heartbeatMsg = buildHeartbeatMessage();
-                byte[] msgBytes = heartbeatMsg
-                        .getBytes(StandardCharsets.US_ASCII);
-                DatagramPacket packet = new DatagramPacket(msgBytes,
-                        msgBytes.length, syncHost.get(), syncPort.get());
-                try {
-                    socket.send(packet);
-                } catch (IOException e) {
-                    logger.error("Unable to send heartbeat packet to host "
-                            + syncHost.get(), e);
+                synchronized (wakeMonitor) {
+                    wakeMonitor.wait();
                 }
 
-                try {
-                    Thread.sleep(THREAD_CYCLE_TIME);
-                } catch (InterruptedException e) {
-                    logger.warn(
-                            "Something interrupted a sleeping DacHeartbeatSendThread.",
-                            e);
+                while (hasSync.get()) {
+                    try {
+                        String heartbeatMsg = buildHeartbeatMessage();
+                        byte[] msgBytes = heartbeatMsg
+                                .getBytes(StandardCharsets.US_ASCII);
+                        DatagramPacket packet = new DatagramPacket(msgBytes,
+                                msgBytes.length, syncHost.get(), syncPort.get());
+                        try {
+                            socket.send(packet);
+                        } catch (IOException e) {
+                            logger.error(
+                                    "Unable to send heartbeat packet to host "
+                                            + syncHost.get(), e);
+                        }
+
+                        try {
+                            Thread.sleep(THREAD_CYCLE_TIME);
+                        } catch (InterruptedException e) {
+                            logger.warn(
+                                    "Something interrupted a sleeping DacHeartbeatSendThread.",
+                                    e);
+                        }
+                    } catch (Throwable t) {
+                        logger.error(
+                                "Unhandled exception thrown by DacHeartbeatSendThread.",
+                                t);
+                    }
                 }
+
             } catch (Throwable t) {
                 logger.error(
                         "Unhandled exception thrown by DacHeartbeatSendThread.",
@@ -217,7 +238,14 @@ public class DacHeartbeatSendThread extends Thread {
     @Subscribe
     public void handleSyncObtained(SyncObtainedEvent event) {
         setSyncPartner(event.getSyncHost(), event.getSyncPort());
-        start();
+        wakeThread();
+    }
+
+    private void wakeThread() {
+        synchronized (wakeMonitor) {
+            wakeMonitor.notifyAll();
+        }
+
     }
 
     @Subscribe
@@ -226,6 +254,8 @@ public class DacHeartbeatSendThread extends Thread {
     }
 
     public void shutdown() {
+        keepRunning = false;
+        wakeThread();
         eventBus.unregister(this);
         resetSync();
         socket.close();
