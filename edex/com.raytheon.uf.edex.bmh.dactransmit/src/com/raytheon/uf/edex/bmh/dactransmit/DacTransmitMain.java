@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.dactransmit;
 import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
@@ -52,6 +53,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  *                                      caught.
  * Jul 16, 2014  #3286     dgilling     Change execution now that
  *                                      startPlayback() doesn't block.
+ * Oct 24, 2014  #3703     bsteffen     Bridge jul and slf4j.
  * 
  * </pre>
  * 
@@ -80,6 +82,11 @@ public class DacTransmitMain {
         if (sessionConfig != null) {
             if (!sessionConfig.isPrintHelp()) {
                 try {
+                    /*
+                     * The event bus is using java.util.logging but we use slf4j
+                     * logging so an adapter needs to be installed to convert.
+                     */
+                    SLF4JBridgeHandler.install();
                     DacSession session = new DacSession(sessionConfig);
                     session.startPlayback();
                     session.waitForShutdown();
