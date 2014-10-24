@@ -58,6 +58,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DetailsDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.NewEditTransmitterDlg.TransmitterEditType;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -74,6 +75,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 18, 2014    3173    mpduff      Remove "Move To Group" menu item.
  * Aug 24, 2014    3432    mpduff      Handle null ports
  * Sep 23, 2014    3649    rferrel     Changes to handle all types of groups.
+ * Oct 23, 2014    3687    bsteffen    Display dac name instead of id.
  * 
  * </pre>
  * 
@@ -92,7 +94,7 @@ public class TransmitterComp extends Composite implements
     private enum TreeTableColumn {
         GROUP_TRANSMITTER("Group/Transmitter", 125, SWT.LEFT), NAME("Name",
                 125, SWT.LEFT), MNEMONIC("Mnemonic", 125, SWT.CENTER), SERVICE_AREA(
-                "Service Area", 125, SWT.LEFT), DAC_PORT("DAC/Port", 75,
+                "Service Area", 125, SWT.LEFT), DAC_PORT("DAC/Port", 125,
                 SWT.CENTER), STATUS("Status", 85, SWT.LEFT), MODE("Mode", 85,
                 SWT.LEFT);
 
@@ -888,6 +890,8 @@ public class TransmitterComp extends Composite implements
         }
         tree.removeAll();
 
+        DacDataManager dacDataManager = new DacDataManager();
+
         Collections.sort(groups, new TransmitterGroupPositionComparator());
         for (TransmitterGroup group : groups) {
             boolean standAlone = false;
@@ -901,12 +905,23 @@ public class TransmitterComp extends Composite implements
                     }
                 }
             }
+            String dacStr = "N/A";
+            if (group.getDac() != null) {
+                try {
+                    dacStr = dacDataManager.getDacNameById(group.getDac());
+                } catch (Exception e) {
+                    statusHandler.error("Error retreiving DAC information", e);
+                    dacStr = "<error>";
+                }
+            }
+
             TreeItem groupItem = new TreeItem(tree, SWT.NONE);
             StringBuffer sb = new StringBuffer("DAC ");
+
             if (group.getDac() == null) {
                 sb.append("N/A");
             } else {
-                sb.append("#").append(group.getDac());
+                sb.append(dacStr);
             }
             groupItem.setText(new String[] { "Group", group.getName(), "", "",
                     sb.toString() });
@@ -927,10 +942,6 @@ public class TransmitterComp extends Composite implements
                         dacPortStr = String.valueOf(t.getDacPort());
                     }
                     if (standAlone) {
-                        String dacStr = "N/A";
-                        if (group.getDac() != null) {
-                            dacStr = String.valueOf(group.getDac());
-                        }
                         groupItem.setText(new String[] { TRANSMITTER,
                                 t.getName(), t.getMnemonic(),
                                 t.getServiceArea(),

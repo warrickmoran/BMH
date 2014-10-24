@@ -77,6 +77,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.DisconnectListener;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -104,6 +105,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 15, 2014  3716      bkowal      Listen for and update based on Program Config Changes.
  * Oct 17, 2014  3687      bsteffen    Support practice servers.
  * Oct 21, 2014  3655      bkowal      Added support for live broadcast messages.
+ * Oct 23, 2014  3687      bsteffen    Display dac name instead of id.
  * 
  * </pre>
  * 
@@ -423,11 +425,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         gd = new GridData(SWT.RIGHT, SWT.DEFAULT, false, false);
         Label dacLbl = new Label(dacComp, SWT.NONE);
-        dacLbl.setText("DAC #: ");
+        dacLbl.setText("DAC: ");
         dacLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        gd.widthHint = 50;
+        gd.widthHint = 90;
         dacValueLbl = new Label(dacComp, SWT.NONE);
         dacValueLbl.setLayoutData(gd);
 
@@ -820,8 +822,15 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         String dacPort = sb.toString();
         this.portValueLbl.setText(dacPort);
 
-        String dac = String.valueOf(selectedTransmitterGroupObject.getDac());
-        if (dac.equalsIgnoreCase("null")) {
+        String dac = null;
+        try {
+            dac = new DacDataManager()
+                    .getDacNameById(selectedTransmitterGroupObject.getDac());
+        } catch (Exception e) {
+            statusHandler.error("Error retreiving DAC information", e);
+            dac = "<error>";
+        }
+        if (dac == null) {
             dac = NA;
         }
         this.dacValueLbl.setText(dac);

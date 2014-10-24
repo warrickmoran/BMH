@@ -61,8 +61,8 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CreateEditDacConfigDlg.class);
 
-    /** DAC ID label. */
-    private Label dacIdLbl;
+    /** DAC Name text field */
+    private Text dacNameTF;
 
     /** DAC IP text control. */
     private Text dacIpTF;
@@ -152,11 +152,12 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
 
         // DAC ID
         Label dacIdDescLbl = new Label(controlComp, SWT.NONE);
-        dacIdDescLbl.setText("DAC Id:");
+        dacIdDescLbl.setText("DAC Name:");
 
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        dacIdDescLbl = new Label(controlComp, SWT.NONE);
-        dacIdDescLbl.setLayoutData(gd);
+        dacNameTF = new Text(controlComp, SWT.BORDER);
+        dacNameTF.setTextLimit(10);
+        dacNameTF.setLayoutData(gd);
 
         // DAC IP
         Label dacIPDescLbl = new Label(controlComp, SWT.NONE);

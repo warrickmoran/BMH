@@ -21,7 +21,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import java.util.List;
 
-import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -49,6 +48,8 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Aug 18, 2014    3173    mpduff      Added getPrograms()
  * Aug 27, 2014    3432    mpduff      Added dac methods
  * Oct 13, 2014    3654    rjpeter     Updated to use ProgramSummary.
+ * Oct 23, 2014    3687    bsteffen    Remove getDacs().
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -212,18 +213,6 @@ public class TransmitterDataManager {
         return response.getProgramSummaryList();
     }
 
-    /**
-     * Get all {@link Dac}s
-     * 
-     * @return List of Dacs
-     * @throws Exception
-     */
-    public List<Dac> getDacs() throws Exception {
-        DacRequest request = new DacRequest();
-        request.setAction(DacRequestAction.GetAllDacs);
 
-        DacResponse response = (DacResponse) BmhUtils.sendRequest(request);
 
-        return response.getDacList();
-    }
 }

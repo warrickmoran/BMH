@@ -63,6 +63,7 @@ import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramSummaryNameComparator;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -85,6 +86,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 13, 2014     3654   rjpeter     Updated to use ProgramSummary.
  * Oct 18, 2014    #3728   lvenable    Updated to use time zone abbreviations outside
  *                                     the time zone combo box.
+ * Oct 23, 2014     3687   bsteffen    Display dac name instead of id.
  * 
  * </pre>
  * 
@@ -200,7 +202,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     private Combo programCombo;
 
-    private List<Dac> dacList;
+    private DacDataManager dacDataManager;
 
     private final boolean prevIsStandalone;
 
@@ -359,7 +361,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         }
 
         Label dacLbl = new Label(leftComp, SWT.NONE);
-        dacLbl.setText("DAC #: ");
+        dacLbl.setText("DAC: ");
         dacLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
 
         dacCombo = new Combo(leftComp, SWT.BORDER | SWT.READ_ONLY);
@@ -367,7 +369,12 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         dacCombo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                handleDacSelection();
+                try {
+                    handleDacSelection();
+                } catch (Exception exception) {
+                    statusHandler.error("Error retreiving DAC information",
+                            exception);
+                }
             }
         });
         groupControlList.add(dacCombo);
@@ -554,13 +561,14 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         }
 
         try {
-            dacList = dataManager.getDacs();
+            dacDataManager = new DacDataManager();
+            List<Dac> dacList = dacDataManager.getDacs();
             Collections.sort(dacList, new DacComparator());
             if (dacList.size() > 0) {
                 String[] dacs = new String[dacList.size()];
                 for (int i = 0; i < dacList.size(); i++) {
                     Dac d = dacList.get(i);
-                    dacs[i] = String.valueOf(d.getId());
+                    dacs[i] = String.valueOf(d.getName());
                 }
 
                 dacCombo.setItems(dacs);
@@ -588,13 +596,21 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             if (group.getDac() != null) {
                 // TODO - When getting dac numbers from DB need to change this
                 // logic
-                dacCombo.select(dacCombo.indexOf(String.valueOf(group.getDac())));
-                handleDacSelection();
-                Integer dacPort = null;
-                if (transmitter != null) {
-                    dacPort = transmitter.getDacPort();
+                try {
+                    setCboSelect(dacCombo,
+                            dacDataManager.getDacNameById(group.getDac()));
+                    handleDacSelection();
+                    Integer dacPort = null;
+                    if (transmitter != null) {
+                        dacPort = transmitter.getDacPort();
+                    }
+                    setCboSelect(dacPortCbo, dacPort);
+                } catch (Exception e) {
+                    statusHandler.error("Error retrieving Dac data", e);
+                    dacCombo.select(0);
+                    dacPortCbo.setItems(new String[0]);
+                    dacPortCbo.select(0);
                 }
-                setCboSelect(dacPortCbo, dacPort);
             }
 
             setTimeZoneCbo();
@@ -687,13 +703,14 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     /**
      * populate the dacPortCbo based on current dacCombo selection.
      */
-    private void handleDacSelection() {
+    private void handleDacSelection() throws Exception {
         int dac = -1;
         if (dacCombo.getSelectionIndex() > 0) {
-            dac = Integer.parseInt(dacCombo.getText());
+            dac = dacDataManager.getDacIdByName(dacCombo.getText());
 
             // TODO get real data?
             dacPortCbo.setItems(new String[] { "1", "2", "3", "4" });
+
         } else {
             dacPortCbo.setItems(new String[0]);
         }
@@ -703,7 +720,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if ((transmitter == null)
                 || (transmitter.getTransmitterGroup() == null)
                 || (transmitter.getTransmitterGroup().getDac() == null)
-                || (transmitter.getTransmitterGroup().getDac() != dac)) {
+                || (!transmitter.getTransmitterGroup().getDac().equals(dac))) {
             dacPortCbo.select(0);
         } else {
             setCboSelect(dacPortCbo, transmitter.getDacPort());
@@ -813,8 +830,13 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         for (TransmitterGroup tg : groupList) {
             if (tg.getName().equals(groupName)) {
                 group = tg;
-                setCboSelect(dacCombo, group.getDac());
-                handleDacSelection();
+                try {
+                    setCboSelect(dacCombo,
+                            dacDataManager.getDacNameById(group.getDac()));
+                    handleDacSelection();
+                } catch (Exception e) {
+                    statusHandler.error("Error retreiving DAC information", e);
+                }
                 setTimeZoneCbo();
 
                 if (group.getProgram() == null) {
@@ -838,8 +860,14 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if ((transmitter != null)
                 && (transmitter.getTransmitterGroup() != null)
                 && transmitter.getTransmitterGroup().isStandalone()) {
-            setCboSelect(dacCombo, transmitter.getTransmitterGroup().getDac());
-            handleDacSelection();
+            try {
+                setCboSelect(dacCombo,
+                        dacDataManager.getDacNameById(transmitter
+                                .getTransmitterGroup().getDac()));
+                handleDacSelection();
+            } catch (Exception e) {
+                statusHandler.error("Error retreiving DAC information", e);
+            }
             setCboSelect(dacPortCbo, transmitter.getDacPort());
         } else {
             dacCombo.select(0);
@@ -874,10 +902,12 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     transmitter.setCallSign(this.callSignTxt.getText().trim());
                     Integer dac = null;
                     if (this.dacCombo.getSelectionIndex() > 0) {
-                        dac = Integer.parseInt(this.dacCombo.getText());
+                        dac = dacDataManager.getDacIdByName(this.dacCombo
+                                .getText());
                     }
 
-                    if (dac != group.getDac()) {
+                    if ((dac == null && group.getDac() != null)
+                            || (dac != null && !dac.equals(group.getDac()))) {
                         group.setDac(dac);
                         saveGroup = true;
                     }
@@ -975,7 +1005,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     }
                     Integer dac = null;
                     if (dacCombo.getSelectionIndex() > 0) {
-                        dac = new Integer(dacCombo.getText());
+                        dac = dacDataManager.getDacIdByName(dacCombo.getText());
                     }
                     group.setDac(dac);
                     group.setTimeZone(getTimeZoneAbbreviation(timeZoneCbo
@@ -1236,7 +1266,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
         // Check for valid DAC and port.
         if (dacPortCbo.getSelectionIndex() > 0) {
-            Integer dac = Integer.parseInt(this.dacCombo.getText());
+            Integer dac = dacDataManager
+                    .getDacIdByName(this.dacCombo.getText());
             Integer dacPort = new Integer(dacPortCbo.getText());
             List<TransmitterGroup> groups = dataManager.getTransmitterGroups();
 
@@ -1586,4 +1617,5 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
         return "";
     }
+
 }

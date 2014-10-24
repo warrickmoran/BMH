@@ -65,7 +65,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @UniqueConstraint(columnNames = { "name" }),
         @UniqueConstraint(columnNames = { "address" }),
         @UniqueConstraint(columnNames = { "receivePort" }) })
-@SequenceGenerator(initialValue = 1, name = Dac.GEN, sequenceName = "dac_seq")
+@SequenceGenerator(initialValue = 1, name = Dac.GEN, sequenceName = "dac_seq", allocationSize = 1)
 @DynamicSerialize
 public class Dac {
     static final String GEN = "DAC Generator";

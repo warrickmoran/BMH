@@ -21,6 +21,9 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 
 /**
  * Transmitter Utility Class
@@ -32,6 +35,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 8, 2014     3173    mpduff      Initial creation
+ * Oct 23, 2014    3687    bsteffen    Display dac name instead of id.
  * 
  * </pre>
  * 
@@ -40,6 +44,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  */
 
 public class TransmitterUtils {
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(TransmitterUtils.class);
+
     private final String NEWLINE = System.getProperty("line.separator");
 
     private final String TAB = "\t";
@@ -52,10 +59,18 @@ public class TransmitterUtils {
      * @return The string of details
      */
     public String getTransmitterGroupDetails(TransmitterGroup tGroup) {
+        String dacName = null;
+        try {
+            dacName = new DacDataManager().getDacNameById(tGroup.getDac());
+        } catch (Exception e) {
+            statusHandler.error("Error retreiving DAC information", e);
+            dacName = "<error>";
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append("Transmitter Group Name: ").append(tGroup.getName())
                 .append(NEWLINE);
-        sb.append("DAC #: ").append(tGroup.getDac()).append(NEWLINE);
+        sb.append("DAC: ").append(dacName).append(NEWLINE);
         sb.append("Time Zone: ").append(tGroup.getTimeZone()).append(NEWLINE);
         sb.append("Disable Silence Alarm: ").append(tGroup.getSilenceAlarm())
                 .append(NEWLINE);
