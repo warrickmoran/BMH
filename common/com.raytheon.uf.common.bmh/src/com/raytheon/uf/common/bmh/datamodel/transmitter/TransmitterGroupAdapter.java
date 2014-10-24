@@ -41,6 +41,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
  * Aug 24, 2014   3432     mpduff      Add min/max db values
  * Sep 4, 2014    3532     bkowal      Replace min/max db with a target
  * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
+ * Oct 23, 2014 3617       dgilling    Updated for single time zone field.
  * </pre>
  * 
  * @author mpduff
@@ -97,7 +98,6 @@ public class TransmitterGroupAdapter implements
     public static void serializeNoTransmitter(ISerializationContext serializer,
             TransmitterGroup group) throws SerializationException {
         serializer.writeObject(group.getDac());
-        serializer.writeObject(group.getDaylightSaving());
         serializer.writeI32(group.getId());
         serializer.writeString(group.getName());
         serializer.writeObject(group.getPosition());
@@ -120,7 +120,6 @@ public class TransmitterGroupAdapter implements
             IDeserializationContext deserializer) throws SerializationException {
         TransmitterGroup tg = new TransmitterGroup();
         tg.setDac((Integer) deserializer.readObject());
-        tg.setDaylightSaving((Boolean) deserializer.readObject());
         tg.setId(deserializer.readI32());
         tg.setName(deserializer.readString());
         tg.setPosition((int) deserializer.readObject());

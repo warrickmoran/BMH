@@ -48,6 +48,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.BMHTimeZone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Tone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -76,6 +77,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Oct 07, 2014 3642       bkowal      Set a default time message preamble for {@link TransmitterLanguage}
  * Oct 08, 2014 3687       bsteffen    Remove ProgramTrigger.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
+ * Oct 24, 2014  3617      dgilling    Support unified time zone field for transmitter groups.
  * </pre>
  * 
  * @author rjpeter
@@ -441,7 +443,7 @@ public class AsciiFileTranslator {
             reader.nextField();// skip Proc Slot
             trans.setTxStatus(parseBool(reader) ? TxStatus.ENABLED
                     : TxStatus.DISABLED);
-            group.setTimeZone(parseTimeZone(reader).getID());
+            TimeZone baseTZ = parseTimeZone(reader);
 
             Tone tone = new Tone();
             group.setTone(tone);
@@ -451,7 +453,11 @@ public class AsciiFileTranslator {
             tone.setSameToneAmplitude(parseInt(reader));
             tone.setVoiceAmplitude(parseInt(reader));
             reader.nextField();// skip long pause setting
-            group.setDaylightSaving(!parseBool(reader));
+
+            boolean observesDST = !parseBool(reader);
+            TimeZone transmitterTZ = BMHTimeZone.getTimeZone(baseTZ,
+                    observesDST);
+            group.setTimeZone(transmitterTZ.getID());
 
             Dictionary engDict = parseTransmitterDictionary(Language.ENGLISH,
                     reader);
@@ -1316,38 +1322,10 @@ public class AsciiFileTranslator {
         String field = reader.nextField();
 
         try {
-            switch (Integer.parseInt(field)) {
-            case 0:
-                return TimeZone.getTimeZone("GMT");
-            case 1:
-            case 2:
-                return TimeZone.getTimeZone("AST");
-            case 3:
-            case 4:
-                return TimeZone.getTimeZone("EST");
-            case 5:
-            case 6:
-                return TimeZone.getTimeZone("CST");
-            case 7:
-            case 8:
-                return TimeZone.getTimeZone("MST");
-            case 9:
-            case 10:
-                return TimeZone.getTimeZone("PST");
-            case 11:
-            case 12:
-                return TimeZone.getTimeZone("AKST");
-            case 13:
-                return TimeZone.getTimeZone("HAST");
-            case 14:
-                return TimeZone.getTimeZone("ChST");
-            default:
-                throw new ParseException(
-                        "Unrecognized time zone.  Expected 0, 1, 3, 5, 7, 8, 9, 11, 13, or 14 received ["
-                                + field + "]", reader.getCurrentLineNumber(),
-                        reader.getSourceFile());
-            }
-        } catch (NumberFormatException e) {
+            int legacyCode = Integer.parseInt(field);
+            TimeZone tz = BMHTimeZone.getLegacyTimeZone(legacyCode);
+            return tz;
+        } catch (IllegalArgumentException e) {
             throw new ParseException(
                     "Unrecognized time zone.  Expected 0, 1, 3, 5, 7, 9, 11, 13, or 14 received ["
                             + field + "]", reader.getCurrentLineNumber(),

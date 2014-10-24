@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
+import java.util.TimeZone;
+
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -34,8 +36,9 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 8, 2014     3173    mpduff      Initial creation
+ * Aug 08, 2014    3173    mpduff      Initial creation
  * Oct 23, 2014    3687    bsteffen    Display dac name instead of id.
+ * Oct 23, 2014    3617    dgilling    Support unified time zone field.
  * 
  * </pre>
  * 
@@ -71,11 +74,12 @@ public class TransmitterUtils {
         sb.append("Transmitter Group Name: ").append(tGroup.getName())
                 .append(NEWLINE);
         sb.append("DAC: ").append(dacName).append(NEWLINE);
-        sb.append("Time Zone: ").append(tGroup.getTimeZone()).append(NEWLINE);
+        TimeZone timeZone = TimeZone.getTimeZone(tGroup.getTimeZone());
+        sb.append("Time Zone: ").append(timeZone.getID()).append(NEWLINE);
         sb.append("Disable Silence Alarm: ").append(tGroup.getSilenceAlarm())
                 .append(NEWLINE);
         sb.append("No Daylight Savings Time Observed: ")
-                .append(tGroup.getDaylightSaving()).append(NEWLINE);
+                .append(!timeZone.observesDaylightTime()).append(NEWLINE);
 
         for (Transmitter t : tGroup.getTransmitters()) {
             sb.append(NEWLINE);

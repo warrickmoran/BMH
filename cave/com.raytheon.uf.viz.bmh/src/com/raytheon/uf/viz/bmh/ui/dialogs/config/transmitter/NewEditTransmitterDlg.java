@@ -21,11 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.TimeZone;
 
 import org.eclipse.swt.SWT;
@@ -48,13 +44,13 @@ import org.eclipse.swt.widgets.Text;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.BMHTimeZone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
@@ -82,6 +78,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 18, 2014    #3728   lvenable    Updated to use time zone abbreviations outside
  *                                     the time zone combo box.
  * Oct 23, 2014     3687   bsteffen    Display dac name instead of id.
+ * Oct 24, 2014    #3617   dgilling    Cleaner handling of time zone, make DST
+ *                                     checkbox match legacy system.
  * 
  * </pre>
  * 
@@ -104,12 +102,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     public enum TransmitterEditType {
         NEW_TRANSMITTER, NEW_TRANSMITTER_GROUP, EDIT_TRANSMITTER, EDIT_TRANSMITTER_GROUP;
     }
-
-    private final String[] TIME_ZONES = { "ALASKA", "HAWAIIAN", "PACIFIC",
-            "MOUNTAIN", "CENTRAL", "EASTERN" };
-
-    /** Map of time zone abbreviations to full time zone names. */
-    private Map<String, String> timeZoneMap = null;
 
     private final ITransmitterStatusChange statusChange;
 
@@ -257,7 +249,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        populateTimeZoneMap();
 
         GridLayout gl = new GridLayout(1, false);
         gl.marginWidth = 0;
@@ -377,8 +368,23 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         timeZoneCbo = new Combo(rightComp, SWT.BORDER | SWT.READ_ONLY);
         timeZoneCbo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
                 false));
-        timeZoneCbo.setItems(TIME_ZONES);
+        timeZoneCbo.setItems(BMHTimeZone.getUISelections());
         timeZoneCbo.select(0);
+        timeZoneCbo.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                String timeZoneName = timeZoneCbo.getText();
+                if (BMHTimeZone.isForcedNoDst(timeZoneName)) {
+                    noDstChk.setSelection(true);
+                    noDstChk.setEnabled(false);
+                } else {
+                    TimeZone tz = TimeZone.getTimeZone(group.getTimeZone());
+                    noDstChk.setSelection(!tz.observesDaylightTime());
+                    noDstChk.setEnabled(true);
+                }
+            }
+        });
         groupControlList.add(timeZoneCbo);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
@@ -584,13 +590,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 }
             }
 
-            setTimeZoneCbo();
+            populateTimeZoneControls();
 
             if (group.getSilenceAlarm() != null) {
                 disableSilenceChk.setSelection(group.getSilenceAlarm());
-            }
-            if (group.getDaylightSaving() != null) {
-                noDstChk.setSelection(group.getDaylightSaving());
             }
 
             if ((group != null) && group.isStandalone()) {
@@ -799,7 +802,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 } catch (Exception e) {
                     statusHandler.error("Error retreiving DAC information", e);
                 }
-                setTimeZoneCbo();
+                
+                populateTimeZoneControls();
 
                 if (group.getProgramSummary() == null) {
                     programCombo.select(0);
@@ -811,9 +815,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 if (group.getSilenceAlarm() != null) {
                     disableSilenceChk.setSelection(group.getSilenceAlarm());
                 }
-                if (group.getDaylightSaving() != null) {
-                    noDstChk.setSelection(group.getDaylightSaving());
-                }
+
                 return;
             }
         }
@@ -970,10 +972,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                         dac = dacDataManager.getDacIdByName(dacCombo.getText());
                     }
                     group.setDac(dac);
-                    group.setTimeZone(getTimeZoneAbbreviation(timeZoneCbo
-                            .getText()));
+                    TimeZone groupTz = BMHTimeZone.getTimeZoneFromUI(
+                            timeZoneCbo.getText(), !noDstChk.getSelection());
+                    group.setTimeZone(groupTz.getID());
                     group.setSilenceAlarm(this.disableSilenceChk.getSelection());
-                    group.setDaylightSaving(this.noDstChk.getSelection());
 
                     if (programCombo.getSelectionIndex() > 0) {
                         @SuppressWarnings("unchecked")
@@ -1032,15 +1034,13 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      * @return true if changes to group values
      * @throws Exception
      */
-    private boolean checkGroupUpdate() throws Exception {
-        String tz = getTimeZoneAbbreviation(timeZoneCbo.getText());
-        if (!tz.equals(group.getTimeZone())) {
+    private boolean checkGroupUpdate() {
+        TimeZone tz = BMHTimeZone.getTimeZoneFromUI(timeZoneCbo.getText(),
+                !noDstChk.getSelection());
+        if (!tz.getID().equals(group.getTimeZone())) {
             return true;
         }
         if (disableSilenceChk.getSelection() != group.getSilenceAlarm()) {
-            return true;
-        }
-        if (noDstChk.getSelection() != group.getDaylightSaving()) {
             return true;
         }
 
@@ -1496,50 +1496,24 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     }
 
     /**
-     * Populate the time zone map.
-     */
-    private void populateTimeZoneMap() {
-        timeZoneMap = new LinkedHashMap<String, String>();
-        timeZoneMap.put("AKST", TIME_ZONES[0]);
-        timeZoneMap.put("HST", TIME_ZONES[1]);
-        timeZoneMap.put("PST", TIME_ZONES[2]);
-        timeZoneMap.put("MST", TIME_ZONES[3]);
-        timeZoneMap.put("CST", TIME_ZONES[4]);
-        timeZoneMap.put("EST", TIME_ZONES[5]);
-    }
-
-    /**
      * Set the selection on the Time Zone Combo based on zone value in group.
      */
-    private void setTimeZoneCbo() {
-        String timeZoneAbbr = group.getTimeZone();
-        if (timeZoneAbbr == null) {
+    private void populateTimeZoneControls() {
+        String timeZoneID = group.getTimeZone();
+        TimeZone tz = TimeZone.getTimeZone(timeZoneID);
+        if (timeZoneID == null) {
             // Use local time zone to determine key.
-            TimeZone tz = TimeUtil.newCalendar().getTimeZone();
-            timeZoneAbbr = tz.getDisplayName(false, TimeZone.SHORT, Locale.US);
+            tz = TimeZone.getDefault();
         }
-        String timeZone = timeZoneMap.get(timeZoneAbbr);
+
+        String timeZone = BMHTimeZone.getTimeZoneUIName(tz);
         int index = timeZoneCbo.indexOf(timeZone);
         timeZoneCbo.select(index);
-    }
 
-    /**
-     * Get the time zone abbreviation using the full time zone name.
-     * 
-     * Example: Passing in "HAWAIIAN" will return "HST"
-     * 
-     * @param timeZone
-     *            Time zone.
-     * @return Time Zone abbreviation.
-     */
-    private String getTimeZoneAbbreviation(String timeZone) {
-        for (Entry<String, String> entry : timeZoneMap.entrySet()) {
-            if (timeZone.equals(entry.getValue())) {
-                return entry.getKey();
-            }
+        noDstChk.setSelection(!tz.observesDaylightTime());
+        if (BMHTimeZone.isForcedNoDst(timeZone)) {
+            noDstChk.setEnabled(false);
         }
-
-        return "";
     }
 
 }

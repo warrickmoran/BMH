@@ -83,6 +83,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * Oct 27, 2014 3630       mpduff      Add annotation for hibernate.
  * 
+ * Oct 28, 2014 3617       dgilling    Encapsulate time zone/DST flag into single
+ *                                     time zone field using Java TimeZone id string.
  * </pre>
  * 
  * @author rjpeter
@@ -129,14 +131,11 @@ public class TransmitterGroup {
     @Column
     private Integer dac;
 
-    @Column(length = 15)
+    @Column(length = 25)
     private String timeZone;
 
     @Column
     private Boolean silenceAlarm = false;
-
-    @Column
-    private Boolean daylightSaving;
 
     @Column
     private int position;
@@ -216,14 +215,6 @@ public class TransmitterGroup {
 
     public void setSilenceAlarm(Boolean silenceAlarm) {
         this.silenceAlarm = silenceAlarm;
-    }
-
-    public Boolean getDaylightSaving() {
-        return daylightSaving;
-    }
-
-    public void setDaylightSaving(Boolean daylightSaving) {
-        this.daylightSaving = daylightSaving;
     }
 
     /**
@@ -450,8 +441,6 @@ public class TransmitterGroup {
         stringBuilder.append(this.timeZone);
         stringBuilder.append(", silenceAlarm=");
         stringBuilder.append(this.silenceAlarm);
-        stringBuilder.append(", daylightSaving=");
-        stringBuilder.append(this.daylightSaving);
         stringBuilder.append(", position=");
         stringBuilder.append(this.position);
         stringBuilder.append(", audioDBTarget=");
