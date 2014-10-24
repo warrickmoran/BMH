@@ -38,6 +38,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.request.InputMessageAudioResponse;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest.InputMessageAction;
 import com.raytheon.uf.common.bmh.request.InputMessageResponse;
@@ -69,6 +70,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      input message.
  * Oct 23, 2014  #3728     lvenable     Updated to not display input messages for time
  *                                      announcement message types.
+ * Oct 24, 2014  #3478     bkowal       Updated to retrieve a InputMessageAudioResponse.
  * 
  * </pre>
  * 
@@ -332,7 +334,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         imRequest.setAction(InputMessageAction.GetByPkId);
         imRequest.setPkId(id);
 
-        InputMessageResponse imResponse = (InputMessageResponse) BmhUtils
+        InputMessageAudioResponse imResponse = (InputMessageAudioResponse) BmhUtils
                 .sendRequest(imRequest);
         inputMessageList = imResponse.getInputMessageList();
 

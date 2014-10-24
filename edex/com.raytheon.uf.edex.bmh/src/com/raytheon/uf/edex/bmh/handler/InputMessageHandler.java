@@ -20,15 +20,23 @@
 package com.raytheon.uf.edex.bmh.handler;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
+
+import org.apache.commons.lang.StringUtils;
 
 import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
+import com.raytheon.uf.common.bmh.request.InputMessageAudioResponse;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
 import com.raytheon.uf.common.bmh.request.InputMessageResponse;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
@@ -45,6 +53,7 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  * ------------ ---------- ----------- --------------------------
  * Oct 16, 2014  #3728     lvenable     Initial creation
  * Oct 23, 2014  #3748     bkowal       Retrieve audio for audio input messages
+ * Oct 24, 2014  #3478     bkowal       Completed audio retrieval implementation
  * 
  * </pre>
  * 
@@ -127,76 +136,165 @@ public class InputMessageHandler extends
     private InputMessageResponse getByPkId(InputMessageRequest request)
             throws AudioRetrievalException {
         InputMessageDao dao = new InputMessageDao(request.isOperational());
-        InputMessageResponse response = new InputMessageResponse();
+        InputMessageAudioResponse response = new InputMessageAudioResponse();
 
         InputMessage im = dao.getByID(request.getPkId());
         // retrieve audio
+        response.setAudioDataList(this.getAudioContent(request));
         response.addInputMessage(im);
 
         return response;
     }
 
-    private byte[] getAudioContent(InputMessageRequest request)
-            throws AudioRetrievalException {
-        // TODO: finalize retrieve audio.
-        
+    private List<InputMessageAudioData> getAudioContent(
+            InputMessageRequest request) throws AudioRetrievalException {
         BroadcastMsgDao broadcastMsgDao = new BroadcastMsgDao(
                 request.isOperational());
         List<BroadcastMsg> msgs = broadcastMsgDao
                 .getMessagesByInputMsgId(request.getPkId());
         if (msgs.isEmpty()) {
             throw new AudioRetrievalException(
-                    "Unable to find a broadcast msg associated with input msg: "
+                    "Unable to find broadcast msg(s) associated with input msg: "
                             + request.getPkId() + ".");
         }
 
-        /*
-         * Based on how these messages are currently generated, there should
-         * only be one broadcast msg in the list.
-         */
-        BroadcastMsg broadcastMsg = msgs.get(0);
-        /*
-         * Verify that fragments exist.
-         */
-        if (broadcastMsg.getFragments() == null
-                || broadcastMsg.getFragments().isEmpty()) {
-            throw new AudioRetrievalException(
-                    "Unable to find audio information associated with broadcast msg: "
-                            + broadcastMsg.getId() + " for input msg: "
-                            + request.getPkId() + ".");
+        List<InputMessageAudioData> audioDataRecords = new ArrayList<>(
+                msgs.size());
+        OUTER_LOOP: for (BroadcastMsg broadcastMsg : msgs) {
+            /*
+             * Verify that fragments exist.
+             */
+            if (broadcastMsg.getFragments() == null
+                    || broadcastMsg.getFragments().isEmpty()) {
+                throw new AudioRetrievalException(
+                        "Unable to find audio information associated with broadcast msg: "
+                                + broadcastMsg.getId() + " for input msg: "
+                                + request.getPkId() + ".");
+            }
+
+            InputMessageAudioData audioDataRecord = new InputMessageAudioData();
+            audioDataRecord.setTransmitterGroupName(broadcastMsg
+                    .getTransmitterGroup().getName());
+            List<byte[]> audioData = new LinkedList<>();
+            int totalByteCount = 0;
+            for (int i = 0; i < broadcastMsg.getFragments().size(); i++) {
+                BroadcastFragment fragment = broadcastMsg.getFragments().get(i);
+                if (fragment.isSuccess() == false) {
+                    /* audio generation failed - audio playback disabled */
+                    audioDataRecord.setSuccess(false);
+                    audioDataRecords.add(audioDataRecord);
+                    continue OUTER_LOOP;
+                }
+
+                byte[] audio = this.readAudioFragment(fragment,
+                        broadcastMsg.getId(), request.getPkId());
+                totalByteCount += audio.length;
+                audioData.add(audio);
+            }
+            
+            /* audio generation successful. */
+            audioDataRecord.setSuccess(true);
+
+            /*
+             * Construct the complete byte array.
+             */
+            if (audioData.size() == 1) {
+                /*
+                 * only one record, can be used as-is
+                 */
+                audioDataRecord.setAudio(audioData.get(0));
+            } else {
+
+                /*
+                 * Need to merge the bytes from the separate fragments into a
+                 * single array.
+                 */
+                ByteBuffer audioBuffer = ByteBuffer.allocate(totalByteCount);
+                for (byte[] audioFragment : audioData) {
+                    audioBuffer.put(audioFragment);
+                }
+                audioDataRecord.setAudio(audioBuffer.array());
+            }
+
+            /* calculate the duration in seconds */
+            final long playbackTimeMS = totalByteCount / 160L * 20L;
+            // swt component expects an Integer
+            final int playbackTimeS = (int) playbackTimeMS / 1000;
+            audioDataRecord.setAudioDuration(playbackTimeS);
+
+            /* build the formatted duration string */
+            int durationHours = 0;
+            int durationMinutes = 0;
+            int durationSeconds = playbackTimeS;
+            if (durationSeconds > 59) {
+                int remainingS = durationSeconds % 60;
+                durationMinutes = (durationSeconds - remainingS) / 60;
+                durationSeconds = remainingS;
+            }
+            if (durationMinutes > 59) {
+                int remainingM = durationMinutes % 60;
+                durationHours = (durationMinutes - remainingM) / 60;
+                durationMinutes = remainingM;
+            }
+            StringBuilder formattedDuration = new StringBuilder();
+            // only include hours if > 0
+            if (durationHours > 0) {
+                formattedDuration.append(StringUtils.leftPad(
+                        Integer.toString(durationHours), 2, "0"));
+                formattedDuration.append(":");
+            }
+            formattedDuration.append(StringUtils.leftPad(
+                    Integer.toString(durationMinutes), 2, "0"));
+            formattedDuration.append(":");
+            formattedDuration.append(StringUtils.leftPad(
+                    Integer.toString(durationSeconds), 2, "0"));
+            audioDataRecord.setFormattedAudioDuration(formattedDuration
+                    .toString());
+
+            audioDataRecords.add(audioDataRecord);
         }
 
+        Collections.sort(audioDataRecords);
+        return audioDataRecords;
+    }
+
+    private byte[] readAudioFragment(final BroadcastFragment fragment,
+            final long broadcastId, final int inputId)
+            throws AudioRetrievalException {
         /*
-         * Based on how these messages are currently generated, there should
-         * only be one broadcast fragment in the list.
-         */
-        BroadcastFragment fragment = broadcastMsg.getFragments().get(0);
-        /*
-         * Verify that file information exists.
+         * verify that the audio file has been set and that it exists.
          */
         if (fragment.getOutputName() == null
                 || fragment.getOutputName().trim().isEmpty()) {
             throw new AudioRetrievalException(
                     "Unable to find file information associated with broadcast fragment: "
                             + fragment.getId()
-                            + " associated with broadcast msg: "
-                            + broadcastMsg.getId() + " for input msg: "
-                            + request.getPkId() + ".");
+                            + " associated with broadcast msg: " + broadcastId
+                            + " for input msg: " + inputId + ".");
+        }
+
+        Path audioFilePath = Paths.get(fragment.getOutputName());
+        if (Files.exists(audioFilePath) == false) {
+            throw new AudioRetrievalException("Audio file: "
+                    + fragment.getOutputName()
+                    + " associated with broadcast fragment: "
+                    + fragment.getId() + " associated with broadcast msg: "
+                    + broadcastId + " for input msg: " + inputId
+                    + " does not exist.");
         }
 
         /*
-         * Attempt to retrieve the audio.
+         * Attempt to read the audio.
          */
-        Path audioFilePath = Paths.get(fragment.getOutputName());
-        byte[] data = null;
+        byte[] audioDataContents = null;
         try {
-            data = Files.readAllBytes(audioFilePath);
+            audioDataContents = Files.readAllBytes(audioFilePath);
         } catch (IOException e) {
             throw new AudioRetrievalException("Failed to read audio file: "
-                    + audioFilePath.toString() + " for input msg: "
-                    + request.getPkId() + ".");
+                    + audioFilePath.toString() + " for input msg: " + inputId
+                    + ".");
         }
 
-        return data;
+        return audioDataContents;
     }
 }
