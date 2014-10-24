@@ -16,7 +16,7 @@
 #    ------------    ----------    -----------    --------------------------
 #    09/09/14        3456          bkowal         Initial Creation.
 #    10/21/14        3687          bsteffen       Enable comms manager to run in both
-                                                  operational and practice mode simultaneously
+#                                                 operational and practice mode simultaneously
 ##############################################################################
 
 # Source function library.
