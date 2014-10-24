@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dactransmit.playlist;
+package com.raytheon.uf.common.bmh.audio;
 
 /**
  * Indicates that an audio retrieval has failed.
@@ -29,6 +29,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.playlist;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 19, 2014 3532       bkowal      Initial creation
+ * Oct 23, 2014 3748       bkowal      Move to BMH common.
  * 
  * </pre>
  * 
@@ -38,6 +39,14 @@ package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
 public class AudioRetrievalException extends Exception {
     private static final long serialVersionUID = 5340111095563724429L;
+
+    /**
+     * @param message
+     *            the detail message
+     */
+    public AudioRetrievalException(String message) {
+        super(message);
+    }
 
     /**
      * @param message

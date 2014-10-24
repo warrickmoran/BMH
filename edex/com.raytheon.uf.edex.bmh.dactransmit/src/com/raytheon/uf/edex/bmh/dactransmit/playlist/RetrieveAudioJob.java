@@ -31,6 +31,7 @@ import java.util.Map;
 
 import com.google.common.collect.Table;
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
+import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
 import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
@@ -54,6 +55,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Oct 2, 2014  3642       bkowal      Updated to use the audio buffer abstraction and to
  *                                     populate a {@link TimeMsgCache} for dynamic messages.
  * Oct 17, 2014 3655       bkowal      Move tones to common.
+ * Oct 23, 2014 3748       bkowal      AudioRetrievalException is now in common
  * 
  * </pre>
  * 

@@ -21,7 +21,11 @@ package com.raytheon.uf.edex.bmh.dao;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
+
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -43,6 +47,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Sep 03, 2014  3554     bsteffen    Add getUnexpiredBroadcastMsgsByAfosIDAndGroup
  * Aug 29, 2014  3568     bkowal      Added getMessageExistence
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Oct 23, 2014  3748     bkowal      Added getMessagesByInputMsgId
  * 
  * </pre>
  * 
@@ -63,8 +68,7 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
     @SuppressWarnings("unchecked")
     public List<BroadcastMsg> getMessagesByAfosid(final String afosid) {
         return (List<BroadcastMsg>) findByNamedQueryAndNamedParam(
-                BroadcastMsg.GET_MSGS_BY_AFOS_ID,
-                new String[] { "afosId" },
+                BroadcastMsg.GET_MSGS_BY_AFOS_ID, new String[] { "afosId" },
                 new String[] { afosid });
     }
 
@@ -74,19 +78,17 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
             final TransmitterGroup group) {
         return (List<BroadcastMsg>) findByNamedQueryAndNamedParam(
                 BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP,
-                new String[] {
-                "afosID", "expirationTime", "group" },
-        new Object[] { afosid, expirationTime, group });
+                new String[] { "afosID", "expirationTime", "group" },
+                new Object[] { afosid, expirationTime, group });
     }
 
     public BroadcastMsg getMessageExistence(final TransmitterGroup group,
             final String afosId, final Language language) {
         @SuppressWarnings("unchecked")
         List<BroadcastMsg> messages = (List<BroadcastMsg>) findByNamedQueryAndNamedParam(
-                        BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE,
-                        new String[] { "afosId", "group",
-                                "language" }, new Object[] {
-                                afosId, group, language });
+                BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE,
+                new String[] { "afosId", "group", "language" }, new Object[] {
+                        afosId, group, language });
 
         if (messages == null || messages.isEmpty()) {
             return null;
@@ -97,6 +99,34 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
         }
 
         return (BroadcastMsg) messages.get(0);
+    }
+
+    public List<BroadcastMsg> getMessagesByInputMsgId(final int inputMsgId) {
+        return txTemplate
+                .execute(new TransactionCallback<List<BroadcastMsg>>() {
+                    @Override
+                    public List<BroadcastMsg> doInTransaction(
+                            TransactionStatus status) {
+                        List<?> objects = findByNamedQueryAndNamedParam(
+                                BroadcastMsg.GET_MSGS_BY_INPUT_MSG,
+                                new String[] { "inputMsgId" },
+                                new Object[] { inputMsgId });
+
+                        if (objects == null || objects.isEmpty()) {
+                            return Collections.emptyList();
+                        }
+
+                        List<BroadcastMsg> msgs = new ArrayList<BroadcastMsg>(
+                                objects.size());
+                        for (Object object : objects) {
+                            if (object instanceof BroadcastMsg) {
+                                msgs.add((BroadcastMsg) object);
+                            }
+                        }
+
+                        return msgs;
+                    }
+                });
     }
 
     public List<BroadcastMsg> getMessageByBroadcastId(Long broadcastMessageId) {

@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
+import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
@@ -37,7 +38,8 @@ import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 2, 2014            bkowal     Initial creation
+ * Oct 2, 2014             bkowal      Initial creation
+ * Oct 23, 2014 3748       bkowal      AudioRetrievalException is now in common
  * 
  * </pre>
  * 
