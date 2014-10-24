@@ -28,13 +28,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TimeZone;
 
-import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.VerifyEvent;
 import org.eclipse.swt.events.VerifyListener;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -46,20 +44,17 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
-import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
@@ -116,29 +111,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     /** Map of time zone abbreviations to full time zone names. */
     private Map<String, String> timeZoneMap = null;
 
-    private final String STATUS_PREFIX = "     Transmitter is ";
-
     private final ITransmitterStatusChange statusChange;
 
     /** Status Group */
     private Group statusGrp;
-
-    /** Mode Group */
-    private Group modeGrp;
-
-    /** Status Icon */
-    private Image statusIcon;
-
-    /** Mode Icon */
-    private Image modeIcon;
-
-    private Button disableTransmitterBtn;
-
-    private Button enableTransmitterBtn;
-
-    private Button primaryTransmitterBtn;
-
-    private Button secondaryTransmitterBtn;
 
     /** The transmitter being created/edited */
     private Transmitter transmitter;
@@ -195,10 +171,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     private final ICloseCallback callback;
 
     private Transmitter previousTransmitter;
-
-    private Label statusLbl;
-
-    private Label modeLbl;
 
     private Combo programCombo;
 
@@ -286,7 +258,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     @Override
     protected void initializeComponents(Shell shell) {
         populateTimeZoneMap();
-        loadImages();
 
         GridLayout gl = new GridLayout(1, false);
         gl.marginWidth = 0;
@@ -659,15 +630,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 fipsTxt.setText(transmitter.getFipsCode());
             }
 
-            // TODO Remove upon approval of removal of status/mode buttons.
-            // statusLbl.setText(this.STATUS_PREFIX
-            // + transmitter.getTxStatus().name());
-            // modeLbl.setText(this.STATUS_PREFIX +
-            // transmitter.getTxMode().name());
-
-            // saveBtn.setEnabled(transmitter.getTxStatus() ==
-            // TxStatus.DISABLED);
-
             // Enable/Disable controls
             enableTransmitterControls(enabled);
             if (TransmitterEditType.NEW_TRANSMITTER == type) {
@@ -986,7 +948,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             }
 
             // TODO Fix validation on transmitter group program change
-            // This causes vaildation failure because a group with that
+            // This causes validation failure because a group with that
             // name already exists
             if ((TransmitterEditType.NEW_TRANSMITTER_GROUP == type)
                     || (TransmitterEditType.EDIT_TRANSMITTER_GROUP == type)
@@ -1091,22 +1053,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Load the status and mode images
-     */
-    private void loadImages() {
-        // TODO Load the correct images when they are decided
-        ImageDescriptor id;
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
-                "icons/xmit_normal.xpm");
-        statusIcon = id.createImage();
-
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
-                "icons/xmit_normal.xpm");
-        modeIcon = id.createImage();
-
     }
 
     /**
@@ -1515,24 +1461,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 transmitter = dataManager.saveTransmitter(transmitter);
                 statusChange.statusChanged();
             }
-            // TODO Remove upon approval of removal of status/mode buttons.
-            // this.statusLbl.setText(STATUS_PREFIX + status.name());
-            // saveBtn.setEnabled(status == TxStatus.DISABLED);
         } catch (Exception e) {
             statusHandler.error("Error saving Transmitter status change", e);
-        }
-    }
-
-    private void setTransmitterMode(TxMode mode) {
-        transmitter.setTxMode(mode);
-        try {
-            if (type != TransmitterEditType.NEW_TRANSMITTER) {
-                transmitter = dataManager.saveTransmitter(transmitter);
-                statusChange.statusChanged();
-            }
-            this.modeLbl.setText(STATUS_PREFIX + mode.name());
-        } catch (Exception e) {
-            statusHandler.error("Error saving Transmitter mode change", e);
         }
     }
 
@@ -1558,16 +1488,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         for (Control c : transmitterControlList) {
             c.setEnabled(enabled);
         }
-        // TODO Remove upon approval of removal of status/mode buttons.
-        // if (type == TransmitterEditType.NEW_TRANSMITTER) {
-        // enableTransmitterBtn.setEnabled(false);
-        // }
     }
 
     @Override
     protected void disposed() {
-        statusIcon.dispose();
-        modeIcon.dispose();
         callback.dialogClosed(getReturnValue());
     }
 
