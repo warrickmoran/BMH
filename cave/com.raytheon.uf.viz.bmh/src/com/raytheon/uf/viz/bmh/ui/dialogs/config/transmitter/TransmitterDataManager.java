@@ -21,12 +21,10 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.request.DacRequest;
-import com.raytheon.uf.common.bmh.request.DacRequest.DacRequestAction;
-import com.raytheon.uf.common.bmh.request.DacResponse;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
@@ -34,6 +32,7 @@ import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest.TransmitterRequestAction;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 
 /**
  * DataManager for the Transmitter Configuration dialog.
@@ -213,6 +212,14 @@ public class TransmitterDataManager {
         return response.getProgramSummaryList();
     }
 
-
-
+    /**
+     * Get all {@link Dac}s
+     * 
+     * @return List of Dacs
+     * @throws Exception
+     */
+    public List<Dac> getDacs() throws Exception {
+        DacDataManager dacDataManager = new DacDataManager();
+        return dacDataManager.getDacs();
+    }
 }
