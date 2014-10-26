@@ -78,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 10, 2014  #3490     lvenable     Fixed existing suite name problem.
  * Oct 15, 2014  #3716     bkowal       Display 'Remove' instead of 'Delete' when within the
  *                                      Broadcast Program Dialog.
+ * Oct 26, 2014   3750     mpduff       Get updates from filtered list.
  * 
  * </pre>
  * 
@@ -96,10 +97,10 @@ public class SuiteConfigGroup extends Composite {
     private SuiteTable suiteTable;
 
     /** Parent composite. */
-    private Composite parentComp;
+    private final Composite parentComp;
 
     /** Array of Suite controls.. */
-    private List<Control> suiteControls = new ArrayList<Control>();
+    private final List<Control> suiteControls = new ArrayList<Control>();
 
     /** Suite table data. */
     private TableData suiteTableData = null;
@@ -108,7 +109,7 @@ public class SuiteConfigGroup extends Composite {
     private List<Suite> suiteList = null;
 
     /** List of suite data. */
-    private List<Suite> filteredSuiteList = new ArrayList<Suite>();
+    private final List<Suite> filteredSuiteList = new ArrayList<Suite>();
 
     /** Selection callback. */
     private ISuiteSelection suiteSelectionCB;
@@ -670,7 +671,8 @@ public class SuiteConfigGroup extends Composite {
      */
     private void updateSelectedSuite() {
         if (suiteTable.getSelectedIndex() >= 0) {
-            selectedSuite = suiteList.get(suiteTable.getSelectedIndex());
+            selectedSuite = filteredSuiteList
+                    .get(suiteTable.getSelectedIndex());
         } else {
             selectedSuite = null;
         }

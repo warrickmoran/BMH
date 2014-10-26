@@ -22,7 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 import java.util.Comparator;
 
 /**
- * TODO Add Description
+ * Compares Broadcast Cycle Table entries by transmit time.
  * 
  * <pre>
  * 
@@ -30,7 +30,8 @@ import java.util.Comparator;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 21, 2014            mpduff     Initial creation
+ * Aug 21, 2014            mpduff      Initial creation
+ * Oct 26, 2014   3750     mpduff      Null check the incoming objects.
  * 
  * </pre>
  * 
@@ -44,6 +45,16 @@ public class BroadcastCycleTableEntryComparator implements
     @Override
     public int compare(BroadcastCycleTableDataEntry o1,
             BroadcastCycleTableDataEntry o2) {
+        if (o1 == null && o2 == null) {
+            return 0;
+        }
+        if (o1 == null) {
+            return 1;
+        }
+        if (o2 == null) {
+            return -1;
+        }
+
         return o1.getTransmitTime().compareTo(o2.getTransmitTime());
     }
 }
