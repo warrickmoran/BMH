@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Oct 21, 2014 3655       bkowal      Updated to include more information that
  *                                     will be used to populate a 
  *                                     {@link LiveBroadcastSwitchNotification}.
+ * Oct 26, 2014 3712       bkowal      Added getAreaCodes
  * 
  * </pre>
  * 
@@ -160,6 +162,29 @@ public class LiveBroadcastSettings {
         }
 
         return longestDuration;
+    }
+
+    public String getAreaCodes() {
+        StringBuilder stringBuilder = new StringBuilder();
+        int count = 1;
+        List<String> addedAreas = new ArrayList<>();
+
+        for (List<Area> areaList : this.selectedTransmitterAreasMap.values()) {
+            for (Area area : areaList) {
+                if (addedAreas.contains(area.getAreaCode())) {
+                    continue;
+                }
+                
+                if (count > 1) {
+                    stringBuilder.append("-");
+                }
+                stringBuilder.append(area.getAreaCode());
+                addedAreas.add(area.getAreaCode());
+                ++count;
+            }
+        }
+
+        return stringBuilder.toString();
     }
 
     /**

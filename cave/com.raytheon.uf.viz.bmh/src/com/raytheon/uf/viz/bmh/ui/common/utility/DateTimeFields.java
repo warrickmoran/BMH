@@ -60,6 +60,9 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  *                                     check for periodicity.
  * Oct 18, 2014  #3728     lvenable    Added capability to set the spinner values using Calendar or
  *                                     by individual field.
+ * Oct 26, 2014  #3712     bkowal      Fixed how hours are handled. Added a method to update multiple
+ *                                     dtf fields at once and function to return mapping to java Calendar
+ *                                     fields.
  * 
  * </pre>
  * 
@@ -391,6 +394,23 @@ public class DateTimeFields extends Composite {
     }
 
     /**
+     * Gets the values from the spinner controls. They are mapped to the
+     * {@link Calendar#get(int)} fields.
+     * 
+     * @return
+     */
+    public Map<Integer, Integer> getCalDateTimeValues() {
+        Map<Integer, Integer> valueMap = new HashMap<>();
+
+        for (DateFieldType dft : spinners.keySet()) {
+            valueMap.put(this.dfTypeToCalMap.get(dft), spinners.get(dft)
+                    .getSelection());
+        }
+
+        return valueMap;
+    }
+
+    /**
      * Get the spinners formatted as appended, 2 digit values
      * 
      * @return
@@ -453,6 +473,18 @@ public class DateTimeFields extends Composite {
     }
 
     /**
+     * Updates any spinners referenced in the specified {@link Map}.
+     * 
+     * @param fieldValuesMap
+     *            the specified {@link Map}.
+     */
+    public void setFieldValues(Map<DateFieldType, Integer> fieldValuesMap) {
+        for (DateFieldType dtf : fieldValuesMap.keySet()) {
+            this.setFieldValue(dtf, fieldValuesMap.get(dtf));
+        }
+    }
+
+    /**
      * Set the spinners with the data from the calendar. If the values are not
      * valid for the spinner no action is taken.
      * 
@@ -467,7 +499,10 @@ public class DateTimeFields extends Composite {
         for (DateFieldType dft : fieldValuesMap.keySet()) {
             Spinner spnr = spinners.get(dft);
             int calendarFieldValue = cal.get(dfTypeToCalMap.get(dft));
-
+            // special case for month. JavaDoc month is 0 - 11
+            if (dft == DateFieldType.MONTH) {
+                ++calendarFieldValue;
+            }
             if (validValueForSpinner(spnr, calendarFieldValue)) {
                 spnr.setSelection(calendarFieldValue);
             }

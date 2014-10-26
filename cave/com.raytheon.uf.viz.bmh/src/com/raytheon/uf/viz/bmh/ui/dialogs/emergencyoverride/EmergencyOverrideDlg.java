@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -44,11 +45,13 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
@@ -88,6 +91,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 17, 2014  #3655     bkowal       Create a {@link LiveBroadcastSettings} based on
  *                                      the dialog information for the Live Broadcast.
  * Oct 22, 2014  #3745     lvenable     Fixed UELE with the Area Selection Dialog.
+ * Oct 26, 2014  #3712     bkowal       Implemented dialog interaction for rebroadcast
+ *                                      scheduling.
  * 
  * </pre>
  * 
@@ -544,7 +549,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             transmitters.add(this.transmitterMap.get(transmitterName));
         }
 
-        LiveBroadcastSettings settings = new LiveBroadcastSettings();
+        final LiveBroadcastSettings settings = new LiveBroadcastSettings();
         try {
             settings.populate(this.selectedMsgType, transmitters,
                     this.alertChk.getSelection(),
@@ -557,11 +562,25 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
         LiveBroadcastRecordPlaybackDlg dlg = new LiveBroadcastRecordPlaybackDlg(
                 this.shell, 120, settings);
-        /*
-         * We will need the audio that was recorded for potential rebroadcast
-         * scheduling.
-         */
-        this.handleTransmitComplete((ByteBuffer) dlg.open());
+        dlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue == null) {
+                    return;
+                }
+
+                if (returnValue instanceof ByteBuffer == false) {
+                    return;
+                }
+
+                /*
+                 * We will need the audio that was recorded for potential
+                 * rebroadcast scheduling.
+                 */
+                handleTransmitComplete((ByteBuffer) returnValue, settings);
+            }
+        });
+        dlg.open();
     }
 
     private boolean validateSelections() {
@@ -588,22 +607,83 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         return true;
     }
 
-    private void handleTransmitComplete(ByteBuffer recordedAudio) {
-        if (recordedAudio == null) {
-            // recording and/or broadcasting has failed.
-            return;
-        }
+    private void handleTransmitComplete(ByteBuffer recordedAudio,
+            final LiveBroadcastSettings settings) {
+
         if (this.autoScheduleChk.getSelection()) {
-            // TODO: handle auto scheduling.
+            this.handleMessageScheduling(recordedAudio, settings,
+                    this.buildInputMsg(settings));
         } else {
-            this.handleManualMsgScheduling();
+            this.handleManualMsgScheduling(recordedAudio, settings);
         }
     }
 
-    private void handleManualMsgScheduling() {
-        MessageScheduleDlg scheduleDlg = new MessageScheduleDlg(this.shell);
-        scheduleDlg.open();
+    private void handleManualMsgScheduling(final ByteBuffer recordedAudio,
+            final LiveBroadcastSettings settings) {
+        InputMessage inputMsg = this.buildInputMsg(settings);
 
-        // TODO: finish message scheduling.
+        MessageScheduleDlg scheduleDlg = new MessageScheduleDlg(this.shell,
+                inputMsg, settings.getSelectedMessageType());
+        scheduleDlg.setCloseCallback(new ICloseCallback() {
+
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue == null) {
+                    // indicates Cancel was clicked.
+                    statusHandler
+                            .info("The rebroadcasting process has been cancelled. The live broadcast will not be rebroadcasted.");
+
+                    return;
+                }
+
+                if (returnValue instanceof InputMessage == false) {
+                    // unlikely (impossible?) scenario
+                    return;
+                }
+
+                handleMessageScheduling(recordedAudio, settings,
+                        (InputMessage) returnValue);
+            }
+        });
+        scheduleDlg.open();
+    }
+
+    private void handleMessageScheduling(final ByteBuffer recordedAudio,
+            final LiveBroadcastSettings settings,
+            final InputMessage inputMessage) {
+        // TODO: implement
+    }
+
+    private InputMessage buildInputMsg(final LiveBroadcastSettings settings) {
+        /*
+         * Generate a message name.
+         */
+        final String generatedMsgName = "LiveMsg-"
+                + Long.toString(System.currentTimeMillis());
+
+        InputMessage inputMsg = new InputMessage();
+        inputMsg.setName(generatedMsgName);
+        inputMsg.setLanguage(settings.getSelectedMessageType().getVoice()
+                .getLanguage());
+        inputMsg.setAfosid(settings.getSelectedMessageType().getAfosid());
+        inputMsg.setCreationTime(TimeUtil.newGmtCalendar());
+        inputMsg.setEffectiveTime(settings.getEffectiveTime());
+        inputMsg.setPeriodicity(settings.getSelectedMessageType()
+                .getPeriodicity());
+        // no default mrd
+        inputMsg.setActive(true);
+        // default confirm to FALSE to prevent NPE
+        inputMsg.setConfirm(false);
+        // default interrupt is TRUE - all EO messages are interrupt messages.
+        inputMsg.setInterrupt(true);
+        inputMsg.setAlertTone(settings.isPlayAlertTones());
+        // always play SAME tones for EO messages.
+        inputMsg.setNwrsameTone(true);
+        inputMsg.setAreaCodes(settings.getAreaCodes());
+        inputMsg.setExpirationTime(settings.getExpireTime());
+        inputMsg.setContent(StringUtils.EMPTY);
+        inputMsg.setValidHeader(true);
+
+        return inputMsg;
     }
 }

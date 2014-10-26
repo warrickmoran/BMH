@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride;
 
+import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -35,8 +36,11 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
@@ -53,6 +57,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Oct 5, 2014   #3700     lvenable     Initial creation
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 26, 2014  #3712     bkowal       Updated to populate dialog based on an InputMessage.
+ *                                      Implemented Ok and Cancel.
  * 
  * </pre>
  * 
@@ -98,15 +104,23 @@ public class MessageScheduleDlg extends CaveSWTDialog {
     /** Confirm check box. */
     private Button confirmChk;
 
+    /** Input message generated for and editable by the user. */
+    private final InputMessage userInputMessage;
+
+    private final MessageType selectedMessageType;
+
     /**
      * Constructor.
      * 
      * @param parentShell
      *            Parent shell.
      */
-    public MessageScheduleDlg(Shell parentShell) {
+    public MessageScheduleDlg(Shell parentShell, InputMessage userInputMessage,
+            MessageType selectedMessageType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+        this.userInputMessage = userInputMessage;
+        this.selectedMessageType = selectedMessageType;
     }
 
     @Override
@@ -144,6 +158,7 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         createDefaultContentControls(mainControlComp);
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
         createBottomActionButtons();
+        this.initialDialogPopulate();
     }
 
     /**
@@ -273,10 +288,10 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
         gd.verticalIndent = 5;
         Label expirationLbl = new Label(controlComp, SWT.CENTER);
-        expirationLbl.setText("Effective Date/Time\n(YYMMDDHHmm): ");
+        expirationLbl.setText("Expiration Date/Time\n(YYMMDDHHmm): ");
         expirationLbl.setLayoutData(gd);
 
-        effectiveDTF = new DateTimeFields(controlComp, dateTimeMap, false,
+        expirationDTF = new DateTimeFields(controlComp, dateTimeMap, false,
                 false, true);
 
     }
@@ -305,12 +320,6 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         periodicityLbl.setText("Periodicity\n(DDHHMMSS): ");
 
         Map<DateFieldType, Integer> periodicityMap = null;
-
-        // TODO : determine if code is needed when hooking up
-        // String periodicityDateTimeStr = null;
-        // if (selectedMsgType != null) {
-        // periodicityDateTimeStr = selectedMsgType.getPeriodicity();
-        // }
 
         periodicityMap = generateDayHourMinuteSecondMap();
 
@@ -348,7 +357,7 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         okBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO
+                handleOkAction();
             }
         });
 
@@ -360,9 +369,76 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                setReturnValue(null);
                 close();
             }
         });
+    }
+
+    private void handleOkAction() {
+        /*
+         * Update the input message based on the dialog contents.
+         */
+
+        // TODO: validate fields - date / time spinners self validate.
+
+        this.userInputMessage.setName(this.msgNameTF.getText());
+        this.userInputMessage.setCreationTime(this.updateCalFromDTF(
+                this.userInputMessage.getCreationTime(),
+                this.creationDTF.getCalDateTimeValues()));
+        this.userInputMessage.setEffectiveTime(this.updateCalFromDTF(
+                this.userInputMessage.getEffectiveTime(),
+                this.effectiveDTF.getCalDateTimeValues()));
+        this.userInputMessage.setExpirationTime(this.updateCalFromDTF(
+                this.userInputMessage.getExpirationTime(),
+                this.expirationDTF.getCalDateTimeValues()));
+        if ("00000000".equals(this.periodicityDTF.getFormattedValue()) == false) {
+            this.userInputMessage.setPeriodicity(this.periodicityDTF
+                    .getFormattedValue());
+        }
+        this.userInputMessage.setConfirm(this.confirmChk.getSelection());
+        setReturnValue(this.userInputMessage);
+
+        // Note: if dialog contents are not valid, the dialog will not be
+        // closed.
+        close();
+    }
+
+    private Calendar updateCalFromDTF(Calendar currentCal,
+            Map<Integer, Integer> fieldValuesMap) {
+        for (Integer calField : fieldValuesMap.keySet()) {
+            currentCal.set(calField, fieldValuesMap.get(calField));
+        }
+
+        return currentCal;
+    }
+
+    /**
+     * Populates the dialog fields based on the specified {@link InputMessage}.
+     */
+    private void initialDialogPopulate() {
+        this.msgNameTF.setText(this.userInputMessage.getName());
+        this.msgTypeLbl.setText(this.userInputMessage.getAfosid());
+        this.msgTitleLbl.setText(this.selectedMessageType.getTitle());
+        this.languageLbl
+                .setText(this.userInputMessage.getLanguage().toString());
+        this.designationLbl.setText(this.selectedMessageType.getDesignation()
+                .name());
+        this.emergenyOverrideLbl.setText(this.selectedMessageType
+                .isEmergencyOverride() ? "YES" : "NO");
+        this.creationDTF.setDateTimeSpinners(this.userInputMessage
+                .getCreationTime());
+        this.effectiveDTF.setDateTimeSpinners(this.userInputMessage
+                .getEffectiveTime());
+        this.expirationDTF.setDateTimeSpinners(this.userInputMessage
+                .getExpirationTime());
+        if (this.userInputMessage.getPeriodicity() != null) {
+            Map<DateFieldType, Integer> dateTimeMap = BmhUtils
+                    .generateDayHourMinuteSecondMap(this.userInputMessage
+                            .getPeriodicity());
+            this.periodicityDTF.setFieldValues(dateTimeMap);
+        }
+        this.confirmChk.setSelection(this.userInputMessage.getConfirm());
     }
 
     /**

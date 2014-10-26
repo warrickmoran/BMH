@@ -28,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.ShellAdapter;
+import org.eclipse.swt.events.ShellEvent;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.layout.GridData;
@@ -63,6 +65,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 10, 2014  #3656     bkowal       Adjustments to allow for extension.
  * Oct 16, 2014  #3657     bkowal       Block until close to capture recorded audio.
  * Oct 21, 2014  #3655     bkowal       Handle forced dialog closures.
+ * Oct 26, 2014  #3712     bkowal       Prevent the dialog from being closed during
+ *                                      recording / playback.
  * 
  * 
  * </pre>
@@ -216,6 +220,16 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         setText("Message Record/Playback");
 
         init();
+        shell.addShellListener(new ShellAdapter() {
+            @Override
+            public void shellClosed(ShellEvent e) {
+                /*
+                 * only allow the user to close the dialog when the audio
+                 * threads (record / play) are stopped.
+                 */
+                e.doit = recordPlayStatus == RecordPlayStatus.STOP;
+            }
+        });
     }
 
     /**
@@ -429,9 +443,6 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      *            the optional audio recording listener.
      */
     protected void recordAction(final IAudioRecorderListener listener) {
-        if (this.isDisposed()) {
-            return;
-        }
         resetRecordPlayValues();
         try {
             this.recorderThread = new AudioRecorderThread(SAMPLE_COUNT);
@@ -473,9 +484,6 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
                 // Ignore.
             }
         }
-        if (this.isDisposed()) {
-            return;
-        }
         shutdownTimer();
         recBtn.setEnabled(true);
         playBtn.setEnabled(true);
@@ -504,9 +512,6 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         this.playbackThread.start();
         recBtn.setEnabled(false);
         stopBtn.setEnabled(true);
-        if (this.isDisposed()) {
-            return;
-        }
         resetRecordPlayValues();
         timer = Executors.newSingleThreadScheduledExecutor();
         timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, updateRate,

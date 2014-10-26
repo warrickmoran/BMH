@@ -54,6 +54,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastThread.BROADC
  *                                     {@link BroadcastTransmitterConfiguration} so
  *                                     that it can be used in a 
  *                                     {@link LiveBroadcastSwitchNotification}.
+ * Oct 26, 2014 3712       bkowal      Prevent the dialog from being closed during
+ *                                     recording / playback.
  * 
  * </pre>
  * 
@@ -183,9 +185,6 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
     }
 
     private void startBroadcastLive() {
-        if (this.isDisposed()) {
-            return;
-        }
         super.recordAction(this.broadcastThread);
         statusLbl.setText("On the Air!"); // Temporary
     }
@@ -209,9 +208,6 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
             getDisplay().asyncExec(new Runnable() {
                 @Override
                 public void run() {
-                    if (isDisposed()) {
-                        return;
-                    }
                     stopAction();
 
                     statusLbl.setText("ERROR");
