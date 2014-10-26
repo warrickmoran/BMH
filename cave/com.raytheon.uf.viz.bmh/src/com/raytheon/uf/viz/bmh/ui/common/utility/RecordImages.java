@@ -41,6 +41,7 @@ import org.eclipse.swt.widgets.Display;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014  #3329     lvenable     Initial creation
+ * Oct 26, 2014   #3728    lvenable     Added pause.
  * 
  * </pre>
  * 
@@ -63,7 +64,7 @@ public class RecordImages {
 
     /** Enumeration of record states. */
     public enum RecordAction {
-        RECORD, STOP, PLAY;
+        RECORD, STOP, PLAY, PAUSE;
     };
 
     /**
@@ -115,6 +116,7 @@ public class RecordImages {
         drawImage(new RGB(255, 0, 1), RecordAction.RECORD);
         drawImage(new RGB(255, 255, 255), RecordAction.STOP);
         drawImage(new RGB(0, 255, 1), RecordAction.PLAY);
+        drawImage(new RGB(255, 255, 255), RecordAction.PAUSE);
     }
 
     /**
@@ -165,6 +167,11 @@ public class RecordImages {
             int[] pointArray = new int[] { 1, 1, imgWidthHeight - 2,
                     (imgWidthHeight / 2) + 1, 1, imgWidthHeight - 2, 1, 1 };
             gc.fillPolygon(pointArray);
+        } else if (recAction == RecordAction.PAUSE) {
+            gc.setAntialias(SWT.ON);
+            gc.setBackground(parentDisplay.getSystemColor(SWT.COLOR_BLUE));
+            gc.fillRectangle(2, 2, 5, 13);
+            gc.fillRectangle(11, 2, 5, 13);
         }
 
         gc.dispose();

@@ -38,6 +38,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioResponse;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest.InputMessageAction;
@@ -71,6 +72,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 23, 2014  #3728     lvenable     Updated to not display input messages for time
  *                                      announcement message types.
  * Oct 24, 2014  #3478     bkowal       Updated to retrieve a InputMessageAudioResponse.
+ * Oct 26, 2014   #3728    lvenable     Updated to use new data object.
  * 
  * </pre>
  * 
@@ -206,7 +208,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         }
         InputMessage im = inputMessageList.get(index);
 
-        InputMessage fullInputMessage = null;
+        InputAudioMessage fullInputMessage = null;
 
         try {
             fullInputMessage = getInputMessageById(im.getId());
@@ -327,22 +329,39 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
      * 
      * @param id
      *            Primary Key Id.
-     * @return The input message.
+     * @return The input message and list of audio.
      */
-    private InputMessage getInputMessageById(int id) throws Exception {
+    private InputAudioMessage getInputMessageById(int id) throws Exception {
         InputMessageRequest imRequest = new InputMessageRequest();
         imRequest.setAction(InputMessageAction.GetByPkId);
         imRequest.setPkId(id);
+
+        InputAudioMessage inputAudioMessageData = null;
 
         InputMessageAudioResponse imResponse = (InputMessageAudioResponse) BmhUtils
                 .sendRequest(imRequest);
         inputMessageList = imResponse.getInputMessageList();
 
         if (inputMessageList == null || inputMessageList.isEmpty()) {
-            return null;
+            return inputAudioMessageData;
         }
 
-        return inputMessageList.get(0);
+        // Create the input audio message data and populate the object.
+        inputAudioMessageData = new InputAudioMessage();
+
+        inputAudioMessageData.setInputMessage(inputMessageList.get(0));
+
+        // Check if the the audio is null. If it is then set it up to be an
+        // empty list.
+        List<InputMessageAudioData> audioDataList = imResponse
+                .getAudioDataList();
+        if (imResponse.getAudioDataList() == null) {
+            audioDataList = Collections.emptyList();
+        }
+
+        inputAudioMessageData.setAudioDataList(audioDataList);
+
+        return inputAudioMessageData;
     }
 
     /**
