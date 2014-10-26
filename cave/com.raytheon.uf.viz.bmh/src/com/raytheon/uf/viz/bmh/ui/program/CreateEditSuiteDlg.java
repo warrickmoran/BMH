@@ -99,6 +99,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     a new {@link Suite} is created.
  * Oct 21, 2014  3715      bkowal      Verify that there is an associated program before 
  *                                     accessing it.
+ * Oct 26, 2014   3750     mpduff      Null check the suite messages.
  * </pre>
  * 
  * @author lvenable
@@ -722,11 +723,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         if (!validMessageTypes(this.selectedSuite.getType())) {
             return;
         }
-
-        List<MessageTypeSummary> newTriggerMsgTypes = new ArrayList<>(
-                this.selectedSuite.getSuiteMessages().size());
-        if (this.selectedProgram != null) {
-            for (SuiteMessage suiteMsg : this.selectedSuite.getSuiteMessages()) {
+        List<SuiteMessage> suiteMsgs = selectedSuite.getSuiteMessages();
+        List<MessageTypeSummary> newTriggerMsgTypes = new ArrayList<>();
+        if (suiteMsgs != null && this.selectedProgram != null) {
+            for (SuiteMessage suiteMsg : suiteMsgs) {
                 if (this.selectedProgram.isTriggerMsgType(this.selectedSuite,
                         suiteMsg.getMsgTypeSummary())) {
                     newTriggerMsgTypes.add(suiteMsg.getMsgTypeSummary());

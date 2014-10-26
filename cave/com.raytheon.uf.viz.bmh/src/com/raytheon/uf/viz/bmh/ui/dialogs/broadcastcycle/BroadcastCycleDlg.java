@@ -106,6 +106,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 17, 2014  3687      bsteffen    Support practice servers.
  * Oct 21, 2014  3655      bkowal      Added support for live broadcast messages.
  * Oct 23, 2014  3687      bsteffen    Display dac name instead of id.
+ * Oct 26, 2014  3750      mpduff      Maintain the selected row.
  * 
  * </pre>
  * 
@@ -213,6 +214,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private String selectedSuite;
 
     private Button messageDetailBtn;
+
+    private int selectedRow = 0;
 
     /**
      * Constructor.
@@ -841,7 +844,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         initialTablePopulation();
         tableData = playlistData.getUpdatedTableData(selectedTransmitterGrp);
         tableComp.populateTable(tableData);
-        tableComp.select(0);
         handleTableSelection();
         handleMonitorInlineEvent();
         suiteValueLbl.setText("");
@@ -980,6 +982,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private void handleTableSelection() {
         List<TableRowData> selectionList = tableComp.getSelection();
         if (CollectionUtils.isNotEmpty(selectionList)) {
+            this.selectedRow = tableComp.getSelectedIndex();
             TableRowData trd = selectionList.get(0);
             BroadcastCycleTableDataEntry entry = (BroadcastCycleTableDataEntry) trd
                     .getData();
@@ -1130,7 +1133,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         tableComp.populateTable(liveTableData);
         if (tableComp.getSelectedIndex() == -1) {
-            tableComp.select(0);
+            tableComp.select(selectedRow);
         }
         // Do NOT invoke handleTableSelection.
 
@@ -1148,9 +1151,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             @Override
             public void run() {
                 tableComp.populateTable(tableData);
-                if (tableComp.getSelectedIndex() == -1) {
-                    tableComp.select(0);
-                }
+                tableComp.select(selectedRow);
                 handleTableSelection();
             }
         });
