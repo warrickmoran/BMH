@@ -55,6 +55,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
+import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
@@ -97,6 +98,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 21, 2014   #3728    lvenable     Added Preview and Play buttons.
  * Oct 23, 2014   #3748    bkowal       Support sending weather messages to the server so that
  *                                      they can be broadcasted (initial implementation).
+ * Oct 26, 2014   #3728    lvenable     Updated to call new contents dialog.
  * 
  * </pre>
  * 
@@ -158,12 +160,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     /** Inactive radio button. */
     private Button inactiveRdo;
 
-    /** From file radio button. */
-    private Button fromFileRdo;
-
-    /** Microphone radio button. */
-    private Button microphoneRdo;
-
     /** Contents button. */
     private Button contentsBtn;
 
@@ -188,17 +184,14 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     /** Button used to change the message type. */
     private Button changeMsgTypeBtn;
 
-    /** Preview button to preview the message text. */
-    private Button previewBtn;
-
-    /** Play button to play the audio. */
-    private Button playBtn;
-
     /** Message text selected from file. */
     private String messageContent = null;
 
     /** Recorded or retrieved audio associated with the message. */
     private byte[] messageAudio = null;
+
+    /** Audio data list. */
+    private List<InputMessageAudioData> audioData = null;
 
     /**
      * Constructor.
@@ -310,9 +303,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                             return;
                         }
 
-                        if ((returnValue != null)
-                                && (returnValue instanceof InputMessage)) {
-                            populateControlsForEdit((InputMessage) returnValue);
+                        if (returnValue instanceof InputAudioMessage) {
+                            populateControlsForEdit((InputAudioMessage) returnValue);
                         }
                     }
                 });
@@ -651,56 +643,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         inactiveRdo.setText("Inactive");
 
         /*
-         * Content Source Group
-         */
-        Group contentSourceGrp = new Group(controlComp, SWT.SHADOW_OUT);
-        gl = new GridLayout(2, false);
-        contentSourceGrp.setLayout(gl);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        contentSourceGrp.setLayoutData(gd);
-        contentSourceGrp.setText(" Content Source: ");
-
-        fromFileRdo = new Button(contentSourceGrp, SWT.RADIO);
-        fromFileRdo.setText("From File");
-
-        int buttonWidth = 80;
-        gd = new GridData(buttonWidth, SWT.DEFAULT);
-        gd.horizontalIndent = 5;
-        previewBtn = new Button(contentSourceGrp, SWT.PUSH);
-        previewBtn.setText(" Preview... ");
-        previewBtn.setLayoutData(gd);
-        previewBtn.setEnabled(false);
-        previewBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                if (messageContent == null) {
-                    return;
-                }
-
-                MessageTextContentsDlg mtcd = new MessageTextContentsDlg(shell,
-                        messageContent, DialogType.PREVIEW);
-                mtcd.open();
-            }
-        });
-
-        microphoneRdo = new Button(contentSourceGrp, SWT.RADIO);
-        microphoneRdo.setText("Microphone");
-        microphoneRdo.setSelection(true);
-
-        gd = new GridData(buttonWidth, SWT.DEFAULT);
-        gd.horizontalIndent = 5;
-        playBtn = new Button(contentSourceGrp, SWT.PUSH);
-        playBtn.setText(" Play ");
-        playBtn.setLayoutData(gd);
-        playBtn.setEnabled(false);
-        playBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                // TODO : add code to play the audio
-            }
-        });
-
-        /*
          * Contents button
          */
         ButtonImageCreator bic = new ButtonImageCreator(shell);
@@ -720,11 +662,17 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         contentsBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (fromFileRdo.getSelection()) {
-                    handleContentsFromFileAction();
-                } else {
-                    handleContentsMicrophoneAction();
-                }
+
+                MessageContentsDlg mcd = new MessageContentsDlg(shell,
+                        audioData);
+                mcd.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        // TODO : add close callback action
+                    }
+                });
+
+                mcd.open();
             }
         });
     }
@@ -807,9 +755,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
         this.userInputMessage.setName(this.msgNameTF.getText());
         this.userInputMessage.setContent(this.messageContent);
-        if (this.microphoneRdo.getSelection()) {
-            request.setMessageAudio(this.messageAudio);
-        }
+        // if (this.microphoneRdo.getSelection()) {
+        // request.setMessageAudio(this.messageAudio);
+        // }
 
         request.setInputMessage(this.userInputMessage);
 
@@ -883,7 +831,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                             // TODO - handle getting text back...
 
                             messageContent = (String) returnValue;
-                            previewBtn.setEnabled(true);
+                            // previewBtn.setEnabled(true);
                         }
                     }
                 });
@@ -1036,16 +984,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         activeRdo.setSelection(true);
         inactiveRdo.setSelection(false);
 
-        microphoneRdo.setSelection(true);
-        fromFileRdo.setSelection(false);
-
         periodicityDTF.setFieldValue(DateFieldType.DAY, 0);
         periodicityDTF.setFieldValue(DateFieldType.HOUR, 0);
         periodicityDTF.setFieldValue(DateFieldType.MINUTE, 0);
         periodicityDTF.setFieldValue(DateFieldType.SECOND, 0);
-
-        previewBtn.setEnabled(false);
-        playBtn.setEnabled(false);
     }
 
     /**
@@ -1054,9 +996,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      * @param inputMessage
      *            Selected input message.
      */
-    private void populateControlsForEdit(InputMessage im) {
-        userInputMessage = im;
+    private void populateControlsForEdit(InputAudioMessage im) {
+        userInputMessage = im.getInputMessage();
         selectedMessageType = null;
+
+        // Get the list of audio data.
+        audioData = im.getAudioDataList();
 
         changeMsgTypeBtn.setEnabled(false);
 
@@ -1125,15 +1070,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         /*
          * currently all input messages will always be text.
          */
-        microphoneRdo.setSelection(false);
-        fromFileRdo.setSelection(true);
-        this.messageContent = im.getContent();
-        this.previewBtn.setEnabled(true);
-
-        // TODO : if the input message has audio then we do not want to have the
-        // preview button enabled
-
-        // previewBtn.setEnabled(false);
+        this.messageContent = userInputMessage.getContent();
     }
 
     /**
