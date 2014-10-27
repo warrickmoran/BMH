@@ -19,6 +19,11 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
 
+import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -34,8 +39,13 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.ProgressBar;
 
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioException;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackThread;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.IPlaybackCompleteListener;
 
 /**
  * 
@@ -50,13 +60,18 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 26, 2014  #3728     lvenable     Initial creation
+ * Oct 26, 2014  #3748     bkowal       Implement audio playback.
  * 
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
-public class MessageAudioControlComp extends Composite {
+public class MessageAudioControlComp extends Composite implements
+        IPlaybackCompleteListener {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(MessageAudioControlComp.class);
 
     private InputMessageAudioData audioData;
 
@@ -82,7 +97,15 @@ public class MessageAudioControlComp extends Composite {
     private boolean isPlaying = false;
 
     /** Callback call when the audio buttons are clicked. */
-    private IAudioControlAction audioControlActionCB = null;;
+    private IAudioControlAction audioControlActionCB = null;
+
+    /** Controls audio playback. Will be recreated whenever it is stopped. **/
+    private AudioPlaybackThread playbackThread;
+
+    /** playback timer - used to update the progress bar. */
+    private ScheduledExecutorService timer;
+
+    private volatile boolean shouldResume = false;
 
     /**
      * Constructor.
@@ -145,9 +168,9 @@ public class MessageAudioControlComp extends Composite {
             progressBar = new ProgressBar(this, SWT.HORIZONTAL | SWT.SMOOTH);
             progressBar.setLayoutData(gd);
 
-            // TODO : need to find the right values
             progressBar.setMinimum(0);
-            progressBar.setMaximum(1000);
+            // maximum is length of the audio in seconds.
+            progressBar.setMaximum(this.audioData.getAudioDuration());
         } else {
             gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
             gd.minimumWidth = 200;
@@ -213,12 +236,49 @@ public class MessageAudioControlComp extends Composite {
     }
 
     private void handlePlayAction() {
+        try {
+            this.playbackThread = new AudioPlaybackThread(
+                    this.audioData.getAudio());
+            this.playbackThread.setCompleteListener(this);
+        } catch (AudioException e) {
+            statusHandler.error("Failed to load the audio for playback!", e);
+            return;
+        }
+        this.progressBar.setSelection(0);
+        timer = Executors.newSingleThreadScheduledExecutor();
+        this.playbackThread.start();
+        timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, 1000,
+                TimeUnit.MILLISECONDS);
     }
 
     private void handlePauseAction() {
+        if (this.shouldResume) {
+            this.shouldResume = false;
+            timer = Executors.newSingleThreadScheduledExecutor();
+            this.playbackThread.resumePlayback();
+            timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, 1000,
+                    TimeUnit.MILLISECONDS);
+        } else {
+            this.shouldResume = true;
+            this.playbackThread.pausePlayback();
+            this.shutdownTimer();
+        }
     }
 
     private void handleStopAction() {
+        this.shouldResume = false;
+        this.shutdownTimer();
+        this.playbackThread.halt();
+        this.progressBar.setSelection(0);
+    }
+
+    private void shutdownTimer() {
+        if (this.timer == null) {
+            // stopped while paused.
+            return;
+        }
+        timer.shutdown();
+        timer = null;
     }
 
     /**
@@ -256,5 +316,42 @@ public class MessageAudioControlComp extends Composite {
         playBtn.setEnabled(enable);
         pauseBtn.setEnabled(enable);
         stopBtn.setEnabled(enable);
+    }
+
+    private void updatePlaybackStatus() {
+        if (this.progressBar.getSelection() == this.progressBar.getMaximum()) {
+            return;
+        }
+        this.progressBar.setSelection(this.progressBar.getSelection() + 1);
+    }
+
+    /**
+     * Elapsed timer task called when the timer fires.
+     */
+    private class ElapsedTimerTask extends TimerTask {
+        @Override
+        public void run() {
+            getDisplay().asyncExec(new Runnable() {
+                @Override
+                public void run() {
+                    updatePlaybackStatus();
+                }
+            });
+        }
+    }
+
+    @Override
+    public void notifyPlaybackComplete() {
+        this.shutdownTimer();
+        this.shouldResume = false;
+        this.isPlaying = false;
+        // Not on the UI Thread.
+        getDisplay().asyncExec(new Runnable() {
+            @Override
+            public void run() {
+                fireEnableCallbackAction(true);
+                shutdownTimer();
+            }
+        });
     }
 }

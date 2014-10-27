@@ -43,6 +43,7 @@ import javax.sound.sampled.LineUnavailableException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 7, 2014  3657       bkowal      Initial creation
+ * Oct 26, 2014 3748       bkowal      Implemented new/resume.
  * 
  * </pre>
  * 
@@ -57,15 +58,20 @@ public class AudioPlaybackThread extends Thread implements LineListener {
             Encoding.ULAW, 8000, 8, 1, 1, 8000, true);
 
     private IPlaybackCompleteListener listener;
+  
+    protected volatile boolean isPaused = false;
 
     private Clip audioClip;
 
     public AudioPlaybackThread(ByteBuffer audio) throws AudioException {
+        this(audio.array());
+    }
+
+    public AudioPlaybackThread(byte[] audio) throws AudioException {
         super(AudioPlaybackThread.class.getName());
 
         AudioInputStream audioInputStream = new AudioInputStream(
-                new ByteArrayInputStream(audio.array()), ULAW_AUDIO_FMT,
-                audio.array().length);
+                new ByteArrayInputStream(audio), ULAW_AUDIO_FMT, audio.length);
 
         try {
             this.audioClip = AudioSystem.getClip();
@@ -103,6 +109,20 @@ public class AudioPlaybackThread extends Thread implements LineListener {
         this.audioClip.start();
     }
 
+    /**
+     * Stops the audio clip. But, also leaves the clip in a state so that it can
+     * be resumed.
+     */
+    public void pausePlayback() {
+        this.isPaused = true;
+        this.audioClip.stop();
+    }
+
+    public void resumePlayback() {
+        this.isPaused = false;
+        this.audioClip.start();
+    }
+
     public void halt() {
         this.audioClip.stop();
         this.dispose();
@@ -110,12 +130,11 @@ public class AudioPlaybackThread extends Thread implements LineListener {
 
     @Override
     public void update(LineEvent event) {
-        if (event.getType() == Type.STOP) {
+        if (event.getType() == Type.STOP && this.isPaused == false) {
             this.dispose();
             if (this.listener != null) {
                 this.listener.notifyPlaybackComplete();
             }
-        } else if (event.getType() == Type.CLOSE) {
         }
     }
 }

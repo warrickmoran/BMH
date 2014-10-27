@@ -41,6 +41,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 26, 2014  #3728     lvenable     Initial creation
+ * Oct 26, 2014  #3748     bkowal       Clear audio list on reset.
  * 
  * </pre>
  * 
@@ -110,6 +111,7 @@ public class MessageAudioComp extends Composite implements IAudioControlAction {
         }
 
         maccList.clear();
+        this.audioDataList.clear();
 
         this.layout();
     }

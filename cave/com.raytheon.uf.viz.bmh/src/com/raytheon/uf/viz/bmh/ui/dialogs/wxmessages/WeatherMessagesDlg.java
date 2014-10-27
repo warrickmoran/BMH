@@ -19,12 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -33,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -43,7 +40,6 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
@@ -58,6 +54,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicCompa
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
@@ -71,8 +68,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
-import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.MessageTextContentsDlg.DialogType;
-import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -99,6 +95,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 23, 2014   #3748    bkowal       Support sending weather messages to the server so that
  *                                      they can be broadcasted (initial implementation).
  * Oct 26, 2014   #3728    lvenable     Updated to call new contents dialog.
+ * Oct 26, 2014   #3748    bkowal       Updated to use information from the new
+ *                                      contents dialog. Finished create "NEW"
+ *                                      weather message.
  * 
  * </pre>
  * 
@@ -185,13 +184,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     private Button changeMsgTypeBtn;
 
     /** Message text selected from file. */
-    private String messageContent = null;
-
-    /** Recorded or retrieved audio associated with the message. */
-    private byte[] messageAudio = null;
+    // private String messageContent = null;
 
     /** Audio data list. */
     private List<InputMessageAudioData> audioData = null;
+
+    private WxMessagesContent content = null;
 
     /**
      * Constructor.
@@ -227,7 +225,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
         createNewEditButtons();
         createMainControls();
-        resetControls();
+        this.handleNewAction();
     }
 
     /**
@@ -274,8 +272,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                     return;
                 }
 
-                userInputMessage = new InputMessage();
-                resetControls();
+                handleNewAction();
             }
         });
 
@@ -304,7 +301,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                         }
 
                         if (returnValue instanceof InputAudioMessage) {
-                            populateControlsForEdit((InputAudioMessage) returnValue);
+                            InputAudioMessage im = (InputAudioMessage) returnValue;
+                            populateControlsForEdit(im.getInputMessage(),
+                                    im.getAudioDataList());
                         }
                     }
                 });
@@ -313,6 +312,23 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         });
 
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
+    }
+
+    private void handleNewAction() {
+        // we are only setting the fields that are required to update the
+        // current input message during submit.
+        InputMessage im = new InputMessage();
+        im.setContent(StringUtils.EMPTY);
+        Calendar creation = TimeUtil.newGmtCalendar();
+        im.setCreationTime(creation);
+        im.setEffectiveTime(creation);
+        // for now just add 1 day to the creation for the expiration
+        Calendar expire = TimeUtil.newCalendar(creation);
+        expire.add(Calendar.DATE, 1);
+        im.setExpirationTime(expire);
+        resetControls();
+
+        this.populateControlsForEdit(im, null);
     }
 
     /**
@@ -388,7 +404,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                         } else {
                             if (selectedMessageType == null) {
                                 areaSelectionBtn.setEnabled(false);
-                                submitMsgBtn.setEnabled(false);
                             }
                         }
                     }
@@ -662,16 +677,28 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         contentsBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                // clone the list to ensure that the original is maintained.
+                List<InputMessageAudioData> audioList = (audioData != null) ? new ArrayList<>(
+                        audioData) : new ArrayList<InputMessageAudioData>(1);
 
                 MessageContentsDlg mcd = new MessageContentsDlg(shell,
-                        audioData);
+                        audioList, userInputMessage.getContent(),
+                        determineContentType(userInputMessage.getContent()));
                 mcd.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
-                        // TODO : add close callback action
+                        if (returnValue == null) {
+                            // cancelled
+                            return;
+                        }
+
+                        if (returnValue instanceof WxMessagesContent == false) {
+                            return;
+                        }
+
+                        content = (WxMessagesContent) returnValue;
                     }
                 });
-
                 mcd.open();
             }
         });
@@ -691,7 +718,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         submitMsgBtn = new Button(buttonComp, SWT.PUSH);
         submitMsgBtn.setText("Submit Message");
         submitMsgBtn.setLayoutData(gd);
-        submitMsgBtn.setEnabled(false);
         submitMsgBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -744,23 +770,41 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     private void handleSubmitAction() {
         // TODO: dialog validation! - both text content and audio content
 
-        // TODO: need to handle submits of audio messages.
-
-        /*
-         * WARNING: this partial implementation may only demonstrate altering
-         * the message content.
-         */
-
         NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
 
         this.userInputMessage.setName(this.msgNameTF.getText());
-        this.userInputMessage.setContent(this.messageContent);
-        // if (this.microphoneRdo.getSelection()) {
-        // request.setMessageAudio(this.messageAudio);
-        // }
+        this.userInputMessage.setLanguage(this.selectedMessageType.getVoice()
+                .getLanguage());
+        this.userInputMessage.setAfosid(this.selectedMessageType.getAfosid());
+        this.userInputMessage.setCreationTime(this.updateCalFromDTF(
+                this.userInputMessage.getCreationTime(),
+                this.creationDTF.getCalDateTimeValues()));
+        this.userInputMessage.setEffectiveTime(this.updateCalFromDTF(
+                this.userInputMessage.getEffectiveTime(),
+                this.effectiveDTF.getCalDateTimeValues()));
+        this.userInputMessage.setExpirationTime(this.updateCalFromDTF(
+                this.userInputMessage.getExpirationTime(),
+                this.expirationDTF.getCalDateTimeValues()));
+        if ("00000000".equals(this.periodicityDTF.getFormattedValue()) == false) {
+            this.userInputMessage.setPeriodicity(this.periodicityDTF
+                    .getFormattedValue());
+        }
+        // skip mrd
+        this.userInputMessage.setActive(this.activeRdo.getSelection());
+        this.userInputMessage.setConfirm(this.confirmChk.getSelection());
+        this.userInputMessage.setInterrupt(this.interruptChk.getSelection());
+        this.userInputMessage.setAlertTone(this.alertChk.getSelection());
+        this.userInputMessage.setValidHeader(true);
 
+        // handle content
+        this.userInputMessage.setContent(this.content.getText());
+        // audio?
+        if (this.content.getContentType() == CONTENT_TYPE.AUDIO) {
+            request.setMessageAudio(this.content.getAudio());
+        }
         request.setInputMessage(this.userInputMessage);
 
+        // TODO: need to handle input message area on message type selection.
         List<Transmitter> selectedTransmitters = new ArrayList<Transmitter>();
         for (String transmitterMnemonic : this.sameTransmitters
                 .getCheckedItems().getCheckedItems()) {
@@ -773,109 +817,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         } catch (Exception e) {
             statusHandler.error("Failed to submit the weather message.", e);
         }
-    }
-
-    /**
-     * Open a file dialog and let this user select a file to edit. If the file
-     * is valid then open the Message Contents dialog.
-     */
-    private void handleContentsFromFileAction() {
-
-        String[] filterNames = { "Text (*.txt)", "All Extensions (*.*)",
-                "All Files (*)" };
-
-        // These filter extensions are used to filter which files are displayed.
-        String[] filterExtentions = { "*.txt", "*.*", "*" };
-
-        FileDialog dlg = new FileDialog(shell, SWT.OPEN);
-        dlg.setFilterNames(filterNames);
-        dlg.setFilterExtensions(filterExtentions);
-        String fn = dlg.open();
-        if (fn != null) {
-            File f = new File(fn);
-
-            try {
-                List<String> fileContents = Files.readAllLines(f.toPath(),
-                        Charset.defaultCharset());
-
-                if (fileContents.isEmpty()) {
-                    StringBuilder msg = new StringBuilder();
-
-                    msg.append("The file: \n");
-                    msg.append(fn).append("\n");
-                    msg.append("does not have any text to read in.");
-
-                    DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING
-                            | SWT.OK, "No Text Error", msg.toString());
-                    return;
-                }
-
-                StringBuilder sb = new StringBuilder();
-                Iterator<String> iter = fileContents.iterator();
-
-                while (iter.hasNext()) {
-                    sb.append(iter.next());
-
-                    if (iter.hasNext()) {
-                        sb.append("\n");
-                    }
-                }
-
-                MessageTextContentsDlg mtcd = new MessageTextContentsDlg(shell,
-                        sb.toString(), DialogType.EDIT);
-                mtcd.setCloseCallback(new ICloseCallback() {
-                    @Override
-                    public void dialogClosed(Object returnValue) {
-                        if (returnValue != null
-                                && returnValue instanceof String) {
-                            // TODO - handle getting text back...
-
-                            messageContent = (String) returnValue;
-                            // previewBtn.setEnabled(true);
-                        }
-                    }
-                });
-                mtcd.open();
-
-            } catch (IOException e) {
-                statusHandler.error("Error reading data from file: " + fn
-                        + " --- ", e);
-
-                StringBuilder msg = new StringBuilder();
-
-                msg.append("The file: \n");
-                msg.append(fn).append("\n");
-                msg.append("could not be read in.  The file must be an ASCII text file.");
-
-                DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING
-                        | SWT.OK, "File Read Error", msg.toString());
-                return;
-            }
-        }
-    }
-
-    /**
-     * For the microphone contents, display the record/playback dialog.
-     */
-    private void handleContentsMicrophoneAction() {
-        RecordPlaybackDlg recPlaybackDlg = new RecordPlaybackDlg(shell, 600);
-        recPlaybackDlg.setCloseCallback(new ICloseCallback() {
-            @Override
-            public void dialogClosed(Object returnValue) {
-                if (returnValue == null) {
-                    return;
-                }
-
-                if (returnValue instanceof ByteBuffer == false) {
-                    return;
-                }
-
-                messageAudio = ((ByteBuffer) returnValue).array();
-            }
-        });
-        recPlaybackDlg.open();
-
-        // TODO - need to determine if the Play button needs to be enabled....
     }
 
     /**
@@ -947,6 +888,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             }
         }
 
+        this.areaSelectionBtn.setEnabled(true);
         sameTransmitters.selectCheckboxes(cld);
     }
 
@@ -955,7 +897,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      */
     private void resetControls() {
         selectedMessageType = null;
-        userInputMessage = new InputMessage();
+        this.content = null;
 
         // Input message name.
         msgNameTF.setText("");
@@ -971,7 +913,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         emergenyOverrideLbl.setText("");
         sameTransmitters.selectCheckboxes(false);
 
-        submitMsgBtn.setEnabled(false);
         changeMsgTypeBtn.setEnabled(true);
 
         /*
@@ -996,17 +937,22 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      * @param inputMessage
      *            Selected input message.
      */
-    private void populateControlsForEdit(InputAudioMessage im) {
-        userInputMessage = im.getInputMessage();
+    private void populateControlsForEdit(InputMessage im,
+            List<InputMessageAudioData> audioList) {
+        userInputMessage = im;
         selectedMessageType = null;
 
+        this.userInputMessage.setId(0);
+
         // Get the list of audio data.
-        audioData = im.getAudioDataList();
+        audioData = audioList;
 
         changeMsgTypeBtn.setEnabled(false);
 
         // Input message name.
-        msgNameTF.setText(userInputMessage.getName());
+        if (userInputMessage.getName() != null) {
+            msgNameTF.setText(userInputMessage.getName());
+        }
 
         /*
          * Message type controls.
@@ -1014,10 +960,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         getMessageType(userInputMessage.getAfosid());
         if (selectedMessageType == null) {
             areaSelectionBtn.setEnabled(false);
-            submitMsgBtn.setEnabled(false);
+            changeMsgTypeBtn.setEnabled(true);
         } else {
             areaSelectionBtn.setEnabled(true);
-            submitMsgBtn.setEnabled(true);
         }
 
         updateMessageTypeControls();
@@ -1025,21 +970,24 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         /*
          * Input Message controls.
          */
-        interruptChk.setSelection(userInputMessage.getInterrupt());
-        alertChk.setSelection(userInputMessage.getAlertTone());
-        confirmChk.setSelection(userInputMessage.getConfirm());
+        if (userInputMessage.getInterrupt() != null) {
+            interruptChk.setSelection(userInputMessage.getInterrupt());
+        }
+        if (userInputMessage.getAlertTone() != null) {
+            alertChk.setSelection(userInputMessage.getAlertTone());
+        }
+        if (userInputMessage.getConfirm() != null) {
+            confirmChk.setSelection(userInputMessage.getConfirm());
+        }
 
-        boolean messageActive = userInputMessage.getActive();
-        activeRdo.setSelection(messageActive);
-        inactiveRdo.setSelection(!messageActive);
-
-        /*
-         * TODO : need to determine if the input message is from file or
-         * microphone and set the control appropriately
-         * 
-         * get information to allow the user to play back recorded voice for
-         * view/edit text.
-         */
+        if (userInputMessage.getActive() != null) {
+            boolean messageActive = userInputMessage.getActive();
+            activeRdo.setSelection(messageActive);
+            inactiveRdo.setSelection(!messageActive);
+        } else {
+            activeRdo.setSelection(false);
+            inactiveRdo.setSelection(true);
+        }
 
         // Creation, Expiration, Effective date time fields.
         creationDTF.setDateTimeSpinners(userInputMessage.getCreationTime());
@@ -1067,10 +1015,22 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                     periodicityValues[3]);
         }
 
-        /*
-         * currently all input messages will always be text.
-         */
-        this.messageContent = userInputMessage.getContent();
+        // handle message contents.
+        WxMessagesContent msgContent = new WxMessagesContent(
+                this.determineContentType(this.userInputMessage.getContent()));
+        // there will always be text no matter what the content type is like
+        msgContent.setText(this.userInputMessage.getContent());
+        if (msgContent.getContentType() == CONTENT_TYPE.AUDIO) {
+            // we only care about audio when the content type is actually audio.
+
+            // all audio records will be the same so, we only need to get the
+            // first one.
+            // TODO: can we guarantee that the audio will exist with
+            // user-generated
+            // audio?
+            msgContent.setAudio(this.audioData.get(0).getAudio());
+        }
+        this.content = msgContent;
     }
 
     /**
@@ -1100,5 +1060,32 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             selectedMessageType = null;
             return;
         }
+    }
+
+    /**
+     * Warning this method of determining the content type does have risks. The
+     * only way to make this method completely safe would be to ban incoming
+     * messages from other sources that start with: "Recorded by".
+     * 
+     * @return
+     */
+    private CONTENT_TYPE determineContentType(final String content) {
+        final String recordedBy = "Recorded by";
+
+        return content.trim().startsWith(recordedBy) ? CONTENT_TYPE.AUDIO
+                : CONTENT_TYPE.TEXT;
+    }
+
+    /*
+     * TODO: weather messages and broadcast schedule need to be updated to share
+     * common aspects.
+     */
+    private Calendar updateCalFromDTF(Calendar currentCal,
+            Map<Integer, Integer> fieldValuesMap) {
+        for (Integer calField : fieldValuesMap.keySet()) {
+            currentCal.set(calField, fieldValuesMap.get(calField));
+        }
+
+        return currentCal;
     }
 }
