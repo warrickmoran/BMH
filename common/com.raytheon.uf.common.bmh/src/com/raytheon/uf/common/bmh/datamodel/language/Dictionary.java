@@ -35,9 +35,9 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 import org.hibernate.annotations.Fetch;
+import com.raytheon.uf.common.bmh.diff.DiffKeyOverride;
 import org.hibernate.annotations.FetchMode;
 
-import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
@@ -74,6 +74,7 @@ public class Dictionary {
 
     @Id
     @Column(length = 20)
+    @DiffKeyOverride
     private String name = null;
 
     @Enumerated(EnumType.STRING)
@@ -157,41 +158,32 @@ public class Dictionary {
         return "Dictionary [name=" + name + ", language=" + language + "]";
     }
 
-    /**
-     * Get log entry.
-     * 
-     * @param oldDic
-     *            - When null assume this is a new Dictionary.
-     * @param user
-     *            - Who is making the change
-     * @return entry - empty string when no differences.
-     */
-    public String logEntry(Dictionary oldDic, String user) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("User ").append(user);
-        if (oldDic == null) {
-            sb.append(" New ").append(toString());
-        } else {
-            boolean logChanges = false;
-            sb.append(" Updates to Dictionary ").append(getName()).append(" [");
-            if (!name.equals(oldDic.getName())) {
-                BMHLoggerUtils.logFieldChange(sb, "name", oldDic.getName(),
-                        getName());
-                logChanges = true;
-            }
-            if (!getLanguage().equals(oldDic.getLanguage())) {
-                BMHLoggerUtils.logFieldChange(sb, "language",
-                        oldDic.getLanguage(), getLanguage());
-                logChanges = true;
-            }
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result
+                + ((language == null) ? 0 : language.hashCode());
+        result = prime * result + ((name == null) ? 0 : name.hashCode());
+        return result;
+    }
 
-            // No changes made
-            if (!logChanges) {
-                return "";
-            }
-
-            sb.setCharAt(sb.length() - 2, ']');
-        }
-        return sb.toString();
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Dictionary other = (Dictionary) obj;
+        if (language != other.language)
+            return false;
+        if (name == null) {
+            if (other.name != null)
+                return false;
+        } else if (!name.equals(other.name))
+            return false;
+        return true;
     }
 }
