@@ -80,6 +80,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 8, 2014    #3490     lvenable   Removed Override tag.
  * Sep 10, 2014     3355   mpduff      Made Dictionary combo readonly, post demo cleanup
  * Oct 11, 2014     3704   mpduff      Set neoPhoneme field when selecting a word in the table.
+ * Oct 27, 2014     3765   mpduff      Generated phoneme persists through selected dictionary changes.
  * 
  * </pre>
  * 
@@ -712,7 +713,6 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
             }
 
             tableComp.updateTable(tableData);
-            tableComp.select(selectedIndex);
         }
     }
 
