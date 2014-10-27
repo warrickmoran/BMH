@@ -42,6 +42,7 @@ import com.raytheon.bmh.dacsimulator.channel.output.DacSimulatedBroadcast;
  * Oct 07, 2014  #3688     dgilling     Initial creation
  * Oct 21, 2014  #3688     dgilling     Refactor to support RTP packet's
  *                                      ability to address to output channels.
+ * Oct 24, 2014  #3688     dgilling     Fix ability to disconnect/reconnect.
  * 
  * </pre>
  * 
@@ -101,6 +102,8 @@ public class DacSimulatedChannel {
 
     public void start() {
         heartbeatReceiveThread.start();
+        heartbeatSendThread.start();
+        dataThread.start();
     }
 
     public void shutdown() {

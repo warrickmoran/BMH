@@ -51,6 +51,7 @@ import com.raytheon.bmh.dacsimulator.events.SyncObtainedEvent;
  * ------------ ---------- ----------- --------------------------
  * Oct 03, 2014  #3688     dgilling     Initial creation
  * Oct 21, 2014  #3688     dgilling     Support RTP packet's addressing bits.
+ * Oct 24, 2014  #3688     dgilling     Fix ability to disconnect/reconnect.
  * 
  * </pre>
  * 
@@ -105,6 +106,10 @@ public class DacReceiveDataThread extends Thread {
 
     private final EventBus eventBus;
 
+    private volatile boolean keepRunning;
+
+    private Object wakeMonitor;
+
     /**
      * Constructor.
      * 
@@ -131,29 +136,43 @@ public class DacReceiveDataThread extends Thread {
         this.syncHost = new AtomicReference<>();
         this.eventBus = eventBus;
         this.eventBus.register(this);
+        this.keepRunning = true;
+        this.wakeMonitor = new Object();
     }
 
     @Override
     public void run() {
         byte[] receiveBuffer = new byte[RTP_PACKET_SIZE];
 
-        while (hasSync.get()) {
+        while (keepRunning) {
             try {
-                try {
-                    DatagramPacket packet = new DatagramPacket(receiveBuffer,
-                            RTP_PACKET_SIZE);
-                    socket.receive(packet);
+                synchronized (wakeMonitor) {
+                    wakeMonitor.wait();
+                }
 
-                    if (syncHost.get().equals(packet.getAddress())) {
-                        AudioPacket nextAudioPacket = extractAudioPacket(packet);
-                        if (nextAudioPacket != null) {
-                            buffer.add(nextAudioPacket);
+                while (hasSync.get()) {
+                    try {
+                        try {
+                            DatagramPacket packet = new DatagramPacket(
+                                    receiveBuffer, RTP_PACKET_SIZE);
+                            socket.receive(packet);
+
+                            if (syncHost.get().equals(packet.getAddress())) {
+                                AudioPacket nextAudioPacket = extractAudioPacket(packet);
+                                if (nextAudioPacket != null) {
+                                    buffer.add(nextAudioPacket);
+                                }
+                            }
+                        } catch (IOException e) {
+                            logger.error(
+                                    "IOException thrown while receiving audio packet from "
+                                            + syncHost.get(), e);
                         }
+                    } catch (Throwable t) {
+                        logger.error(
+                                "Unhandled exception thrown by DacReceiveDataThread.",
+                                t);
                     }
-                } catch (IOException e) {
-                    logger.error(
-                            "IOException thrown while receiving audio packet from "
-                                    + syncHost.get(), e);
                 }
             } catch (Throwable t) {
                 logger.error(
@@ -209,7 +228,7 @@ public class DacReceiveDataThread extends Thread {
     @Subscribe
     public void handleSyncObtained(SyncObtainedEvent event) {
         setSyncPartner(event.getSyncHost());
-        start();
+        wakeThread();
     }
 
     @Subscribe
@@ -217,7 +236,15 @@ public class DacReceiveDataThread extends Thread {
         resetSync();
     }
 
+    private void wakeThread() {
+        synchronized (wakeMonitor) {
+            wakeMonitor.notifyAll();
+        }
+    }
+
     public void shutdown() {
+        keepRunning = false;
+        wakeThread();
         eventBus.unregister(this);
         resetSync();
         socket.close();
