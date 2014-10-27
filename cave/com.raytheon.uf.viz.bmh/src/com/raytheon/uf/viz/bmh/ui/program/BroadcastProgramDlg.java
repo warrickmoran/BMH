@@ -89,6 +89,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 16, 2014  #3587     bkowal      Updated to only allow trigger assignment for {Program, Suite}
  * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
+ * Oct 27, 2014  3750      lvenable    fixed message type table update when adding new suite.
+ * 
  * </pre>
  * 
  * @author lvenable
@@ -449,12 +451,12 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         populateProgramCombo(true);
         populateSuiteTable(true);
 
-        populateMsgTypeTable(suiteConfigGroup.getSelectedSuite());
-        updateSuiteGroupText();
-
         if (suiteID != Integer.MIN_VALUE) {
             suiteConfigGroup.selectSuiteInTable(suiteID);
         }
+
+        populateMsgTypeTable(suiteConfigGroup.getSelectedSuite());
+        updateSuiteGroupText();
     }
 
     /**
@@ -710,7 +712,6 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         updateSuiteGroupText();
     }
 
-    // TODO : will be used later
     private void handleSuitesUpdated(Suite suite) {
 
         List<Suite> progSuites = selectedProgram.getSuites();
