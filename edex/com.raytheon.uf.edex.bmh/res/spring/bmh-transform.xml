@@ -3,7 +3,15 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-	<bean id="messageTransformer" class="com.raytheon.uf.edex.bmh.xformer.MessageTransformer" />
+	<bean id="messageTransformer" class="com.raytheon.uf.edex.bmh.xformer.MessageTransformer">
+		<property name="messageTypeDao" ref="messageTypeDao" />
+		<property name="transmitterLanguageDao" ref="transmitterLanguageDao" />
+	</bean>
+	
+	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
+		<constructor-arg ref="bmh-xform" />
+		<constructor-arg ref="messageTransformer" />
+	</bean>
 
 	<camelContext id="bmh-xform" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">

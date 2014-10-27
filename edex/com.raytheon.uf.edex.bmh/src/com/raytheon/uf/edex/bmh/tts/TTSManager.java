@@ -42,7 +42,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
-import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
@@ -76,6 +75,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     directly used.
  * Oct 2, 2014  3642       bkowal      Updated for compatibility with other changes
  * Oct 21, 2014 3747       bkowal      Set update time manually.
+ * Oct 26, 2014 3759       bkowal      Update to support practice mode.
  * 
  * </pre>
  * 
@@ -107,8 +107,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             .getExtension();
 
     /* Configuration Property Name Constants */
-    private static final String TTS_THREADS = "bmh.tts.threads";
-
     private static final String TTS_HEARTBEAT = "bmh.tts.heartbeat";
 
     private static final String TTS_VOICE_VALIDATE_PROPERTY = "bmh.tts.voice.validate";
@@ -203,7 +201,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         statusHandler.info("Initializing the TTS Manager ...");
 
         /* Attempt to retrieve the location of BMH_DATA */
-        this.bmhDataDirectory = BMHConstants.getBmhDataDirectory();
         this.bmhDataDirectory = FilenameUtils.normalize(this.bmhDataDirectory
                 + File.separatorChar + AUDIO_DATA_DIRECTORY);
 
@@ -211,7 +208,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
          * Attempt to retrieve configuration information from the System
          * properties
          */
-        Integer ttsThreadInteger = Integer.getInteger(TTS_THREADS, null);
         Long ttsHeartbeatLong = Long.getLong(TTS_HEARTBEAT, null);
 
         this.ttsValidationVoice = Integer.getInteger(
@@ -221,10 +217,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         Long delayLong = Long.getLong(TTS_RETRY_DELAY_PROPERTY, null);
 
         /* Verify that the configuration was successfully retrieved. */
-        if (ttsThreadInteger == null) {
-            throw new BMHConfigurationException(
-                    "Failed to retrieve the TTS Available Thread Count from configuration!");
-        }
         if (ttsHeartbeatLong == null) {
             throw new BMHConfigurationException(
                     "Failed to retrieve the TTS Heartbeat Interval from configuration!");
@@ -665,6 +657,20 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                             "Failed to determine the current status of the TTS Server!",
                             e);
         }
+    }
+
+    /**
+     * @return the bmhDataDirectory
+     */
+    public String getBmhDataDirectory() {
+        return bmhDataDirectory;
+    }
+
+    /**
+     * @param bmhDataDirectory the bmhDataDirectory to set
+     */
+    public void setBmhDataDirectory(String bmhDataDirectory) {
+        this.bmhDataDirectory = bmhDataDirectory;
     }
 
     /**

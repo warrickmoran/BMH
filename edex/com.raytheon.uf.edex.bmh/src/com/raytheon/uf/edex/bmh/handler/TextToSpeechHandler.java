@@ -24,6 +24,7 @@ import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
 import com.raytheon.uf.edex.bmh.tts.TTSManager;
 import com.raytheon.uf.edex.bmh.tts.TTSReturn;
+import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
 
 /**
  * Handle the CAVE text to speech requests.
@@ -42,6 +43,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSReturn;
  * Oct 2, 2014     3642    bkowal      Use the tts synthesis timeout provided
  *                                     in the request.
  * Oct 13, 2014    3413    rferrel     Implement User roles.
+ * Oct 26, 2014    3759    bkowal      Update to support practice mode.
  * 
  * </pre>
  * 
@@ -53,15 +55,25 @@ public class TextToSpeechHandler extends
         AbstractBMHServerRequestHandler<TextToSpeechRequest> {
     private final TTSManager ttsManager;
 
+    private TTSManager practiceTTSManager;
+
     public TextToSpeechHandler(TTSManager ttsManager) {
         this.ttsManager = ttsManager;
     }
 
     @Override
     public Object handleRequest(TextToSpeechRequest request) throws Exception {
-        TTSReturn output = this.ttsManager.getSynthesisFactory().synthesize(
-                request.getPhoneme(), request.getVoice(),
-                TTS_FORMAT.TTS_FORMAT_MULAW, request.getTimeout());
+        TTSSynthesisFactory ttsSynthesisFactory = null;
+        // determine which synthesis factory to use based on request mode.
+        if (this.practiceTTSManager == null || request.isOperational()) {
+            ttsSynthesisFactory = this.ttsManager.getSynthesisFactory();
+        } else {
+            ttsSynthesisFactory = this.practiceTTSManager.getSynthesisFactory();
+        }
+
+        TTSReturn output = ttsSynthesisFactory.synthesize(request.getPhoneme(),
+                request.getVoice(), TTS_FORMAT.TTS_FORMAT_MULAW,
+                request.getTimeout());
         TTS_RETURN_VALUE status = output.getReturnValue();
 
         request.setStatus(status.getDescription());
@@ -72,5 +84,10 @@ public class TextToSpeechHandler extends
         }
 
         return request;
+    }
+
+    public TTSManager setPracticeTTSManager(TTSManager practiceTTSManager) {
+        this.practiceTTSManager = practiceTTSManager;
+        return practiceTTSManager;
     }
 }
