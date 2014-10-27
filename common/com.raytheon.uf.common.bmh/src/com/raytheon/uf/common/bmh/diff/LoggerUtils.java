@@ -30,6 +30,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.persistence.Transient;
+
 import org.apache.commons.beanutils.PropertyUtils;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -56,17 +58,17 @@ public class LoggerUtils {
     /**
      * Default priority to use for logging.
      */
-    private final static Priority DEFAULT_PRIORITY = Priority.INFO;
+    public final static Priority DEFAULT_PRIORITY = Priority.INFO;
 
     /**
      * Cache of fields to place in logging header for a given class.
      */
-    private static final Map<Class<?>, DiffKeyCache> diffKeyCacheMap = new HashMap<>();
+    private static final Map<Class<?>, DiffTitleCache> diffTitleCacheMap = new HashMap<>();
 
     /**
      * The field to display when the class is embedded in another class.
      */
-    private static final Map<Class<?>, DiffKeyOverrideCache> diffKeyOverrideCacheMap = new HashMap<>();
+    private static final Map<Class<?>, DiffStringCache> diffStringCacheMap = new HashMap<>();
 
     /**
      * The class' fields to check for differences when logging updates.
@@ -115,7 +117,7 @@ public class LoggerUtils {
                 return;
             }
 
-            createHeader(sb, user, "Update", newObj, logger).append(" [");
+            createHeader(sb, user, "Update", newObj, logger).append(" ");
 
             boolean logChanges = false;
 
@@ -162,7 +164,6 @@ public class LoggerUtils {
                 return;
             }
             sb.setLength(sb.length() - 2);
-            sb.append("]");
         }
 
         logger.handle(priority, sb.toString());
@@ -183,8 +184,8 @@ public class LoggerUtils {
 
         sb.append("User ").append(user).append(" ").append(action).append(" ");
         Class<?> clazz = newObj.getClass();
-        DiffKeyCache diffKeyCache = getDiffKeyCache(clazz);
-        List<Field> titleFields = diffKeyCache.getDiffKeyFields();
+        DiffTitleCache diffTitleCache = getDiffTitleCache(clazz);
+        List<Field> titleFields = diffTitleCache.getDiffKeyFields();
 
         int start = sb.length();
         sb.append(clazz.getName());
@@ -193,31 +194,33 @@ public class LoggerUtils {
 
         if (titleFields.size() > 0) {
             sb.append(" ");
-            for (Field field : titleFields) {
-                sb.append(diffKeyCache.getTitle(field)).append("/");
-            }
-            sb.setLength(sb.length() - 1);
-            sb.append(": ");
-            for (Field field : titleFields) {
-                try {
-                    Object o = PropertyUtils.getProperty(newObj,
-                            field.getName());
-                    Field f = getDiffKeyOverrideField(o.getClass());
-                    if (f != null) {
-                        o = PropertyUtils.getProperty(o, f.getName());
-                    }
 
-                    if (o == null) {
-                        o = "<None>";
+            for (Field field : titleFields) {
+                String title = getDiffStringTitle(field);
+                boolean userOverrideValue = true;
+                if (title == null) {
+                    title = diffTitleCache.getTitle(field);
+                    userOverrideValue = false;
+                }
+                sb.append(title).append(" ");
+                try {
+                    Object value = PropertyUtils.getProperty(newObj,
+                            field.getName());
+                    if (userOverrideValue) {
+                        sb.append(getDiffStringDisplayValue(field.getType(),
+                                value));
+                    } else {
+                        sb.append(displayValue(value));
                     }
-                    sb.append(o).append("/");
                 } catch (SecurityException | IllegalAccessException
                         | InvocationTargetException | NoSuchMethodException e) {
                     logger.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
-                    sb.append("<error>/");
+                    sb.append("<error>");
                 }
+                sb.append(" ");
             }
             sb.setLength(sb.length() - 1);
+            sb.append(": ");
         }
         return sb;
     }
@@ -239,9 +242,9 @@ public class LoggerUtils {
             throws IllegalAccessException, InvocationTargetException,
             NoSuchMethodException {
 
+        sb.append(title).append(":");
+
         StringBuilder colSb = new StringBuilder();
-        colSb.append("-[");
-        int startIndex = colSb.length();
         if ((oldCol != null) && (oldCol.size() > 0)) {
             if ((newCol == null) || (newCol.size() == 0)) {
                 for (Object o : oldCol) {
@@ -255,42 +258,41 @@ public class LoggerUtils {
                 }
             }
         }
-        if (colSb.length() > startIndex) {
-            colSb.setLength(colSb.length() - 2);
-        }
-        colSb.append("]");
-        String oldValue = colSb.toString();
 
-        colSb.setLength(0);
-        colSb.append("+[");
-        startIndex = colSb.length();
+        if (colSb.length() > 0) {
+            colSb.setLength(colSb.length() - 2);
+            sb.append(" removed [").append(colSb).append("]");
+            colSb.setLength(0);
+        }
+
         if ((newCol != null) && (newCol.size() > 0)) {
             if ((oldCol == null) || (oldCol.size() == 0)) {
-                for (Object o : oldCol) {
+                for (Object o : newCol) {
                     colSb.append(objectDisplayString(o)).append(", ");
                 }
             } else if (oldCol != null) {
-                for (Object o : oldCol) {
+                for (Object o : newCol) {
                     if (!oldCol.contains(o)) {
                         colSb.append(objectDisplayString(o)).append(", ");
                     }
                 }
             }
         }
-        if (colSb.length() > startIndex) {
+
+        if (colSb.length() > 0) {
             colSb.setLength(colSb.length() - 2);
+            sb.append(" added [").append(colSb).append("]");
         }
-        colSb.append("]");
-        String newValue = colSb.toString();
-        logFieldChange(sb, title, oldValue, newValue);
+
+        sb.append(", ");
     }
 
     /**
      * Get the objects display string based on following order
      * 
      * <pre>
-     * {@link DiffKeyOverride}
-     * {@link DiffKey} - field with lowest position
+     * {@link DiffString}
+     * {@link DiffTitle} - field with lowest position
      * object's toString()
      * </pre>
      * 
@@ -308,9 +310,9 @@ public class LoggerUtils {
             return "None";
         }
         Class<?> clazz = obj.getClass();
-        Field field = getDiffKeyOverrideField(clazz);
+        Field field = getDiffStringField(clazz);
         if (field == null) {
-            List<Field> fields = getDiffKeyCache(clazz).getDiffKeyFields();
+            List<Field> fields = getDiffTitleCache(clazz).getDiffKeyFields();
             if ((fields != null) && (fields.size() > 0)) {
                 field = fields.get(0);
             }
@@ -321,6 +323,41 @@ public class LoggerUtils {
         }
         Object value = PropertyUtils.getProperty(obj, field.getName());
         return value.toString();
+    }
+
+    private static String getDiffStringDisplayValue(Class<?> clazz, Object obj)
+            throws IllegalAccessException, InvocationTargetException,
+            NoSuchMethodException {
+
+        Field field = getDiffStringField(clazz);
+        Object value = obj;
+
+        while ((field != null) && (value != null)) {
+            value = PropertyUtils.getProperty(value, field.getName());
+            field = getDiffStringField(field.getType());
+        }
+        return displayValue(value);
+    }
+
+    private static String displayValue(Object value) {
+        if (value == null) {
+            return "None";
+        }
+        return "[" + value.toString() + "]";
+    }
+
+    private static String getDiffStringTitle(Field field) {
+        StringBuilder sb = new StringBuilder();
+
+        while (field != null) {
+            sb.append(field.getName()).append(".");
+            field = getDiffStringField(field.getType());
+        }
+        if (sb.length() == 0) {
+            return null;
+        }
+        sb.setLength(sb.length() - 1);
+        return sb.toString();
     }
 
     /**
@@ -338,14 +375,8 @@ public class LoggerUtils {
             Object oldValue, Object newValue) {
         String oldStr = oldValue.toString();
         String newStr = newValue.toString();
-        sb.append(title);
-        if (oldStr.matches("^[+-]{0,1}\\[.*$")) {
-            sb.append(": ").append(oldStr).append(" | ").append(newStr)
-                    .append(", ");
-        } else {
-            sb.append(": \"").append(oldStr).append("\" | \"").append(newStr)
-                    .append("\", ");
-        }
+        sb.append(title).append(": [").append(oldStr).append("] -> [")
+                .append(newStr).append("], ");
     }
 
     /**
@@ -406,7 +437,6 @@ public class LoggerUtils {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("rlf-- ");
         createHeader(sb, user, "Deleted", delObj, logger).append(delObj);
         logger.handle(priority, sb.toString());
     }
@@ -426,7 +456,9 @@ public class LoggerUtils {
                 while (currentClass != null) {
                     for (Field field : currentClass.getDeclaredFields()) {
                         if ((field.getAnnotation(DiffIgnore.class) == null)
-                                && !Modifier.isStatic(field.getModifiers())) {
+                                && (field.getAnnotation(Transient.class) == null)
+                                && !Modifier.isStatic(field.getModifiers())
+                                && !Modifier.isTransient(field.getModifiers())) {
                             list.add(field);
                         }
                     }
@@ -442,29 +474,29 @@ public class LoggerUtils {
     }
 
     /**
-     * Get list of fields to display in the log's header see {@link DiffKey}
+     * Get list of fields to display in the log's header see {@link DiffTitle}
      * 
      * @param clazz
      * @return keyFields - null indicate no entries for the class
      */
-    private static Field getDiffKeyOverrideField(Class<?> clazz) {
-        synchronized (diffKeyOverrideCacheMap) {
-            DiffKeyOverrideCache cache = diffKeyOverrideCacheMap.get(clazz);
+    private static Field getDiffStringField(Class<?> clazz) {
+        synchronized (diffStringCacheMap) {
+            DiffStringCache cache = diffStringCacheMap.get(clazz);
             if (cache == null) {
                 Class<?> currentClass = clazz;
                 mainLoop: while (currentClass != null) {
                     for (Field field : currentClass.getDeclaredFields()) {
-                        if (field.getAnnotation(DiffKeyOverride.class) != null) {
-                            cache = new DiffKeyOverrideCache(field);
+                        if (field.getAnnotation(DiffString.class) != null) {
+                            cache = new DiffStringCache(field);
                             break mainLoop;
                         }
                     }
                     currentClass = currentClass.getSuperclass();
                 }
                 if (cache == null) {
-                    cache = new DiffKeyOverrideCache(null);
+                    cache = new DiffStringCache(null);
                 }
-                diffKeyOverrideCacheMap.put(clazz, cache);
+                diffStringCacheMap.put(clazz, cache);
             }
             return cache.getField();
         }
@@ -475,24 +507,24 @@ public class LoggerUtils {
      * @param clazz
      * @return diffKeyCache
      */
-    private static DiffKeyCache getDiffKeyCache(Class<?> clazz) {
-        synchronized (diffKeyCacheMap) {
-            DiffKeyCache diffKeyCache = diffKeyCacheMap.get(clazz);
+    private static DiffTitleCache getDiffTitleCache(Class<?> clazz) {
+        synchronized (diffTitleCacheMap) {
+            DiffTitleCache diffKeyCache = diffTitleCacheMap.get(clazz);
             if (diffKeyCache == null) {
-                diffKeyCache = new DiffKeyCache(clazz);
-                diffKeyCacheMap.put(clazz, diffKeyCache);
+                diffKeyCache = new DiffTitleCache(clazz);
+                diffTitleCacheMap.put(clazz, diffKeyCache);
             }
             return diffKeyCache;
         }
     }
 
     /**
-     * Wrapper class for caching a class' {@link DiffKeyOverride}
+     * Wrapper class for caching a class' {@link DiffString}
      */
-    private static class DiffKeyOverrideCache {
+    private static class DiffStringCache {
         private final Field field;
 
-        public DiffKeyOverrideCache(Field field) {
+        public DiffStringCache(Field field) {
             this.field = field;
         }
 
@@ -502,9 +534,9 @@ public class LoggerUtils {
     }
 
     /**
-     * Wrapper class for caching a class's {@link DiffKey}s.
+     * Wrapper class for caching a class's {@link DiffTitle}s.
      */
-    private static class DiffKeyCache {
+    private static class DiffTitleCache {
         /**
          * Order list by position.
          */
@@ -512,8 +544,8 @@ public class LoggerUtils {
 
             @Override
             public int compare(Field f1, Field f2) {
-                int i1 = f1.getAnnotation(DiffKey.class).position();
-                int i2 = f2.getAnnotation(DiffKey.class).position();
+                int i1 = f1.getAnnotation(DiffTitle.class).position();
+                int i2 = f2.getAnnotation(DiffTitle.class).position();
                 return i1 - i2;
             }
         };
@@ -525,7 +557,7 @@ public class LoggerUtils {
             Class<?> currentClass = clazz;
             while (currentClass != null) {
                 for (Field field : currentClass.getDeclaredFields()) {
-                    if (field.getAnnotation(DiffKey.class) != null) {
+                    if (field.getAnnotation(DiffTitle.class) != null) {
                         list.add(field);
                     }
                 }
@@ -537,7 +569,7 @@ public class LoggerUtils {
             return fields;
         }
 
-        public DiffKeyCache(Class<?> clazz) {
+        public DiffTitleCache(Class<?> clazz) {
             diffKeyFields = getOrderedDiffKeyFields(clazz);
         }
 
@@ -546,7 +578,7 @@ public class LoggerUtils {
         }
 
         public String getTitle(Field field) {
-            String title = field.getAnnotation(DiffKey.class).title();
+            String title = field.getAnnotation(DiffTitle.class).title();
             if (title.trim().length() == 0) {
                 title = field.getName();
             }

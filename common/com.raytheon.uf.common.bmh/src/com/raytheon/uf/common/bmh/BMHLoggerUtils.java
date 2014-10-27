@@ -1,12 +1,9 @@
 package com.raytheon.uf.common.bmh;
 
-import java.util.Set;
-
 import com.raytheon.uf.common.bmh.diff.LoggerUtils;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
 
 /**
  * This software was developed and / or modified by Raytheon Company,
@@ -56,8 +53,8 @@ public class BMHLoggerUtils {
      * @param isOperational
      * @return logger
      */
-    public static IUFStatusHandler getSrvLogger(boolean isOperational) {
-        if (isOperational) {
+    public static IUFStatusHandler getSrvLogger(AbstractBMHServerRequest request) {
+        if (request.isOperational()) {
             return UFStatus.getNamedHandler(SRV_LOGGER_NAME);
         }
         return UFStatus.getNamedHandler(PRACTICE_SRV_LOGGER_NAME);
@@ -72,100 +69,16 @@ public class BMHLoggerUtils {
         return request.getUser().uniqueId().toString();
     }
 
-    /**
-     * Standard format for logging a field's old and new value.
-     * 
-     * @param sb
-     * @param title
-     *            - Field name
-     * @param oldValue
-     *            - Field's old value
-     * @param newValue
-     *            - Field's new value
-     */
-    public static void logFieldChange(StringBuilder sb, String title,
-            Object oldValue, Object newValue) {
-        String oldStr = oldValue.toString();
-        String newStr = newValue.toString();
-        sb.append(title);
-        if (oldStr.matches("^[+-]{0,1}\\[.*$")) {
-            sb.append(": ").append(oldStr).append(" | ").append(newStr)
-                    .append(", ");
-        } else {
-            sb.append(": \"").append(oldStr).append("\" | \"").append(newStr)
-                    .append("\", ");
-        }
-    }
-
-    /**
-     * Determine if the two sets are different. Remove once all handlers use
-     * annotation.
-     * 
-     * @param set1
-     * @param set2
-     * @return true when sets are different
-     */
-    @Deprecated
-    public static <T> boolean setsDiffer(Set<T> set1, Set<T> set2) {
-        // Null and empty sets are the same.
-        if (set1 == null) {
-            return ((set2 != null) && (set2.size() > 0));
-        }
-
-        if (set2 == null) {
-            return (set1.size() > 0);
-        }
-
-        if (set1.size() != set2.size()) {
-            return true;
-        }
-
-        // containsAll doesn't always return true for 2 empty sets.
-        if (set1.size() > 0) {
-            return !set1.containsAll(set2);
-        }
-
-        return false;
-    }
-
-    /**
-     * Remove once all handlers converted to use annotation.
-     * 
-     * @param value
-     * @param none
-     * @return
-     */
-    @Deprecated
-    public static String nullCheck(String value, String none) {
-        if ((value == null) || (value.trim().length() == 0)) {
-            return none;
-        }
-        return "\"" + value + "\"";
-    }
-
     private BMHLoggerUtils() {
     }
 
-    public static <T> void logSave(boolean isOperational, String user,
-            T oldObj, T newObj) {
-        LoggerUtils.logSave(getSrvLogger(isOperational), user, oldObj, newObj);
+    public static <T> void logSave(AbstractBMHServerRequest request,
+            String user, T oldObj, T newObj) {
+        LoggerUtils.logSave(getSrvLogger(request), user, oldObj, newObj);
     }
 
-    public static <T> void logDelete(boolean isOperational, String user,
-            T delObj) {
-        LoggerUtils.logDelete(getSrvLogger(isOperational), user, delObj);
-    }
-
-    public static <T> void logDelete(boolean isOperational, String user,
-            T delObj, Priority priority) {
-        IUFStatusHandler logger = getSrvLogger(isOperational);
-        if (!logger.isPriorityEnabled(priority)) {
-            return;
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("rlf-- User ").append(user).append(" Deleted ")
-                .append(delObj);
-        logger.handle(priority, sb.toString());
+    public static <T> void logDelete(AbstractBMHServerRequest request,
+            String user, T delObj) {
+        LoggerUtils.logDelete(getSrvLogger(request), user, delObj);
     }
 }

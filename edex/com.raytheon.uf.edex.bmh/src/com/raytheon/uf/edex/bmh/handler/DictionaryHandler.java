@@ -103,8 +103,7 @@ public class DictionaryHandler extends
         DictionaryDao dao = new DictionaryDao(request.isOperational());
         Dictionary newDic = request.getDictionary();
 
-        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
-                .isOperational());
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         Dictionary oldDic = null;
         if (logger.isPriorityEnabled(Priority.INFO)) {
             oldDic = dao.getByID(newDic.getName());
@@ -114,8 +113,7 @@ public class DictionaryHandler extends
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            BMHLoggerUtils.logSave(request.isOperational(), user, oldDic,
-                    newDic);
+            BMHLoggerUtils.logSave(request, user, oldDic, newDic);
         }
         response.setDictionary(request.getDictionary());
 
@@ -129,12 +127,10 @@ public class DictionaryHandler extends
             DictionaryDao dao = new DictionaryDao(request.isOperational());
             dao.delete(response.getDictionary());
 
-            IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
-                    .isOperational());
+            IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
             if (logger.isPriorityEnabled(Priority.INFO)) {
                 String user = BMHLoggerUtils.getUser(request);
-                BMHLoggerUtils.logDelete(request.isOperational(), user,
-                        dictionary);
+                BMHLoggerUtils.logDelete(request, user, dictionary);
             }
         }
     }
