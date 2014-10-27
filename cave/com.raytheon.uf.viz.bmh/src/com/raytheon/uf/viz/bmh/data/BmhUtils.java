@@ -57,6 +57,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 13, 2014   3413      rferrel     Support of user roles in sendRequest.
  * Oct 16, 2014   3657      bkowal      Relocated duration parsing methods.
  * Oct 21, 2014   3728      lvenable    Make splitDateTimeString public.
+ * Oct 27, 2014   3750      lvenable    change string length in parsing method
+ *                                      generateDayHourMinuteSecondMap()
  * 
  * </pre>
  * 
@@ -223,7 +225,7 @@ public class BmhUtils {
             String dateTimeStr) {
         Map<DateFieldType, Integer> dateTimeMap = new LinkedHashMap<DateFieldType, Integer>();
 
-        if (dateTimeStr == null || dateTimeStr.length() != 6) {
+        if (dateTimeStr == null || dateTimeStr.length() != 8) {
             dateTimeMap.put(DateFieldType.DAY, 0);
             dateTimeMap.put(DateFieldType.HOUR, 0);
             dateTimeMap.put(DateFieldType.MINUTE, 0);
