@@ -40,6 +40,7 @@ import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
@@ -78,6 +79,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Oct 13, 2014 3636       rferrel     For logging modified toString to show transmitters' mnemonic add LogEntry.
  * Oct 13, 2014  3636      rferrel     For logging modified toString to show transmitters' mnemonic add LogEntry.
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
+ * Oct 27, 2014 3630       mpduff      Add annotation for hibernate.
  * 
  * </pre>
  * 
@@ -151,6 +153,7 @@ public class TransmitterGroup {
     /**
      * Set of transmitters enabled when the whole group is disabled.
      */
+    @Transient
     private final Set<Integer> prevEnabledTransmitters = new HashSet<>();
 
     /**
