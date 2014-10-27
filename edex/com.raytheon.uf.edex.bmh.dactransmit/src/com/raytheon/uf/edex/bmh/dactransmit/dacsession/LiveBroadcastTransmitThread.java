@@ -34,6 +34,7 @@ import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
 import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
@@ -57,6 +58,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  *                                     broadcast.
  * Oct 21, 2014 3655       bkowal      Broadcast a LiveBroadcastSwitchNotification
  *                                     before the live stream begins.
+ * Oct 27, 2014 3712       bkowal      Broadcast a LiveBroadcastSwitchNotification
+ *                                     at the conclusion of the live stream.
  * 
  * </pre>
  * 
@@ -112,15 +115,7 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         this.dataThread.pausePlayback();
 
         // Build playlist switch notification
-        LiveBroadcastSwitchNotification notification = new LiveBroadcastSwitchNotification();
-        notification.setTransmitterGroup(this.config.getTransmitter()
-                .getMnemonic());
-        notification.setMessageType(this.config.getSelectedMessageType());
-        notification.setTransitTime(this.config.getEffectiveTime());
-        notification.setExpirationTime(this.config.getExpireTime());
-        notification.setSameTone(true);
-        notification.setAlertTone(this.config.isPlayAlertTones());
-        eventBus.post(notification);
+        this.notifyBroadcastSwitch(STATE.STARTED);
 
         // play the Alert / SAME tones.
         ByteArrayInputStream tonesInputStream = new ByteArrayInputStream(
@@ -222,6 +217,9 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
     }
 
     public void shutdown() {
+        // Build playlist switch notification
+        this.notifyBroadcastSwitch(STATE.FINISHED);        
+        
         try {
             this.dataStream.close();
         } catch (IOException e) {
@@ -251,5 +249,18 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
      */
     public boolean isError() {
         return error;
+    }
+    
+    private void notifyBroadcastSwitch(final STATE broadcastState) {
+        LiveBroadcastSwitchNotification notification = new LiveBroadcastSwitchNotification();
+        notification.setBroadcastState(broadcastState);
+        notification.setTransmitterGroup(this.config.getTransmitter()
+                .getMnemonic());
+        notification.setMessageType(this.config.getSelectedMessageType());
+        notification.setTransitTime(this.config.getEffectiveTime());
+        notification.setExpirationTime(this.config.getExpireTime());
+        notification.setSameTone(true);
+        notification.setAlertTone(this.config.isPlayAlertTones());
+        eventBus.post(notification);        
     }
 }

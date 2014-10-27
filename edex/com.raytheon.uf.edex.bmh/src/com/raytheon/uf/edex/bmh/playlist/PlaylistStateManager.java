@@ -31,6 +31,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
@@ -55,6 +56,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Aug 24, 2014    3558    rjpeter     Fixed population of MessagePlaybackPrediction.
  * Oct 07, 2014    3687    bsteffen    Remove singleton and inject daos to allow practice mode.
  * Oct 21, 2014    3655    bkowal      Support LiveBroadcastSwitchNotification.
+ * Oct 27, 2014    3712    bkowal      Supper LiveBroadcastSwitchNotification#broadcastState.
  * 
  * </pre>
  * 
@@ -84,8 +86,17 @@ public class PlaylistStateManager {
         statusHandler
                 .info("Received a Live Broadcast Switch Notification for Transmitter "
                         + notification.getTransmitterGroup() + ".");
-        this.liveBroadcastDataMap.put(notification.getTransmitterGroup(),
-                notification);
+        if (notification.getBroadcastState() == STATE.STARTED) {
+            this.liveBroadcastDataMap.put(notification.getTransmitterGroup(),
+                    notification);
+        } else {
+            if (this.liveBroadcastDataMap.remove(notification
+                    .getTransmitterGroup()) != null) {
+                statusHandler
+                        .info("Evicting Live Broadcast information for Transmitter "
+                                + notification.getTransmitterGroup() + ".");
+            }
+        }
     }
 
     public synchronized void processPlaylistSwitchNotification(
