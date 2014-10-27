@@ -19,11 +19,12 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride;
 
-import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -164,23 +165,27 @@ public class LiveBroadcastSettings {
         return longestDuration;
     }
 
+    public Set<Transmitter> getSelectedTransmitters() {
+        return this.selectedTransmitterAreasMap.keySet();
+    }
+
     public String getAreaCodes() {
         StringBuilder stringBuilder = new StringBuilder();
-        int count = 1;
-        List<String> addedAreas = new ArrayList<>();
+        boolean first = true;
+        Set<String> addedAreas = new LinkedHashSet<>();
 
         for (List<Area> areaList : this.selectedTransmitterAreasMap.values()) {
             for (Area area : areaList) {
                 if (addedAreas.contains(area.getAreaCode())) {
                     continue;
                 }
-                
-                if (count > 1) {
+
+                if (first == false) {
                     stringBuilder.append("-");
                 }
                 stringBuilder.append(area.getAreaCode());
                 addedAreas.add(area.getAreaCode());
-                ++count;
+                first = false;
             }
         }
 

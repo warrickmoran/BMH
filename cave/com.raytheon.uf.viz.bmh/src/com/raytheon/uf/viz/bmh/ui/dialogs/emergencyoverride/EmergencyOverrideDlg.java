@@ -45,6 +45,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 
+import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -651,7 +652,16 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     private void handleMessageScheduling(final ByteBuffer recordedAudio,
             final LiveBroadcastSettings settings,
             final InputMessage inputMessage) {
-        // TODO: implement
+        NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
+        request.setInputMessage(inputMessage);
+        request.setMessageAudio(recordedAudio.array());
+        request.setSelectedTransmitters(new ArrayList<>(settings
+                .getSelectedTransmitters()));
+        try {
+            BmhUtils.sendRequest(request);
+        } catch (Exception e) {
+            statusHandler.error("Failed to schedule the rebroadcast.", e);
+        }
     }
 
     private InputMessage buildInputMsg(final LiveBroadcastSettings settings) {
