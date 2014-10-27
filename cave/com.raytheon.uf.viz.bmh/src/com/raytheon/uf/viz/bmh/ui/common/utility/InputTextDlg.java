@@ -51,6 +51,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Sep 25, 2014  #3649     rferrel      Allow blocking dialog.
  * Sep 28, 2014   3630     mpduff       Set the ok button as the default button.
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 27, 2014   3764     mpduff       Fixed upcaseText function.
  * 
  * </pre>
  * 
@@ -71,7 +72,7 @@ public class InputTextDlg extends CaveSWTDialog {
     /** Text validator. */
     private final IInputTextValidator textValidator;
 
-    private boolean upcaseText;
+    private final boolean upcaseText;
 
     /**
      * Constructor.
@@ -121,6 +122,7 @@ public class InputTextDlg extends CaveSWTDialog {
         this.descriptionTxt = descriptionTxt;
         this.textFieldText = tfText;
         this.textValidator = textValidator;
+        this.upcaseText = upcaseText;
 
         setText(title);
     }
@@ -195,12 +197,11 @@ public class InputTextDlg extends CaveSWTDialog {
 
                 if (textValidator == null) {
                     if (validInput()) {
-                        setReturnValue(inputTf.getText());
+                        setReturnValue(inputText);
                         close();
                     }
-                } else if (textValidator.validateInputText(shell,
-                        inputTf.getText())) {
-                    setReturnValue(inputTf.getText());
+                } else if (textValidator.validateInputText(shell, inputText)) {
+                    setReturnValue(inputText);
                     close();
                 }
             }

@@ -37,6 +37,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 22, 2014  #3490     lvenable     Initial creation
+ * Oct 27, 2014   3764     mpduff       Fix validation
  * 
  * </pre>
  * 
@@ -70,7 +71,8 @@ public class MessgaeTypeAfosValidator implements IInputTextValidator {
 
     @Override
     public boolean validateInputText(Shell parentShell, String text) {
-        if (text.matches("[A-Z0-9]+") == false) {
+        if (text.matches("[A-Z0-9]+") == false || text.length() < 7
+                || text.length() > 9) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("The Message Type name must be 7-9 characters, capital letters or numbers.");
