@@ -65,6 +65,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 23, 2014  #3748     bkowal      Initial creation
+ * Oct 26, 2014  #3748     bkowal      Passed audio data to broadcast msg creation.
  * 
  * </pre>
  * 
@@ -150,7 +151,7 @@ public class NewBroadcastMsgHandler extends
 
         // TODO: need to create broadcast msg records.
         List<BroadcastMsg> broadcastRecords = this.buildBroadcastRecords(
-                validMsg, transmitterGroups, null);
+                validMsg, transmitterGroups, request.getMessageAudio());
 
         // persist all entities.
         List<Object> entitiesToPersist = new LinkedList<Object>();

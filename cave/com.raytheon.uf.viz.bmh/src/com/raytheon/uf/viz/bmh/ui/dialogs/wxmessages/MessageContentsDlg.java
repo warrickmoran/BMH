@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.Iterator;
@@ -44,10 +45,15 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
+import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * 
@@ -61,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 26, 2014  #3728     lvenable     Initial creation
+ * Oct 26, 2014  #3748     bkowal       Implement content interactions.
  * 
  * </pre>
  * 
@@ -99,6 +106,16 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
     /** Audio data list. */
     private List<InputMessageAudioData> audioDataList;
 
+    /** The original message text. **/
+    private final String originalMessageContent;
+
+    private CONTENT_TYPE contentType;
+
+    /**
+     * Will always be set when the contentType is audio.
+     */
+    private byte[] audio;
+
     /**
      * Constructor.
      * 
@@ -106,11 +123,14 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
      *            Parent shell.
      */
     public MessageContentsDlg(Shell parentShell,
-            List<InputMessageAudioData> audioDataList) {
+            List<InputMessageAudioData> audioDataList,
+            final String existingMessageContent, final CONTENT_TYPE contentType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL
                 | SWT.RESIZE, CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.audioDataList = audioDataList;
+        this.originalMessageContent = existingMessageContent;
+        this.contentType = contentType;
     }
 
     @Override
@@ -168,6 +188,9 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         messageSt.setWordWrap(true);
         messageSt.setLayoutData(gd);
         messageSt.setEditable(false);
+        if (this.originalMessageContent != null) {
+            messageSt.setText(this.originalMessageContent);
+        }
 
         Composite textActionBtnComp = new Composite(messageContentsGroup,
                 SWT.NONE);
@@ -250,6 +273,7 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
 
                 if (handleContentsFromFileAction()) {
                     messageSt.setEditable(true);
+                    playBtn.setEnabled(true);
                     msgAudioComp.removeAllAudioControls();
                 }
             }
@@ -330,10 +354,7 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
                         "Record Audio", msg.toString());
 
                 if (choice == SWT.OK) {
-                    // TODO : display the record dialog.
-
-                    // TODO : when the audio is recored then put
-                    // "recorded by XXXXX" in the styled text control.
+                    handleRecordAction();
                 }
             }
         });
@@ -379,7 +400,12 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
      * Handle the OK action.
      */
     private void handleOkayAction() {
-        // TODO : add code
+        // TODO : is validation needed?
+        WxMessagesContent content = new WxMessagesContent(this.contentType);
+        content.setText(this.messageSt.getText());
+        content.setAudio(this.audio);
+        setReturnValue(content);
+        
         close();
     }
 
@@ -453,5 +479,63 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
             }
         }
         return false;
+    }
+
+    /**
+     * For the microphone contents, display the record/playback dialog.
+     */
+    private void handleRecordAction() {
+        RecordPlaybackDlg recPlaybackDlg = new RecordPlaybackDlg(shell, 600);
+        recPlaybackDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue == null) {
+                    return;
+                }
+
+                if (returnValue instanceof ByteBuffer == false) {
+                    return;
+                }
+
+                audioRecorded(((ByteBuffer) returnValue).array());
+            }
+        });
+        recPlaybackDlg.open();
+    }
+
+    private void audioRecorded(byte[] messageAudio) {
+        /*
+         * if we reach this point, the user will have confirmed purging the
+         * current information and the user has successfully recorded new audio.
+         */
+        StringBuilder recordedByMsg = new StringBuilder("Recorded by ");
+        recordedByMsg.append(VizApp.getWsId().getUserName());
+        recordedByMsg.append(" on ");
+        // TODO: apply date/time formatting.
+        recordedByMsg.append(TimeUtil.newCalendar().getTime().toString());
+        recordedByMsg.append(".");
+        this.playBtn.setEnabled(false);
+        this.messageSt.setText(recordedByMsg.toString());
+        this.messageSt.setEditable(false);
+
+        msgAudioComp.removeAllAudioControls();
+        // create a new record to display in the audio list
+        InputMessageAudioData recordedInputAudio = new InputMessageAudioData();
+        recordedInputAudio.setTransmitterGroupName("User Recording"); // agreed.
+                                                                      // rename
+        // variable.
+        recordedInputAudio.setSuccess(true);
+        // TODO: need to centralize audio playback time calculation.
+        /* calculate the duration in seconds */
+        final long playbackTimeMS = messageAudio.length / 160L * 20L;
+        // swt component expects an Integer
+        final int playbackTimeS = (int) playbackTimeMS / 1000;
+        recordedInputAudio.setAudioDuration(playbackTimeS);
+        recordedInputAudio.setAudio(messageAudio);
+        this.audio = messageAudio;
+        // TODO: format duration string if it end up being used.
+        this.msgAudioComp.addAudioControl(recordedInputAudio);
+
+        this.contentType = CONTENT_TYPE.AUDIO;
     }
 }
