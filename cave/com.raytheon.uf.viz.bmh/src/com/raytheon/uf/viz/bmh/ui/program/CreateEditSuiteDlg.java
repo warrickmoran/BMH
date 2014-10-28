@@ -100,6 +100,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 21, 2014  3715      bkowal      Verify that there is an associated program before 
  *                                     accessing it.
  * Oct 26, 2014   3750     mpduff      Null check the suite messages.
+ * Oct 28, 2014   3750     bkowal      Add Suite to the SuiteMessage relation when
+ *                                     adding Message Types to a Suite.
  * </pre>
  * 
  * @author lvenable
@@ -933,6 +935,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             }
 
             SuiteMessage newSuiteMessage = new SuiteMessage();
+            newSuiteMessage.setSuite(this.selectedSuite);
             newSuiteMessage.setMsgTypeSummary(mt.getSummary());
 
             msgTypesInSuiteList.add(selectedMsgTypeIndex, newSuiteMessage);
