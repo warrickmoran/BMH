@@ -62,9 +62,7 @@ public class ZoneDao extends AbstractBMHDao<Zone, Integer> {
     public Zone getByZoneCode(final String zoneCode) {
         @SuppressWarnings("unchecked")
         List<Zone> types = (List<Zone>) findByNamedQueryAndNamedParam(
-                Zone.GET_ZONE_FOR_CODE,
-                new String[] { "zoneCode" },
-                new Object[] { zoneCode });
+                Zone.GET_ZONE_FOR_CODE, "zoneCode", zoneCode);
         if ((types != null) && !types.isEmpty()) {
             return types.get(0);
         }

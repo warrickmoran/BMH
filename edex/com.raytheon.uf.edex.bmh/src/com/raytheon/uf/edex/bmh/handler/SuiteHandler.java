@@ -163,7 +163,7 @@ public class SuiteHandler extends AbstractBMHServerRequestHandler<SuiteRequest> 
         SuiteDao dao = new SuiteDao(request.isOperational());
         SuiteResponse suiteResponse = new SuiteResponse();
         if (request.getSuite() != null) {
-            dao.saveOrUpdateSuite(request.getSuite());
+            dao.persist(request.getSuite());
             suiteResponse.addSuite(request.getSuite());
         }
 

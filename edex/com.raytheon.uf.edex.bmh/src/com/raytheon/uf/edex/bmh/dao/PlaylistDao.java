@@ -55,17 +55,14 @@ public class PlaylistDao extends AbstractBMHDao<Playlist, Integer> {
     @SuppressWarnings("unchecked")
     public List<Playlist> getByGroupName(final String transmitterGroupName) {
         return (List<Playlist>) findByNamedQueryAndNamedParam(
-                Playlist.QUERY_BY_GROUP_NAME,
-                new String[] { "groupName" },
-                new String[] { transmitterGroupName });
+                Playlist.QUERY_BY_GROUP_NAME, "groupName", transmitterGroupName);
     }
 
     public Playlist getBySuiteAndGroupName(final String suiteName,
             final String transmitterGroupName) {
         List<?> playlists = findByNamedQueryAndNamedParam(
-                Playlist.QUERY_BY_SUITE_GROUP_NAMES,
-                new String[] { "suiteName", "groupName" },
-                new String[] { suiteName,
+                Playlist.QUERY_BY_SUITE_GROUP_NAMES, new String[] {
+                        "suiteName", "groupName" }, new String[] { suiteName,
                         transmitterGroupName });
         if (playlists.isEmpty()) {
             return null;

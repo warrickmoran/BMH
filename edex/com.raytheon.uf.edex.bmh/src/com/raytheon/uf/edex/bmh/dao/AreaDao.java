@@ -62,9 +62,7 @@ public class AreaDao extends AbstractBMHDao<Area, Integer> {
     public Area getByAreaCode(final String areaCode) {
         @SuppressWarnings("unchecked")
         List<Area> types = (List<Area>) findByNamedQueryAndNamedParam(
-                Area.GET_AREA_FOR_CODE,
-                new String[] { "areaCode" },
-                new Object[] { areaCode });
+                Area.GET_AREA_FOR_CODE, "areaCode", areaCode);
         if ((types != null) && !types.isEmpty()) {
             return types.get(0);
         }

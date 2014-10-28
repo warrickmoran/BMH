@@ -71,6 +71,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
@@ -249,28 +250,40 @@ public class PlaylistManager implements IContextStateProcessor {
         if (!group.getEnabledTransmitters().isEmpty()) {
             if (program == null) {
                 program = programDao.getProgramForTransmitterGroup(group);
+
+                // no program assigned to this group
+                if (program == null) {
+                    statusHandler
+                            .info("Skipping playlist refresh: No program assigned to transmitter group ["
+                                    + group.getName() + "]");
+                    return;
+                }
             }
             SuiteType forcedType = null;
-            for (ProgramSuite programSuite : program.getProgramSuites()) {
-                if (programSuite.isForced()) {
-                    forcedType = programSuite.getSuite().getType();
+            List<ProgramSuite> programSuites = program.getProgramSuites();
+            if (!CollectionUtil.isNullOrEmpty(programSuites)) {
+                for (ProgramSuite programSuite : program.getProgramSuites()) {
+                    if (programSuite.isForced()) {
+                        forcedType = programSuite.getSuite().getType();
+                    }
                 }
-            }
-            for (ProgramSuite programSuite : program.getProgramSuites()) {
-                boolean shouldRefresh = (forcedType == null)
-                        || programSuite.isForced();
-                if ((shouldRefresh == false)
-                        && (programSuite.getSuite().getType()
-                                .compareTo(forcedType) < 0)) {
-                    shouldRefresh = true;
-                }
-                if (shouldRefresh) {
-                    refreshPlaylist(group, programSuite);
-                    Iterator<Playlist> listIterator = listsToDelete.iterator();
-                    while (listIterator.hasNext()) {
-                        if (listIterator.next().getSuite()
-                                .equals(programSuite.getSuite())) {
-                            listIterator.remove();
+                for (ProgramSuite programSuite : program.getProgramSuites()) {
+                    boolean shouldRefresh = (forcedType == null)
+                            || programSuite.isForced();
+                    if ((shouldRefresh == false)
+                            && (programSuite.getSuite().getType()
+                                    .compareTo(forcedType) < 0)) {
+                        shouldRefresh = true;
+                    }
+                    if (shouldRefresh) {
+                        refreshPlaylist(group, programSuite);
+                        Iterator<Playlist> listIterator = listsToDelete
+                                .iterator();
+                        while (listIterator.hasNext()) {
+                            if (listIterator.next().getSuite()
+                                    .equals(programSuite.getSuite())) {
+                                listIterator.remove();
+                            }
                         }
                     }
                 }
@@ -340,8 +353,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 sortAndPersistPlaylist(playlist, messages, programSuite);
             }
         } finally {
-            locker.deleteLock(ct.getId().getName(), ct.getId()
-                    .getDetails());
+            locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
             timer.stop();
             statusHandler.info("Spent " + timer.getElapsedTime()
                     + "ms refreshing playlist for " + group.getName() + "("
@@ -800,7 +812,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 dac.setPeriodicity(input.getPeriodicity());
                 dac.setMessageText(input.getContent());
                 dac.setAlertTone(input.getAlertTone());
-                if (input.getAreaCodes() != null
+                if ((input.getAreaCodes() != null)
                         && Boolean.TRUE.equals(input.getNwrsameTone())) {
                     Set<Transmitter> transmitters = broadcast
                             .getTransmitterGroup().getTransmitters();

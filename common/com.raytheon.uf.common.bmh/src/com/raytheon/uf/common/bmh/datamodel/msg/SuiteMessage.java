@@ -28,6 +28,7 @@ import javax.persistence.MapsId;
 import javax.persistence.Table;
 
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -70,6 +71,7 @@ public class SuiteMessage {
     @MapsId("msgTypeId")
     @JoinColumn(name = "msgtype_id")
     @DynamicSerializeElement
+    @ForeignKey(name = "suite_message_to_message_type")
     private MessageTypeSummary msgTypeSummary;
 
     @Column(nullable = false)

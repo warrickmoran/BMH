@@ -50,11 +50,12 @@ alter table bmh.playlist_messages drop constraint fk_dna1dgu6xkltlusrwgc8s913q;
 alter table bmh.playlist_messages add constraint fk_dna1dgu6xkltlusrwgc8s913q
     foreign key (message_id) references bmh.broadcast_msg (id) on delete cascade;
 
+
 /**
- * Message Type to Suite Message
+ * Suite Message to Message Type
  **/
-alter table bmh.suite_message drop constraint fk_qv6vo0x051r12tpkng2obfvbe;
-alter table bmh.suite_message add constraint fk_qv6vo0x051r12tpkng2obfvbe
+alter table bmh.suite_message drop constraint suite_message_to_message_type;
+alter table bmh.suite_message add constraint suite_message_to_message_type
     foreign key (msgtype_id) references bmh.message_type(id) on delete cascade;
 
 /**
@@ -66,32 +67,32 @@ alter table bmh.suite_message add constraint fk_955qyy9ujl5rdokt9vfikixc1
     foreign key (suite_id) references bmh.suite(id) on delete cascade;
 
 /**
- * Program to Program Suite
+ * Program Suite to Program
  **/
-alter table bmh.program_suite drop constraint fk_9ba88xi2q8p647co876bk9jg4;
-alter table bmh.program_suite add constraint fk_9ba88xi2q8p647co876bk9jg4
+alter table bmh.program_suite drop constraint program_suite_to_program;
+alter table bmh.program_suite add constraint program_suite_to_program
      foreign key (program_id) references bmh.program(id) on delete cascade;
 
 /**
- * Suite to Program Suite
+ * Program Suite to Suite
  **/
-alter table bmh.program_suite drop constraint fk_r7hcgfv2a6kdnt77isgw5lnwk;
-alter table bmh.program_suite add constraint fk_r7hcgfv2a6kdnt77isgw5lnwk
+alter table bmh.program_suite drop constraint program_suite_to_suite;
+alter table bmh.program_suite add constraint program_suite_to_suite
      foreign key (suite_id) references bmh.suite(id) on delete cascade;
 
 /**
- * Program Suite to Program Trigger
+ * Program Trigger to Program Suite
  **/
-alter table bmh.program_trigger drop constraint fk_2p8905whnpp27i9g9n5am8r0d;
-alter table bmh.program_trigger add constraint fk_2p8905whnpp27i9g9n5am8r0d
+alter table bmh.program_trigger drop constraint program_trigger_to_program_suite;
+alter table bmh.program_trigger add constraint program_trigger_to_program_suite
      foreign key (program_id, suite_id) references bmh.program_suite (program_id, suite_id) 
      on delete cascade;
 
 /**
- * Message Type to Program Trigger
+ * Program Trigger to Message Type
  **/
-alter table bmh.program_trigger drop constraint fk_2tpfod4yh42mhea4814j5836g;
-alter table bmh.program_trigger add constraint fk_2tpfod4yh42mhea4814j5836g
+alter table bmh.program_trigger drop constraint program_trigger_to_message_type;
+alter table bmh.program_trigger add constraint program_trigger_to_message_type
      foreign key (msgtype_id) references bmh.message_type(id) on delete cascade;
 
 /**

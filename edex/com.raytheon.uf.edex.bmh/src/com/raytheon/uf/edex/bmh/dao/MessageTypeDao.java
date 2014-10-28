@@ -136,8 +136,7 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
     public MessageType getByAfosId(final String afosId) {
         @SuppressWarnings("unchecked")
         List<MessageType> types = (List<MessageType>) findByNamedQueryAndNamedParam(
-                MessageType.GET_MESSAGETYPE_FOR_AFOSID,
-                new String[] { "afosid" }, new Object[] { afosId });
+                MessageType.GET_MESSAGETYPE_FOR_AFOSID, "afosid", afosId);
         if ((types != null) && !types.isEmpty()) {
             return types.get(0);
         }
@@ -157,7 +156,7 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         @SuppressWarnings("unchecked")
         List<MessageType> types = (List<MessageType>) findByNamedQueryAndNamedParam(
                 MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE,
-                new String[] { "emergencyOverride" }, new Object[] { eoFlag });
+                "emergencyOverride", eoFlag);
         if (types == null) {
             return Collections.emptyList();
         }
@@ -175,8 +174,8 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
     public List<MessageType> getMessageTypeForDesignation(
             final Designation designation) {
         List<?> types = findByNamedQueryAndNamedParam(
-                MessageType.GET_MESSAGETYPE_FOR_DESIGNATION,
-                new String[] { "designation" }, new Object[] { designation });
+                MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, "designation",
+                designation);
 
         if ((types == null) || types.isEmpty()) {
             return null;
@@ -200,8 +199,8 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
      */
     @SuppressWarnings("unchecked")
     public Set<String> getReplacementAfosIdsForAfosId(final String afosId) {
-        List<MessageTypeSummary> msgTypes = (List<MessageTypeSummary>) findByNamedQuery(
-                MessageType.GET_REPLACEMENT_AFOSIDS, afosId);
+        List<MessageTypeSummary> msgTypes = (List<MessageTypeSummary>) findByNamedQueryAndNamedParam(
+                MessageType.GET_REPLACEMENT_AFOSIDS, "afosid", afosId);
         Set<String> rval = new HashSet<>(
                 msgTypes == null ? 1 : msgTypes.size(), 1);
 
@@ -224,8 +223,8 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
     @SuppressWarnings("unchecked")
     public List<MessageType> getAfosIdDesignation(final Designation designation) {
         List<Object[]> objectList = (List<Object[]>) findByNamedQueryAndNamedParam(
-                MessageType.GET_MESSAGETYPE_AFOSID_DESIGNATION,
-                new String[] { "designation" }, new Object[] { designation });
+                MessageType.GET_MESSAGETYPE_AFOSID_DESIGNATION, "designation",
+                designation);
 
         if (objectList == null) {
             return Collections.emptyList();

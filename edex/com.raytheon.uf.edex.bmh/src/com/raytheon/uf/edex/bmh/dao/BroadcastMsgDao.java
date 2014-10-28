@@ -68,8 +68,7 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
     @SuppressWarnings("unchecked")
     public List<BroadcastMsg> getMessagesByAfosid(final String afosid) {
         return (List<BroadcastMsg>) findByNamedQueryAndNamedParam(
-                BroadcastMsg.GET_MSGS_BY_AFOS_ID, new String[] { "afosId" },
-                new String[] { afosid });
+                BroadcastMsg.GET_MSGS_BY_AFOS_ID, "afosId", afosid);
     }
 
     @SuppressWarnings("unchecked")
@@ -90,15 +89,15 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
                 new String[] { "afosId", "group", "language" }, new Object[] {
                         afosId, group, language });
 
-        if (messages == null || messages.isEmpty()) {
+        if ((messages == null) || messages.isEmpty()) {
             return null;
         }
 
-        if (messages.get(0) instanceof BroadcastMsg == false) {
+        if ((messages.get(0) instanceof BroadcastMsg) == false) {
             return null;
         }
 
-        return (BroadcastMsg) messages.get(0);
+        return messages.get(0);
     }
 
     public List<BroadcastMsg> getMessagesByInputMsgId(final int inputMsgId) {
@@ -109,10 +108,9 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
                             TransactionStatus status) {
                         List<?> objects = findByNamedQueryAndNamedParam(
                                 BroadcastMsg.GET_MSGS_BY_INPUT_MSG,
-                                new String[] { "inputMsgId" },
-                                new Object[] { inputMsgId });
+                                "inputMsgId", inputMsgId);
 
-                        if (objects == null || objects.isEmpty()) {
+                        if ((objects == null) || objects.isEmpty()) {
                             return Collections.emptyList();
                         }
 

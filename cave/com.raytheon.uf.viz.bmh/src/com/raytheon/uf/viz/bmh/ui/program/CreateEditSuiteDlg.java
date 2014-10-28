@@ -257,7 +257,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
     @Override
     protected void disposed() {
-        if (dialogType == DialogType.CREATE && this.selectedProgram != null) {
+        if ((dialogType == DialogType.CREATE) && (this.selectedProgram != null)) {
             selectedProgram.cancelNewSuite(selectedSuite);
         }
     }
@@ -685,6 +685,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         Suite savedSuite = null;
         try {
+            selectedSuite.setSuiteMessages(msgTypesInSuiteList);
             SuiteResponse suiteReponse = sdm.saveSuite(selectedSuite);
             if (suiteReponse.getSuiteList().isEmpty()) {
                 return;
@@ -782,8 +783,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         this.selectedSuite.setName(suiteNameTF.getText().trim());
         this.selectedSuite.setType(getSelectedSuiteType());
 
-        if (this.msgTypesInSuiteList != null
-                && this.msgTypesInSuiteList.isEmpty() == false) {
+        if ((this.msgTypesInSuiteList != null)
+                && (this.msgTypesInSuiteList.isEmpty() == false)) {
             this.selectedSuite.setSuiteMessages(this.msgTypesInSuiteList);
         }
     }

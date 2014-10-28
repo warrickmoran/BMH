@@ -63,9 +63,7 @@ public class TransmitterGroupDao extends
     public TransmitterGroup getByGroupName(final String name) {
         @SuppressWarnings("unchecked")
         List<TransmitterGroup> types = (List<TransmitterGroup>) findByNamedQueryAndNamedParam(
-                TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME,
-                new String[] { "name" },
-                new Object[] { name });
+                TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME, "name", name);
 
         if ((types != null) && !types.isEmpty()) {
             return types.get(0);

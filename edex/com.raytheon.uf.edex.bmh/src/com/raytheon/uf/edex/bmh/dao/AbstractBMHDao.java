@@ -130,11 +130,31 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
     }
 
     public List<?> loadAll(final Class<?> clazz) {
-        return txTemplate.execute(new TransactionCallback<List<T>>() {
-            @SuppressWarnings("unchecked")
+        return txTemplate.execute(new TransactionCallback<List<?>>() {
             @Override
-            public List<T> doInTransaction(TransactionStatus status) {
+            public List<?> doInTransaction(TransactionStatus status) {
                 return getCurrentSession().createCriteria(clazz).list();
+            }
+        });
+    }
+
+    public List<?> findByNamedQuery(final String queryName) {
+        return txTemplate.execute(new TransactionCallback<List<?>>() {
+            @Override
+            public List<?> doInTransaction(TransactionStatus status) {
+                return getCurrentSession().getNamedQuery(queryName).list();
+            }
+        });
+    }
+
+    public List<?> findByNamedQueryAndNamedParam(final String queryName,
+            final String name, final Object parameter) {
+        return txTemplate.execute(new TransactionCallback<List<?>>() {
+            @Override
+            public List<?> doInTransaction(TransactionStatus status) {
+                Session session = getCurrentSession();
+                Query query = session.getNamedQuery(queryName);
+                return query.setParameter(name, parameter).list();
             }
         });
     }
@@ -147,10 +167,9 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
                     "Length of parameter names and parameter value arrays must match!");
 
         }
-        return txTemplate.execute(new TransactionCallback<List<T>>() {
-            @SuppressWarnings("unchecked")
+        return txTemplate.execute(new TransactionCallback<List<?>>() {
             @Override
-            public List<T> doInTransaction(TransactionStatus status) {
+            public List<?> doInTransaction(TransactionStatus status) {
                 Session session = getCurrentSession();
                 Query query = session.getNamedQuery(queryName);
                 for (int i = 0; i < names.length; i++) {
@@ -161,26 +180,4 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
         });
     }
 
-    public List<?> findByNamedQuery(final String queryName) {
-        return txTemplate.execute(new TransactionCallback<List<T>>() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public List<T> doInTransaction(TransactionStatus status) {
-                return getCurrentSession().getNamedQuery(queryName).list();
-            }
-        });
-    }
-
-    public List<?> findByNamedQuery(final String queryName,
-            final Object parameter) {
-        return txTemplate.execute(new TransactionCallback<List<T>>() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public List<T> doInTransaction(TransactionStatus status) {
-                Session session = getCurrentSession();
-                Query query = session.getNamedQuery(queryName);
-                return query.setParameter(0, parameter).list();
-            }
-        });
-    }
 }

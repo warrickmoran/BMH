@@ -723,7 +723,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
             ProgramSummary origProgram = null;
             if (group != null) {
-                origProgram = group.getProgram();
+                origProgram = group.getProgramSummary();
             }
             int groupProgramId = -1;
             if (origProgram != null) {
@@ -801,10 +801,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 }
                 setTimeZoneCbo();
 
-                if (group.getProgram() == null) {
+                if (group.getProgramSummary() == null) {
                     programCombo.select(0);
                 } else {
-                    programCombo.select(programCombo.indexOf(group.getProgram()
+                    programCombo.select(programCombo.indexOf(group.getProgramSummary()
                             .getName()));
                 }
 
@@ -880,18 +880,18 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                                 .getData();
                         ProgramSummary p = progList.get(programCombo
                                 .getSelectionIndex() - 1);
-                        ProgramSummary origProgram = group.getProgram();
+                        ProgramSummary origProgram = group.getProgramSummary();
 
                         if ((origProgram == null)
                                 || (p.getId() != origProgram.getId())) {
-                            group.setProgram(p);
+                            group.setProgramSummary(p);
                             saveGroup = true;
                         }
-                    } else if (group.getProgram() != null) {
+                    } else if (group.getProgramSummary() != null) {
                         /*
                          * None selected and a program used to assigned
                          */
-                        group.setProgram(null);
+                        group.setProgramSummary(null);
                         saveGroup = true;
                     }
 
@@ -981,18 +981,18 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                                 .getData();
                         ProgramSummary p = progList.get(programCombo
                                 .getSelectionIndex() - 1);
-                        ProgramSummary origProgram = group.getProgram();
+                        ProgramSummary origProgram = group.getProgramSummary();
 
                         if ((origProgram == null)
                                 || (p.getId() != origProgram.getId())) {
-                            group.setProgram(p);
+                            group.setProgramSummary(p);
                             saveGroup = true;
                         }
-                    } else if (group.getProgram() != null) {
+                    } else if (group.getProgramSummary() != null) {
                         /*
                          * None selected and a program used to assigned
                          */
-                        group.setProgram(null);
+                        group.setProgramSummary(null);
                         saveGroup = true;
                     }
 
@@ -1044,7 +1044,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             return true;
         }
 
-        ProgramSummary groupProgram = group.getProgram();
+        ProgramSummary groupProgram = group.getProgramSummary();
         if (groupProgram == null) {
             if (programCombo.getSelectionIndex() > 0) {
                 return true;

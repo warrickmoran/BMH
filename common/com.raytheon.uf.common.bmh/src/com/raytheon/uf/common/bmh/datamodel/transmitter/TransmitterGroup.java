@@ -34,6 +34,7 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
@@ -45,6 +46,7 @@ import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
@@ -148,7 +150,9 @@ public class TransmitterGroup {
     private Set<Transmitter> transmitters;
 
     @ManyToOne
-    private ProgramSummary program;
+    @ForeignKey(name = "transmitter_group_to_program")
+    @JoinColumn(name = "program_id")
+    private ProgramSummary programSummary;
 
     /**
      * Set of transmitters enabled when the whole group is disabled.
@@ -379,12 +383,12 @@ public class TransmitterGroup {
         return false;
     }
 
-    public ProgramSummary getProgram() {
-        return program;
+    public ProgramSummary getProgramSummary() {
+        return programSummary;
     }
 
-    public void setProgram(ProgramSummary program) {
-        this.program = program;
+    public void setProgramSummary(ProgramSummary programSummary) {
+        this.programSummary = programSummary;
     }
 
     @Override
@@ -450,7 +454,7 @@ public class TransmitterGroup {
         stringBuilder.append(", audioDBTarget=");
         stringBuilder.append(this.audioDBTarget);
         stringBuilder.append(", program=");
-        stringBuilder.append(this.program);
+        stringBuilder.append(this.programSummary);
         stringBuilder.append(", transmitters=[");
         if ((transmitters != null) && (transmitters.size() > 0)) {
             for (Transmitter t : transmitters) {

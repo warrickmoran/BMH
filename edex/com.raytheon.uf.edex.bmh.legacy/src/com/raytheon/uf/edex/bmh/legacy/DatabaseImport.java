@@ -246,6 +246,23 @@ public class DatabaseImport {
                                 ProgramDao programDao = new ProgramDao();
                                 programDao.persistAll(data.getPrograms()
                                         .values());
+                                // Collection<Program> programs = data
+                                // .getPrograms().values();
+                                // for (Program p : programs) {
+                                // for (TransmitterGroup t : p
+                                // .getTransmitterGroups()) {
+                                // t.setProgramSummary(p
+                                // .getProgramSummary());
+                                // }
+                                // }
+                                // for (Program p : programs) {
+                                // statusHandler.info("Persisting Program ["
+                                // + p.getName() + "]");
+                                // programDao.persist(p);
+                                // statusHandler.info("Persisted Program ["
+                                // + p.getName() + "]");
+                                // }
+                                // programDao.persistAll(programs);
                                 statusHandler.info("Saved "
                                         + data.getPrograms().values().size()
                                         + " programs");

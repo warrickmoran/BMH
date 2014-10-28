@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
@@ -114,7 +115,7 @@ public class Suite {
     @DynamicSerializeElement
     private SuiteType type = SuiteType.GENERAL;
 
-    @OneToMany(mappedBy = "suite", fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "suite", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     // updating position broken https://hibernate.atlassian.net/browse/HHH-5732
     @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement

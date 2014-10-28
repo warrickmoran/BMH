@@ -166,7 +166,7 @@ public class BmhDatabaseCopier {
                 transmitter.setId(0);
             }
             group.setDac(null);
-            group.setProgram(null);
+            group.setProgramSummary(null);
         }
         prDao.persistAll(groups);
         this.transmitterMap = transmitterMap;

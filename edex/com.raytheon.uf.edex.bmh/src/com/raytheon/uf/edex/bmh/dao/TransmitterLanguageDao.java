@@ -57,7 +57,6 @@ public class TransmitterLanguageDao extends
     public List<TransmitterLanguage> getLanguagesForTransmitterGroup(
             final TransmitterGroup group) {
         return (List<TransmitterLanguage>) findByNamedQueryAndNamedParam(
-                TransmitterLanguage.GET_LANGUAGES_FOR_GROUP,
-                new String[]{"group"}, new Object[]{group});
+                TransmitterLanguage.GET_LANGUAGES_FOR_GROUP, "group", group);
     }
 }

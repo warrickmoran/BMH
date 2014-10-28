@@ -37,6 +37,7 @@ import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -75,11 +76,13 @@ public class ProgramSuite implements Serializable {
 
     @ManyToOne(optional = false)
     @MapsId("programId")
+    @ForeignKey(name = "program_suite_to_program")
     // No dynamic serialize due to bi-directional relationship
     private Program program;
 
     @ManyToOne(optional = false)
     @MapsId("suiteId")
+    @ForeignKey(name = "program_suite_to_suite")
     @DynamicSerializeElement
     private Suite suite;
 
@@ -93,6 +96,7 @@ public class ProgramSuite implements Serializable {
             @JoinColumn(name = "suite_id", referencedColumnName = "suite_id") }, inverseJoinColumns = @JoinColumn(name = "msgtype_id", referencedColumnName = "id"), uniqueConstraints = @UniqueConstraint(columnNames = {
             "program_id", "suite_id", "msgtype_id" }))
     @Fetch(FetchMode.SUBSELECT)
+    @ForeignKey(name = "program_trigger_to_program_suite", inverseName = "program_trigger_to_message_type")
     private Set<MessageTypeSummary> triggers;
 
     @Column

@@ -182,7 +182,7 @@ public class ProgramHandler extends
         ProgramDao dao = new ProgramDao(request.isOperational());
         ProgramResponse response = new ProgramResponse();
 
-        List<Program> progList = dao.getPrograms();
+        List<Program> progList = dao.getAll();
         response.setProgramList(progList);
 
         return response;

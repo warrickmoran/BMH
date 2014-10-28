@@ -28,12 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
@@ -83,7 +85,6 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({
         @NamedQuery(name = Program.GET_PROGRAM_FOR_TRANSMITTER_GROUP, query = Program.GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY),
         @NamedQuery(name = Program.GET_GROUPS_FOR_MSG_TYPE, query = Program.GET_GROUPS_FOR_MSG_TYPE_QUERY),
-        @NamedQuery(name = Program.GET_PROGRAM_NAMES_IDS, query = Program.GET_PROGRAM_NAMES_IDS_QUERY),
         @NamedQuery(name = Program.GET_PROGRAM_SUITES, query = Program.GET_PROGRAM_SUITES_QUERY),
         @NamedQuery(name = Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP, query = Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP_QUERY),
         @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE_QUERY),
@@ -94,10 +95,6 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class Program {
     static final String GEN = "Program Id Generator";
-
-    public static final String GET_PROGRAM_NAMES_IDS = "getProgramNamesAndIDs";
-
-    protected static final String GET_PROGRAM_NAMES_IDS_QUERY = "select name, id FROM Program p";
 
     public static final String GET_PROGRAM_FOR_TRANSMITTER_GROUP = "getProgramsForTransmitterGroups";
 
@@ -133,22 +130,23 @@ public class Program {
     @DynamicSerializeElement
     private String name;
 
-    @OneToMany(mappedBy = "program", fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "program", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @Fetch(FetchMode.SUBSELECT)
     @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
     private List<ProgramSuite> programSuites;
+
+    @OneToMany(fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SUBSELECT)
+    @DynamicSerializeElement
+    @JoinColumn(name = "program_id")
+    private Set<TransmitterGroup> transmitterGroups;
 
     /*
      * Convenience mapping for working with triggers.
      */
     @Transient
     private Map<Suite, ProgramSuite> suiteToProgramSuiteMap;
-
-    @OneToMany(fetch = FetchType.EAGER)
-    @Fetch(FetchMode.SUBSELECT)
-    @DynamicSerializeElement
-    private Set<TransmitterGroup> transmitterGroups;
 
     public int getId() {
         return id;

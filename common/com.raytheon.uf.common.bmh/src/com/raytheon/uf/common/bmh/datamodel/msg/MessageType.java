@@ -45,6 +45,7 @@ import javax.persistence.Table;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
@@ -195,30 +196,32 @@ public class MessageType {
     @ManyToMany(fetch = FetchType.EAGER)
     @MapKey(name = "mnemonic")
     @JoinTable(name = "message_same_tx", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
-    @Fetch(FetchMode.SELECT)
+    @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Transmitter> sameTransmitters;
 
     @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @Fetch(FetchMode.SELECT)
+    @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
+    @ForeignKey(name = "message_type_to_replace_delete_me")
+    @JoinColumn(name = "msgtype_id")
     private Set<MessageTypeReplacement> replacementMsgs;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_areas", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "areacode"))
-    @Fetch(FetchMode.SELECT)
+    @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Area> defaultAreas;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_zones", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "zonecode"))
-    @Fetch(FetchMode.SELECT)
+    @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Zone> defaultZones;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_transmitters", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
-    @Fetch(FetchMode.SELECT)
+    @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<TransmitterGroup> defaultTransmitterGroups;
 

@@ -60,8 +60,8 @@ public class ProgramSuitePK implements Serializable {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + programId;
-        result = prime * result + suiteId;
+        result = (prime * result) + programId;
+        result = (prime * result) + suiteId;
         return result;
     }
 

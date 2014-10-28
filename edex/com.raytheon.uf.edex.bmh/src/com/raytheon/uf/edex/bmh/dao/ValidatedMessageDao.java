@@ -72,14 +72,13 @@ public class ValidatedMessageDao extends
             final InputMessage inputMsg) {
         List<?> messages = findByNamedQueryAndNamedParam(
                 ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG,
-                new String[] { "inputMessage" },
-                new Object[] { inputMsg });
+                "inputMessage", inputMsg);
 
-        if (messages == null || messages.isEmpty()) {
+        if ((messages == null) || messages.isEmpty()) {
             return null;
         }
 
-        if (messages.get(0) instanceof ValidatedMessage == false) {
+        if ((messages.get(0) instanceof ValidatedMessage) == false) {
             return null;
         }
 

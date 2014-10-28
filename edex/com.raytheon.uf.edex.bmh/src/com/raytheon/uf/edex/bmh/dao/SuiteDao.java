@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.hibernate.Session;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
@@ -192,7 +193,13 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
     @Override
     public void persist(final Object obj) {
         if (obj instanceof Suite) {
-            saveOrUpdate((Suite) obj);
+            txTemplate.execute(new TransactionCallbackWithoutResult() {
+                @Override
+                public void doInTransactionWithoutResult(
+                        TransactionStatus status) {
+                    saveOrUpdateSuite(getCurrentSession(), (Suite) obj);
+                }
+            });
         } else {
             super.persist(obj);
         }
@@ -206,11 +213,12 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             public void doInTransactionWithoutResult(TransactionStatus status) {
+                Session session = getCurrentSession();
                 for (Object obj : objs) {
                     if (obj instanceof Suite) {
-                        saveOrUpdateSuite((Suite) obj);
+                        saveOrUpdateSuite(session, (Suite) obj);
                     } else {
-                        saveOrUpdate(obj);
+                        session.saveOrUpdate(obj);
                     }
                 }
             }
@@ -222,52 +230,33 @@ public class SuiteDao extends AbstractBMHDao<Suite, String> {
      * 
      * @param suite
      */
-    public void saveOrUpdateSuite(final Suite suite) {
-        txTemplate.execute(new TransactionCallbackWithoutResult() {
-            @Override
-            public void doInTransactionWithoutResult(TransactionStatus status) {
-                // work around to orphanRemoval not working correctly in
-                // bidirectional relationship
-                if (suite.getId() != 0) {
-                    getCurrentSession()
-                            .createQuery(
-                                    "delete from SuiteMessage where suite_id = ?")
-                            .setParameter(0, suite.getId()).executeUpdate();
+    private void saveOrUpdateSuite(Session session, final Suite suite) {
+        // work around to orphanRemoval not working correctly in
+        // bidirectional relationship
+        if (suite.getId() != 0) {
+            session.createQuery("delete from SuiteMessage where suite_id = ?")
+                    .setParameter(0, suite.getId()).executeUpdate();
 
-                    /*
-                     * special case due to orphanRemoval bug. Remove any
-                     * triggers associated with SuiteMessage(s) that have been
-                     * removed.
-                     */
+            /*
+             * special case due to orphanRemoval bug. Remove any triggers
+             * associated with SuiteMessage(s) that have been removed.
+             */
+            if ((suite.getRemovedTriggerSuiteMessages() != null)
+                    && (suite.getRemovedTriggerSuiteMessages().isEmpty() == false)) {
 
-                    if ((suite.getRemovedTriggerSuiteMessages() != null)
-                            && (suite.getRemovedTriggerSuiteMessages()
-                                    .isEmpty() == false)) {
-
-                        for (SuiteMessagePk id : suite
-                                .getRemovedTriggerSuiteMessages()) {
-                            getCurrentSession()
-                                    .createQuery(
-                                            "DELETE FROM ProgramTrigger WHERE suite_id = ? AND msgtype_id = ?")
-                                    .setParameter(0, id.getSuiteId())
-                                    .setParameter(1, id.getMsgTypeId())
-                                    .executeUpdate();
-                        }
-
-                        suite.getRemovedTriggerSuiteMessages().clear();
-                    }
-
-                    saveOrUpdate(suite);
-                } else {
-                    create(suite);
+                for (SuiteMessagePk id : suite.getRemovedTriggerSuiteMessages()) {
+                    session.createQuery(
+                            "DELETE FROM ProgramTrigger WHERE suite_id = ? AND msgtype_id = ?")
+                            .setParameter(0, id.getSuiteId())
+                            .setParameter(1, id.getMsgTypeId()).executeUpdate();
                 }
 
-                if (suite.getSuiteMessages() != null) {
-                    for (SuiteMessage sm : suite.getSuiteMessages()) {
-                        create(sm);
-                    }
-                }
+                suite.getRemovedTriggerSuiteMessages().clear();
             }
-        });
+
+            session.saveOrUpdate(suite);
+        } else {
+            session.save(suite);
+        }
     }
 }

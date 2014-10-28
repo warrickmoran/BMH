@@ -26,6 +26,7 @@ import javax.persistence.MapsId;
 import javax.persistence.Table;
 
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -59,11 +60,13 @@ public class MessageTypeReplacement {
     @ManyToOne(optional = false)
     @MapsId("msgId")
     @DynamicSerializeElement
+    @ForeignKey(name = "message_replace_msgId_to_message_type")
     private MessageTypeSummary msgType;
 
     @ManyToOne(optional = false)
     @MapsId("replaceId")
     @DynamicSerializeElement
+    @ForeignKey(name = "message_replace_replaceMsgType_to_message_type")
     private MessageTypeSummary replaceMsgType;
 
     /**

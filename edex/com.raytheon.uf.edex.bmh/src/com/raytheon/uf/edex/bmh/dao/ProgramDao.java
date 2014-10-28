@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.hibernate.Query;
+import org.hibernate.Session;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
@@ -83,9 +84,7 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
     @SuppressWarnings("unchecked")
     public List<TransmitterGroup> getGroupsForMsgType(final String msgType) {
         return (List<TransmitterGroup>) findByNamedQueryAndNamedParam(
-                Program.GET_GROUPS_FOR_MSG_TYPE,
-                new String[] { "afosid" },
-                new Object[] { msgType });
+                Program.GET_GROUPS_FOR_MSG_TYPE, "afosid", msgType);
     }
 
     /**
@@ -98,9 +97,8 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
             final TransmitterGroup transmitterGroup) {
         @SuppressWarnings("unchecked")
         List<Program> programs = (List<Program>) findByNamedQueryAndNamedParam(
-                Program.GET_PROGRAM_FOR_TRANSMITTER_GROUP,
-                new String[] { "group" },
-                new Object[] { transmitterGroup });
+                Program.GET_PROGRAM_FOR_TRANSMITTER_GROUP, "group",
+                transmitterGroup);
 
         if ((programs != null) && (programs.size() > 0)) {
             // should only be one entry
@@ -113,9 +111,9 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
     public ProgramSuite getSuiteByIDForTransmitterGroup(
             final TransmitterGroup transmitterGroup, final int suiteId) {
         List<?> results = findByNamedQueryAndNamedParam(
-                Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP,
-                new String[] { "group", "suiteId" },
-                new Object[] { transmitterGroup, suiteId });
+                Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP, new String[] {
+                        "group", "suiteId" }, new Object[] { transmitterGroup,
+                        suiteId });
 
         if ((results == null) || results.isEmpty()) {
             return null;
@@ -126,20 +124,6 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         }
 
         return null;
-    }
-
-    /**
-     * Get all of the programs and associated data.
-     * 
-     * @return List of programs.
-     */
-    public List<Program> getPrograms() {
-        List<Program> programList = this.loadAll();
-        if (programList == null) {
-            return Collections.emptyList();
-        }
-
-        return programList;
     }
 
     /**
@@ -274,13 +258,13 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
     }
 
     @Override
-    public void persistAll(final Collection<? extends Object> objs) {
+    public void persistAll(final Collection<?> objs) {
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(TransactionStatus status) {
                 for (Object obj : objs) {
                     if (obj instanceof Program) {
-                        saveOrUpdate((Program) obj);
+                        persist((Program) obj);
                     } else {
                         persist(obj);
                     }
@@ -289,26 +273,22 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         });
     }
 
-    public void saveOrUpdate(final Program program) {
+    public void persist(final Program program) {
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(TransactionStatus status) {
                 final int programId = program.getId();
+                Session session = getCurrentSession();
                 // work around to orphanRemoval not working correctly in
                 // bidirectional relationship
                 if (programId != 0) {
-                    Query query = getCurrentSession().createQuery("DELETE ProgramSuite WHERE program_id = ?");
+                    Query query = session
+                            .createQuery("DELETE ProgramSuite WHERE program_id = ?");
                     query.setParameter(0, programId);
                     query.executeUpdate();
-                    persist(program);
+                    session.update(program);
                 } else {
-                    create(program);;
-                }
-
-                if (program.getProgramSuites() != null) {
-                    for (ProgramSuite programSuite : program.getProgramSuites()) {
-                        create(programSuite);
-                    }
+                    session.save(program);
                 }
             }
         });
