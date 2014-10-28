@@ -26,10 +26,11 @@
  * Aug 15, 2014 3515       rjpeter     Initial creation.
  * Aug 25, 2014 3558       rjpeter     Don't auto add dac_ports.
  * Sep 22, 2014 3652       lvenable    Added name.
+ * Oct 28, 2014 3746       rjpeter     Use dac_seq.
  **/
 
-insert into bmh.dac_address (id, name, address, receiveport,receiveaddress) values (1, 'dac1', '147.18.136.46', 21000, '239.255.86.75');
-insert into bmh.dac_address (id, name, address, receiveport,receiveaddress) values (2, 'dac2', '147.18.136.47', 22000, '239.255.86.75');
+insert into bmh.dac_address (id, name, address, receiveport,receiveaddress) values (nextval('dac_seq'), 'dac1', '147.18.136.46', 21000, '239.255.86.75');
+insert into bmh.dac_address (id, name, address, receiveport,receiveaddress) values (nextval('dac_seq'), 'dac2', '147.18.136.47', 22000, '239.255.86.75');
 --insert into bmh.dac_ports (dac_id, dataport) values (1, 21002);
 --insert into bmh.dac_ports (dac_id, dataport) values (1, 21004);
 --insert into bmh.dac_ports (dac_id, dataport) values (1, 21006);
