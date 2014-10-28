@@ -64,6 +64,7 @@ import com.raytheon.uf.edex.bmh.xformer.data.ITextRuling;
 import com.raytheon.uf.edex.bmh.xformer.data.ITextTransformation;
 import com.raytheon.uf.edex.bmh.xformer.data.RulingFreeText;
 import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
+import com.raytheon.uf.edex.core.IContextStateProcessor;
 
 /**
  * The Message Transformer is responsible for generating Broadcast Message(s)
@@ -86,6 +87,7 @@ import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
  * Sep 12, 2014 3588       bsteffen    Support audio fragments.
  * Oct 2, 2014  3642       bkowal      Updated to recognize and handle static time fragments.
  * Oct 22, 2014 3747       bkowal      Set creation / update time manually.
+ * Oct 27, 2014 3759       bkowal      Update to support practice mode.
  * 
  * </pre>
  * 
@@ -93,7 +95,7 @@ import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
  * @version 1.0
  */
 
-public class MessageTransformer {
+public class MessageTransformer implements IContextStateProcessor {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(MessageTransformer.class);
@@ -106,10 +108,10 @@ public class MessageTransformer {
             .compile(SENTENCE_REGEX);
 
     /* Used to retrieve the Voice and Language */
-    private final MessageTypeDao messageTypeDao;
+    private MessageTypeDao messageTypeDao;
 
     /* Used to retrieve the dictionary. */
-    private final TransmitterLanguageDao transmitterLanguageDao;
+    private TransmitterLanguageDao transmitterLanguageDao;
 
     /**
      * Constructor
@@ -591,5 +593,72 @@ public class MessageTransformer {
         ssmlDocument.getRootTag().getContent().add(ssmlSentence);
 
         return ssmlDocument;
+    }
+
+    /**
+     * @return the messageTypeDao
+     */
+    public MessageTypeDao getMessageTypeDao() {
+        return messageTypeDao;
+    }
+
+    /**
+     * @param messageTypeDao
+     *            the messageTypeDao to set
+     */
+    public void setMessageTypeDao(MessageTypeDao messageTypeDao) {
+        this.messageTypeDao = messageTypeDao;
+    }
+
+    /**
+     * @return the transmitterLanguageDao
+     */
+    public TransmitterLanguageDao getTransmitterLanguageDao() {
+        return transmitterLanguageDao;
+    }
+
+    /**
+     * @param transmitterLanguageDao
+     *            the transmitterLanguageDao to set
+     */
+    public void setTransmitterLanguageDao(
+            TransmitterLanguageDao transmitterLanguageDao) {
+        this.transmitterLanguageDao = transmitterLanguageDao;
+    }
+
+    /**
+     * Validate all DAOs are set correctly and throw an exception if any are not
+     * set.
+     * 
+     * @throws IllegalStateException
+     */
+    private void validateDaos() throws IllegalStateException {
+        if (this.messageTypeDao == null) {
+            throw new IllegalStateException(
+                    "MessageTypeDao has not been set on the MessageTransformer");
+        } else if (this.transmitterLanguageDao == null) {
+            throw new IllegalStateException(
+                    "TransmitterLanguageDao has not been set on the MessageTransformer");
+        }
+    }
+
+    @Override
+    public void preStart() {
+        this.validateDaos();
+    }
+
+    @Override
+    public void postStart() {
+        // Do Nothing.
+    }
+
+    @Override
+    public void preStop() {
+        // Do Nothing.
+    }
+
+    @Override
+    public void postStop() {
+        // Do Nothing.
     }
 }

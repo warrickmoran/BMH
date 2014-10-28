@@ -90,5 +90,8 @@
 
   <bean id="messageTypeDao" class="com.raytheon.uf.edex.bmh.dao.MessageTypeDao"
     depends-on="bmhTxTemplate" />
+    
+  <bean id="transmitterLanguageDao" class="com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao"
+  	depends-on="bmhTxTemplate" />
 
 </beans>

@@ -97,5 +97,10 @@
     depends-on="bmh_practiceTxTemplate">
     <constructor-arg value="false" />
   </bean>
+  
+  <bean id="practice_transmitterLanguageDao" class="com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao"
+  	depends-on="bmh_practiceTxTemplate">
+  	<constructor-arg value="false" />
+  </bean>
 
 </beans>

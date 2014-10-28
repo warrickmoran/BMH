@@ -2,37 +2,41 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
-
-	<bean id="ttsSynthesisFactory" class="com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory">
+  
+	<bean id="practice_ttsSynthesisFactory" class="com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory">
 		<constructor-arg value="${bmh.tts.server}" />
 		<constructor-arg value="${bmh.tts.port}" />
 		<constructor-arg value="${bmh.tts.status.port}" />
 		<constructor-arg value="${bmh.tts.connect-timeout}" />
 		<constructor-arg value="${bmh.tts.nfs.dir}" />
-		<constructor-arg value="${bmh.tts.threads}" />
+		<constructor-arg value="${bmh.practice.tts.threads}" />
 	</bean>
-
+	
 	<!-- tts manager -->
-	<bean id="ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager"
+	<bean id="practice_ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager"
 		destroy-method="dispose">
-		<property name="synthesisFactory" ref="ttsSynthesisFactory" />
-		<property name="bmhDataDirectory" value="${BMH_DATA}" />
+		<property name="synthesisFactory" ref="practice_ttsSynthesisFactory" />
+		<property name="bmhDataDirectory" value="${BMH_DATA}/practice" />
 	</bean>
-
+	
+	<bean factory-bean="ttsHandler" factory-method="setPracticeTTSManager">
+		<constructor-arg ref="practice_ttsManager" />
+	</bean>
+	
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
-		<constructor-arg ref="bmh-tts" />
-		<constructor-arg ref="ttsManager" />
+		<constructor-arg ref="practice_bmh-tts" />
+		<constructor-arg ref="practice_ttsManager" />
 	</bean>
-
-	<camelContext id="bmh-tts" xmlns="http://camel.apache.org/schema/spring"
+	
+	<camelContext id="practice_bmh-tts" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
 
-		<route id="ttsEncodeAudio">
-			<from uri="jms-durable:queue:BMH.TTS" />
+		<route id="practice_ttsEncodeAudio">
+			<from uri="jms-durable:queue:BMH.Practice.TTS" />
 			<doTry>
-				<bean ref="broadcastMsgDao" method="getByID" />
-				<bean ref="ttsManager" method="process" />
-				<bean ref="broadcastMsgDao" method="saveOrUpdate" />
+				<bean ref="practice_broadcastMsgDao" method="getByID" />
+				<bean ref="practice_ttsManager" method="process" />
+				<bean ref="practice_broadcastMsgDao" method="saveOrUpdate" />
 				<filter>
 					<simple>${body.isSuccess} == false</simple>
 					<stop />
@@ -40,7 +44,7 @@
 				<setBody>
 					<simple>${body.getId}</simple>
 				</setBody>
-				<to uri="jms-durable:queue:BMH.Schedule" />
+				<to uri="jms-generic:queue:BMH.Practice.Schedule" />
 				<doCatch>
 					<exception>java.lang.Throwable</exception>
 					<to uri="log:bmh?level=ERROR" />
@@ -49,4 +53,5 @@
 		</route>
 
 	</camelContext>
+  
 </beans>

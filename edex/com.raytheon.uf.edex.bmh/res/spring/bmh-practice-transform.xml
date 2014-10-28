@@ -1,0 +1,40 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<bean id="practice_messageTransformer" class="com.raytheon.uf.edex.bmh.xformer.MessageTransformer">
+		<property name="messageTypeDao" ref="practice_messageTypeDao" />
+		<property name="transmitterLanguageDao" ref="practice_transmitterLanguageDao" />
+	</bean>
+	
+	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
+		<constructor-arg ref="practice_bmh-xform" />
+		<constructor-arg ref="practice_messageTransformer" />
+	</bean>
+
+	<camelContext id="practice_bmh-xform" xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+		<route id="practice_bmhTransformer">
+			<from uri="jms-durable:queue:BMH.Practice.Transform" />
+			<doTry>
+				<bean ref="practice_validatedMessageDao" method="getByID" />
+				<bean ref="practice_messageTransformer" method="process" />
+				<split>
+					<simple>${body}</simple>
+					<bean ref="practice_broadcastMsgDao" method="persist" />
+					<setBody>
+						<simple>${body.getId}</simple>
+					</setBody>
+					<to uri="jms-durable:queue:BMH.Practice.TTS" />
+				</split>
+				<doCatch>
+					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR" />
+				</doCatch>
+			</doTry>
+		</route>
+
+	</camelContext>
+
+</beans>
