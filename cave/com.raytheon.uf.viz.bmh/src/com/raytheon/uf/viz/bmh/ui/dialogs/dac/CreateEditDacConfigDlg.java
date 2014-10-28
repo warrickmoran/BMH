@@ -403,7 +403,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             dac.setDataPorts(ports);
 
             try {
-                dm.saveDac(dac);
+                dac = dm.saveDac(dac);
                 setReturnValue(dac);
             } catch (Exception e) {
                 statusHandler.error("Error saving DAC configuation.", e);

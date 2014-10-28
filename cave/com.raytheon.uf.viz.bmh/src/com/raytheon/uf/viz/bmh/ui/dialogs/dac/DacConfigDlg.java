@@ -44,6 +44,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.CreateEditDacConfigDlg.DialogType;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -359,12 +360,20 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
             TableRowData rowData = dacTableData.getTableRow(dacTable
                     .getSelectedIndex());
             Dac dac = (Dac) rowData.getData();
-            try {
-                dataManager.deleteDac(dac);
-                dacTableData.deleteRow(rowData);
-                dacTable.populateTable(dacTableData);
-            } catch (Exception e) {
-                statusHandler.error("Error deleting DAC " + dac.getName(), e);
+            String msg = "Are you sure you want to delete DAC named "
+                    + dac.getName() + "?";
+            int answer = DialogUtility
+                    .showMessageBox(getShell(), SWT.ICON_QUESTION | SWT.YES
+                            | SWT.NO, "Confirm Delete", msg);
+            if (answer == SWT.YES) {
+                try {
+                    dataManager.deleteDac(dac);
+                    dacTableData.deleteRow(rowData);
+                    dacTable.populateTable(dacTableData);
+                } catch (Exception e) {
+                    statusHandler.error("Error deleting DAC " + dac.getName(),
+                            e);
+                }
             }
         }
     }
