@@ -211,7 +211,7 @@ public class ProgramHandler extends
         ProgramDao dao = new ProgramDao(request.isOperational());
         ProgramResponse response = new ProgramResponse();
         if (request.getProgram() != null) {
-            dao.saveOrUpdate(request.getProgram());
+            dao.persist(request.getProgram());
             response.addProgram(request.getProgram());
         }
 
