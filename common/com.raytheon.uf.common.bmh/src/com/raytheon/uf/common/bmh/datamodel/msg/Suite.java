@@ -115,7 +115,7 @@ public class Suite {
     @DynamicSerializeElement
     private SuiteType type = SuiteType.GENERAL;
 
-    @OneToMany(mappedBy = "suite", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "suite", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     // updating position broken https://hibernate.atlassian.net/browse/HHH-5732
     @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
