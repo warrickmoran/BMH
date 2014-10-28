@@ -49,6 +49,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Aug 14, 2014   3432     mpduff      Additional capabilities
  * Aug 24, 2014   3432     mpduff      Added override for select(int row)
  * Oct 26, 2014   3750     mpduff      Added override for getSelectedIndex()
+ * Oct 28, 2014   3758     bkowal      Ensure that the selected row cannot extend beyond
+ *                                     the bounds of the table.
  * 
  * </pre>
  * 
@@ -135,6 +137,16 @@ public class BroadcastCycleTableComp extends TableComp {
         if ((table.getItemCount() == 0) || !(selectedTableIndex >= 0)) {
             return Collections.emptyList();
         }
+
+        if (this.selectedTableIndex >= this.table.getItemCount()) {
+            /*
+             * The selected table index is based on a version of the table with
+             * more rows. Rows have been removed, so set the index to the last
+             * possible row that can be selected.
+             */
+            this.selectedTableIndex = this.table.getItemCount() - 1;
+        }
+
         TableItem item = table.getItem(selectedTableIndex);
         TableRowData row = (TableRowData) item.getData();
         List<TableRowData> rowList = new ArrayList<TableRowData>(1);
