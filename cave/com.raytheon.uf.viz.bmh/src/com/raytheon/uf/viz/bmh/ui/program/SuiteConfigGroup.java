@@ -79,6 +79,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 15, 2014  #3716     bkowal       Display 'Remove' instead of 'Delete' when within the
  *                                      Broadcast Program Dialog.
  * Oct 26, 2014   3750     mpduff       Get updates from filtered list.
+ * Oct 28, 2014   3750     lvenable     Updated the selected suite when selecting the table index via suite ID.
  * 
  * </pre>
  * 
@@ -658,12 +659,14 @@ public class SuiteConfigGroup extends Composite {
         for (Suite s : filteredSuiteList) {
             if (s.getId() == suiteId) {
                 suiteTable.select(index);
+                updateSelectedSuite();
                 return;
             }
             ++index;
         }
 
         suiteTable.select(0);
+        updateSelectedSuite();
     }
 
     /**
