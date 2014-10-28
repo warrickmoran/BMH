@@ -66,6 +66,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * ------------ ---------- ----------- --------------------------
  * Oct 23, 2014  #3748     bkowal      Initial creation
  * Oct 26, 2014  #3748     bkowal      Passed audio data to broadcast msg creation.
+ * Oct 28, 2014  #3759     bkowal      Support practice mode.
  * 
  * </pre>
  * 
@@ -90,9 +91,18 @@ public class NewBroadcastMsgHandler extends
 
     private static final String WX_MESSAGES_DIRECTORY = "WXMessages";
 
+    /*
+     * TODO: Need util similar to BMHServers for uri destinations (practice and
+     * operational) so that destinations will not need to be listed in multiple
+     * files.
+     */
     private static final String TRANSFORM_URI = "jms-durable:queue:BMH.Transform";
 
+    private static final String PRACTICE_TRANSFORM_URI = "jms-generic:queue:BMH.Practice.Transform";
+
     private static final String SCHEDULE_URI = "jms-durable:queue:BMH.Schedule";
+
+    private static final String PRACTICE_SCHEDULE_URI = "jms-generic:queue:BMH.Practice.Schedule";
 
     private static final String DEFAULT_TTS_FILE_EXTENSION = BMHAudioFormat.ULAW
             .getExtension();
@@ -144,7 +154,9 @@ public class NewBroadcastMsgHandler extends
             // we are finished, send the validated message to the message
             // transformer.
 
-            this.sendToDestination(TRANSFORM_URI, validMsg.getId());
+            final String destinationURI = request.isOperational() ? TRANSFORM_URI
+                    : PRACTICE_TRANSFORM_URI;
+            this.sendToDestination(destinationURI, validMsg.getId());
 
             return null;
         }
@@ -164,8 +176,10 @@ public class NewBroadcastMsgHandler extends
         validatedMsgDao.persistAll(entitiesToPersist);
 
         // send the broadcast message(s) to the playlist scheduler.
+        final String destinationURI = request.isOperational() ? SCHEDULE_URI
+                : PRACTICE_SCHEDULE_URI;
         for (BroadcastMsg broadcastRecord : broadcastRecords) {
-            this.sendToDestination(SCHEDULE_URI, broadcastRecord.getId());
+            this.sendToDestination(destinationURI, broadcastRecord.getId());
         }
 
         // TODO: need reply
