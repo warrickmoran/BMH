@@ -26,8 +26,8 @@ import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.bmh.diff.DiffString;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -105,6 +105,34 @@ public class TtsVoice {
 
     public void setMale(boolean male) {
         this.male = male;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + voiceNumber;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        TtsVoice other = (TtsVoice) obj;
+        if (voiceNumber != other.voiceNumber)
+            return false;
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        return "TtsVoice [voiceNumber=" + voiceNumber + ", voiceName="
+                + voiceName + ", language" + language + ", male=" + male + "]";
     }
 
 }
