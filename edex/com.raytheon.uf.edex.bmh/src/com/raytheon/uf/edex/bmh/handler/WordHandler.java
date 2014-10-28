@@ -98,8 +98,7 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
         WordResponse response = new WordResponse();
         Word newWord = request.getWord();
 
-        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
-                .isOperational());
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         Word oldWord = null;
         if (logger.isPriorityEnabled(Priority.INFO)) {
             oldWord = dao.getByID(newWord.getId());
@@ -112,8 +111,7 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            BMHLoggerUtils.logSave(request.isOperational(), user, oldWord,
-                    newWord);
+            BMHLoggerUtils.logSave(request, user, oldWord, newWord);
         }
 
         return response;
@@ -123,8 +121,7 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
         WordDao dao = new WordDao(request.isOperational());
         Word word = request.getWord();
 
-        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
-                .isOperational());
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         Word oldWord = null;
         if (logger.isPriorityEnabled(Priority.INFO)) {
             oldWord = dao.getByID(word.getId());
@@ -138,8 +135,7 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            BMHLoggerUtils
-                    .logSave(request.isOperational(), user, oldWord, word);
+            BMHLoggerUtils.logSave(request, user, oldWord, word);
         }
 
         return response;
@@ -150,11 +146,10 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
         Word word = request.getWord();
         dao.delete(word);
 
-        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
-                .isOperational());
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            BMHLoggerUtils.logDelete(request.isOperational(), user, word);
+            BMHLoggerUtils.logDelete(request, user, word);
         }
     }
 }

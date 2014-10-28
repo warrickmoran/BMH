@@ -30,8 +30,8 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
-import com.raytheon.uf.common.bmh.diff.DiffKey;
-import com.raytheon.uf.common.bmh.diff.DiffKeyOverride;
+import com.raytheon.uf.common.bmh.diff.DiffString;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
@@ -68,11 +68,11 @@ public class Word {
     // use surrogate key instead
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
-    @DiffKey(position = 3)
+    @DiffTitle(position = 3)
     protected int id;
 
-    @DiffKey(position = 2, title = "WORD")
-    @DiffKeyOverride
+    @DiffTitle(position = 2)
+    @DiffString
     @Column(length = 150)
     private String word;
 
@@ -82,7 +82,7 @@ public class Word {
     /** An identifier used to link this Word to its Dictionary */
     @ManyToOne
     @JoinColumn(name = "dictionary", nullable = false)
-    @DiffKey(position = 1)
+    @DiffTitle(position = 1)
     private Dictionary dictionary;
 
     public int getId() {
