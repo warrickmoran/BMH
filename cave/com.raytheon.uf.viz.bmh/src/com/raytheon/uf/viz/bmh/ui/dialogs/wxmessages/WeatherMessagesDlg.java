@@ -98,6 +98,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 26, 2014   #3748    bkowal       Updated to use information from the new
  *                                      contents dialog. Finished create "NEW"
  *                                      weather message.
+ * Oct 28, 2014   #3750    bkowal       Validate contents prior to submit.
  * 
  * </pre>
  * 
@@ -373,6 +374,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         gd.widthHint = 175;
         gd.verticalIndent = 5;
         msgNameTF = new Text(controlComp, SWT.BORDER);
+        msgNameTF.setTextLimit(40);
         msgNameTF.setLayoutData(gd);
 
         // Message Type
@@ -767,8 +769,63 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         return cld;
     }
 
+    private boolean validate() {
+        /*
+         * verify that a name has been set.
+         */
+        if (this.msgNameTF.getText() == null
+                || this.msgNameTF.getText().isEmpty()) {
+            DialogUtility
+                    .showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
+                            "Weather Messages - Message Name",
+                            "Message Name is a required field. Please enter a Message Name.");
+            return false;
+        }
+
+        /*
+         * verify that a message type has been set.
+         */
+        if (this.selectedMessageType == null) {
+            DialogUtility
+                    .showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
+                            "Weather Messages - Message Type",
+                            "A Message Type is required. Please select a Message Type.");
+            return false;
+        }
+
+        /*
+         * verify that transmitters have been selected.
+         */
+        if (this.sameTransmitters.getCheckedItems().getCheckedItems().isEmpty()) {
+            DialogUtility
+                    .showMessageBox(
+                            this.shell,
+                            SWT.ICON_ERROR | SWT.OK,
+                            "Weather Messages - SAME",
+                            "SAME Transmitters must be selected. It is possible that the Message Type you have selected has not been associated with any transmitters.");
+            return false;
+        }
+
+        /*
+         * verify that message contents have been set.
+         */
+        if (this.content != null && this.content.isComplete() == false) {
+            DialogUtility
+                    .showMessageBox(
+                            this.shell,
+                            SWT.ICON_ERROR | SWT.OK,
+                            "Weather Messages - Contents",
+                            "No Message Contents have been provided. Please record a message or enter text. Click on the 'Contents' button to get started.");
+            return false;
+        }
+
+        return true;
+    }
+
     private void handleSubmitAction() {
-        // TODO: dialog validation! - both text content and audio content
+        if (this.validate() == false) {
+            return;
+        }
 
         NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
 
@@ -817,6 +874,14 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         } catch (Exception e) {
             statusHandler.error("Failed to submit the weather message.", e);
         }
+
+        /*
+         * TODO: most likely temporary. Hopefully, we receive feedback about the
+         * dialog end state during the demo.
+         */
+        DialogUtility.showMessageBox(this.shell, SWT.ICON_INFORMATION | SWT.OK,
+                "Weather Messages",
+                "The weather message has been successfully submitted.");
     }
 
     /**

@@ -29,6 +29,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 26, 2014 3748       bkowal      Initial creation
+ * Oct 28, 2014 3759       bkowal      Added a validation mechanism.
  * 
  * </pre>
  * 
@@ -90,5 +91,14 @@ public class WxMessagesContent {
      */
     public CONTENT_TYPE getContentType() {
         return contentType;
+    }
+
+    public boolean isComplete() {
+        if (this.contentType == CONTENT_TYPE.TEXT) {
+            return this.text != null && this.text.isEmpty() == false;
+        } else {
+            // audio
+            return this.audio != null;
+        }
     }
 }
