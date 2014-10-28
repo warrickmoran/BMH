@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 21, 2014 3655       bkowal      Initial creation
+ * Oct 27, 2014 3712       bkowal      Added broadcastState.
  * 
  * </pre>
  * 
@@ -47,9 +48,16 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class LiveBroadcastSwitchNotification implements IPlaylistData {
 
+    public static enum STATE {
+        STARTED, FINISHED
+    }
+
     private static final String TONE_SENT = "SENT";
 
     private static final String TONE_NONE = "NONE";
+
+    @DynamicSerializeElement
+    private STATE broadcastState;
 
     @DynamicSerializeElement
     private String transmitterGroup;
@@ -73,6 +81,14 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
      * 
      */
     public LiveBroadcastSwitchNotification() {
+    }
+
+    public STATE getBroadcastState() {
+        return broadcastState;
+    }
+
+    public void setBroadcastState(STATE broadcastState) {
+        this.broadcastState = broadcastState;
     }
 
     /**

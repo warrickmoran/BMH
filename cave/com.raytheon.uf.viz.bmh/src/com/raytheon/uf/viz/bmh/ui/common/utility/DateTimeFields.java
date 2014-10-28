@@ -63,6 +63,8 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  * Oct 26, 2014  #3712     bkowal      Fixed how hours are handled. Added a method to update multiple
  *                                     dtf fields at once and function to return mapping to java Calendar
  *                                     fields.
+ * Oct 27, 2014  #3712     bkowal      Fixed how hours are handled when retrieving data
+ *                                     from the dtf spinners.
  * 
  * </pre>
  * 
@@ -403,8 +405,12 @@ public class DateTimeFields extends Composite {
         Map<Integer, Integer> valueMap = new HashMap<>();
 
         for (DateFieldType dft : spinners.keySet()) {
-            valueMap.put(this.dfTypeToCalMap.get(dft), spinners.get(dft)
-                    .getSelection());
+            int fieldValue = spinners.get(dft).getSelection();
+            // special case for month. JavaDoc Calendar month is 0 - 11
+            if (dft == DateFieldType.MONTH) {
+                --fieldValue;
+            }
+            valueMap.put(this.dfTypeToCalMap.get(dft), fieldValue);
         }
 
         return valueMap;
@@ -499,7 +505,7 @@ public class DateTimeFields extends Composite {
         for (DateFieldType dft : fieldValuesMap.keySet()) {
             Spinner spnr = spinners.get(dft);
             int calendarFieldValue = cal.get(dfTypeToCalMap.get(dft));
-            // special case for month. JavaDoc month is 0 - 11
+            // special case for month. JavaDoc Calendar month is 0 - 11
             if (dft == DateFieldType.MONTH) {
                 ++calendarFieldValue;
             }

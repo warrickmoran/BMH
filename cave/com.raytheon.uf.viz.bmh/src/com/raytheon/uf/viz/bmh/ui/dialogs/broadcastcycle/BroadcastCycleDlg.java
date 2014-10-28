@@ -59,6 +59,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
@@ -107,6 +108,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 21, 2014  3655      bkowal      Added support for live broadcast messages.
  * Oct 23, 2014  3687      bsteffen    Display dac name instead of id.
  * Oct 26, 2014  3750      mpduff      Maintain the selected row.
+ * Oct 27, 2014  3712      bkowal      Update labels after live broadcast start/end.
  * 
  * </pre>
  * 
@@ -216,6 +218,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private Button messageDetailBtn;
 
     private int selectedRow = 0;
+
+    private String cycleDurationTime;
 
     /**
      * Constructor.
@@ -1048,6 +1052,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         tableData = playlistData
                                 .getUpdatedTableData(notification
                                         .getTransmitterGroup());
+                        cycleDurationTime = timeFormatter.format(new Date(
+                                notification.getPlaybackCycleTime()));
                         updateTable(tableData);
                         this.selectedSuite = notification.getSuiteName();
                         VizApp.runAsync(new Runnable() {
@@ -1055,10 +1061,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                             @Override
                             public void run() {
                                 messageDetailBtn.setEnabled(true);
+                                progValueLbl.setText(programObj.getName());
                                 suiteValueLbl.setText(selectedSuite);
-                                String time = timeFormatter.format(new Date(
-                                        notification.getPlaybackCycleTime()));
-                                cycleDurValueLbl.setText(time);
+                                cycleDurValueLbl.setText(cycleDurationTime);
                             }
                         });
                     }
@@ -1110,15 +1115,33 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         return;
                     }
 
-                    final TableData liveTableData = this.playlistData
-                            .getLiveTableData(notification);
+                    if (notification.getBroadcastState() == STATE.STARTED) {
+                        final TableData liveTableData = this.playlistData
+                                .getLiveTableData(notification);
 
-                    VizApp.runAsync(new Runnable() {
-                        @Override
-                        public void run() {
-                            updateDisplayForLiveBroadcast(liveTableData);
-                        }
-                    });
+                        VizApp.runAsync(new Runnable() {
+                            @Override
+                            public void run() {
+                                updateDisplayForLiveBroadcast(liveTableData);
+                            }
+                        });
+                    } else {
+                        updateTable(tableData);
+                        VizApp.runAsync(new Runnable() {
+
+                            @Override
+                            public void run() {
+                                messageDetailBtn.setEnabled(true);
+                                progValueLbl.setText(programObj.getName());
+                                if (selectedSuite != null) {
+                                    suiteValueLbl.setText(selectedSuite);
+                                } else {
+                                    suiteValueLbl.setText("");
+                                }
+                                cycleDurValueLbl.setText(cycleDurationTime);
+                            }
+                        });
+                    }
                 }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing update notification", e);
@@ -1130,6 +1153,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         this.messageDetailBtn.setEnabled(false);
         suiteValueLbl.setText("N/A");
         cycleDurValueLbl.setText("N/A");
+        this.progValueLbl.setText("Emergency Override");
 
         tableComp.populateTable(liveTableData);
         if (tableComp.getSelectedIndex() == -1) {
