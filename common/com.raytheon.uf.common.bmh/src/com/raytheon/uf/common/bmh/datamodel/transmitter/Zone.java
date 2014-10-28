@@ -40,8 +40,8 @@ import javax.persistence.UniqueConstraint;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
-import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.bmh.diff.DiffString;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -198,6 +198,28 @@ public class Zone {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Zone [id=").append(id).append(", zoneCode=")
+                .append(zoneCode).append(", zoneName=").append(zoneName)
+                .append(", areas=");
+        if (areas == null) {
+            sb.append(areas);
+        } else {
+            sb.append("[");
+            if (areas.size() > 0) {
+                for (Area area : areas) {
+                    sb.append(area.getAreaCode()).append(", ");
+                }
+                sb.setLength(sb.length() - 2);
+            }
+            sb.append("]");
+        }
+        sb.append("]");
+        return sb.toString();
     }
 
 }

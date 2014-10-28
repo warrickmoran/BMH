@@ -1,10 +1,3 @@
-package com.raytheon.uf.common.bmh;
-
-import com.raytheon.uf.common.bmh.diff.LoggerUtils;
-import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-
 /**
  * This software was developed and / or modified by Raytheon Company,
  * pursuant to Contract DG133W-05-CQ-1067 with the US Government.
@@ -24,6 +17,13 @@ import com.raytheon.uf.common.status.UFStatus;
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
+
+package com.raytheon.uf.common.bmh;
+
+import com.raytheon.uf.common.bmh.diff.LoggerUtils;
+import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 
 /**
  * Common methods for handlers logging user changes to BMH database.
