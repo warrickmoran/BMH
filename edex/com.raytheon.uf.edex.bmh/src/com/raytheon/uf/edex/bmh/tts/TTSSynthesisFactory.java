@@ -28,9 +28,6 @@ import java.util.concurrent.TimeUnit;
 
 import voiceware.libttsapi;
 
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.raytheon.uf.common.bmh.TTSSynthesisException;
@@ -53,6 +50,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  *                                     synthesis validation fails due to an improperly
  *                                     set bmh tts nfs directory.
  * Oct 2, 2014  3642       bkowal      Made NO_TIMEOUT public.
+ * Oct 28, 2014 3759       bkowal      Removed extended TTS Synthesis lockout.
  * 
  * </pre>
  * 
@@ -60,7 +58,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * @version 1.0
  */
 
-public class TTSSynthesisFactory implements FutureCallback<UnlockNotification> {
+public class TTSSynthesisFactory {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(TTSSynthesisFactory.class);
@@ -210,55 +208,14 @@ public class TTSSynthesisFactory implements FutureCallback<UnlockNotification> {
                     "Interrupted during the synthesis process!", e);
         } catch (ExecutionException e) {
             throw new TTSSynthesisException("TTS synthesis failed!", e);
-        }
-
-        if (ttsReturn.isSynthesisSuccess()) {
-            /* For ULAW encoded files, 160 bytes = 20 ms of playback time. */
-            final long playbackTime = ttsReturn.getBytesSythensized() / 160L * 20L;
-            TTSLockResourceTask lockTask = new TTSLockResourceTask(
-                    task.getIdentifier(), playbackTime);
-            ListenableFuture<UnlockNotification> lockFuture = this.executorService
-                    .submit(lockTask);
-            Futures.addCallback(lockFuture, this);
-        } else {
+        } finally {
             /*
-             * Synthesis was not successful. No need to keep the resource
-             * locked.
+             * unlock the resource.
              */
             this.resourceCounter.release();
         }
 
         return ttsReturn;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.google.common.util.concurrent.FutureCallback#onSuccess(java.lang.
-     * Object)
-     */
-    @Override
-    public void onSuccess(UnlockNotification result) {
-        statusHandler.info("Unlocking TTS Synthesizer "
-                + result.getResourceIdentifier() + ".");
-        this.resourceCounter.release();
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.google.common.util.concurrent.FutureCallback#onFailure(java.lang.
-     * Throwable)
-     */
-    @Override
-    public void onFailure(Throwable t) {
-        /*
-         * There is only the possibility of an {@link InterruptedException} in
-         * this case.
-         */
-        this.resourceCounter.release();
     }
 
     /**

@@ -32,7 +32,7 @@
 		errorHandlerRef="errorHandler">
 
 		<route id="practice_ttsEncodeAudio">
-			<from uri="jms-durable:queue:BMH.Practice.TTS" />
+			<from uri="jms-generic:queue:BMH.Practice.TTS" />
 			<doTry>
 				<bean ref="practice_broadcastMsgDao" method="getByID" />
 				<bean ref="practice_ttsManager" method="process" />
