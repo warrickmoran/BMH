@@ -127,7 +127,7 @@ public class MessageType {
 
     public static final String GET_REPLACEMENT_AFOSIDS = "getReplacementAfosids";
 
-    protected static final String GET_REPLACEMENT_AFOSIDS_QUERY = "SELECT mr.replaceMsgType FROM MessageType mt inner join mt.replacementMsgs mr WHERE mt.afosid = ?";
+    protected static final String GET_REPLACEMENT_AFOSIDS_QUERY = "SELECT mr.replaceMsgType FROM MessageType mt inner join mt.replacementMsgs mr WHERE mt.afosid = :afosid";
 
     // use surrogate key
     @Id
