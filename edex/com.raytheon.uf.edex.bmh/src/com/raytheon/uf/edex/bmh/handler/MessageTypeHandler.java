@@ -164,14 +164,10 @@ public class MessageTypeHandler extends
         MessageType messageType = request.getMessageType();
         dao.delete(messageType);
 
-        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
-                .isOperational());
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            logger.info("User " + user
-                    + " Delete MessageType afoisId/title/id "
-                    + messageType.getAfosid() + "/" + messageType.getTitle()
-                    + "/" + messageType.getId() + " " + messageType.toString());
+            BMHLoggerUtils.logDelete(request, user, messageType);
         }
     }
 
@@ -179,8 +175,7 @@ public class MessageTypeHandler extends
         MessageTypeDao dao = new MessageTypeDao(request.isOperational());
         MessageType messageType = request.getMessageType();
 
-        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
-                .isOperational());
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
 
         MessageType oldType = null;
         if (logger.isPriorityEnabled(Priority.INFO)) {
@@ -196,10 +191,7 @@ public class MessageTypeHandler extends
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            String entry = messageType.logEntry(oldType, user);
-            if (entry.length() > 0) {
-                logger.info(entry);
-            }
+            BMHLoggerUtils.logSave(request, user, oldType, messageType);
         }
 
         return response;

@@ -54,8 +54,7 @@ public class CopyOperationalDbHandler extends
                     "Cannot copy operational db while in operational mode.");
         }
         new BmhDatabaseCopier().copyAll();
-        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
-                .isOperational());
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
             logger.info("User " + user + " performed BMH database copy all.");

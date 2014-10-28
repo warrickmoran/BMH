@@ -47,12 +47,12 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
-import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -133,14 +133,17 @@ public class MessageType {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     @DynamicSerializeElement
+    @DiffTitle(position = 3)
     protected int id;
 
     @Column(length = 9, unique = true)
     @DynamicSerializeElement
+    @DiffTitle(position = 1)
     private String afosid;
 
     @Column(length = 40, nullable = false)
     @DynamicSerializeElement
+    @DiffTitle(position = 2)
     private String title;
 
     @Column(nullable = false)
@@ -523,10 +526,10 @@ public class MessageType {
         }
 
         sb.append(", duration=");
-        sb.append(nullCheck(duration));
+        sb.append(duration);
 
         sb.append(", periodicity=");
-        sb.append(nullCheck(periodicity));
+        sb.append(periodicity);
 
         sb.append(", voice=");
         if (voice == null) {
@@ -539,10 +542,10 @@ public class MessageType {
         sb.append(", toneBlackoutEnabled=").append(toneBlackoutEnabled);
 
         sb.append(", toneBlackOutStart=");
-        sb.append(nullCheck(toneBlackOutStart));
+        sb.append(toneBlackOutStart);
 
         sb.append(", toneBlackOutEnd=");
-        sb.append(nullCheck(toneBlackOutEnd));
+        sb.append(toneBlackOutEnd);
 
         sb.append(", sameTransmitters=[");
         if ((sameTransmitters != null) && (sameTransmitters.size() > 0)) {
@@ -585,346 +588,6 @@ public class MessageType {
         }
         sb.append("]]");
 
-        return sb.toString();
-    }
-
-    private String nullCheck(String value) {
-        return BMHLoggerUtils.nullCheck(value, "None");
-    }
-
-    /**
-     * Get log entry.
-     * 
-     * @param oldType
-     * @param user
-     *            - Who is making the change
-     * @return entry - empty string when no differences.
-     */
-    public String logEntry(MessageType oldType, String user) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("User ").append(user);
-        if (oldType == null) {
-            sb.append(" New MessageType afoisId/title/id: ")
-                    .append(getAfosid()).append("/").append(getTitle())
-                    .append("/").append(getId()).append(" ").append(toString());
-        } else {
-            Object oldValue = null;
-            Object newValue = null;
-            boolean logChanges = false;
-            sb.append(" Update fields Message Type afoisId/title/id: ")
-                    .append(getAfosid()).append("/").append(getTitle())
-                    .append("/").append(getId()).append(" [");
-            if (!getTitle().equals(oldType.getTitle())) {
-                BMHLoggerUtils.logFieldChange(sb, "title", oldType.getTitle(),
-                        getTitle());
-                logChanges = true;
-            }
-            if (!getAfosid().equals(oldType.getAfosid())) {
-                BMHLoggerUtils.logFieldChange(sb, "Afosid",
-                        oldType.getAfosid(), getAfosid());
-                logChanges = true;
-            }
-            if (isAlert() != oldType.isAlert()) {
-                BMHLoggerUtils.logFieldChange(sb, "alert", oldType.isAlert(),
-                        isAlert());
-                logChanges = true;
-            }
-            if (isConfirm() != oldType.isConfirm()) {
-                BMHLoggerUtils.logFieldChange(sb, "confirm",
-                        oldType.isConfirm(), isConfirm());
-                logChanges = true;
-            }
-            if (isEmergencyOverride() != oldType.isEmergencyOverride()) {
-                BMHLoggerUtils.logFieldChange(sb, "Emergency Override",
-                        oldType.isEmergencyOverride(), isEmergencyOverride());
-                logChanges = true;
-            }
-            if (isInterrupt() != oldType.isInterrupt()) {
-                BMHLoggerUtils.logFieldChange(sb, "interrupt",
-                        oldType.isInterrupt(), isInterrupt());
-                logChanges = true;
-            }
-            if (getDesignation() != oldType.getDesignation()) {
-                BMHLoggerUtils.logFieldChange(sb, "designation",
-                        oldType.getDesignation(), getDesignation());
-                logChanges = true;
-            }
-            if (!getDuration().equals(oldType.getDuration())) {
-                BMHLoggerUtils.logFieldChange(sb, "duration",
-                        oldType.getDuration(), getDuration());
-                logChanges = true;
-            }
-            if (!getPeriodicity().equals(oldType.getPeriodicity())) {
-                BMHLoggerUtils.logFieldChange(sb, "periodicity",
-                        oldType.getPeriodicity(), getPeriodicity());
-                logChanges = true;
-            }
-
-            oldValue = oldType.getVoice();
-            if (oldValue == null) {
-                oldValue = "None";
-            } else {
-                oldValue = oldType.getVoice().getVoiceName();
-            }
-            newValue = getVoice();
-            if (newValue == null) {
-                newValue = "None";
-            } else {
-                newValue = getVoice().getVoiceName();
-            }
-            if (!newValue.equals(oldValue)) {
-                BMHLoggerUtils.logFieldChange(sb, "voice", oldValue, newValue);
-                logChanges = true;
-            }
-            if (isWxr() != oldType.isWxr()) {
-                BMHLoggerUtils.logFieldChange(sb, "wxr", oldType.isWxr(),
-                        isWxr());
-                logChanges = true;
-            }
-            if (isToneBlackoutEnabled() != oldType.isToneBlackoutEnabled()) {
-                BMHLoggerUtils.logFieldChange(sb, "toneBlackoutEnabled",
-                        oldType.isToneBlackoutEnabled(),
-                        isToneBlackoutEnabled());
-                logChanges = true;
-            }
-
-            oldValue = oldType.getToneBlackOutStart();
-            if (oldValue == null) {
-                oldValue = "None";
-            }
-            newValue = getToneBlackOutStart();
-            if (newValue == null) {
-                newValue = "None";
-            }
-            if (!newValue.equals(oldValue)) {
-                BMHLoggerUtils.logFieldChange(sb, "toneBlackOutStart",
-                        oldValue, newValue);
-                logChanges = true;
-            }
-
-            oldValue = oldType.getToneBlackOutEnd();
-            if (oldValue == null) {
-                oldValue = "None";
-            }
-            newValue = getToneBlackOutEnd();
-            if (newValue == null) {
-                newValue = "None";
-            }
-
-            if (!newValue.equals(oldValue)) {
-                BMHLoggerUtils.logFieldChange(sb, "toneBlackOutEnd", oldValue,
-                        newValue);
-                logChanges = true;
-            }
-
-            // Add Set differences.
-
-            StringBuilder setSb = new StringBuilder();
-            if (BMHLoggerUtils.setsDiffer(oldType.getSameTransmitters(),
-                    getSameTransmitters())) {
-                Set<Transmitter> oldTransmitters = oldType
-                        .getSameTransmitters();
-                if (oldTransmitters == null) {
-                    oldTransmitters = new HashSet<>();
-                }
-                Set<Transmitter> newTransmitters = getSameTransmitters();
-                if (newTransmitters == null) {
-                    newTransmitters = new HashSet<>();
-                }
-                setSb.setLength(0);
-                setSb.append("-[");
-                if (oldTransmitters.size() > 0) {
-                    for (Transmitter t : oldTransmitters) {
-                        if (!newTransmitters.contains(t)) {
-                            setSb.append(t.getMnemonic()).append(", ");
-                        }
-                    }
-                    if (setSb.length() > 2) {
-                        setSb.setLength(setSb.length() - 2);
-                    }
-                }
-                setSb.append("]");
-                oldValue = setSb.toString();
-                setSb.setLength(0);
-                setSb.append("+[");
-
-                if (newTransmitters.size() > 0) {
-                    for (Transmitter t : newTransmitters) {
-                        if (!oldTransmitters.contains(t)) {
-                            setSb.append(t.getMnemonic()).append(", ");
-                        }
-                    }
-                    if (setSb.length() > 2) {
-                        setSb.setLength(setSb.length() - 2);
-                    }
-                }
-                setSb.append("]");
-                newValue = setSb.toString();
-                BMHLoggerUtils.logFieldChange(sb, "sameTransmitters", oldValue,
-                        newValue);
-                logChanges = true;
-            }
-
-            if (BMHLoggerUtils.setsDiffer(oldType.getReplacementMsgs(),
-                    getReplacementMsgs())) {
-                setSb.setLength(0);
-                setSb.append("-[");
-                Set<MessageTypeReplacement> oldMtrSet = oldType
-                        .getReplacementMsgs();
-                Set<MessageTypeReplacement> newMtrSet = getReplacementMsgs();
-                if (oldMtrSet.size() > 0) {
-                    for (MessageTypeReplacement mtr : oldMtrSet) {
-                        if (!newMtrSet.contains(mtr)) {
-                            setSb.append(mtr.getReplaceMsgType().getAfosid())
-                                    .append(", ");
-                        }
-                    }
-                    setSb.setLength(setSb.length() - 2);
-                }
-                setSb.append("]");
-                oldValue = setSb.toString();
-                setSb.setLength(0);
-                setSb.append("+[");
-                if (newMtrSet.size() > 0) {
-                    for (MessageTypeReplacement mtr : newMtrSet) {
-                        if (!oldMtrSet.contains(mtr)) {
-                            setSb.append(mtr.getReplaceMsgType().getAfosid())
-                                    .append(", ");
-                        }
-                    }
-                    if (setSb.length() > 2) {
-                        setSb.setLength(setSb.length() - 2);
-                    }
-                }
-                setSb.append("]");
-                newValue = setSb.toString();
-                BMHLoggerUtils.logFieldChange(sb, "replacementMsgs", oldValue,
-                        newValue);
-                logChanges = true;
-            }
-
-            if (BMHLoggerUtils.setsDiffer(oldType.getDefaultAreas(),
-                    getDefaultAreas())) {
-                setSb.setLength(0);
-                setSb.append("-[");
-
-                Set<Area> oldAreaSet = oldType.getDefaultAreas();
-                Set<Area> newAreaSet = getDefaultAreas();
-                if (oldAreaSet.size() > 0) {
-                    for (Area area : oldAreaSet) {
-                        if (!newAreaSet.contains(area)) {
-                            setSb.append(area.getAreaName()).append(", ");
-                        }
-                    }
-                    if (setSb.length() > 2) {
-                        setSb.setLength(setSb.length() - 2);
-                    }
-                }
-                setSb.append("]");
-                oldValue = setSb.toString();
-                setSb.setLength(0);
-                setSb.append("+[");
-                if (newAreaSet.size() > 0) {
-                    for (Area area : newAreaSet) {
-                        if (!oldAreaSet.contains(area)) {
-                            setSb.append(area.getAreaName()).append(", ");
-                        }
-                    }
-                    if (setSb.length() > 2) {
-                        setSb.setLength(setSb.length() - 2);
-                    }
-                }
-                setSb.append("]");
-                newValue = setSb.toString();
-                BMHLoggerUtils.logFieldChange(sb, "defaultAreas", oldValue,
-                        newValue);
-                logChanges = true;
-            }
-
-            if (BMHLoggerUtils.setsDiffer(oldType.getDefaultZones(),
-                    getDefaultZones())) {
-                setSb.setLength(0);
-                setSb.append("-[");
-                Set<Zone> oldZones = oldType.getDefaultZones();
-                Set<Zone> newZones = getDefaultZones();
-                if (oldZones.size() > 0) {
-                    for (Zone zone : oldZones) {
-                        if (!newZones.contains(zone)) {
-                            setSb.append(zone.getZoneName()).append(", ");
-                        }
-                    }
-                    if (setSb.length() > 2) {
-                        setSb.setLength(setSb.length() - 2);
-                    }
-                }
-                setSb.append("]");
-                oldValue = setSb.toString();
-                setSb.setLength(0);
-                setSb.append("+[");
-                if (newZones.size() > 0) {
-                    for (Zone zone : newZones) {
-                        if (!oldZones.contains(zone)) {
-                            setSb.append(zone.getZoneName()).append(", ");
-                        }
-                    }
-                    if (setSb.length() > 2) {
-                        setSb.setLength(setSb.length() - 2);
-                    }
-                }
-                setSb.append("]");
-                newValue = setSb.toString();
-                BMHLoggerUtils.logFieldChange(sb, "defaultZones", oldValue,
-                        newValue);
-                logChanges = true;
-            }
-
-            if (BMHLoggerUtils.setsDiffer(
-                    oldType.getDefaultTransmitterGroups(),
-                    getDefaultTransmitterGroups())) {
-                setSb.setLength(0);
-                setSb.append("-[");
-                Set<TransmitterGroup> oldGroups = oldType
-                        .getDefaultTransmitterGroups();
-                Set<TransmitterGroup> newGroups = getDefaultTransmitterGroups();
-                if (oldGroups.size() > 0) {
-                    for (TransmitterGroup group : oldGroups) {
-                        if (!newGroups.contains(group)) {
-                            setSb.append(group.getName()).append(", ");
-                        }
-                    }
-                    if (setSb.length() > 2) {
-                        setSb.setLength(setSb.length() - 2);
-                    }
-                }
-                setSb.append("]");
-                oldValue = setSb.toString();
-                setSb.setLength(0);
-                setSb.append("+[");
-                if (newGroups.size() > 0) {
-                    for (TransmitterGroup group : newGroups) {
-                        if (!oldGroups.contains(group)) {
-                            setSb.append(group.getName()).append(", ");
-                        }
-                    }
-                    if (setSb.length() > 2) {
-                        setSb.setLength(setSb.length() - 2);
-                    }
-                }
-                setSb.append("]");
-                newValue = setSb.toString();
-
-                BMHLoggerUtils.logFieldChange(sb, "defaultTransmitterGroups",
-                        oldValue, newValue);
-                logChanges = true;
-            }
-
-            // No changes made
-            if (!logChanges) {
-                return "";
-            }
-
-            sb.setCharAt(sb.length() - 2, ']');
-        }
         return sb.toString();
     }
 }

@@ -35,9 +35,10 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 import org.hibernate.annotations.Fetch;
-import com.raytheon.uf.common.bmh.diff.DiffString;
 import org.hibernate.annotations.FetchMode;
 
+import com.raytheon.uf.common.bmh.diff.DiffString;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
@@ -75,6 +76,7 @@ public class Dictionary {
     @Id
     @Column(length = 20)
     @DiffString
+    @DiffTitle(position = 1)
     private String name = null;
 
     @Enumerated(EnumType.STRING)

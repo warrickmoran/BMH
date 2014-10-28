@@ -21,11 +21,14 @@ package com.raytheon.uf.edex.bmh.handler;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 
@@ -41,6 +44,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
  * Aug 29, 2014  3568     bkowal     Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 24, 2014  3636     rferrel     Implement logging.
  * 
  * </pre>
  * 
@@ -110,10 +114,23 @@ public class TransmitterLanguageRequestHandler extends
                 request.isOperational());
         TransmitterLanguage transmitterLanguage = request
                 .getTransmitterLanguage();
-        transmitterLanguageDao.saveOrUpdate(request.getTransmitterLanguage());
+
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+
+        TransmitterLanguage tl = request.getTransmitterLanguage();
+        TransmitterLanguage oldTl = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            oldTl = transmitterLanguageDao.getByID(tl.getId());
+        }
+        transmitterLanguageDao.saveOrUpdate(tl);
 
         TransmitterLanguageResponse response = new TransmitterLanguageResponse();
         response.addTransmitterLanguage(transmitterLanguage);
+
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            BMHLoggerUtils.logSave(request, user, oldTl, tl);
+        }
 
         return response;
     }

@@ -48,8 +48,9 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
-import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
+import com.raytheon.uf.common.bmh.diff.DiffString;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
@@ -79,7 +80,6 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Oct 11, 2014  3630      mpduff      Add enable/disable group
  * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
  * Oct 13, 2014 3636       rferrel     For logging modified toString to show transmitters' mnemonic add LogEntry.
- * Oct 13, 2014  3636      rferrel     For logging modified toString to show transmitters' mnemonic add LogEntry.
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * Oct 27, 2014 3630       mpduff      Add annotation for hibernate.
  * 
@@ -112,12 +112,15 @@ public class TransmitterGroup {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
+    @DiffTitle(position = 2)
     protected int id;
 
     /**
      * Alternate key, id only used to allow for ease of rename function.
      */
     @Column(length = NAME_LENGTH)
+    @DiffTitle(position = 1)
+    @DiffString
     private String name;
 
     @Embedded
@@ -465,127 +468,5 @@ public class TransmitterGroup {
         stringBuilder.append("]]");
 
         return stringBuilder.toString();
-    }
-
-    /**
-     * Get log entry.
-     * 
-     * @param oldGroup
-     *            - When null assume this is a new transmitter.
-     * @param user
-     *            - Who is making the change
-     * @return entry - empty string when no differences.
-     */
-    public String logEntry(TransmitterGroup oldGroup, String user) {
-        boolean logChanges = false;
-        StringBuilder sb = new StringBuilder();
-        sb.append("User ").append(user);
-        if (oldGroup == null) {
-            sb.append(" New ").append(toString());
-        } else {
-            sb.append(" Update Transmitter Group name/id: \"")
-                    .append(getName()).append("\"/").append(getId())
-                    .append(" [");
-            if (!oldGroup.getName().equals(getName())) {
-                BMHLoggerUtils.logFieldChange(sb, "name", oldGroup.getName(),
-                        getName());
-                logChanges = true;
-            }
-
-            Object oldValue = oldGroup.getTone();
-            if (oldValue == null) {
-                oldValue = "";
-            }
-            Object newValue = getTone();
-            if (newValue == null) {
-                newValue = "";
-            }
-            if (!oldValue.equals(newValue)) {
-                BMHLoggerUtils.logFieldChange(sb, "tone", oldValue, newValue);
-                logChanges = true;
-            }
-            oldValue = oldGroup.getDac();
-            if (oldValue == null) {
-                oldValue = "None";
-            }
-            newValue = getDac();
-            if (newValue == null) {
-                newValue = "None";
-            }
-            if (!oldValue.equals(newValue)) {
-                BMHLoggerUtils.logFieldChange(sb, "dac", oldValue, newValue);
-                logChanges = true;
-            }
-
-            if (!oldGroup.getTimeZone().equals(getTimeZone())) {
-                BMHLoggerUtils.logFieldChange(sb, "timeZone",
-                        oldGroup.getTimeZone(), getTimeZone());
-                logChanges = true;
-            }
-            if (!oldGroup.getSilenceAlarm().equals(getSilenceAlarm())) {
-                BMHLoggerUtils.logFieldChange(sb, "silenceAlarm",
-                        oldGroup.getSilenceAlarm(), getSilenceAlarm());
-                logChanges = true;
-            }
-            if (!oldGroup.getDaylightSaving().equals(getDaylightSaving())) {
-                BMHLoggerUtils.logFieldChange(sb, "daylightSaving",
-                        oldGroup.getDaylightSaving(), getDaylightSaving());
-                logChanges = true;
-            }
-            if (oldGroup.getPosition() != getPosition()) {
-                BMHLoggerUtils.logFieldChange(sb, "position", new Integer(
-                        oldGroup.getPosition()), new Integer(getPosition()));
-                logChanges = true;
-            }
-
-            if (oldGroup.getAudioDBTarget() != getAudioDBTarget()) {
-                BMHLoggerUtils.logFieldChange(sb, "audioDBTarget", new Double(
-                        oldGroup.getAudioDBTarget()), new Double(
-                        getAudioDBTarget()));
-                logChanges = true;
-            }
-
-            List<Transmitter> oldTransmitters = oldGroup.getTransmitterList();
-            List<Transmitter> newTransmitters = getTransmitterList();
-            if (!transmittersEqual(oldTransmitters, newTransmitters)) {
-                oldValue = transmittersToString(oldTransmitters);
-                newValue = transmittersToString(newTransmitters);
-                BMHLoggerUtils.logFieldChange(sb, "transmitters", oldValue,
-                        newValue);
-                logChanges = true;
-            }
-
-            // No changes made.
-            if (!logChanges) {
-                return "";
-            }
-            sb.setCharAt(sb.length() - 2, ']');
-        }
-        return sb.toString();
-    }
-
-    private String transmittersToString(List<Transmitter> transmitters) {
-        StringBuilder sb = new StringBuilder("[");
-        if (transmitters.size() > 0) {
-            for (Transmitter t : transmitters) {
-                sb.append(t.getMnemonic()).append(", ");
-            }
-            sb.setLength(sb.length() - 2);
-        }
-        sb.append("]");
-        return sb.toString();
-    }
-
-    private boolean transmittersEqual(List<Transmitter> l1, List<Transmitter> l2) {
-        if (l1.size() != l2.size()) {
-            return false;
-        }
-
-        for (Transmitter t1 : l1) {
-            if (!l2.contains(t1)) {
-                return false;
-            }
-        }
-        return true;
     }
 }

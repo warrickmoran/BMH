@@ -21,11 +21,14 @@ package com.raytheon.uf.edex.bmh.handler;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.request.ZoneAreaRequest;
 import com.raytheon.uf.common.bmh.request.ZoneAreaResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
@@ -43,6 +46,7 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
  * Jul 15, 2014  3406     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Oct 24, 2014  3636     rferrel     Implement logging.
  * 
  * </pre>
  * 
@@ -144,8 +148,18 @@ public class ZoneAreaHandler extends
      */
     private ZoneAreaResponse saveZones(ZoneAreaRequest request) {
         ZoneDao dao = new ZoneDao(request.isOperational());
-        for (Zone z : request.getZoneList()) {
-            dao.saveOrUpdate(z);
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            for (Zone z : request.getZoneList()) {
+                Zone oldZ = dao.getByID(z.getId());
+                dao.saveOrUpdate(z);
+                BMHLoggerUtils.logSave(request, user, oldZ, z);
+            }
+        } else {
+            for (Zone z : request.getZoneList()) {
+                dao.saveOrUpdate(z);
+            }
         }
 
         request.getZoneList();
@@ -164,8 +178,18 @@ public class ZoneAreaHandler extends
      */
     private ZoneAreaResponse saveAreas(ZoneAreaRequest request) {
         AreaDao dao = new AreaDao(request.isOperational());
-        for (Area a : request.getAreaList()) {
-            dao.saveOrUpdate(a);
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            for (Area a : request.getAreaList()) {
+                Area oldArea = dao.getByID(a.getAreaId());
+                dao.saveOrUpdate(a);
+                BMHLoggerUtils.logSave(request, user, oldArea, a);
+            }
+        } else {
+            for (Area a : request.getAreaList()) {
+                dao.saveOrUpdate(a);
+            }
         }
 
         ZoneAreaResponse response = new ZoneAreaResponse();
@@ -183,8 +207,17 @@ public class ZoneAreaHandler extends
      */
     private void deleteArea(ZoneAreaRequest request) {
         AreaDao dao = new AreaDao(request.isOperational());
-        for (Area a : request.getAreaList()) {
-            dao.delete(a);
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            for (Area a : request.getAreaList()) {
+                dao.delete(a);
+                BMHLoggerUtils.logDelete(request, user, a);
+            }
+        } else {
+            for (Area a : request.getAreaList()) {
+                dao.delete(a);
+            }
         }
     }
 
@@ -197,9 +230,19 @@ public class ZoneAreaHandler extends
      */
     private void deleteZone(ZoneAreaRequest request) {
         ZoneDao dao = new ZoneDao(request.isOperational());
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         List<Zone> zoneList = request.getZoneList();
-        for (Zone z : zoneList) {
-            dao.delete(z);
+
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            for (Zone z : zoneList) {
+                dao.delete(z);
+                BMHLoggerUtils.logDelete(request, user, z);
+            }
+        } else {
+            for (Zone z : zoneList) {
+                dao.delete(z);
+            }
         }
     }
 }

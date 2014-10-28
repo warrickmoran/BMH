@@ -38,7 +38,7 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistManager;
  * ------------ ---------- ----------- --------------------------
  * Sep 25, 2014  #3589     dgilling     Initial creation
  * Oct 13, 2014  #3413     rferrel     Implement User roles.
- * Oct 15, 2014, #3635     rferrel     Implement Logging
+ * Oct 15, 2014, #3636     rferrel     Implement Logging
  * 
  * </pre>
  * 
@@ -69,8 +69,7 @@ public final class ForceSuiteChangeHandler extends
         Suite suite = request.getSelectedSuite();
         playlistMgr.processForceSuiteSwitch(group, suite);
 
-        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request
-                .isOperational());
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
             logger.info("User "

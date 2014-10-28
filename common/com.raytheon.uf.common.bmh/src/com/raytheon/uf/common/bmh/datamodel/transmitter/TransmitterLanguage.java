@@ -32,6 +32,7 @@ import javax.persistence.Table;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -50,6 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 29, 2014 3568       bkowal      Added query to retrieve transmitter language(s) associated
  *                                     with a transmitter group
  * Oct 2, 2014  3642       bkowal      Updated time message field to be: preamble and postamble
+ * Oct 28, 2014 3636       rferrel     Implemented logging.
  * </pre>
  * 
  * @author rjpeter
@@ -67,6 +69,7 @@ public class TransmitterLanguage {
 
     @EmbeddedId
     @DynamicSerializeElement
+    @DiffString
     private TransmitterLanguagePK id;
 
     // Text: 1-40960 characters

@@ -40,6 +40,8 @@ import javax.persistence.UniqueConstraint;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
+import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -57,6 +59,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 17, 2014  3406     mpduff      Added id pk column, named query, removed cascade
  * Aug 14, 2014  3411     mpduff      Add areaName to unique constraint
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
+ * Oct 24, 2014  3636     rferrel     Implement logging.
  * </pre>
  * 
  * @author rjpeter
@@ -79,6 +82,7 @@ public class Area {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     @DynamicSerializeElement
+    @DiffTitle(position = 2)
     protected int areaId;
 
     /**
@@ -92,6 +96,8 @@ public class Area {
      */
     @Column(length = 6)
     @DynamicSerializeElement
+    @DiffTitle(position = 1)
+    @DiffString
     private String areaCode;
 
     @Column(length = 30, nullable = false)

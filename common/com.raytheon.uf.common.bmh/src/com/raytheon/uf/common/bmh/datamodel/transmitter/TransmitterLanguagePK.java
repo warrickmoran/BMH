@@ -28,6 +28,8 @@ import javax.persistence.Enumerated;
 import javax.persistence.ManyToOne;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.bmh.diff.DiffString;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -41,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
+ * Oct 29, 2014 3636       rferrel     Implement logging.
  * 
  * </pre>
  * 
@@ -60,6 +63,8 @@ public class TransmitterLanguagePK implements Serializable {
     @Enumerated(EnumType.STRING)
     @Column(length = Language.LENGTH, nullable = false)
     @DynamicSerializeElement
+    @DiffTitle(position = 1)
+    @DiffString
     private Language language;
 
     public TransmitterGroup getTransmitterGroup() {

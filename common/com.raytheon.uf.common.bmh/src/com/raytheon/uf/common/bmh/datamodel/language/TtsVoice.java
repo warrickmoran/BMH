@@ -26,6 +26,8 @@ import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
+import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -41,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
+ * Oct 24, 2014 3636       rferrel     Implement logging.
  * </pre>
  * 
  * @author rjpeter
@@ -53,15 +56,19 @@ public class TtsVoice {
     @Id
     @Column
     @DynamicSerializeElement
+    @DiffTitle(position = 3)
     private int voiceNumber;
 
     @Column(length = 20, nullable = false)
     @DynamicSerializeElement
+    @DiffTitle(position = 2)
+    @DiffString
     private String voiceName;
 
     @Enumerated(EnumType.STRING)
     @Column(length = Language.LENGTH, nullable = false)
     @DynamicSerializeElement
+    @DiffTitle(position = 1)
     private Language language;
 
     @Column(nullable = false)
