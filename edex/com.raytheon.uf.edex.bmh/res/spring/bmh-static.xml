@@ -6,17 +6,21 @@
 	<bean id="timeMessagesGenerator"
 		class="com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator">
 		<constructor-arg ref="ttsHandler" />
+		<property name="bmhDataDirectory" value="${BMH_DATA}" />
+	</bean>
+	
+	<bean id="staticMessageGenerator"
+		class="com.raytheon.uf.edex.bmh.staticmsg.StaticMessageGenerator">
+		<constructor-arg ref="timeMessagesGenerator" />
+		<property name="broadcastMsgDao" ref="broadcastMsgDao" />
+		<property name="transmitterGroupDao" ref="transmitterGroupDao" />
+		<property name="transmitterLanguageDao" ref="transmitterLanguageDao" />
+		<property name="messageTypeDao" ref="messageTypeDao" />
 	</bean>
 
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
 		<constructor-arg ref="bmh-static-msg-gen" />
-		<constructor-arg ref="timeMessagesGenerator" />
-	</bean>
-
-	<bean id="staticMessageGenerator"
-		class="com.raytheon.uf.edex.bmh.staticmsg.StaticMessageGenerator"
-		init-method="initialize">
-		<constructor-arg ref="timeMessagesGenerator" />
+		<constructor-arg ref="staticMessageGenerator" />
 	</bean>
 
 	<camelContext id="bmh-static-msg-gen" xmlns="http://camel.apache.org/schema/spring"

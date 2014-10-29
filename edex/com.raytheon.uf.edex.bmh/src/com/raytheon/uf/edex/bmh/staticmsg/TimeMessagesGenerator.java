@@ -29,7 +29,6 @@ import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
@@ -39,12 +38,10 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SayAs;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
-import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.handler.TextToSpeechHandler;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
-import com.raytheon.uf.edex.core.IContextStateProcessor;
 
 /**
  * Pre-synthesizes time messages in segments for a specifc {@link TtsVoice} and
@@ -68,7 +65,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * @version 1.0
  */
 
-public class TimeMessagesGenerator implements IContextStateProcessor {
+public class TimeMessagesGenerator {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(TimeMessagesGenerator.class);
@@ -76,6 +73,8 @@ public class TimeMessagesGenerator implements IContextStateProcessor {
     private final TextToSpeechHandler ttsHandler;
 
     /* Output root subdirectories */
+    private String bmhDataDirectory;
+
     private static final String AUDIO_DATA_DIRECTORY = "audio";
 
     private static final String TIME_DATA_DIRECTORY = "time";
@@ -124,10 +123,10 @@ public class TimeMessagesGenerator implements IContextStateProcessor {
         this.ttsHandler = ttsHandler;
     }
 
-    private void initialize() throws BMHConfigurationException {
+    public void initialize() throws BMHConfigurationException {
         statusHandler.info("Initializing the Time Messages Generator ...");
-        audioTimePath = Paths.get(BMHConstants.getBmhDataDirectory(),
-                AUDIO_DATA_DIRECTORY, TIME_DATA_DIRECTORY);
+        audioTimePath = Paths.get(this.bmhDataDirectory, AUDIO_DATA_DIRECTORY,
+                TIME_DATA_DIRECTORY);
         /*
          * Determine if the location exists.
          */
@@ -351,52 +350,19 @@ public class TimeMessagesGenerator implements IContextStateProcessor {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.edex.core.IContextStateProcessor#preStart()
+    /**
+     * @return the bmhDataDirectory
      */
-    @Override
-    public void preStart() {
-        try {
-            this.initialize();
-        } catch (BMHConfigurationException e) {
-            statusHandler.fatal(BMH_CATEGORY.TTS_CONFIGURATION_ERROR,
-                    "Time Messages Generator initialization failed!", e);
-            /* Halt the context startup. */
-            throw new RuntimeException(
-                    "Time Messages Generator initialization failed!");
-        }
+    public String getBmhDataDirectory() {
+        return bmhDataDirectory;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.edex.core.IContextStateProcessor#postStart()
+    /**
+     * @param bmhDataDirectory
+     *            the bmhDataDirectory to set
      */
-    @Override
-    public void postStart() {
-        // Do Nothing
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.edex.core.IContextStateProcessor#preStop()
-     */
-    @Override
-    public void preStop() {
-        // Do Nothing
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.edex.core.IContextStateProcessor#postStop()
-     */
-    @Override
-    public void postStop() {
-        // Do Nothing
+    public void setBmhDataDirectory(String bmhDataDirectory) {
+        this.bmhDataDirectory = bmhDataDirectory;
     }
 
     public static Path getTimeVoiceDirectory(final TtsVoice voice) {

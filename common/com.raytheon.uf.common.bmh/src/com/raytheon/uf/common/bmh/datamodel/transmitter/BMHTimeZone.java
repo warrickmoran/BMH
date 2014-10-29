@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -37,6 +38,7 @@ import java.util.TimeZone;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 27, 2014  #3617     dgilling     Initial creation
+ * Oct 28, 2014  #3750     bkowal       Added method to get short timezone name
  * 
  * </pre>
  * 
@@ -82,6 +84,24 @@ public enum BMHTimeZone {
 
     public TimeZone getTz() {
         return tz;
+    }
+
+    public String getShortDisplayName() {
+        // TODO: do we need to check to see if we are in daylight savings time?
+        return this.tz.getDisplayName(
+                this.tz.inDaylightTime(Calendar.getInstance().getTime()),
+                TimeZone.SHORT);
+    }
+
+    public static BMHTimeZone getTimeZoneByID(final String id) {
+        for (BMHTimeZone tz : BMHTimeZone.values()) {
+            if (tz.getTz().getID().equals(id)) {
+                return tz;
+            }
+        }
+
+        throw new IllegalArgumentException("No BMHTimeZone enum value for id: "
+                + id);
     }
 
     public String getUiName() {

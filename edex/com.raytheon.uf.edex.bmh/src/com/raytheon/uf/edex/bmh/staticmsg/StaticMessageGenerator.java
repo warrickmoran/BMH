@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.BMHTimeZone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
@@ -48,12 +49,14 @@ import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
+import com.raytheon.uf.edex.core.IContextStateProcessor;
 
 /**
  * Responsible for generating static time and station messages. When, a message
@@ -75,6 +78,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  *                                     specific voice and timezone.
  * Oct 07, 2014 3687       bsteffen    Handle reset notification
  * Oct 17, 2014 3642       bkowal      Set input msg name for static messages.
+ * Oct 28, 2014 3750       bkowal      Fix time messages. Support practice mode.
  * 
  * 
  * </pre>
@@ -83,7 +87,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * @version 1.0
  */
 
-public class StaticMessageGenerator {
+public class StaticMessageGenerator implements IContextStateProcessor {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(StaticMessageGenerator.class);
@@ -100,13 +104,13 @@ public class StaticMessageGenerator {
 
     private final Calendar expire;
 
-    private final BroadcastMsgDao broadcastMsgDao = new BroadcastMsgDao();
+    private BroadcastMsgDao broadcastMsgDao;
 
-    private final TransmitterGroupDao transmitterGroupDao = new TransmitterGroupDao();
+    private TransmitterGroupDao transmitterGroupDao;
 
-    private final TransmitterLanguageDao transmitterLanguageDao = new TransmitterLanguageDao();
+    private TransmitterLanguageDao transmitterLanguageDao;
 
-    private final MessageTypeDao messageTypeDao = new MessageTypeDao();
+    private MessageTypeDao messageTypeDao;
 
     private Map<Integer, MessageType> staticMessageTypesMap;
 
@@ -121,7 +125,7 @@ public class StaticMessageGenerator {
         this.expire.set(Calendar.YEAR, MAX_YEAR);
     }
 
-    public void initialize() {
+    public void initializeInternal() {
         this.staticMessageTypesMap = new HashMap<>();
 
         List<MessageType> stationMessageTypes = this
@@ -215,7 +219,7 @@ public class StaticMessageGenerator {
             }
             return generatedMsgs;
         } else if (notificationObject instanceof ResetNotification) {
-            initialize();
+            initializeInternal();
             List<ValidatedMessage> generatedMsgs = new ArrayList<>();
             for (TransmitterGroup group : this.transmitterGroupDao
                     .getEnabledTransmitterGroups()) {
@@ -389,8 +393,18 @@ public class StaticMessageGenerator {
                  */
                 if (messageType.getDesignation() == Designation.TimeAnnouncement) {
                     try {
+                        BMHTimeZone tz = BMHTimeZone.getTimeZoneByID(group
+                                .getTimeZone());
+                        if (tz == null) {
+                            statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
+                                    "Failed to find the BMHTimeZone associated with identifier: "
+                                            + group.getTimeZone());
+
+                            continue;
+                        }
+
                         this.tmGenerator.process(language.getVoice(),
-                                group.getTimeZone());
+                                tz.getShortDisplayName());
                     } catch (StaticGenerationException e) {
                         statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
                                 "Failed to generate the static time message fragments for voice "
@@ -491,14 +505,14 @@ public class StaticMessageGenerator {
 
         /* create an InputMessage */
         InputMessage inputMsg = new InputMessage();
-        
+
         String inputMsgName = "StaticMsg-" + messageType.getAfosid();
         // TODO: use annotation scanning to get the max field length
         if (inputMsgName.length() > 40) {
             inputMsgName = inputMsgName.substring(0, 39);
         }
         inputMsg.setName(inputMsgName);
-        
+
         inputMsg.setLanguage(language.getLanguage());
         inputMsg.setAfosid(messageType.getAfosid());
         inputMsg.setCreationTime(now);
@@ -525,5 +539,118 @@ public class StaticMessageGenerator {
         validMsg.setTransmissionStatus(TransmissionStatus.ACCEPTED);
         validMsg.setTransmitterGroups(groupSet);
         return validMsg;
+    }
+
+    /**
+     * @return the broadcastMsgDao
+     */
+    public BroadcastMsgDao getBroadcastMsgDao() {
+        return broadcastMsgDao;
+    }
+
+    /**
+     * @param broadcastMsgDao
+     *            the broadcastMsgDao to set
+     */
+    public void setBroadcastMsgDao(BroadcastMsgDao broadcastMsgDao) {
+        this.broadcastMsgDao = broadcastMsgDao;
+    }
+
+    /**
+     * @return the transmitterGroupDao
+     */
+    public TransmitterGroupDao getTransmitterGroupDao() {
+        return transmitterGroupDao;
+    }
+
+    /**
+     * @param transmitterGroupDao
+     *            the transmitterGroupDao to set
+     */
+    public void setTransmitterGroupDao(TransmitterGroupDao transmitterGroupDao) {
+        this.transmitterGroupDao = transmitterGroupDao;
+    }
+
+    /**
+     * @return the transmitterLanguageDao
+     */
+    public TransmitterLanguageDao getTransmitterLanguageDao() {
+        return transmitterLanguageDao;
+    }
+
+    /**
+     * @param transmitterLanguageDao
+     *            the transmitterLanguageDao to set
+     */
+    public void setTransmitterLanguageDao(
+            TransmitterLanguageDao transmitterLanguageDao) {
+        this.transmitterLanguageDao = transmitterLanguageDao;
+    }
+
+    /**
+     * @return the messageTypeDao
+     */
+    public MessageTypeDao getMessageTypeDao() {
+        return messageTypeDao;
+    }
+
+    /**
+     * @param messageTypeDao
+     *            the messageTypeDao to set
+     */
+    public void setMessageTypeDao(MessageTypeDao messageTypeDao) {
+        this.messageTypeDao = messageTypeDao;
+    }
+
+    private void validateDaos() throws IllegalStateException {
+        if (this.messageTypeDao == null) {
+            throw new IllegalStateException(
+                    "MessageTypeDao has not been set on the StaticMessageGenerator");
+        } else if (this.transmitterLanguageDao == null) {
+            throw new IllegalStateException(
+                    "TransmitterLanguageDao has not been set on the StaticMessageGenerator");
+        } else if (this.broadcastMsgDao == null) {
+            throw new IllegalStateException(
+                    "BroadcastMsgDao has not been set on the StaticMessageGenerator");
+        } else if (this.transmitterGroupDao == null) {
+            throw new IllegalStateException(
+                    "TransmitterGroupDao has not been set on the StaticMessageGenerator");
+        }
+    }
+
+    private void initialize() {
+        this.validateDaos();
+
+        this.initializeInternal();
+        
+        try {
+            this.tmGenerator.initialize();
+        } catch (BMHConfigurationException e) {
+            statusHandler.fatal(BMH_CATEGORY.TTS_CONFIGURATION_ERROR,
+                    "Time Messages Generator initialization failed!", e);
+            /* Halt the context startup. */
+            throw new RuntimeException(
+                    "Time Messages Generator initialization failed!");
+        }
+    }
+
+    @Override
+    public void preStart() {
+        this.initialize();
+    }
+
+    @Override
+    public void postStart() {
+        // Do Nothing
+    }
+
+    @Override
+    public void preStop() {
+        // Do Nothing
+    }
+
+    @Override
+    public void postStop() {
+        // Do Nothing
     }
 }
