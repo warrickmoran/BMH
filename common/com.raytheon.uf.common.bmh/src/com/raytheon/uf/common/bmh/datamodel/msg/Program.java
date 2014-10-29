@@ -49,6 +49,8 @@ import org.hibernate.annotations.FetchMode;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.diff.DiffString;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -77,6 +79,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 15, 2014  3715     bkowal      Support adding / editing program triggers for
  *                                    completely new {@link Suite}(s).
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
+ * Oct 28, 2014 3636      rferrel     Implement Logging.
  * </pre>
  * 
  * @author rjpeter
@@ -124,10 +127,13 @@ public class Program {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     @DynamicSerializeElement
+    @DiffTitle(position = 2)
     protected int id;
 
     @Column(length = 20, unique = true, nullable = false)
     @DynamicSerializeElement
+    @DiffTitle(position = 1)
+    @DiffString
     private String name;
 
     @OneToMany(mappedBy = "program", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
@@ -424,5 +430,41 @@ public class Program {
 
     public ProgramSummary getProgramSummary() {
         return new ProgramSummary(this);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Program [id=").append(id);
+        sb.append(", name=").append(name);
+        sb.append(", programSuites=");
+        if (programSuites == null) {
+            sb.append(programSuites);
+        } else {
+            sb.append("[");
+            if (programSuites.size() > 0) {
+                for (ProgramSuite suite : programSuites) {
+                    sb.append(suite.getSuite().getName()).append(", ");
+                }
+                sb.setLength(sb.length() - 2);
+            }
+            sb.append("]");
+        }
+
+        sb.append(", transmitterGroups=");
+        if (transmitterGroups == null) {
+            sb.append(transmitterGroups);
+        } else {
+            sb.append("[");
+            if (transmitterGroups.size() > 0) {
+                for (TransmitterGroup group : transmitterGroups) {
+                    sb.append(group.getName()).append(", ");
+                }
+                sb.setLength(sb.length() - 2);
+            }
+            sb.append("]");
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }

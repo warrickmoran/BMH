@@ -39,6 +39,8 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
+import com.raytheon.uf.common.bmh.diff.DiffString;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -57,6 +59,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 13, 2014 3654       rjpeter     Updated to use MessageTypeSummary.
  * Oct 15, 2014 3715       bkowal      Prevent potential Null Pointer Exception for triggers.
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
+ * Oct 28, 2014 3636       rferrel     Implement Logging
  * </pre>
  * 
  * @author bkowal
@@ -72,18 +75,22 @@ public class ProgramSuite implements Serializable {
 
     @EmbeddedId
     @DynamicSerializeElement
+    @DiffTitle(position = 3)
     private ProgramSuitePK id;
 
     @ManyToOne(optional = false)
     @MapsId("programId")
     @ForeignKey(name = "program_suite_to_program")
     // No dynamic serialize due to bi-directional relationship
+    @DiffTitle(position = 2)
     private Program program;
 
     @ManyToOne(optional = false)
     @MapsId("suiteId")
     @ForeignKey(name = "program_suite_to_suite")
     @DynamicSerializeElement
+    @DiffString
+    @DiffTitle(position = 1)
     private Suite suite;
 
     @DynamicSerializeElement
@@ -224,5 +231,30 @@ public class ProgramSuite implements Serializable {
 
     public void setForced(boolean forced) {
         this.forced = forced;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((id == null) ? 0 : id.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        ProgramSuite other = (ProgramSuite) obj;
+        if (id == null) {
+            if (other.id != null)
+                return false;
+        } else if (!id.equals(other.id))
+            return false;
+        return true;
     }
 }

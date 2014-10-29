@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -29,6 +30,8 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 
@@ -196,8 +199,15 @@ public class ProgramHandler extends
      */
     private void deleteProgram(ProgramRequest request) {
         ProgramDao dao = new ProgramDao(request.isOperational());
-        if (request.getProgram() != null) {
-            dao.delete(request.getProgram());
+        Program program = request.getProgram();
+        if (program != null) {
+            dao.delete(program);
+
+            IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+            if (logger.isPriorityEnabled(Priority.INFO)) {
+                String user = BMHLoggerUtils.getUser(request);
+                BMHLoggerUtils.logDelete(request, user, program);
+            }
         }
     }
 
@@ -210,9 +220,19 @@ public class ProgramHandler extends
     private ProgramResponse saveProgram(ProgramRequest request) {
         ProgramDao dao = new ProgramDao(request.isOperational());
         ProgramResponse response = new ProgramResponse();
-        if (request.getProgram() != null) {
+        Program program = request.getProgram();
+        if (program != null) {
+            IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+            Program oldProgram = null;
+            if (logger.isPriorityEnabled(Priority.INFO)) {
+                oldProgram = dao.getByID(program.getId());
+            }
             dao.persist(request.getProgram());
             response.addProgram(request.getProgram());
+            if (logger.isPriorityEnabled(Priority.INFO)) {
+                String user = BMHLoggerUtils.getUser(request);
+                BMHLoggerUtils.logSave(request, user, oldProgram, program);
+            }
         }
 
         return response;
@@ -223,7 +243,17 @@ public class ProgramHandler extends
         int programId = request.getProgram().getId();
         TransmitterGroup group = request.getTransmitterGroup();
         ProgramResponse response = new ProgramResponse();
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+
+        Program oldProgram = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            oldProgram = dao.getByID(programId);
+        }
         Program program = dao.addGroup(programId, group);
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            BMHLoggerUtils.logSave(request, user, oldProgram, program);
+        }
         response.addProgram(program);
 
         return response;

@@ -128,9 +128,7 @@ public class LoggerUtils {
                     Object newValue = PropertyUtils.getProperty(newObj,
                             field.getName());
 
-                    // one or both may be null.
-                    if ((oldValue instanceof Collection<?>)
-                            || (newValue instanceof Collection<?>)) {
+                    if (Collection.class.isAssignableFrom(field.getType())) {
                         Collection<?> oldCol = (Collection<?>) oldValue;
                         Collection<?> newCol = (Collection<?>) newValue;
                         if (collectionDiffer(oldCol, newCol)) {
@@ -147,7 +145,8 @@ public class LoggerUtils {
                         if (!oldValue.equals(newValue)) {
                             String oldStr = objectDisplayString(oldValue);
                             String newStr = objectDisplayString(newValue);
-                            logFieldChange(sb, field.getName(), oldStr, newStr);
+                            logFieldChange(sb, displayHeader(field), oldStr,
+                                    newStr);
                             logChanges = true;
                         }
                     }
@@ -185,7 +184,7 @@ public class LoggerUtils {
         sb.append("User ").append(user).append(" ").append(action).append(" ");
         Class<?> clazz = newObj.getClass();
         DiffTitleCache diffTitleCache = getDiffTitleCache(clazz);
-        List<Field> titleFields = diffTitleCache.getDiffKeyFields();
+        List<Field> titleFields = diffTitleCache.getDiffTitleFields();
 
         int start = sb.length();
         sb.append(clazz.getName());
@@ -196,22 +195,13 @@ public class LoggerUtils {
             sb.append(" ");
 
             for (Field field : titleFields) {
-                String title = getDiffStringTitle(field);
-                boolean userOverrideValue = true;
-                if (title == null) {
-                    title = diffTitleCache.getTitle(field);
-                    userOverrideValue = false;
+                String title = diffTitleCache.getTitle(field);
+                if (title.length() == 0) {
+                    title = displayHeader(field);
                 }
                 sb.append(title).append(" ");
                 try {
-                    Object value = PropertyUtils.getProperty(newObj,
-                            field.getName());
-                    if (userOverrideValue) {
-                        sb.append(getDiffStringDisplayValue(field.getType(),
-                                value));
-                    } else {
-                        sb.append(displayValue(value));
-                    }
+                    sb.append(displayValue(field, newObj));
                 } catch (SecurityException | IllegalAccessException
                         | InvocationTargetException | NoSuchMethodException e) {
                     logger.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
@@ -312,7 +302,7 @@ public class LoggerUtils {
         Class<?> clazz = obj.getClass();
         Field field = getDiffStringField(clazz);
         if (field == null) {
-            List<Field> fields = getDiffTitleCache(clazz).getDiffKeyFields();
+            List<Field> fields = getDiffTitleCache(clazz).getDiffTitleFields();
             if ((fields != null) && (fields.size() > 0)) {
                 field = fields.get(0);
             }
@@ -321,43 +311,56 @@ public class LoggerUtils {
         if (field == null) {
             return obj.toString();
         }
-        Object value = PropertyUtils.getProperty(obj, field.getName());
-        return value.toString();
+        return displayValue(field, obj);
     }
 
-    private static String getDiffStringDisplayValue(Class<?> clazz, Object obj)
-            throws IllegalAccessException, InvocationTargetException,
-            NoSuchMethodException {
-
-        Field field = getDiffStringField(clazz);
-        Object value = obj;
-
-        while ((field != null) && (value != null)) {
-            value = PropertyUtils.getProperty(value, field.getName());
-            field = getDiffStringField(field.getType());
-        }
-        return displayValue(value);
-    }
-
-    private static String displayValue(Object value) {
-        if (value == null) {
-            return "None";
-        }
-        return "[" + value.toString() + "]";
-    }
-
-    private static String getDiffStringTitle(Field field) {
+    /**
+     * Creates a '.' separated list of field names with the {@link DiffString}
+     * annotation.
+     * 
+     * @param field
+     * @return header
+     */
+    private static String displayHeader(Field field) {
         StringBuilder sb = new StringBuilder();
-
-        while (field != null) {
-            sb.append(field.getName()).append(".");
-            field = getDiffStringField(field.getType());
-        }
-        if (sb.length() == 0) {
-            return null;
+        Field f = field;
+        while (f != null) {
+            sb.append(f.getName()).append(".");
+            f = getDiffStringField(f.getType());
         }
         sb.setLength(sb.length() - 1);
         return sb.toString();
+    }
+
+    /**
+     * Find the value to display for the object. Recursively finds object's
+     * field with {@link DiffString} annotation and returns the value for the
+     * last object found. This assumes obj argument is the expected type for the
+     * field argument.
+     * 
+     * @param field
+     * @param obj
+     * @return value
+     * @throws IllegalAccessException
+     * @throws InvocationTargetException
+     * @throws NoSuchMethodException
+     */
+    private static String displayValue(Field field, Object obj)
+            throws IllegalAccessException, InvocationTargetException,
+            NoSuchMethodException {
+        if (obj == null) {
+            return "None";
+        }
+
+        Object value = obj;
+        if (field != null) {
+            Field f = field;
+            while (f != null) {
+                value = PropertyUtils.getProperty(value, f.getName());
+                f = getDiffStringField(value.getClass());
+            }
+        }
+        return "[" + value.toString() + "]";
     }
 
     /**
@@ -573,16 +576,12 @@ public class LoggerUtils {
             diffKeyFields = getOrderedDiffKeyFields(clazz);
         }
 
-        public List<Field> getDiffKeyFields() {
+        public List<Field> getDiffTitleFields() {
             return diffKeyFields;
         }
 
         public String getTitle(Field field) {
-            String title = field.getAnnotation(DiffTitle.class).title();
-            if (title.trim().length() == 0) {
-                title = field.getName();
-            }
-            return title;
+            return field.getAnnotation(DiffTitle.class).title().trim();
         }
     }
 }
