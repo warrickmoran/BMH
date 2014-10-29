@@ -25,14 +25,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -40,6 +42,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
+import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
@@ -130,8 +133,6 @@ public class DatabaseImport {
                 return;
             }
 
-            List<Pair<Integer, Integer>> availableDacPorts = getAvailableDacs();
-
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(
                     dir.toPath(), "*.ASC")) {
                 for (Path path : stream) {
@@ -176,6 +177,7 @@ public class DatabaseImport {
 
                         if (data != null) {
                             try {
+                                List<Pair<Integer, Integer>> availableDacPorts = getAvailableDacs();
                                 Iterator<Pair<Integer, Integer>> portIter = availableDacPorts
                                         .iterator();
                                 Iterator<TransmitterGroup> tgIter = data
@@ -309,18 +311,23 @@ public class DatabaseImport {
             return Collections.emptyList();
         }
 
-        Map<Integer, Dac> dacs = new HashMap<>(rows.size());
-        for (Object row : rows) {
-            Dac dac = (Dac) row;
-            dac.setDataPorts(new HashSet<Integer>());
-            dacs.put(dac.getId(), dac);
+        Collections.sort(rows, new DacComparator());
+        Map<Integer, Dac> dacs = new LinkedHashMap<>(rows.size());
+        int count = 0;
+        for (Dac dac : rows) {
+            dacs.put(count++, dac);
         }
+        availableDacPorts = new ArrayList<>(dacs.size() * 4);
 
         if (availablePortsProp != null) {
+            // clear out any previous ports
+            for (Dac dac : dacs.values()) {
+                dac.setDataPorts(new HashSet<Integer>());
+            }
+
             try {
                 String[] tokens = availablePortsProp.split(",");
 
-                availableDacPorts = new ArrayList<>(tokens.length / 3);
                 for (String token : tokens) {
                     String[] dacPort = token.split(":");
                     if (dacPort.length == 3) {
@@ -328,23 +335,31 @@ public class DatabaseImport {
                         Dac dac = dacs.get(dacId);
                         if (dac != null) {
                             int dacOutputLine = Integer.parseInt(dacPort[1]);
-                            int dacChannelPort = Integer.parseInt(dacPort[2]);
-                            dac.getDataPorts().add(dacChannelPort);
+                            int dacChannel = Integer.parseInt(dacPort[2]);
+                            dac.getDataPorts().add(dacChannel);
                             availableDacPorts.add(new Pair<Integer, Integer>(
-                                    dacId, dacOutputLine));
+                                    dac.getId(), dacOutputLine));
                         }
                     }
                 }
+
+                dacDao.persistAll(dacs.values());
             } catch (Exception e) {
                 statusHandler.error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
                         "Unable to parse bmh.dac.ports property: "
                                 + availablePortsProp, e);
             }
         } else {
-            availableDacPorts = Collections.emptyList();
+            for (Dac dac : dacs.values()) {
+                Set<Integer> ports = dac.getDataPorts();
+                if (CollectionUtil.isNullOrEmpty(ports) == false) {
+                    for (Integer port : ports) {
+                        availableDacPorts.add(new Pair<>(dac.getId(), port));
+                    }
+                }
+            }
         }
 
-        dacDao.persistAll(dacs.values());
         return availableDacPorts;
     }
 }

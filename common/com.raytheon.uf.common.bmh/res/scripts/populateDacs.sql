@@ -31,11 +31,3 @@
 
 insert into bmh.dac_address (id, name, address, receiveport,receiveaddress) values (nextval('dac_seq'), 'dac1', '147.18.136.46', 21000, '239.255.86.75');
 insert into bmh.dac_address (id, name, address, receiveport,receiveaddress) values (nextval('dac_seq'), 'dac2', '147.18.136.47', 22000, '239.255.86.75');
---insert into bmh.dac_ports (dac_id, dataport) values (1, 21002);
---insert into bmh.dac_ports (dac_id, dataport) values (1, 21004);
---insert into bmh.dac_ports (dac_id, dataport) values (1, 21006);
---insert into bmh.dac_ports (dac_id, dataport) values (1, 21008);
---insert into bmh.dac_ports (dac_id, dataport) values (2, 22002);
---insert into bmh.dac_ports (dac_id, dataport) values (2, 22004);
---insert into bmh.dac_ports (dac_id, dataport) values (2, 22006);
---insert into bmh.dac_ports (dac_id, dataport) values (2, 22008);
