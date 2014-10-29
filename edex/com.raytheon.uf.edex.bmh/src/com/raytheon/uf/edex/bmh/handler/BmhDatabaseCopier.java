@@ -80,7 +80,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Oct 08, 2014  3687     bsteffen    Initial creation.
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * Oct 08, 2014  3687     bsteffen    Null out some fields during copy.
- * 
+ * Oct 29, 2014  3746     rjpeter     Reorder clearAllPracticeTables.
  * </pre>
  * 
  * @author bsteffen
@@ -104,6 +104,7 @@ public class BmhDatabaseCopier {
 
     public void copyAll() throws EdexException, SerializationException {
         clearAllPracticeTables();
+        copyDictionaries();
         copyTtsVoices();
         copyTransmitterGroups();
         copyTransmitterLanguage();
@@ -113,7 +114,6 @@ public class BmhDatabaseCopier {
         copyMessageTypeReplacements();
         copySuites();
         copyPrograms();
-        copyDictionaries();
         copyInputMessages();
         copyBroadcastMsgs();
         BmhMessageProducer.sendConfigMessage(new ResetNotification(), false);
@@ -121,6 +121,9 @@ public class BmhDatabaseCopier {
 
     private void clearAllPracticeTables() {
         clearTable(new PlaylistDao(false));
+        clearTable(new BroadcastMsgDao(false));
+        clearTable(new ValidatedMessageDao(false));
+        clearTable(new InputMessageDao(false));
         clearTable(new ProgramDao(false));
         clearTable(new SuiteDao(false));
         clearTable(new MessageTypeReplacementDao(false));
@@ -128,11 +131,8 @@ public class BmhDatabaseCopier {
         clearTable(new ZoneDao(false));
         clearTable(new AreaDao(false));
         clearTable(new TransmitterLanguageDao(false));
-        clearTable(new BroadcastMsgDao(false));
         clearTable(new TtsVoiceDao(false));
         clearTable(new TransmitterGroupDao(false));
-        clearTable(new ValidatedMessageDao(false));
-        clearTable(new InputMessageDao(false));
         clearTable(new DictionaryDao(false));
         clearTable(new WordDao(false));
     }
@@ -165,6 +165,10 @@ public class BmhDatabaseCopier {
                 transmitterMap.put(transmitter.getId(), transmitter);
                 transmitter.setId(0);
             }
+            /*
+             * TODO: should pull practice DACs and assign them out, all other
+             * transmitters should be disabled
+             */
             group.setDac(null);
             group.setProgramSummary(null);
         }
