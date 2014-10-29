@@ -28,6 +28,7 @@ import java.net.URISyntaxException;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
+import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.comms.LineTapDisconnect;
 import com.raytheon.uf.common.bmh.comms.LineTapRequest;
 import com.raytheon.uf.common.bmh.dac.DacLiveStreamer;
@@ -50,6 +51,7 @@ import com.raytheon.uf.viz.bmh.BMHServers;
  * Aug 04, 2014  2487     bsteffen    Initial creation
  * Oct 10, 2014  3656     bkowal      Use the BMH Servers constants.
  * Oct 17, 2014  3687     bsteffen    Support practice servers.
+ * Oct 29, 2014  3774     bsteffen    Log Packets
  * 
  * </pre>
  * 
@@ -95,7 +97,10 @@ public class MonitorInlineThread extends Thread {
         }
 
         DacLiveStreamer listener = null;
-        try (Socket socket = new Socket(commsURI.getHost(), commsURI.getPort())) {
+        try (Socket socket = new Socket(commsURI.getHost(), commsURI.getPort());
+                AudioPacketLogger logger = new AudioPacketLogger(
+                        transmitterGroup + " monitor inline", this.getClass(),
+                        60)) {
             socket.setTcpNoDelay(true);
             InputStream inputStream = socket.getInputStream();
             OutputStream outputStream = socket.getOutputStream();
@@ -105,6 +110,7 @@ public class MonitorInlineThread extends Thread {
             listener = new DacLiveStreamer(0);
             while (running) {
                 int read = inputStream.read(payload);
+                logger.packetProcessed();
                 if (read > 0) {
                     listener.dataArrived(payload);
                 } else if (read < 0) {

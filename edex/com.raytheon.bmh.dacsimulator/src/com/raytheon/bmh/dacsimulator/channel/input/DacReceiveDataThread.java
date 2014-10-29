@@ -38,6 +38,7 @@ import com.google.common.eventbus.Subscribe;
 import com.google.common.primitives.Ints;
 import com.raytheon.bmh.dacsimulator.events.SyncLostEvent;
 import com.raytheon.bmh.dacsimulator.events.SyncObtainedEvent;
+import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 
 /**
  * Receives the audio broadcast data stream from the connected transmission
@@ -52,6 +53,7 @@ import com.raytheon.bmh.dacsimulator.events.SyncObtainedEvent;
  * Oct 03, 2014  #3688     dgilling     Initial creation
  * Oct 21, 2014  #3688     dgilling     Support RTP packet's addressing bits.
  * Oct 24, 2014  #3688     dgilling     Fix ability to disconnect/reconnect.
+ * Oct 29, 2014  #3774     bsteffen     Log Packets
  * 
  * </pre>
  * 
@@ -145,11 +147,12 @@ public class DacReceiveDataThread extends Thread {
         byte[] receiveBuffer = new byte[RTP_PACKET_SIZE];
 
         while (keepRunning) {
-            try {
+
+            try (AudioPacketLogger packetLog = new AudioPacketLogger("receive",
+                    logger, 300)) {
                 synchronized (wakeMonitor) {
                     wakeMonitor.wait();
                 }
-
                 while (hasSync.get()) {
                     try {
                         try {
@@ -160,6 +163,7 @@ public class DacReceiveDataThread extends Thread {
                             if (syncHost.get().equals(packet.getAddress())) {
                                 AudioPacket nextAudioPacket = extractAudioPacket(packet);
                                 if (nextAudioPacket != null) {
+                                    packetLog.packetProcessed();
                                     buffer.add(nextAudioPacket);
                                 }
                             }

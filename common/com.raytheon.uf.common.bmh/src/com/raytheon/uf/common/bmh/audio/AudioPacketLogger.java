@@ -37,9 +37,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Oct 29, 2014            bsteffen     Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Oct 29, 2014  3774     bsteffen    Initial creation
  * 
  * </pre>
  * 

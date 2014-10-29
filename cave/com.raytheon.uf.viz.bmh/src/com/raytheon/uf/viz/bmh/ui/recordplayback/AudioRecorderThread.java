@@ -20,14 +20,16 @@
 package com.raytheon.uf.viz.bmh.ui.recordplayback;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.LinkedList;
+import java.util.List;
 
 import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioFormat.Encoding;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
-import javax.sound.sampled.AudioFormat.Encoding;
+
+import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 
 /**
  * Manages the recording and storage of audio. Provides access to all recorded
@@ -41,6 +43,7 @@ import javax.sound.sampled.AudioFormat.Encoding;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 7, 2014  3657       bkowal      Initial creation
+ * Oct 29, 2014 3774       bsteffen    Log Packets
  * 
  * </pre>
  * 
@@ -86,16 +89,19 @@ public class AudioRecorderThread extends Thread {
         this.line.start();
         final int bytesToRead = this.sampleCount
                 * ULAW_AUDIO_FMT.getSampleSizeInBits();
-
+        AudioPacketLogger logger = new AudioPacketLogger("Audio Recorder",
+                getClass(), 10);
         while (true) {
             byte[] audioData = new byte[bytesToRead];
             int bytesRead = this.line.read(audioData, 0, bytesToRead);
+            logger.packetProcessed();
             if (bytesRead == 0) {
                 break;
             }
             this.notifyListener(audioData);
             this.samples.add(audioData);
         }
+        logger.close();
     }
 
     private void notifyListener(final byte[] audioData) {
