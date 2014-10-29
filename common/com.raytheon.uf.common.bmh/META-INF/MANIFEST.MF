@@ -4,7 +4,7 @@ Bundle-Name: COMMON BMH
 Bundle-SymbolicName: com.raytheon.uf.common.bmh
 Bundle-Version: 1.14.0.qualifier
 Bundle-Vendor: RAYTHEON
-Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Eclipse-RegisterBuddy:  com.raytheon.uf.common.serialization
 Require-Bundle: com.raytheon.uf.common.time,
  com.raytheon.uf.common.message,
@@ -17,7 +17,8 @@ Require-Bundle: com.raytheon.uf.common.time,
  voiceware;bundle-version="3.10.6",
  org.apache.commons.io;bundle-version="2.4.0",
  com.raytheon.uf.common.auth;bundle-version="1.14.0",
- org.apache.commons.beanutils;bundle-version="1.8.3"
+ org.apache.commons.beanutils;bundle-version="1.8.3",
+ org.slf4j;bundle-version="1.7.5"
 Export-Package: com.raytheon.uf.common.bmh,
  com.raytheon.uf.common.bmh.audio,
  com.raytheon.uf.common.bmh.broadcast,
