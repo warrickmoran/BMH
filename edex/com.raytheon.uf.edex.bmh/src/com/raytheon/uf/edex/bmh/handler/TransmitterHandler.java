@@ -218,17 +218,9 @@ public class TransmitterHandler extends
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         TransmitterDao dao = new TransmitterDao(request.isOperational());
         TransmitterGroup group = request.getTransmitterGroup();
-        List<Transmitter> transList = group.getTransmitterList();
         dao.delete(group);
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
-            StringBuilder sb = new StringBuilder();
-            sb.append("User ").append(user).append(" Delete ")
-                    .append(group.toString());
-            for (Transmitter trans : transList) {
-                sb.append("\n\t").append("Delete ").append(trans.toString());
-            }
-            logger.info(sb.toString());
             BMHLoggerUtils.logDelete(request, user, group);
         }
     }

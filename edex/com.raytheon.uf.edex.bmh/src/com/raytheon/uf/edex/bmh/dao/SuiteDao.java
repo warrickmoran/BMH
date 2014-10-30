@@ -55,12 +55,13 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessagePk;
  * Sep 18, 2014  3587     bkowal      Added code to manually cleanup triggers due to hibernate bug.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
+ * Oct 29, 2014  3636     rferrel     Change template for id to Integer.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class SuiteDao extends AbstractBMHDao<Suite, String> {
+public class SuiteDao extends AbstractBMHDao<Suite, Integer> {
 
     public SuiteDao() {
         super(Suite.class);

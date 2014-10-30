@@ -21,11 +21,14 @@ package com.raytheon.uf.edex.bmh.handler;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.request.SuiteRequest;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.SuiteDao;
 
@@ -47,6 +50,7 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 21, 2014  3715     bkowal      Updates due to hibernate upgrade.
+ * Oct 29, 2014  3636     rferrel     Implement logging,
  * 
  * </pre>
  * 
@@ -149,7 +153,14 @@ public class SuiteHandler extends AbstractBMHServerRequestHandler<SuiteRequest> 
      */
     private void deleteSuite(SuiteRequest request) {
         SuiteDao dao = new SuiteDao(request.isOperational());
-        dao.delete(request.getSuite());
+        Suite suite = request.getSuite();
+        dao.delete(suite);
+
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            BMHLoggerUtils.logDelete(request, user, suite);
+        }
     }
 
     /**
@@ -162,9 +173,19 @@ public class SuiteHandler extends AbstractBMHServerRequestHandler<SuiteRequest> 
     private SuiteResponse saveSuite(SuiteRequest request) {
         SuiteDao dao = new SuiteDao(request.isOperational());
         SuiteResponse suiteResponse = new SuiteResponse();
-        if (request.getSuite() != null) {
+        Suite suite = request.getSuite();
+        if (suite != null) {
+            IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+            Suite oldSuite = null;
+            if (logger.isPriorityEnabled(Priority.INFO)) {
+                oldSuite = dao.getByID(suite.getId());
+            }
             dao.persist(request.getSuite());
             suiteResponse.addSuite(request.getSuite());
+            if (logger.isPriorityEnabled(Priority.INFO)) {
+                String user = BMHLoggerUtils.getUser(request);
+                BMHLoggerUtils.logSave(request, user, oldSuite, suite);
+            }
         }
 
         return suiteResponse;

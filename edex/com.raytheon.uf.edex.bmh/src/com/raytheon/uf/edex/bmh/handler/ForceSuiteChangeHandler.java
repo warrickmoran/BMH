@@ -74,10 +74,10 @@ public final class ForceSuiteChangeHandler extends
             String user = BMHLoggerUtils.getUser(request);
             logger.info("User "
                     + user
-                    + " Force Suite Change Request for TransmitterGroup name/id: "
-                    + group.getName() + "/" + group.getId()
-                    + ", Suite name/id: " + suite.getName() + "/"
-                    + suite.getId() + " type: " + suite.getType());
+                    + " Force Suite Change Request for TransmitterGroup [ name ["
+                    + group.getName() + "], id [ " + group.getId()
+                    + "]], Suite [name [" + suite.getName() + "], id ["
+                    + suite.getId() + "], type [ " + suite.getType() + "]]");
         }
 
         return Boolean.TRUE;
