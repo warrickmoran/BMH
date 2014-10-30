@@ -78,27 +78,28 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Sep 11, 2014  #3610     lvenable     Initial creation
- * Sep 25, 2014   3620     bsteffen     Add seconds to periodicity.
- * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * Oct 13, 2014  #3728     lvenable     Fixed date/time field arguments and added a call back
- *                                      to the select message type dialog.
- * Oct 14, 2014  #3728     lvenable     Added reading in a text file and displaying the Message
- *                                      Text Contents dialog.
- * Oct 15, 2014 #3728      lvenable     Added code to populate message type controls.
- * Oct 15, 2014 #3728      lvenable     Added New/Edit buttons and call to select input message.
- * Oct 18, 2014  #3728     lvenable     Hooked in more functionality.
- * Oct 21, 2014   #3728    lvenable     Added code for area selection and populating the input message controls.
- * Oct 21, 2014   #3728    lvenable     Added Preview and Play buttons.
- * Oct 23, 2014   #3748    bkowal       Support sending weather messages to the server so that
- *                                      they can be broadcasted (initial implementation).
- * Oct 26, 2014   #3728    lvenable     Updated to call new contents dialog.
- * Oct 26, 2014   #3748    bkowal       Updated to use information from the new
- *                                      contents dialog. Finished create "NEW"
- *                                      weather message.
- * Oct 28, 2014   #3750    bkowal       Validate contents prior to submit.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Sep 11, 2014  3610     lvenable    Initial creation
+ * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
+ * Oct 08, 2014  3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 13, 2014  3728     lvenable    Fixed date/time field arguments and added a call back
+ *                                    to the select message type dialog.
+ * Oct 14, 2014  3728     lvenable    Added reading in a text file and displaying the Message
+ *                                    Text Contents dialog.
+ * Oct 15, 2014  3728     lvenable    Added code to populate message type controls.
+ * Oct 15, 2014  3728     lvenable    Added New/Edit buttons and call to select input message.
+ * Oct 18, 2014  3728     lvenable    Hooked in more functionality.
+ * Oct 21, 2014  3728     lvenable    Added code for area selection and populating the input message controls.
+ * Oct 21, 2014  3728     lvenable    Added Preview and Play buttons.
+ * Oct 23, 2014  3748     bkowal      Support sending weather messages to the server so that
+ *                                    they can be broadcasted (initial implementation).
+ * Oct 26, 2014  3728     lvenable    Updated to call new contents dialog.
+ * Oct 26, 2014  3748     bkowal      Updated to use information from the new
+ *                                    contents dialog. Finished create "NEW"
+ *                                    weather message.
+ * Oct 28, 2014  3750     bkowal      Validate contents prior to submit.
+ * Oct 31, 2014  3778     bsteffen    Do not clear the id when editing messages.
  * 
  * </pre>
  * 
@@ -1006,8 +1007,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             List<InputMessageAudioData> audioList) {
         userInputMessage = im;
         selectedMessageType = null;
-
-        this.userInputMessage.setId(0);
 
         // Get the list of audio data.
         audioData = audioList;

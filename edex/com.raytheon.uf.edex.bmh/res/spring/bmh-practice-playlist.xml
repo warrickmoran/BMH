@@ -63,7 +63,10 @@
               <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.ResetNotification"</simple>
               <bean ref="practice_playlistManager" method="processResetNotification" />
           </filter>
-
+          <filter>
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification"</simple>
+              <bean ref="practice_playlistManager" method="processMessageActivationChange" />
+          </filter>
         <doCatch>
           <exception>java.lang.Throwable</exception>
           <to uri="log:bmh?level=ERROR" />

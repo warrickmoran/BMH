@@ -43,27 +43,30 @@
 					</simple>
 					<bean ref="playlistManager" method="processSuiteChange" />
 				</filter>
-
 				<filter>
 					<simple>${body} is
 						"com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification"
 					</simple>
 					<bean ref="playlistManager" method="processProgramChange" />
 				</filter>
-
 				<filter>
 					<simple>${body} is
 						"com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification"
 					</simple>
 					<bean ref="playlistManager" method="processTransmitterGroupChange" />
 				</filter>
-
 				<filter>
 					<simple>${body} is
 						"com.raytheon.uf.common.bmh.notify.config.ResetNotification"
 					</simple>
 					<bean ref="playlistManager" method="processResetNotification" />
 				</filter>
+                <filter>
+                    <simple>${body} is
+                        "com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification"
+                    </simple>
+                    <bean ref="playlistManager" method="processMessageActivationChange" />
+                </filter>
 				<doCatch>
 					<exception>java.lang.Throwable</exception>
 					<to uri="log:bmh?level=ERROR" />

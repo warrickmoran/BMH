@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 23, 2014  #3748     bkowal      Initial creation
+ * Oct 31, 2014  #3778     bsteffen    Do not clear the id when editing messages.
  * 
  * </pre>
  * 
@@ -85,11 +86,6 @@ public class NewBroadcastMsgRequest extends AbstractBMHServerRequest {
      *            the inputMessage to set
      */
     public void setInputMessage(InputMessage inputMessage) {
-        /*
-         * Every message will be a new message. Editing an existing messages
-         * will generate a replacement for the existing message.
-         */
-        inputMessage.setId(0);
         this.inputMessage = inputMessage;
     }
 

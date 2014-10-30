@@ -65,6 +65,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
@@ -122,6 +123,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Oct 10, 2014  3666     bsteffen    Do not persist disabled transmitters.
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * Oct 28, 2014  3617     dgilling    Support tone blackout period.
+ * Oct 31, 2014  3778     bsteffen    Do not play inactive messages.
  * </pre>
  * 
  * @author bsteffen
@@ -204,6 +206,35 @@ public class PlaylistManager implements IContextStateProcessor {
             TransmitterGroup group = transmitterGroupDao.getByID(groupId);
             refreshTransmitterGroup(group, null);
         }
+    }
+
+    public void processMessageActivationChange(
+            MessageActivationNotification notification) {
+        List<BroadcastMsg> messages = broadcastMsgDao
+                .getMessagesByInputMsgId(notification.getInputMessageId());
+        for (BroadcastMsg message : messages) {
+            TransmitterGroup group = message.getTransmitterGroup();
+            if (!group.isEnabled()) {
+                continue;
+            }
+            Program program = programDao.getProgramForTransmitterGroup(group);
+            if (program == null) {
+                statusHandler
+                        .info("Skipping playlist refresh: No program assigned to transmitter group ["
+                                + group.getName() + "]");
+                continue;
+            }
+            for (ProgramSuite programSuite : program.getProgramSuites()) {
+                for (SuiteMessage smessage : programSuite.getSuite()
+                        .getSuiteMessages()) {
+                    if (smessage.getAfosid().equals(message.getAfosid())) {
+                        refreshPlaylist(group, programSuite);
+                        break;
+                    }
+                }
+            }
+        }
+
     }
 
     public void processForceSuiteSwitch(final TransmitterGroup group,
@@ -369,6 +400,9 @@ public class PlaylistManager implements IContextStateProcessor {
     public void newMessage(BroadcastMsg msg) {
         TransmitterGroup group = msg.getTransmitterGroup();
         if (group.getEnabledTransmitters().isEmpty()) {
+            return;
+        }
+        if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
             return;
         }
         Program program = programDao.getProgramForTransmitterGroup(group);
@@ -636,6 +670,7 @@ public class PlaylistManager implements IContextStateProcessor {
         List<BroadcastMsg> messages = new ArrayList<>();
         if (checkTrigger) {
             for (MessageTypeSummary programTrigger : programSuite.getTriggers()) {
+                /* TODO filter out inactive and expired messages in the query */
                 messages.addAll(broadcastMsgDao
                         .getMessagesByAfosid(programTrigger.getAfosid()));
             }
@@ -647,6 +682,7 @@ public class PlaylistManager implements IContextStateProcessor {
         }
         for (SuiteMessage smessage : programSuite.getSuite().getSuiteMessages()) {
             if (programSuite.isTrigger(smessage.getMsgTypeSummary()) == false) {
+                /* TODO filter out inactive messages in the query */
                 messages.addAll(broadcastMsgDao
                         .getUnexpiredMessagesByAfosidAndGroup(
                                 smessage.getAfosid(), expirationTime, group));
@@ -687,6 +723,9 @@ public class PlaylistManager implements IContextStateProcessor {
      */
     private List<BroadcastMsg> mergeMessage(BroadcastMsg msg,
             List<BroadcastMsg> list, Map<String, Set<String>> matReplacementMap) {
+        if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
+            return list;
+        }
         list = new ArrayList<>(list);
         boolean added = false;
         String afosid = msg.getAfosid();

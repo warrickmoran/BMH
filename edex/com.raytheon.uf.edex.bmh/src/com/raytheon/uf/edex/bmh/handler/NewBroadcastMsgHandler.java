@@ -24,15 +24,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Set;
-import java.util.HashSet;
 import java.util.TimeZone;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.EqualsBuilder;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
@@ -45,9 +46,12 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
@@ -67,6 +71,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Oct 23, 2014  #3748     bkowal      Initial creation
  * Oct 26, 2014  #3748     bkowal      Passed audio data to broadcast msg creation.
  * Oct 28, 2014  #3759     bkowal      Support practice mode.
+ * Oct 31, 2014  #3778     bsteffen    When only activation changes do not create new message.
  * 
  * </pre>
  * 
@@ -132,12 +137,75 @@ public class NewBroadcastMsgHandler extends
     @Override
     public Object handleRequest(NewBroadcastMsgRequest request)
             throws Exception {
-
         // TODO: logging
 
+        InputMessage inputMessage = request.getInputMessage();
+        if (inputMessage.getId() != 0) {
+            /*
+             * This is an update need to check what changed, if it is only the
+             * active/inactive flag then apply the change directly to this
+             * entry, if it is any other change then need to mark the old
+             * message as inactive and then process the change as a new message.
+             */
+            InputMessageDao inputMessageDao = new InputMessageDao(
+                    request.isOperational());
+            InputMessage previous = inputMessageDao.getByID(inputMessage
+                    .getId());
+            boolean activeChanged = false;
+            if (inputMessage.getActive() != null) {
+                activeChanged = !inputMessage.getActive().equals(
+                        previous.getActive());
+            } else if (previous.getActive() != null) {
+                activeChanged = true;
+            }
+            boolean nothingElseChanged = true;
+            if (activeChanged) {
+                EqualsBuilder builder = new EqualsBuilder();
+                builder.append(previous.getName(), inputMessage.getName());
+                builder.append(previous.getLanguage(),
+                        inputMessage.getLanguage());
+                builder.append(previous.getAfosid(), inputMessage.getAfosid());
+                builder.append(previous.getCreationTime(),
+                        inputMessage.getCreationTime());
+                builder.append(previous.getEffectiveTime(),
+                        inputMessage.getEffectiveTime());
+                builder.append(previous.getPeriodicity(),
+                        inputMessage.getPeriodicity());
+                builder.append(previous.getMrd(), inputMessage.getMrd());
+                builder.append(previous.getConfirm(), inputMessage.getConfirm());
+                builder.append(previous.getInterrupt(),
+                        inputMessage.getInterrupt());
+                builder.append(previous.getAlertTone(),
+                        inputMessage.getAlertTone());
+                builder.append(previous.getNwrsameTone(),
+                        inputMessage.getNwrsameTone());
+                builder.append(previous.getAreaCodes(),
+                        inputMessage.getAreaCodes());
+                builder.append(previous.getExpirationTime(),
+                        inputMessage.getExpirationTime());
+                builder.append(previous.getContent(), inputMessage.getContent());
+                builder.append(previous.isValidHeader(),
+                        inputMessage.isValidHeader());
+                nothingElseChanged = builder.isEquals();
+            }
+            if (activeChanged && nothingElseChanged) {
+                inputMessageDao.persist(inputMessage);
+                BmhMessageProducer.sendConfigMessage(
+                        new MessageActivationNotification(inputMessage),
+                        request.isOperational());
+                return null;
+            } else if (!Boolean.FALSE.equals(previous.getActive())) {
+                previous.setActive(false);
+                inputMessageDao.persist(previous);
+                BmhMessageProducer.sendConfigMessage(
+                        new MessageActivationNotification(previous),
+                        request.isOperational());
+            }
+            inputMessage.setId(0);
+        }
         // Build a validated message.
         ValidatedMessage validMsg = new ValidatedMessage();
-        validMsg.setInputMessage(request.getInputMessage());
+        validMsg.setInputMessage(inputMessage);
         validMsg.setLdadStatus(LdadStatus.ERROR);
         validMsg.setTransmissionStatus(TransmissionStatus.ACCEPTED);
 
