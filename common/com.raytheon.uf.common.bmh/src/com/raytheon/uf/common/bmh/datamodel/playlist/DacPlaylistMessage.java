@@ -50,6 +50,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Sep 12, 2014  3588     bsteffen    Support audio fragments.
  * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
  * Oct 01, 2014  3485     bsteffen    Add method for getting path of position file.
+ * Oct 23, 2014  3617     dgilling    Add support for tone blackout period.
  * 
  * 
  * </pre>
@@ -85,6 +86,15 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     @XmlElement
     private boolean alertTone;
+
+    @XmlElement
+    private boolean toneBlackoutEnabled;
+
+    @XmlElement
+    private String toneBlackoutStart;
+
+    @XmlElement
+    private String toneBlackoutEnd;
 
     @XmlElement
     private Calendar lastTransmitTime;
@@ -287,5 +297,88 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         }
         return path.resolveSibling(path.getFileName().toString()
                 .replace(".xml", ".position"));
+    }
+
+    public boolean isToneBlackoutEnabled() {
+        return toneBlackoutEnabled;
+    }
+
+    public void setToneBlackoutEnabled(boolean toneBlackoutEnabled) {
+        this.toneBlackoutEnabled = toneBlackoutEnabled;
+    }
+
+    public String getToneBlackoutStart() {
+        return toneBlackoutStart;
+    }
+
+    public void setToneBlackoutStart(String toneBlackoutStart) {
+        this.toneBlackoutStart = toneBlackoutStart;
+    }
+
+    public String getToneBlackoutEnd() {
+        return toneBlackoutEnd;
+    }
+
+    public void setToneBlackoutEnd(String toneBlackoutEnd) {
+        this.toneBlackoutEnd = toneBlackoutEnd;
+    }
+
+    /**
+     * Determine whether or not to play tones (taking into account any possibly
+     * configured tone blackout period) for this message given the specified
+     * play time
+     * 
+     * @param time
+     *            A {@code Calendar} instance specifying the time this message
+     *            will be played.
+     * @return Whether or not tones should be played for this message.
+     */
+    public boolean shouldPlayTones(Calendar time) {
+        boolean hasTonesToPlay = (((SAMEtone != null) && (!SAMEtone.isEmpty()) && (!playedSameTone)) || (alertTone && !playedAlertTone));
+        boolean outsideBlackoutPeriod = (hasTonesToPlay && toneBlackoutEnabled) ? isOutsideBlackoutPeriod(time)
+                : false;
+
+        if (!toneBlackoutEnabled && hasTonesToPlay) {
+            return true;
+        } else if (toneBlackoutEnabled && hasTonesToPlay
+                && outsideBlackoutPeriod) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean isOutsideBlackoutPeriod(Calendar time) {
+        if (toneBlackoutEnabled) {
+            int startTime = Integer.parseInt(toneBlackoutStart);
+            int endTime = Integer.parseInt(toneBlackoutEnd);
+
+            boolean periodCrossesDayLine = (endTime <= startTime);
+
+            int currentTime = (time.get(Calendar.HOUR_OF_DAY) * 100)
+                    + time.get(Calendar.MINUTE);
+
+            if (periodCrossesDayLine) {
+                /*
+                 * If the blackout period crosses the day line, then the period
+                 * during which a tone should play is a contiguous time range
+                 * that begins after the blackout end time and ends at the start
+                 * of the blackout period.
+                 */
+                return ((currentTime >= endTime) && (currentTime < startTime));
+            } else {
+                /*
+                 * If the blackout period does not cross the day line, then the
+                 * period is 2 disjoint time ranges: (1) a time range that
+                 * begins after the end of the blackout period and lasts until
+                 * the end of the day and (2) a time range that begins at the
+                 * beginning of the day and lasts until the beginning of the
+                 * blackout period.
+                 */
+                return (((currentTime >= endTime) && (currentTime < 2400)) || ((currentTime >= 0) && (currentTime < startTime)));
+            }
+        }
+
+        return true;
     }
 }

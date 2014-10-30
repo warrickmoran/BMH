@@ -57,6 +57,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  * Aug 13, 2014  #3286     dgilling     Send status for tones playback.
  * Oct 01, 2014  #3485     bsteffen     Add ability to resume.
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
+ * Oct 30, 2014  #3617     dgilling     Support tone blackout.
  * 
  * </pre>
  * 
@@ -163,7 +164,7 @@ public final class DacMessagePlaybackData {
 
         boolean playedSameTone = message.isPlayedSameTone();
         boolean playedAlertTone = message.isPlayedAlertTone();
-        if (playCount == 1) {
+        if (audio.isReturnTones()) {
             playedSameTone = (message.getSAMEtone() != null && !message
                     .getSAMEtone().isEmpty());
             playedAlertTone = (playedSameTone && message.isAlertTone());

@@ -110,6 +110,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
  * Oct 2, 2014   #3642     bkowal       Updated to use the transmitter timezone and the
  *                                      audio buffer abstraction.
  * Oct 21, 2014  #3655     bkowal       Support delaying interrupts.
+ * Oct 30, 2014  #3617     dgilling     Support tone blackout period.
  * 
  * </pre>
  * 
@@ -334,9 +335,8 @@ public final class PlaylistScheduler implements
             } else {
                 audioData = (AudioFileBuffer) audioDataBuffer;
             }
-            boolean playTones = ((nextMessage.getSAMEtone() != null) && (nextMessage
-                    .getPlayCount() == 0));
-            audioData.setReturnTones(playTones);
+            audioData.setReturnTones(nextMessage.shouldPlayTones(TimeUtil
+                    .newGmtCalendar()));
             nextMessageData.setAudio(audioData);
         } else {
             if (warnNoMessages) {
@@ -885,15 +885,17 @@ public final class PlaylistScheduler implements
              * ignore start/expire times for interrupt playlists, we just want
              * to play the message.
              */
+
             if ((playlist.isInterrupt() || messageData
                     .isValid(playbackStartTime))
                     && (!periodicMessages.containsKey(messageId))) {
                 try {
-                    long playbackTime = cache.getPlaybackTime(messageId);
-
+                    Calendar startTimeCal = TimeUtil.newGmtCalendar(new Date(
+                            playbackStartTime));
+                    long playbackTime = cache.getPlaybackTime(messageId,
+                            startTimeCal);
                     MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
-                            messageId.getBroadcastId(),
-                            TimeUtil.newGmtCalendar(new Date(playbackStartTime)),
+                            messageId.getBroadcastId(), startTimeCal,
                             messageData);
                     predictedMessages.add(prediction);
 
@@ -918,13 +920,14 @@ public final class PlaylistScheduler implements
                             + periodicMessageId + "].");
 
                     try {
-                        long playbackTime = cache
-                                .getPlaybackTime(periodicMessageId);
+                        Calendar startTimeCal = TimeUtil
+                                .newGmtCalendar(new Date(playbackStartTime));
+                        long playbackTime = cache.getPlaybackTime(
+                                periodicMessageId, startTimeCal);
 
                         MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
                                 periodicMessageId.getBroadcastId(),
-                                TimeUtil.newGmtCalendar(new Date(
-                                        playbackStartTime)), periodicMessage);
+                                startTimeCal, periodicMessage);
                         predictedMessages.add(prediction);
 
                         cycleTime += playbackTime;

@@ -44,6 +44,7 @@ import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
  * Oct 01, 2014  #3485     bsteffen     Add skip() and isInTones()
  * Oct 2, 2014   #3642     bkowal       Abstract to support dynamic audio fragments.
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
+ * Oct 30, 2014  #3617     dgilling     Add getter for field returnTones.
  * 
  * </pre>
  * 
@@ -160,7 +161,7 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
                     + length, DacSessionConstants.SILENCE);
         }
     }
-    
+
     public void skip(int length) {
         int bytesRemaining = length;
         if ((bytesRemaining > 0) && (returnTones)
@@ -249,6 +250,10 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
                 && (endOfMessageBuffer.position() == 0)) {
             this.returnTones = returnTones;
         }
+    }
+
+    public boolean isReturnTones() {
+        return returnTones;
     }
 
     private static void checkBounds(int off, int len, int size) {

@@ -85,6 +85,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Sep 12, 2014  #3588     bsteffen     Support audio fragments.
  * Sep 12, 2014  #3485     bsteffen     Shutdown purge job on shutdown.
  * Oct 2, 2014   #3642     bkowal       Updated to use the audio buffer abstraction
+ * Oct 30, 2014  #3617     dgilling     Take tone blackout period into account
+ *                                      when calculating playback time.
  * 
  * </pre>
  * 
@@ -340,9 +342,29 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      */
     public long getPlaybackTime(DacPlaylistMessageId messageId)
             throws NoSoundFileException {
+        return getPlaybackTime(messageId, null);
+    }
+
+    /**
+     * Calculate the playback time of the specified message (including all
+     * tones), based on file size.
+     * 
+     * @param messageId
+     *            The {@code DacPlaylistMessageId} of the message to get the
+     *            playback time for.
+     * @param startTime
+     *            A {@code Calendar} containing the time the message will be
+     *            played. If {@code null}, playback time of tones will be
+     *            ignored.
+     * @return The playback time in milliseconds.
+     * @throws NoSoundFileException
+     *             If the message data contains no soundFile attribute.
+     */
+    public long getPlaybackTime(DacPlaylistMessageId messageId,
+            Calendar startTime) throws NoSoundFileException {
         DacPlaylistMessage message = cachedMessages.get(messageId);
-        boolean includeTones = ((message.getSAMEtone() != null) && (message
-                .getPlayCount() == 0));
+        boolean includeTones = (startTime != null) ? getMessage(messageId)
+                .shouldPlayTones(startTime) : false;
 
         long fileSize = 0;
         if (cachedFiles.containsKey(message)) {

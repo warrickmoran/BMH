@@ -21,6 +21,8 @@ package com.raytheon.uf.common.bmh;
 
 import java.util.Calendar;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.BMHTimeZone;
+
 /**
  * Definition of {@link ITimeFieldRetriever} used to retrieve the timezone from
  * a {@link Calendar}.
@@ -31,7 +33,9 @@ import java.util.Calendar;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 7, 2014  3642       bkowal      Initial creation
+ * Oct 07, 2014 3642       bkowal      Initial creation
+ * Oct 30, 2014 3617       dgilling    Fix for changes to transmitter group 
+ *                                     time zone field.
  * 
  * </pre>
  * 
@@ -49,7 +53,9 @@ public class ZoneRetriever implements ITimeFieldRetriever {
      */
     @Override
     public String getTimeField(Calendar calendar) {
-        return calendar.getTimeZone().getID();
+        BMHTimeZone tz = BMHTimeZone.getTimeZoneByID(calendar.getTimeZone()
+                .getID());
+        return tz.getShortDisplayName();
     }
 
     @Override

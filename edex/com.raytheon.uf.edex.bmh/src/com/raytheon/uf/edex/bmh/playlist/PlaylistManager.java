@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -35,6 +37,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
@@ -45,6 +48,7 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
@@ -117,6 +121,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Oct 08, 2014  3687     bsteffen    Remove ProgramTrigger.
  * Oct 10, 2014  3666     bsteffen    Do not persist disabled transmitters.
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
+ * Oct 28, 2014  3617     dgilling    Support tone blackout period.
  * </pre>
  * 
  * @author bsteffen
@@ -806,7 +811,53 @@ public class PlaylistManager implements IContextStateProcessor {
                     dac.addSoundFile(fragment.getOutputName());
                 }
                 InputMessage input = broadcast.getInputMessage();
-                dac.setMessageType(input.getAfosid());
+                String afosid = input.getAfosid();
+                dac.setMessageType(afosid);
+
+                MessageType messageType = messageTypeDao.getByAfosId(afosid);
+                dac.setToneBlackoutEnabled(messageType.isToneBlackoutEnabled());
+                if (dac.isToneBlackoutEnabled()) {
+                    TimeZone sourceTZ = TimeZone.getTimeZone(broadcast
+                            .getTransmitterGroup().getTimeZone());
+                    try {
+                        String blackoutStart = convertToUTCTime(
+                                messageType.getToneBlackOutStart(), sourceTZ);
+                        dac.setToneBlackoutStart(blackoutStart);
+                    } catch (NumberFormatException e) {
+                        String errorMsg = String
+                                .format("Invalid value for tone blackout start time: %s. This message will ignore the configured tone blackout period.",
+                                        messageType.getToneBlackOutStart());
+                        statusHandler.error(
+                                BMH_CATEGORY.PLAYLIST_MANAGER_ERROR, errorMsg,
+                                e);
+                        dac.setToneBlackoutEnabled(false);
+                        dac.setToneBlackoutStart(null);
+                        dac.setToneBlackoutEnd(null);
+                    }
+
+                    try {
+                        /*
+                         * only try to parse blackout end time, if parsing start
+                         * time was successful.
+                         */
+                        if (dac.isToneBlackoutEnabled()) {
+                            String blackoutEnd = convertToUTCTime(
+                                    messageType.getToneBlackOutEnd(), sourceTZ);
+                            dac.setToneBlackoutEnd(blackoutEnd);
+                        }
+                    } catch (NumberFormatException e) {
+                        String errorMsg = String
+                                .format("Invalid value for tone blackout end time: %s. This message will ignore the configured tone blackout period.",
+                                        messageType.getToneBlackOutStart());
+                        statusHandler.error(
+                                BMH_CATEGORY.PLAYLIST_MANAGER_ERROR, errorMsg,
+                                e);
+                        dac.setToneBlackoutEnabled(false);
+                        dac.setToneBlackoutStart(null);
+                        dac.setToneBlackoutEnd(null);
+                    }
+                }
+
                 dac.setStart(input.getEffectiveTime());
                 dac.setExpire(input.getExpirationTime());
                 dac.setPeriodicity(input.getPeriodicity());
@@ -872,6 +923,20 @@ public class PlaylistManager implements IContextStateProcessor {
                     "Unable to write message file.", e);
         }
         return new DacPlaylistMessageId(id);
+    }
+
+    private static String convertToUTCTime(String localTime, TimeZone sourceTZ)
+            throws NumberFormatException {
+        int hours = Integer.valueOf(localTime.substring(0, 2));
+        int minutes = Integer.valueOf(localTime.substring(2));
+
+        Calendar localTimeCal = Calendar.getInstance(sourceTZ);
+        localTimeCal.set(Calendar.HOUR_OF_DAY, hours);
+        localTimeCal.set(Calendar.MINUTE, minutes);
+
+        DateFormat outputFormat = new SimpleDateFormat("HHmm");
+        outputFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return outputFormat.format(localTimeCal.getTime());
     }
 
     public void setPlaylistDao(PlaylistDao playlistDao) {
