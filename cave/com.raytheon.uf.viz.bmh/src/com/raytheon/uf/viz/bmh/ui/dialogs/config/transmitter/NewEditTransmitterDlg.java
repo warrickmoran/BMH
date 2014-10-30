@@ -80,6 +80,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 23, 2014     3687   bsteffen    Display dac name instead of id.
  * Oct 24, 2014    #3617   dgilling    Cleaner handling of time zone, make DST
  *                                     checkbox match legacy system.
+ * Oct 29, 2014    #3617   dgilling    Fix exceptions when creating new groups.
  * 
  * </pre>
  * 
@@ -379,8 +380,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     noDstChk.setSelection(true);
                     noDstChk.setEnabled(false);
                 } else {
-                    TimeZone tz = TimeZone.getTimeZone(group.getTimeZone());
-                    noDstChk.setSelection(!tz.observesDaylightTime());
+                    String timeZoneID = group.getTimeZone();
+                    TimeZone defaultTZ = (timeZoneID != null) ? TimeZone
+                            .getTimeZone(timeZoneID) : TimeZone.getDefault();
+                    noDstChk.setSelection(!defaultTZ.observesDaylightTime());
                     noDstChk.setEnabled(true);
                 }
             }
@@ -802,14 +805,14 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 } catch (Exception e) {
                     statusHandler.error("Error retreiving DAC information", e);
                 }
-                
+
                 populateTimeZoneControls();
 
                 if (group.getProgramSummary() == null) {
                     programCombo.select(0);
                 } else {
-                    programCombo.select(programCombo.indexOf(group.getProgramSummary()
-                            .getName()));
+                    programCombo.select(programCombo.indexOf(group
+                            .getProgramSummary().getName()));
                 }
 
                 if (group.getSilenceAlarm() != null) {
@@ -1500,13 +1503,12 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      */
     private void populateTimeZoneControls() {
         String timeZoneID = group.getTimeZone();
-        TimeZone tz = TimeZone.getTimeZone(timeZoneID);
-        if (timeZoneID == null) {
-            // Use local time zone to determine key.
-            tz = TimeZone.getDefault();
-        }
+        TimeZone tz = (timeZoneID != null) ? TimeZone.getTimeZone(timeZoneID)
+                : TimeZone.getDefault();
 
-        String timeZone = BMHTimeZone.getTimeZoneUIName(tz);
+        TimeZone normalizedTZ = BMHTimeZone.getTimeZone(tz,
+                tz.observesDaylightTime());
+        String timeZone = BMHTimeZone.getTimeZoneUIName(normalizedTZ);
         int index = timeZoneCbo.indexOf(timeZone);
         timeZoneCbo.select(index);
 
