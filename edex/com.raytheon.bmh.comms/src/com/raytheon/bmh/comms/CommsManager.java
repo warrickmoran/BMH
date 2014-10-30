@@ -44,6 +44,7 @@ import javax.xml.bind.JAXB;
 import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MarkerFactory;
 
 import com.raytheon.bmh.comms.broadcast.BroadcastStreamServer;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
@@ -94,6 +95,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * Oct 21, 2014  3655     bkowal      Use the new message types.
+ * Nov 03, 2014  3525     bsteffen    Mark dac transmit errors in logs.
  * 
  * </pre>
  * 
@@ -636,8 +638,8 @@ public class CommsManager {
      * @param group
      */
     public void errorReceived(DacTransmitCriticalError e, String group) {
-        // TODO send to alertviz via EDEX
         logger.error(
+                MarkerFactory.getMarker("Dac Transmit"),
                 "Critical error received from group: " + group + ": "
                         + e.getErrorMessage(), e.getThrowable());
     }
