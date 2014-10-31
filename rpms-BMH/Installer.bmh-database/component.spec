@@ -110,6 +110,13 @@ if [ "${BMH_DB}" = "bmh" ]; then
    # There is already a BMH database. 
 fi
 
+BMH_PRAC_DB_EXISTS="false"
+BMH_PRAC_DB=`${PSQL} -U awips -l | grep bmh_practice | awk '{print $1}'`
+if [ "${BMH_PRAC_DB}" = "bmh_practice" ]; then
+   BMH_PRAC_DB_EXISTS="true"
+   # There is already a BMH Practice database. 
+fi
+
 if [ "${BMH_DB_EXISTS}" = "false" ]; then
    # Create the bmh directory; remove any existing directories.
    if [ -d /awips2/data/bmh ]; then
@@ -122,9 +129,9 @@ if [ "${BMH_DB_EXISTS}" = "false" ]; then
    # Update pg_hba.conf with the default information for the bmh database.
    echo "" >> ${hba_conf_}
    if [ $? -ne 0 ]; then exit 1; fi
-   echo "# ===== BMH Configuration =====" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
    echo "# TYPE  DATABASE    USER        CIDR-ADDRESS          METHOD" >> ${hba_conf_}
+   if [ $? -ne 0 ]; then exit 1; fi
+   echo "# ===== BMH Configuration (Operational) =====" >> ${hba_conf_}
    if [ $? -ne 0 ]; then exit 1; fi
    echo "local   bmh         all                               trust" >> ${hba_conf_}
    if [ $? -ne 0 ]; then exit 1; fi
@@ -149,9 +156,51 @@ if [ "${BMH_DB_EXISTS}" = "false" ]; then
    # Give PostgreSQL time to reload
    sleep 5
 
-   # Run the bmh SQL creation script
+   # Run the bmh SQL creation scripts
    su ${DB_OWNER} -c \
       "${PSQL} -U awips -d postgres -f /awips2/database/sqlScripts/share/sql/bmh/createBMHDB.sql" >> ${SQL_LOG} 2>&1
+   if [ $? -ne 0 ]; then
+      exit 1
+   fi
+fi
+
+if [ "${BMH_PRAC_DB_EXISTS}" = "false" ]; then
+   # Create the bmh_practice directory; remove any existing directories.
+   if [ -d /awips2/data/bmh_practice ]; then
+      su ${DB_OWNER} -c "rm -rf /awips2/data/bmh_practice"
+   fi
+   su ${DB_OWNER} -c "mkdir -p /awips2/data/bmh_practice"
+
+   hba_conf_=/awips2/data/pg_hba.conf
+
+   echo "" >> ${hba_conf_}
+   if [ $? -ne 0 ]; then exit 1; fi
+   echo "# ===== BMH Configuration (Practice) =====" >> ${hba_conf_}
+   if [ $? -ne 0 ]; then exit 1; fi
+   echo "local   bmh_practice         all                               trust" >> ${hba_conf_}
+   if [ $? -ne 0 ]; then exit 1; fi
+   echo "" >> ${hba_conf_}
+   if [ $? -ne 0 ]; then exit 1; fi
+   echo "host    bmh_practice         all         127.0.0.1/32          md5" >> ${hba_conf_}
+   if [ $? -ne 0 ]; then exit 1; fi 
+   echo "host    bmh_practice         all         147.18.136.0/24       md5" >> ${hba_conf_}
+   if [ $? -ne 0 ]; then exit 1; fi
+   echo "host    bmh_practice         all         147.18.139.0/24       md5" >> ${hba_conf_}
+   if [ $? -ne 0 ]; then exit 1; fi
+   echo "host    bmh_practice         all         162.0.0.0/8           md5" >> ${hba_conf_}
+
+   # trigger a reload of the configuration in PostgreSQL
+   su ${DB_OWNER} -c \
+      "${POSTGRESQL_INSTALL}/bin/pg_ctl reload -D /awips2/data > /dev/null 2>&1"
+   if [ $? -ne 0 ]; then
+      exit 1
+   fi
+
+   # Give PostgreSQL time to reload
+   sleep 5
+
+   su ${DB_OWNER} -c \
+      "${PSQL} -U awips -d postgres -f /awips2/database/sqlScripts/share/sql/bmh/createBMHPracticeDB.sql" >> ${SQL_LOG} 2>&1
    if [ $? -ne 0 ]; then
       exit 1
    fi
