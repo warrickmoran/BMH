@@ -115,4 +115,10 @@ public class ProgramSuitePK implements Serializable {
     public void setSuiteId(int suiteId) {
         this.suiteId = suiteId;
     }
+
+    @Override
+    public String toString() {
+        return "ProgramSuitePK [programId=" + programId + ", suiteId="
+                + suiteId + "]";
+    }
 }

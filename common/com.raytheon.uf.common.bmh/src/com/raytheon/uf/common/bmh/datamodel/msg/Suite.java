@@ -44,6 +44,8 @@ import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
+import com.raytheon.uf.common.bmh.diff.DiffString;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -72,6 +74,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 15, 2014 3715      bkowal      Supporting adding program triggers to completely
  *                                    new {@link Suite}(s).
  * Oct 21, 2014 3746      rjpeter     Hibernate upgrade.
+ * Oct 29, 2014 3636      rferrel     Implement Logging.
  * </pre>
  * 
  * @author rjpeter
@@ -104,10 +107,13 @@ public class Suite {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     @DynamicSerializeElement
+    @DiffTitle(position = 2)
     protected int id;
 
     @Column(length = 40, unique = true, nullable = false)
     @DynamicSerializeElement
+    @DiffString
+    @DiffTitle(position = 1)
     private String name;
 
     @Enumerated(EnumType.STRING)
@@ -271,6 +277,28 @@ public class Suite {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Suite [id=").append(id).append(", name=").append(name)
+                .append(", type=").append(type).append(", suiteMessages=");
+        if (suiteMessages == null) {
+            sb.append(suiteMessages);
+        } else {
+            sb.append("[");
+            if (suiteMessages.size() > 0) {
+                for (SuiteMessage suiteMessage : suiteMessages) {
+                    sb.append("[").append(suiteMessage.getAfosid())
+                            .append("], ");
+                }
+                sb.setLength(sb.length() - 2);
+            }
+            sb.append("]");
+        }
+
+        return sb.toString();
     }
 
 }
