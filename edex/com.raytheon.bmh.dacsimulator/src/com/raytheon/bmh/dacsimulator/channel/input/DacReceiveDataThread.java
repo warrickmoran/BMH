@@ -149,7 +149,7 @@ public class DacReceiveDataThread extends Thread {
         while (keepRunning) {
 
             try (AudioPacketLogger packetLog = new AudioPacketLogger("receive",
-                    logger, 300)) {
+                    logger, 60)) {
                 synchronized (wakeMonitor) {
                     wakeMonitor.wait();
                 }

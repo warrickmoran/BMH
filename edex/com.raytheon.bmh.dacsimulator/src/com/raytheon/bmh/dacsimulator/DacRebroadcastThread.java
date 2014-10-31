@@ -136,7 +136,7 @@ public class DacRebroadcastThread extends Thread {
         /* This thread never exits so this resource can never be closed. */
         @SuppressWarnings("resource")
         AudioPacketLogger packetLog = new AudioPacketLogger("broadcast",
-                logger, 300);
+                logger, 60);
         long nextPacketTime = System.currentTimeMillis();
         while (true) {
             try {
