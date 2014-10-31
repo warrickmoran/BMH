@@ -45,6 +45,8 @@ import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
  * Oct 2, 2014   #3642     bkowal       Abstract to support dynamic audio fragments.
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * Oct 30, 2014  #3617     dgilling     Add getter for field returnTones.
+ * Oct 31, 2014  #3779     dgilling     Add a second of silence to the end of
+ *                                      each complete audio file.
  * 
  * </pre>
  * 
@@ -54,11 +56,25 @@ import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 
 public class AudioFileBuffer extends AbstractAudioFileBuffer {
 
+    /**
+     * Between each message we must play around 1 second of silence. That's the
+     * same as 8000 bytes of silence.
+     */
+    private static final int SILENCE_LENGTH = 8000;
+
+    private static final byte[] END_OF_MESSAGE_BYTES = new byte[SILENCE_LENGTH];
+
+    static {
+        Arrays.fill(END_OF_MESSAGE_BYTES, DacSessionConstants.SILENCE);
+    }
+
     private final ByteBuffer tonesBuffer;
 
     private final ByteBuffer messageBuffer;
 
-    private final ByteBuffer endOfMessageBuffer;
+    private final ByteBuffer endOfMessageTones;
+
+    private final ByteBuffer endOfMessageSilence;
 
     private boolean returnTones;
 
@@ -89,8 +105,10 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
         this.messageBuffer = ByteBuffer.wrap(message).asReadOnlyBuffer();
         this.tonesBuffer = (tones != null) ? tones.asReadOnlyBuffer()
                 : ByteBuffer.allocate(0).asReadOnlyBuffer();
-        this.endOfMessageBuffer = (endOfMessage != null) ? endOfMessage
+        this.endOfMessageTones = (endOfMessage != null) ? endOfMessage
                 .asReadOnlyBuffer() : ByteBuffer.allocate(0).asReadOnlyBuffer();
+        this.endOfMessageSilence = ByteBuffer.wrap(END_OF_MESSAGE_BYTES)
+                .asReadOnlyBuffer();
         this.returnTones = false;
     }
 
@@ -149,10 +167,17 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
         }
 
         if ((bytesRemaining > 0) && (returnTones)
-                && (endOfMessageBuffer.hasRemaining())) {
+                && (endOfMessageTones.hasRemaining())) {
             int bytesToRead = Math.min(bytesRemaining,
-                    endOfMessageBuffer.remaining());
-            endOfMessageBuffer.get(dst, offset, bytesToRead);
+                    endOfMessageTones.remaining());
+            endOfMessageTones.get(dst, offset, bytesToRead);
+            bytesRemaining -= bytesToRead;
+        }
+
+        if ((bytesRemaining > 0) && (endOfMessageSilence.hasRemaining())) {
+            int bytesToRead = Math.min(bytesRemaining,
+                    endOfMessageSilence.remaining());
+            endOfMessageSilence.get(dst, offset, bytesToRead);
             bytesRemaining -= bytesToRead;
         }
 
@@ -179,10 +204,18 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
         }
 
         if ((bytesRemaining > 0) && (returnTones)
-                && (endOfMessageBuffer.hasRemaining())) {
+                && (endOfMessageTones.hasRemaining())) {
             int bytesToRead = Math.min(bytesRemaining,
-                    endOfMessageBuffer.remaining());
-            endOfMessageBuffer.position(endOfMessageBuffer.position()
+                    endOfMessageTones.remaining());
+            endOfMessageTones.position(endOfMessageTones.position()
+                    + bytesToRead);
+            bytesRemaining -= bytesToRead;
+        }
+
+        if ((bytesRemaining > 0) && (endOfMessageSilence.hasRemaining())) {
+            int bytesToRead = Math.min(bytesRemaining,
+                    endOfMessageSilence.remaining());
+            endOfMessageSilence.position(endOfMessageSilence.position()
                     + bytesToRead);
             bytesRemaining -= bytesToRead;
         }
@@ -191,7 +224,7 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
     public boolean isInTones() {
         return returnTones
                 && (tonesBuffer.hasRemaining() || (!messageBuffer
-                        .hasRemaining() && endOfMessageBuffer.hasRemaining()));
+                        .hasRemaining() && endOfMessageTones.hasRemaining()));
     }
 
     /*
@@ -205,7 +238,8 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
     public void rewind() {
         messageBuffer.rewind();
         tonesBuffer.rewind();
-        endOfMessageBuffer.rewind();
+        endOfMessageTones.rewind();
+        endOfMessageSilence.rewind();
     }
 
     /**
@@ -217,8 +251,11 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
      */
     public boolean hasRemaining() {
         return returnTones ? (messageBuffer.hasRemaining()
-                || tonesBuffer.hasRemaining() || endOfMessageBuffer
-                .hasRemaining()) : messageBuffer.hasRemaining();
+                || tonesBuffer.hasRemaining()
+                || endOfMessageTones.hasRemaining() || endOfMessageSilence
+                .hasRemaining())
+                : (messageBuffer.hasRemaining() || endOfMessageSilence
+                        .hasRemaining());
     }
 
     /*
@@ -230,9 +267,10 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
      */
     @Override
     public int capacity(boolean includeTones) {
-        int capacity = messageBuffer.capacity();
+        int capacity = messageBuffer.capacity()
+                + endOfMessageSilence.capacity();
         if (includeTones) {
-            capacity += (tonesBuffer.capacity() + endOfMessageBuffer.capacity());
+            capacity += (tonesBuffer.capacity() + endOfMessageTones.capacity());
         }
         return capacity;
     }
@@ -247,7 +285,8 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
      */
     public void setReturnTones(boolean returnTones) {
         if ((messageBuffer.position() == 0) && (tonesBuffer.position() == 0)
-                && (endOfMessageBuffer.position() == 0)) {
+                && (endOfMessageTones.position() == 0)
+                && (endOfMessageSilence.position() == 0)) {
             this.returnTones = returnTones;
         }
     }
