@@ -39,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 17, 2014 3175       rjpeter     Initial creation
  * Aug 05, 2014 3175       rjpeter     Fixed bidirectional mappings.
  * Oct 13, 2014 3654       rjpeter     Added Column annotation.
+ * Oct 29, 2014 3636       rferrel     Implement logging.
  * </pre>
  * 
  * @author rjpeter
@@ -101,6 +102,12 @@ public class SuiteMessagePk implements Serializable {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return "SuiteMessagePk [suiteId=" + suiteId + ", msgTypeId="
+                + msgTypeId + "]";
     }
 
 }

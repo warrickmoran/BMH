@@ -252,4 +252,16 @@ public class TransmitterLanguage {
         }
         return true;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("TransmitterLanguage[ id=").append(id)
+                .append(", stationIdMsg=").append(stationIdMsg)
+                .append(", timeMsgPreamble=").append(timeMsgPreamble)
+                .append(", timeMsgPostamble=").append(timeMsgPostamble)
+                .append(", dictionary=").append(dictionary.getName())
+                .append(", voice]").append(voice.getVoiceName());
+        return sb.toString();
+    }
 }

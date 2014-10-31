@@ -28,6 +28,7 @@ import javax.persistence.Table;
 import javax.persistence.Transient;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -42,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Oct 10, 2014            rjpeter     Initial creation
  * Oct 23, 2014  #3728     lvenable    Added Enumerated tag for designation
+ * Oct 29, 2014  #3636     rferrel     Implement logging.
  * 
  * </pre>
  * 
@@ -56,6 +58,7 @@ public class MessageTypeSummary {
     protected int id;
 
     @DynamicSerializeElement
+    @DiffString
     private String afosid;
 
     @DynamicSerializeElement

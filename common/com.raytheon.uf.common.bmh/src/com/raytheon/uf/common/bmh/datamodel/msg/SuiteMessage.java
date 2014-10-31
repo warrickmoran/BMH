@@ -30,6 +30,8 @@ import javax.persistence.Table;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.ForeignKey;
 
+import com.raytheon.uf.common.bmh.diff.DiffString;
+import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -48,6 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 17, 2014 #3490      lvenable    Added batch size.
  * Sep 11, 2014 #3587      bkowal      Remove trigger.
  * Oct 13, 2014 3654       rjpeter     Updated to use MessageTypeSummary.
+ * Oct 29, 2014 3636       rferrel     Implement logging.
  * </pre>
  * 
  * @author rjpeter
@@ -60,11 +63,13 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class SuiteMessage {
     @EmbeddedId
     @DynamicSerializeElement
+    @DiffTitle(position = 2)
     private SuiteMessagePk id;
 
     @ManyToOne(optional = false)
     @MapsId("suiteId")
     // No dynamic serialize due to bi-directional relationship
+    @DiffTitle(position = 1)
     private Suite suite;
 
     @ManyToOne(optional = false)
@@ -72,6 +77,7 @@ public class SuiteMessage {
     @JoinColumn(name = "msgtype_id")
     @DynamicSerializeElement
     @ForeignKey(name = "suite_message_to_message_type")
+    @DiffString
     private MessageTypeSummary msgTypeSummary;
 
     @Column(nullable = false)
