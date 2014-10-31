@@ -8,4 +8,5 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Require-Bundle: org.slf4j;bundle-version="1.7.5",
  org.apache.commons.cli;bundle-version="1.0.0",
  org.apache.commons.collections;bundle-version="3.2.0",
- com.google.guava;bundle-version="11.0.2"
+ com.google.guava;bundle-version="11.0.2",
+ com.raytheon.uf.common.bmh;bundle-version="1.14.0"

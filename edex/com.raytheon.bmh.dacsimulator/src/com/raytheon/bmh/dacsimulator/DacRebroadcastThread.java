@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.dacsimulator.channel.output.DacSimulatedBroadcast;
+import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 
 /**
  * This thread simulates the rebroadcast feature of the DAC device. It combines
@@ -47,8 +48,8 @@ import com.raytheon.bmh.dacsimulator.channel.output.DacSimulatedBroadcast;
  * Oct 03, 2014  #3688     dgilling     Initial creation
  * Oct 21, 2014  #3688     dgilling     Support packet addressing.
  * Oct 23, 2014  #3687     bsteffen     Fix rebroadcast timing.
+ * Oct 29, 2014  #3774     bsteffen     Log Packets
  * 
- * </pre>
  * 
  * @author dgilling
  * @version 1.0
@@ -132,6 +133,10 @@ public class DacRebroadcastThread extends Thread {
 
     @Override
     public void run() {
+        /* This thread never exits so this resource can never be closed. */
+        @SuppressWarnings("resource")
+        AudioPacketLogger packetLog = new AudioPacketLogger("broadcast",
+                logger, 300);
         long nextPacketTime = System.currentTimeMillis();
         while (true) {
             try {
@@ -139,7 +144,7 @@ public class DacRebroadcastThread extends Thread {
                 DatagramPacket packet = new DatagramPacket(payload,
                         payload.length, destination);
                 socket.send(packet);
-
+                packetLog.packetProcessed();
             } catch (IOException e) {
                 String msg = "Error sending packet to "
                         + destination.toString() + ".";

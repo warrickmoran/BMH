@@ -28,6 +28,7 @@ import java.util.Collection;
 
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
+import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
@@ -60,6 +61,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  *                                     before the live stream begins.
  * Oct 27, 2014 3712       bkowal      Broadcast a LiveBroadcastSwitchNotification
  *                                     at the conclusion of the live stream.
+ * Oct 29, 2014 3774       bsteffen    Log Packets
  * 
  * </pre>
  * 
@@ -116,7 +118,8 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
 
         // Build playlist switch notification
         this.notifyBroadcastSwitch(STATE.STARTED);
-
+        AudioPacketLogger packetLog = new AudioPacketLogger(
+                "Live Broadcast Tones", getClass(), 30);
         // play the Alert / SAME tones.
         ByteArrayInputStream tonesInputStream = new ByteArrayInputStream(
                 this.config.getToneAudio());
@@ -124,12 +127,14 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         try {
             while (tonesInputStream.read(nextPayload) != -1) {
                 this.streamAudio(nextPayload);
+                packetLog.packetProcessed();
             }
         } catch (IOException | AudioOverflowException
                 | UnsupportedAudioFormatException | AudioConversionException
                 | InterruptedException e) {
             this.notifyDacError("Failed to stream the SAME / Alert Tones!", e);
         }
+        packetLog.close();
 
         BroadcastStatus status = new BroadcastStatus();
         status.setMsgSource(ILiveBroadcastMessage.SOURCE_DAC_TRANSMIT);
@@ -137,7 +142,8 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         status.setBroadcastId(this.broadcastId);
         status.addTransmitter(this.config.getTransmitter());
         this.commsManager.sendDacLiveBroadcastMsg(status);
-
+        packetLog = new AudioPacketLogger("Live Broadcast Audio", getClass(),
+                30);
         try {
             int bytesCount = 0;
             while (bytesCount != -1) {
@@ -147,6 +153,7 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
                 }
 
                 this.streamAudio(nextPayload);
+                packetLog.packetProcessed();
             }
         } catch (IOException e) {
             this.notifyDacError("Audio Data I/O has failed!", e);
@@ -156,6 +163,7 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
                 | AudioConversionException e) {
             this.notifyDacError("Audio regulation failed!", e);
         }
+        packetLog.close();
 
         this.dataThread.resumePlayback();
     }

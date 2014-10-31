@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.dac.data.RTPHeaderStruct;
 import com.raytheon.uf.common.bmh.dac.data.RTPPacketStruct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -51,6 +52,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jul 15, 2014 3374       bkowal      Initial creation
  * Jul 15, 2014 3487       bsteffen    Add hasSubscribers
  * Sep 23, 2014 3485       bsteffen    Allow receiving through multicast.
+ * Oct 29, 2014 3774       bsteffen    Log Packets
  * 
  * </pre>
  * 
@@ -216,12 +218,14 @@ public class DacReceiveThread extends Thread {
     @Override
     public void run() {
         statusHandler.info("Listening for DAC packets ...");
-
+        AudioPacketLogger logger = new AudioPacketLogger("Dac Receive",
+                getClass(), 60);
         while (this.halt == false) {
             this.receivePackets();
+            logger.packetProcessed();
             this.notifySubscribers();
         }
-
+        logger.close();
         statusHandler.info("Shutting down ...");
         this.closeDacConnection();
     }
