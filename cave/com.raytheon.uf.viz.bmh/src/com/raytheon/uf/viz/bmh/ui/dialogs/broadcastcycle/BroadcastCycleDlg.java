@@ -109,6 +109,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 23, 2014  3687      bsteffen    Display dac name instead of id.
  * Oct 26, 2014  3750      mpduff      Maintain the selected row.
  * Oct 27, 2014  3712      bkowal      Update labels after live broadcast start/end.
+ * Nov 01, 2014  3782      mpduff      Added message name column and made table grow with dialog 
  * 
  * </pre>
  * 
@@ -298,7 +299,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         createMenus();
         createTransmitterList(mainComp);
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gl = new GridLayout(1, false);
         gl.marginBottom = 0;
         Composite broadcastComp = new Composite(mainComp, SWT.NONE);
@@ -785,6 +786,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         columns.add(new TableColumnData("Transmit Time", 125));
         columns.add(new TableColumnData("Message Id", 100));
         columns.add(new TableColumnData("Message Title", 225));
+        columns.add(new TableColumnData("Message Name", 175));
         columns.add(new TableColumnData("MRD"));
         columns.add(new TableColumnData("Expiration Time", 125));
         columns.add(new TableColumnData("Alert"));

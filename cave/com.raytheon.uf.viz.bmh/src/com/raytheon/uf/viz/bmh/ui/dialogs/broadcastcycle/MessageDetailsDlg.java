@@ -67,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 14, 2014    3432       mpduff    Remaining capabilities
  * Sep 25, 2014    3620       bsteffen  Add seconds to periodicity.
  * Oct 10, 2014    3646       rferrel   Convert to GenericTable.
+ * Nov 01, 2014    3782       mpduff    Added Message Name to dialog.
  * 
  * </pre>
  * 
@@ -191,6 +192,16 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         titleValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
+        Label nameLbl = new Label(comp, SWT.NONE);
+        nameLbl.setText("Message Name: ");
+        nameLbl.setLayoutData(gd);
+
+        gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+        Label nameValueLbl = new Label(comp, SWT.NONE);
+        nameValueLbl.setText(broadcastMsg.getInputMessage().getName());
+        nameValueLbl.setLayoutData(gd);
+
+        gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label dispositionLbl = new Label(comp, SWT.NONE);
         dispositionLbl.setText("Disposition: ");
         dispositionLbl.setLayoutData(gd);
@@ -289,7 +300,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         combo.select(0);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.heightHint = 140;
+        gd.heightHint = 160;
         gd.widthHint = 325;
         GridLayout gl = new GridLayout(1, false);
         stackComp = new Composite(comp, SWT.NONE);

@@ -55,7 +55,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * ------------ ---------- ----------- --------------------------
  * Aug 21, 2014   3432     mpduff      Initial creation
  * Aug 23, 2014   3432     mpduff      Add data
- * Oct 21, 2014   3655     bkowal      Updated to use {@link IPlaylistData}.     
+ * Oct 21, 2014   3655     bkowal      Updated to use {@link IPlaylistData}.
+ * Nov 01, 2014   3782     mpduff      Implemented MRD column, added message name to table data
  * 
  * </pre>
  * 
@@ -69,6 +70,8 @@ public class PlaylistData {
 
     private final SimpleDateFormat sdf = new SimpleDateFormat(
             "MM/dd/yy HH:mm:ss");
+
+    private final String EMPTY = "";
 
     private final BroadcastCycleTableEntryComparator comparator = new BroadcastCycleTableEntryComparator();
 
@@ -221,7 +224,11 @@ public class PlaylistData {
             data.setMessageId(message.getAfosid());
             String title = messageTypeMap.get(broadcastId).getTitle();
             data.setMessageTitle(title);
-            data.setMrd("MRD"); // TODO
+            String mrd = message.getInputMessage().getMrd();
+            if (mrd == null) {
+                mrd = EMPTY;
+            }
+            data.setMrd(mrd);
 
             data.setBroadcastId(broadcastId);
             data.setInputMsg(message.getInputMessage());
@@ -242,6 +249,7 @@ public class PlaylistData {
             row.addTableCellData(cell);
             row.addTableCellData(new TableCellData(data.getMessageId()));
             row.addTableCellData(new TableCellData(data.getMessageTitle()));
+            row.addTableCellData(new TableCellData(data.getInputMsg().getName()));
             row.addTableCellData(new TableCellData(data.getMrd()));
             row.addTableCellData(new TableCellData(sdf.format(data
                     .getExpirationTime().getTime())));
