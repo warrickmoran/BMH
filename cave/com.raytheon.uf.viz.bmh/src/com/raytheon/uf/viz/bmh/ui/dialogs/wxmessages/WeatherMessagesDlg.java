@@ -100,6 +100,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    weather message.
  * Oct 28, 2014  3750     bkowal      Validate contents prior to submit.
  * Oct 31, 2014  3778     bsteffen    Do not clear the id when editing messages.
+ * Nov 01, 2014  3784     mpduff      Set defaults on Message Type selection
  * 
  * </pre>
  * 
@@ -329,8 +330,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         expire.add(Calendar.DATE, 1);
         im.setExpirationTime(expire);
         resetControls();
-
-        this.populateControlsForEdit(im, null);
     }
 
     /**
@@ -891,7 +890,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     private void handleAreadSelectionAction() {
         AreaSelectionDlg dlg = null;
 
-        if (userInputMessage != null) {
+        // if input message id is not null and not a new input message object
+        if (userInputMessage != null && userInputMessage.getId() != 0) {
             dlg = new AreaSelectionDlg(getShell(),
                     userInputMessage.getAreaCodes());
         } else {
@@ -956,6 +956,27 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
         this.areaSelectionBtn.setEnabled(true);
         sameTransmitters.selectCheckboxes(cld);
+
+        String periodicityDateTimeStr = selectedMessageType.getPeriodicity();
+
+        Map<DateFieldType, Integer> periodicityMap = BmhUtils
+                .generateDayHourMinuteSecondMap(periodicityDateTimeStr);
+
+        periodicityDTF.setFieldValues(periodicityMap);
+
+        interruptChk.setSelection(selectedMessageType.isInterrupt());
+        alertChk.setSelection(selectedMessageType.isAlert());
+        confirmChk.setSelection(selectedMessageType.isConfirm());
+
+        String durationStr = selectedMessageType.getDuration();
+        Map<DateFieldType, Integer> durationMap = BmhUtils
+                .generateDayHourMinuteSecondMap(durationStr);
+        long durationMillis = BmhUtils.getDurationMilliseconds(durationMap);
+        Calendar cal = effectiveDTF.getBackingCalendar();
+        cal.add(Calendar.SECOND,
+                (int) (durationMillis / TimeUtil.MILLIS_PER_SECOND));
+
+        expirationDTF.setDateTimeSpinners(cal);
     }
 
     /**
