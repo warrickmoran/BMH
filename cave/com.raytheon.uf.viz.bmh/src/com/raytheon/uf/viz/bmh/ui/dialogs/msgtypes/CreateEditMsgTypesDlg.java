@@ -92,6 +92,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 16, 2014  3657      bkowal      Relocated duration parsing methods.
  * Oct 30, 2014  3617      dgilling    Fix default states for blackout controls.
+ * Nov 01, 2014   3784     mpduff      Added nullCheck
  * 
  * </pre>
  * 
@@ -533,7 +534,11 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                 enableBlackoutControls(enableBlackoutChk.getSelection());
             }
         });
-        enableBlackoutChk.setSelection(selectedMsgType.isToneBlackoutEnabled());
+
+        if (selectedMsgType != null) {
+            enableBlackoutChk.setSelection(selectedMsgType
+                    .isToneBlackoutEnabled());
+        }
 
         gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
         gd.horizontalIndent = 45;

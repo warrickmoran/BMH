@@ -65,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  *                                     fields.
  * Oct 27, 2014  #3712     bkowal      Fixed how hours are handled when retrieving data
  *                                     from the dtf spinners.
+ * Nov 01, 2014   3784     mpduff      Added getBackingCalendar()
  * 
  * </pre>
  * 
@@ -531,6 +532,20 @@ public class DateTimeFields extends Composite {
         }
 
         return true;
+    }
+
+    /**
+     * Get a copy of the backing calendar object.
+     * 
+     * @return Calendar A copy of the backing Calendar object
+     */
+    public Calendar getBackingCalendar() {
+        Calendar returnCal = TimeUtil.newGmtCalendar();
+        returnCal.setTimeInMillis(calendar.getTimeInMillis());
+        returnCal.set(Calendar.SECOND, 0);
+        returnCal.set(Calendar.MILLISECOND, 0);
+
+        return returnCal;
     }
 
     public static void main(String[] args) {

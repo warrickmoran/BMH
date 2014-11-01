@@ -39,6 +39,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.viz.core.mode.CAVEMode;
 
@@ -59,7 +60,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 21, 2014   3728      lvenable    Make splitDateTimeString public.
  * Oct 27, 2014   3750      lvenable    change string length in parsing method
  *                                      generateDayHourMinuteSecondMap()
- * 
+ * Nov 01, 2014   3784      mpduff      Added getDurationMilliseconds()
  * </pre>
  * 
  * @author mpduff
@@ -294,5 +295,48 @@ public class BmhUtils {
         }
 
         return intArray;
+    }
+
+    /**
+     * Get the number of milliseconds represented by the provided DateFieldType
+     * map. If duration is one hour the return value would be the number of
+     * milliseconds in one hour.
+     * 
+     * @param durationMap
+     *            The DateFieldType map representing the duration
+     * @return Duration length in milliseconds
+     */
+    public static long getDurationMilliseconds(
+            Map<DateFieldType, Integer> durationMap) {
+        long dur = 0;
+
+        for (DateFieldType type : durationMap.keySet()) {
+            Integer durValue = durationMap.get(type);
+            switch (type) {
+            case YEAR:
+                dur += durValue.intValue() * TimeUtil.MILLIS_PER_YEAR;
+                break;
+            case MONTH:
+                dur += durValue.intValue() * TimeUtil.MILLIS_PER_30_DAYS;
+                break;
+            case DAY:
+                dur += durValue.intValue() * TimeUtil.MILLIS_PER_DAY;
+                break;
+            case HOUR:
+                dur += durValue.intValue() * TimeUtil.MILLIS_PER_HOUR;
+                break;
+            case MINUTE:
+                dur += durValue.intValue() * TimeUtil.MILLIS_PER_MINUTE;
+                break;
+            case SECOND:
+                dur += durValue.intValue() * TimeUtil.MILLIS_PER_SECOND;
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid DateFieldType: "
+                        + type.toString());
+            }
+        }
+
+        return dur;
     }
 }
