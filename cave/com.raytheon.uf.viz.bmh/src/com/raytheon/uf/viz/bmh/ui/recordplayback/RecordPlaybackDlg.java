@@ -67,6 +67,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 21, 2014  #3655     bkowal       Handle forced dialog closures.
  * Oct 26, 2014  #3712     bkowal       Prevent the dialog from being closed during
  *                                      recording / playback.
+ * Nov 1, 2014   #3655     bkowal       Increased the number of live audio bytes
+ *                                      that are sent to the comms manager. 
  * 
  * 
  * </pre>
@@ -150,7 +152,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      * number of samples read between audio live streaming segments for the live
      * broadcast.
      */
-    private static final int SAMPLE_COUNT = 2;
+    private static final int SAMPLE_COUNT = 20;
 
     private volatile RecordPlayStatus recordPlayStatus = RecordPlayStatus.STOP;
 
@@ -159,6 +161,8 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     private AudioPlaybackThread playbackThread;
 
     protected ByteBuffer recordedAudio;
+    
+    private volatile boolean okToClose;
 
     /**
      * Constructor.
@@ -170,7 +174,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      */
     public RecordPlaybackDlg(Shell parentShell, int maxRecordingSeconds) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
 
         this.maxRecordingSeconds = maxRecordingSeconds;
     }
@@ -227,7 +231,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
                  * only allow the user to close the dialog when the audio
                  * threads (record / play) are stopped.
                  */
-                e.doit = recordPlayStatus == RecordPlayStatus.STOP;
+                e.doit = okToClose;
             }
         });
     }
@@ -443,6 +447,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      *            the optional audio recording listener.
      */
     protected void recordAction(final IAudioRecorderListener listener) {
+        this.okToClose = false;
         resetRecordPlayValues();
         try {
             this.recorderThread = new AudioRecorderThread(SAMPLE_COUNT);
@@ -493,12 +498,14 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         }
         this.cancelBtn.setEnabled(true);
         this.recordPlayStatus = RecordPlayStatus.STOP;
+        this.okToClose = true;
     }
 
     /**
      * Play action.
      */
     protected void playAction() {
+        this.okToClose = false;
         try {
             this.playbackThread = new AudioPlaybackThread(this.recordedAudio);
             this.playbackThread.setCompleteListener(this);

@@ -109,7 +109,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 23, 2014  3687      bsteffen    Display dac name instead of id.
  * Oct 26, 2014  3750      mpduff      Maintain the selected row.
  * Oct 27, 2014  3712      bkowal      Update labels after live broadcast start/end.
- * Nov 01, 2014  3782      mpduff      Added message name column and made table grow with dialog 
+ * Nov 01, 2014  3782      mpduff      Added message name column and made table grow with dialog
+ * Nov 01, 2014  3655      bkowal      Prevent NPE. 
  * 
  * </pre>
  * 
@@ -1140,7 +1141,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                 } else {
                                     suiteValueLbl.setText("");
                                 }
-                                cycleDurValueLbl.setText(cycleDurationTime);
+                                if (cycleDurationTime != null) {
+                                    cycleDurValueLbl.setText(cycleDurationTime);
+                                } else {
+                                    cycleDurValueLbl.setText("");
+                                }
                             }
                         });
                     }

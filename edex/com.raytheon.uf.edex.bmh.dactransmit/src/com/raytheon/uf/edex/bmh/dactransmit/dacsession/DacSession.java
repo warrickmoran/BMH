@@ -20,7 +20,6 @@
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
 import java.io.IOException;
-import java.io.PipedOutputStream;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -87,6 +86,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      handling.
  * Oct 21, 2014  #3655     bkowal       Delay the playback of interrupts during a live
  *                                      broadcast.
+ * Nov 1, 2014   #3655     bkowal       Improved how data is shared between the main dac 
+ *                                      thread and the live broadcast thread.
  * 
  * </pre>
  * 
@@ -110,8 +111,6 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     private final DataTransmitThread dataThread;
 
     private LiveBroadcastTransmitThread broadcastThread;
-
-    private PipedOutputStream liveBroadcastDataPipe;
 
     private final ControlStatusThread controlThread;
 
@@ -340,13 +339,11 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
          * Prepare the live streaming thread.
          */
         try {
-            this.liveBroadcastDataPipe = new PipedOutputStream();
             this.broadcastThread = new LiveBroadcastTransmitThread(
                     this.eventBus, this.config.getDacAddress(),
                     this.config.getDataPort(), this.config.getTransmitters(),
                     startCommand.getBroadcastId(), this.dataThread,
-                    this.commsManager, config, this.liveBroadcastDataPipe,
-                    this.config.getDbTarget());
+                    this.commsManager, config, this.config.getDbTarget());
         } catch (IOException e) {
             logger.error("Failed to create a thread for broadcast "
                     + startCommand.getBroadcastId() + "!", e);
@@ -378,58 +375,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
             return;
         }
 
-        IOException recoveryException = null;
-        try {
-            this.liveBroadcastDataPipe.write(playCommand.getAudio());
-        } catch (IOException e) {
-            recoveryException = e;
-            logger.error(
-                    "Failed to write data to the broadcast thread for broadcast "
-                            + playCommand.getBroadcastId()
-                            + "! Attempting to recover ...", e);
-        }
-
-        if (recoveryException == null || this.broadcastThread.isError()) {
-            return;
-        }
-
-        /*
-         * Attempt to recover from the write failure.
-         * 
-         * According to the JavaDoc, a write error will occur if the pipe is
-         * close, if the pipe is disconnected, or due to some other I/O error.
-         */
-        // Attempt to re-open and re-connect the pipe.
-        this.liveBroadcastDataPipe = new PipedOutputStream();
-        try {
-            this.broadcastThread
-                    .attemptPipeReconnection(this.liveBroadcastDataPipe);
-        } catch (IOException e) {
-            logger.error("Broadcast " + playCommand.getBroadcastId()
-                    + " recovery has failed! Terminating the broadcast.", e);
-
-            this.notifyLiveClientFailure(playCommand.getBroadcastId(),
-                    playCommand.getTransmitterGroups(),
-                    "Failed to write data to the broadcast thread.", null);
-        }
-
-        logger.info(
-                "Broadcast {} recovery was successful. Re-attempting data write.",
-                playCommand.getBroadcastId());
-
-        // attempt the write one final time.
-        try {
-            this.liveBroadcastDataPipe.write(playCommand.getAudio());
-        } catch (IOException e) {
-            logger.error(
-                    "Failed to write data to the broadcast thread for broadcast "
-                            + playCommand.getBroadcastId()
-                            + " (Second Attempt)!", e);
-            this.notifyLiveClientFailure(playCommand.getBroadcastId(),
-                    playCommand.getTransmitterGroups(),
-                    "Failed to write data to the broadcast thread.", e);
-            this.shutdownLiveBroadcast(playCommand.getBroadcastId());
-        }
+        this.broadcastThread.playAudio(playCommand.getAudio());
     }
 
     private void notifyLiveClientFailure(final String broadcastId,
@@ -458,15 +404,6 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     }
 
     private void shutdownLiveBroadcast(final String broadcastId) {
-        if (this.liveBroadcastDataPipe != null) {
-            try {
-                this.liveBroadcastDataPipe.close();
-            } catch (IOException e) {
-                logger.error(
-                        "Failed to close the output data stream during shutdown of broadcast "
-                                + broadcastId + ".", e);
-            }
-        }
         if (this.broadcastThread != null) {
             this.broadcastThread.shutdown();
             try {
@@ -478,7 +415,6 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
             }
         }
 
-        this.liveBroadcastDataPipe = null;
         this.broadcastThread = null;
 
         /*

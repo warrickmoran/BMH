@@ -21,10 +21,9 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.net.InetAddress;
 import java.util.Collection;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
@@ -36,6 +35,8 @@ import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
+import com.raytheon.uf.common.time.util.ITimer;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
 import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
@@ -62,6 +63,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Oct 27, 2014 3712       bkowal      Broadcast a LiveBroadcastSwitchNotification
  *                                     at the conclusion of the live stream.
  * Oct 29, 2014 3774       bsteffen    Log Packets
+ * Nov 1, 2014  3655       bkowal      Play end of message tones at the end of a live
+ *                                     broadcast.
  * 
  * </pre>
  * 
@@ -79,11 +82,15 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
 
     private final BroadcastTransmitterConfiguration config;
 
-    private final PipedInputStream dataStream;
-
     private final double dbTarget;
 
     private volatile boolean error;
+
+    private ITimer transmitTimer;
+
+    private volatile boolean streaming;
+
+    private LinkedBlockingQueue<byte[]> audioBuffer = new LinkedBlockingQueue<>();
 
     public LiveBroadcastTransmitThread(final EventBus eventBus,
             final InetAddress address, final int port,
@@ -91,15 +98,13 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
             final DataTransmitThread dataThread,
             final CommsManagerCommunicator commsManager,
             final BroadcastTransmitterConfiguration config,
-            final PipedOutputStream src, final double dbTarget)
-            throws IOException {
+            final double dbTarget) throws IOException {
         super("LiveBroadcastTransmitThread", eventBus, address, port,
                 transmitters);
         this.broadcastId = broadcastId;
         this.dataThread = dataThread;
         this.commsManager = commsManager;
         this.config = config;
-        this.dataStream = new PipedInputStream(src);
         this.dbTarget = dbTarget;
     }
 
@@ -118,11 +123,76 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
 
         // Build playlist switch notification
         this.notifyBroadcastSwitch(STATE.STARTED);
+        // play the Alert / SAME tones.
+        this.playTones(this.config.getToneAudio(), "SAME / Alert");
+
+        BroadcastStatus status = new BroadcastStatus();
+        status.setMsgSource(ILiveBroadcastMessage.SOURCE_DAC_TRANSMIT);
+        status.setStatus(true);
+        status.setBroadcastId(this.broadcastId);
+        status.addTransmitter(this.config.getTransmitter());
+        this.commsManager.sendDacLiveBroadcastMsg(status);
+        this.streaming = true;
+        AudioPacketLogger packetLog = new AudioPacketLogger(
+                "Live Broadcast Audio", getClass(), 30);
+        this.transmitTimer = null;
+        while (streaming) {
+            try {
+                byte[] audio = this.audioBuffer.peek();
+                if (audio == null || this.audioBuffer.size() < 100) {
+                    Thread.sleep(2);
+                    continue;
+                }
+                audio = this.audioBuffer.take();
+                this.streamAudio(audio);
+                packetLog.packetProcessed();
+            } catch (AudioOverflowException | UnsupportedAudioFormatException
+                    | AudioConversionException | InterruptedException e) {
+                this.notifyDacError(
+                        "Failed to stream the buffered live audio.", e);
+            }
+        }
+
+        // empty the remaining data.
+        while (this.audioBuffer.isEmpty() == false) {
+            byte[] audio = null;
+            try {
+                audio = this.audioBuffer.take();
+            } catch (InterruptedException e) {
+                logger.error(
+                        "LiveBroadcastTransmitThread sleep was interrupted.", e);
+            }
+            try {
+                this.streamAudio(audio);
+                packetLog.packetProcessed();
+            } catch (AudioOverflowException | UnsupportedAudioFormatException
+                    | AudioConversionException | InterruptedException e) {
+                this.notifyDacError(
+                        "Failed to stream the remaining buffered live audio.",
+                        e);
+            }
+        }
+        packetLog.close();
+
+        this.playTones(this.config.getEndToneAudio(), "End of Message");
+        // give the tones enough time to finish.
+        long duration = ((this.config.getEndToneAudio().length / 160) * 20) + 1;
+        try {
+            Thread.sleep(duration);
+        } catch (InterruptedException e) {
+            logger.warn("LiveBroadcastTransmitThread sleep was interrupted.", e);
+        }
+        this.notifyBroadcastSwitch(STATE.FINISHED);
+
+        this.dataThread.resumePlayback();
+    }
+
+    private void playTones(byte[] toneAudio, final String toneType) {
         AudioPacketLogger packetLog = new AudioPacketLogger(
                 "Live Broadcast Tones", getClass(), 30);
-        // play the Alert / SAME tones.
+
         ByteArrayInputStream tonesInputStream = new ByteArrayInputStream(
-                this.config.getToneAudio());
+                toneAudio);
         byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
         try {
             while (tonesInputStream.read(nextPayload) != -1) {
@@ -132,40 +202,13 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         } catch (IOException | AudioOverflowException
                 | UnsupportedAudioFormatException | AudioConversionException
                 | InterruptedException e) {
-            this.notifyDacError("Failed to stream the SAME / Alert Tones!", e);
+            this.notifyDacError("Failed to stream the " + toneType + " Tones!",
+                    e);
         }
-        packetLog.close();
+    }
 
-        BroadcastStatus status = new BroadcastStatus();
-        status.setMsgSource(ILiveBroadcastMessage.SOURCE_DAC_TRANSMIT);
-        status.setStatus(true);
-        status.setBroadcastId(this.broadcastId);
-        status.addTransmitter(this.config.getTransmitter());
-        this.commsManager.sendDacLiveBroadcastMsg(status);
-        packetLog = new AudioPacketLogger("Live Broadcast Audio", getClass(),
-                30);
-        try {
-            int bytesCount = 0;
-            while (bytesCount != -1) {
-                bytesCount = this.dataStream.read(nextPayload);
-                if (bytesCount <= 0) {
-                    continue;
-                }
-
-                this.streamAudio(nextPayload);
-                packetLog.packetProcessed();
-            }
-        } catch (IOException e) {
-            this.notifyDacError("Audio Data I/O has failed!", e);
-        } catch (InterruptedException e) {
-            logger.error("Thread sleep interrupted.", e);
-        } catch (AudioOverflowException | UnsupportedAudioFormatException
-                | AudioConversionException e) {
-            this.notifyDacError("Audio regulation failed!", e);
-        }
-        packetLog.close();
-
-        this.dataThread.resumePlayback();
+    public void playAudio(byte[] data) {
+        this.audioBuffer.add(data);
     }
 
     private void streamAudio(byte[] data) throws AudioOverflowException,
@@ -179,6 +222,18 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         RtpPacketIn rtpPacket = buildRtpPacket(previousPacket, regulatedAudio);
 
         sendPacket(rtpPacket);
+        if (this.transmitTimer == null) {
+            this.transmitTimer = TimeUtil.getTimer();
+            this.transmitTimer.start();
+        } else {
+            this.transmitTimer.stop();
+            logger.info(
+                    "A total of {} elapsed between the transmission of the current packet and the previous packet. sleep = {}",
+                    TimeUtil.prettyDuration(this.transmitTimer.getElapsedTime()),
+                    this.nextCycleTime);
+            this.transmitTimer.reset();
+            this.transmitTimer.start();
+        }
 
         previousPacket = rtpPacket;
 
@@ -225,15 +280,7 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
     }
 
     public void shutdown() {
-        // Build playlist switch notification
-        this.notifyBroadcastSwitch(STATE.FINISHED);        
-        
-        try {
-            this.dataStream.close();
-        } catch (IOException e) {
-            logger.warn(
-                    "Failed to close the input data stream during shutdown.", e);
-        }
+        this.streaming = false;
     }
 
     /**
@@ -247,18 +294,13 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         this.watermarkPackets = watermarkPackets;
     }
 
-    public void attemptPipeReconnection(final PipedOutputStream out)
-            throws IOException {
-        this.dataStream.connect(out);
-    }
-
     /**
      * @return the error
      */
     public boolean isError() {
         return error;
     }
-    
+
     private void notifyBroadcastSwitch(final STATE broadcastState) {
         LiveBroadcastSwitchNotification notification = new LiveBroadcastSwitchNotification();
         notification.setBroadcastState(broadcastState);
@@ -269,6 +311,6 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         notification.setExpirationTime(this.config.getExpireTime());
         notification.setSameTone(true);
         notification.setAlertTone(this.config.isPlayAlertTones());
-        eventBus.post(notification);        
+        eventBus.post(notification);
     }
 }

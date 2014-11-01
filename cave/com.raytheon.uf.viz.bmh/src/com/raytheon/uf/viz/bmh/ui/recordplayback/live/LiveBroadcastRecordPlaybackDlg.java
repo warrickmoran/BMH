@@ -27,6 +27,7 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
+import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -56,6 +57,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastThread.BROADC
  *                                     {@link LiveBroadcastSwitchNotification}.
  * Oct 26, 2014 3712       bkowal      Prevent the dialog from being closed during
  *                                     recording / playback.
+ * Nov 1, 2014  3655       bkowal      Include end of message tones in the live broadcast
+ *                                     configuration.
  * 
  * </pre>
  * 
@@ -166,6 +169,7 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
         // Build the configuration
         LiveBroadcastStartCommand startCommand = new LiveBroadcastStartCommand();
         startCommand.setMsgSource(ILiveBroadcastMessage.SOURCE_VIZ);
+
         for (Transmitter transmitter : transmitterToneMap.keySet()) {
             BroadcastTransmitterConfiguration config = new BroadcastTransmitterConfiguration();
             config.setSelectedMessageType(this.settings
@@ -174,6 +178,8 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
             byte[] tonesAudio = transmitterToneMap.get(transmitter);
             long duration = tonesAudio.length / 160L * 20L;
             config.setToneAudio(transmitterToneMap.get(transmitter));
+            config.setEndToneAudio(TonesGenerator.getEndOfMessageTones()
+                    .array());
             config.setDelayMilliseconds(longestDurationMS - duration);
             config.setEffectiveTime(this.settings.getEffectiveTime());
             config.setExpireTime(this.settings.getExpireTime());

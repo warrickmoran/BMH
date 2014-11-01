@@ -39,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 20, 2014 3655       bkowal      Initial creation
  * Oct 21, 2014 3655       bkowal      Added additional information about
  *                                     the broadcast.
+ * Nov 1, 2014  3655       bkowal      Added end of message tones.
  * 
  * </pre>
  * 
@@ -50,7 +51,7 @@ public class BroadcastTransmitterConfiguration {
 
     @DynamicSerializeElement
     private MessageType selectedMessageType;
-    
+
     @DynamicSerializeElement
     private Transmitter transmitter;
 
@@ -58,14 +59,17 @@ public class BroadcastTransmitterConfiguration {
     private byte[] toneAudio;
 
     @DynamicSerializeElement
+    private byte[] endToneAudio;
+
+    @DynamicSerializeElement
     private long delayMilliseconds;
-    
+
     @DynamicSerializeElement
     private Calendar effectiveTime;
 
     @DynamicSerializeElement
     private Calendar expireTime;
-    
+
     @DynamicSerializeElement
     private boolean playAlertTones;
 
@@ -91,6 +95,14 @@ public class BroadcastTransmitterConfiguration {
         this.toneAudio = toneAudio;
     }
 
+    public byte[] getEndToneAudio() {
+        return endToneAudio;
+    }
+
+    public void setEndToneAudio(byte[] endToneAudio) {
+        this.endToneAudio = endToneAudio;
+    }
+
     public long getDelayMilliseconds() {
         return delayMilliseconds;
     }
@@ -107,7 +119,8 @@ public class BroadcastTransmitterConfiguration {
     }
 
     /**
-     * @param selectedMessageType the selectedMessageType to set
+     * @param selectedMessageType
+     *            the selectedMessageType to set
      */
     public void setSelectedMessageType(MessageType selectedMessageType) {
         this.selectedMessageType = selectedMessageType;
@@ -121,7 +134,8 @@ public class BroadcastTransmitterConfiguration {
     }
 
     /**
-     * @param effectiveTime the effectiveTime to set
+     * @param effectiveTime
+     *            the effectiveTime to set
      */
     public void setEffectiveTime(Calendar effectiveTime) {
         this.effectiveTime = effectiveTime;
@@ -135,7 +149,8 @@ public class BroadcastTransmitterConfiguration {
     }
 
     /**
-     * @param expireTime the expireTime to set
+     * @param expireTime
+     *            the expireTime to set
      */
     public void setExpireTime(Calendar expireTime) {
         this.expireTime = expireTime;
@@ -149,7 +164,8 @@ public class BroadcastTransmitterConfiguration {
     }
 
     /**
-     * @param playAlertTones the playAlertTones to set
+     * @param playAlertTones
+     *            the playAlertTones to set
      */
     public void setPlayAlertTones(boolean playAlertTones) {
         this.playAlertTones = playAlertTones;
