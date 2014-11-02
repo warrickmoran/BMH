@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 
 /**
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 26, 2014  #3728     lvenable     Initial creation
+ * Nov 02, 2014   3785     mpduff       Added validatedMsg
  * 
  * </pre>
  * 
@@ -48,6 +50,9 @@ public class InputAudioMessage {
 
     /** List of audio. */
     private List<InputMessageAudioData> audioDataList;
+
+    /** The validated message object. */
+    private ValidatedMessage validatedMsg;
 
     /**
      * Constructor.
@@ -82,5 +87,20 @@ public class InputAudioMessage {
 
     public void setAudioDataList(List<InputMessageAudioData> audioDataList) {
         this.audioDataList = audioDataList;
+    }
+
+    /**
+     * @return the validatedMsg
+     */
+    public ValidatedMessage getValidatedMsg() {
+        return validatedMsg;
+    }
+
+    /**
+     * @param validatedMsg
+     *            the validatedMsg to set
+     */
+    public void setValidatedMsg(ValidatedMessage validatedMsg) {
+        this.validatedMsg = validatedMsg;
     }
 }

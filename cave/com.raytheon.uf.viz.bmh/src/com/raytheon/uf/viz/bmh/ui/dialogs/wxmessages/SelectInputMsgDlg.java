@@ -73,6 +73,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      announcement message types.
  * Oct 24, 2014  #3478     bkowal       Updated to retrieve a InputMessageAudioResponse.
  * Oct 26, 2014   #3728    lvenable     Updated to use new data object.
+ * Nov 02, 2014   3785     mpduff       Set the Validated Message on inputAudioMessageData
  * 
  * </pre>
  * 
@@ -240,7 +241,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
 
             int choice = DialogUtility.showMessageBox(getShell(),
                     SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
-                    "Date Retrieve Error", msg.toString());
+                    "Data Retrieve Error", msg.toString());
 
             if (choice == SWT.CANCEL) {
                 return;
@@ -360,6 +361,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         }
 
         inputAudioMessageData.setAudioDataList(audioDataList);
+        inputAudioMessageData.setValidatedMsg(imResponse.getValidatedMessage());
 
         return inputAudioMessageData;
     }
