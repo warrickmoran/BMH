@@ -59,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastThread.BROADC
  *                                     recording / playback.
  * Nov 1, 2014  3655       bkowal      Include end of message tones in the live broadcast
  *                                     configuration.
+ * Nov 1, 2014  3657       bkowal      Updated dialog flow to match legacy system.
  * 
  * </pre>
  * 
@@ -90,6 +91,16 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
     }
 
     @Override
+    protected void initializeComponents(Shell shell) {
+        super.initializeComponents(shell);
+        this.recBtn.setVisible(false);
+        this.playBtn.setVisible(false);
+        this.okBtn.setVisible(false);
+        this.cancelBtn.setVisible(false);
+        this.recordAction();
+    }
+
+    @Override
     protected void disposed() {
         if (this.broadcastThread != null) {
             this.broadcastThread.halt();
@@ -108,26 +119,15 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
 
     @Override
     protected void recordAction() {
-        /*
-         * Disable Cancel and OK earlier.
-         */
-        okBtn.setEnabled(false);
-        cancelBtn.setEnabled(false);
-
         try {
             this.initializeBroadcastLive();
         } catch (Exception e) {
             statusHandler.error(
                     "Failed to generate tones for the live broadcast!", e);
-            this.statusLbl.setText("ERROR");
-            okBtn.setEnabled(true);
-            cancelBtn.setEnabled(true);
+            super.cancelAction();
             return;
         }
 
-        stopBtn.setEnabled(false);
-        recBtn.setEnabled(false);
-        playBtn.setEnabled(false);
         this.statusLbl.setText("Initializing ...");
     }
 
@@ -144,8 +144,7 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
             // Do Nothing.
         }
         this.broadcastThread = null;
-        recBtn.setEnabled(false);
-        this.statusLbl.setText("Broadcast Complete");
+        super.okAction();
     }
 
     private void initializeBroadcastLive() throws Exception {
@@ -163,8 +162,6 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
         Map<Transmitter, byte[]> transmitterToneMap = new HashMap<>();
         long longestDurationMS = this.settings
                 .getTransmitterSAMETones(transmitterToneMap);
-
-        // TODO: calculate delays ...
 
         // Build the configuration
         LiveBroadcastStartCommand startCommand = new LiveBroadcastStartCommand();
@@ -215,12 +212,7 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
                 @Override
                 public void run() {
                     stopAction();
-
-                    statusLbl.setText("ERROR");
-                    // reset the dialog
-                    stopBtn.setEnabled(false);
-                    recBtn.setEnabled(true);
-                    playBtn.setEnabled(false);
+                    cancelAction();
                 }
             });
         }

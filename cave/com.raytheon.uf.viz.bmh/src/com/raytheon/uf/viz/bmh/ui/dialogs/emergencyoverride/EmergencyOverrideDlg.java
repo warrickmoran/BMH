@@ -94,6 +94,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 22, 2014  #3745     lvenable     Fixed UELE with the Area Selection Dialog.
  * Oct 26, 2014  #3712     bkowal       Implemented dialog interaction for rebroadcast
  *                                      scheduling.
+ * Nov 1, 2014   #3657     bkowal       Display a confirmation dialog to notify the user that
+ *                                      SAME / Alert Tones will be played.
  * 
  * </pre>
  * 
@@ -561,6 +563,18 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             return;
         }
 
+        // alert the user that they are about to play same tones.
+        int option = DialogUtility
+                .showMessageBox(
+                        this.shell,
+                        SWT.ICON_WARNING | SWT.YES | SWT.NO,
+                        "Emergency Override - Tone Playback",
+                        this.selectedMsgType.getTitle()
+                                + " will activate SAME and/or Alert Tones! Would you like to continue?");
+        if (option != SWT.YES) {
+            return;
+        }
+
         LiveBroadcastRecordPlaybackDlg dlg = new LiveBroadcastRecordPlaybackDlg(
                 this.shell, 120, settings);
         dlg.setCloseCallback(new ICloseCallback() {
@@ -684,11 +698,11 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         inputMsg.setActive(true);
         // default confirm to FALSE to prevent NPE
         inputMsg.setConfirm(false);
-        // default interrupt is TRUE - all EO messages are interrupt messages.
-        inputMsg.setInterrupt(true);
-        inputMsg.setAlertTone(settings.isPlayAlertTones());
-        // always play SAME tones for EO messages.
-        inputMsg.setNwrsameTone(true);
+        // the initial broadcast was already an interrupt.
+        inputMsg.setInterrupt(false);
+        // already played SAME and Alert tones during the initial broadcast.
+        inputMsg.setAlertTone(false);
+        inputMsg.setNwrsameTone(false);
         inputMsg.setAreaCodes(settings.getAreaCodes());
         inputMsg.setExpirationTime(settings.getExpireTime());
         inputMsg.setContent(StringUtils.EMPTY);

@@ -101,6 +101,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 28, 2014  3750     bkowal      Validate contents prior to submit.
  * Oct 31, 2014  3778     bsteffen    Do not clear the id when editing messages.
  * Nov 01, 2014  3784     mpduff      Set defaults on Message Type selection
+ * Nov 1, 2014   3657     bkowal      Display a confirmation dialog to notify the user that
+ *                                    SAME / Alert Tones will be played.
  * 
  * </pre>
  * 
@@ -825,6 +827,20 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     private void handleSubmitAction() {
         if (this.validate() == false) {
             return;
+        }
+
+        if (this.alertChk.getSelection()) {
+            // alert the user that they are about to play same tones.
+            int option = DialogUtility
+                    .showMessageBox(
+                            this.shell,
+                            SWT.ICON_WARNING | SWT.YES | SWT.NO,
+                            "Emergency Override - Tone Playback",
+                            this.selectedMessageType.getTitle()
+                                    + " will activate SAME and/or Alert Tones! Would you like to continue?");
+            if (option != SWT.YES) {
+                return;
+            }
         }
 
         NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();

@@ -68,7 +68,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 26, 2014  #3712     bkowal       Prevent the dialog from being closed during
  *                                      recording / playback.
  * Nov 1, 2014   #3655     bkowal       Increased the number of live audio bytes
- *                                      that are sent to the comms manager. 
+ *                                      that are sent to the comms manager.
+ * Nov 1, 2014   #3657     bkowal       Created okAction and cancelAction for subclasses.
  * 
  * 
  * </pre>
@@ -161,7 +162,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     private AudioPlaybackThread playbackThread;
 
     protected ByteBuffer recordedAudio;
-    
+
     private volatile boolean okToClose;
 
     /**
@@ -374,8 +375,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         okBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                setReturnValue(recordedAudio);
-                close();
+                okAction();
             }
         });
 
@@ -387,8 +387,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                setReturnValue(null);
-                close();
+                cancelAction();
             }
         });
     }
@@ -523,6 +522,16 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         timer = Executors.newSingleThreadScheduledExecutor();
         timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, updateRate,
                 TimeUnit.MILLISECONDS);
+    }
+
+    protected void cancelAction() {
+        setReturnValue(null);
+        close();
+    }
+
+    protected void okAction() {
+        setReturnValue(recordedAudio);
+        close();
     }
 
     /**

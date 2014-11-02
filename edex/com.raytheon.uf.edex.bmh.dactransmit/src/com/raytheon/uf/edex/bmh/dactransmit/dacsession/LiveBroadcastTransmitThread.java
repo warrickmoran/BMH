@@ -159,8 +159,9 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
             try {
                 audio = this.audioBuffer.take();
             } catch (InterruptedException e) {
-                logger.error(
-                        "LiveBroadcastTransmitThread sleep was interrupted.", e);
+                this.notifyDacError(
+                        "Interrupted while attempting to retrieve the next live audio segment.",
+                        e);
             }
             try {
                 this.streamAudio(audio);
