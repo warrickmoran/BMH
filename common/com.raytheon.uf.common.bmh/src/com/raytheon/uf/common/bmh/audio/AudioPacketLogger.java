@@ -48,7 +48,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  */
 public class AudioPacketLogger implements AutoCloseable {
 
-    private final DecimalFormat avarageFormat = new DecimalFormat("#.##");
+    private final DecimalFormat averageFormat = new DecimalFormat("#.##");
 
     private final CharSequence label;
 
@@ -152,7 +152,7 @@ public class AudioPacketLogger implements AutoCloseable {
             logger.info(
                     "{} has processed {} packets in the last {}ms with an average packet interval of {}ms and a maximum packet interval of {}ms",
                     label, count, duration,
-                    avarageFormat.format(stats.getAverageInterval()),
+                    averageFormat.format(stats.getAverageInterval()),
                     stats.getMaxInterval());
         } else {
             /* Include human readable time frame with exact millis. */
@@ -175,7 +175,7 @@ public class AudioPacketLogger implements AutoCloseable {
             logger.info(
                     "{} has processed {} packets in the last {} {}({}ms) with an average packet interval of {}ms and a maximum packet interval of {}ms",
                     label, count, value, unit, duration,
-                    avarageFormat.format(stats.getAverageInterval()),
+                    averageFormat.format(stats.getAverageInterval()),
                     stats.getMaxInterval());
         }
     }
