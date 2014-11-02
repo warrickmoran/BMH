@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.legacy;
 
 import java.io.File;
+import java.io.FileReader;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +31,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
@@ -76,8 +78,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Sep 08, 2014 3568       bkowal      Updated to send message type and transmitter group
  *                                     config change notifications.
  * Oct 13, 2014 3687       bsteffen    Send ResetNotification instead of individual notifications.
- * 
- * 
+ * Nov 02, 2014 2746       rjpeter     Updated DAC population and transmitter assignment.
  * </pre>
  * 
  * @author rjpeter
@@ -177,7 +178,7 @@ public class DatabaseImport {
 
                         if (data != null) {
                             try {
-                                List<Pair<Integer, Integer>> availableDacPorts = getAvailableDacs();
+                                List<Pair<Integer, Integer>> availableDacPorts = getAvailableDacs(file);
                                 Iterator<Pair<Integer, Integer>> portIter = availableDacPorts
                                         .iterator();
                                 Iterator<TransmitterGroup> tgIter = data
@@ -299,57 +300,72 @@ public class DatabaseImport {
      * Returns the available Dac ports. TODO: This should just use what is in db
      * and not load from properties.
      * 
+     * @param asciiFile
+     * 
      * @return
      */
-    protected List<Pair<Integer, Integer>> getAvailableDacs() {
+    protected List<Pair<Integer, Integer>> getAvailableDacs(File asciiFile) {
         List<Pair<Integer, Integer>> availableDacPorts = null;
-        String availablePortsProp = System.getProperty("bmh.dac.ports");
-
+        String filePath = asciiFile.getAbsolutePath();
+        filePath = filePath.substring(0, filePath.length() - 3) + "DAC";
+        File dacFile = new File(filePath);
         DacDao dacDao = new DacDao();
-        List<Dac> rows = dacDao.loadAll();
-        if ((rows == null) || rows.isEmpty()) {
-            return Collections.emptyList();
-        }
 
-        Collections.sort(rows, new DacComparator());
-        Map<Integer, Dac> dacs = new LinkedHashMap<>(rows.size());
-        int count = 0;
-        for (Dac dac : rows) {
-            dacs.put(count++, dac);
-        }
-        availableDacPorts = new ArrayList<>(dacs.size() * 4);
+        if (dacFile.exists()) {
+            // clear out any dacs
+            dacDao.deleteAll(dacDao.loadAll());
+            try (FileReader reader = new FileReader(dacFile)) {
+                Properties props = new Properties();
+                props.load(reader);
 
-        if (availablePortsProp != null) {
-            // clear out any previous ports
-            for (Dac dac : dacs.values()) {
-                dac.setDataPorts(new HashSet<Integer>());
-            }
+                Dac dac = new Dac();
+                dac.setName(props.getProperty("name"));
+                dac.setAddress(props.getProperty("address"));
+                dac.setReceiveAddress(props.getProperty("receiveaddress"));
+                dac.setReceivePort(Integer.parseInt(props
+                        .getProperty("receiveport")));
+                dac.setDataPorts(new HashSet<Integer>(4, 1));
 
-            try {
-                String[] tokens = availablePortsProp.split(",");
+                String[] tokens = props.getProperty("ports").split(",");
+                availableDacPorts = new ArrayList<>(tokens.length);
 
                 for (String token : tokens) {
                     String[] dacPort = token.split(":");
-                    if (dacPort.length == 3) {
-                        int dacId = Integer.parseInt(dacPort[0]);
-                        Dac dac = dacs.get(dacId);
-                        if (dac != null) {
-                            int dacOutputLine = Integer.parseInt(dacPort[1]);
-                            int dacChannel = Integer.parseInt(dacPort[2]);
-                            dac.getDataPorts().add(dacChannel);
-                            availableDacPorts.add(new Pair<Integer, Integer>(
-                                    dac.getId(), dacOutputLine));
-                        }
+                    if (dacPort.length == 2) {
+                        int dacOutputLine = Integer.parseInt(dacPort[0]);
+                        int dacChannel = Integer.parseInt(dacPort[1]);
+                        dac.getDataPorts().add(dacChannel);
+                        availableDacPorts.add(new Pair<Integer, Integer>(1,
+                                dacOutputLine));
                     }
                 }
 
-                dacDao.persistAll(dacs.values());
+                dacDao.persist(dac);
+                for (Pair<Integer, Integer> mapping : availableDacPorts) {
+                    mapping.setFirst(dac.getId());
+                }
             } catch (Exception e) {
-                statusHandler.error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
-                        "Unable to parse bmh.dac.ports property: "
-                                + availablePortsProp, e);
+                statusHandler.error(
+                        BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
+                        "Error occurred parsing dac file: "
+                                + dacFile.getAbsolutePath(), e);
             }
         } else {
+            List<Dac> rows = dacDao.loadAll();
+            if ((rows == null) || rows.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            Collections.sort(rows, new DacComparator());
+            Map<Integer, Dac> dacs = new LinkedHashMap<>(rows.size());
+            int count = 0;
+
+            for (Dac dac : rows) {
+                dacs.put(count++, dac);
+            }
+
+            availableDacPorts = new ArrayList<>(dacs.size() * 4);
+
             for (Dac dac : dacs.values()) {
                 Set<Integer> ports = dac.getDataPorts();
                 if (CollectionUtil.isNullOrEmpty(ports) == false) {

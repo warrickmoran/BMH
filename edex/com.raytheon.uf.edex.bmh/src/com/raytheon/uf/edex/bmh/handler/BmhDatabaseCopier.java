@@ -19,12 +19,15 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
@@ -40,7 +43,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
@@ -48,6 +53,7 @@ import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
+import com.raytheon.uf.edex.bmh.dao.DacDao;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
@@ -81,6 +87,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * Oct 08, 2014  3687     bsteffen    Null out some fields during copy.
  * Oct 29, 2014  3746     rjpeter     Reorder clearAllPracticeTables.
+ *                                    Auto assignment of transmitter to dac.
  * </pre>
  * 
  * @author bsteffen
@@ -153,24 +160,44 @@ public class BmhDatabaseCopier {
     private void copyTransmitterGroups() {
         TransmitterGroupDao opDao = new TransmitterGroupDao(true);
         TransmitterGroupDao prDao = new TransmitterGroupDao(false);
+
         List<TransmitterGroup> groups = opDao.getAll();
+        Collections.sort(groups, new TransmitterGroupPositionComparator());
         Map<Integer, TransmitterGroup> transmitterGroupMap = new HashMap<>(
                 groups.size(), 1.0f);
         Map<Integer, Transmitter> transmitterMap = new HashMap<>(
                 groups.size() * 4, 1.0f);
+        Map<Integer, Dac> dacMap = new HashMap<>();
+        DacDao prDacDao = new DacDao(false);
+        List<Dac> prDacs = prDacDao.getAll();
+        Iterator<Dac> dacIter = prDacs.iterator();
+
         for (TransmitterGroup group : groups) {
             transmitterGroupMap.put(group.getId(), group);
             group.setId(0);
+            group.setProgramSummary(null);
+            Dac dac = dacMap.get(group.getDac());
+            if (dac == null) {
+                if (dacIter.hasNext()) {
+                    dac = dacIter.next();
+                    dacMap.put(group.getDac(), dac);
+                    group.setDac(dac.getId());
+                } else {
+                    group.setDac(null);
+                }
+            } else {
+                group.setDac(dac.getId());
+            }
+
             for (Transmitter transmitter : group.getTransmitters()) {
                 transmitterMap.put(transmitter.getId(), transmitter);
                 transmitter.setId(0);
+
+                // disable transmitter if no Dac
+                if (dac == null) {
+                    transmitter.setTxStatus(TxStatus.DISABLED);
+                }
             }
-            /*
-             * TODO: should pull practice DACs and assign them out, all other
-             * transmitters should be disabled
-             */
-            group.setDac(null);
-            group.setProgramSummary(null);
         }
         prDao.persistAll(groups);
         this.transmitterMap = transmitterMap;
