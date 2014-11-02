@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
-import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 
@@ -32,7 +32,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 18, 2014     3411   mpduff      Initial creation
+ * Aug 18, 2014   3411     mpduff      Initial creation
+ * Nov 02, 2014   3783     lvenable    Changed to use set of AFOS Ids.
  * 
  * </pre>
  * 
@@ -70,11 +71,10 @@ public class MessageTypeUtils {
      * @return true if unique, false if not
      */
     public static boolean isUnique(String messageName,
-            List<MessageType> messageTypeList) {
-        for (MessageType mt : messageTypeList) {
-            if (mt.getAfosid().equals(messageName)) {
-                return false;
-            }
+            Set<String> messageTypeAfosIds) {
+
+        if (messageTypeAfosIds.contains(messageName)) {
+            return false;
         }
 
         return true;

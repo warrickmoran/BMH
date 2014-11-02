@@ -79,20 +79,21 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 30, 2014  #3420     lvenable    Initial creation
- * Aug 12, 2014  #3490     lvenable    Initial hook up of dialog to display selected values
+ * Jul 30, 2014   3420     lvenable    Initial creation
+ * Aug 12, 2014   3490     lvenable    Initial hook up of dialog to display selected values
  *                                     for the provided message type.
- * Aug 15, 2014  #3490     lvenable    Hooked up transmitters and selected the SAME transmitters
+ * Aug 15, 2014   3490     lvenable    Hooked up transmitters and selected the SAME transmitters
  *                                     if in edit mode.
  * Aug 18, 2014   3411     mpduff      Implement New and Edit.
  * Sep 11, 2014   3411     mpduff      Pass MessageType object to Area Selection for populating, save TransmitterGroups
- * Sep 14, 2014  #3610     lvenable    Removed unused code and renamed variable.
+ * Sep 14, 2014   3610     lvenable    Removed unused code and renamed variable.
  * Sep 25, 2014   3620     bsteffen    Add seconds to periodicity and duration.
  * Oct 05, 2014   3411     mpduff      Added null checks and added transmitter to the group that contains it
- * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * Oct 16, 2014  3657      bkowal      Relocated duration parsing methods.
- * Oct 30, 2014  3617      dgilling    Fix default states for blackout controls.
+ * Oct 08, 2014   3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 16, 2014   3657     bkowal      Relocated duration parsing methods.
+ * Oct 30, 2014   3617     dgilling    Fix default states for blackout controls.
  * Nov 01, 2014   3784     mpduff      Added nullCheck
+ * Nov 02, 2014   3783     lvenable    Replaced message type list with a set of AFOS Ids.
  * 
  * </pre>
  * 
@@ -179,10 +180,13 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
     /** List of available voices. */
     private List<TtsVoice> voiceList;
 
-    private final List<MessageType> messageTypeList;
+    /** Set of existing AFOS Ids. */
+    private Set<String> existingAfosIds = null;
 
+    /** Map of transmitters. */
     private final Map<String, Transmitter> transmitterMap = new HashMap<>();
 
+    /** Data returned from the area selection dialog. */
     private AreaSelectionSaveData areaData;
 
     /**
@@ -194,8 +198,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      *            Dialog type.
      */
     public CreateEditMsgTypesDlg(Shell parentShell, DialogType dialogType,
-            List<MessageType> messageTypeList) {
-        this(parentShell, dialogType, messageTypeList, null);
+            Set<String> existingAfosId) {
+        this(parentShell, dialogType, existingAfosId, null);
     }
 
     /**
@@ -210,13 +214,13 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      *            used.
      */
     public CreateEditMsgTypesDlg(Shell parentShell, DialogType dialogType,
-            List<MessageType> messageTypeList, MessageType selectedMsgType) {
+            Set<String> existingAfosId, MessageType selectedMsgType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.dialogType = dialogType;
         this.selectedMsgType = selectedMsgType;
-        this.messageTypeList = messageTypeList;
+        this.existingAfosIds = existingAfosId;
     }
 
     @Override
@@ -690,6 +694,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         closeBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                setReturnValue(null);
                 close();
             }
         });
@@ -699,6 +704,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         boolean valid = true;
         StringBuilder msg = new StringBuilder(
                 "Please correct the following problems:\n\n");
+
         if (dialogType == DialogType.CREATE) {
             // Validate afosId for correctness and uniqueness if new
             boolean validAfos = MessageTypeUtils.validateAfosId(msgTypeTF
@@ -712,7 +718,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             }
 
             if (!MessageTypeUtils.isUnique(msgTypeTF.getText().toUpperCase()
-                    .trim(), messageTypeList)) {
+                    .trim(), existingAfosIds)) {
                 String message = "Invalid name/AfosID.\n\n"
                         + msgTypeTF.getText().trim()
                         + " is already being used.\n\n" + "Enter another name";
