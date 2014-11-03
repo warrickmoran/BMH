@@ -56,6 +56,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                     populate a {@link TimeMsgCache} for dynamic messages.
  * Oct 17, 2014 3655       bkowal      Move tones to common.
  * Oct 23, 2014 3748       bkowal      AudioRetrievalException is now in common
+ * Nov 03, 2014 3781       dgilling    Allow alert tone without SAME tones.
  * 
  * </pre>
  * 
@@ -177,15 +178,33 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
         }
 
         ByteBuffer tones = null;
-        ByteBuffer endOfMessage = null;
-        if ((message.getSAMEtone() != null)
-                && (!message.getSAMEtone().isEmpty())) {
+        if (message.isSAMETones()) {
             try {
-                endOfMessage = TonesGenerator.getEndOfMessageTones();
                 tones = TonesGenerator.getSAMEAlertTones(message.getSAMEtone(),
                         message.isAlertTone());
             } catch (ToneGenerationException e) {
-                String msg = "Unable to generate tones for message: "
+                String msg = "Unable to generate SAME/alert tones for message: "
+                        + message.getBroadcastId();
+                this.notifyAttemptComplete();
+                throw new AudioRetrievalException(msg, e);
+            }
+        } else if (message.isAlertTone()) {
+            try {
+                tones = TonesGenerator.getOnlyAlertTones();
+            } catch (ToneGenerationException e) {
+                String msg = "Unable to generate alert tones for message: "
+                        + message.getBroadcastId();
+                this.notifyAttemptComplete();
+                throw new AudioRetrievalException(msg, e);
+            }
+        }
+
+        ByteBuffer endOfMessage = null;
+        if (message.isSAMETones()) {
+            try {
+                endOfMessage = TonesGenerator.getEndOfMessageTones();
+            } catch (ToneGenerationException e) {
+                String msg = "Unable to generate end of message SAME tones for message: "
                         + message.getBroadcastId();
                 this.notifyAttemptComplete();
                 throw new AudioRetrievalException(msg, e);

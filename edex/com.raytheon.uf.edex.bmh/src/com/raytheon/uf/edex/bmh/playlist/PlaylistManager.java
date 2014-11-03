@@ -124,6 +124,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * Oct 28, 2014  3617     dgilling    Support tone blackout period.
  * Oct 31, 2014  3778     bsteffen    Do not play inactive messages.
+ * Nov 04, 2014  3781     dgilling    Use MessageType configured SAME transmitters 
+ *                                    when generating SAME tones.
  * </pre>
  * 
  * @author bsteffen
@@ -904,52 +906,70 @@ public class PlaylistManager implements IContextStateProcessor {
                 dac.setAlertTone(input.getAlertTone());
                 if ((input.getAreaCodes() != null)
                         && Boolean.TRUE.equals(input.getNwrsameTone())) {
-                    Set<Transmitter> transmitters = broadcast
+                    /*
+                     * TODO: What happens if only a portion of the transmitter
+                     * groups transmitters are included in the MessageType's
+                     * configured SAME transmitters??? For now, as long as one
+                     * transmitter is in the configured SAME transmitters, all
+                     * will get the SAME tones.
+                     * 
+                     * FIXME: For user-generated weather messages, determine a
+                     * method to retrieve the user-selected SAME transmitters
+                     * (which can be different the MessageType defaults) and use
+                     * that Set instead.
+                     */
+                    Set<Transmitter> sameTransmitters = messageType
+                            .getSameTransmitters();
+                    Set<Transmitter> groupTransmitters = broadcast
                             .getTransmitterGroup().getTransmitters();
+                    sameTransmitters.retainAll(groupTransmitters);
 
-                    SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
-                    builder.setOriginatorMapper(originatorMapping);
-                    builder.setStateCodes(stateCodes);
-                    builder.setEventFromAfosid(broadcast.getAfosid());
-                    for (String ugc : input.getAreaCodeList()) {
-                        try {
-                            if (ugc.charAt(2) == 'Z') {
-                                Zone z = zoneDao.getByZoneCode(ugc);
-                                if (z != null) {
-                                    for (Area area : z.getAreas()) {
-                                        if (!Collections.disjoint(
-                                                area.getTransmitters(),
-                                                transmitters)) {
-                                            builder.addAreaFromUGC(area
-                                                    .getAreaCode());
+                    if (!sameTransmitters.isEmpty()) {
+                        SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
+                        builder.setOriginatorMapper(originatorMapping);
+                        builder.setStateCodes(stateCodes);
+                        builder.setEventFromAfosid(broadcast.getAfosid());
+                        for (String ugc : input.getAreaCodeList()) {
+                            try {
+                                if (ugc.charAt(2) == 'Z') {
+                                    Zone z = zoneDao.getByZoneCode(ugc);
+                                    if (z != null) {
+                                        for (Area area : z.getAreas()) {
+                                            if (!Collections.disjoint(
+                                                    area.getTransmitters(),
+                                                    sameTransmitters)) {
+                                                builder.addAreaFromUGC(area
+                                                        .getAreaCode());
+                                            }
                                         }
                                     }
+                                } else {
+                                    Area area = areaDao.getByAreaCode(ugc);
+                                    if (!Collections.disjoint(
+                                            area.getTransmitters(),
+                                            sameTransmitters)) {
+                                        builder.addAreaFromUGC(ugc);
+                                    }
                                 }
-                            } else {
-                                Area area = areaDao.getByAreaCode(ugc);
-                                if (!Collections.disjoint(
-                                        area.getTransmitters(), transmitters)) {
-                                    builder.addAreaFromUGC(ugc);
-                                }
+                            } catch (IllegalStateException e) {
+                                statusHandler
+                                        .error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                                                "Cannot add area to SAME tone, same tone will not include all areas.",
+                                                e);
+                                break;
+                            } catch (IllegalArgumentException e) {
+                                statusHandler.error(
+                                        BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                                        "Cannot add area to SAME tone, same tone will not include this areas("
+                                                + ugc + ").", e);
                             }
-                        } catch (IllegalStateException e) {
-                            statusHandler
-                                    .error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                                            "Cannot add area to SAME tone, same tone will not include all areas.",
-                                            e);
-                            break;
-                        } catch (IllegalArgumentException e) {
-                            statusHandler.error(
-                                    BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                                    "Cannot add area to SAME tone, same tone will not include this areas("
-                                            + ugc + ").", e);
                         }
+                        builder.setEffectiveTime(input.getEffectiveTime());
+                        builder.setExpireTime(input.getExpirationTime());
+                        // TODO this needs to be read from configuration.
+                        builder.setNwsIcao("K" + SiteUtil.getSite());
+                        dac.setSAMEtone(builder.build().toString());
                     }
-                    builder.setEffectiveTime(input.getEffectiveTime());
-                    builder.setExpireTime(input.getExpirationTime());
-                    // TODO this needs to be read from configuration.
-                    builder.setNwsIcao("K" + SiteUtil.getSite());
-                    dac.setSAMEtone(builder.build().toString());
                 }
                 JAXB.marshal(
                         dac,

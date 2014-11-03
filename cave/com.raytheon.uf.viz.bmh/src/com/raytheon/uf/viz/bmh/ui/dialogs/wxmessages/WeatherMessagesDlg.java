@@ -107,6 +107,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    SAME / Alert Tones will be played.
  * Nov 02, 2014  3785     mpduff      Set Same Transmitter values.
  * Nov 3, 2014   3785     bkowal      Fix the weather messages dialog.
+ * Nov 03, 2014  3781     dgilling    Set SAME tone flag on input messages.
  * 
  * </pre>
  * 
@@ -882,6 +883,14 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             request.setMessageAudio(this.content.getAudio());
         }
         request.setInputMessage(this.userInputMessage);
+
+        /*
+         * FIXME: Determine method to pass user-selected SAME transmitters
+         * through entire process so PlaylistManager can use it to write the
+         * proper SAME tone string.
+         */
+        userInputMessage.setNwrsameTone(!sameTransmitters.getCheckedItems()
+                .getCheckedItems().isEmpty());
 
         // TODO: need to handle input message area on message type selection.
         List<Transmitter> selectedTransmitters = new ArrayList<Transmitter>();
