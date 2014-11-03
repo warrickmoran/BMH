@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
  * Jun 23, 2014  3283     bsteffen    Initial creation
  * Aug 15, 2014  3432     mpduff      Added getPeriodicMessages
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Nov 03, 2014  3790     lvenable    Added code for the active field.
  * 
  * </pre>
  * 
@@ -67,11 +68,10 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
     public boolean checkDuplicate(final InputMessage message) {
         List<?> messages = findByNamedQueryAndNamedParam(
                 InputMessage.DUP_QUERY_NAME,
-                new String[] { "id", "afosid", "mrd",
-                        "effectiveTime", "expirationTime" },
-                new Object[] { message.getId(),
-                        message.getAfosid(), message.getMrd(),
-                        message.getEffectiveTime(),
+                new String[] { "id", "afosid", "mrd", "effectiveTime",
+                        "expirationTime" },
+                new Object[] { message.getId(), message.getAfosid(),
+                        message.getMrd(), message.getEffectiveTime(),
                         message.getExpirationTime() });
         for (Object obj : messages) {
             InputMessage dup = (InputMessage) obj;
@@ -179,6 +179,7 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
             im.setName((String) objArray[1]);
             im.setAfosid((String) objArray[2]);
             im.setCreationTime((Calendar) objArray[3]);
+            im.setActive((Boolean) objArray[4]);
             imList.add(im);
         }
 

@@ -59,6 +59,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 15, 2014  3728     lvenable    Added name column.
  * Oct 18, 2014  3728     lvenable    Added query to retrieve the Id, Name, Afos Id, and
  *                                    creation time.
+ * Nov 03, 2014  3790     lvenable    Update query to include the active field.
  * 
  * </pre>
  * 
@@ -78,7 +79,7 @@ public class InputMessage {
 
     public static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION = "getInputMsgIdNameAfosCreation";
 
-    protected static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY = "select id, name, afosid, creationTime FROM InputMessage im";
+    protected static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY = "select id, name, afosid, creationTime, active FROM InputMessage im";
 
     /**
      * Named query to pull all messages with a matching afosid and with a valid
@@ -149,7 +150,7 @@ public class InputMessage {
     /** This field is used by AFOS to direct messages into inactive storage . */
     @Column
     @DynamicSerializeElement
-    private Boolean active;
+    private Boolean active = false;
 
     /**
      * This field is used to display a confirmation that this message was

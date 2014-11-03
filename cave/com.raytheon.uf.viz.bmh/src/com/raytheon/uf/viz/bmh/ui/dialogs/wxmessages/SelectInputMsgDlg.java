@@ -74,6 +74,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 24, 2014  #3478     bkowal       Updated to retrieve a InputMessageAudioResponse.
  * Oct 26, 2014   #3728    lvenable     Updated to use new data object.
  * Nov 02, 2014   3785     mpduff       Set the Validated Message on inputAudioMessageData
+ * Nov 03, 2014   3790     lvenable     Added Active to the table column and made the dialog
+ *                                      resizable.
  * 
  * </pre>
  * 
@@ -104,7 +106,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
      * @param parentShell
      */
     public SelectInputMsgDlg(Shell parentShell) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
+        super(parentShell, SWT.DIALOG_TRIM | SWT.RESIZE | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
     }
@@ -121,6 +123,11 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
     protected Object constructShellLayoutData() {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         return gd;
+    }
+
+    @Override
+    protected void opened() {
+        shell.setMinimumSize(shell.getSize());
     }
 
     @Override
@@ -145,13 +152,13 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         Group inputTableGroup = new Group(shell, SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         inputTableGroup.setLayout(gl);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         inputTableGroup.setLayoutData(gd);
         inputTableGroup.setText(" Input Messages: ");
 
         int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
 
-        inputMsgTable = new GenericTable(inputTableGroup, tableStyle, 650, 250);
+        inputMsgTable = new GenericTable(inputTableGroup, tableStyle, 675, 250);
 
         inputMsgTable.setCallbackAction(new ITableActionCB() {
             @Override
@@ -262,6 +269,8 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         columnNames.add(tcd);
         tcd = new TableColumnData("AFOS ID", 100);
         columnNames.add(tcd);
+        tcd = new TableColumnData("Active", 90);
+        columnNames.add(tcd);
         tcd = new TableColumnData("Creation Date");
         columnNames.add(tcd);
 
@@ -281,6 +290,8 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
 
             trd.addTableCellData(new TableCellData(im.getName()));
             trd.addTableCellData(new TableCellData(im.getAfosid()));
+            trd.addTableCellData(new TableCellData((im.getActive()) ? "Yes"
+                    : "No"));
             trd.addTableCellData(new TableCellData(dateFmt.format(im
                     .getCreationTime().getTime())));
 
@@ -295,7 +306,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
     private void retrieveInputMessages() {
 
         InputMessageRequest imRequest = new InputMessageRequest();
-        imRequest.setAction(InputMessageAction.ListIdNameAfosCreation);
+        imRequest.setAction(InputMessageAction.ListIdNameAfosCreationActive);
         InputMessageResponse imResponse = null;
         List<InputMessage> tmpInputMsgList = null;
 

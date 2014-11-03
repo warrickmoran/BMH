@@ -53,10 +53,11 @@ import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 16, 2014  #3728     lvenable     Initial creation
- * Oct 23, 2014  #3748     bkowal       Retrieve audio for audio input messages
- * Oct 24, 2014  #3478     bkowal       Completed audio retrieval implementation
+ * Oct 16, 2014   3728     lvenable     Initial creation
+ * Oct 23, 2014   3748     bkowal       Retrieve audio for audio input messages
+ * Oct 24, 2014   3478     bkowal       Completed audio retrieval implementation
  * Nov 02, 2014   3785     mpduff       Add ValidatedMessage when getting by PkId
+ * Nov 03, 2014   3790     lvenable     Updated enum name.
  * 
  * </pre>
  * 
@@ -75,7 +76,7 @@ public class InputMessageHandler extends
         case AllInputMessages:
             inputMessageResponse = getAllInputMessages(request);
             break;
-        case ListIdNameAfosCreation:
+        case ListIdNameAfosCreationActive:
             inputMessageResponse = getIdNameAfosCreation(request);
             break;
         case GetByPkId:

@@ -32,7 +32,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 16, 2014  #3728     lvenable     Initial creation
+ * Oct 16, 2014  3728      lvenable     Initial creation
+ * Nov 03, 2014  3790      lvenable     Changed enum name.
  * 
  * </pre>
  * 
@@ -43,7 +44,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class InputMessageRequest extends AbstractBMHServerRequest {
 
     public enum InputMessageAction {
-        AllInputMessages, ListIdNameAfosCreation, GetByPkId;
+        AllInputMessages, ListIdNameAfosCreationActive, GetByPkId;
     }
 
     @DynamicSerializeElement
