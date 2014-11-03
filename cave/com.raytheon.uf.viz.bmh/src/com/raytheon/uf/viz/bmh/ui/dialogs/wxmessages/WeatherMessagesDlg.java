@@ -106,6 +106,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 1, 2014   3657     bkowal      Display a confirmation dialog to notify the user that
  *                                    SAME / Alert Tones will be played.
  * Nov 02, 2014  3785     mpduff      Set Same Transmitter values.
+ * Nov 3, 2014   3785     bkowal      Fix the weather messages dialog.
  * 
  * </pre>
  * 
@@ -335,6 +336,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         expire.add(Calendar.DATE, 1);
         im.setExpirationTime(expire);
         resetControls();
+
+        this.populateControlsForEdit(im, null, null);
     }
 
     /**
@@ -1127,26 +1130,29 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         }
 
         // update same transmitters
-        CheckListData cld = new CheckListData();
-        transmitterMap.clear();
-        Set<TransmitterGroup> tGroups = validatedMessage.getTransmitterGroups();
-        if (tGroups != null && !tGroups.isEmpty()) {
-            for (TransmitterGroup g : tGroups) {
-                for (Transmitter t : g.getTransmitterList()) {
+        if (validatedMessage != null) {
+            CheckListData cld = new CheckListData();
+            transmitterMap.clear();
+            Set<TransmitterGroup> tGroups = validatedMessage
+                    .getTransmitterGroups();
+            if (tGroups != null && !tGroups.isEmpty()) {
+                for (TransmitterGroup g : tGroups) {
+                    for (Transmitter t : g.getTransmitterList()) {
+                        cld.addDataItem(t.getMnemonic(), true);
+                        transmitterMap.put(t.getMnemonic(), t);
+                    }
+                }
+            } else {
+                Set<Transmitter> transmitters = selectedMessageType
+                        .getSameTransmitters();
+                for (Transmitter t : transmitters) {
                     cld.addDataItem(t.getMnemonic(), true);
                     transmitterMap.put(t.getMnemonic(), t);
                 }
             }
-        } else {
-            Set<Transmitter> transmitters = selectedMessageType
-                    .getSameTransmitters();
-            for (Transmitter t : transmitters) {
-                cld.addDataItem(t.getMnemonic(), true);
-                transmitterMap.put(t.getMnemonic(), t);
-            }
-        }
 
-        sameTransmitters.selectCheckboxes(cld);
+            sameTransmitters.selectCheckboxes(cld);
+        }
 
         // handle message contents.
         WxMessagesContent msgContent = new WxMessagesContent(
