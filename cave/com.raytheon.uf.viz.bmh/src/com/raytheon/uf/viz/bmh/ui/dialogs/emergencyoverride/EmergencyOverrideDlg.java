@@ -96,6 +96,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      scheduling.
  * Nov 1, 2014   #3657     bkowal       Display a confirmation dialog to notify the user that
  *                                      SAME / Alert Tones will be played.
+ * Nov 3, 2014   #3655     bkowal       Enable Duration label. Fix for duration population
+ *                                      based on message type.
  * 
  * </pre>
  * 
@@ -327,7 +329,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         durationLbl = new Label(autoSchedComp, SWT.CENTER);
         durationLbl.setText("Duration\n(HHMM)");
         durationLbl.setLayoutData(gd);
-        durationLbl.setEnabled(false);
 
         gd = new GridData(30, SWT.DEFAULT);
         gd.horizontalIndent = 10;
@@ -484,7 +485,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
         // Update the duration
         Map<DateFieldType, Integer> timeMap = BmhUtils
-                .generateHourMinuteMap(this.selectedMsgType.getDuration());
+                .generateDayHourMinuteSecondMap(this.selectedMsgType
+                        .getDuration());
         final int durationHour = timeMap.get(DateFieldType.HOUR);
         if (durationHour > hourMax) {
             this.durHourSpnr.setSelection(hourMax);

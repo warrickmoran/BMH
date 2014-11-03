@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.bmh.broadcast;
 
+import java.util.List;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -32,6 +34,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 20, 2014 3655       bkowal      Initial creation
+ * Nov 3, 2014  3655       bkowal      Support sending multiple packets.
  * 
  * </pre>
  * 
@@ -42,7 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class LiveBroadcastPlayCommand extends LiveBroadcastCommand {
 
     @DynamicSerializeElement
-    private byte[] audio;
+    private List<byte[]> audio;
 
     /**
      * 
@@ -52,11 +55,11 @@ public class LiveBroadcastPlayCommand extends LiveBroadcastCommand {
         super.setAction(ACTION.PLAY);
     }
 
-    public byte[] getAudio() {
+    public List<byte[]> getAudio() {
         return audio;
     }
 
-    public void setAudio(byte[] audio) {
+    public void setAudio(List<byte[]> audio) {
         this.audio = audio;
     }
 }
