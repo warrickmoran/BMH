@@ -49,7 +49,9 @@ import org.eclipse.swt.widgets.Text;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -103,6 +105,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 01, 2014  3784     mpduff      Set defaults on Message Type selection
  * Nov 1, 2014   3657     bkowal      Display a confirmation dialog to notify the user that
  *                                    SAME / Alert Tones will be played.
+ * Nov 02, 2014  3785     mpduff      Set Same Transmitter values.
  * 
  * </pre>
  * 
@@ -308,7 +311,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                         if (returnValue instanceof InputAudioMessage) {
                             InputAudioMessage im = (InputAudioMessage) returnValue;
                             populateControlsForEdit(im.getInputMessage(),
-                                    im.getAudioDataList());
+                                    im.getAudioDataList(), im.getValidatedMsg());
                         }
                     }
                 });
@@ -575,7 +578,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         CheckListData cld = createTransmitterListData();
 
         sameTransmitters = new CheckScrollListComp(mainComp, "SAME: ", cld,
-                false, 80, 250, true);
+                true, 80, 250, false);
     }
 
     /**
@@ -804,7 +807,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                             this.shell,
                             SWT.ICON_ERROR | SWT.OK,
                             "Weather Messages - SAME",
-                            "SAME Transmitters must be selected. It is possible that the Message Type you have selected has not been associated with any transmitters.");
+                            "SAME Transmitters must be selected. Please select one or more SAME transmitters.");
             return false;
         }
 
@@ -1039,9 +1042,16 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      * 
      * @param inputMessage
      *            Selected input message.
+     * 
+     * @param audioList
+     *            List of InputMesageAudioData
+     * 
+     * @param validatedMessage
+     *            The ValidatedMessage
      */
     private void populateControlsForEdit(InputMessage im,
-            List<InputMessageAudioData> audioList) {
+            List<InputMessageAudioData> audioList,
+            ValidatedMessage validatedMessage) {
         userInputMessage = im;
         selectedMessageType = null;
 
@@ -1115,6 +1125,28 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             periodicityDTF.setFieldValue(DateFieldType.SECOND,
                     periodicityValues[3]);
         }
+
+        // update same transmitters
+        CheckListData cld = new CheckListData();
+        transmitterMap.clear();
+        Set<TransmitterGroup> tGroups = validatedMessage.getTransmitterGroups();
+        if (tGroups != null && !tGroups.isEmpty()) {
+            for (TransmitterGroup g : tGroups) {
+                for (Transmitter t : g.getTransmitterList()) {
+                    cld.addDataItem(t.getMnemonic(), true);
+                    transmitterMap.put(t.getMnemonic(), t);
+                }
+            }
+        } else {
+            Set<Transmitter> transmitters = selectedMessageType
+                    .getSameTransmitters();
+            for (Transmitter t : transmitters) {
+                cld.addDataItem(t.getMnemonic(), true);
+                transmitterMap.put(t.getMnemonic(), t);
+            }
+        }
+
+        sameTransmitters.selectCheckboxes(cld);
 
         // handle message contents.
         WxMessagesContent msgContent = new WxMessagesContent(

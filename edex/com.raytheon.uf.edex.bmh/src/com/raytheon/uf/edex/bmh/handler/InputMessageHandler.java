@@ -35,12 +35,14 @@ import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioResponse;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
 import com.raytheon.uf.common.bmh.request.InputMessageResponse;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
+import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 
 /**
  * Handles any requests to get or modify the state of {@link InputMessage}s.
@@ -54,6 +56,7 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  * Oct 16, 2014  #3728     lvenable     Initial creation
  * Oct 23, 2014  #3748     bkowal       Retrieve audio for audio input messages
  * Oct 24, 2014  #3478     bkowal       Completed audio retrieval implementation
+ * Nov 02, 2014   3785     mpduff       Add ValidatedMessage when getting by PkId
  * 
  * </pre>
  * 
@@ -131,10 +134,10 @@ public class InputMessageHandler extends
      * @param request
      *            Input Message request.
      * @return Input message response containing the requested information.
-     * @throws AudioRetrievalException
+     * @throws Exception
      */
     private InputMessageResponse getByPkId(InputMessageRequest request)
-            throws AudioRetrievalException {
+            throws Exception {
         InputMessageDao dao = new InputMessageDao(request.isOperational());
         InputMessageAudioResponse response = new InputMessageAudioResponse();
 
@@ -142,6 +145,15 @@ public class InputMessageHandler extends
         // retrieve audio
         response.setAudioDataList(this.getAudioContent(request));
         response.addInputMessage(im);
+
+        ValidatedMessageDao validatedMsgDao = new ValidatedMessageDao();
+        ValidatedMessage validatedMsg = validatedMsgDao
+                .getValidatedMsgByInputMsg(im);
+        if (validatedMsg == null) {
+            throw new Exception("Data Error:  Input message " + im.getId()
+                    + " is missing validated message.");
+        }
+        response.setValidatedMessage(validatedMsg);
 
         return response;
     }
@@ -153,9 +165,7 @@ public class InputMessageHandler extends
         List<BroadcastMsg> msgs = broadcastMsgDao
                 .getMessagesByInputMsgId(request.getPkId());
         if (msgs.isEmpty()) {
-            throw new AudioRetrievalException(
-                    "Unable to find broadcast msg(s) associated with input msg: "
-                            + request.getPkId() + ".");
+            return Collections.emptyList();
         }
 
         List<InputMessageAudioData> audioDataRecords = new ArrayList<>(
@@ -191,7 +201,7 @@ public class InputMessageHandler extends
                 totalByteCount += audio.length;
                 audioData.add(audio);
             }
-            
+
             /* audio generation successful. */
             audioDataRecord.setSuccess(true);
 

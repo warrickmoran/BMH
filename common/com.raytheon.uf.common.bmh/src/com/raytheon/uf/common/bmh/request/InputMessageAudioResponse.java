@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.request;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 23, 2014 3748       bkowal      Initial creation
+ * Nov 02, 2014 3785       mpduff      Added ValidatedMessage
  * 
  * </pre>
  * 
@@ -49,6 +51,9 @@ public class InputMessageAudioResponse extends InputMessageResponse {
 
     @DynamicSerializeElement
     private List<InputMessageAudioData> audioDataList;
+
+    @DynamicSerializeElement
+    private ValidatedMessage validatedMessage;
 
     /**
      * 
@@ -69,5 +74,20 @@ public class InputMessageAudioResponse extends InputMessageResponse {
      */
     public void setAudioDataList(List<InputMessageAudioData> audioDataList) {
         this.audioDataList = audioDataList;
+    }
+
+    /**
+     * @return the validatedMessage
+     */
+    public ValidatedMessage getValidatedMessage() {
+        return validatedMessage;
+    }
+
+    /**
+     * @param validatedMessage
+     *            the validatedMessage to set
+     */
+    public void setValidatedMessage(ValidatedMessage validatedMessage) {
+        this.validatedMessage = validatedMessage;
     }
 }

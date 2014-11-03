@@ -42,6 +42,8 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * 
@@ -61,6 +63,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Jul 17, 2014  3175     rjpeter     Updated query to match field name.
  * Sep 2, 2014   3568     bkowal      Added the getValidatedMsgForInputMsg named query.
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
+ * Nov 02, 2014  3785     mpduff      Added DynamicSerialize annotations.
  * </pre>
  * 
  * @author bsteffen
@@ -70,6 +73,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 @Entity
 @Table(name = "validated_msg", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = ValidatedMessage.GEN, sequenceName = "validated_msg_seq")
+@DynamicSerialize
 public class ValidatedMessage {
 
     public static final String GET_VALIDATED_MSG_FOR_INPUT_MSG = "getValidatedMsgForInputMsg";
@@ -102,23 +106,28 @@ public class ValidatedMessage {
 
     protected static final String GEN = "Validated Messsage Id Generator";
 
+    @DynamicSerializeElement
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     private int id;
 
+    @DynamicSerializeElement
     @OneToOne
     @JoinColumn(name = "input_msg_id")
     private InputMessage inputMessage;
 
+    @DynamicSerializeElement
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(schema = "bmh", name = "validated_msg_transmitter_groups", joinColumns = @JoinColumn(name = "validated_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_id"))
     @Fetch(FetchMode.SELECT)
     private Set<TransmitterGroup> transmitterGroups;
 
+    @DynamicSerializeElement
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private TransmissionStatus transmissionStatus;
 
+    @DynamicSerializeElement
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private LdadStatus ldadStatus;
