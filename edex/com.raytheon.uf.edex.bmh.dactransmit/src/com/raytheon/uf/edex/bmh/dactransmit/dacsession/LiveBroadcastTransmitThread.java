@@ -23,7 +23,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
@@ -65,6 +67,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Oct 29, 2014 3774       bsteffen    Log Packets
  * Nov 1, 2014  3655       bkowal      Play end of message tones at the end of a live
  *                                     broadcast.
+ * Nov 3, 2014  3655       bkowal      Viz now caches the audio. Adjusted timeout between
+ *                                     packet transmits based on the rate that audio arrives.
  * 
  * </pre>
  * 
@@ -136,41 +140,23 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         AudioPacketLogger packetLog = new AudioPacketLogger(
                 "Live Broadcast Audio", getClass(), 30);
         this.transmitTimer = null;
-        while (streaming) {
+        /*
+         * end the broadcast only after all buffered audio has been streamed.
+         */
+        while (streaming || this.audioBuffer.isEmpty() == false) {
             try {
-                byte[] audio = this.audioBuffer.peek();
-                if (audio == null || this.audioBuffer.size() < 100) {
-                    Thread.sleep(2);
+                // check for data every 5ms, we only have a 20ms window.
+                // 0 - 5 ms delay between end of audio and end of the broadcast.
+                byte[] audio = this.audioBuffer.poll(20, TimeUnit.MILLISECONDS);
+                if (audio == null) {
                     continue;
                 }
-                audio = this.audioBuffer.take();
                 this.streamAudio(audio);
                 packetLog.packetProcessed();
             } catch (AudioOverflowException | UnsupportedAudioFormatException
                     | AudioConversionException | InterruptedException e) {
                 this.notifyDacError(
                         "Failed to stream the buffered live audio.", e);
-            }
-        }
-
-        // empty the remaining data.
-        while (this.audioBuffer.isEmpty() == false) {
-            byte[] audio = null;
-            try {
-                audio = this.audioBuffer.take();
-            } catch (InterruptedException e) {
-                this.notifyDacError(
-                        "Interrupted while attempting to retrieve the next live audio segment.",
-                        e);
-            }
-            try {
-                this.streamAudio(audio);
-                packetLog.packetProcessed();
-            } catch (AudioOverflowException | UnsupportedAudioFormatException
-                    | AudioConversionException | InterruptedException e) {
-                this.notifyDacError(
-                        "Failed to stream the remaining buffered live audio.",
-                        e);
             }
         }
         packetLog.close();
@@ -208,8 +194,8 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         }
     }
 
-    public void playAudio(byte[] data) {
-        this.audioBuffer.add(data);
+    public void playAudio(List<byte[]> data) {
+        this.audioBuffer.addAll(data);
     }
 
     private void streamAudio(byte[] data) throws AudioOverflowException,
@@ -229,16 +215,19 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         } else {
             this.transmitTimer.stop();
             logger.info(
-                    "A total of {} elapsed between the transmission of the current packet and the previous packet. sleep = {}",
-                    TimeUtil.prettyDuration(this.transmitTimer.getElapsedTime()),
-                    this.nextCycleTime);
+                    "A total of {} elapsed between the transmission of the current packet and the previous packet.",
+                    TimeUtil.prettyDuration(this.transmitTimer.getElapsedTime()));
             this.transmitTimer.reset();
             this.transmitTimer.start();
         }
 
         previousPacket = rtpPacket;
 
-        Thread.sleep(nextCycleTime);
+        /*
+         * Data (multiple packets) arrives in realtime after an initial buffer
+         * is saved up.
+         */
+        Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
 
         while (!hasSync) {
             Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);

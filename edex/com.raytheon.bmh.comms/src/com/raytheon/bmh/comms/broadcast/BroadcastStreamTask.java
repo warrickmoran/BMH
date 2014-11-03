@@ -59,6 +59,8 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Oct 15, 2014 3655       bkowal      Support live broadcasting to the DAC.
  * Oct 21, 2014 3655       bkowal      Use the new message types. Improved
  *                                     error handling.
+ * Nov 3, 2014  3655       bkowal      Increase timeout for same tone playback. Handle
+ *                                     multiple audio packets.
  * 
  * </pre>
  * 
@@ -277,7 +279,7 @@ public class BroadcastStreamTask extends Thread {
 
         // wait for the current broadcast to stop and tones to be played.
         // Extra time to allow for tone playback.
-        if (this.verifyTransmitterAccess(20000) == false) {
+        if (this.verifyTransmitterAccess(80000) == false) {
             /*
              * the broadcast has failed. cleanup what has been started.
              */
@@ -442,8 +444,9 @@ public class BroadcastStreamTask extends Thread {
     }
 
     private void streamDacAudio(LiveBroadcastPlayCommand playCommand) {
-        logger.info("Streaming {} bytes of audio to the dac for Broadcast {}.",
-                playCommand.getAudio().length, this.getName());
+        logger.info(
+                "Streaming {} packets of audio to the dac for Broadcast {}.",
+                playCommand.getAudio().size(), this.getName());
 
         // TODO: thread audio data transmissions to the managed dacs.
         for (Transmitter transmitterGroup : this.managedTransmitterGroups) {

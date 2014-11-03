@@ -23,6 +23,12 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
@@ -50,6 +56,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  * Oct 15, 2014 3655       bkowal      Update for msg type renaming.
  * Oct 17, 2014 3687       bsteffen    Support practice servers.
  * Oct 21, 2014 3655       bkowal      Use the new message types. Improved error handling.
+ * Nov 3, 2014  3655       bkowal      Cache live broadcast audio on the Viz side.
  * 
  * </pre>
  * 
@@ -77,6 +84,22 @@ public class LiveBroadcastThread extends Thread implements
 
     private String broadcastId;
 
+    private List<byte[]> bufferedAudio;
+
+    /** Audio streaming timer. */
+    private ScheduledExecutorService timer;
+
+    /*
+     * Save 0.5 seconds of audio before initial broadcast stream.
+     */
+    private static final int INITIAL_BUFFER_DELAY = 500;
+
+    /*
+     * Accumulate audio for every 100ms afterwards until the end of the
+     * broadcast.
+     */
+    private static final int BUFFER_DELAY = 100;
+
     /**
      * 
      */
@@ -84,6 +107,7 @@ public class LiveBroadcastThread extends Thread implements
         super(LiveBroadcastThread.class.getName());
         this.command = command;
         this.state = BROADCAST_STATE.INITIALIZING;
+        this.bufferedAudio = new LinkedList<>();
     }
 
     @Override
@@ -234,6 +258,10 @@ public class LiveBroadcastThread extends Thread implements
             if (status.getStatus() == true) {
                 this.state = BROADCAST_STATE.LIVE;
                 this.broadcastId = status.getBroadcastId();
+                this.timer = Executors.newSingleThreadScheduledExecutor();
+                this.timer.scheduleWithFixedDelay(new ElapsedTimerTask(),
+                        INITIAL_BUFFER_DELAY, BUFFER_DELAY,
+                        TimeUnit.MILLISECONDS);
             } else if (status.getStatus() == false) {
                 this.state = BROADCAST_STATE.ERROR;
                 this.notifyListener();
@@ -278,6 +306,10 @@ public class LiveBroadcastThread extends Thread implements
     }
 
     public void halt() {
+        if (this.timer != null) {
+            this.timer.shutdown();
+        }
+
         LiveBroadcastCommand command = new LiveBroadcastCommand();
         command.setBroadcastId(this.broadcastId);
         command.setMsgSource(ILiveBroadcastMessage.SOURCE_VIZ);
@@ -315,18 +347,37 @@ public class LiveBroadcastThread extends Thread implements
             return;
         }
 
-        LiveBroadcastPlayCommand playCommand = new LiveBroadcastPlayCommand();
-        playCommand.setMsgSource(ILiveBroadcastMessage.SOURCE_VIZ);
-        playCommand.setBroadcastId(this.broadcastId);
-        playCommand.setTransmitterGroups(this.command.getTransmitterGroups());
-        playCommand.setAudio(audioData);
+        synchronized (this.bufferedAudio) {
+            this.bufferedAudio.add(audioData);
+        }
+    }
 
-        try {
-            this.writeToCommsManager(playCommand);
-        } catch (BroadcastException e) {
-            statusHandler.error(
-                    "Failed to stream audio during live broadcast!", e);
-            this.state = BROADCAST_STATE.ERROR;
+    private void broadcastBufferedAudio() {
+        synchronized (this.bufferedAudio) {
+            LiveBroadcastPlayCommand playCommand = new LiveBroadcastPlayCommand();
+            playCommand.setMsgSource(ILiveBroadcastMessage.SOURCE_VIZ);
+            playCommand.setBroadcastId(this.broadcastId);
+            playCommand.setTransmitterGroups(this.command
+                    .getTransmitterGroups());
+            playCommand.setAudio(this.bufferedAudio);
+            try {
+                this.writeToCommsManager(playCommand);
+            } catch (BroadcastException e) {
+                statusHandler.error(
+                        "Failed to stream audio during live broadcast!", e);
+                this.state = BROADCAST_STATE.ERROR;
+            }
+            this.bufferedAudio.clear();
+        }
+    }
+
+    /**
+     * Elapsed timer task called when the timer fires.
+     */
+    private class ElapsedTimerTask extends TimerTask {
+        @Override
+        public void run() {
+            broadcastBufferedAudio();
         }
     }
 }
