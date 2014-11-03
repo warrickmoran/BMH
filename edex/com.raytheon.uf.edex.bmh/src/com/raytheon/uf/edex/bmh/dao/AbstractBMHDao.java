@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.dao;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
 
 import org.hibernate.Query;
@@ -45,7 +46,7 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Oct 22, 2014  3747     bkowal      Wrap all database actions in txTemplate with
  *                                    getCurrentSession.
- * 
+ * Nov 02, 2014  3746     rjpeter     Updated loadAll to return empty list on null.
  * </pre>
  * 
  * @author bkowal
@@ -126,7 +127,13 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
      */
     @SuppressWarnings("unchecked")
     public List<T> loadAll() {
-        return (List<T>) loadAll(daoClass);
+        List<T> rval = (List<T>) loadAll(daoClass);
+
+        if (rval == null) {
+            rval = Collections.emptyList();
+        }
+
+        return rval;
     }
 
     public List<?> loadAll(final Class<?> clazz) {

@@ -23,7 +23,6 @@ import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
-import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
@@ -52,6 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                     with a transmitter group
  * Oct 2, 2014  3642       bkowal      Updated time message field to be: preamble and postamble
  * Oct 28, 2014 3636       rferrel     Implemented logging.
+ * Nov 02, 2014 3746       rjpeter     Fix column definition for hibernate upgrade.
  * </pre>
  * 
  * @author rjpeter
@@ -73,8 +73,7 @@ public class TransmitterLanguage {
     private TransmitterLanguagePK id;
 
     // Text: 1-40960 characters
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     @DynamicSerializeElement
     private String stationIdMsg;
 
@@ -82,13 +81,11 @@ public class TransmitterLanguage {
      * Note: the time preamble and postamble are optional. Additional
      * information about the time message, itself, is still required.
      */
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     @DynamicSerializeElement
     private String timeMsgPreamble;
 
-    @Lob
-    @Column(nullable = true)
+    @Column(nullable = true, columnDefinition = "text")
     @DynamicSerializeElement
     private String timeMsgPostamble;
 
