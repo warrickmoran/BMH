@@ -58,6 +58,9 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Oct 21, 2014   3655     bkowal      Updated to use {@link IPlaylistData}.
  * Nov 01, 2014   3782     mpduff      Implemented MRD column, added message name to table data
  * Nov 03, 2014   3655     bkowal      Fix EO message table display.
+ * Nov 04, 2014   3792     lvenable    Put in null check for broadcast message.  It reports the NPE
+ *                                     and then puts "Unknown" in for the missing data. This will
+ *                                     allow us to track down the issue.
  * 
  * </pre>
  * 
@@ -187,17 +190,18 @@ public class PlaylistData {
      * @return
      */
     public TableData getUpdatedTableData(String transmitterGroupName) {
-        PlaylistDataStructure playlistData = playlistDataMap
+        PlaylistDataStructure playlistDataStructure = playlistDataMap
                 .get(transmitterGroupName);
-        if (playlistData == null) {
+        if (playlistDataStructure == null) {
             return new TableData(columns);
         }
 
-        Map<Long, MessagePlaybackPrediction> predictionMap = playlistData
+        Map<Long, MessagePlaybackPrediction> predictionMap = playlistDataStructure
                 .getPredictionMap();
 
-        Map<Long, BroadcastMsg> playlistMap = playlistData.getPlaylistMap();
-        Map<Long, MessageType> messageTypeMap = playlistData
+        Map<Long, BroadcastMsg> playlistMap = playlistDataStructure
+                .getPlaylistMap();
+        Map<Long, MessageType> messageTypeMap = playlistDataStructure
                 .getMessageTypeMap();
 
         List<BroadcastCycleTableDataEntry> dataEntries = new ArrayList<>();
@@ -205,36 +209,56 @@ public class PlaylistData {
                 .entrySet()) {
             Long broadcastId = entry.getKey();
             MessagePlaybackPrediction pred = entry.getValue();
-            BroadcastCycleTableDataEntry data = new BroadcastCycleTableDataEntry();
-            data.setAlertSent(pred.isPlayedAlertTone());
-            data.setPlayCount(pred.getPlayCount());
-            data.setSameSent(pred.isPlayedSameTone());
+
+            BroadcastCycleTableDataEntry cycleTableData = new BroadcastCycleTableDataEntry();
+            cycleTableData.setAlertSent(pred.isPlayedAlertTone());
+            cycleTableData.setPlayCount(pred.getPlayCount());
+            cycleTableData.setSameSent(pred.isPlayedSameTone());
+
             if (pred.getNextTransmitTime() == null) {
-                data.setTransmitTime(pred.getLastTransmitTime());
-                data.setTransmitTimeColor(colorManager
+                cycleTableData.setTransmitTime(pred.getLastTransmitTime());
+                cycleTableData.setTransmitTimeColor(colorManager
                         .getActualTransmitTimeColor());
             } else {
-                data.setTransmitTime(pred.getNextTransmitTime());
-                data.setTransmitTimeColor(colorManager
+                cycleTableData.setTransmitTime(pred.getNextTransmitTime());
+                cycleTableData.setTransmitTimeColor(colorManager
                         .getPredictedTransmitTimeColor());
             }
 
             BroadcastMsg message = playlistMap.get(broadcastId);
-            data.setExpirationTime(message.getInputMessage()
-                    .getExpirationTime());
-            data.setMessageId(message.getAfosid());
+
+            if (message != null) {
+                cycleTableData.setExpirationTime(message.getInputMessage()
+                        .getExpirationTime());
+                cycleTableData.setMessageId(message.getAfosid());
+                cycleTableData.setInputMsg(message.getInputMessage());
+            } else {
+                cycleTableData.setExpirationTime(null);
+                cycleTableData.setMessageId("Unknown");
+                cycleTableData.setInputMsg(null);
+                statusHandler
+                        .error("Broadcast message is null.  Setting data to unknown.");
+            }
+
+            cycleTableData.setMessageId(message.getAfosid());
             String title = messageTypeMap.get(broadcastId).getTitle();
-            data.setMessageTitle(title);
-            String mrd = message.getInputMessage().getMrd();
+            cycleTableData.setMessageTitle(title);
+
+            String mrd = null;
+
+            if (message != null) {
+                mrd = message.getInputMessage().getMrd();
+            }
+
             if (mrd == null) {
                 mrd = EMPTY;
             }
-            data.setMrd(mrd);
+            cycleTableData.setMrd(mrd);
 
-            data.setBroadcastId(broadcastId);
-            data.setInputMsg(message.getInputMessage());
+            cycleTableData.setBroadcastId(broadcastId);
+
             // TODO set other background colors
-            dataEntries.add(data);
+            dataEntries.add(cycleTableData);
         }
 
         Collections.sort(dataEntries, comparator);
@@ -250,10 +274,23 @@ public class PlaylistData {
             row.addTableCellData(cell);
             row.addTableCellData(new TableCellData(data.getMessageId()));
             row.addTableCellData(new TableCellData(data.getMessageTitle()));
-            row.addTableCellData(new TableCellData(data.getInputMsg().getName()));
+
+            if (data.getInputMsg() != null) {
+                row.addTableCellData(new TableCellData(data.getInputMsg()
+                        .getName()));
+            } else {
+                row.addTableCellData(new TableCellData("Unknown"));
+            }
+
             row.addTableCellData(new TableCellData(data.getMrd()));
-            row.addTableCellData(new TableCellData(sdf.format(data
-                    .getExpirationTime().getTime())));
+
+            if (data.getExpirationTime() == null) {
+                row.addTableCellData(new TableCellData("Unknown"));
+            } else {
+                row.addTableCellData(new TableCellData(sdf.format(data
+                        .getExpirationTime().getTime())));
+            }
+
             if (data.isAlertSent()) {
                 row.addTableCellData(new TableCellData("SENT"));
             } else {

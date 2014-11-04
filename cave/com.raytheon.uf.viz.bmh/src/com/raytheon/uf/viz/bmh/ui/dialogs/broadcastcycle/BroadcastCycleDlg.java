@@ -38,6 +38,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -110,7 +112,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 26, 2014  3750      mpduff      Maintain the selected row.
  * Oct 27, 2014  3712      bkowal      Update labels after live broadcast start/end.
  * Nov 01, 2014  3782      mpduff      Added message name column and made table grow with dialog
- * Nov 01, 2014  3655      bkowal      Prevent NPE. 
+ * Nov 01, 2014  3655      bkowal      Prevent NPE.
+ * Nov 04, 2014   3792     lvenable    Colored the Emergency Override label blue and fixed a NPE.
  * 
  * </pre>
  * 
@@ -223,6 +226,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     private String cycleDurationTime;
 
+    /** Emergency override font. */
+    private Font eoFont;
+
+    private final String eoText = "Emergency Override";
+
     /**
      * Constructor.
      * 
@@ -311,6 +319,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         createTable(broadcastComp);
         createMessageText(broadcastComp);
         createBottomButtons(broadcastComp);
+
+        FontData fd = progValueLbl.getFont().getFontData()[0];
+        fd.setStyle(SWT.BOLD);
+        eoFont = new Font(getDisplay(), fd);
     }
 
     private void createMenus() {
@@ -862,7 +874,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             programObj = dataManager
                     .getProgramForTransmitterGroup(selectedTransmitterGroupObject);
             if (programObj != null) {
-                progValueLbl.setText(programObj.getName());
+                setProgramLabelTextFontAndColor(programObj.getName());
             }
         } catch (Exception e) {
             statusHandler.error("Error accessing BMH database", e);
@@ -993,8 +1005,13 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             TableRowData trd = selectionList.get(0);
             BroadcastCycleTableDataEntry entry = (BroadcastCycleTableDataEntry) trd
                     .getData();
-            String content = entry.getInputMsg().getContent();
-            this.messageTextArea.setText(content);
+
+            // If the entry is null then don't update the text as there will be
+            // other text displayed.
+            if (entry != null) {
+                String content = entry.getInputMsg().getContent();
+                this.messageTextArea.setText(content);
+            }
         }
     }
 
@@ -1013,6 +1030,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             NotificationManagerJob
                     .removeObserver(BMH_PRACTICE_DAC_STATUS, this);
             NotificationManagerJob.removeObserver(BMH_PRACTICE_CONFIG, this);
+        }
+
+        if (eoFont != null) {
+            eoFont.dispose();
         }
     }
 
@@ -1064,7 +1085,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                             @Override
                             public void run() {
                                 messageDetailBtn.setEnabled(true);
-                                progValueLbl.setText(programObj.getName());
+                                setProgramLabelTextFontAndColor(programObj
+                                        .getName());
                                 suiteValueLbl.setText(selectedSuite);
                                 cycleDurValueLbl.setText(cycleDurationTime);
                             }
@@ -1135,7 +1157,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                             @Override
                             public void run() {
                                 messageDetailBtn.setEnabled(true);
-                                progValueLbl.setText(programObj.getName());
+                                setProgramLabelTextFontAndColor(programObj
+                                        .getName());
                                 if (selectedSuite != null) {
                                     suiteValueLbl.setText(selectedSuite);
                                 } else {
@@ -1160,7 +1183,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         this.messageDetailBtn.setEnabled(false);
         suiteValueLbl.setText("N/A");
         cycleDurValueLbl.setText("N/A");
-        this.progValueLbl.setText("Emergency Override");
+        setProgramLabelTextFontAndColor(eoText);
 
         tableComp.populateTable(liveTableData);
         if (tableComp.getSelectedIndex() == -1) {
@@ -1169,6 +1192,27 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         // Do NOT invoke handleTableSelection.
 
         messageTextArea.setText("*** LIVE BROADCAST MESSAGE - NO TEXT ***");
+    }
+
+    /**
+     * Set the Program label to reflect the correct font and color based on
+     * emergency override.
+     * 
+     * @param text
+     *            Test to put in the label.
+     */
+    private void setProgramLabelTextFontAndColor(String text) {
+        if (eoText.equals(text)) {
+            progValueLbl.setFont(eoFont);
+            progValueLbl.setForeground(getDisplay().getSystemColor(
+                    SWT.COLOR_BLUE));
+
+        } else {
+            progValueLbl.setFont(null);
+            progValueLbl.setForeground(null);
+        }
+
+        progValueLbl.setText(text);
     }
 
     /**
