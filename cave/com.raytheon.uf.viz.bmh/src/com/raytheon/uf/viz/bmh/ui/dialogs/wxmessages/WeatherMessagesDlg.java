@@ -108,6 +108,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 02, 2014  3785     mpduff      Set Same Transmitter values.
  * Nov 3, 2014   3785     bkowal      Fix the weather messages dialog.
  * Nov 03, 2014  3781     dgilling    Set SAME tone flag on input messages.
+ * Nov 4, 2014   3778     bsteffen    Change the id after a submit.
  * 
  * </pre>
  * 
@@ -901,7 +902,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         }
         request.setSelectedTransmitters(selectedTransmitters);
         try {
-            BmhUtils.sendRequest(request);
+            Object result = BmhUtils.sendRequest(request);
+            if (result instanceof Integer) {
+                userInputMessage.setId((Integer) result);
+            }
         } catch (Exception e) {
             statusHandler.error("Failed to submit the weather message.", e);
         }

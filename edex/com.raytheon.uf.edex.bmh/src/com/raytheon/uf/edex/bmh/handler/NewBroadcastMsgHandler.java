@@ -193,7 +193,7 @@ public class NewBroadcastMsgHandler extends
                 BmhMessageProducer.sendConfigMessage(
                         new MessageActivationNotification(inputMessage),
                         request.isOperational());
-                return null;
+                return inputMessage.getId();
             } else if (!Boolean.FALSE.equals(previous.getActive())) {
                 previous.setActive(false);
                 inputMessageDao.persist(previous);
@@ -226,7 +226,7 @@ public class NewBroadcastMsgHandler extends
                     : PRACTICE_TRANSFORM_URI;
             this.sendToDestination(destinationURI, validMsg.getId());
 
-            return null;
+            return inputMessage.getId();
         }
 
         // TODO: need to create broadcast msg records.
@@ -250,8 +250,7 @@ public class NewBroadcastMsgHandler extends
             this.sendToDestination(destinationURI, broadcastRecord.getId());
         }
 
-        // TODO: need reply
-        return null;
+        return inputMessage.getId();
     }
 
     private List<BroadcastMsg> buildBroadcastRecords(
