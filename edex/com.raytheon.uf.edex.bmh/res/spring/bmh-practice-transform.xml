@@ -4,6 +4,7 @@
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
 	<bean id="practice_messageTransformer" class="com.raytheon.uf.edex.bmh.xformer.MessageTransformer">
+		<constructor-arg ref="practice_timeMessagesGenerator" />
 		<property name="messageTypeDao" ref="practice_messageTypeDao" />
 		<property name="transmitterLanguageDao" ref="practice_transmitterLanguageDao" />
 	</bean>

@@ -39,6 +39,8 @@ import java.util.TimeZone;
  * ------------ ---------- ----------- --------------------------
  * Oct 27, 2014  #3617     dgilling     Initial creation
  * Oct 28, 2014  #3750     bkowal       Added method to get short timezone name
+ * Nov 3, 2014   #3759     bkowal       Added a second get short timezone name method
+ *                                      that allows for dst specification.
  * 
  * </pre>
  * 
@@ -87,10 +89,12 @@ public enum BMHTimeZone {
     }
 
     public String getShortDisplayName() {
-        // TODO: do we need to check to see if we are in daylight savings time?
-        return this.tz.getDisplayName(
-                this.tz.inDaylightTime(Calendar.getInstance().getTime()),
-                TimeZone.SHORT);
+        return this.getShortDisplayName(this.tz.inDaylightTime(Calendar
+                .getInstance().getTime()));
+    }
+
+    public String getShortDisplayName(boolean daylight) {
+        return this.tz.getDisplayName(daylight, TimeZone.SHORT);
     }
 
     public static BMHTimeZone getTimeZoneByID(final String id) {

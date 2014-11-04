@@ -88,6 +88,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 2, 2014  3642       bkowal      Updated to recognize and handle static time fragments.
  * Oct 22, 2014 3747       bkowal      Set creation / update time manually.
  * Oct 27, 2014 3759       bkowal      Update to support practice mode.
+ * Nov 5, 2014  3759       bkowal      Practice Mode Support for time messages.
  * 
  * </pre>
  * 
@@ -113,12 +114,14 @@ public class MessageTransformer implements IContextStateProcessor {
     /* Used to retrieve the dictionary. */
     private TransmitterLanguageDao transmitterLanguageDao;
 
+    /* Used to retrieve directory paths associated with time audio. */
+    private final TimeMessagesGenerator tmGenerator;
+
     /**
      * Constructor
      */
-    public MessageTransformer() {
-        messageTypeDao = new MessageTypeDao();
-        transmitterLanguageDao = new TransmitterLanguageDao();
+    public MessageTransformer(final TimeMessagesGenerator tmGenerator) {
+        this.tmGenerator = tmGenerator;
         statusHandler.info("Message Transformer Ready ...");
     }
 
@@ -420,7 +423,7 @@ public class MessageTransformer implements IContextStateProcessor {
                          * based on the hour and minute at the time.
                          */
                         fragment.setOutputName(Paths.get(
-                                TimeMessagesGenerator.getTimeVoiceDirectory(
+                                this.tmGenerator.getTimeVoiceDirectory(
                                         fragmentVoice).toString(),
                                 token.getIdentifier()).toString());
                         /*
