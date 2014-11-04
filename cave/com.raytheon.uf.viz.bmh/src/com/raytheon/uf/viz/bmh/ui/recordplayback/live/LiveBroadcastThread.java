@@ -57,6 +57,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  * Oct 17, 2014 3687       bsteffen    Support practice servers.
  * Oct 21, 2014 3655       bkowal      Use the new message types. Improved error handling.
  * Nov 3, 2014  3655       bkowal      Cache live broadcast audio on the Viz side.
+ * Nov 4, 2014  3655       bkowal      Eliminate audio echo. Decrease buffer delay.
  * 
  * </pre>
  * 
@@ -90,15 +91,15 @@ public class LiveBroadcastThread extends Thread implements
     private ScheduledExecutorService timer;
 
     /*
-     * Save 0.5 seconds of audio before initial broadcast stream.
+     * Save 0.25 seconds of audio before initial broadcast stream.
      */
-    private static final int INITIAL_BUFFER_DELAY = 500;
+    private static final int INITIAL_BUFFER_DELAY = 250;
 
     /*
-     * Accumulate audio for every 100ms afterwards until the end of the
+     * Accumulate audio for every 50ms afterwards until the end of the
      * broadcast.
      */
-    private static final int BUFFER_DELAY = 100;
+    private static final int BUFFER_DELAY = 50;
 
     /**
      * 
@@ -354,6 +355,10 @@ public class LiveBroadcastThread extends Thread implements
 
     private void broadcastBufferedAudio() {
         synchronized (this.bufferedAudio) {
+            if (this.bufferedAudio.isEmpty()) {
+                return;
+            }
+
             LiveBroadcastPlayCommand playCommand = new LiveBroadcastPlayCommand();
             playCommand.setMsgSource(ILiveBroadcastMessage.SOURCE_VIZ);
             playCommand.setBroadcastId(this.broadcastId);

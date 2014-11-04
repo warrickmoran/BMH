@@ -69,6 +69,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  *                                     broadcast.
  * Nov 3, 2014  3655       bkowal      Viz now caches the audio. Adjusted timeout between
  *                                     packet transmits based on the rate that audio arrives.
+ * Nov 4, 2014  3655       bkowal      Eliminate audio echo. Decrease buffer delay.
  * 
  * </pre>
  * 
@@ -147,7 +148,7 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
             try {
                 // check for data every 5ms, we only have a 20ms window.
                 // 0 - 5 ms delay between end of audio and end of the broadcast.
-                byte[] audio = this.audioBuffer.poll(20, TimeUnit.MILLISECONDS);
+                byte[] audio = this.audioBuffer.poll(5, TimeUnit.MILLISECONDS);
                 if (audio == null) {
                     continue;
                 }
