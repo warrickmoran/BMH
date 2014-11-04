@@ -61,6 +61,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Nov 04, 2014   3792     lvenable    Put in null check for broadcast message.  It reports the NPE
  *                                     and then puts "Unknown" in for the missing data. This will
  *                                     allow us to track down the issue.
+ * Nov 04, 2014   3781     dgilling    Fix SAME and alert tone display.
  * 
  * </pre>
  * 
@@ -291,17 +292,18 @@ public class PlaylistData {
                         .getExpirationTime().getTime())));
             }
 
+            if (data.isSameSent()) {
+                row.addTableCellData(new TableCellData("SENT"));
+            } else {
+                row.addTableCellData(new TableCellData("NONE"));
+            }
+
             if (data.isAlertSent()) {
                 row.addTableCellData(new TableCellData("SENT"));
             } else {
                 row.addTableCellData(new TableCellData("NONE"));
             }
 
-            if (data.isSameSent()) {
-                row.addTableCellData(new TableCellData("SENT"));
-            } else {
-                row.addTableCellData(new TableCellData("NONE"));
-            }
             row.addTableCellData(new TableCellData(data.getPlayCount(), null));
             row.setData(data);
             rows.add(row);
