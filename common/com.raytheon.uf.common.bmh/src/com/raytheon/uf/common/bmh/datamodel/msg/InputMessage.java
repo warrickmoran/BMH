@@ -60,6 +60,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 18, 2014  3728     lvenable    Added query to retrieve the Id, Name, Afos Id, and
  *                                    creation time.
  * Nov 03, 2014  3790     lvenable    Update query to include the active field.
+ * Nov 03, 2014  3728     lvenable    Made active default to true when creating a new object.
  * 
  * </pre>
  * 
@@ -150,7 +151,7 @@ public class InputMessage {
     /** This field is used by AFOS to direct messages into inactive storage . */
     @Column
     @DynamicSerializeElement
-    private Boolean active = false;
+    private Boolean active = true;
 
     /**
      * This field is used to display a confirmation that this message was
