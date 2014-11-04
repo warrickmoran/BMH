@@ -57,6 +57,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Aug 23, 2014   3432     mpduff      Add data
  * Oct 21, 2014   3655     bkowal      Updated to use {@link IPlaylistData}.
  * Nov 01, 2014   3782     mpduff      Implemented MRD column, added message name to table data
+ * Nov 03, 2014   3655     bkowal      Fix EO message table display.
  * 
  * </pre>
  * 
@@ -279,7 +280,7 @@ public class PlaylistData {
         final String[] columnText = new String[] {
                 sdf.format(notification.getTransitTime().getTime()),
                 notification.getMessageType().getAfosid(),
-                notification.getMessageType().getTitle(), "-",
+                notification.getMessageType().getTitle(), "LiveMsg", "-",
                 sdf.format(notification.getExpirationTime().getTime()),
                 notification.getAlertTone(), notification.getSameTone(), "1" };
         TableRowData tableRowData = new TableRowData();
