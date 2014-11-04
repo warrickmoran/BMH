@@ -21,7 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +62,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  *                                     and then puts "Unknown" in for the missing data. This will
  *                                     allow us to track down the issue.
  * Nov 04, 2014   3781     dgilling    Fix SAME and alert tone display.
+ * Nov 04, 2014   3778     bsteffen    Allow null transmit time.
  * 
  * </pre>
  * 
@@ -76,9 +77,9 @@ public class PlaylistData {
     private final SimpleDateFormat sdf = new SimpleDateFormat(
             "MM/dd/yy HH:mm:ss");
 
-    private final String EMPTY = "";
+    private final String UNKNOWN_TIME_STR = "--/--/-- --:--:--";
 
-    private final BroadcastCycleTableEntryComparator comparator = new BroadcastCycleTableEntryComparator();
+    private final String EMPTY = "";
 
     /** Color manager */
     private final BroadcastCycleColorManager colorManager;
@@ -262,15 +263,19 @@ public class PlaylistData {
             dataEntries.add(cycleTableData);
         }
 
-        Collections.sort(dataEntries, comparator);
-
         TableData tableData = new TableData(columns);
 
         List<TableRowData> rows = new ArrayList<>();
         for (BroadcastCycleTableDataEntry data : dataEntries) {
             TableRowData row = new TableRowData();
-            TableCellData cell = new TableCellData(sdf.format(data
-                    .getTransmitTime().getTime()));
+            Calendar time = data.getTransmitTime();
+            TableCellData cell = null;
+            if (time == null) {
+                cell = new TableCellData(UNKNOWN_TIME_STR);
+            } else {
+                cell = new TableCellData(sdf.format(time.getTime()));
+
+            }
             cell.setBackgroundColor(data.getTransmitTimeColor());
             row.addTableCellData(cell);
             row.addTableCellData(new TableCellData(data.getMessageId()));
@@ -286,7 +291,7 @@ public class PlaylistData {
             row.addTableCellData(new TableCellData(data.getMrd()));
 
             if (data.getExpirationTime() == null) {
-                row.addTableCellData(new TableCellData("Unknown"));
+                row.addTableCellData(new TableCellData(UNKNOWN_TIME_STR));
             } else {
                 row.addTableCellData(new TableCellData(sdf.format(data
                         .getExpirationTime().getTime())));

@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.data;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -40,6 +41,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 22, 2014     3432   mpduff      Initial creation
  * Aug 24, 2014     3432   mpduff      Added Copy constructor
  * Oct 21, 2014     3655   bkowal      Updated to use {@link IPlaylistData}.
+ * Nov 04, 2014     3778   bsteffen    Preserve the order of the prediction map.
  * 
  * </pre>
  * 
@@ -58,7 +60,7 @@ public class PlaylistDataStructure implements IPlaylistData {
      * Broadcast Message ID -> MessagePlaybackPrediction
      */
     @DynamicSerializeElement
-    private Map<Long, MessagePlaybackPrediction> predictionMap;
+    private LinkedHashMap<Long, MessagePlaybackPrediction> predictionMap;
 
     /**
      * Broadcast Message ID -> MessageType
@@ -72,7 +74,7 @@ public class PlaylistDataStructure implements IPlaylistData {
 
     public PlaylistDataStructure(PlaylistDataStructure that) {
         this.playlistMap = new HashMap<>(that.getPlaylistMap());
-        this.predictionMap = new HashMap<>(that.getPredictionMap());
+        this.predictionMap = new LinkedHashMap<>(that.getPredictionMap());
         this.messageTypeMap = new HashMap<>(that.getMessageTypeMap());
     }
 
@@ -88,16 +90,16 @@ public class PlaylistDataStructure implements IPlaylistData {
         this.playlistMap = playlistMap;
     }
 
-    public Map<Long, MessagePlaybackPrediction> getPredictionMap() {
+    public LinkedHashMap<Long, MessagePlaybackPrediction> getPredictionMap() {
         if (predictionMap == null) {
-            predictionMap = new HashMap<>();
+            predictionMap = new LinkedHashMap<>();
         }
 
         return predictionMap;
     }
 
     public void setPredictionMap(
-            Map<Long, MessagePlaybackPrediction> predictionMap) {
+            LinkedHashMap<Long, MessagePlaybackPrediction> predictionMap) {
         this.predictionMap = predictionMap;
     }
 
