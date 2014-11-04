@@ -51,6 +51,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
  * Oct 01, 2014  3485     bsteffen    Add method for getting path of position file.
  * Oct 23, 2014  3617     dgilling    Add support for tone blackout period.
+ * Nov 03, 2014  3781     dgilling    Add isSAMETones().
  * 
  * 
  * </pre>
@@ -334,7 +335,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      * @return Whether or not tones should be played for this message.
      */
     public boolean shouldPlayTones(Calendar time) {
-        boolean hasTonesToPlay = (((SAMEtone != null) && (!SAMEtone.isEmpty()) && (!playedSameTone)) || (alertTone && !playedAlertTone));
+        boolean hasTonesToPlay = ((isSAMETones() && !playedSameTone) || (alertTone && !playedAlertTone));
         boolean outsideBlackoutPeriod = (hasTonesToPlay && toneBlackoutEnabled) ? isOutsideBlackoutPeriod(time)
                 : false;
 
@@ -380,5 +381,14 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         }
 
         return true;
+    }
+
+    /**
+     * Returns whether this message has a valid SAME tone header.
+     * 
+     * @return Whether or not this message has a valid SAME tone header.
+     */
+    public boolean isSAMETones() {
+        return ((SAMEtone != null) && (!SAMEtone.isEmpty()));
     }
 }

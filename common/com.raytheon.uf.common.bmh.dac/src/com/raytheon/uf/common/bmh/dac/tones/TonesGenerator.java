@@ -36,6 +36,8 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  * ------------ ---------- ----------- --------------------------
  * Aug 12, 2014  #3286     dgilling     Initial creation
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
+ * Nov 03, 2014  #3781     dgilling     Allow alert tones to be generated
+ *                                      independently from SAME tones.
  * 
  * </pre>
  * 
@@ -96,6 +98,25 @@ public final class TonesGenerator {
         retVal.put(beforeMessagePause);
 
         return retVal;
+    }
+
+    /**
+     * Generates the alert tone without any SAME tones.
+     * 
+     * @return The alert tone and the necessary after tone pause.
+     * @throws ToneGenerationException
+     *             If there was an error generating the static alert tone.
+     */
+    public static ByteBuffer getOnlyAlertTones() throws ToneGenerationException {
+        StaticTones staticTones = getStaticTones();
+
+        byte[] beforeMessagePause = staticTones.getBeforeMessagePause();
+        byte[] alertTones = staticTones.getAlertTone();
+
+        ByteBuffer tones = ByteBuffer.allocate(alertTones.length
+                + beforeMessagePause.length);
+        tones.put(alertTones).put(beforeMessagePause);
+        return tones;
     }
 
     /**
