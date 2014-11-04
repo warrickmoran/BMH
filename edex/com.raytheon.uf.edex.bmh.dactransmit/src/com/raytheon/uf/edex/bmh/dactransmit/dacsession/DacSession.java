@@ -88,6 +88,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      broadcast.
  * Nov 1, 2014   #3655     bkowal       Improved how data is shared between the main dac 
  *                                      thread and the live broadcast thread.
+ * Nov 4, 2014   #3655     bkowal       Eliminate audio echo. Decrease buffer delay.
  * 
  * </pre>
  * 
@@ -365,7 +366,6 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         commsManager.sendDacLiveBroadcastMsg(status);
     }
 
-    @Subscribe
     public void handleLiveBroadcastData(LiveBroadcastPlayCommand playCommand) {
         if (this.broadcastThread.isError()) {
             /*
