@@ -70,6 +70,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 1, 2014   #3655     bkowal       Increased the number of live audio bytes
  *                                      that are sent to the comms manager.
  * Nov 1, 2014   #3657     bkowal       Created okAction and cancelAction for subclasses.
+ * Nov 5, 2014   #3780     bkowal       Prevent timer update when the dialog has been closed / is closing.
  * 
  * 
  * </pre>
@@ -396,6 +397,14 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      * Update the recording time label and the progress bar.
      */
     private void updateRecordingTime() {
+        if (this.isDisposed()) {
+            /*
+             * Handle the rare case when the dialog may have been closed just as
+             * the last timer task was executed due to the fact that the timer
+             * shutdown allows any scheduled tasks to run one final time.
+             */
+            return;
+        }
         calculateMinutesSeconds();
         elapsedTimeLbl.setText(String.format(formatStr, elapsedMinutes,
                 elapsedSeconds));
