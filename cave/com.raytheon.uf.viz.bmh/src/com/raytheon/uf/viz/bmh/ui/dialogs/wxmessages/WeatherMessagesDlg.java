@@ -1145,7 +1145,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         // update same transmitters
         if (validatedMessage != null) {
             CheckListData cld = new CheckListData();
-            transmitterMap.clear();
             Set<TransmitterGroup> tGroups = validatedMessage
                     .getTransmitterGroups();
             if (tGroups != null && !tGroups.isEmpty()) {
