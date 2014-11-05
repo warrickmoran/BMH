@@ -58,6 +58,7 @@ import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
  * Oct 24, 2014   3478     bkowal       Completed audio retrieval implementation
  * Nov 02, 2014   3785     mpduff       Add ValidatedMessage when getting by PkId
  * Nov 03, 2014   3790     lvenable     Updated enum name.
+ * Nov 05, 2014   3748     bkowal       Created validated msg dao based on mode.
  * 
  * </pre>
  * 
@@ -147,7 +148,8 @@ public class InputMessageHandler extends
         response.setAudioDataList(this.getAudioContent(request));
         response.addInputMessage(im);
 
-        ValidatedMessageDao validatedMsgDao = new ValidatedMessageDao();
+        ValidatedMessageDao validatedMsgDao = new ValidatedMessageDao(
+                request.isOperational());
         ValidatedMessage validatedMsg = validatedMsgDao
                 .getValidatedMsgByInputMsg(im);
         if (validatedMsg == null) {
