@@ -53,6 +53,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jul 15, 2014 3487       bsteffen    Add hasSubscribers
  * Sep 23, 2014 3485       bsteffen    Allow receiving through multicast.
  * Oct 29, 2014 3774       bsteffen    Log Packets
+ * Nov 3, 2014  3773       bkowal      Start with an out-of-order packet if
+ *                                     too many packets arrive out-of-order within
+ *                                     a set amount of time.
  * 
  * </pre>
  * 
@@ -69,8 +72,15 @@ public class DacReceiveThread extends Thread {
      * Indicates that no packets have been read yet.
      */
     private static final int NO_PREVIOUS_IDENTIFIER = -9999;
-    
+
     private static final int MAX_SEQUENCE_VALUE = 65536;
+
+    /*
+     * The amount of time that packets can be out of sequence before the process
+     * resumes with the packet number that was received as the last packet
+     * number (in milliseconds). Dac packets arrive continuously
+     */
+    private static final long MAX_NOT_CONSECUTIVE_TIME = 100;
 
     /*
      * Will trigger the potential sequence wrap-around condition when the last
@@ -147,6 +157,17 @@ public class DacReceiveThread extends Thread {
      * arrived too late.
      */
     private boolean potentialWrapAround = false;
+
+    /*
+     * Flag that is set indicating that the first packet has arrived out of
+     * order.
+     */
+    private boolean outOfOrder = false;
+
+    /*
+     * The current time when the first packet arrived out of order.
+     */
+    private long outOfOrderArrivalTime;
 
     /**
      * Receive audio playback from the dac using a multicast address.
@@ -328,11 +349,13 @@ public class DacReceiveThread extends Thread {
             if (rtpHeader.getSequenceNumber() < this.lastSequenceNumber
                     && this.potentialWrapAround == false) {
                 /* a packet has arrived late. */
-                statusHandler.warn("Received packet: "
-                        + rtpHeader.getSequenceNumber()
-                        + " later than expected. " + this.logLastKnownState()
-                        + " Skipping ...");
-                return;
+                if (this.adjustSequencing(rtpHeader.getSequenceNumber()) == false) {
+                    statusHandler.warn("Received packet: "
+                            + rtpHeader.getSequenceNumber()
+                            + " later than expected. "
+                            + this.logLastKnownState() + " Skipping ...");
+                    return;
+                }
             } else if (rtpHeader.getSequenceNumber() < this.lastSequenceNumber
                     && this.potentialWrapAround) {
                 /* the packet sequence has wrapped around and restarted from 0. */
@@ -342,10 +365,12 @@ public class DacReceiveThread extends Thread {
                 this.potentialWrapAround = false;
             } else if (rtpHeader.getSequenceNumber() == this.lastSequenceNumber) {
                 /* a duplicate packet has been encountered. */
-                statusHandler.warn("Received duplicate packet: "
-                        + rtpHeader.getSequenceNumber() + "! "
-                        + this.logLastKnownState() + " Skipping ...");
-                return;
+                if (this.adjustSequencing(rtpHeader.getSequenceNumber()) == false) {
+                    statusHandler.warn("Received duplicate packet: "
+                            + rtpHeader.getSequenceNumber() + "! "
+                            + this.logLastKnownState() + " Skipping ...");
+                    return;
+                }
             } else if (rtpHeader.getSequenceNumber() > (this.lastSequenceNumber + 1)) {
                 /* a packet has arrived earlier than expected. */
                 statusHandler.warn("Received packet: "
@@ -371,6 +396,35 @@ public class DacReceiveThread extends Thread {
             System.arraycopy(this.packetBuffer, offset,
                     this.payloadBuffers.get(channel - 1), 0,
                     RTPPacketStruct.DATA_PAYLOAD_SIZE);
+        }
+
+        /*
+         * always reset the flag when we reach this point; indicates that
+         * packets are arriving in the expected order.
+         */
+        this.outOfOrder = false;
+    }
+
+    private boolean adjustSequencing(final int sequenceNumber) {
+        if (this.outOfOrder == false) {
+            this.outOfOrder = true;
+            this.outOfOrderArrivalTime = System.currentTimeMillis();
+            return false;
+        } else {
+            /*
+             * 
+             */
+            if (this.outOfOrderArrivalTime + MAX_NOT_CONSECUTIVE_TIME >= System
+                    .currentTimeMillis()) {
+                // time to re-key the sequence
+                statusHandler
+                        .info("Adjusting the packet sequencing. Restarting the sequencing with packet: "
+                                + sequenceNumber + ".");
+                this.lastSequenceNumber = sequenceNumber;
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
