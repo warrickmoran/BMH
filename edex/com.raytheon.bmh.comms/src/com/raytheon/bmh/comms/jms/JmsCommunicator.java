@@ -37,8 +37,10 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
+import com.raytheon.bmh.comms.logging.JmsStatusMessageAppender;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.jms.notification.JmsNotificationManager;
+import com.raytheon.uf.common.message.StatusMessage;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
@@ -58,6 +60,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Sep 23, 2014  3485     bsteffen    Enable sending anything for dac status.
  *                                    Add methods to specifically listen for playlist changes.
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
+ * Nov 03, 2014  3525     bsteffen    Allow sending of status messages to alert topic.
  * 
  * </pre>
  * 
@@ -69,46 +72,54 @@ public class JmsCommunicator extends JmsNotificationManager {
     private static final Logger logger = LoggerFactory
             .getLogger(JmsCommunicator.class);
 
-    private static final int MAX_UNSENT_SIZE = 100;
+    private static final int DAC_STATUS_QUEUE_SIZE = 100;
 
     private final boolean operational;
+    
+    private final ProducerWrapper dacStatusProducer;
 
-    private Session producerSession;
-
-    private MessageProducer producer;
-
-    private Deque<Object> unsent = new LinkedBlockingDeque<>(MAX_UNSENT_SIZE);
+    private final ProducerWrapper alertProducer;
 
     public JmsCommunicator(CommsConfig config, boolean operational)
             throws URLSyntaxException {
         super(new AMQConnectionFactory(config.getJmsConnection()));
         this.operational = operational;
+        String topic = "BMH.DAC.Status";
+        if (!operational) {
+            topic = "BMH.Practice.DAC.Status";
+        }
+        this.dacStatusProducer = new ProducerWrapper(topic, DAC_STATUS_QUEUE_SIZE);
+
+        this.alertProducer = new ProducerWrapper("edex.alerts.msg");
+        JmsStatusMessageAppender.setJmsCommunicator(this);
     }
 
     public void sendDacStatus(Object notification) {
-        /* If too many messages are queued up drop the oldest message. */
-        while (!unsent.offerLast(notification)) {
-            unsent.pollFirst();
-        }
-        connectProducerAndSend();
+        dacStatusProducer.enqueue(notification);
+        dacStatusProducer.sendQueued();
+    }
+
+    public void sendStatusMessage(StatusMessage message) throws JMSException,
+            SerializationException {
+        alertProducer.send(message);
     }
 
     @Override
     public void connect(boolean notifyError) {
         super.connect(notifyError);
-        connectProducerAndSend();
+        dacStatusProducer.sendQueued();
     }
 
     @Override
     public void disconnect(boolean notifyError) {
-        disconnectProducer();
+        disconnectProducers();
         super.disconnect(notifyError);
     }
 
     @Override
     public void onException(JMSException e) {
         super.onException(e);
-        disconnectProducer();
+        disconnectProducers();
     }
 
     public void listenForPlaylistChanges(DacTransmitKey key, String group,
@@ -122,70 +133,112 @@ public class JmsCommunicator extends JmsNotificationManager {
             DacTransmitServer server) {
         removeQueueObserver(
                 PlaylistUpdateNotification.getQueueName(group, operational),
-                null,
-                new PlaylistNotificationObserver(server, key));
+                null, new PlaylistNotificationObserver(server, key));
     }
 
-    protected synchronized void connectProducerAndSend() {
-        if (producer == null) {
+    protected synchronized void disconnectProducers() {
+        alertProducer.disconnect();
+        dacStatusProducer.disconnect();
+    }
+
+    @Override
+    public void close() {
+        JmsStatusMessageAppender.setJmsCommunicator(null);
+        super.close();
+    }
+
+    /**
+     * Class for holding the {@link Session} and {@link MessageProducer}
+     * associated with a producer. This also provides the option to have a queue
+     * of messages that will be sent later if there is a temporary
+     * communications problem.
+     */
+    private class ProducerWrapper {
+
+        private final String topicName;
+
+        private final Deque<Object> unsent;
+
+        private Session session;
+
+        private MessageProducer producer;
+
+        public ProducerWrapper(String topicName) {
+            this(topicName, 1);
+        }
+
+        public ProducerWrapper(String topicName, int queueSize) {
+            this.topicName = topicName;
+            unsent = new LinkedBlockingDeque<>(queueSize);
+        }
+
+        public synchronized void send(Object message) throws JMSException,
+                SerializationException {
+            if (session == null) {
+                session = createSession();
+            }
+            if (session == null) {
+                return;
+            }
             try {
-                producerSession = createSession();
-                if (producerSession != null) {
-                    String topic = "BMH.DAC.Status";
-                    if (!operational) {
-                        topic = "BMH.Practice.DAC.Status";
-                    }
-                    Topic t = producerSession.createTopic(topic);
-                    producer = producerSession.createProducer(t);
+                BytesMessage m = session.createBytesMessage();
+                m.setJMSDeliveryMode(DeliveryMode.PERSISTENT);
+                byte[] bytes = SerializationUtil.transformToThrift(message);
+                m.writeBytes(bytes);
+                if (producer == null) {
+                    Topic t = session.createTopic(topicName);
+                    producer = session.createProducer(t);
                 }
+                producer.send(m);
             } catch (JMSException e) {
-                logger.error("Cannot open producer.", e);
-                disconnectProducer();
+                disconnect();
+                throw e;
             }
         }
-        /*
-         * This is not just an else, if producer was not successfully created
-         * this will be false.
-         */
-        if (producer != null) {
-            Object statusObject = unsent.pollFirst();
-            while (statusObject != null) {
+
+        public void enqueue(Object message) {
+            /* If too many messages are queued up drop the oldest message. */
+            while (!unsent.offerLast(message)) {
+                unsent.pollFirst();
+            }
+        }
+
+        public synchronized void sendQueued() {
+            Object message = unsent.pollFirst();
+            while (message != null) {
                 try {
-                    byte[] bytes = SerializationUtil
-                            .transformToThrift(statusObject);
-                    BytesMessage m = producerSession.createBytesMessage();
-                    m.writeBytes(bytes);
-                    m.setJMSDeliveryMode(DeliveryMode.PERSISTENT);
-                    producer.send(m);
+                    send(message);
                 } catch (JMSException e) {
                     logger.error("Cannot send message, will retry.", e);
-                    disconnectProducer();
-                    unsent.offerFirst(statusObject);
+                    disconnect();
+                    unsent.offerFirst(message);
                     return;
                 } catch (SerializationException e) {
-                    logger.error("Unable to send message" + statusObject, e);
+                    logger.error("Unable to send message" + message, e);
                 }
-                statusObject = unsent.pollFirst();
+                message = unsent.pollFirst();
             }
         }
-    }
 
-    protected synchronized void disconnectProducer() {
-        if (producer != null) {
-            try {
-                producer.close();
-            } catch (JMSException e) {
-                logger.error("Cannot close producer.", e);
+        public synchronized void disconnect() {
+            if (producer != null) {
+                try {
+                    producer.close();
+                } catch (JMSException e) {
+                    logger.error("Cannot close producer.", e);
+                }
+                producer = null;
             }
-            producer = null;
-        }
-        if (producerSession != null) {
-            try {
-                producerSession.close();
-            } catch (JMSException e) {
-                logger.error("Cannot close producer session.", e);
+            if (session != null) {
+                try {
+                    session.close();
+                } catch (JMSException e) {
+                    logger.error("Cannot close producer session.", e);
+                }
+                session = null;
             }
         }
+
     }
 
 }

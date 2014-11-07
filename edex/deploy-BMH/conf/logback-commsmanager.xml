@@ -10,6 +10,19 @@
       <appender-ref ref="console" />
    </appender>
 
+   <appender name="alertViz" class="com.raytheon.bmh.comms.logging.JmsStatusMessageAppender">
+      <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+        <level>ERROR</level>
+      </filter>
+      <layout>
+         <pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
+      </layout>
+   </appender>
+
+   <appender name="asyncAlertViz" class="ch.qos.logback.classic.AsyncAppender">
+      <appender-ref ref="alertViz" />
+   </appender>
+
    <logger name="org.apache.qpid">
       <level value="INFO"/>
    </logger>
@@ -22,6 +35,6 @@
    <root>
       <level value="DEBUG"/>
       <appender-ref ref="asyncConsole"/>
+      <appender-ref ref="asyncAlertViz"/>
    </root>
 </configuration>
-
