@@ -55,6 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ScaleSpinnerComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -70,6 +71,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 14, 2014    3630    mpduff      Initial creation
  * Nov 05, 2014    3630    bkowal      Initial implementation of run test.
  * Nov 10, 2014    3630    bkowal      Build the TransmitterAlignmentTestCommand.
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -130,10 +132,10 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
      */
     public TransmitterAlignmentDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "Transmitter Alignment Dialog", parentShell,
+        super(dlgMap, DlgInfo.TRANSMITTER_ALIGNMENT.getTitle(), parentShell,
                 SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
                         | CAVE.DO_NOT_BLOCK);
-        setText("Transmitter Alignment");
+        setText(DlgInfo.TRANSMITTER_ALIGNMENT.getTitle());
     }
 
     @Override

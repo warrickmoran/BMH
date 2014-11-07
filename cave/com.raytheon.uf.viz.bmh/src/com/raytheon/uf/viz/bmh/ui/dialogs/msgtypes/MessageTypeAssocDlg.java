@@ -50,6 +50,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -67,6 +68,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 11, 2014   3355     mpduff      Post demo cleanup (change label)
  * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * </pre>
  * 
  * @author lvenable
@@ -76,9 +78,6 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(MessageTypeAssocDlg.class);
-
-    /** Dialog Title. */
-    private static final String TITLE = "Message Type Association";
 
     private final String[] COLUMN_NAMES = new String[] { "Message Type",
             "Message Title" };
@@ -133,8 +132,9 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
      */
     public MessageTypeAssocDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, TITLE, parentShell, SWT.DIALOG_TRIM | SWT.RESIZE,
-                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(dlgMap, DlgInfo.MESSAGE_TYPE_ASSOCIATION.getTitle(), parentShell,
+                SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                        | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override
@@ -161,7 +161,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText(TITLE);
+        setText(DlgInfo.MESSAGE_TYPE_ASSOCIATION.getTitle());
 
         createMessageTypeControls();
         createMsgReplaceGroup();

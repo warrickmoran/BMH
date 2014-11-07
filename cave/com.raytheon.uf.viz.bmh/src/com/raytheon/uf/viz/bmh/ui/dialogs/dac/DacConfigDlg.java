@@ -46,6 +46,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.CreateEditDacConfigDlg.DialogType;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -61,6 +62,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 23, 2014  #3660     lvenable     Initial creation
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 19, 2014  #3699     mpduff       Implement dialog
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -98,9 +100,9 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
      *            Map to add this dialog to for closing purposes.
      */
     public DacConfigDlg(Shell parentShell, Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "DAC Configuration Dialog", parentShell, SWT.DIALOG_TRIM
-                | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(dlgMap, DlgInfo.DAC_CONFIGURATION.getTitle(), parentShell,
+                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                        | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override
@@ -140,7 +142,7 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("DAC Configuration");
+        setText(DlgInfo.DAC_CONFIGURATION.getTitle());
 
         dataManager = new DacDataManager();
         createDacTable();

@@ -48,6 +48,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -65,6 +66,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
  * Oct 08,2014    #3646    rferrel     Convert zoneTableComp  and areaTableComp
  *                                      to GenericTable.
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -122,9 +124,10 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
      */
     public ListeningZoneDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "Listening Zone Dlg", parentShell, SWT.DIALOG_TRIM,
-                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
-        setText("Listening Zones");
+        super(dlgMap, DlgInfo.LISTENING_ZONES.getTitle(), parentShell,
+                SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
+                        | CAVE.DO_NOT_BLOCK);
+        setText(DlgInfo.LISTENING_ZONES.getTitle());
     }
 
     @Override

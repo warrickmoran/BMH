@@ -59,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteActionAdapter;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
@@ -90,6 +91,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Oct 27, 2014  3750      lvenable    fixed message type table update when adding new suite.
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -169,9 +171,9 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      */
     public BroadcastProgramDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "Broadcast Program Dialog", parentShell, SWT.DIALOG_TRIM
-                | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(dlgMap, DlgInfo.BROADCAST_PROGRAMS.getTitle(), parentShell,
+                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                        | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override
@@ -195,7 +197,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("Broadcast Program Configuration");
+        setText(DlgInfo.BROADCAST_PROGRAMS.getTitle());
 
         // Get the Program data.
         retrieveProgramDataFromDB();

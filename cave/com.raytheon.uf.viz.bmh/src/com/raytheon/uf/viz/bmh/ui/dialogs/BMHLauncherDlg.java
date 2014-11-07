@@ -113,6 +113,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08, 2014  #3687     bsteffen    Add menu item to copy operational db in practice mode.
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 21, 2014  #3687     bsteffen    Automatically notify edex when starting/stopping in practice mode.
+ * Nov 07, 2014  #3413     rferrel     Added authorization check on dialogs.
  * 
  * </pre>
  * 
@@ -261,7 +262,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("BMH Menu");
+        setText(DlgInfo.BMH_MENU.getTitle());
 
         shell.addShellListener(new ShellAdapter() {
             @Override
@@ -314,7 +315,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
         for (String str : openDialogs) {
             if (str != null) {
-                sb.append(str).append("\n");
+                sb.append(str).append(" Dialog\n");
             }
         }
 
@@ -566,13 +567,15 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         transConfigMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (transmitterConfigDlg == null
-                        || transmitterConfigDlg.isDisposed()) {
-                    transmitterConfigDlg = new TransmitterConfigDlg(shell,
-                            dlgsToValidateCloseMap);
-                    transmitterConfigDlg.open();
-                } else {
-                    transmitterConfigDlg.bringToTop();
+                if (isAuthorized(DlgInfo.TRANSMITTER_CONFIGURATION)) {
+                    if (transmitterConfigDlg == null
+                            || transmitterConfigDlg.isDisposed()) {
+                        transmitterConfigDlg = new TransmitterConfigDlg(shell,
+                                dlgsToValidateCloseMap);
+                        transmitterConfigDlg.open();
+                    } else {
+                        transmitterConfigDlg.bringToTop();
+                    }
                 }
             }
         });
@@ -585,13 +588,15 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         transAlignmentMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (transmitterAlignmentDlg == null
-                        || transmitterAlignmentDlg.isDisposed()) {
-                    transmitterAlignmentDlg = new TransmitterAlignmentDlg(
-                            shell, dlgsToValidateCloseMap);
-                    transmitterAlignmentDlg.open();
-                } else {
-                    transmitterAlignmentDlg.bringToTop();
+                if (isAuthorized(DlgInfo.TRANSMITTER_ALIGNMENT)) {
+                    if (transmitterAlignmentDlg == null
+                            || transmitterAlignmentDlg.isDisposed()) {
+                        transmitterAlignmentDlg = new TransmitterAlignmentDlg(
+                                shell, dlgsToValidateCloseMap);
+                        transmitterAlignmentDlg.open();
+                    } else {
+                        transmitterAlignmentDlg.bringToTop();
+                    }
                 }
             }
         });
@@ -610,12 +615,15 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         listeningAreasMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (listeningAreaDlg == null || listeningAreaDlg.isDisposed()) {
-                    listeningAreaDlg = new ListeningAreaDlg(shell,
-                            dlgsToValidateCloseMap);
-                    listeningAreaDlg.open();
-                } else {
-                    listeningAreaDlg.bringToTop();
+                if (isAuthorized(DlgInfo.LISTENING_AREAS)) {
+                    if (listeningAreaDlg == null
+                            || listeningAreaDlg.isDisposed()) {
+                        listeningAreaDlg = new ListeningAreaDlg(shell,
+                                dlgsToValidateCloseMap);
+                        listeningAreaDlg.open();
+                    } else {
+                        listeningAreaDlg.bringToTop();
+                    }
                 }
             }
         });
@@ -625,12 +633,15 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         listeningZonesMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (listeningZoneDlg == null || listeningZoneDlg.isDisposed()) {
-                    listeningZoneDlg = new ListeningZoneDlg(shell,
-                            dlgsToValidateCloseMap);
-                    listeningZoneDlg.open();
-                } else {
-                    listeningZoneDlg.bringToTop();
+                if (isAuthorized(DlgInfo.LISTENING_ZONES)) {
+                    if (listeningZoneDlg == null
+                            || listeningZoneDlg.isDisposed()) {
+                        listeningZoneDlg = new ListeningZoneDlg(shell,
+                                dlgsToValidateCloseMap);
+                        listeningZoneDlg.open();
+                    } else {
+                        listeningZoneDlg.bringToTop();
+                    }
                 }
             }
         });
@@ -643,7 +654,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         disableAlarmMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                handleDisableSilenceAlarm();
+                if (isAuthorized(DlgInfo.DISABLES_SILENCE_ALARM)) {
+                    handleDisableSilenceAlarm();
+                }
             }
         });
 
@@ -675,12 +688,15 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         broadcastProgramMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (broadcastProgDlg == null || broadcastProgDlg.isDisposed()) {
-                    broadcastProgDlg = new BroadcastProgramDlg(getShell(),
-                            dlgsToValidateCloseMap);
-                    broadcastProgDlg.open();
-                } else {
-                    broadcastProgDlg.bringToTop();
+                if (isAuthorized(DlgInfo.BROADCAST_PROGRAMS)) {
+                    if (broadcastProgDlg == null
+                            || broadcastProgDlg.isDisposed()) {
+                        broadcastProgDlg = new BroadcastProgramDlg(getShell(),
+                                dlgsToValidateCloseMap);
+                        broadcastProgDlg.open();
+                    } else {
+                        broadcastProgDlg.bringToTop();
+                    }
                 }
             }
         });
@@ -701,12 +717,14 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         suiteManagerMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (suiteManagerDlg == null || suiteManagerDlg.isDisposed()) {
-                    suiteManagerDlg = new SuiteManagerDlg(getShell(),
-                            dlgsToValidateCloseMap);
-                    suiteManagerDlg.open();
-                } else {
-                    suiteManagerDlg.bringToTop();
+                if (isAuthorized(DlgInfo.SUITE_MANAGER)) {
+                    if (suiteManagerDlg == null || suiteManagerDlg.isDisposed()) {
+                        suiteManagerDlg = new SuiteManagerDlg(getShell(),
+                                dlgsToValidateCloseMap);
+                        suiteManagerDlg.open();
+                    } else {
+                        suiteManagerDlg.bringToTop();
+                    }
                 }
             }
         });
@@ -719,12 +737,14 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         messageTypesMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (messageTypesDlg == null || messageTypesDlg.isDisposed()) {
-                    messageTypesDlg = new MessageTypesDlg(getShell(),
-                            dlgsToValidateCloseMap);
-                    messageTypesDlg.open();
-                } else {
-                    messageTypesDlg.bringToTop();
+                if (isAuthorized(DlgInfo.MESSAGE_TYPE)) {
+                    if (messageTypesDlg == null || messageTypesDlg.isDisposed()) {
+                        messageTypesDlg = new MessageTypesDlg(getShell(),
+                                dlgsToValidateCloseMap);
+                        messageTypesDlg.open();
+                    } else {
+                        messageTypesDlg.bringToTop();
+                    }
                 }
             }
         });
@@ -737,12 +757,14 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         messageTypesAssocMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (msgTypeAssocDlg == null || msgTypeAssocDlg.isDisposed()) {
-                    msgTypeAssocDlg = new MessageTypeAssocDlg(getShell(),
-                            dlgsToValidateCloseMap);
-                    msgTypeAssocDlg.open();
-                } else {
-                    msgTypeAssocDlg.bringToTop();
+                if (isAuthorized(DlgInfo.MESSAGE_TYPE_ASSOCIATION)) {
+                    if (msgTypeAssocDlg == null || msgTypeAssocDlg.isDisposed()) {
+                        msgTypeAssocDlg = new MessageTypeAssocDlg(getShell(),
+                                dlgsToValidateCloseMap);
+                        msgTypeAssocDlg.open();
+                    } else {
+                        msgTypeAssocDlg.bringToTop();
+                    }
                 }
             }
         });
@@ -790,14 +812,16 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                 /*
                  * TODO : implement new redesigned dialog
                  */
-                DialogUtility
-                        .showMessageBox(shell, SWT.ICON_INFORMATION | SWT.OK,
-                                "Redesign Needed",
-                                "The status dialog is being redesigned and will be available at a later date.");
-                // if (statusDlg == null || statusDlg.isDisposed()) {
-                // statusDlg = new SystemStatusDlg(shell);
-                // statusDlg.open();
-                // }
+                if (isAuthorized(DlgInfo.SYSTEM_STATUS)) {
+                    DialogUtility
+                            .showMessageBox(shell, SWT.ICON_INFORMATION
+                                    | SWT.OK, "Redesign Needed",
+                                    "The status dialog is being redesigned and will be available at a later date.");
+                    // if (statusDlg == null || statusDlg.isDisposed()) {
+                    // statusDlg = new SystemStatusDlg(shell);
+                    // statusDlg.open();
+                    // }
+                }
             }
         });
 
@@ -809,16 +833,21 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         alertMonitorMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                DialogUtility.notImplemented(shell);
+                if (isAuthorized(DlgInfo.ALERT_MONITOR)) {
+                    DialogUtility.notImplemented(shell);
+                }
             }
         });
+
         if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
-            MenuItem copyOperationalDB = new MenuItem(systemMenu, SWT.PUSH);
-            copyOperationalDB.setText("Copy Operational DB");
-            copyOperationalDB.addSelectionListener(new SelectionAdapter() {
+            MenuItem copyOperationalDbMI = new MenuItem(systemMenu, SWT.PUSH);
+            copyOperationalDbMI.setText("Copy Operational DB");
+            copyOperationalDbMI.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent event) {
-                    copyOperationalDb();
+                    if (isAuthorized(DlgInfo.COPY_OPERATIONAL_DB)) {
+                        copyOperationalDb();
+                    }
                 }
             });
         }
@@ -836,11 +865,13 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         ldadConfigMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (ldadConfigDlg == null || ldadConfigDlg.isDisposed()) {
-                    ldadConfigDlg = new LdadConfigDlg(getShell());
-                    ldadConfigDlg.open();
-                } else {
-                    ldadConfigDlg.bringToTop();
+                if (isAuthorized(DlgInfo.LDAD_CONFIGURATION)) {
+                    if (ldadConfigDlg == null || ldadConfigDlg.isDisposed()) {
+                        ldadConfigDlg = new LdadConfigDlg(getShell());
+                        ldadConfigDlg.open();
+                    } else {
+                        ldadConfigDlg.bringToTop();
+                    }
                 }
             }
         });
@@ -870,19 +901,22 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         });
 
         /*
-         * Convert Legacy Dictionary
+         * DAC Configuration
          */
         MenuItem dacConfigMI = new MenuItem(maintenanceMenu, SWT.PUSH);
         dacConfigMI.setText("DAC Configuration...");
         dacConfigMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (dacConfigDlg == null || dacConfigDlg.isDisposed() == true) {
-                    dacConfigDlg = new DacConfigDlg(shell,
-                            dlgsToValidateCloseMap);
-                    dacConfigDlg.open();
-                } else {
-                    dacConfigDlg.bringToTop();
+                if (isAuthorized(DlgInfo.DAC_CONFIGURATION)) {
+                    if (dacConfigDlg == null
+                            || dacConfigDlg.isDisposed() == true) {
+                        dacConfigDlg = new DacConfigDlg(shell,
+                                dlgsToValidateCloseMap);
+                        dacConfigDlg.open();
+                    } else {
+                        dacConfigDlg.bringToTop();
+                    }
                 }
             }
         });
@@ -910,12 +944,14 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      * Launch the {@link DictionaryManagerDlg}
      */
     private void launchDictionaryManager() {
-        if (this.dictManagerDlg == null || this.dictManagerDlg.isDisposed()) {
-            dictManagerDlg = new DictionaryManagerDlg(shell,
-                    this.dlgsToValidateCloseMap);
-            dictManagerDlg.open();
-        } else {
-            dictManagerDlg.bringToTop();
+        if (isAuthorized(DlgInfo.MANAGE_DICTIONARIES)) {
+            if (this.dictManagerDlg == null || this.dictManagerDlg.isDisposed()) {
+                dictManagerDlg = new DictionaryManagerDlg(shell,
+                        this.dlgsToValidateCloseMap);
+                dictManagerDlg.open();
+            } else {
+                dictManagerDlg.bringToTop();
+            }
         }
     }
 
@@ -923,53 +959,62 @@ public class BMHLauncherDlg extends CaveSWTDialog {
      * Launch the legacy dictionary converter
      */
     private void launchLegacyDictionaryConverter() {
-        if (this.dictConverterDlg == null || dictConverterDlg.isDisposed()) {
-            FileDialog dialog = new FileDialog(shell, SWT.SAVE);
-            String[] filterNames = new String[] { "Dictionary Files",
-                    "All Files (*)" };
-            String[] filterExtensions = new String[] { "*.dic;*.nat;", "*" };
-            String filterPath = "/";
-            dialog.setFilterNames(filterNames);
-            dialog.setFilterExtensions(filterExtensions);
-            dialog.setFilterPath(filterPath);
-            String file = dialog.open();
-            if (file != null && file.length() > 0) {
-                this.dictConverterDlg = new LegacyDictionaryConverterDlg(
-                        getShell(), file);
-                dictConverterDlg.open();
+        if (isAuthorized(DlgInfo.CONVERT_LEGACY_DICTIONARY)) {
+            if (this.dictConverterDlg == null || dictConverterDlg.isDisposed()) {
+                FileDialog dialog = new FileDialog(shell, SWT.SAVE);
+                dialog.setText(DlgInfo.CONVERT_LEGACY_DICTIONARY.getTitle());
+                String[] filterNames = new String[] { "Dictionary Files",
+                        "All Files (*)" };
+                String[] filterExtensions = new String[] { "*.dic;*.nat;", "*" };
+                String filterPath = "/";
+                dialog.setFilterNames(filterNames);
+                dialog.setFilterExtensions(filterExtensions);
+                dialog.setFilterPath(filterPath);
+                String file = dialog.open();
+                if (file != null && file.length() > 0) {
+                    this.dictConverterDlg = new LegacyDictionaryConverterDlg(
+                            getShell(), file);
+                    dictConverterDlg.open();
+                }
+            } else {
+                dictConverterDlg.bringToTop();
             }
-        } else {
-            dictConverterDlg.bringToTop();
         }
     }
 
     private void launchBroadcastCycle() {
-        if (broadcastCycleDlg == null || broadcastCycleDlg.isDisposed()) {
-            broadcastCycleDlg = new BroadcastCycleDlg(getShell(),
-                    dlgsToValidateCloseMap);
-            broadcastCycleDlg.open();
-        } else {
-            broadcastCycleDlg.bringToTop();
+        if (isAuthorized(DlgInfo.BROADCAST_CYCLE)) {
+            if (broadcastCycleDlg == null || broadcastCycleDlg.isDisposed()) {
+                broadcastCycleDlg = new BroadcastCycleDlg(getShell(),
+                        dlgsToValidateCloseMap);
+                broadcastCycleDlg.open();
+            } else {
+                broadcastCycleDlg.bringToTop();
+            }
         }
     }
 
     private void launchWeatherMessages() {
-        if (weatherMessagesDlg == null || weatherMessagesDlg.isDisposed()) {
-            weatherMessagesDlg = new WeatherMessagesDlg(getShell(),
-                    dlgsToValidateCloseMap);
-            weatherMessagesDlg.open();
-        } else {
-            weatherMessagesDlg.bringToTop();
+        if (isAuthorized(DlgInfo.WEATHER_MESSAGES)) {
+            if (weatherMessagesDlg == null || weatherMessagesDlg.isDisposed()) {
+                weatherMessagesDlg = new WeatherMessagesDlg(getShell(),
+                        dlgsToValidateCloseMap);
+                weatherMessagesDlg.open();
+            } else {
+                weatherMessagesDlg.bringToTop();
+            }
         }
     }
 
     private void launchEmergencyOverride() {
-        if (emergecyOverrideDlg == null || emergecyOverrideDlg.isDisposed()) {
-            emergecyOverrideDlg = new EmergencyOverrideDlg(getShell(),
-                    dlgsToValidateCloseMap);
-            emergecyOverrideDlg.open();
-        } else {
-            emergecyOverrideDlg.bringToTop();
+        if (isAuthorized(DlgInfo.EMERGENCY_OVERRIDE)) {
+            if (emergecyOverrideDlg == null || emergecyOverrideDlg.isDisposed()) {
+                emergecyOverrideDlg = new EmergencyOverrideDlg(getShell(),
+                        dlgsToValidateCloseMap);
+                emergecyOverrideDlg.open();
+            } else {
+                emergecyOverrideDlg.bringToTop();
+            }
         }
     }
 
@@ -980,6 +1025,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
          */
         ProgressMonitorDialog dialog = new ProgressMonitorDialog(
                 this.getShell());
+        dialog.getShell().setText(DlgInfo.COPY_OPERATIONAL_DB.getTitle());
+
         try {
             dialog.run(true, false, new IRunnableWithProgress() {
 
@@ -1033,8 +1080,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
          * Create the check list dialog with the list of transmitters.
          */
         CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
-                "Disable Silence Alarm", "Select Transmitter to Disable:", cld,
-                true);
+                DlgInfo.DISABLES_SILENCE_ALARM.getTitle(),
+                "Select Transmitter to Disable:", cld, true);
         checkListDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -1077,5 +1124,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                 }
             }
         }
+    }
+
+    private boolean isAuthorized(DlgInfo dlgInfo) {
+        return BmhUtils.isAuthorized(shell, dlgInfo);
     }
 }

@@ -38,6 +38,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.viz.bmh.Activator;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -51,6 +52,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jun 23, 2014    3349    mpduff      Initial creation
  * Jul 27, 2014  #3420     lvenable    Replaced plugin variable.
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -86,7 +88,7 @@ public class SystemStatusDlg extends CaveSWTDialog {
     public SystemStatusDlg(Shell parentShell) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
                 | CAVE.DO_NOT_BLOCK);
-        setText("System Status");
+        setText(DlgInfo.SYSTEM_STATUS.getTitle());
     }
 
     @Override

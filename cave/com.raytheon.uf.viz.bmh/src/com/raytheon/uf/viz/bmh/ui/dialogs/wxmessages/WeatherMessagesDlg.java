@@ -65,6 +65,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
@@ -109,6 +110,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 3, 2014   3785     bkowal      Fix the weather messages dialog.
  * Nov 03, 2014  3781     dgilling    Set SAME tone flag on input messages.
  * Nov 4, 2014   3778     bsteffen    Change the id after a submit.
+ * Nov 11, 2014  3413     rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -212,8 +214,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      */
     public WeatherMessagesDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "Weather Messages Dialog", parentShell, SWT.DIALOG_TRIM
-                | SWT.MIN, CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(dlgMap, DlgInfo.WEATHER_MESSAGES.getTitle(), parentShell,
+                SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
+                        | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override
@@ -232,7 +235,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("Weather Messages");
+        setText(DlgInfo.WEATHER_MESSAGES.getTitle());
 
         createNewEditButtons();
         createMainControls();
