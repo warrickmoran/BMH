@@ -79,6 +79,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 07, 2014 3687       bsteffen    Handle reset notification
  * Oct 17, 2014 3642       bkowal      Set input msg name for static messages.
  * Oct 28, 2014 3750       bkowal      Fix time messages. Support practice mode.
+ * Nov 3, 2014  3759       bkowal      Generate both dst and non-dst timezones.
  * 
  * 
  * </pre>
@@ -403,8 +404,15 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                             continue;
                         }
 
+                        String timezoneDaylight = tz.getShortDisplayName(true);
+                        String timezoneNoDaylight = tz
+                                .getShortDisplayName(false);
+                        if (timezoneDaylight.equals(timezoneNoDaylight)) {
+                            timezoneNoDaylight = null;
+                        }
+
                         this.tmGenerator.process(language.getVoice(),
-                                tz.getShortDisplayName());
+                                timezoneDaylight, timezoneNoDaylight);
                     } catch (StaticGenerationException e) {
                         statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
                                 "Failed to generate the static time message fragments for voice "
@@ -622,7 +630,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         this.validateDaos();
 
         this.initializeInternal();
-        
+
         try {
             this.tmGenerator.initialize();
         } catch (BMHConfigurationException e) {
