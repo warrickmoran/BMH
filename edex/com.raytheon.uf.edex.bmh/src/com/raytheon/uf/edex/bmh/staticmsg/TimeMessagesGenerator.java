@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SayAs;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
+import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.handler.TextToSpeechHandler;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
@@ -61,6 +62,8 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * ------------ ---------- ----------- --------------------------
  * Sep 30, 2014 3642       bkowal      Initial creation
  * Nov 3, 2014  3759       bkowal      Practice Mode Support.
+ * Nov 5, 2014  3630       bkowal      Use constants audio directory. BMH Data is
+ *                                     now set in the constructor.
  * 
  * </pre>
  * 
@@ -76,9 +79,7 @@ public class TimeMessagesGenerator {
     private final TextToSpeechHandler ttsHandler;
 
     /* Output root subdirectories */
-    private String bmhDataDirectory;
-
-    private static final String AUDIO_DATA_DIRECTORY = "audio";
+    private final String bmhDataDirectory;
 
     private static final String TIME_DATA_DIRECTORY = "time";
 
@@ -122,14 +123,16 @@ public class TimeMessagesGenerator {
 
     private Path audioTimePath;
 
-    public TimeMessagesGenerator(final TextToSpeechHandler ttsHandler) {
+    public TimeMessagesGenerator(final TextToSpeechHandler ttsHandler,
+            final String bmhDataDirectory) {
         this.ttsHandler = ttsHandler;
+        this.bmhDataDirectory = bmhDataDirectory;
     }
 
     public void initialize() throws BMHConfigurationException {
         statusHandler.info("Initializing the Time Messages Generator ...");
-        audioTimePath = Paths.get(this.bmhDataDirectory, AUDIO_DATA_DIRECTORY,
-                TIME_DATA_DIRECTORY);
+        audioTimePath = Paths.get(this.bmhDataDirectory,
+                BMHConstants.AUDIO_DATA_DIRECTORY, TIME_DATA_DIRECTORY);
         /*
          * Determine if the location exists.
          */
@@ -361,21 +364,6 @@ public class TimeMessagesGenerator {
                             + TimeUtil.prettyDuration(overallTimer
                                     .getElapsedTime()) + ".");
         }
-    }
-
-    /**
-     * @return the bmhDataDirectory
-     */
-    public String getBmhDataDirectory() {
-        return bmhDataDirectory;
-    }
-
-    /**
-     * @param bmhDataDirectory
-     *            the bmhDataDirectory to set
-     */
-    public void setBmhDataDirectory(String bmhDataDirectory) {
-        this.bmhDataDirectory = bmhDataDirectory;
     }
 
     public Path getTimeVoiceDirectory(final TtsVoice voice) {

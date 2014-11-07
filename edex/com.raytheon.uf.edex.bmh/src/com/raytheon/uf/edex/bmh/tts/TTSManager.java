@@ -42,6 +42,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
+import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
@@ -76,6 +77,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 2, 2014  3642       bkowal      Updated for compatibility with other changes
  * Oct 21, 2014 3747       bkowal      Set update time manually.
  * Oct 26, 2014 3759       bkowal      Update to support practice mode.
+ * Nov 5, 2014  3630       bkowal      Use constants audio directory.
  * 
  * </pre>
  * 
@@ -88,9 +90,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             .getInstance(TTSManager.class);
 
     private static final int CORE_POOL_SIZE = 1;
-
-    /* Output root subdirectory */
-    private static final String AUDIO_DATA_DIRECTORY = "audio";
 
     private static final ThreadLocal<SimpleDateFormat> TODAY_DATED_DIRECTORY_FORMAT = TimeUtil
             .buildThreadLocalSimpleDateFormat("yyMMdd",
@@ -202,7 +201,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
         /* Attempt to retrieve the location of BMH_DATA */
         this.bmhDataDirectory = FilenameUtils.normalize(this.bmhDataDirectory
-                + File.separatorChar + AUDIO_DATA_DIRECTORY);
+                + File.separatorChar + BMHConstants.AUDIO_DATA_DIRECTORY);
 
         /*
          * Attempt to retrieve configuration information from the System
@@ -667,7 +666,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     }
 
     /**
-     * @param bmhDataDirectory the bmhDataDirectory to set
+     * @param bmhDataDirectory
+     *            the bmhDataDirectory to set
      */
     public void setBmhDataDirectory(String bmhDataDirectory) {
         this.bmhDataDirectory = bmhDataDirectory;

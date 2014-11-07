@@ -80,7 +80,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 17, 2014 3642       bkowal      Set input msg name for static messages.
  * Oct 28, 2014 3750       bkowal      Fix time messages. Support practice mode.
  * Nov 3, 2014  3759       bkowal      Generate both dst and non-dst timezones.
- * 
+ * Nov 5, 2014  3630       bkowal      Support maintenance audio generation.
  * 
  * </pre>
  * 
@@ -94,6 +94,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             .getInstance(StaticMessageGenerator.class);
 
     private final TimeMessagesGenerator tmGenerator;
+
+    private final AlignmentTestGenerator alignmentTestGenerator;
 
     /*
      * Maximum allowed value for PostgreSQL year as documented at:
@@ -120,8 +122,10 @@ public class StaticMessageGenerator implements IContextStateProcessor {
     /**
      * 
      */
-    public StaticMessageGenerator(final TimeMessagesGenerator tmGenerator) {
+    public StaticMessageGenerator(final TimeMessagesGenerator tmGenerator,
+            final AlignmentTestGenerator alignmentTestGenerator) {
         this.tmGenerator = tmGenerator;
+        this.alignmentTestGenerator = alignmentTestGenerator;
         this.expire = Calendar.getInstance();
         this.expire.set(Calendar.YEAR, MAX_YEAR);
     }
@@ -344,7 +348,14 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 || group.getEnabledTransmitters().isEmpty()) {
             statusHandler
                     .info("Skipping message generation. Transmitter group "
-                            + group.getId() + " is not currently enabled.");
+                            + group.getId()
+                            + " is not currently enabled. Generating / Verifying the existence of maintenance messages ...");
+            try {
+                this.alignmentTestGenerator.process();
+            } catch (StaticGenerationException e) {
+                statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
+                        "Failed to generate the maintenance message audio.", e);
+            }
             return Collections.emptyList();
         }
 
@@ -639,6 +650,25 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             /* Halt the context startup. */
             throw new RuntimeException(
                     "Time Messages Generator initialization failed!");
+        }
+
+        try {
+            this.alignmentTestGenerator.initialize();
+        } catch (BMHConfigurationException e) {
+            statusHandler.fatal(BMH_CATEGORY.TTS_CONFIGURATION_ERROR,
+                    "Alignment Test Generator initialization failed!", e);
+            /* Halt the context startup. */
+            throw new RuntimeException(
+                    "Alignment Test Generator initialization failed!");
+        }
+        try {
+            this.alignmentTestGenerator.process();
+        } catch (StaticGenerationException e) {
+            statusHandler.fatal(BMH_CATEGORY.STATIC_MSG_ERROR,
+                    "Maintenance message generation has failed!", e);
+            /* Halt the context startup. */
+            throw new RuntimeException(
+                    "Maintenance message generation has failed!");
         }
     }
 

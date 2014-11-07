@@ -19,7 +19,8 @@
 		<property name="bmhDataDirectory" value="${BMH_DATA}/practice" />
 	</bean>
 	
-	<bean factory-bean="ttsHandler" factory-method="setPracticeTTSManager">
+	<bean factory-bean="ttsHandler" factory-method="setPracticeTTSManager"
+		depends-on="ttsHandler">
 		<constructor-arg ref="practice_ttsManager" />
 	</bean>
 	

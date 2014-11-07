@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -39,8 +40,11 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
+import com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest;
+import com.raytheon.uf.common.bmh.request.MaintenanceMessageResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ScaleSpinnerComp;
@@ -57,6 +61,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 14, 2014    3630    mpduff      Initial creation
+ * Nov 05, 2014    3630    bkowal      Initial implementation of run test.
  * 
  * </pre>
  * 
@@ -69,7 +74,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             .getHandler(TransmitterAlignmentDlg.class);
 
     /** Constant */
-    private final String STATUS_PREFIX = "Transmitter Group ";
+    private final String STATUS_PREFIX = "Transmitter is ";
 
     /** List widget of transmitter groups */
     private List transmitterList;
@@ -97,6 +102,15 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
 
     /** Disable Button */
     private Button disableTransmitterBtn;
+
+    private Button sameRdo;
+
+    private Button alertRdo;
+
+    private Button textRdo;
+
+    /** "Run Test" Button **/
+    private Button testBtn;
 
     /**
      * Constructor.
@@ -238,7 +252,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         GridLayout gl = new GridLayout(1, false);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Group statusGrp = new Group(comp, SWT.BORDER);
-        statusGrp.setText(" Transmitter Group Status ");
+        statusGrp.setText(" Transmitter Status ");
         statusGrp.setLayout(gl);
         statusGrp.setLayoutData(gd);
 
@@ -279,7 +293,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         gd = new GridData(btnWidth, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.CENTER;
         disableTransmitterBtn = new Button(btnComp, SWT.PUSH);
-        disableTransmitterBtn.setText("Disable Group");
+        disableTransmitterBtn.setText("Disable Transmitter");
         disableTransmitterBtn.setLayoutData(gd);
         disableTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -313,14 +327,14 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         rdoComp.setLayout(gl);
         rdoComp.setLayoutData(gd);
 
-        Button sameRdo = new Button(rdoComp, SWT.RADIO);
+        sameRdo = new Button(rdoComp, SWT.RADIO);
         sameRdo.setText("SAME");
         sameRdo.setSelection(true);
 
-        Button alertRdo = new Button(rdoComp, SWT.RADIO);
+        alertRdo = new Button(rdoComp, SWT.RADIO);
         alertRdo.setText("Alert");
 
-        Button textRdo = new Button(rdoComp, SWT.RADIO);
+        textRdo = new Button(rdoComp, SWT.RADIO);
         textRdo.setText("Text");
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -338,15 +352,13 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
         gd.horizontalSpan = 2;
         gd.horizontalAlignment = SWT.CENTER;
-        Button testBtn = new Button(group, SWT.PUSH);
+        testBtn = new Button(group, SWT.PUSH);
         testBtn.setText(" Run Test ");
         testBtn.setLayoutData(gd);
         testBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO hook this up
-                System.out.println("Run test for "
-                        + durScaleComp.getSelectedValue() + " seconds");
+                handleRunTest();
             }
         });
     }
@@ -388,6 +400,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                         + TxStatus.ENABLED.toString());
                 this.enableTransmitterBtn.setEnabled(false);
                 this.disableTransmitterBtn.setEnabled(true);
+                this.testBtn.setEnabled(false);
             } else {
                 this.statusLbl.setText(STATUS_PREFIX
                         + selectedTransmitterGrp.getName() + " "
@@ -398,6 +411,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                  */
                 this.enableTransmitterBtn.setEnabled(false);
                 this.disableTransmitterBtn.setEnabled(false);
+                this.testBtn
+                        .setEnabled(this
+                                .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
             }
         }
     }
@@ -438,6 +454,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             dataManager.saveTransmitterGroup(selectedTransmitterGrp);
             enableTransmitterBtn.setEnabled(false);
             disableTransmitterBtn.setEnabled(true);
+            testBtn.setEnabled(false);
+
             statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
                     + " " + TxStatus.ENABLED.toString());
         } catch (Exception e) {
@@ -452,11 +470,78 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             dataManager.saveTransmitterGroup(selectedTransmitterGrp);
             enableTransmitterBtn.setEnabled(true);
             disableTransmitterBtn.setEnabled(false);
+            testBtn.setEnabled(this
+                    .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
             statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
                     + " " + TxStatus.DISABLED.toString());
         } catch (Exception e) {
             statusHandler.error("Error enabling Transmitter Group", e);
         }
+    }
+
+    /**
+     * Determines if the specified {@link TransmitterGroup} has been fully
+     * configured. A transmitter group is configured when it has been assigned
+     * to both a dac and a dac port.
+     * 
+     * @param transmitterGroup
+     *            the specified {@link TransmitterGroup}.
+     * @return a boolean flag indicating whether or not the transmitter group
+     *         has been configured.
+     */
+    public boolean isTransmitterGroupConfigured(
+            TransmitterGroup transmitterGroup) {
+
+        return transmitterGroup != null
+                && transmitterGroup.getDac() != null
+                && transmitterGroup.getTransmitterList() != null
+                && transmitterGroup.getTransmitterList().isEmpty() == false
+                && transmitterGroup.getTransmitterList().get(0).getDacPort() != null;
+    }
+
+    private void handleRunTest() {
+        String audioLocation = null;
+
+        try {
+            audioLocation = this.retrieveAudioLocation();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to configure the transmitter maintenance test.", e);
+            return;
+        }
+
+        /*
+         * TODO: build request for comms manager to stream maintenance audio to
+         * the dac.
+         */
+        throw new NotImplementedException(
+                "'Run Test' has not been fully implemented yet! Ready to stream maintenance audio: "
+                        + audioLocation);
+    }
+
+    /**
+     * Retrieves the location of the maintenance audio that will be transmitted
+     * to the dac.
+     * 
+     * @return the location of the maintenance audio
+     * @throws Exception
+     *             if the request to EDEX fails for any reason
+     */
+    private String retrieveAudioLocation() throws Exception {
+        MaintenanceMessageRequest request = new MaintenanceMessageRequest();
+
+        if (this.sameRdo.getSelection()) {
+            request.setType(MaintenanceMessageRequest.AUDIOTYPE.SAME);
+        } else if (this.alertRdo.getSelection()) {
+            request.setType(MaintenanceMessageRequest.AUDIOTYPE.ALERT);
+        } else if (this.textRdo.getSelection()) {
+            request.setType(MaintenanceMessageRequest.AUDIOTYPE.TEXT);
+        }
+
+        MaintenanceMessageResponse response = (MaintenanceMessageResponse) BmhUtils
+                .sendRequest(request);
+
+        return response.getMaintenanceAudioFileLocation();
     }
 
     @Override

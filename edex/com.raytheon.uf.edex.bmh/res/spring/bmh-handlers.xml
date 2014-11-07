@@ -116,4 +116,13 @@
         <constructor-arg ref="newBroadcastMsgHandler" />
     </bean>
 
+	<bean id="maintenanceMessageHandler" 
+		class="com.raytheon.uf.edex.bmh.handler.MaintenanceMessageHandler">
+		<constructor-arg ref="alignmentTestGenerator" />
+	</bean>
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest" />
+        <constructor-arg ref="maintenanceMessageHandler" />
+    </bean>
 </beans>

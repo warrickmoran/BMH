@@ -6,12 +6,20 @@
 	<bean id="timeMessagesGenerator"
 		class="com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator">
 		<constructor-arg ref="ttsHandler" />
-		<property name="bmhDataDirectory" value="${BMH_DATA}" />
+		<constructor-arg value="${BMH_DATA}" />
 	</bean>
 	
-	<bean id="staticMessageGenerator"
+	<bean id="alignmentTestGenerator"
+		class="com.raytheon.uf.edex.bmh.staticmsg.AlignmentTestGenerator">
+		<constructor-arg ref="ttsHandler" />
+		<constructor-arg value="${BMH_DATA}" />
+		<property name="ttsVoiceDao" ref="ttsVoiceDao" />
+	</bean>
+
+	<bean id="staticMessageGenerator" 
 		class="com.raytheon.uf.edex.bmh.staticmsg.StaticMessageGenerator">
 		<constructor-arg ref="timeMessagesGenerator" />
+		<constructor-arg ref="alignmentTestGenerator" />
 		<property name="broadcastMsgDao" ref="broadcastMsgDao" />
 		<property name="transmitterGroupDao" ref="transmitterGroupDao" />
 		<property name="transmitterLanguageDao" ref="transmitterLanguageDao" />
