@@ -19,8 +19,14 @@
  **/
 package com.raytheon.uf.common.bmh.broadcast;
 
+import java.util.List;
+
+import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+
 /**
- * Definition of a live broadcast message.
+ * Definition of a request type that is used to interact with on-demand
+ * broadcasts.
  * 
  * <pre>
  * 
@@ -28,8 +34,7 @@ package com.raytheon.uf.common.bmh.broadcast;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 20, 2014 3655       bkowal      Initial creation
- * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
+ * Nov 7, 2014  3630       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -37,6 +42,10 @@ package com.raytheon.uf.common.bmh.broadcast;
  * @version 1.0
  */
 
-public interface ILiveBroadcastMessage extends IOnDemandBroadcastMsg {
-    public String getBroadcastId();
+public interface IOnDemandBroadcastMsg {
+    public MSGSOURCE getMsgSource();
+
+    public Boolean getStatus();
+
+    public List<Transmitter> getTransmitterGroups();
 }

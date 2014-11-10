@@ -19,17 +19,11 @@
  **/
 package com.raytheon.uf.common.bmh.broadcast;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.ArrayList;
-
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Abstract representation of a message used to trigger and report on live
- * broadcasts.
+ * Abstract request implementation for interacting with live broadcasts.
  * 
  * <pre>
  * 
@@ -37,68 +31,24 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 20, 2014 3655       bkowal      Initial creation
+ * Nov 7, 2014  3630       bkowal      Initial creation
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
-
 @DynamicSerialize
-public abstract class AbstractLiveBroadcastMessage implements
-        ILiveBroadcastMessage {
-
-    @DynamicSerializeElement
-    private String msgSource;
-
-    @DynamicSerializeElement
-    private Boolean status;
+public class AbstractLiveBroadcastMessage extends
+        AbstractOnDemandBroadcastMessage implements ILiveBroadcastMessage {
 
     @DynamicSerializeElement
     private String broadcastId;
 
     /**
-     * TODO: need to use {@link TransmitterGroup}. Note: the GUIs also need to
-     * be updated to reference the Transmitter Group instead of a Transmitter.
-     */
-    @DynamicSerializeElement
-    private List<Transmitter> transmitterGroups;
-
-    /**
      * 
      */
     public AbstractLiveBroadcastMessage() {
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage#getMsgSource()
-     */
-    @Override
-    public String getMsgSource() {
-        return this.msgSource;
-    }
-
-    public void setMsgSource(String msgSource) {
-        this.msgSource = msgSource;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage#getStatus()
-     */
-    @Override
-    public Boolean getStatus() {
-        return this.status;
-    }
-
-    public void setStatus(Boolean status) {
-        this.status = status;
     }
 
     /*
@@ -115,34 +65,5 @@ public abstract class AbstractLiveBroadcastMessage implements
 
     public void setBroadcastId(String broadcastId) {
         this.broadcastId = broadcastId;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage#
-     * getTransmitterGroups()
-     */
-    @Override
-    public List<Transmitter> getTransmitterGroups() {
-        return this.transmitterGroups;
-    }
-
-    public void setTransmitterGroups(List<Transmitter> transmitterGroups) {
-        this.transmitterGroups = transmitterGroups;
-    }
-
-    public void addTransmitter(Transmitter transmitter) {
-        if (this.transmitterGroups == null) {
-            this.transmitterGroups = new ArrayList<>();
-        }
-        this.transmitterGroups.add(transmitter);
-    }
-
-    public void addAllTransmitter(Collection<Transmitter> transmitters) {
-        if (this.transmitterGroups == null) {
-            this.transmitterGroups = new ArrayList<>();
-        }
-        this.transmitterGroups.addAll(transmitters);
     }
 }

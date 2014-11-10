@@ -17,10 +17,11 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.broadcast;
+package com.raytheon.uf.common.bmh;
 
 /**
- * Definition of a live broadcast message.
+ * Indicates that a problem occurred during part of the Transmitter Alignment
+ * test.
  * 
  * <pre>
  * 
@@ -28,8 +29,7 @@ package com.raytheon.uf.common.bmh.broadcast;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 20, 2014 3655       bkowal      Initial creation
- * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
+ * Nov 10, 2014 3630       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -37,6 +37,22 @@ package com.raytheon.uf.common.bmh.broadcast;
  * @version 1.0
  */
 
-public interface ILiveBroadcastMessage extends IOnDemandBroadcastMsg {
-    public String getBroadcastId();
+public class TransmitterAlignmentException extends Exception {
+
+    private static final long serialVersionUID = 4347951891313246394L;
+
+    /**
+     * @param message
+     */
+    public TransmitterAlignmentException(String message) {
+        super(message);
+    }
+
+    /**
+     * @param message
+     * @param cause
+     */
+    public TransmitterAlignmentException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

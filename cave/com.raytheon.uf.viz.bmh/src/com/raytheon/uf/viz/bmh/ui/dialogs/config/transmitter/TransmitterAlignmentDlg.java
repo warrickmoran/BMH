@@ -19,9 +19,11 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.eclipse.swt.SWT;
@@ -37,6 +39,10 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
+import com.raytheon.uf.common.bmh.broadcast.TransmitterAlignmentTestCommand;
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
@@ -49,6 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ScaleSpinnerComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -62,6 +69,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Sep 14, 2014    3630    mpduff      Initial creation
  * Nov 05, 2014    3630    bkowal      Initial implementation of run test.
+ * Nov 10, 2014    3630    bkowal      Build the TransmitterAlignmentTestCommand.
  * 
  * </pre>
  * 
@@ -500,23 +508,90 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     }
 
     private void handleRunTest() {
+        TransmitterAlignmentTestCommand command = null;
+        try {
+            command = this.buildCommand();
+        } catch (TransmitterAlignmentException e) {
+            statusHandler.error(
+                    "Failed to configure the transmitter alignment test.", e);
+        }
+
+        // TODO: submit the command to the Comms Manager
+        throw new NotImplementedException(
+                "Awaiting comms manager updates. Ready to process: "
+                        + command.toString());
+    }
+
+    private TransmitterAlignmentTestCommand buildCommand()
+            throws TransmitterAlignmentException {
         String audioLocation = null;
 
         try {
             audioLocation = this.retrieveAudioLocation();
         } catch (Exception e) {
-            statusHandler.error(
-                    "Failed to configure the transmitter maintenance test.", e);
-            return;
+            throw new TransmitterAlignmentException(
+                    "Failed to retrieve / generate audio required to complete the transmitter alignment test.",
+                    e);
         }
 
         /*
-         * TODO: build request for comms manager to stream maintenance audio to
-         * the dac.
+         * Retrieve the {@link Dac} associated with the selected {@link
+         * TransmitterGroup} to extract the required networking information.
          */
-        throw new NotImplementedException(
-                "'Run Test' has not been fully implemented yet! Ready to stream maintenance audio: "
-                        + audioLocation);
+        DacDataManager dacDataManager = new DacDataManager();
+        Dac dac = null;
+        try {
+            dac = dacDataManager.getDacById(this.selectedTransmitterGrp
+                    .getDac());
+        } catch (Exception e) {
+            throw new TransmitterAlignmentException(
+                    "Failed to retrieve the dac associated with id: "
+                            + this.selectedTransmitterGrp.getDac(), e);
+        }
+        if (dac == null) {
+            throw new TransmitterAlignmentException(
+                    "Unable to find a dac associated with id: "
+                            + this.selectedTransmitterGrp.getDac());
+        }
+
+        /*
+         * Build a list of transmitter radios.
+         */
+        Set<Transmitter> transmitters = this.selectedTransmitterGrp
+                .getTransmitters();
+        int[] radios = new int[transmitters.size()];
+        int rIndex = 0;
+        for (Transmitter transmitter : transmitters) {
+            if (transmitter.getDacPort() == null) {
+                statusHandler.warn("No port has been assigned to transmitter: "
+                        + transmitter.toString()
+                        + ". It will be excluded from the test.");
+                continue;
+            }
+            radios[rIndex] = transmitter.getDacPort();
+            ++rIndex;
+        }
+        if (radios.length != rIndex) {
+            radios = Arrays.copyOf(radios, rIndex);
+        }
+        Arrays.sort(radios);
+
+        TransmitterAlignmentTestCommand command = new TransmitterAlignmentTestCommand();
+        command.setDacHostname(dac.getAddress());
+        command.setRadios(radios);
+        /*
+         * Make comms manager find an available data port when it receives this
+         * request. There is not a pure mapping between available / unavailable
+         * data ports that can be determined via the db. comms manager will
+         * check the existing configuration to determine which data port(s), if
+         * any, are available. If an available data port cannot be found, comms
+         * manager will return a {@link TransmitterAlignmentException}.
+         */
+        command.setDecibelTarget(Double.parseDouble(this.dbValueLbl.getText()));
+        command.setInputAudioFile(audioLocation);
+        command.setBroadcastDuration(this.durScaleComp.getSelectedValue());
+
+        return command;
     }
 
     /**

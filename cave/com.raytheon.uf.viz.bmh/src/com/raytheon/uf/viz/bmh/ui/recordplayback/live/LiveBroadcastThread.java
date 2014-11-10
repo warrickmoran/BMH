@@ -35,6 +35,7 @@ import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand.ACTION;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
+import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -58,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  * Oct 21, 2014 3655       bkowal      Use the new message types. Improved error handling.
  * Nov 3, 2014  3655       bkowal      Cache live broadcast audio on the Viz side.
  * Nov 4, 2014  3655       bkowal      Eliminate audio echo. Decrease buffer delay.
+ * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
  * 
  * </pre>
  * 
@@ -313,7 +315,7 @@ public class LiveBroadcastThread extends Thread implements
 
         LiveBroadcastCommand command = new LiveBroadcastCommand();
         command.setBroadcastId(this.broadcastId);
-        command.setMsgSource(ILiveBroadcastMessage.SOURCE_VIZ);
+        command.setMsgSource(MSGSOURCE.VIZ);
         command.setTransmitterGroups(this.command.getTransmitterGroups());
         command.setAction(ACTION.STOP);
 
@@ -360,7 +362,7 @@ public class LiveBroadcastThread extends Thread implements
             }
 
             LiveBroadcastPlayCommand playCommand = new LiveBroadcastPlayCommand();
-            playCommand.setMsgSource(ILiveBroadcastMessage.SOURCE_VIZ);
+            playCommand.setMsgSource(MSGSOURCE.VIZ);
             playCommand.setBroadcastId(this.broadcastId);
             playCommand.setTransmitterGroups(this.command
                     .getTransmitterGroups());

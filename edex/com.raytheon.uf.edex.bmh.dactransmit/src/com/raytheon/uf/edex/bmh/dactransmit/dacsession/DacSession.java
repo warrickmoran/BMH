@@ -33,10 +33,10 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
-import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
+import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
@@ -89,6 +89,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Nov 1, 2014   #3655     bkowal       Improved how data is shared between the main dac 
  *                                      thread and the live broadcast thread.
  * Nov 4, 2014   #3655     bkowal       Eliminate audio echo. Decrease buffer delay.
+ * Nov 10, 2014  #3630     bkowal       Re-factor to support on-demand broadcasting.
  * 
  * </pre>
  * 
@@ -359,7 +360,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         }
 
         BroadcastStatus status = new BroadcastStatus();
-        status.setMsgSource(ILiveBroadcastMessage.SOURCE_DAC_TRANSMIT);
+        status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(true);
         status.setBroadcastId(startCommand.getBroadcastId());
         status.setTransmitterGroups(startCommand.getTransmitterGroups());
@@ -382,7 +383,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
             List<Transmitter> transmitters, final String message,
             final Exception exception) {
         BroadcastStatus status = new BroadcastStatus();
-        status.setMsgSource(ILiveBroadcastMessage.SOURCE_DAC_TRANSMIT);
+        status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(false);
         status.setTransmitterGroups(transmitters);
         status.setMessage(message);

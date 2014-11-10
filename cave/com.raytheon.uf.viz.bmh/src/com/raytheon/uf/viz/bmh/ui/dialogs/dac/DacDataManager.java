@@ -38,6 +38,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * ------------ ---------- ----------- --------------------------
  * Oct 18, 2014     3699   mpduff      Initial creation
  * Oct 23, 2014     3687   bsteffen    add methods to get name and id.
+ * Nov 7, 2014      3630   bkowal      add method to get entire dac object by id.
  * 
  * </pre>
  * 
@@ -75,17 +76,21 @@ public class DacDataManager {
         return null;
     }
 
-    public String getDacNameById(Integer id) throws Exception {
+    public Dac getDacById(Integer id) throws Exception {
         if (id == null) {
             return null;
         }
-        /* TODO some sort of short term caching */
         for (Dac dac : getDacs()) {
             if (dac.getId() == id) {
-                return dac.getName();
+                return dac;
             }
         }
         return null;
+    }
+
+    public String getDacNameById(Integer id) throws Exception {
+        Dac dac = this.getDacById(id);
+        return dac == null ? null : dac.getName();
     }
 
     /**

@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand.ACTION;
+import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
@@ -61,6 +62,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  *                                     error handling.
  * Nov 3, 2014  3655       bkowal      Increase timeout for same tone playback. Handle
  *                                     multiple audio packets.
+ * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
  * 
  * </pre>
  * 
@@ -115,8 +117,7 @@ public class BroadcastStreamTask extends Thread {
     }
 
     private static String determineName(final LiveBroadcastStartCommand command) {
-        return command.getMsgSource().equals(
-                ILiveBroadcastMessage.SOURCE_COMMS_MANAGER) ? command
+        return command.getMsgSource() == MSGSOURCE.COMMS ? command
                 .getBroadcastId() : UUID.randomUUID().toString().toUpperCase();
     }
 
@@ -129,7 +130,7 @@ public class BroadcastStreamTask extends Thread {
          * First need to notify other Comms Managers of the existence of the
          * streaming task.
          */
-        this.command.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+        this.command.setMsgSource(MSGSOURCE.COMMS);
         this.command.setBroadcastId(this.getName());
         int count = this.clusterServer.sendDataToAll(this.command);
 
@@ -223,8 +224,7 @@ public class BroadcastStreamTask extends Thread {
             }
             LiveBroadcastStartCommand startCommand = new LiveBroadcastStartCommand();
             startCommand.setBroadcastId(this.getName());
-            startCommand
-                    .setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+            startCommand.setMsgSource(MSGSOURCE.COMMS);
             startCommand.addTransmitterConfiguration(config);
             startCommand.addTransmitter(transmitterGroup);
 
@@ -260,7 +260,7 @@ public class BroadcastStreamTask extends Thread {
             }
             LiveBroadcastCommand command = new LiveBroadcastCommand();
             command.setBroadcastId(this.getName());
-            command.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+            command.setMsgSource(MSGSOURCE.COMMS);
             command.setAction(ACTION.TRIGGER);
             this.dacServer.sendToDac(key, command);
         }
@@ -292,7 +292,7 @@ public class BroadcastStreamTask extends Thread {
          * prepare to start streaming audio.
          */
         BroadcastStatus status = new BroadcastStatus();
-        status.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+        status.setMsgSource(MSGSOURCE.COMMS);
         status.setStatus(true);
         status.setBroadcastId(this.getName());
         status.setTransmitterGroups(this.managedTransmitterGroups);
@@ -549,7 +549,7 @@ public class BroadcastStreamTask extends Thread {
          */
         LiveBroadcastCommand command = new LiveBroadcastCommand();
         command.setBroadcastId(this.getName());
-        command.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+        command.setMsgSource(MSGSOURCE.COMMS);
         command.setAction(ACTION.STOP);
 
         for (Transmitter transmitterGroup : this.managedTransmitterGroups) {
@@ -566,7 +566,7 @@ public class BroadcastStreamTask extends Thread {
     private BroadcastStatus buildErrorStatus(final String message,
             final Exception exception, final List<Transmitter> transmitters) {
         BroadcastStatus status = new BroadcastStatus();
-        status.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+        status.setMsgSource(MSGSOURCE.COMMS);
         status.setBroadcastId(this.getName());
         status.setStatus(false);
         status.setTransmitterGroups(transmitters);
@@ -609,7 +609,7 @@ public class BroadcastStreamTask extends Thread {
                 || this.live == false) {
             return;
         }
-        playCommand.setMsgSource(ILiveBroadcastMessage.SOURCE_COMMS_MANAGER);
+        playCommand.setMsgSource(MSGSOURCE.COMMS);
         this.clusterServer.sendDataToAll(playCommand);
         this.streamDacAudio(playCommand);
     }

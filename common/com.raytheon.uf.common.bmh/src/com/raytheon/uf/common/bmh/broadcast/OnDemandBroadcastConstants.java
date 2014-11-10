@@ -20,7 +20,8 @@
 package com.raytheon.uf.common.bmh.broadcast;
 
 /**
- * Definition of a live broadcast message.
+ * Constants that are used within a on-demand broadcast request and any
+ * derivation thereof.
  * 
  * <pre>
  * 
@@ -28,8 +29,7 @@ package com.raytheon.uf.common.bmh.broadcast;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 20, 2014 3655       bkowal      Initial creation
- * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
+ * Nov 7, 2014  3630       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -37,6 +37,17 @@ package com.raytheon.uf.common.bmh.broadcast;
  * @version 1.0
  */
 
-public interface ILiveBroadcastMessage extends IOnDemandBroadcastMsg {
-    public String getBroadcastId();
+public class OnDemandBroadcastConstants {
+
+    // simplified names for dynamicserialize
+    public static enum MSGSOURCE {
+        VIZ, COMMS, DAC
+    }
+
+    /**
+     * 
+     */
+    protected OnDemandBroadcastConstants() {
+    }
+
 }

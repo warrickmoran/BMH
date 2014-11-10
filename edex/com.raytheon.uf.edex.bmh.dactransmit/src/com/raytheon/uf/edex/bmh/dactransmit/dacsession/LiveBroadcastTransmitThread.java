@@ -33,7 +33,7 @@ import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
-import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
@@ -70,6 +70,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Nov 3, 2014  3655       bkowal      Viz now caches the audio. Adjusted timeout between
  *                                     packet transmits based on the rate that audio arrives.
  * Nov 4, 2014  3655       bkowal      Eliminate audio echo. Decrease buffer delay.
+ * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
  * 
  * </pre>
  * 
@@ -132,7 +133,7 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         this.playTones(this.config.getToneAudio(), "SAME / Alert");
 
         BroadcastStatus status = new BroadcastStatus();
-        status.setMsgSource(ILiveBroadcastMessage.SOURCE_DAC_TRANSMIT);
+        status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(true);
         status.setBroadcastId(this.broadcastId);
         status.addTransmitter(this.config.getTransmitter());
@@ -246,7 +247,7 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         this.error = true;
         logger.error(detail, e);
         BroadcastStatus status = new BroadcastStatus();
-        status.setMsgSource(ILiveBroadcastMessage.SOURCE_DAC_TRANSMIT);
+        status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(false);
         status.setBroadcastId(this.broadcastId);
         status.addTransmitter(this.config.getTransmitter());
