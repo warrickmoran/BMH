@@ -125,4 +125,12 @@
             value="com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest" />
         <constructor-arg ref="maintenanceMessageHandler" />
     </bean>
+    
+    <bean id="ldadConfigHandler"
+    	class="com.raytheon.uf.edex.bmh.handler.LdadConfigHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.LdadConfigRequest" />
+        <constructor-arg ref="ldadConfigHandler" />
+    </bean>
 </beans>

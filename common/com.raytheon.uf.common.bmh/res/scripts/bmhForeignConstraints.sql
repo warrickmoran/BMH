@@ -28,6 +28,7 @@
  * Sep 16, 2014 3587       bkowal      Added on delete cascade for program suite and program trigger.
  * Oct 13, 2014 3654       rjpeter     Updated constraint names.
  * Oct 22, 2014 3746       rjpeter     Hibernate upgrade.
+ * Nov 11, 2014 3803       bkowal      Added on delete cascade for ldad config and ldad msg type.
  **/
 
 /**
@@ -128,3 +129,26 @@ alter table bmh.playlist_messages drop constraint fk_m2ap9u9gtxgdj45jux5po6h6g;
 alter table bmh.playlist_messages add constraint fk_m2ap9u9gtxgdj45jux5po6h6g
     foreign key (playlist_id) references bmh.playlist(id) on delete cascade;
 
+/**
+ * Ldad Config to Dictionary
+ **/
+alter table bmh.ldad_config drop constraint fk_5s2c03labr2wnrww2ek27ybne;
+alter table bmh.ldad_config add constraint fk_5s2c03labr2wnrww2ek27ybne
+    foreign key (dictionary_name) references bmh.dictionary(name) on delete set null;
+/**
+ * Ldad Config to Voice
+ **/
+alter table bmh.ldad_config drop constraint fk_ps1jemud6ob63lpsti6d91vq5;
+alter table bmh.ldad_config add constraint fk_ps1jemud6ob63lpsti6d91vq5
+    foreign key (voicenumber) references bmh.tts_voice(voicenumber) on delete cascade;
+ 	
+/**
+ * Ldad Config / Message Type Join Table Cascade Delete
+ **/
+alter table bmh.ldad_msg_type drop constraint fk_8o231lsdsmrvlnmw4p1rjr47t;
+alter table bmh.ldad_msg_type add constraint fk_8o231lsdsmrvlnmw4p1rjr47t
+    foreign key (ldad_id) references bmh.ldad_config(id) on delete cascade;
+ 
+alter table bmh.ldad_msg_type drop constraint fk_orp1qpttjs7whbutxov3k370o;
+alter table bmh.ldad_msg_type add constraint fk_orp1qpttjs7whbutxov3k370o
+    foreign key (msg_type_id) references bmh.message_type(id) on delete cascade;
