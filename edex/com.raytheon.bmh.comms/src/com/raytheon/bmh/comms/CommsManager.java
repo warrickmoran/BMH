@@ -96,6 +96,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * Oct 21, 2014  3655     bkowal      Use the new message types.
  * Nov 03, 2014  3525     bsteffen    Mark dac transmit errors in logs.
+ * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * 
  * </pre>
  * 
@@ -324,16 +325,22 @@ public class CommsManager {
             clusterServer.attempClusterConnections(config);
             try {
                 if (config.getDacs() != null) {
+                    boolean allDacsRunning = true;
                     for (DacConfig dac : config.getDacs()) {
                         for (DacChannelConfig channel : dac.getChannels()) {
                             DacTransmitKey key = new DacTransmitKey(dac,
                                     channel);
                             if (!transmitServer.isConnectedToDacTransmit(key)
-                                    && !clusterServer.isConnected(key)) {
+                                    && !clusterServer.isConnected(key)
+                                    && !clusterServer.isRequested(key)) {
                                 launchDacTransmit(key, channel);
                                 sleeptime = DAC_START_SLEEP_TIME;
+                                allDacsRunning = false;
                             }
                         }
+                    }
+                    if (allDacsRunning) {
+                        clusterServer.balanceDacTransmits();
                     }
                 }
             } catch (Throwable e) {
@@ -577,6 +584,14 @@ public class CommsManager {
      */
     public void dacConnectedRemote(DacTransmitKey key) {
         transmitServer.dacConnected(key);
+    }
+
+    /**
+     * This method should be called when another cluster member would like to
+     * take over a dac for load balancing.
+     */
+    public void dacRequestedRemote(DacTransmitKey key) {
+        transmitServer.dacRequested(key);
     }
 
     /**

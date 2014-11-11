@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Sep 24, 2014  3485     bsteffen    Initial creation
+ * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * 
  * </pre>
  * 
@@ -138,6 +139,9 @@ public class ClusterStateMessage {
     @DynamicSerializeElement
     private List<ClusterDacTransmitKey> keys = new ArrayList<>();
 
+    @DynamicSerializeElement
+    private List<ClusterDacTransmitKey> requestedKeys = new ArrayList<>();
+
     public List<ClusterDacTransmitKey> getKeys() {
         return keys;
     }
@@ -170,4 +174,38 @@ public class ClusterStateMessage {
         }
         return keys.contains(key);
     }
+
+    public List<ClusterDacTransmitKey> getRequestedKeys() {
+        return requestedKeys;
+    }
+
+    public void setRequestedKeys(List<ClusterDacTransmitKey> requestedKeys) {
+        this.requestedKeys = requestedKeys;
+    }
+
+    public void addRequest(DacTransmitKey key) {
+        if (requestedKeys == null) {
+            requestedKeys = new ArrayList<>();
+        }
+        requestedKeys.add(new ClusterDacTransmitKey(key));
+    }
+
+    public void removeRequest(DacTransmitKey key) {
+        if (requestedKeys == null) {
+            return;
+        }
+        requestedKeys.remove(new ClusterDacTransmitKey(key));
+    }
+
+    public boolean containsRequest(DacTransmitKey key) {
+        return containsRequest(new ClusterDacTransmitKey(key));
+    }
+
+    public boolean containsRequest(ClusterDacTransmitKey key) {
+        if (requestedKeys == null) {
+            return false;
+        }
+        return requestedKeys.contains(key);
+    }
+
 }

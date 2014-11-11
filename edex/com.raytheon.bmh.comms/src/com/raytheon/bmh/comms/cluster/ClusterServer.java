@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
+import com.raytheon.bmh.comms.cluster.ClusterStateMessage.ClusterDacTransmitKey;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
@@ -53,6 +54,8 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Sep 17, 2014  3399     bsteffen    Initial creation
  * Oct 10, 2014  3656     bkowal      Updates to allow sending other message
  *                                    types to cluster members.
+ * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
+ * \
  * 
  * </pre>
  * 
@@ -162,6 +165,15 @@ public class ClusterServer extends AbstractServerThread {
         return false;
     }
 
+    public boolean isRequested(DacTransmitKey key) {
+        for (ClusterCommunicator communicator : this.communicators.values()) {
+            if (communicator.isRequested(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Shutdown all dac transmit communications as well as the server. This
      * should only be called for cluster failover.
@@ -190,6 +202,7 @@ public class ClusterServer extends AbstractServerThread {
 
     public void dacConnectedLocal(DacTransmitKey key) {
         state.add(key);
+        state.removeRequest(key);
         sendStateToAll();
 
     }
@@ -239,5 +252,36 @@ public class ClusterServer extends AbstractServerThread {
         }
 
         return recipients;
+    }
+
+    public void balanceDacTransmits() {
+        if (state.getRequestedKeys().isEmpty()) {
+            String overloadId = null;
+            ClusterStateMessage overloaded = state;
+            for (ClusterCommunicator communicator : communicators.values()) {
+                ClusterStateMessage other = communicator.getClusterState();
+                if (other == null || !other.getRequestedKeys().isEmpty()) {
+                    return;
+                }
+                if (other.getKeys().size() > overloaded.getKeys().size()) {
+                    overloaded = other;
+                    overloadId = communicator.getClusterId();
+                }
+            }
+            if (overloaded.getKeys().size() - 1 > state.getKeys().size()) {
+                logger.info(
+                        "To balance the load 1 dac transmit has been requested from: {}",
+                        overloadId);
+                /*
+                 * TODO its entirely possible for 2 cluster members to be here
+                 * at the same time and both request the same key, to minimize
+                 * conflict it would be better if each requested a different key
+                 * using a better key selection mechanism.
+                 */
+                ClusterDacTransmitKey request = overloaded.getKeys().get(0);
+                state.addRequest(request.toKey());
+                sendStateToAll();
+            }
+        }
     }
 }

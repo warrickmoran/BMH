@@ -61,6 +61,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Sep 23, 2014  3485     bsteffen    Bug fixes and changes to notification processing to support clustering
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * Oct 21, 2014  3655     bkowal      Use the new message types.
+ * Nov 03, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * 
  * </pre>
  * 
@@ -134,7 +135,7 @@ public class DacTransmitServer extends AbstractServerThread {
             DacChannelConfig channel = channels.get(entry.getKey());
             if (channel == null) {
                 for (DacTransmitCommunicator communicator : entry.getValue()) {
-                    communicator.shutdown();
+                    communicator.shutdown(true);
                 }
             } else {
                 for (DacTransmitCommunicator communicator : entry.getValue()) {
@@ -208,8 +209,21 @@ public class DacTransmitServer extends AbstractServerThread {
             while (it.hasNext()) {
                 DacTransmitCommunicator communicator = it.next();
                 if (!communicator.isConnectedToDac()) {
-                    communicator.shutdown();
+                    communicator.shutdown(true);
                 }
+            }
+        }
+
+    }
+
+    public void dacRequested(DacTransmitKey key) {
+        List<DacTransmitCommunicator> communicators = this.communicators
+                .get(key);
+        if (communicators != null) {
+            Iterator<DacTransmitCommunicator> it = communicators.iterator();
+            while (it.hasNext()) {
+                DacTransmitCommunicator communicator = it.next();
+                communicator.shutdown(false);
             }
         }
 
@@ -244,7 +258,7 @@ public class DacTransmitServer extends AbstractServerThread {
         for (List<DacTransmitCommunicator> communicators : this.communicators
                 .values()) {
             for (DacTransmitCommunicator communicator : communicators) {
-                communicator.shutdown();
+                communicator.shutdown(true);
             }
         }
     }
@@ -285,7 +299,7 @@ public class DacTransmitServer extends AbstractServerThread {
             comms.setRadios(channel.getRadios());
             comms.setTransmitterDBTarget(channel.getDbTarget());
         } else {
-            comms.shutdown();
+            comms.shutdown(true);
         }
 
     }

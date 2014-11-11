@@ -44,6 +44,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Sep 25, 2014  3399     bsteffen    Initial creation
  * Oct 10, 2014  3656     bkowal      Updates to allow sending other message
  *                                    types to cluster members.
+ * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * 
  * </pre>
  * 
@@ -94,6 +95,9 @@ public class ClusterCommunicator extends Thread {
                 for (ClusterDacTransmitKey key : newState.getKeys()) {
                     manager.dacConnectedRemote(key.toKey());
                 }
+                for (ClusterDacTransmitKey key : newState.getRequestedKeys()) {
+                    manager.dacRequestedRemote(key.toKey());
+                }
             } else {
                 for (ClusterDacTransmitKey key : newState.getKeys()) {
                     if (!oldState.contains(key)) {
@@ -104,6 +108,14 @@ public class ClusterCommunicator extends Thread {
                     if (!newState.contains(key)) {
                         manager.dacDisconnectedRemote();
                         break;
+                    }
+                }
+                for (ClusterDacTransmitKey key : newState.getRequestedKeys()) {
+                    if (!oldState.containsRequest(key)) {
+                        logger.info(
+                                "Clustered manager {} has requested a dac transmit.",
+                                getClusterId(), newState.getKeys().size());
+                        manager.dacRequestedRemote(key.toKey());
                     }
                 }
             }
@@ -177,14 +189,25 @@ public class ClusterCommunicator extends Thread {
         return state.contains(key);
     }
 
+    public boolean isRequested(DacTransmitKey key) {
+        if (state == null || socket.isClosed()) {
+            return false;
+        }
+        return state.containsRequest(key);
+    }
+
     public void shutdown() {
         send(new ClusterShutdownMessage(false));
+    }
+
+    public ClusterStateMessage getClusterState() {
+        return state;
     }
 
     /**
      * Convenience method, this is used in logging
      */
-    private String getClusterId() {
+    public String getClusterId() {
         return socket.getInetAddress().getHostAddress();
     }
 }

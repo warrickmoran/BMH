@@ -66,6 +66,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Oct 16, 2014  3687     bsteffen    Fix disconnect of dac transmits not connected to dac.
  * Oct 21, 2014  3655     bkowal      Use the new message types.
  * Oct 21, 2014  3655     bkowal      Support LiveBroadcastSwitchNotification.
+ * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * 
  * </pre>
  * 
@@ -179,8 +180,8 @@ public class DacTransmitCommunicator extends Thread {
         }
     }
 
-    public void shutdown() {
-        send(new DacTransmitShutdown());
+    public void shutdown(boolean now) {
+        send(new DacTransmitShutdown(now));
     }
 
     public void setRadios(int[] radios) {
