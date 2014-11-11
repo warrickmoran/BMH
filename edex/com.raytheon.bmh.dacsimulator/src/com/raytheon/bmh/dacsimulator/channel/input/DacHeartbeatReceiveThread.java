@@ -46,6 +46,7 @@ import com.raytheon.bmh.dacsimulator.events.SyncObtainedEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 03, 2014  #3688     dgilling     Initial creation
+ * Nov 10, 2014  #3762     bsteffen     Allow timeout when another host is trying to connect.
  * 
  * </pre>
  * 
@@ -141,41 +142,21 @@ public class DacHeartbeatReceiveThread extends Thread {
                                 logger.warn(
                                         "Received malformed sync packet from {}. Contents: {}",
                                         syncHost, receivedMsg);
-
-                                long heartbeatDeadline = lastReceived
-                                        + DEFAULT_SOCKET_TIMEOUT;
-                                long nextTimeout = heartbeatDeadline
-                                        - System.currentTimeMillis();
-
-                                if (nextTimeout > 0) {
-                                    timeoutPeriod = (int) nextTimeout;
-                                } else {
-                                    syncLost();
-                                }
+                                checkTimeout();
                             }
+                        } else if (checkTimeout()) {
+                            attemptInitialSync(receivedMsg, packet);
                         } else {
                             logger.warn(
                                     "Rejecting attempt to sync from host {} because this channel is already synced with {}.",
                                     packetHost, syncHost);
-
                             DatagramPacket rejectSync = new DatagramPacket(
                                     REJECT_SYNC_MSG, REJECT_SYNC_MSG.length,
                                     packetHost, packet.getPort());
                             listenSocket.send(rejectSync);
                         }
                     } else {
-                        if (INITIAL_SYNC_MSG.equals(receivedMsg)) {
-                            hasSync = true;
-                            syncHost = packetHost;
-                            syncPort = packet.getPort();
-                            lastReceived = System.currentTimeMillis();
-
-                            logger.info("Received initial sync from {}.",
-                                    syncHost);
-
-                            eventBus.post(new SyncObtainedEvent(syncHost,
-                                    syncPort));
-                        }
+                        attemptInitialSync(receivedMsg, packet);
                     }
                 } catch (SocketTimeoutException e) {
                     if (hasSync) {
@@ -191,6 +172,49 @@ public class DacHeartbeatReceiveThread extends Thread {
                         "Unhandled exception thrown by DacHeartbeatReceiveThread.",
                         t);
             }
+        }
+    }
+
+    /**
+     * Determine the remaining {@link #timeoutPeriod} if any.
+     * 
+     * @return true if timeout has occured, false if timeout has not occured.
+     */
+    private boolean checkTimeout() {
+        long heartbeatDeadline = lastReceived + DEFAULT_SOCKET_TIMEOUT;
+        long nextTimeout = heartbeatDeadline - System.currentTimeMillis();
+
+        if (nextTimeout > 0) {
+            timeoutPeriod = (int) nextTimeout;
+            return false;
+        } else {
+            syncLost();
+            return true;
+        }
+    }
+
+    /**
+     * Called when a packet is recieved and hasSync=false, the packet should be
+     * an initial sync packet, in which case we set up the sync, otherwise log
+     * an appropriate error.
+     */
+    private void attemptInitialSync(String receivedMsg, DatagramPacket packet) {
+        if (INITIAL_SYNC_MSG.equals(receivedMsg)) {
+            hasSync = true;
+            syncHost = packet.getAddress();
+            syncPort = packet.getPort();
+            lastReceived = System.currentTimeMillis();
+
+            logger.info("Received initial sync from {}.", syncHost);
+
+            eventBus.post(new SyncObtainedEvent(syncHost, syncPort));
+        } else if (HEARTBEAT_SYNC_MSG.equals(receivedMsg)) {
+            logger.warn("Received heartbeat packet from unsynced host {}.",
+                    packet.getAddress());
+        } else {
+            logger.warn(
+                    "Received malformed packet from unsynced host {}. Contents: {}",
+                    packet.getAddress(), receivedMsg);
         }
     }
 
