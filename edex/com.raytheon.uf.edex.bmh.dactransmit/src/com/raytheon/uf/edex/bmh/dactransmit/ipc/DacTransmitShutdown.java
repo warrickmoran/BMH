@@ -33,6 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
+ * Nov 11, 2014  3762     bsteffen    Add delayed shutdown.
  * 
  * </pre>
  * 
@@ -41,5 +42,27 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  */
 @DynamicSerialize
 public class DacTransmitShutdown {
+
+    /**
+     * When true, shutdown should be immediate, false indicates shutdown should
+     * occur before beginning another message.
+     */
+    private boolean now;
+
+    public DacTransmitShutdown() {
+
+    }
+
+    public DacTransmitShutdown(boolean now) {
+        this.now = now;
+    }
+
+    public boolean isNow() {
+        return now;
+    }
+
+    public void setNow(boolean now) {
+        this.now = now;
+    }
 
 }

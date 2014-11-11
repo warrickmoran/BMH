@@ -80,6 +80,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Oct 21, 2014  3655     bkowal      Use the new message types.
  * Oct 21, 2014  3655     bkowal      Support LiveBroadcastSwitchNotification.
  * Oct 22, 2014  3687     bsteffen    Send hostname instead of address back to comms manager.
+ * Nov 11, 2014  3762     bsteffen    Add delayed shutdown.
  * 
  * </pre>
  * 
@@ -215,10 +216,8 @@ public final class CommsManagerCommunicator extends Thread {
              * happens when killing the event bus thread happens on that same
              * thread??
              */
-            eventBus.post(new ShutdownRequestedEvent());
-            running = false;
-            disconnect();
-            writerThread.shutdown();
+            eventBus.post(new ShutdownRequestedEvent(
+                    ((DacTransmitShutdown) message).isNow()));
         } else if (message instanceof PlaylistUpdateNotification) {
             eventBus.post(message);
         } else if (message instanceof ChangeTransmitters) {
@@ -233,6 +232,12 @@ public final class CommsManagerCommunicator extends Thread {
             logger.error("Unrecognized message from comms manager of type "
                     + message.getClass().getSimpleName());
         }
+    }
+
+    public void shutdown() {
+        running = false;
+        disconnect();
+        writerThread.shutdown();
     }
 
     public void sendConnectionStatus(boolean connected) {

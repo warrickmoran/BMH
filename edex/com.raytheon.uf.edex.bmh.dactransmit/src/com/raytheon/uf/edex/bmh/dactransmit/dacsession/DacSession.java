@@ -91,6 +91,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Nov 4, 2014   #3655     bkowal       Eliminate audio echo. Decrease buffer delay.
  * Nov 7, 2014   #3630     bkowal       Implement IDacSession
  * Nov 10, 2014  #3630     bkowal       Re-factor to support on-demand broadcasting.
+ * Nov 11, 2014  #3762     bsteffen     Add delayed shutdown.
  * 
  * </pre>
  * 
@@ -207,18 +208,21 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
      *             If any thread interrupts the current thread while waiting for
      *             all the child threads to die.
      */
-    public void shutdown() throws InterruptedException {
+    public void shutdown(boolean now) throws InterruptedException {
         logger.info("Initiating shutdown...");
 
-        dataThread.shutdown();
+        dataThread.shutdown(now);
         playlistMgr.shutdown();
-        if (newPlaylistObserver != null) {
-            newPlaylistObserver.shutdown();
-        }
         dataThread.join();
 
         controlThread.shutdown();
         controlThread.join();
+
+        commsManager.shutdown();
+
+        if (newPlaylistObserver != null) {
+            newPlaylistObserver.shutdown();
+        }
 
         notificationExecutor.shutdown();
 
@@ -283,7 +287,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     @Subscribe
     public void handleShutdownRequest(ShutdownRequestedEvent e) {
         try {
-            shutdown();
+            shutdown(e.isNow());
         } catch (InterruptedException e1) {
             logger.error("Shutdown interrupted.", e1);
         }

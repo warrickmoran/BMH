@@ -70,6 +70,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * Oct 21, 2014  #3655     bkowal       Support delaying interrupts.
  * Oct 29, 2014  #3774     bsteffen     Log Packets
+ * Nov 11, 2014  #3762     bsteffen     Add delayed shutdown.
  * 
  * </pre>
  * 
@@ -82,6 +83,10 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
 
     private final PlaylistScheduler playlistMgr;
 
+    /*
+     * Flag used to indicate if the process is shutting down, shutdown should
+     * occur before playing a new message.
+     */
     private volatile boolean keepRunning;
 
     private final AtomicInteger interruptsAvailable;
@@ -97,6 +102,10 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
 
     private volatile boolean warnNoData;
 
+    /*
+     * Flag indicating the current message should be stopped, either for a live
+     * broadcast or for an immediate process shutdown.
+     */
     private volatile boolean pausePlayback;
 
     private Semaphore pauseLock = new Semaphore(1);
@@ -191,7 +200,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                     while ((playbackData.hasRemaining())
                             && (playingInterrupt || (interruptsAvailable.get() == 0))) {
                         try {
-                            while (!hasSync && keepRunning && !pausePlayback) {
+                            while (!hasSync && !pausePlayback) {
                                 Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
 
                                 if (hasSync && onSyncRestartMessage) {
@@ -199,7 +208,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                                 }
                             }
 
-                            if (!keepRunning || pausePlayback) {
+                            if (pausePlayback) {
                                 continue OUTER_LOOP;
                             }
 
@@ -251,8 +260,9 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
      * @see #join()
      * @see #isAlive()
      */
-    public void shutdown() {
+    public void shutdown(boolean now) {
         keepRunning = false;
+        pausePlayback = now | pausePlayback;
     }
 
     public void pausePlayback() {

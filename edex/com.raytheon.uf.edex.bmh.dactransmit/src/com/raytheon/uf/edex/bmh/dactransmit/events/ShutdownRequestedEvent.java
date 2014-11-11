@@ -29,6 +29,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.events;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 22, 2014  #3286     dgilling     Initial creation
+ * Nov 11, 2014  #3762     bsteffen     Add delayed shutdown.
  * 
  * </pre>
  * 
@@ -37,5 +38,27 @@ package com.raytheon.uf.edex.bmh.dactransmit.events;
  */
 
 public final class ShutdownRequestedEvent {
+
+    /**
+     * When true, shutdown should be immediate, false indicates shutdown should
+     * occur before beginning another message.
+     */
+    private boolean now;
+
+    public ShutdownRequestedEvent() {
+        this(true);
+    }
+
+    public ShutdownRequestedEvent(boolean now) {
+        this.now = now;
+    }
+
+    public boolean isNow() {
+        return now;
+    }
+
+    public void setNow(boolean now) {
+        this.now = now;
+    }
 
 }
