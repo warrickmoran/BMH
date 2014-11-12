@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<nwsRoleData xmlns:ns2="group">
+   <application>BMH</application>
+   <permission id="bmh.dialog.menu">
+      <description>
+         This permission allows the user to access as BMH Menu dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.transmitterConfiguration">
+      <description>
+         This permission allows the user to access as BMH Transmitter Configuration dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.transmitterAlignment">
+      <description>
+         This permission allows the user to access BMH Transmitter Alignment dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.listeningAreas">
+      <description>
+         This permission allows the user to access BMH Listening Areas dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.listeningZones">
+      <description>
+         This permission allows the user to access BMH Listening Zones dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.disableSilenceAlarm">
+      <description>
+         This permission allows the user to access BMH  Disable Silence Alarm dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.broadcastCycle">
+      <description>
+         This permission allows the user to access BMH Broadcast Cycle dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.broadcastPrograms">
+      <description>
+         This permission allows the user to access BMH Broadcast Programs dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.suiteManager">
+      <description>
+         This permission allows the user to access BMH Suite Manager dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.messageType">
+      <description>
+         This permission allows the user to access BMH Message Type dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.messageTypeAssociation">
+      <description>
+         This permission allows the user to access BMH Message Type Association dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.weatherMessages">
+      <description>
+         This permission allows the user to access BMH Weather Messages dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.emergencyOverride">
+      <description>
+         This permission allows the user to access BMH Emergency Override dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.systemStatus">
+      <description>
+         This permission allows the user to access BMH System Status dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.alertMonitor">
+      <description>
+         This permission allows the user to access BMH Alert Monitor dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.copyOperationalDB">
+      <description>
+         This permission allows the user to access BMH Copy Operational Database.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.ldadConfiguration">
+      <description>
+         This permission allows the user to access BMH LDAD Configuration dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.manageDictionaries">
+      <description>
+         This permission allows the user to access BMH Manage Dictionaries dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.convertLegacyDictionary">
+      <description>
+         This permission allows the user to access BMH Convert Legacy Dictionary dialog.
+       </description>
+   </permission>
+   <permission id="bmh.dialog.dacConfiguration">
+      <description>
+         This permission allows the user to access BMH DAC Configuration dialog.
+       </description>
+   </permission>
+   <role roleId="bmh.admin">
+       <roleDescription>
+          This role is for BMH administrator permissions.
+       </roleDescription>
+       <rolePermission>bmh.dialog.menu</rolePermission>
+       <rolePermission>bmh.dialog.transmitterConfiguration</rolePermission>
+       <rolePermission>bmh.dialog.transmitterAlignment</rolePermission>
+       <rolePermission>bmh.dialog.listeningAreas</rolePermission>
+       <rolePermission>bmh.dialog.listeningZones</rolePermission>
+       <rolePermission>bmh.dialog.disableSilenceAlarm</rolePermission>
+       <rolePermission>bmh.dialog.broadcastCycle</rolePermission>
+       <rolePermission>bmh.dialog.broadcastPrograms</rolePermission>
+       <rolePermission>bmh.dialog.suiteManager</rolePermission>
+       <rolePermission>bmh.dialog.messageType</rolePermission>
+       <rolePermission>bmh.dialog.messageTypeAssociation</rolePermission>
+       <rolePermission>bmh.dialog.weatherMessages</rolePermission>
+       <rolePermission>bmh.dialog.emergencyOverride</rolePermission>
+       <rolePermission>bmh.dialog.systemStatus</rolePermission>
+       <rolePermission>bmh.dialog.alertMonitor</rolePermission>
+       <rolePermission>bmh.dialog.copyOperationalDB</rolePermission>
+       <rolePermission>bmh.dialog.ldadConfiguration</rolePermission>
+       <rolePermission>bmh.dialog.manageDictionaries</rolePermission>
+       <rolePermission>bmh.dialog.convertLegacyDictionary</rolePermission>
+       <rolePermission>bmh.dialog.dacConfiguration</rolePermission>
+   </role>
+   <role roleId="bmh.operator">
+       <roleDescription>
+          This role is for BMH administrator permissions.
+       </roleDescription>
+       <rolePermission>bmh.dialog.menu</rolePermission>
+       <rolePermission>bmh.dialog.transmitterConfiguration</rolePermission>
+       <rolePermission>bmh.dialog.transmitterAlignment</rolePermission>
+       <rolePermission>bmh.dialog.listeningAreas</rolePermission>
+       <rolePermission>bmh.dialog.listeningZones</rolePermission>
+       <rolePermission>bmh.dialog.disableSilenceAlarm</rolePermission>
+       <rolePermission>bmh.dialog.broadcastCycle</rolePermission>
+       <rolePermission>bmh.dialog.broadcastPrograms</rolePermission>
+       <rolePermission>bmh.dialog.suiteManager</rolePermission>
+       <rolePermission>bmh.dialog.messageType</rolePermission>
+       <rolePermission>bmh.dialog.messageTypeAssociation</rolePermission>
+       <rolePermission>bmh.dialog.weatherMessages</rolePermission>
+       <rolePermission>bmh.dialog.emergencyOverride</rolePermission>
+       <rolePermission>bmh.dialog.systemStatus</rolePermission>
+       <rolePermission>bmh.dialog.alertMonitor</rolePermission>
+       <rolePermission>bmh.dialog.copyOperationalDB</rolePermission>
+       <rolePermission>bmh.dialog.ldadConfiguration</rolePermission>
+       <rolePermission>bmh.dialog.manageDictionaries</rolePermission>
+       <rolePermission>bmh.dialog.convertLegacyDictionary</rolePermission>
+   </role>
+   <role roleId="bmh.maintenance">
+       <roleDescription>
+          This role is for BMH administrator permissions.
+       </roleDescription>
+       <rolePermission>bmh.dialog.menu</rolePermission>
+       <rolePermission>bmh.dialog.transmitterAlignment</rolePermission>
+   </role>
+</nwsRoleData>

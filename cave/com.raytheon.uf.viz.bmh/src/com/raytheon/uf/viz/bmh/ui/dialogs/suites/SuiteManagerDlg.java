@@ -42,6 +42,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
@@ -68,6 +69,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 15, 2014  #3490     lvenable     Added existing names.
  * Aug 22, 2014  #3490     lvenable     Added input dialog flag.
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -102,9 +104,9 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
      */
     public SuiteManagerDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "Suite Manager Dialog", parentShell, SWT.DIALOG_TRIM
-                | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(dlgMap, DlgInfo.SUITE_MANAGER.getTitle(), parentShell,
+                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                        | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override
@@ -128,7 +130,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("Suite Manager");
+        setText(DlgInfo.SUITE_MANAGER.getTitle());
 
         retrieveDataFromDB();
         createSuiteTableGroup();

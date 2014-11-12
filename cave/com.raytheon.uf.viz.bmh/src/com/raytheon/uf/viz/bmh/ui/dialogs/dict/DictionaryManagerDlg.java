@@ -52,6 +52,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
 
 /**
@@ -69,6 +70,7 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * Aug 8, 2014    #3490    lvenable    Removed Override on update method.
  * Aug 28, 2014    3432    mpduff      Only open one new dictionary dialog
  * Sep 28, 2014   3407     mpduff      Fix button states for certain situations
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -131,9 +133,10 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
      */
     public DictionaryManagerDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> map) {
-        super(map, "Dictionary Manager", parentShell, SWT.DIALOG_TRIM,
-                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
-        setText("Dictionary Manager");
+        super(map, DlgInfo.MANAGE_DICTIONARIES.getTitle(), parentShell,
+                SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
+                        | CAVE.DO_NOT_BLOCK);
+        setText(DlgInfo.MANAGE_DICTIONARIES.getTitle());
         NeoSpeechPhonemeMapping phonemeMapping = new NeoSpeechPhonemeMapping();
         dictionaryManager = new DictionaryManager(phonemeMapping);
     }

@@ -53,6 +53,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.CreateEditMsgTypesDlg.DialogType;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -79,6 +80,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08, 2014   3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Nov 02, 2014   3783     lvenable    Changed to only query for a fully populated message type object
  *                                     when the user wants to perform and action on the selected object.
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -123,9 +125,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
      */
     public MessageTypesDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "Message Types Dialog", parentShell, SWT.DIALOG_TRIM
-                | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(dlgMap, DlgInfo.MESSAGE_TYPE.getTitle(), parentShell,
+                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                        | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override
@@ -154,7 +156,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("Message Type Manager");
+        setText(DlgInfo.MESSAGE_TYPE.getTitle());
 
         retrieveDataFromDB();
 

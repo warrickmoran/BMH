@@ -31,9 +31,14 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.swt.widgets.Shell;
+
 import com.raytheon.uf.common.auth.exception.AuthorizationException;
 import com.raytheon.uf.common.auth.resp.SuccessfulExecution;
+import com.raytheon.uf.common.auth.user.IUser;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
+import com.raytheon.uf.common.bmh.request.BmhAuthorizationRequest;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
@@ -41,6 +46,8 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
+import com.raytheon.uf.viz.core.auth.UserController;
 import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
@@ -61,6 +68,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 27, 2014   3750      lvenable    change string length in parsing method
  *                                      generateDayHourMinuteSecondMap()
  * Nov 01, 2014   3784      mpduff      Added getDurationMilliseconds()
+ * Nov 07, 2014   3413      rferrel     Added check to get not authorized message
+ *                                       in method sendRequest.
  * </pre>
  * 
  * @author mpduff
@@ -208,8 +217,12 @@ public class BmhUtils {
             SuccessfulExecution se = (SuccessfulExecution) obj;
             obj = se.getResponse();
         } else {
-            throw new AuthorizationException(
-                    "User not authorized to perform request.");
+            String message = "User not authorized to perform request.";
+            if (request instanceof BmhAuthorizationRequest) {
+                message = ((BmhAuthorizationRequest) request)
+                        .getNotAuthorizedMessage();
+            }
+            throw new AuthorizationException(message);
         }
         return obj;
     }
@@ -338,5 +351,42 @@ public class BmhUtils {
         }
 
         return dur;
+    }
+
+    /**
+     * Check to see if user is authorized to access dialog associated with
+     * roleId. This pops up error dialog when user not authorized.
+     * 
+     * @param parentShell
+     * @param roleId
+     *            - permission user is seeking
+     * @param title
+     *            - Descriptive title for the dialog associated with roleId
+     * @return true when user authorized to use dialog.
+     */
+    public static boolean isAuthorized(Shell parentShell, DlgInfo dlgInfo) {
+        IUser user = UserController.getUserObject();
+        String roleId = dlgInfo.getRoleId();
+        String title = dlgInfo.getTitle();
+        String msg = String.format(
+                "%s needs BMH permission: %s\nto access %s dialog.",
+                user.uniqueId(), roleId, title);
+        BmhAuthorizationRequest request = new BmhAuthorizationRequest();
+
+        request.setRoleId(roleId);
+        request.setNotAuthorizedMessage(msg);
+        request.setUser(user);
+        boolean status = false;
+
+        try {
+            BmhUtils.sendRequest(request);
+            status = true;
+        } catch (Exception e) {
+            status = false;
+            msg = e.getLocalizedMessage();
+            MessageDialog.openError(parentShell, "Not Authorized", msg);
+        }
+
+        return status;
     }
 }

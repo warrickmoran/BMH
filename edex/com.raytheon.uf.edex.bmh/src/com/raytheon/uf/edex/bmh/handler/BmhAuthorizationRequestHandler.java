@@ -21,18 +21,15 @@ package com.raytheon.uf.edex.bmh.handler;
 
 import com.raytheon.uf.common.auth.exception.AuthorizationException;
 import com.raytheon.uf.common.auth.user.IUser;
-import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
-import com.raytheon.uf.edex.auth.req.AbstractPrivilegedRequestHandler;
+import com.raytheon.uf.common.bmh.request.BmhAuthorizationRequest;
+import com.raytheon.uf.edex.auth.AuthManager;
+import com.raytheon.uf.edex.auth.AuthManagerFactory;
+import com.raytheon.uf.edex.auth.authorization.IAuthorizer;
 import com.raytheon.uf.edex.auth.resp.AuthorizationResponse;
 
 /**
- * This abstract class implements {@link AbstractPrivilegedRequestHandler}'s
- * authorized method for {@link AbstractBMHServerRequest}. The
- * {@link AbstractPrivilegedRequestHandler}'s handleRequest method must be
- * implemented its sub-classes. Each sub-class should handle a request that is a
- * sub-class of {@link AbstractBMHServerRequest}. The authorized method is a
- * default to allow a handler to obtain the user id for logging purposes. This
- * can be overridden such as in the {@link BmhAuthorizationRequestHandler}
+ * Handler for getting authorization to bring up the BMH main (launcher) menu
+ * dialog.
  * 
  * <pre>
  * 
@@ -40,7 +37,7 @@ import com.raytheon.uf.edex.auth.resp.AuthorizationResponse;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 13, 2014 #3413      rferrel     Initial creation
+ * Nov 5, 2014  3413       rferrel     Initial creation
  * 
  * </pre>
  * 
@@ -48,12 +45,30 @@ import com.raytheon.uf.edex.auth.resp.AuthorizationResponse;
  * @version 1.0
  */
 
-public abstract class AbstractBMHServerRequestHandler<T extends AbstractBMHServerRequest>
-        extends AbstractPrivilegedRequestHandler<T> {
+public class BmhAuthorizationRequestHandler extends
+        AbstractBMHServerRequestHandler<BmhAuthorizationRequest> {
 
     @Override
-    public AuthorizationResponse authorized(IUser user, T request)
-            throws AuthorizationException {
-        return new AuthorizationResponse(true);
+    public Object handleRequest(BmhAuthorizationRequest request)
+            throws Exception {
+        return null;
     }
+
+    @Override
+    public AuthorizationResponse authorized(IUser user,
+            BmhAuthorizationRequest request) throws AuthorizationException {
+
+        AuthManager manager = AuthManagerFactory.getInstance().getManager();
+        IAuthorizer auth = manager.getAuthorizer();
+
+        boolean authorized = auth.isAuthorized(request.getRoleId(), user
+                .uniqueId().toString(), "BMH");
+
+        if (authorized) {
+            return new AuthorizationResponse(authorized);
+        } else {
+            return new AuthorizationResponse(request.getNotAuthorizedMessage());
+        }
+    }
+
 }

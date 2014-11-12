@@ -115,6 +115,15 @@
             value="com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest" />
         <constructor-arg ref="newBroadcastMsgHandler" />
     </bean>
+    
+    <bean id="bmhAuthorization"
+        class="com.raytheon.uf.edex.bmh.handler.BmhAuthorizationRequestHandler" />
+        
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.BmhAuthorizationRequest" />
+        <constructor-arg ref="bmhAuthorization" />
+    </bean>
 
 	<bean id="maintenanceMessageHandler" 
 		class="com.raytheon.uf.edex.bmh.handler.MaintenanceMessageHandler">

@@ -79,6 +79,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.DisconnectListener;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.uf.viz.core.VizApp;
@@ -114,6 +115,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Nov 01, 2014  3782      mpduff      Added message name column and made table grow with dialog
  * Nov 01, 2014  3655      bkowal      Prevent NPE.
  * Nov 04, 2014   3792     lvenable    Colored the Emergency Override label blue and fixed a NPE.
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -134,8 +136,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private final String BMH_PRACTICE_DAC_STATUS = "BMH.Practice.DAC.Status";
 
     private final String BMH_PRACTICE_CONFIG = "BMH.Practice.Config";
-
-    private final String TITLE = "Broadcast Cycle";
 
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(BroadcastCycleDlg.class);
@@ -240,11 +240,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      *            The opend dialogs map
      */
     public BroadcastCycleDlg(Shell parent, Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "Broadcast Cycle Dialog", parent, SWT.DIALOG_TRIM
-                | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
-                | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(dlgMap, DlgInfo.BROADCAST_CYCLE.getTitle(), parent,
+                SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
+                        | CAVE.PERSPECTIVE_INDEPENDENT);
         this.dataManager = new BroadcastCycleDataManager();
-        setText(TITLE);
+        setText(DlgInfo.BROADCAST_CYCLE.getTitle());
     }
 
     @Override
@@ -817,7 +817,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 .getSelectionIndex());
         String[] parts = selection.split(" - ");
         selectedTransmitterGrp = parts[0];
-        setText(TITLE + ": " + selectedTransmitterGrp);
+        setText(DlgInfo.BROADCAST_CYCLE.getTitle() + ": "
+                + selectedTransmitterGrp);
         transmitterNameLbl.setText(selectedTransmitterGrp);
 
         selectedTransmitterGroupObject = transmitterGroupNameMap

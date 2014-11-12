@@ -38,6 +38,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -50,6 +51,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 11, 2014    3381    mpduff      Initial creation
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -109,7 +111,7 @@ public class LdadConfigDlg extends CaveSWTDialog {
      */
     public LdadConfigDlg(Shell parentShell) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT);
-        setText("LDAD Configuration");
+        setText(DlgInfo.LDAD_CONFIGURATION.getTitle());
     }
 
     /*

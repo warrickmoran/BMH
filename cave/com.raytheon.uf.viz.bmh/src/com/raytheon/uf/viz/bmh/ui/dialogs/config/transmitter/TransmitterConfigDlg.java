@@ -32,6 +32,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 
 /**
  * Transmitter configuration dialog
@@ -43,6 +44,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014    3173    mpduff      Initial creation
+ * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * 
  * </pre>
  * 
@@ -62,10 +64,10 @@ public class TransmitterConfigDlg extends AbstractBMHDialog {
      */
     public TransmitterConfigDlg(Shell parentShell,
             Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, "Transmitter Configuration Dialog", parentShell,
-                SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.PERSPECTIVE_INDEPENDENT
-                        | CAVE.DO_NOT_BLOCK);
-        setText("Transmitter Configuration");
+        super(dlgMap, DlgInfo.TRANSMITTER_CONFIGURATION.getTitle(),
+                parentShell, SWT.DIALOG_TRIM | SWT.RESIZE,
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
+        setText(DlgInfo.TRANSMITTER_CONFIGURATION.getTitle());
     }
 
     @Override
