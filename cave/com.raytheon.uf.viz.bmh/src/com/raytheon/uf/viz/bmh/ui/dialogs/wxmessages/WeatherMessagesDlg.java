@@ -111,6 +111,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 03, 2014  3781     dgilling    Set SAME tone flag on input messages.
  * Nov 4, 2014   3778     bsteffen    Change the id after a submit.
  * Nov 11, 2014  3413     rferrel     Use DlgInfo to get title.
+ * Nov 12, 2014  3823     bkowal      Use the stored wx message content.
  * 
  * </pre>
  * 
@@ -697,8 +698,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                         audioData) : new ArrayList<InputMessageAudioData>(1);
 
                 MessageContentsDlg mcd = new MessageContentsDlg(shell,
-                        audioList, userInputMessage.getContent(),
-                        determineContentType(userInputMessage.getContent()));
+                        audioList, content.getText(), content.getContentType());
                 mcd.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
