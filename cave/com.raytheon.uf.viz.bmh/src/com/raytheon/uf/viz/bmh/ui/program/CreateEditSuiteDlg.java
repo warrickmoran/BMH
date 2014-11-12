@@ -102,6 +102,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 26, 2014   3750     mpduff      Null check the suite messages.
  * Oct 28, 2014   3750     bkowal      Add Suite to the SuiteMessage relation when
  *                                     adding Message Types to a Suite.
+ * Nov 12, 2014   3815     lvenable    Fixed category not being saved.
  * </pre>
  * 
  * @author lvenable
@@ -688,6 +689,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         Suite savedSuite = null;
         try {
             selectedSuite.setSuiteMessages(msgTypesInSuiteList);
+            selectedSuite.setType(suiteType);
             SuiteResponse suiteReponse = sdm.saveSuite(selectedSuite);
             if (suiteReponse.getSuiteList().isEmpty()) {
                 return;
