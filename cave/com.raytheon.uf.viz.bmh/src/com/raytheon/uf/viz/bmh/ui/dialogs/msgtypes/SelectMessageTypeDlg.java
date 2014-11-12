@@ -56,6 +56,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 13, 2014  #3728     lvenable     Updated to return the fully populated message type object
  *                                      that was selected in the table.
+ * Nov 10, 2014  #3381     bkowal       Updated to allow for single or multiple selection. Updated
+ *                                      to use the SWT #getData and #setData.
  * 
  * </pre>
  * 
@@ -74,13 +76,16 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
     /** Message Type table data. */
     private TableData msgTypeTableData = null;
 
-    /** List of message types. */
-    private List<MessageType> messageTypeList;
+    private final boolean allowMultipleSelection;
 
     /**
      * OK button.
      */
     private Button okBtn;
+
+    public SelectMessageTypeDlg(Shell parentShell) {
+        this(parentShell, false);
+    }
 
     /**
      * Constructor.
@@ -88,10 +93,11 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
      * @param parentShell
      *            Parent shell.
      */
-    public SelectMessageTypeDlg(Shell parentShell) {
+    public SelectMessageTypeDlg(Shell parentShell,
+            boolean allowMultipleSelection) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
-
+        this.allowMultipleSelection = allowMultipleSelection;
     }
 
     @Override
@@ -130,8 +136,11 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         Label selectLbl = new Label(shell, SWT.NONE);
         selectLbl.setText("Select Message Type:");
 
+        int tableSelection = this.allowMultipleSelection ? SWT.MULTI
+                : SWT.SINGLE;
+
         msgTypeTable = new MsgTypeTable(shell, SWT.BORDER | SWT.V_SCROLL
-                | SWT.H_SCROLL | SWT.SINGLE, 450, 300);
+                | SWT.H_SCROLL | tableSelection, 450, 300);
 
         msgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
@@ -183,20 +192,32 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
      */
     private void handleOkAction() {
 
-        int index = msgTypeTable.getSelectedIndex();
-        MessageType selectedMsgType = messageTypeList.get(index);
+        List<TableRowData> selectedTableRows = this.msgTypeTable.getSelection();
 
         MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
+        List<MessageType> selectedMessageTypes = new ArrayList<>(
+                selectedTableRows.size());
+        for (TableRowData trd : selectedTableRows) {
+            String afosId = trd.getData().toString();
+            MessageType mt = null;
+            try {
+                // retrieve the latest version of the message type.
+                mt = msgTypeDataMgr.getMessageType(afosId);
+            } catch (Exception e) {
+                statusHandler
+                        .error("Error retrieving message type data from the database associated with afos id: "
+                                + afosId, e);
+                return;
+            }
+            selectedMessageTypes.add(mt);
+        }
 
-        try {
-            MessageType mt = msgTypeDataMgr.getMessageType(selectedMsgType
-                    .getAfosid());
-            setReturnValue(mt);
-        } catch (Exception e) {
-            statusHandler
-                    .error("Error retrieving message type data from the database: ",
-                            e);
-            return;
+        if (this.allowMultipleSelection == false) {
+            // support single selection mode.
+            setReturnValue(selectedMessageTypes.get(0));
+        } else {
+            // support multiple selection mode.
+            setReturnValue(selectedMessageTypes);
         }
 
         close();
@@ -224,6 +245,7 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
     private void populateMsgTypeTableData() {
         MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
 
+        List<MessageType> messageTypeList = null;
         try {
             messageTypeList = msgTypeDataMgr
                     .getMsgTypesAfosIdTitle(new MsgTypeAfosComparator());
@@ -240,6 +262,7 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
 
             trd.addTableCellData(new TableCellData(mt.getAfosid()));
             trd.addTableCellData(new TableCellData(mt.getTitle()));
+            trd.setData(mt.getAfosid());
 
             msgTypeTableData.addDataRow(trd);
         }

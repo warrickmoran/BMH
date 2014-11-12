@@ -114,6 +114,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 21, 2014  #3687     bsteffen    Automatically notify edex when starting/stopping in practice mode.
  * Nov 07, 2014  #3413     rferrel     Added authorization check on dialogs.
+ * Nov 10, 2014  #3381     bkowal      Updated to use the new LdadConfigDlg.
  * 
  * </pre>
  * 
@@ -867,7 +868,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.LDAD_CONFIGURATION)) {
                     if (ldadConfigDlg == null || ldadConfigDlg.isDisposed()) {
-                        ldadConfigDlg = new LdadConfigDlg(getShell());
+                    ldadConfigDlg = new LdadConfigDlg(dlgsToValidateCloseMap,
+                            getShell());
                         ldadConfigDlg.open();
                     } else {
                         ldadConfigDlg.bringToTop();
