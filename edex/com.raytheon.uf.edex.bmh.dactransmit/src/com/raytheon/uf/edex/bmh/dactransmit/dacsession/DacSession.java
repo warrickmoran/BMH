@@ -89,6 +89,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Nov 1, 2014   #3655     bkowal       Improved how data is shared between the main dac 
  *                                      thread and the live broadcast thread.
  * Nov 4, 2014   #3655     bkowal       Eliminate audio echo. Decrease buffer delay.
+ * Nov 7, 2014   #3630     bkowal       Implement IDacSession
  * Nov 10, 2014  #3630     bkowal       Re-factor to support on-demand broadcasting.
  * 
  * </pre>
@@ -98,7 +99,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  */
 
 public final class DacSession implements IDacStatusUpdateEventHandler,
-        IShutdownRequestEventHandler {
+        IShutdownRequestEventHandler, IDacSession {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -167,6 +168,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
      * @throws IOException
      *             If a transmission error occurs with the DAC.
      */
+    @Override
     public void startPlayback() throws IOException {
         try {
             shutdownSignal.acquire();
@@ -229,7 +231,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
      * Blocking method that allows the main thread to wait until the DacSession
      * has been shutdown.
      */
-    public void waitForShutdown() {
+    @Override
+    public SHUTDOWN_STATUS waitForShutdown() {
         if (isRunning) {
             try {
                 shutdownSignal.acquire();
@@ -241,6 +244,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                 shutdownSignal.release();
             }
         }
+
+        return SHUTDOWN_STATUS.SUCCESS;
     }
 
     @Override

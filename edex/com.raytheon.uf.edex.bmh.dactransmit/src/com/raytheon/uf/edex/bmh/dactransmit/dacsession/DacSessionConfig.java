@@ -19,10 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
-import java.net.InetAddress;
+import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.TimeZone;
+
+import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
 
 /**
  * Configuration parameters for a DacSession object. Defines all the necessary
@@ -42,54 +43,26 @@ import java.util.TimeZone;
  * Sep 4, 2014   #3532     bkowal       Use a decibel target instead of a range.
  * Oct 2, 2014   #3642     bkowal       Add transmitter timezone.
  * Oct 22, 2014  #3687     bsteffen    keep original dac hostname
+ * Nov 7, 2014   #3630     bkowal       Refactor for maintenance mode.
  * </pre>
  * 
  * @author dgilling
  * @version 1.0
  */
 
-public final class DacSessionConfig {
-
-    private final boolean printHelp;
-
-    private final String dacHostname;
-
-    private final InetAddress dacAddress;
-
-    private final int dataPort;
-
-    private final int controlPort;
-
-    private final Collection<Integer> transmitters;
+public final class DacSessionConfig extends AbstractDacConfig {
 
     private final Path inputDirectory;
 
     private final int managerPort;
 
-    private final double dbTarget;
-
     private final TimeZone timezone;
 
-    public DacSessionConfig(boolean printHelp) {
-        this(printHelp, null, null, -1, -1, null, null, -1,
-                Double.NEGATIVE_INFINITY,
-                null);
-    }
-
-    public DacSessionConfig(boolean printHelp, String dacHostname,
-            InetAddress dacAddress,
-            int dataPort, int controlPort, Collection<Integer> transmitters,
-            Path inputDirectory, int managerPort, double dbTarget,
-            TimeZone timezone) {
-        this.printHelp = printHelp;
-        this.dacHostname = dacHostname;
-        this.dacAddress = dacAddress;
-        this.dataPort = dataPort;
-        this.controlPort = controlPort;
-        this.transmitters = transmitters;
+    public DacSessionConfig(DacCommonConfig commonConfig, Path inputDirectory,
+            int managerPort, TimeZone timezone) {
+        super(DAC_MODE.OPERATIONAL, commonConfig);
         this.inputDirectory = inputDirectory;
         this.managerPort = managerPort;
-        this.dbTarget = dbTarget;
         this.timezone = timezone;
     }
 
@@ -100,61 +73,17 @@ public final class DacSessionConfig {
      */
     @Override
     public String toString() {
-        StringBuilder stringBuilder = new StringBuilder(
-                "DacSessionConfig [dacHostname=");
-        stringBuilder.append(this.dacHostname);
-        stringBuilder.append(", dataPort=");
-        stringBuilder.append(this.dataPort);
-        stringBuilder.append(", controlPort=");
-        stringBuilder.append(this.controlPort);
-        stringBuilder.append(", transmitters=");
-        stringBuilder.append(this.transmitters);
+        StringBuilder stringBuilder = new StringBuilder("DacSessionConfig [");
+        stringBuilder.append(super.toString());
         stringBuilder.append(", inputDirectory=");
         stringBuilder.append(this.inputDirectory);
         stringBuilder.append(", managerPort=");
         stringBuilder.append(this.managerPort);
-        stringBuilder.append(", dbTarget=");
-        stringBuilder.append(this.dbTarget);
+        stringBuilder.append(", timezone=");
+        stringBuilder.append(this.timezone.getID());
         stringBuilder.append("]");
 
         return stringBuilder.toString();
-    }
-
-    public boolean isPrintHelp() {
-        return printHelp;
-    }
-
-    /**
-     * The original hostname for the dac as it was received from the command
-     * line. This may be an actual hostname or a string representation of the IP
-     * address. Depending on the format this may be equivelant to
-     * {@link #getDacAddress()}.getHostName() but this is not guaranteed.
-     * 
-     * @return
-     */
-    public String getDacHostname() {
-        return dacHostname;
-    }
-
-    /**
-     * The resolved address of the {@link #dacHostname}.
-     * 
-     * @return
-     */
-    public InetAddress getDacAddress() {
-        return dacAddress;
-    }
-
-    public int getDataPort() {
-        return dataPort;
-    }
-
-    public int getControlPort() {
-        return controlPort;
-    }
-
-    public Collection<Integer> getTransmitters() {
-        return transmitters;
     }
 
     public Path getInputDirectory() {
@@ -165,14 +94,12 @@ public final class DacSessionConfig {
         return managerPort;
     }
 
-    /**
-     * @return the dbTarget
-     */
-    public double getDbTarget() {
-        return dbTarget;
-    }
-
     public TimeZone getTimezone() {
         return timezone;
+    }
+
+    @Override
+    public IDacSession buildDacSession() throws IOException {
+        return new DacSession(this);
     }
 }

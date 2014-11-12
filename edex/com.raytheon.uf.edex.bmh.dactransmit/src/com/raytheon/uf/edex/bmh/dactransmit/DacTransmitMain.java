@@ -24,8 +24,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
-import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
-import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
+import com.raytheon.uf.edex.bmh.dactransmit.dacsession.AbstractDacConfig;
+import com.raytheon.uf.edex.bmh.dactransmit.dacsession.IDacSession;
+import com.raytheon.uf.edex.bmh.dactransmit.dacsession.IDacSession.SHUTDOWN_STATUS;
 
 /**
  * Main entry point for DacTransmit program. Reads from a specified directory
@@ -54,6 +55,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * Jul 16, 2014  #3286     dgilling     Change execution now that
  *                                      startPlayback() doesn't block.
  * Oct 24, 2014  #3703     bsteffen     Bridge jul and slf4j.
+ * Nov 7, 2014   #3630     bkowal       Support maintenance mode.
  * 
  * </pre>
  * 
@@ -69,36 +71,47 @@ public class DacTransmitMain {
     public static void main(String[] args) {
         logger.info("Starting DacTransmit.");
 
-        DacTransmitArgParser argParser = new DacTransmitArgParser();
-
-        DacSessionConfig sessionConfig = null;
+        AbstractDacConfig dacConfig = null;
+        AbstractDacArgParser argParser = null;
         try {
-            sessionConfig = argParser.parseCommandLine(args);
+            argParser = DacCliArgParser.getDacArgParser(args);
+            if (DacCliArgParser.isHelp(args)) {
+                argParser.printUsage();
+                shutdown(SHUTDOWN_STATUS.SUCCESS);
+            }
+            dacConfig = argParser.parseCommandLine(args);
         } catch (ParseException e) {
             logger.error("Invalid argument specified.", e);
-            argParser.printUsage();
-        }
-
-        if (sessionConfig != null) {
-            if (!sessionConfig.isPrintHelp()) {
-                try {
-                    /*
-                     * The event bus is using java.util.logging but we use slf4j
-                     * logging so an adapter needs to be installed to convert.
-                     */
-                    SLF4JBridgeHandler.install();
-                    DacSession session = new DacSession(sessionConfig);
-                    session.startPlayback();
-                    session.waitForShutdown();
-                } catch (Throwable t) {
-                    logger.error("Unhandled exception thrown from DacSession:",
-                            t);
-                }
-            } else {
+            if (argParser != null) {
                 argParser.printUsage();
+                shutdown(SHUTDOWN_STATUS.FAILURE);
             }
         }
 
+        if (dacConfig == null) {
+            logger.error("Failed to process the dac configuration.");
+            shutdown(SHUTDOWN_STATUS.FAILURE);
+        }
+
+        SHUTDOWN_STATUS status = SHUTDOWN_STATUS.FAILURE;
+        try {
+            /*
+             * The event bus is using java.util.logging but we use slf4j logging
+             * so an adapter needs to be installed to convert.
+             */
+            SLF4JBridgeHandler.install();
+            IDacSession session = dacConfig.buildDacSession();
+            session.startPlayback();
+            status = session.waitForShutdown();
+        } catch (Throwable t) {
+            logger.error("Unhandled exception thrown from DacSession:", t);
+        }
+
+        shutdown(status);
+    }
+
+    private static void shutdown(SHUTDOWN_STATUS status) {
         logger.info("Exiting DacTransmit.");
+        System.exit(status.getStatusCode());
     }
 }

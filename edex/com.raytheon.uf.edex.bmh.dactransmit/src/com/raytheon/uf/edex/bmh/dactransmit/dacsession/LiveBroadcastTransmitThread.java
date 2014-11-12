@@ -23,8 +23,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.eventbus.EventBus;
@@ -37,11 +35,7 @@ import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
-import com.raytheon.uf.common.time.util.ITimer;
-import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
-import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
-import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
 
 /**
  * Transmits audio from a live data source (rather than a pre-recorded data
@@ -70,6 +64,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Nov 3, 2014  3655       bkowal      Viz now caches the audio. Adjusted timeout between
  *                                     packet transmits based on the rate that audio arrives.
  * Nov 4, 2014  3655       bkowal      Eliminate audio echo. Decrease buffer delay.
+ * Nov 7, 2014  3630       bkowal      Refactor for maintenance mode.
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
  * 
  * </pre>
@@ -78,7 +73,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * @version 1.0
  */
 
-public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
+public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
     private final String broadcastId;
 
@@ -88,15 +83,7 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
 
     private final BroadcastTransmitterConfiguration config;
 
-    private final double dbTarget;
-
-    private volatile boolean error;
-
-    private ITimer transmitTimer;
-
     private volatile boolean streaming;
-
-    private LinkedBlockingQueue<byte[]> audioBuffer = new LinkedBlockingQueue<>();
 
     public LiveBroadcastTransmitThread(final EventBus eventBus,
             final InetAddress address, final int port,
@@ -106,12 +93,11 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
             final BroadcastTransmitterConfiguration config,
             final double dbTarget) throws IOException {
         super("LiveBroadcastTransmitThread", eventBus, address, port,
-                transmitters);
+                transmitters, dbTarget);
         this.broadcastId = broadcastId;
         this.dataThread = dataThread;
         this.commsManager = commsManager;
         this.config = config;
-        this.dbTarget = dbTarget;
     }
 
     @Override
@@ -196,53 +182,6 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         }
     }
 
-    public void playAudio(List<byte[]> data) {
-        this.audioBuffer.addAll(data);
-    }
-
-    private void streamAudio(byte[] data) throws AudioOverflowException,
-            UnsupportedAudioFormatException, AudioConversionException,
-            InterruptedException {
-        /*
-         * Adjust the audio based on the decibel target.
-         */
-        byte[] regulatedAudio = this.adjustAudio(data);
-
-        RtpPacketIn rtpPacket = buildRtpPacket(previousPacket, regulatedAudio);
-
-        sendPacket(rtpPacket);
-        if (this.transmitTimer == null) {
-            this.transmitTimer = TimeUtil.getTimer();
-            this.transmitTimer.start();
-        } else {
-            this.transmitTimer.stop();
-            logger.info(
-                    "A total of {} elapsed between the transmission of the current packet and the previous packet.",
-                    TimeUtil.prettyDuration(this.transmitTimer.getElapsedTime()));
-            this.transmitTimer.reset();
-            this.transmitTimer.start();
-        }
-
-        previousPacket = rtpPacket;
-
-        /*
-         * Data (multiple packets) arrives in realtime after an initial buffer
-         * is saved up.
-         */
-        Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
-
-        while (!hasSync) {
-            Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
-
-            // cannot restart audio. should 'onSyncRestartMessage'
-            // indicate an error condition in the case of live
-            // broadcasting?
-            if (hasSync && onSyncRestartMessage) {
-                logger.warn("Application has re-gained sync with the DAC. Unable to restart audio stream!");
-            }
-        }
-    }
-
     private void notifyDacError(final String detail, final Exception e) {
         this.error = true;
         logger.error(detail, e);
@@ -254,21 +193,6 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
         status.setMessage(detail);
         status.setException(e);
         this.commsManager.sendDacLiveBroadcastMsg(status);
-    }
-
-    private byte[] adjustAudio(final byte[] sourceAudio)
-            throws AudioOverflowException, UnsupportedAudioFormatException,
-            AudioConversionException {
-        byte[] regulatedAudio = new byte[0];
-
-        AudioRegulator audioRegulator = new AudioRegulator();
-        regulatedAudio = audioRegulator.regulateAudioVolume(sourceAudio,
-                this.dbTarget, sourceAudio.length);
-        logger.info("Successfully finished audio attenuation/amplification in "
-                + audioRegulator.getDuration()
-                + " ms for message: 'Live Audio Stream'");
-
-        return regulatedAudio;
     }
 
     public void shutdown() {
@@ -284,13 +208,6 @@ public class LiveBroadcastTransmitThread extends AbstractTransmitThread {
      */
     public void setWatermarkPackets(int watermarkPackets) {
         this.watermarkPackets = watermarkPackets;
-    }
-
-    /**
-     * @return the error
-     */
-    public boolean isError() {
-        return error;
     }
 
     private void notifyBroadcastSwitch(final STATE broadcastState) {
