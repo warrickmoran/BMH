@@ -68,6 +68,9 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Sep 25, 2014    3620       bsteffen  Add seconds to periodicity.
  * Oct 10, 2014    3646       rferrel   Convert to GenericTable.
  * Nov 01, 2014    3782       mpduff    Added Message Name to dialog.
+ * Nov 11, 2014    3825       lvenable  Fixed text control to wrap text and
+ *                                      populate it after the control has been
+ *                                      sized.
  * 
  * </pre>
  * 
@@ -111,6 +114,8 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
     private final BroadcastMsg broadcastMsg;
 
+    private Text messageText;
+
     public MessageDetailsDlg(Shell parent, MessageType mType,
             BroadcastMsg broadcastMsg) {
         super(parent, SWT.DIALOG_TRIM, CAVE.INDEPENDENT_SHELL
@@ -130,6 +135,14 @@ public class MessageDetailsDlg extends CaveSWTDialog {
     @Override
     protected Object constructShellLayoutData() {
         return new GridData(SWT.FILL, SWT.FILL, true, true);
+    }
+
+    @Override
+    protected void opened() {
+        if (broadcastMsg != null) {
+            String msgText = broadcastMsg.getInputMessage().getContent();
+            messageText.setText(msgText);
+        }
     }
 
     @Override
@@ -355,13 +368,9 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.heightHint = 125;
-        Text text = new Text(shell, SWT.BORDER | SWT.V_SCROLL);
-        text.setLayoutData(gd);
-        text.setLayoutData(gd);
-        if (broadcastMsg != null) {
-            String msgText = broadcastMsg.getInputMessage().getContent();
-            text.setText(msgText);
-        }
+        messageText = new Text(shell, SWT.BORDER | SWT.V_SCROLL | SWT.WRAP);
+        messageText.setLayoutData(gd);
+        messageText.setLayoutData(gd);
     }
 
     private void populateBroadcastAreaTable() throws Exception {
