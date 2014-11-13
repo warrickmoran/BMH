@@ -19,12 +19,13 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import com.raytheon.uf.common.bmh.datamodel.language.Language;
-import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
+import com.raytheon.uf.common.bmh.request.LdadConfigRequest;
+import com.raytheon.uf.common.bmh.request.LdadConfigRequest.LdadConfigAction;
+import com.raytheon.uf.common.bmh.request.LdadConfigResponse;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 
 /**
  * LDAD Configuration Dialog's data manager class
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 11, 2014    3381    mpduff      Initial creation
+ * Nov 13, 2014    3803    bkowal      Implemented.
  * 
  * </pre>
  * 
@@ -44,57 +46,53 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
  */
 
 public class LdadConfigDataManager {
-    /**
-     * Get the available {@link TtsVoice} Text to Speech voices
-     * 
-     * @return List of available voices
-     */
-    public List<TtsVoice> getTtsVoices() {
-        List<TtsVoice> voiceList = getTestData();
+    public LdadConfig saveLdadConfig(LdadConfig ldadConfig) throws Exception {
+        LdadConfigRequest request = new LdadConfigRequest();
+        request.setAction(LdadConfigAction.Save);
+        request.setLdadConfig(ldadConfig);
 
-        return voiceList;
+        return ((LdadConfigResponse) BmhUtils.sendRequest(request))
+                .getLdadConfigurations().get(0);
     }
 
-    /**
-     * Get available file encoding options
-     * 
-     * @return encoding options
-     */
-    public String[] getEncodingOptions() {
-        return getTestEncodingOptions();
+    public List<LdadConfig> getExistingConfigurationReferences()
+            throws Exception {
+        LdadConfigRequest request = new LdadConfigRequest();
+        request.setAction(LdadConfigAction.RetrieveReferences);
+
+        return ((LdadConfigResponse) BmhUtils.sendRequest(request))
+                .getLdadConfigurations();
     }
 
-    /**
-     * Get existing configuration names.
-     * 
-     * @return List of existing configuration names
-     */
-    public List<String> getConfigurations() {
-        List<String> configs = getTestConfigs();
-        return configs;
+    public LdadConfig getLdadConfig(long id) throws Exception {
+        LdadConfigRequest request = new LdadConfigRequest();
+        request.setAction(LdadConfigAction.RetrieveRecord);
+        request.setId(id);
+
+        return ((LdadConfigResponse) BmhUtils.sendRequest(request))
+                .getLdadConfigurations().get(0);
     }
 
-    /*
-     * TEST DATA
-     */
-    private List<TtsVoice> getTestData() {
-        List<TtsVoice> voiceList = new ArrayList<TtsVoice>();
-        TtsVoice julie = new TtsVoice();
-        julie.setLanguage(Language.ENGLISH);
-        julie.setMale(false);
-        julie.setVoiceName("Julie");
-        julie.setVoiceNumber(103);
-        voiceList.add(julie);
-        return voiceList;
+    public LdadConfig getLdadConfigByName(String name) throws Exception {
+        LdadConfigRequest request = new LdadConfigRequest();
+        request.setAction(LdadConfigAction.RetrieveRecordByName);
+        request.setName(name);
+
+        LdadConfigResponse response = (LdadConfigResponse) BmhUtils
+                .sendRequest(request);
+        if (response.getLdadConfigurations() == null
+                || response.getLdadConfigurations().isEmpty()) {
+            return null;
+        }
+
+        return response.getLdadConfigurations().get(0);
     }
 
-    private String[] getTestEncodingOptions() {
-        String[] options = new String[] { ".mp3", ".wav" };
+    public void deleteLdadConfig(LdadConfig ldadConfig) throws Exception {
+        LdadConfigRequest request = new LdadConfigRequest();
+        request.setAction(LdadConfigAction.Delete);
+        request.setLdadConfig(ldadConfig);
 
-        return options;
-    }
-
-    private List<String> getTestConfigs() {
-        return Collections.emptyList();
+        BmhUtils.sendRequest(request);
     }
 }

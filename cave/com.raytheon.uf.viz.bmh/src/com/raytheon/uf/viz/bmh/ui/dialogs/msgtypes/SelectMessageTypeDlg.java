@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
@@ -58,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      that was selected in the table.
  * Nov 10, 2014  #3381     bkowal       Updated to allow for single or multiple selection. Updated
  *                                      to use the SWT #getData and #setData.
+ * Nov 13, 2014  #3803     bkowal       Added optional filtering capability.
  * 
  * </pre>
  * 
@@ -77,6 +79,14 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
     private TableData msgTypeTableData = null;
 
     private final boolean allowMultipleSelection;
+
+    /*
+     * A list of message type id(s) to filter from the list - they will not be
+     * displayed in the list. Primarily exists to ensure that components that
+     * utilize this dialog will not have to check for duplicates in the message
+     * type(s) that are returned by the dialog.
+     */
+    private List<String> filteredMessageTypes;
 
     /**
      * OK button.
@@ -98,6 +108,10 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
         this.allowMultipleSelection = allowMultipleSelection;
+        /*
+         * Initialize to empty to eliminate the need for NULL checks.
+         */
+        this.filteredMessageTypes = Collections.emptyList();
     }
 
     @Override
@@ -257,6 +271,9 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         }
 
         for (MessageType mt : messageTypeList) {
+            if (this.filteredMessageTypes.contains(mt.getAfosid())) {
+                continue;
+            }
 
             TableRowData trd = new TableRowData();
 
@@ -266,5 +283,13 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
 
             msgTypeTableData.addDataRow(trd);
         }
+    }
+
+    /**
+     * @param filteredMessageTypes
+     *            the filteredMessageTypes to set
+     */
+    public void setFilteredMessageTypes(List<String> filteredMessageTypes) {
+        this.filteredMessageTypes = filteredMessageTypes;
     }
 }

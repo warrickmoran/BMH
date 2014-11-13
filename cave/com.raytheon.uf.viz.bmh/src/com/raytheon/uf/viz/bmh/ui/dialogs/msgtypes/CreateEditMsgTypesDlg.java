@@ -53,9 +53,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
-import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
-import com.raytheon.uf.common.bmh.request.TtsVoiceRequest.TtsVoiceAction;
-import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
@@ -66,6 +63,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
+import com.raytheon.uf.viz.bmh.voice.VoiceDataManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -94,6 +92,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 30, 2014   3617     dgilling    Fix default states for blackout controls.
  * Nov 01, 2014   3784     mpduff      Added nullCheck
  * Nov 02, 2014   3783     lvenable    Replaced message type list with a set of AFOS Ids.
+ * Nov 13, 2014   3803     bkowal      Use the new Voice Data Manager.
  * 
  * </pre>
  * 
@@ -955,14 +954,10 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      * Retrieve the voices from the DB.
      */
     private void retrieveVoicesFromDB() {
-        TtsVoiceRequest voiceRequest = new TtsVoiceRequest();
-        voiceRequest.setAction(TtsVoiceAction.AllVoices);
-        TtsVoiceResponse voiceResponse = null;
+        VoiceDataManager vdm = new VoiceDataManager();
 
         try {
-            voiceResponse = (TtsVoiceResponse) BmhUtils
-                    .sendRequest(voiceRequest);
-            voiceList = voiceResponse.getTtsVoiceList();
+            this.voiceList = vdm.getAllVoices();
         } catch (Exception e) {
             statusHandler.error("Error retrieving voices from the database: ",
                     e);

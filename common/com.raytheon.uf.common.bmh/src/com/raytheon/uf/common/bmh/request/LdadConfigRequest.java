@@ -50,6 +50,8 @@ public class LdadConfigRequest extends AbstractBMHServerRequest {
         RetrieveReferences,
         /* Retrieves an entire ldad config record based on id */
         RetrieveRecord,
+        /* Retrieves an entire ldad config record by name */
+        RetrieveRecordByName,
         /* Save or updates an ldad config record */
         Save,
         /* Deletes an existing ldad config record */
@@ -61,6 +63,9 @@ public class LdadConfigRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private long id;
+    
+    @DynamicSerializeElement
+    private String name;
 
     @DynamicSerializeElement
     private LdadConfig ldadConfig;
@@ -106,6 +111,20 @@ public class LdadConfigRequest extends AbstractBMHServerRequest {
      */
     public void setId(long id) {
         this.id = id;
+    }
+
+    /**
+     * @return the name
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * @param name the name to set
+     */
+    public void setName(String name) {
+        this.name = name;
     }
 
     /**

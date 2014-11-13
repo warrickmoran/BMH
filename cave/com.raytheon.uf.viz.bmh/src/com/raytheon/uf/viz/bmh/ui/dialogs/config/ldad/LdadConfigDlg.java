@@ -34,11 +34,26 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.LdadConfigNotification;
+import com.raytheon.uf.common.jms.notification.INotificationObserver;
+import com.raytheon.uf.common.jms.notification.NotificationMessage;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
+import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
+import com.raytheon.viz.core.mode.CAVEMode;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * LDAD Configuration Dialog. Allows the user to add, remove, and edit ldad
@@ -52,6 +67,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
  * ------------ ---------- ----------- --------------------------
  * Nov 10, 2014 3381       bkowal      Initial creation
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Nov 13, 2014  3803      bkowal      Implemented.
  * 
  * </pre>
  * 
@@ -59,7 +75,21 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
  * @version 1.0
  */
 
-public class LdadConfigDlg extends AbstractBMHDialog {
+public class LdadConfigDlg extends AbstractBMHDialog implements
+        INotificationObserver {
+
+    private final static IUFStatusHandler statusHandler = UFStatus
+            .getHandler(LdadConfigDlg.class);
+
+    // TODO: DR #3807
+    private final String BMH_CONFIG = "BMH.Config";
+
+    private final String BMH_PRACTICE_CONFIG = "BMH.Practice.Config";
+
+    /**
+     * Data manager
+     */
+    private final LdadConfigDataManager dataManager = new LdadConfigDataManager();
 
     private Group ldadConfigGroup;
 
@@ -101,9 +131,9 @@ public class LdadConfigDlg extends AbstractBMHDialog {
 
     public LdadConfigDlg(Map<AbstractBMHDialog, String> map, Shell parentShell) {
         super(map, DlgInfo.LDAD_CONFIGURATION.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
+                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
                         | CAVE.PERSPECTIVE_INDEPENDENT);
-        super.setText("LDAD Configuration");
+        super.setText(DlgInfo.LDAD_CONFIGURATION.getTitle());
     }
 
     /*
@@ -130,6 +160,35 @@ public class LdadConfigDlg extends AbstractBMHDialog {
     /*
      * (non-Javadoc)
      * 
+     * @see com.raytheon.viz.ui.dialogs.CaveSWTDialogBase#opened()
+     */
+    @Override
+    protected void opened() {
+        shell.setMinimumSize(shell.getSize());
+
+        this.populateDialog();
+
+        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
+            NotificationManagerJob.addObserver(BMH_CONFIG, this);
+        } else {
+            NotificationManagerJob.addObserver(BMH_PRACTICE_CONFIG, this);
+        }
+    }
+
+    @Override
+    protected void disposed() {
+        super.disposed();
+
+        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
+            NotificationManagerJob.removeObserver(BMH_CONFIG, this);
+        } else {
+            NotificationManagerJob.removeObserver(BMH_PRACTICE_CONFIG, this);
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
      * @see
      * com.raytheon.viz.ui.dialogs.CaveSWTDialogBase#initializeComponents(org
      * .eclipse.swt.widgets.Shell)
@@ -148,7 +207,17 @@ public class LdadConfigDlg extends AbstractBMHDialog {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         ldadConfigGroup.setLayoutData(gd);
 
-        ldadConfigTable = new GenericTable(ldadConfigGroup, 650, 150);
+        ldadConfigTable = new GenericTable(ldadConfigGroup, SWT.BORDER
+                | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE, 650, 150);
+        ldadConfigTable.setCallbackAction(new ITableActionCB() {
+            @Override
+            public void tableSelectionChange(int selectionCount) {
+                boolean enabled = (selectionCount == 1);
+
+                editButton.setEnabled(enabled);
+                deleteButton.setEnabled(enabled);
+            }
+        });
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>(
                 LDAD_CONFIG_COLUMNS.values().length);
         for (int i = 0; i < LDAD_CONFIG_COLUMNS.values().length; i++) {
@@ -186,7 +255,12 @@ public class LdadConfigDlg extends AbstractBMHDialog {
         gd = new GridData(SWT.CENTER, SWT.CENTER, false, true);
         gd.widthHint = 80;
         editButton.setLayoutData(gd);
-        // TODO: enable / disable based on table selection.
+        editButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleEditAction();
+            }
+        });
         editButton.setEnabled(false);
 
         deleteButton = new Button(ldadConfigBtnsComposite, SWT.PUSH);
@@ -194,7 +268,12 @@ public class LdadConfigDlg extends AbstractBMHDialog {
         gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
         gd.widthHint = 80;
         deleteButton.setLayoutData(gd);
-        // TODO: enable / disable based on table selection.
+        deleteButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleDeleteAction();
+            }
+        });
         deleteButton.setEnabled(false);
     }
 
@@ -218,11 +297,199 @@ public class LdadConfigDlg extends AbstractBMHDialog {
         });
     }
 
+    private void populateDialog() {
+        /*
+         * Retrieve references to any existing ldad config records.
+         */
+        List<LdadConfig> existingLdadRecords = null;
+        try {
+            existingLdadRecords = this.dataManager
+                    .getExistingConfigurationReferences();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to retrieve the existing ldad config records.", e);
+            return;
+        }
+
+        if (existingLdadRecords == null || existingLdadRecords.isEmpty()) {
+            // no existing ldad configuration exists.
+            return;
+        }
+
+        this.addRecordsToTable(existingLdadRecords);
+    }
+
+    private synchronized void addRecordToTable(LdadConfig record) {
+        TableRowData trd = new TableRowData();
+        trd.setData(record.getId());
+        trd.addTableCellData(new TableCellData(record.getName()));
+        trd.addTableCellData(new TableCellData(record.getHost()));
+        trd.addTableCellData(new TableCellData(record.getDirectory()));
+        trd.addTableCellData(new TableCellData(record.getEncoding()
+                .getExtension()));
+        this.ldadConfigTable.getTableData().addDataRow(trd);
+    }
+
+    private synchronized void addRecordsToTable(List<LdadConfig> records) {
+        for (LdadConfig record : records) {
+            this.addRecordToTable(record);
+        }
+        this.rebuildLdadTable();
+    }
+
+    private void rebuildLdadTable() {
+        this.ldadConfigTable.populateTable(this.ldadConfigTable.getTableData());
+        boolean enabled = this.ldadConfigTable.getSelection().isEmpty() == false;
+        this.editButton.setEnabled(enabled);
+        this.deleteButton.setEnabled(enabled);
+    }
+
     private void handleNewAction() {
         CreateEditLdadConfigDlg createLdadConfigDlg = new CreateEditLdadConfigDlg(
                 this.shell);
+        this.handleCreateEditDlgClose(createLdadConfigDlg);
+    }
+
+    private void handleEditAction() {
+        LdadConfig ldadConfig = this.getSelectedLdadConfig();
+        if (ldadConfig == null) {
+            // errors already handled and reported.
+            return;
+        }
+        CreateEditLdadConfigDlg createLdadConfigDlg = new CreateEditLdadConfigDlg(
+                this.shell, ldadConfig);
+        this.handleCreateEditDlgClose(createLdadConfigDlg);
+    }
+
+    private void handleDeleteAction() {
+        LdadConfig ldadConfig = this.getSelectedLdadConfig();
+        if (ldadConfig == null) {
+            // errors already handled and reported.
+            return;
+        }
+
+        // confirm that the user wants to delete the ldad configuration.
+        StringBuilder dialogMsg = new StringBuilder(
+                "Are you sure you want to delete ldad configuration: ");
+        dialogMsg.append(ldadConfig.getName());
+        dialogMsg.append("?");
+        int option = DialogUtility.showMessageBox(this.shell, SWT.ICON_QUESTION
+                | SWT.YES | SWT.NO, "Ldad Config - Delete Config",
+                dialogMsg.toString());
+        if (option == SWT.NO) {
+            return;
+        }
+
+        try {
+            this.dataManager.deleteLdadConfig(ldadConfig);
+        } catch (Exception e) {
+            statusHandler.error("Failed to delete the " + ldadConfig.getName()
+                    + " ldad configuration.", e);
+            return;
+        }
+
+        this.ldadConfigTable.getTableData().deleteRow(
+                this.ldadConfigTable.getSelection().get(0));
+        this.rebuildLdadTable();
+    }
+
+    private void handleCreateEditDlgClose(
+            CreateEditLdadConfigDlg createLdadConfigDlg) {
+        createLdadConfigDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue == null) {
+                    return;
+                }
+
+                if (returnValue instanceof LdadConfig == false) {
+                    return;
+                }
+
+                handleSaveUpdateInternal((LdadConfig) returnValue);
+            }
+        });
         createLdadConfigDlg.open();
-        // TODO: handle dialog close.
+    }
+
+    /**
+     * Determines if a table row already exists for the specified record and
+     * updates it when it does already exist.
+     * 
+     * @param ldadConfig
+     *            the specified record.
+     * @return true if the table was updated; false, otherwise
+     */
+    private synchronized boolean checkRecordUpdate(LdadConfig ldadConfig) {
+        for (TableRowData trd : this.ldadConfigTable.getTableData()
+                .getTableRows()) {
+            if ((Long) trd.getData() == ldadConfig.getId() == false) {
+                continue;
+            }
+
+            trd.getTableCellData().get(0).setCellText(ldadConfig.getName());
+            trd.getTableCellData().get(1).setCellText(ldadConfig.getHost());
+            trd.getTableCellData().get(2)
+                    .setCellText(ldadConfig.getDirectory());
+            trd.getTableCellData().get(3)
+                    .setCellText(ldadConfig.getEncoding().getExtension());
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private void handleSaveUpdateInternal(LdadConfig ldadConfig) {
+        if (checkRecordUpdate(ldadConfig) == false) {
+            addRecordToTable(ldadConfig);
+        }
+        rebuildLdadTable();
+    }
+
+    private void handleRemoveInternal(final long id) {
+        TableRowData trdToRemove = null;
+        for (TableRowData trd : this.ldadConfigTable.getTableData()
+                .getTableRows()) {
+            if ((Long) trd.getData() == id) {
+                trdToRemove = trd;
+                break;
+            }
+        }
+
+        if (trdToRemove != null) {
+            this.ldadConfigTable.getTableData().deleteRow(trdToRemove);
+            this.rebuildLdadTable();
+        }
+    }
+
+    private LdadConfig getSelectedLdadConfig() {
+        return this.getSpecifiedLdadConfig((Long) this.ldadConfigTable
+                .getSelection().get(0).getData());
+    }
+
+    private LdadConfig getSpecifiedLdadConfig(long id) {
+        /**
+         * These retrievals could optionally be cached so that re-selections of
+         * a particular record will not require re-retrieval?
+         */
+        LdadConfig ldadConfig = null;
+        try {
+            ldadConfig = this.dataManager.getLdadConfig(id);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to retrieve the ldad config record associated with id: "
+                            + id + ".", e);
+            return null;
+        }
+
+        if (ldadConfig == null) {
+            statusHandler
+                    .error("Failed to find the ldad config record associated with id: "
+                            + id + ".");
+        }
+
+        return ldadConfig;
     }
 
     /*
@@ -233,5 +500,55 @@ public class LdadConfigDlg extends AbstractBMHDialog {
     @Override
     public boolean okToClose() {
         return true;
+    }
+
+    private synchronized void handleLdadNotification(
+            LdadConfigNotification notification) {
+
+        final long id = notification.getId();
+
+        /*
+         * Determine what action to take based on the type of notification.
+         */
+        if (notification.getType() == ConfigChangeType.Update) {
+            final LdadConfig ldadConfig = this.getSpecifiedLdadConfig(id);
+            if (ldadConfig == null) {
+                return;
+            }
+
+            VizApp.runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    handleSaveUpdateInternal(ldadConfig);
+                }
+            });
+            return;
+        }
+
+        /*
+         * Currently the only other option is the delete operation. Determine if
+         * there is a table row that needs to be removed.
+         */
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                handleRemoveInternal(id);
+            }
+        });
+    }
+
+    @Override
+    public void notificationArrived(NotificationMessage[] messages) {
+        for (NotificationMessage message : messages) {
+            try {
+                Object o = message.getMessagePayload();
+                if (o instanceof LdadConfigNotification) {
+                    LdadConfigNotification notification = (LdadConfigNotification) o;
+                    this.handleLdadNotification(notification);
+                }
+            } catch (Exception e) {
+                statusHandler.error("Error processing notification", e);
+            }
+        }
     }
 }
