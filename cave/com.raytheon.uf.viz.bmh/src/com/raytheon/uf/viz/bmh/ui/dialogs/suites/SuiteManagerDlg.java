@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,13 +36,16 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
-import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup;
 import com.raytheon.uf.viz.bmh.ui.program.SuiteConfigGroup.SuiteGroupType;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -301,20 +303,55 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
             return;
         }
 
-        String assocProgsStr = findAssociatedPrograms(suite);
+        try {
+            /* Check to see if suite is used by an enabled transmitter. */
+            if (suite.getType() == SuiteType.GENERAL) {
+                List<TransmitterGroup> enabledTransmitters = BmhUtils
+                        .getSuiteEnabledTransmitterGroups(suite);
+                if (!enabledTransmitters.isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Cannot delete suite ")
+                            .append(suite.getName())
+                            .append(". Its category is GENERAL and it is used by the following ENABLED transmitter/group(s):\n");
+                    for (TransmitterGroup transmitter : enabledTransmitters) {
+                        sb.append("\n\t").append(transmitter.getName());
+                    }
+                    DialogUtility.showMessageBox(shell,
+                            SWT.ICON_ERROR | SWT.OK, "Delete Suite",
+                            sb.toString());
+                    return;
+                }
+            }
+        } catch (Exception e1) {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Failed to look up ENABLED transmitters associated with suite "
+                            + suite.getName() + ". ", e1);
+            return;
+        }
+
+        List<Program> programs = null;
+        try {
+            programs = BmhUtils.getSuitePrograms(suite);
+        } catch (Exception e1) {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Failed to lookup programs associated with a suite "
+                            + suite.getName() + ". ", e1);
+            return;
+        }
 
         StringBuilder sb = new StringBuilder();
-        if (assocProgsStr != null) {
-            sb.append("The suite is contained in the following programs:\n\n");
-            sb.append(assocProgsStr);
+        if (!programs.isEmpty()) {
+            sb.append("The suite is contained in the following program(s):\n");
+            for (Program program : programs) {
+                sb.append("\n\t").append(program.getName());
+            }
         }
 
         sb.append("\nDo you wish to delete suite ").append(suite.getName())
                 .append("?");
 
-        int result = DialogUtility.showMessageBox(getParent().getShell(),
-                SWT.ICON_WARNING | SWT.OK | SWT.CANCEL, "Confirm Delete",
-                sb.toString());
+        int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
+                | SWT.OK | SWT.CANCEL, "Confirm Delete", sb.toString());
 
         if (result == SWT.CANCEL) {
             return;
@@ -329,51 +366,5 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
 
         retrieveDataFromDB();
         suiteConfigGroup.populateSuiteTable(suiteList, true);
-    }
-
-    /**
-     * Find all of the programs associates with the suite passed in.
-     * 
-     * @param suite
-     *            Suite used to find matching programs.
-     * @return String of matching programs.
-     */
-    private String findAssociatedPrograms(Suite suite) {
-
-        List<Program> allProgramsArray = null;
-        ProgramDataManager pdm = new ProgramDataManager();
-
-        try {
-            allProgramsArray = pdm.getProgramSuites();
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving program data from the database: ", e);
-            return null;
-        }
-
-        List<Program> assocProgs = new ArrayList<Program>();
-
-        for (Program p : allProgramsArray) {
-            List<Suite> suitesInProgram = p.getSuites();
-            for (Suite progSuite : suitesInProgram) {
-                // If a Suite is found, add the program and continue to the
-                // next program.
-                if (progSuite.getId() == suite.getId()) {
-                    assocProgs.add(p);
-                    break;
-                }
-            }
-        }
-
-        if (assocProgs.isEmpty()) {
-            return null;
-        }
-
-        StringBuilder sb = new StringBuilder();
-        for (Program p : assocProgs) {
-            sb.append(p.getName()).append("\n");
-        }
-
-        return sb.toString();
     }
 }

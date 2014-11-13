@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -37,6 +38,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -71,6 +73,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Sep 11, 2014  #3587     bkowal       Remove validateSuiteTriggerMessages. Updated
  *                                      to only allow trigger assignment for {Program, Suite}
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Nov 13, 2014  #3698     rferrel      Added checks to allow only 1 GENERAL type suite in a program.
  * 
  * </pre>
  * 
@@ -104,8 +107,8 @@ public class AddSuitesDlg extends CaveSWTDialog {
     /** Flag indicating if the suite is existing or a copy. */
     private boolean useExisting = true;
 
-    /** Set of exiting names. */
-    private Set<String> existingNames = null;
+    /** List of exiting suites. */
+    private final List<Suite> existingSuites;
 
     /**
      * Constructor.
@@ -113,11 +116,15 @@ public class AddSuitesDlg extends CaveSWTDialog {
      * @param parentShell
      *            Parent shell.
      */
-    public AddSuitesDlg(Shell parentShell, Set<String> existingNames) {
+    public AddSuitesDlg(Shell parentShell, List<Suite> existingSuites) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
-        this.existingNames = existingNames;
+        if (existingSuites == null) {
+            this.existingSuites = new ArrayList<>();
+        } else {
+            this.existingSuites = new ArrayList<>(existingSuites);
+        }
     }
 
     @Override
@@ -305,6 +312,10 @@ public class AddSuitesDlg extends CaveSWTDialog {
                 return;
             }
 
+            Set<String> existingNames = new HashSet<>();
+            for (Suite s : existingSuites) {
+                existingNames.add(s.getName());
+            }
             SuiteNameValidator snv = new SuiteNameValidator(existingNames);
             if (!snv.validateInputText(shell, suiteNameTF.getText().trim())) {
                 return;
@@ -341,7 +352,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
         List<String> invalidSuites = new ArrayList<String>();
 
         for (Suite s : selectedSuites) {
-            if (existingNames.contains(s.getName())) {
+            if (existingSuites.contains(s)) {
                 invalidSuites.add(s.getName());
             } else {
                 validSuites.add(s);
@@ -349,20 +360,23 @@ public class AddSuitesDlg extends CaveSWTDialog {
         }
 
         if (validSuites.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("All of the suites selected already exist in the program.  Do you want to ");
-            sb.append("go back and add different suites?");
-            int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
-                    | SWT.YES | SWT.NO, "Existing Suites", sb.toString());
-
-            // If the user wants to add valid suites then return false so the
-            // dialog doesn't close.
-            if (result == SWT.YES) {
-                return false;
+            String message = "All of the suites selected already exist in the program.";
+            return warningMessage(message);
+        } else {
+            int generalSuiteCnt = 0;
+            for (Suite s : validSuites) {
+                if (s.getType() == SuiteType.GENERAL) {
+                    ++generalSuiteCnt;
+                }
             }
 
-            setReturnValue(null);
-            return true;
+            if (existingContainsGeneral() && (generalSuiteCnt > 0)) {
+                String message = "Cannot add GENERAL category suite to a program that already contains one.";
+                return warningMessage(message);
+            } else if (generalSuiteCnt > 1) {
+                String message = "Can only add one GENERAL category suite.";
+                return warningMessage(message);
+            }
         }
 
         if (invalidSuites.isEmpty() == false) {
@@ -382,6 +396,30 @@ public class AddSuitesDlg extends CaveSWTDialog {
     }
 
     /**
+     * Display warning message and determine if user want to close the dialog.
+     * 
+     * @param message
+     * @return closeDialog
+     */
+    private boolean warningMessage(String message) {
+        int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
+                | SWT.YES | SWT.NO, "Suite Selection Problem", message
+                + " Do you want to go back and add different suites?");
+
+        /*
+         * If the user wants to change suites then return false so the dialog
+         * doesn't close.
+         */
+        if (result == SWT.YES) {
+            return false;
+        }
+
+        // Closing dialog perform no updates.
+        setReturnValue(null);
+        return true;
+    }
+
+    /**
      * Retrieve suite data from the database.
      */
     private void retrieveDataFromDB() {
@@ -392,5 +430,14 @@ public class AddSuitesDlg extends CaveSWTDialog {
             statusHandler.error(
                     "Error retrieving suite data from the database: ", e);
         }
+    }
+
+    private boolean existingContainsGeneral() {
+        for (Suite s : existingSuites) {
+            if (s.getType() == SuiteType.GENERAL) {
+                return true;
+            }
+        }
+        return false;
     }
 }

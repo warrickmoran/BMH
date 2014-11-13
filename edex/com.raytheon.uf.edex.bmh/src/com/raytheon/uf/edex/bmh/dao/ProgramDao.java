@@ -59,6 +59,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Oct 02, 2014  3649     rferrel     Added addGroup method.
  * Oct 08, 2014  3687     bsteffen    Remove ProgramTrigger.
  * Oct 13, 2014  3654     rjpeter     Updated to use ProgramSummary.
+ * Nov 20, 2014  3698     rferrel     Added methods getSuitePrograms and getSuiteEnabledGroups.
  * </pre>
  * 
  * @author bsteffen
@@ -145,6 +146,40 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
     }
 
     /**
+     * Get the programs that use the suite.
+     * 
+     * @param suiteId
+     * @return suitePrograms
+     */
+    public List<Program> getSuitePrograms(int suiteId) {
+        @SuppressWarnings("unchecked")
+        List<Object> values = (List<Object>) findByNamedQueryAndNamedParam(
+                Program.GET_SUITE_PROGRAMS, "suiteId", suiteId);
+        if ((values == null) || values.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return createProgramList(values);
+    }
+
+    /**
+     * Get transmitter groups whose programs use the suite and the groups
+     * contain ENABLED transmitters.
+     * 
+     * @param suiteId
+     * @return enabledGroups
+     */
+    public List<TransmitterGroup> getSuiteEnabledGroups(int suiteId) {
+        @SuppressWarnings("unchecked")
+        List<TransmitterGroup> groups = (List<TransmitterGroup>) findByNamedQueryAndNamedParam(
+                Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS, "suiteId",
+                suiteId);
+        if ((groups == null) || groups.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return groups;
+    }
+
+    /**
      * Get a list of program summaries.
      * 
      * @return A list of program summaries.
@@ -227,13 +262,23 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
             final String[] queryParams, final Object[] paramValues) {
         List<?> programs = findByNamedQueryAndNamedParam(namedQuery,
                 queryParams, paramValues);
+        return createProgramList(programs);
+    }
 
-        if ((programs == null) || programs.isEmpty()) {
+    /**
+     * Convert a list of Object arrays that contain a program's id and name.
+     * 
+     * @param values
+     * @return programs
+     */
+    private List<Program> createProgramList(List<?> values) {
+
+        if ((values == null) || values.isEmpty()) {
             return null;
         }
 
-        List<Program> triggeredPrograms = new ArrayList<>(programs.size());
-        for (Object object : programs) {
+        List<Program> programs = new ArrayList<>(values.size());
+        for (Object object : values) {
             if ((object instanceof Object[]) == false) {
                 continue;
             }
@@ -251,10 +296,10 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
             Program program = new Program();
             program.setId((Integer) objects[0]);
             program.setName((String) objects[1]);
-            triggeredPrograms.add(program);
+            programs.add(program);
         }
 
-        return triggeredPrograms;
+        return programs;
     }
 
     @Override

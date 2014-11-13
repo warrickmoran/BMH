@@ -47,6 +47,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  *                                      with a trigger.
  * Oct 02, 2014  #3649     rferrel     Added methods addGroup and getProgramForTransmitterGroup.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
+ * Nov 20, 2014  3698      rferrel     Methods for getting programs/enabled groups based on suite.
  * </pre>
  * 
  * @author lvenable
@@ -148,6 +149,43 @@ public class ProgramDataManager {
 
         progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
         return progResponse.getProgramList();
+    }
+
+    /**
+     * Obtains programs that use the suite.
+     * 
+     * @param suiteId
+     * @return suitePrograms
+     * @throws Exception
+     */
+    public List<Program> getSuitePrograms(int suiteId) throws Exception {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.SuitePrograms);
+        pr.setSuiteId(suiteId);
+        ProgramResponse progResponse = null;
+
+        progResponse = (ProgramResponse) BmhUtils.sendRequest(pr);
+        return progResponse.getProgramList();
+    }
+
+    /**
+     * Get transmitter groups whose programs use the suite and the groups
+     * contain ENABLED transmitters.
+     * 
+     * @param suiteId
+     * @return enabledGroups
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public List<TransmitterGroup> getSuiteEnabledGroups(int suiteId)
+            throws Exception {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.SuiteEnabledGroups);
+        pr.setSuiteId(suiteId);
+
+        List<TransmitterGroup> suiteEnabledGroups = (List<TransmitterGroup>) BmhUtils
+                .sendRequest(pr);
+        return suiteEnabledGroups;
     }
 
     /**

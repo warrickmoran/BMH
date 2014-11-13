@@ -48,9 +48,12 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessagePk;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -103,6 +106,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 28, 2014   3750     bkowal      Add Suite to the SuiteMessage relation when
  *                                     adding Message Types to a Suite.
  * Nov 12, 2014   3815     lvenable    Fixed category not being saved.
+ * Nov 13, 2014  3698      rferrel     Checks to allow only one GENERAL type suite per program.
  * Nov 20, 2014   3830     rferrel     Remove assignProgramBtn button and supporting methods.
  * </pre>
  * 
@@ -233,7 +237,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         this.dialogType = dlgType;
         this.showProgramControls = showProgramControls;
-
         this.selectedProgram = selectedProgram;
         this.selectedSuite = selectedSuite;
         this.existingSuiteNames = existingSuiteNames;
@@ -342,7 +345,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      */
     private void createProgramControls() {
         Composite progTransComp = new Composite(shell, SWT.NONE);
-        GridLayout gl = new GridLayout(3, false);
+        GridLayout gl = new GridLayout(2, false);
         progTransComp.setLayout(gl);
         progTransComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
@@ -654,11 +657,100 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     }
 
     /**
+     * Check to to not allow suitType GENERAL when programs for the selected
+     * suite already contain a GENERAL suite.
+     * 
+     * @param suiteType
+     *            - purposed new Suite Type
+     * @return true when suiteType is valid for all programs using the suite.
+     */
+    private boolean verifySuiteType(SuiteType suiteType) {
+        try {
+            String errorMsg = validateSuiteTypeChange(selectedSuite, suiteType);
+            if (errorMsg != null) {
+                DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
+                        "Suite Save", errorMsg);
+                return false;
+            }
+        } catch (Exception e) {
+            statusHandler.handle(Priority.ERROR,
+                    "Error retrieving program data from the database: ", e);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Validate that Suite's type can be changed.
+     * 
+     * @param suite
+     * @param suiteType
+     *            - Purposed new type.
+     * @return errorMessage - null if no problem making the change else reason
+     *         change cannot be performed.
+     */
+    private static String validateSuiteTypeChange(Suite suite,
+            SuiteType suiteType) throws Exception {
+        SuiteType oldType = suite.getType();
+
+        // No change skip checks.
+        if (oldType == suiteType) {
+            return null;
+        }
+
+        /*
+         * Verify any programs using this suite must not be used by an enabled
+         * transmitter.
+         */
+        if (oldType == SuiteType.GENERAL) {
+            List<TransmitterGroup> enabledGroups = BmhUtils
+                    .getSuiteEnabledTransmitterGroups(suite);
+            if (!enabledGroups.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("Unable to change suite's category. The following ENABLED transmitter/groups(s) dependent on this suite being GENERAL:");
+                for (TransmitterGroup group : enabledGroups) {
+                    sb.append("\n\t").append(group.getName());
+                }
+                return sb.toString();
+            }
+        }
+
+        /*
+         * Verify any programs using this suite do not already contain a GENERAL
+         * suite.
+         */
+        if (suiteType == SuiteType.GENERAL) {
+            List<Program> suitePrograms = BmhUtils.getSuitePrograms(suite);
+            List<Program> haveGeneralSuite = new ArrayList<>();
+            for (Program program : suitePrograms) {
+                if (BmhUtils.containsGeneralSuite(program)) {
+                    haveGeneralSuite.add(program);
+                }
+            }
+            if (!haveGeneralSuite.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("Unable to change suite's category. The following program(s) using this suite already contain a suite with a GENERAL category:");
+                for (Program program : haveGeneralSuite) {
+                    sb.append("\n\t").append(program.getName());
+                }
+                return sb.toString();
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Handle the create/save action.
      */
     private void handleSaveAction() {
 
         SuiteType suiteType = getSelectedSuiteType();
+
+        if (!verifySuiteType(suiteType)) {
+            categoryCbo.setText(selectedSuite.getType().name());
+            return;
+        }
 
         if (!validMessageTypes(suiteType)) {
             return;
@@ -701,6 +793,19 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * then save the suite to the selected programs.
      */
     private void handleCreateAction() {
+        if ((selectedProgram != null)
+                && (getSelectedSuiteType() == SuiteType.GENERAL)
+                && BmhUtils.containsGeneralSuite(selectedProgram)) {
+            DialogUtility
+                    .showMessageBox(
+                            shell,
+                            SWT.ICON_WARNING | SWT.OK,
+                            "Create Suite",
+                            "The \""
+                                    + selectedProgram.getName()
+                                    + "\" program already contains a GENERAL category suite.");
+            return;
+        }
 
         this.createNewSuite();
 
@@ -957,21 +1062,25 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * Populate the assigned programs label.
      */
     private void populateAssignedProgramsLabel() {
-
         if (!showProgramControls) {
             return;
         }
 
-        assignedProgramNames.clear();
-        if ((selectedProgram == null) && (selectedSuite != null)) {
+        if (selectedSuite != null) {
             for (Program p : programsArray) {
                 List<Suite> suitesInProgram = p.getSuites();
                 for (Suite s : suitesInProgram) {
                     if (s.getId() == selectedSuite.getId()) {
                         assignedPrograms.add(p);
-                        assignedProgramNames.add(p.getName());
                     }
                 }
+            }
+        }
+
+        assignedProgramNames.clear();
+        if (selectedProgram == null) {
+            for (Program p : assignedPrograms) {
+                assignedProgramNames.add(p.getName());
             }
         }
 

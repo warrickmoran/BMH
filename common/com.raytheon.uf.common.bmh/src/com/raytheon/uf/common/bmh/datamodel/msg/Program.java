@@ -81,6 +81,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Oct 28, 2014 3636      rferrel     Implement Logging.
  * Nov 14, 2014 3558      rjpeter     Set length of program name to 40.
+ * Nov 20, 2014 3698      rferrel     Updated to add suite/query for getting Programs/Enabled transmitter Groups.
  * </pre>
  * 
  * @author rjpeter
@@ -92,7 +93,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = Program.GET_PROGRAM_SUITES, query = Program.GET_PROGRAM_SUITES_QUERY),
         @NamedQuery(name = Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP, query = Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP_QUERY),
         @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE_QUERY),
-        @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY) })
+        @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY),
+        @NamedQuery(name = Program.GET_SUITE_PROGRAMS, query = Program.GET_SUITE_PROGRAMS_QUERY),
+        @NamedQuery(name = Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS, query = Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS_QUERY) })
 @Entity
 @Table(name = "program", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = Program.GEN, sequenceName = "program_seq")
@@ -123,6 +126,14 @@ public class Program {
     public static final String GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE = "getProgramsWithTriggerByMsgType";
 
     protected static final String GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY = "SELECT p.id, p.name FROM Program p INNER JOIN p.programSuites ps INNER JOIN ps.triggers trig WHERE trig.id = :msgTypeId";
+
+    public static final String GET_SUITE_PROGRAMS = "getSuitePrograms";
+
+    protected static final String GET_SUITE_PROGRAMS_QUERY = "SELECT p.id, p.name FROM Program p INNER JOIN p.programSuites ps WHERE ps.id.suiteId = :suiteId";
+
+    public static final String GET_SUITE_ENABLED_TRANSMITTER_GROUPS = "getSuiteEnabledTransmitterGroups";
+
+    protected static final String GET_SUITE_ENABLED_TRANSMITTER_GROUPS_QUERY = "SELECT tg FROM Program p INNER JOIN p.programSuites ps INNER JOIN p.transmitterGroups tg  INNER JOIN tg.transmitters t WHERE ps.id.suiteId = :suiteId AND t.txStatus = 'ENABLED'";
 
     // use surrogate key
     @Id

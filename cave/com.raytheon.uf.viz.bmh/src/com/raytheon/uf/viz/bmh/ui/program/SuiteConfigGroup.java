@@ -80,6 +80,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      Broadcast Program Dialog.
  * Oct 26, 2014   3750     mpduff       Get updates from filtered list.
  * Oct 28, 2014   3750     lvenable     Updated the selected suite when selecting the table index via suite ID.
+ * Nov 17, 2014   3698     rferrel      Added checks to allow only 1 GENERAL type suite in a program.
  * 
  * </pre>
  * 
@@ -144,6 +145,9 @@ public class SuiteConfigGroup extends Composite {
      */
     private Suite selectedSuite = null;
 
+    /** Current Selected Suites in the display. */
+    private final List<Suite> existingSuites;
+
     /**
      * Constructor.
      * 
@@ -189,6 +193,11 @@ public class SuiteConfigGroup extends Composite {
         this.tableWidth = tableWidth;
         this.tableHeight = tableHeight;
         this.selectedProgram = selectedProgram;
+        if (selectedProgram == null) {
+            this.existingSuites = new ArrayList<>();
+        } else {
+            this.existingSuites = selectedProgram.getSuites();
+        }
 
         init();
     }
@@ -430,19 +439,14 @@ public class SuiteConfigGroup extends Composite {
             addExistingBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    // Get the existing suite names to check against so that
-                    // duplicate suites will not be added.
-                    Set<String> existingNames = new HashSet<String>();
-
-                    if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
-                            && selectedProgram != null) {
-                        for (Suite s : selectedProgram.getSuites()) {
-                            existingNames.add(s.getName());
-                        }
-                    }
+                    /*
+                     * Get the existing suite names to check against so that
+                     * duplicate suites will not be added and to allow only one
+                     * suite with type GENERAL.
+                     */
 
                     AddSuitesDlg asd = new AddSuitesDlg(getShell(),
-                            existingNames);
+                            existingSuites);
                     asd.setCloseCallback(new ICloseCallback() {
                         @SuppressWarnings("unchecked")
                         @Override
@@ -452,8 +456,9 @@ public class SuiteConfigGroup extends Composite {
 
                                 if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
                                         || suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
-                                    suiteSelectionCB
-                                            .addedSuites((List<Suite>) returnValue);
+                                    List<Suite> suites = (List<Suite>) returnValue;
+                                    existingSuites.addAll(suites);
+                                    suiteSelectionCB.addedSuites(suites);
                                 }
                             }
                         }
@@ -517,10 +522,6 @@ public class SuiteConfigGroup extends Composite {
                                     && returnValue instanceof Suite) {
 
                                 if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM) {
-                                    // List<Suite> array = new
-                                    // ArrayList<Suite>();
-                                    // array.add((Suite) returnValue);
-                                    // suiteSelectionCB.addedSuites(array);
                                     selectedSuite = (Suite) returnValue;
                                     suiteSelectionCB
                                             .suitesUpdated((Suite) returnValue);
@@ -543,7 +544,6 @@ public class SuiteConfigGroup extends Composite {
         if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
                 || suiteGroupType == SuiteGroupType.SUITE_MGR
                 || suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
-            // gd = new GridData(minButtonWidth, SWT.DEFAULT);
             gd = new GridData(SWT.LEFT, SWT.CENTER, true, true);
             gd.widthHint = minButtonWidth;
             Button deleteSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
@@ -557,6 +557,7 @@ public class SuiteConfigGroup extends Composite {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
                     if (selectedSuite != null) {
+                        existingSuites.remove(selectedSuite);
                         suiteSelectionCB.deleteSuite(selectedSuite);
                     }
                 }

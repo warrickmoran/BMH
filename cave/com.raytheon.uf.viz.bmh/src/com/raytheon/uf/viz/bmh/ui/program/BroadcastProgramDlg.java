@@ -45,12 +45,15 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -92,6 +95,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Oct 27, 2014  3750      lvenable    fixed message type table update when adding new suite.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Nov 13, 2014  3698      rferrel     Checks to allow only one GENERAL type suite per program.
  * Nov 22, 2014  3842      mpduff      Fully populate dialog on new program
  * 
  * </pre>
@@ -674,6 +678,34 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             return;
         }
 
+        /*
+         * Do not allow removal of suite if it is GENERAL and is contained in a
+         * program used by an ENABLED transmitter.
+         */
+        if (suite.getType() == SuiteType.GENERAL) {
+            try {
+                List<TransmitterGroup> enabledGroups = BmhUtils
+                        .getSuiteEnabledTransmitterGroups(suite);
+
+                if (!enabledGroups.isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Cannot remove suite ")
+                            .append(suite.getName())
+                            .append(" since it is category GENERAL and is associated with the following ENABLED transmitter/group(s):");
+                    for (TransmitterGroup group : enabledGroups) {
+                        sb.append("\n\t").append(group.getName());
+                    }
+                    DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
+                            | SWT.OK, "Suite Removal", sb.toString());
+                    return;
+                }
+            } catch (Exception e) {
+                statusHandler.handle(Priority.ERROR,
+                        "Unable to perform suite removal. ", e);
+                return;
+            }
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append("\nDo you wish to remove this suite from program: ")
                 .append(selectedProgram.getName()).append("?");
@@ -881,12 +913,15 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                 Set<Transmitter> transmitters = tg.getTransmitters();
                 for (Transmitter t : transmitters) {
                     transmitterList.add(t);
-                    sbToolTip.append(t.getName());
+                    sbToolTip.append(t.getName()).append(", ");
                 }
                 if (sb.length() > 0) {
                     sb.append(", ");
                 }
                 sb.append(tg.getName());
+                if (", ".equals(sbToolTip.substring(sbToolTip.length() - 2))) {
+                    sbToolTip.setLength(sbToolTip.length() - 2);
+                }
                 sbToolTip.append("\n");
             }
             transmitterListLbl.setText(sb.toString());

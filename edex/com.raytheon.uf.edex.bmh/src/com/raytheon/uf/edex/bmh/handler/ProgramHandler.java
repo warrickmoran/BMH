@@ -54,6 +54,7 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3654     rjpeter     Updated to use ProgramSummary.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Nov 20, 2014  3698     rferrel     Implement SuitePrograms and SuiteEnabledGroups.
  * 
  * </pre>
  * 
@@ -100,6 +101,11 @@ public class ProgramHandler extends
             notification = new ProgramConfigNotification(
                     ConfigChangeType.Update, request.getProgram());
             break;
+        case SuitePrograms:
+            programResponse = getSuitePrograms(request);
+            break;
+        case SuiteEnabledGroups:
+            return getSuiteEnabledGroups(request);
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -141,6 +147,21 @@ public class ProgramHandler extends
         response.setProgramList(programList);
 
         return response;
+    }
+
+    private ProgramResponse getSuitePrograms(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao(request.isOperational());
+        ProgramResponse response = new ProgramResponse();
+        List<Program> programList = dao.getSuitePrograms(request.getSuiteId());
+        response.setProgramList(programList);
+        return response;
+    }
+
+    private List<TransmitterGroup> getSuiteEnabledGroups(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao(request.isOperational());
+        List<TransmitterGroup> enabledGroups = dao
+                .getSuiteEnabledGroups(request.getSuiteId());
+        return enabledGroups;
     }
 
     private ProgramResponse getProgramForTransmitterGroup(ProgramRequest request) {

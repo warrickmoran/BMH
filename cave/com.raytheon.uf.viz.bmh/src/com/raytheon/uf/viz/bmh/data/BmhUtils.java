@@ -21,7 +21,9 @@ package com.raytheon.uf.viz.bmh.data;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.sound.sampled.AudioFormat;
@@ -37,6 +39,10 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.auth.exception.AuthorizationException;
 import com.raytheon.uf.common.auth.resp.SuccessfulExecution;
 import com.raytheon.uf.common.auth.user.IUser;
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.bmh.request.BmhAuthorizationRequest;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
@@ -47,6 +53,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
+import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.core.auth.UserController;
 import com.raytheon.viz.core.mode.CAVEMode;
 
@@ -70,6 +77,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Nov 01, 2014   3784      mpduff      Added getDurationMilliseconds()
  * Nov 07, 2014   3413      rferrel     Added check to get not authorized message
  *                                       in method sendRequest.
+ * Nov 13, 2014   3698      rferrel     Added containsGeneralSuite.
  * </pre>
  * 
  * @author mpduff
@@ -388,5 +396,67 @@ public class BmhUtils {
         }
 
         return status;
+    }
+
+    /**
+     * Get a list of programs that use this suite.
+     * 
+     * @param suite
+     * @return suitePrograms
+     * @throws Exception
+     */
+    public static List<Program> getSuitePrograms(Suite suite) throws Exception {
+        if (suite == null) {
+            return Collections.emptyList();
+        }
+
+        int suiteId = suite.getId();
+
+        /*
+         * Unsaved new suite which cannot have any programs associated with it.
+         */
+        if (suiteId <= 0) {
+            return Collections.emptyList();
+        }
+
+        ProgramDataManager pdm = new ProgramDataManager();
+        return pdm.getSuitePrograms(suiteId);
+    }
+
+    /**
+     * Get transmitter groups associated with the suite and contain enabled
+     * transmitters.
+     * 
+     * @param suite
+     * @return enabledTransmitters
+     */
+    public static List<TransmitterGroup> getSuiteEnabledTransmitterGroups(
+            Suite suite) throws Exception {
+        ProgramDataManager pdm = new ProgramDataManager();
+        List<TransmitterGroup> groups = pdm
+                .getSuiteEnabledGroups(suite.getId());
+        return groups;
+    }
+
+    /**
+     * Determine if the program's suites contains a GENERAL type suite.
+     * 
+     * @param program
+     * @return false when program is null, its suite list is null or suite list
+     *         does not contain a suite with type GENERAL
+     * @throws Exception
+     */
+    public static boolean containsGeneralSuite(Program program) {
+        if (program != null) {
+            List<Suite> programSuites = program.getSuites();
+            if (programSuites != null) {
+                for (Suite suite : program.getSuites()) {
+                    if (suite.getType() == SuiteType.GENERAL) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 }
