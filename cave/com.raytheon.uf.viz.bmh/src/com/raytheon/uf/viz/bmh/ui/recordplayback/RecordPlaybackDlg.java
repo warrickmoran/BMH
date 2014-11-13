@@ -71,6 +71,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      that are sent to the comms manager.
  * Nov 1, 2014   #3657     bkowal       Created okAction and cancelAction for subclasses.
  * Nov 5, 2014   #3780     bkowal       Prevent timer update when the dialog has been closed / is closing.
+ * Nov 12, 2014  #3819     bkowal       Disable OK/Cancel during audio playback.
  * 
  * 
  * </pre>
@@ -524,6 +525,8 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         this.recordingProgBar.setMaximum(this.playbackThread
                 .getAudioLengthInSeconds());
         this.recordPlayStatus = RecordPlayStatus.PLAY;
+        okBtn.setEnabled(false);
+        cancelBtn.setEnabled(false);
         this.playbackThread.start();
         recBtn.setEnabled(false);
         stopBtn.setEnabled(true);
@@ -590,6 +593,10 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
                 recBtn.setEnabled(true);
                 playBtn.setEnabled(true);
                 stopBtn.setEnabled(false);
+                
+                okBtn.setEnabled(true);
+                cancelBtn.setEnabled(true);
+                okToClose = true;
             }
         });
         this.recordPlayStatus = RecordPlayStatus.STOP;
