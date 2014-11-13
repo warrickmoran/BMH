@@ -116,6 +116,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Nov 01, 2014  3655      bkowal      Prevent NPE.
  * Nov 04, 2014   3792     lvenable    Colored the Emergency Override label blue and fixed a NPE.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Nov 12, 2014  3816      lvenable    Fixed transmitter label size.
  * 
  * </pre>
  * 
@@ -403,7 +404,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         tranNameLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-        gd.widthHint = 55;
+        gd.widthHint = 250;
         transmitterNameLbl = new Label(nameComp, SWT.NONE);
         transmitterNameLbl.setLayoutData(gd);
 
@@ -422,6 +423,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         // Transmitter time zone
         gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
+        gd.horizontalIndent = 10;
         gl = new GridLayout(2, false);
         Composite tzComp = new Composite(transmitterGrp, SWT.NONE);
         tzComp.setLayout(gl);
@@ -820,6 +822,13 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         setText(DlgInfo.BROADCAST_CYCLE.getTitle() + ": "
                 + selectedTransmitterGrp);
         transmitterNameLbl.setText(selectedTransmitterGrp);
+
+        if (selectedTransmitterGrp != null
+                && selectedTransmitterGrp.length() > 0) {
+            transmitterNameLbl.setToolTipText(selectedTransmitterGrp);
+        } else {
+            transmitterNameLbl.setToolTipText(null);
+        }
 
         selectedTransmitterGroupObject = transmitterGroupNameMap
                 .get(selectedTransmitterGrp);
