@@ -55,7 +55,6 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Oct 10, 2014  3656     bkowal      Updates to allow sending other message
  *                                    types to cluster members.
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
- * \
  * 
  * </pre>
  * 
@@ -63,6 +62,13 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * @version 1.0
  */
 public class ClusterServer extends AbstractServerThread {
+
+    /**
+     * When load balancing, after a remote comms manager has disconnect from a
+     * dac this is how long(in ms) to try to connect before it is considered a
+     * failed connection and the dac is returned to the cluster.
+     */
+    private static final int REQUEST_TIMEOUT_INTERVAL = 10 * 1000;
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -73,6 +79,8 @@ public class ClusterServer extends AbstractServerThread {
     private Set<InetAddress> configuredAddresses;
 
     private ClusterStateMessage state = new ClusterStateMessage();
+
+    private long requestTimeout = Long.MAX_VALUE;
 
     /**
      * Create a server for listening to dac transmit applications.
@@ -202,15 +210,22 @@ public class ClusterServer extends AbstractServerThread {
 
     public void dacConnectedLocal(DacTransmitKey key) {
         state.add(key);
-        state.removeRequest(key);
+        if (state.removeRequest(key)) {
+            requestTimeout = Long.MAX_VALUE;
+        }
         sendStateToAll();
-
     }
 
     public void dacDisconnectedLocal(DacTransmitKey key) {
         state.remove(key);
         sendStateToAll();
+    }
 
+    public void dacDisconnectedRemote(DacTransmitKey key) {
+        if (state.containsRequest(key)) {
+            requestTimeout = System.currentTimeMillis()
+                    + REQUEST_TIMEOUT_INTERVAL;
+        }
     }
 
     private void sendStateToAll() {
@@ -254,8 +269,11 @@ public class ClusterServer extends AbstractServerThread {
         return recipients;
     }
 
-    public void balanceDacTransmits() {
-        if (state.getRequestedKeys().isEmpty()) {
+    public void balanceDacTransmits(boolean allDacsRunning) {
+        boolean pendingRequests = state.getRequestedKeys().isEmpty() == false;
+        boolean requestFailed = System.currentTimeMillis() > requestTimeout;
+        if (allDacsRunning && pendingRequests == false
+                && requestFailed == false) {
             String overloadId = null;
             ClusterStateMessage overloaded = state;
             for (ClusterCommunicator communicator : communicators.values()) {
@@ -270,7 +288,7 @@ public class ClusterServer extends AbstractServerThread {
             }
             if (overloaded.getKeys().size() - 1 > state.getKeys().size()) {
                 logger.info(
-                        "To balance the load 1 dac transmit has been requested from: {}",
+                        "To balance the load 1 dac transmit has been requested from {}",
                         overloadId);
                 /*
                  * TODO its entirely possible for 2 cluster members to be here
@@ -282,6 +300,12 @@ public class ClusterServer extends AbstractServerThread {
                 state.addRequest(request.toKey());
                 sendStateToAll();
             }
+        } else if (pendingRequests && requestFailed) {
+            logger.error(
+                    "Load balancing has been disabled due to failure to start a requested dac: {}.",
+                    state.getRequestedKeys().get(0));
+            state.getRequestedKeys().clear();
+            sendStateToAll();
         }
     }
 }

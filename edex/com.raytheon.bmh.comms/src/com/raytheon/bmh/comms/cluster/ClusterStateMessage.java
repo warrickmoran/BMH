@@ -157,11 +157,11 @@ public class ClusterStateMessage {
         keys.add(new ClusterDacTransmitKey(key));
     }
 
-    public void remove(DacTransmitKey key) {
+    public boolean remove(DacTransmitKey key) {
         if (keys == null) {
-            return;
+            return false;
         }
-        keys.remove(new ClusterDacTransmitKey(key));
+        return keys.remove(new ClusterDacTransmitKey(key));
     }
 
     public boolean contains(DacTransmitKey key) {
@@ -190,11 +190,11 @@ public class ClusterStateMessage {
         requestedKeys.add(new ClusterDacTransmitKey(key));
     }
 
-    public void removeRequest(DacTransmitKey key) {
+    public boolean removeRequest(DacTransmitKey key) {
         if (requestedKeys == null) {
-            return;
+            return false;
         }
-        requestedKeys.remove(new ClusterDacTransmitKey(key));
+        return requestedKeys.remove(new ClusterDacTransmitKey(key));
     }
 
     public boolean containsRequest(DacTransmitKey key) {

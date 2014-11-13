@@ -106,8 +106,7 @@ public class ClusterCommunicator extends Thread {
                 }
                 for (ClusterDacTransmitKey key : oldState.getKeys()) {
                     if (!newState.contains(key)) {
-                        manager.dacDisconnectedRemote();
-                        break;
+                        manager.dacDisconnectedRemote(key.toKey());
                     }
                 }
                 for (ClusterDacTransmitKey key : newState.getRequestedKeys()) {
@@ -176,8 +175,8 @@ public class ClusterCommunicator extends Thread {
                     getClusterId(), e);
         }
         if (state != null) {
-            if (!state.getKeys().isEmpty()) {
-                manager.dacDisconnectedRemote();
+            for (ClusterDacTransmitKey key : state.getKeys()) {
+                manager.dacDisconnectedRemote(key.toKey());
             }
         }
     }

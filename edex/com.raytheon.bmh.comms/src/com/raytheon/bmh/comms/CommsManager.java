@@ -339,9 +339,7 @@ public class CommsManager {
                             }
                         }
                     }
-                    if (allDacsRunning) {
-                        clusterServer.balanceDacTransmits();
-                    }
+                    clusterServer.balanceDacTransmits(allDacsRunning);
                 }
             } catch (Throwable e) {
                 logger.error("Error checking connection status.", e);
@@ -630,7 +628,8 @@ public class CommsManager {
      * another comms manager. Any other components that may need to refresh
      * and/or notify will be informed.
      */
-    public void dacDisconnectedRemote() {
+    public void dacDisconnectedRemote(DacTransmitKey key) {
+        clusterServer.dacDisconnectedRemote(key);
         attemptLaunchDacTransmits();
     }
 
