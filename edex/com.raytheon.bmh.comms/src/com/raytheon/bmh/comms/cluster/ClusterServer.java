@@ -210,7 +210,8 @@ public class ClusterServer extends AbstractServerThread {
 
     public void dacConnectedLocal(DacTransmitKey key) {
         state.add(key);
-        if (state.removeRequest(key)) {
+        if (state.isRequestedKey(key)) {
+            state.setRequestedKey(null);
             requestTimeout = Long.MAX_VALUE;
         }
         sendStateToAll();
@@ -222,7 +223,7 @@ public class ClusterServer extends AbstractServerThread {
     }
 
     public void dacDisconnectedRemote(DacTransmitKey key) {
-        if (state.containsRequest(key)) {
+        if (state.isRequestedKey(key)) {
             requestTimeout = System.currentTimeMillis()
                     + REQUEST_TIMEOUT_INTERVAL;
         }
@@ -270,15 +271,14 @@ public class ClusterServer extends AbstractServerThread {
     }
 
     public void balanceDacTransmits(boolean allDacsRunning) {
-        boolean pendingRequests = state.getRequestedKeys().isEmpty() == false;
+        boolean pendingRequest = state.hasRequestedKey();
         boolean requestFailed = System.currentTimeMillis() > requestTimeout;
-        if (allDacsRunning && pendingRequests == false
-                && requestFailed == false) {
+        if (allDacsRunning && pendingRequest == false && requestFailed == false) {
             String overloadId = null;
             ClusterStateMessage overloaded = state;
             for (ClusterCommunicator communicator : communicators.values()) {
                 ClusterStateMessage other = communicator.getClusterState();
-                if (other == null || !other.getRequestedKeys().isEmpty()) {
+                if (other == null || other.hasRequestedKey()) {
                     return;
                 }
                 if (other.getKeys().size() > overloaded.getKeys().size()) {
@@ -297,14 +297,14 @@ public class ClusterServer extends AbstractServerThread {
                  * using a better key selection mechanism.
                  */
                 ClusterDacTransmitKey request = overloaded.getKeys().get(0);
-                state.addRequest(request.toKey());
+                state.setRequestedKey(request);
                 sendStateToAll();
             }
-        } else if (pendingRequests && requestFailed) {
+        } else if (pendingRequest && requestFailed) {
             logger.error(
                     "Load balancing has been disabled due to failure to start a requested dac: {}.",
-                    state.getRequestedKeys().get(0));
-            state.getRequestedKeys().clear();
+                    state.getRequestedKey());
+            state.setRequestedKey(null);
             sendStateToAll();
         }
     }

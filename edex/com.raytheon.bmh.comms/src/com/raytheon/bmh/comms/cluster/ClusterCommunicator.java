@@ -95,8 +95,12 @@ public class ClusterCommunicator extends Thread {
                 for (ClusterDacTransmitKey key : newState.getKeys()) {
                     manager.dacConnectedRemote(key.toKey());
                 }
-                for (ClusterDacTransmitKey key : newState.getRequestedKeys()) {
-                    manager.dacRequestedRemote(key.toKey());
+                if (newState.hasRequestedKey()) {
+                    logger.info(
+                            "Clustered manager {} has requested a dac transmit.",
+                            getClusterId(), newState.getKeys().size());
+                    manager.dacRequestedRemote(newState.getRequestedKey()
+                            .toKey());
                 }
             } else {
                 for (ClusterDacTransmitKey key : newState.getKeys()) {
@@ -109,13 +113,13 @@ public class ClusterCommunicator extends Thread {
                         manager.dacDisconnectedRemote(key.toKey());
                     }
                 }
-                for (ClusterDacTransmitKey key : newState.getRequestedKeys()) {
-                    if (!oldState.containsRequest(key)) {
-                        logger.info(
-                                "Clustered manager {} has requested a dac transmit.",
-                                getClusterId(), newState.getKeys().size());
-                        manager.dacRequestedRemote(key.toKey());
-                    }
+                if (newState.hasRequestedKey()
+                        && !oldState.isRequestedKey(newState.getRequestedKey())) {
+                    logger.info(
+                            "Clustered manager {} has requested a dac transmit.",
+                            getClusterId(), newState.getKeys().size());
+                    manager.dacRequestedRemote(newState.getRequestedKey()
+                            .toKey());
                 }
             }
         } else if (message instanceof ClusterShutdownMessage) {
@@ -192,7 +196,7 @@ public class ClusterCommunicator extends Thread {
         if (state == null || socket.isClosed()) {
             return false;
         }
-        return state.containsRequest(key);
+        return state.isRequestedKey(key);
     }
 
     public void shutdown() {
