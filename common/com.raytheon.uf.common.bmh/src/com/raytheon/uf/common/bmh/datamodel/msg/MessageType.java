@@ -80,6 +80,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 16, 2014 3636       rferrel     Add logging.
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * Oct 23, 2014  #3728     lvenable    Added query for getting AFOS IDs by designation.
+ * Nov 13, 2014  3717      bsteffen    Add staticDesignation field to Designation
  * 
  * </pre>
  * 
@@ -100,7 +101,24 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @BatchSize(size = 100)
 public class MessageType {
     public enum Designation {
-        StationID, Forecast, Observation, Outlook, Watch, Warning, Advisory, TimeAnnouncement, Other
+
+        StationID(true), Forecast, Observation, Outlook, Watch, Warning, Advisory, TimeAnnouncement(
+                true), Other;
+
+        private final boolean staticDesignation;
+
+        public boolean isStatic() {
+            return staticDesignation;
+        }
+
+        private Designation() {
+            this(false);
+        }
+
+        private Designation(boolean staticDesignation) {
+            this.staticDesignation = staticDesignation;
+        }
+
     }
 
     static final String GEN = "Message Type Generator";

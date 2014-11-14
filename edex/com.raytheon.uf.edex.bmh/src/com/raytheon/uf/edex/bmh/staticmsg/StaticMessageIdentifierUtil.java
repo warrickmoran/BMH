@@ -19,8 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.staticmsg;
 
-import java.util.List;
 import java.util.LinkedList;
+import java.util.List;
 
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * ------------ ---------- ----------- --------------------------
  * Aug 29, 2014 3568       bkowal      Initial creation
  * Oct 2, 2014  3642       bkowal      Added support for static time fragments.
+ * Nov 13, 2014 3717       bsteffen    Simplify isStaticMsgType
  * 
  * </pre>
  * 
@@ -65,8 +66,7 @@ public class StaticMessageIdentifierUtil {
     }
 
     public static boolean isStaticMsgType(MessageType messageType) {
-        return messageType.getDesignation() == Designation.StationID
-                || messageType.getDesignation() == Designation.TimeAnnouncement;
+        return messageType.getDesignation().isStatic();
     }
 
     public static String getText(MessageType mt, TransmitterLanguage tl) {

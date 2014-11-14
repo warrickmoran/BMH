@@ -23,7 +23,6 @@ import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -60,6 +59,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 15, 2014 3715       bkowal      Prevent potential Null Pointer Exception for triggers.
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * Oct 28, 2014 3636       rferrel     Implement Logging
+ * Nov 13, 2014 3717       bsteffen    Remove forced field.
+ * 
  * </pre>
  * 
  * @author bkowal
@@ -106,10 +107,6 @@ public class ProgramSuite implements Serializable {
     @ForeignKey(name = "program_trigger_to_program_suite", inverseName = "program_trigger_to_message_type")
     private Set<MessageTypeSummary> triggers;
 
-    @Column
-    @DynamicSerializeElement
-    private boolean forced = false;
-
     private void checkId() {
         if (this.id != null) {
             return;
@@ -140,6 +137,18 @@ public class ProgramSuite implements Serializable {
             return false;
         }
         return this.triggers.contains(msgType);
+    }
+
+    public boolean isTrigger(String afosid) {
+        if ((this.triggers != null) && this.triggers.isEmpty() == false) {
+        for (MessageTypeSummary trigger : this.triggers) {
+            if (trigger.getAfosid().equals(afosid)) {
+                return true;
+            }
+        }
+        }
+        return false;
+
     }
 
     public boolean triggersExist() {
@@ -223,14 +232,6 @@ public class ProgramSuite implements Serializable {
      */
     public void setTriggers(Set<MessageTypeSummary> triggers) {
         this.triggers = triggers;
-    }
-
-    public boolean isForced() {
-        return forced;
-    }
-
-    public void setForced(boolean forced) {
-        this.forced = forced;
     }
 
     @Override
