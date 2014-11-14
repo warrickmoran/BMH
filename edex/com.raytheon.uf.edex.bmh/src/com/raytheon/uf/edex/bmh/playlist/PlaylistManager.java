@@ -126,6 +126,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Oct 31, 2014  3778     bsteffen    Do not play inactive messages.
  * Nov 04, 2014  3781     dgilling    Use MessageType configured SAME transmitters 
  *                                    when generating SAME tones.
+ * Nov 13, 2014  3717     bsteffen    Do not persist forced.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -177,28 +179,22 @@ public class PlaylistManager implements IContextStateProcessor {
      * 
      */
     public void processSuiteChange(SuiteConfigNotification notification) {
-        /*
-         * TODO this has the potential for optimization by performing a single
-         * request to get all groups using a particular suite.
-         */
-        for (TransmitterGroup group : transmitterGroupDao.getAll()) {
-            if (group.getEnabledTransmitters().isEmpty()) {
-                continue;
-            }
+        for (TransmitterGroup group : transmitterGroupDao
+                .getEnabledTransmitterGroups()) {
             ProgramSuite programSuite = this.programDao
                     .getSuiteByIDForTransmitterGroup(group,
                             notification.getId());
             if (programSuite == null) {
                 continue;
             }
-            refreshPlaylist(group, programSuite);
+            refreshPlaylist(group, programSuite, false);
         }
     }
 
     public void processProgramChange(ProgramConfigNotification notification) {
         Program program = programDao.getByID(notification.getId());
         for (TransmitterGroup group : program.getTransmitterGroups()) {
-            refreshTransmitterGroup(group, program);
+            refreshTransmitterGroup(group, program, null);
         }
     }
 
@@ -206,7 +202,7 @@ public class PlaylistManager implements IContextStateProcessor {
             TransmitterGroupConfigNotification notification) {
         for (int groupId : notification.getIds()) {
             TransmitterGroup group = transmitterGroupDao.getByID(groupId);
-            refreshTransmitterGroup(group, null);
+            refreshTransmitterGroup(group, null, null);
         }
     }
 
@@ -227,12 +223,10 @@ public class PlaylistManager implements IContextStateProcessor {
                 continue;
             }
             for (ProgramSuite programSuite : program.getProgramSuites()) {
-                for (SuiteMessage smessage : programSuite.getSuite()
-                        .getSuiteMessages()) {
-                    if (smessage.getAfosid().equals(message.getAfosid())) {
-                        refreshPlaylist(group, programSuite);
-                        break;
-                    }
+                if (programSuite.getSuite().containsSuiteMessage(
+                        message.getAfosid())) {
+                    refreshPlaylist(group, programSuite, false);
+                    break;
                 }
             }
         }
@@ -244,16 +238,7 @@ public class PlaylistManager implements IContextStateProcessor {
         statusHandler.info("User requested transmitter group ["
                 + group.getName() + "] switch to suite [" + suite.getName()
                 + "].");
-
-        Program program = programDao.getProgramForTransmitterGroup(group);
-        for (ProgramSuite programSuite : program.getProgramSuites()) {
-            boolean shouldBeForce = programSuite.getSuite().equals(suite);
-            if (shouldBeForce != programSuite.isForced()) {
-                programSuite.setForced(shouldBeForce);
-                programDao.persist(programSuite);
-            }
-        }
-        refreshTransmitterGroup(group, program);
+        refreshTransmitterGroup(group, null, suite);
     }
 
     public void processResetNotification() {
@@ -262,7 +247,7 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private void refreshAll() {
         for (TransmitterGroup group : transmitterGroupDao.getAll()) {
-            refreshTransmitterGroup(group, null);
+            refreshTransmitterGroup(group, null, null);
         }
     }
 
@@ -275,9 +260,12 @@ public class PlaylistManager implements IContextStateProcessor {
      *            Optional, the program for this group. This is intended only as
      *            an optimization if null is provided it will be retrieved if
      *            needed.
+     * @param forcedSuite
+     *            the forced suite if any, null is acceptable in which case all
+     *            triggered or general suites will be written.
      */
     protected void refreshTransmitterGroup(TransmitterGroup group,
-            Program program) {
+            Program program, Suite forcedSuite) {
         /*
          * Start with the assumption that all lists should be deleted. Analyze
          * the programs and find lists that should exist, refresh only those
@@ -285,11 +273,9 @@ public class PlaylistManager implements IContextStateProcessor {
          */
         List<Playlist> listsToDelete = playlistDao.getByGroupName(group
                 .getName());
-        if (!group.getEnabledTransmitters().isEmpty()) {
+        if (group.isEnabled()) {
             if (program == null) {
                 program = programDao.getProgramForTransmitterGroup(group);
-
-                // no program assigned to this group
                 if (program == null) {
                     statusHandler
                             .info("Skipping playlist refresh: No program assigned to transmitter group ["
@@ -297,31 +283,20 @@ public class PlaylistManager implements IContextStateProcessor {
                     return;
                 }
             }
-            SuiteType forcedType = null;
             List<ProgramSuite> programSuites = program.getProgramSuites();
             if (!CollectionUtil.isNullOrEmpty(programSuites)) {
-                for (ProgramSuite programSuite : program.getProgramSuites()) {
-                    if (programSuite.isForced()) {
-                        forcedType = programSuite.getSuite().getType();
+                for (ProgramSuite programSuite : programSuites) {
+                    if (isPreemptedByForced(forcedSuite,
+                            programSuite.getSuite())) {
+                        continue;
                     }
-                }
-                for (ProgramSuite programSuite : program.getProgramSuites()) {
-                    boolean shouldRefresh = (forcedType == null)
-                            || programSuite.isForced();
-                    if ((shouldRefresh == false)
-                            && (programSuite.getSuite().getType()
-                                    .compareTo(forcedType) < 0)) {
-                        shouldRefresh = true;
-                    }
-                    if (shouldRefresh) {
-                        refreshPlaylist(group, programSuite);
-                        Iterator<Playlist> listIterator = listsToDelete
-                                .iterator();
-                        while (listIterator.hasNext()) {
-                            if (listIterator.next().getSuite()
-                                    .equals(programSuite.getSuite())) {
-                                listIterator.remove();
-                            }
+                    refreshPlaylist(group, programSuite, programSuite
+                            .getSuite().equals(forcedSuite));
+                    Iterator<Playlist> listIterator = listsToDelete.iterator();
+                    while (listIterator.hasNext()) {
+                        if (listIterator.next().getSuite()
+                                .equals(programSuite.getSuite())) {
+                            listIterator.remove();
                         }
                     }
                 }
@@ -336,27 +311,31 @@ public class PlaylistManager implements IContextStateProcessor {
 
     protected void deletePlaylist(TransmitterGroup group,
             ProgramSuite programSuite) {
+        String groupName = group.getName();
+        String suiteName = programSuite.getSuite().getName();
         ClusterTask ct = null;
         do {
-            ct = locker.lock("playlist", group.getName() + "-"
-                    + programSuite.getSuite().getName(), 30000, true);
+            ct = locker.lock("playlist", groupName + "-" + suiteName, 30000,
+                    true);
         } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
         ITimer timer = TimeUtil.getTimer();
         timer.start();
         try {
-            Playlist playlist = playlistDao.getBySuiteAndGroupName(programSuite
-                    .getSuite().getName(), group.getName());
+            Playlist playlist = playlistDao.getBySuiteAndGroupName(suiteName,
+                    groupName);
             if (playlist != null) {
                 playlist.setModTime(TimeUtil.newGmtCalendar());
-                sortAndPersistPlaylist(playlist,
-                        Collections.<BroadcastMsg> emptyList(), programSuite);
+                playlist.setStartTime(null);
+                playlist.setEndTime(null);
+                sortAndPersistPlaylist(playlist, programSuite,
+                        Collections.<BroadcastMsg> emptyList(), false);
             }
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
             timer.stop();
             statusHandler.info("Spent " + timer.getElapsedTime()
-                    + "ms refreshing playlist for " + group.getName() + "("
-                    + programSuite.getSuite().getName() + ")");
+                    + "ms refreshing playlist for " + groupName + "("
+                    + suiteName + ")");
         }
     }
 
@@ -365,7 +344,7 @@ public class PlaylistManager implements IContextStateProcessor {
      * combination.
      */
     protected void refreshPlaylist(TransmitterGroup group,
-            ProgramSuite programSuite) {
+            ProgramSuite programSuite, boolean forced) {
         ClusterTask ct = null;
         do {
             ct = locker.lock("playlist", group.getName() + "-"
@@ -378,7 +357,7 @@ public class PlaylistManager implements IContextStateProcessor {
             Playlist playlist = playlistDao.getBySuiteAndGroupName(programSuite
                     .getSuite().getName(), group.getName());
             List<BroadcastMsg> messages = loadExistingMessages(programSuite,
-                    group, currentTime, true);
+                    group, currentTime, true, forced);
             if (!messages.isEmpty()) {
                 if (playlist == null) {
                     playlist = new Playlist();
@@ -388,7 +367,9 @@ public class PlaylistManager implements IContextStateProcessor {
             }
             if (playlist != null) {
                 playlist.setModTime(currentTime);
-                sortAndPersistPlaylist(playlist, messages, programSuite);
+                playlist.setStartTime(null);
+                playlist.setEndTime(null);
+                sortAndPersistPlaylist(playlist, programSuite, messages, forced);
             }
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
@@ -401,14 +382,13 @@ public class PlaylistManager implements IContextStateProcessor {
 
     public void newMessage(BroadcastMsg msg) {
         TransmitterGroup group = msg.getTransmitterGroup();
-        if (group.getEnabledTransmitters().isEmpty()) {
+        if (!group.isEnabled()) {
             return;
         }
         if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
             return;
         }
         Program program = programDao.getProgramForTransmitterGroup(group);
-        boolean disableForcedSuite = false;
 
         if (msg.getInputMessage().getInterrupt()) {
             Suite suite = new Suite();
@@ -422,77 +402,16 @@ public class PlaylistManager implements IContextStateProcessor {
             playlist.setStartTime(msg.getInputMessage().getEffectiveTime());
             playlist.setEndTime(msg.getInputMessage().getExpirationTime());
             writePlaylistFile(playlist, playlist.getStartTime());
-
-            disableForcedSuite = true;
-        }
-
-        /*
-         * Determine if we have a administratively forced GENERAL suite. If so
-         * we must find it and ensure no message updates are processed for any
-         * other GENERAL suites, if they exist. GENERAL suite changes can only
-         * be made via user intervention.
-         * 
-         * FIXME: When we remove the ability to have multiple GENERAL suites in
-         * a Program, remove special case for GENERAL.
-         * 
-         * Secondly, we need to determine if we have a forced suite that's not
-         * GENERAL. If so, we might have to reset the forced flag on the
-         * ProgramSuite if this new message triggers any suites.
-         */
-        ProgramSuite forcedGeneral = null;
-        ProgramSuite forcedHigher = null;
-        for (ProgramSuite programSuite : program.getProgramSuites()) {
-            if (programSuite.isForced()
-                    && (programSuite.getSuite().getType() == SuiteType.GENERAL)) {
-                forcedGeneral = programSuite;
-            } else if (programSuite.isForced()
-                    && (programSuite.getSuite().getType() != SuiteType.GENERAL)) {
-                forcedHigher = programSuite;
-            }
         }
 
         // TODO: optimize.
+        Map<String, Set<String>> matReplacementMap = new HashMap<>();
         for (ProgramSuite programSuite : program.getProgramSuites()) {
-            /*
-             * Do not process any updates for GENERAL suites except the forced
-             * GENERAL suite (if it exists). If the user wants a different
-             * GENERAL suite to play, they must manually force that suite into
-             * effect.
-             * 
-             * FIXME: When we remove the ability to have multiple GENERAL suites
-             * in a Program, remove special case for GENERAL.
-             */
-            if ((forcedGeneral != null)
-                    && (programSuite.getSuite().getType() == SuiteType.GENERAL)
-                    && (!programSuite.getId().equals(forcedGeneral.getId()))) {
-                continue;
+            if (programSuite.getSuite().containsSuiteMessage(msg.getAfosid())) {
+                boolean isTrigger = programSuite.isTrigger(msg.getAfosid());
+                addMessageToPlaylist(msg, group, programSuite, isTrigger,
+                        matReplacementMap);
             }
-            Map<String, Set<String>> matReplacementMap = new HashMap<>();
-
-            for (SuiteMessage smessage : programSuite.getSuite()
-                    .getSuiteMessages()) {
-                if (smessage.getAfosid().equals(msg.getAfosid())) {
-                    boolean isTrigger = programSuite.isTrigger(smessage
-                            .getMsgTypeSummary());
-                    addMessageToPlaylist(msg, group, programSuite, isTrigger,
-                            matReplacementMap);
-
-                    if ((isTrigger)
-                            && (forcedHigher != null)
-                            && (programSuite.getId().equals(forcedHigher
-                                    .getId()))) {
-                        disableForcedSuite = true;
-                    }
-                }
-            }
-        }
-
-        if ((forcedHigher != null) && (disableForcedSuite)) {
-            statusHandler
-                    .debug("Incoming message has triggered a suite, removing forced flag from suite "
-                            + forcedHigher.getSuite().getName());
-            forcedHigher.setForced(false);
-            programDao.persist(forcedHigher);
         }
     }
 
@@ -514,7 +433,7 @@ public class PlaylistManager implements IContextStateProcessor {
                     playlist.setMessages(Collections.<BroadcastMsg> emptyList());
                 } else if (trigger) {
                     playlist.setMessages(loadExistingMessages(programSuite,
-                            group, currentTime, false));
+                            group, currentTime, false, false));
                 } else {
                     return;
                 }
@@ -524,14 +443,15 @@ public class PlaylistManager implements IContextStateProcessor {
             playlist.setModTime(currentTime);
             List<BroadcastMsg> messages = mergeMessage(msg,
                     playlist.getMessages(), matReplacementMap);
-            sortAndPersistPlaylist(playlist, messages, programSuite);
+            sortAndPersistPlaylist(playlist, programSuite, messages, false);
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
         }
     }
 
     private void sortAndPersistPlaylist(Playlist playlist,
-            List<BroadcastMsg> messages, final ProgramSuite programSuite) {
+            ProgramSuite programSuite, List<BroadcastMsg> messages,
+            boolean forced) {
         Calendar currentTime = playlist.getModTime();
         Suite suite = playlist.getSuite();
         /*
@@ -559,10 +479,10 @@ public class PlaylistManager implements IContextStateProcessor {
          * messages, also calculate the start and end time of the playlist by
          * looking at the effective and expire times of any trigger messages.
          */
-        Calendar startTime = null;
+        Calendar startTime = playlist.getStartTime();
         Calendar latestTrigger = null;
         List<Calendar> futureTriggers = new ArrayList<>(1);
-        Calendar endTime = null;
+        Calendar endTime = playlist.getEndTime();
         messages.clear();
         for (SuiteMessage smessage : suite.getSuiteMessages()) {
             List<BroadcastMsg> afosMessages = afosMapping.remove(smessage
@@ -572,21 +492,10 @@ public class PlaylistManager implements IContextStateProcessor {
 
                 Designation msgType = smessage.getMsgTypeSummary()
                         .getDesignation();
-
-                /*
-                 * We need to exert control over how the start time and expire
-                 * time of the playlist is calculated. If the message is a
-                 * trigger or we're creating a playlist for a GENERAL suite,
-                 * then we use the message's start and expire times in
-                 * calculating the same for the playlist. Additionally, if we're
-                 * updating a playlist for a forced suite, we need to ignore the
-                 * routine messages--station ID and time of day--so that the
-                 * playlist expires when all messages but those routine messages
-                 * have expired.
-                 */
-                if ((programSuite.isTrigger(smessage.getMsgTypeSummary()))
-                        || (suite.getType() == SuiteType.GENERAL)
-                        || (programSuite.isForced() && ((msgType != Designation.TimeAnnouncement) && (msgType != Designation.StationID)))) {
+                boolean isTrigger = programSuite.isTrigger(smessage
+                        .getMsgTypeSummary());
+                if (isTrigger || suite.getType() == SuiteType.GENERAL
+                        || (forced && !msgType.isStatic())) {
                     for (BroadcastMsg bmessage : afosMessages) {
                         Calendar messageStart = bmessage.getInputMessage()
                                 .getEffectiveTime();
@@ -626,8 +535,8 @@ public class PlaylistManager implements IContextStateProcessor {
         } else {
             playlistDao.persist(playlist);
         }
-        if (futureTriggers.isEmpty() || (suite.getType() == SuiteType.GENERAL)
-                || (programSuite.isForced())) {
+        if (futureTriggers.isEmpty() || suite.getType() == SuiteType.GENERAL
+                || forced) {
             writePlaylistFile(playlist, latestTrigger);
         } else {
             /*
@@ -663,12 +572,15 @@ public class PlaylistManager implements IContextStateProcessor {
      *            If true trigger messages are loaded and non-trigger messages
      *            are loaded only if trigger messages are present. If false only
      *            non trigger messages will be loaded.
+     * @param forced
+     *            if this list is forced and so non trigger messages should load
+     *            even if there are no triggers.
      * @return all the messages from the database for a playlist (optionally
      *         excluding triggers).
      */
     private List<BroadcastMsg> loadExistingMessages(
             final ProgramSuite programSuite, TransmitterGroup group,
-            Calendar expirationTime, boolean checkTrigger) {
+            Calendar expirationTime, boolean checkTrigger, boolean forced) {
         List<BroadcastMsg> messages = new ArrayList<>();
         if (checkTrigger) {
             for (MessageTypeSummary programTrigger : programSuite.getTriggers()) {
@@ -678,7 +590,7 @@ public class PlaylistManager implements IContextStateProcessor {
             }
             if (messages.isEmpty()
                     && (programSuite.getSuite().getType() != SuiteType.GENERAL)
-                    && (!programSuite.isForced())) {
+                    && !forced) {
                 return Collections.emptyList();
             }
         }
@@ -1080,6 +992,17 @@ public class PlaylistManager implements IContextStateProcessor {
     @Override
     public void postStop() {
         /* Required to implement IContextStateProcessor but not used. */
+    }
+
+    private static boolean isPreemptedByForced(Suite forcedSuite,
+            Suite testSuite) {
+        if (forcedSuite == null || forcedSuite.equals(testSuite)) {
+            return false;
+        } else {
+            SuiteType forcedType = forcedSuite.getType();
+            SuiteType testType = testSuite.getType();
+            return forcedType.compareTo(testType) <= 0;
+        }
     }
 
 }

@@ -75,6 +75,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                    new {@link Suite}(s).
  * Oct 21, 2014 3746      rjpeter     Hibernate upgrade.
  * Oct 29, 2014 3636      rferrel     Implement Logging.
+ * Nov 13, 2014 3717      bsteffen    Add containsSuiteMessage
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -209,6 +211,17 @@ public class Suite {
             suiteMessages.add(suiteMessage);
             suiteMessage.setSuite(this);
         }
+    }
+
+    public boolean containsSuiteMessage(String afosid) {
+        if (suiteMessages != null) {
+            for (SuiteMessage suiteMessage : suiteMessages) {
+                if (suiteMessage.getAfosid().equals(afosid)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
