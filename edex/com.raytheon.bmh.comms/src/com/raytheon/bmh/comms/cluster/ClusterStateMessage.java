@@ -140,7 +140,7 @@ public class ClusterStateMessage {
     private List<ClusterDacTransmitKey> keys = new ArrayList<>();
 
     @DynamicSerializeElement
-    private List<ClusterDacTransmitKey> requestedKeys = new ArrayList<>();
+    private ClusterDacTransmitKey requestedKey = null;
 
     public List<ClusterDacTransmitKey> getKeys() {
         return keys;
@@ -175,37 +175,24 @@ public class ClusterStateMessage {
         return keys.contains(key);
     }
 
-    public List<ClusterDacTransmitKey> getRequestedKeys() {
-        return requestedKeys;
+    public ClusterDacTransmitKey getRequestedKey() {
+        return requestedKey;
     }
 
-    public void setRequestedKeys(List<ClusterDacTransmitKey> requestedKeys) {
-        this.requestedKeys = requestedKeys;
+    public void setRequestedKey(ClusterDacTransmitKey requestedKey) {
+        this.requestedKey = requestedKey;
     }
 
-    public void addRequest(DacTransmitKey key) {
-        if (requestedKeys == null) {
-            requestedKeys = new ArrayList<>();
-        }
-        requestedKeys.add(new ClusterDacTransmitKey(key));
+    public boolean isRequestedKey(DacTransmitKey key) {
+        return isRequestedKey(new ClusterDacTransmitKey(key));
     }
 
-    public boolean removeRequest(DacTransmitKey key) {
-        if (requestedKeys == null) {
-            return false;
-        }
-        return requestedKeys.remove(new ClusterDacTransmitKey(key));
+    public boolean isRequestedKey(ClusterDacTransmitKey key) {
+        return requestedKey != null && requestedKey.equals(key);
     }
 
-    public boolean containsRequest(DacTransmitKey key) {
-        return containsRequest(new ClusterDacTransmitKey(key));
-    }
-
-    public boolean containsRequest(ClusterDacTransmitKey key) {
-        if (requestedKeys == null) {
-            return false;
-        }
-        return requestedKeys.contains(key);
+    public boolean hasRequestedKey() {
+        return requestedKey != null;
     }
 
 }
