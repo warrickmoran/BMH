@@ -23,6 +23,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,7 +31,10 @@ import java.util.regex.Pattern;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
@@ -45,6 +49,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
  * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
+ * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
  * 
  * </pre>
  * 
@@ -99,6 +104,7 @@ public class InputMessageParser {
             index = parseAreaCodes(message, text, index);
             index = parseExpirationDate(message, text, index);
             index = parseContent(message, text, index);
+            deriveSameTransmitters(message);
         } catch (ParseException e) {
             statusHandler.error(BMH_CATEGORY.INPUT_MESSAGE_PARSE_ERROR,
                     "Error Parsing InputMessage", e);
@@ -316,6 +322,26 @@ public class InputMessageParser {
         }
         message.setContent(end.group(1).trim());
         return end.end();
+    }
+
+    private void deriveSameTransmitters(InputMessage message) {
+        if (Boolean.TRUE.equals(message.getNwrsameTone())) {
+            MessageTypeDao messageTypeDao = new MessageTypeDao();
+            MessageType type = messageTypeDao.getByAfosId(message.getAfosid());
+            if (type != null) {
+                Set<Transmitter> transmitters = type.getSameTransmitters();
+                if (transmitters != null && !transmitters.isEmpty()) {
+                    StringBuilder transmittersBuilder = new StringBuilder();
+                    for (Transmitter transmitter : transmitters) {
+                        if (transmittersBuilder.length() > 0) {
+                            transmittersBuilder.append("-");
+                        }
+                        transmittersBuilder.append(transmitter.getMnemonic());
+                    }
+                    message.setSameTransmitters(transmittersBuilder.toString());
+                }
+            }
+        }
     }
 
     private static Calendar parseDate(Matcher date) throws ParseException {

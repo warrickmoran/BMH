@@ -21,7 +21,10 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -61,6 +64,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                    creation time.
  * Nov 03, 2014  3790     lvenable    Update query to include the active field.
  * Nov 03, 2014  3728     lvenable    Made active default to true when creating a new object.
+ * Nov 17, 2014  3793     bsteffen    Add same transmitters.
+ * 
  * 
  * </pre>
  * 
@@ -183,6 +188,16 @@ public class InputMessage {
     private Boolean nwrsameTone;
 
     /**
+     * The transmitters for which NWRSAME tones should be played. This field
+     * should be ignored if nwrsameTone is not true. When parsing messages this
+     * information is not included in the header, it is derived from the current
+     * system configuration.
+     */
+    @Column
+    @DynamicSerializeElement
+    private String sameTransmitters;
+
+    /**
      * The notion of a message's LISTENING AREA code is defined as a collection
      * of Universal Generic Codes (UGCs). These codes serve to specify
      * geographical areas to be served by the message's transmission. This field
@@ -231,6 +246,7 @@ public class InputMessage {
         this.interrupt = other.interrupt;
         this.alertTone = other.alertTone;
         this.nwrsameTone = other.nwrsameTone;
+        this.sameTransmitters = other.sameTransmitters;
         this.areaCodes = other.areaCodes;
         this.expirationTime = other.expirationTime;
         this.content = other.content;
@@ -415,6 +431,38 @@ public class InputMessage {
         this.nwrsameTone = nwrsameTone;
     }
 
+    public Set<String> getSameTransmitterSet() {
+        if (sameTransmitters == null) {
+            return Collections.emptySet();
+        } else {
+            return new HashSet<String>(Arrays.asList(sameTransmitters
+                    .split("-")));
+        }
+    }
+
+    public String getSameTransmitters() {
+        return sameTransmitters;
+    }
+
+    public void setSameTransmitters(String sameTransmitters) {
+        this.sameTransmitters = sameTransmitters;
+    }
+
+    public void setSameTransmitterSet(Set<String> transmitters) {
+        if (transmitters == null || transmitters.isEmpty()) {
+            sameTransmitters = null;
+        } else {
+            StringBuilder transmittersBuilder = new StringBuilder();
+            for (String transmitter : transmitters) {
+                if (transmittersBuilder.length() > 0) {
+                    transmittersBuilder.append("-");
+                }
+                transmittersBuilder.append(transmitter);
+            }
+            sameTransmitters = transmittersBuilder.toString();
+        }
+    }
+
     public String getAreaCodes() {
         return areaCodes;
     }
@@ -495,6 +543,8 @@ public class InputMessage {
         result = (prime * result) + ((mrd == null) ? 0 : mrd.hashCode());
         result = (prime * result)
                 + ((nwrsameTone == null) ? 0 : nwrsameTone.hashCode());
+        result = (prime * result)
+                + ((sameTransmitters == null) ? 0 : sameTransmitters.hashCode());
         result = (prime * result)
                 + ((periodicity == null) ? 0 : periodicity.hashCode());
         result = (prime * result) + (validHeader ? 1231 : 1237);
@@ -601,6 +651,13 @@ public class InputMessage {
                 return false;
             }
         } else if (!nwrsameTone.equals(other.nwrsameTone)) {
+            return false;
+        }
+        if (sameTransmitters == null) {
+            if (other.sameTransmitters != null) {
+                return false;
+            }
+        } else if (!sameTransmitters.equals(other.sameTransmitters)) {
             return false;
         }
         if (periodicity == null) {
