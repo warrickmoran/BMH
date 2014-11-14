@@ -56,12 +56,12 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 20, 2014  #3174     lvenable     Initial creation
- * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
- * Aug 12, 2014  #3490      lvenable    Updated method call.
- * Aug 21, 2014  #3490      lvenable    Added database capability.
- * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * 
+ * Jul 20, 2014  #3174     lvenable    Initial creation
+ * Jul 24, 2014  #3433     lvenable    Updated for Suite manager
+ * Aug 12, 2014  #3490     lvenable    Updated method call.
+ * Aug 21, 2014  #3490     lvenable    Added database capability.
+ * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Nov 14, 2014  #3558     rjpeter     Set text limit on program name.
  * </pre>
  * 
  * @author lvenable
@@ -84,7 +84,7 @@ public class CreateNewProgram extends CaveSWTDialog {
 
     private Set<String> existingProgramNames = null;
 
-    private List<Suite> addedSuitesList = new ArrayList<Suite>();
+    private final List<Suite> addedSuitesList = new ArrayList<Suite>();
 
     /**
      * Constructor.
@@ -145,6 +145,7 @@ public class CreateNewProgram extends CaveSWTDialog {
 
         gd = new GridData(250, SWT.DEFAULT);
         programTF = new Text(programComp, SWT.BORDER);
+        programTF.setTextLimit(40);
         programTF.setLayoutData(gd);
     }
 

@@ -80,6 +80,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                    completely new {@link Suite}(s).
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Oct 28, 2014 3636      rferrel     Implement Logging.
+ * Nov 14, 2014 3558      rjpeter     Set length of program name to 40.
  * </pre>
  * 
  * @author rjpeter
@@ -130,7 +131,7 @@ public class Program {
     @DiffTitle(position = 2)
     protected int id;
 
-    @Column(length = 20, unique = true, nullable = false)
+    @Column(length = 40, unique = true, nullable = false)
     @DynamicSerializeElement
     @DiffTitle(position = 1)
     @DiffString

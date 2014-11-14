@@ -36,10 +36,10 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 3, 2014  #3479      lvenable     Initial creation
- * Aug 15, 2014  #3490     lvenable     Updated to allow checking against existing names.
- * Aug 22, 2014  #3490     lvenable     Tweaked message.
- * 
+ * Aug 3, 2014  #3479      lvenable    Initial creation
+ * Aug 15, 2014 #3490      lvenable    Updated to allow checking against existing names.
+ * Aug 22, 2014 #3490      lvenable    Tweaked message.
+ * Nov 15, 2014 #3558      rjpeter     Enforce program name length check.
  * </pre>
  * 
  * @author lvenable
@@ -76,13 +76,24 @@ public class ProgramNameValidator implements IInputTextValidator {
             return false;
         }
 
-        if (existingNames != null && existingNames.contains(text)) {
+        if ((existingNames != null) && existingNames.contains(text)) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("The Program name already exists.  Please enter another name.");
 
             DialogUtility.showMessageBox(parentShell,
                     SWT.ICON_WARNING | SWT.OK, "Existing Name", sb.toString());
+
+            return false;
+        }
+
+        if (text.length() > 40) {
+            StringBuilder sb = new StringBuilder();
+
+            sb.append("The Program name cannot be longer than 40 characters.");
+
+            DialogUtility.showMessageBox(parentShell,
+                    SWT.ICON_WARNING | SWT.OK, "Name Length", sb.toString());
 
             return false;
         }
