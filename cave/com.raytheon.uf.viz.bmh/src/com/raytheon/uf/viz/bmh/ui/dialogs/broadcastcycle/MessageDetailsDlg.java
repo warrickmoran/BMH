@@ -73,6 +73,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      populate it after the control has been
  *                                      sized.
  * Nov 15, 2014    3828       mpduff    Use InputMessage for creation date
+ * Nov 15, 2014    3818       mpduff    Set return value.
  * 
  * </pre>
  * 
@@ -126,6 +127,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         this.broadcastMsg = broadcastMsg;
         setText("Message Details/Information");
         dataManager = new BroadcastCycleDataManager();
+        setReturnValue(broadcastMsg.getId());
     }
 
     @Override

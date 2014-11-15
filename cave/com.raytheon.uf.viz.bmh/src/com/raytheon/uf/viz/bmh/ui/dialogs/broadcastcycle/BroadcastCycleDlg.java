@@ -85,6 +85,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * Broadcast cycle dialog.
@@ -117,6 +118,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Nov 04, 2014   3792     lvenable    Colored the Emergency Override label blue and fixed a NPE.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Nov 12, 2014  3816      lvenable    Fixed transmitter label size.
+ * Nov 15, 2014  3818      mpduff      Allow multiple message detail dialogs to be open.
  * 
  * </pre>
  * 
@@ -195,9 +197,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     /** Periodic message dialog */
     private PeriodicMessagesDlg periodicMsgDlg;
 
-    /** Message details dialog */
-    private MessageDetailsDlg detailsDlg;
-
     /** Selected transmitter */
     private Label transmitterNameLbl;
 
@@ -231,6 +230,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private Font eoFont;
 
     private final String eoText = "Emergency Override";
+
+    /** Map of BroadcastMessage id to MessageDetailsDlg for that id */
+    private final Map<Long, MessageDetailsDlg> detailsMap = new HashMap<>();
 
     /**
      * Constructor.
@@ -895,29 +897,37 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * Handler for Message Details button
      */
     private void handleMessageDetails() {
-        if ((detailsDlg == null) || detailsDlg.isDisposed()) {
-            try {
-                List<TableRowData> selectionList = tableComp.getSelection();
-                if (selectionList.isEmpty()) {
-                    return;
-                }
-                TableRowData selection = selectionList.get(0);
-                BroadcastCycleTableDataEntry dataEntry = (BroadcastCycleTableDataEntry) selection
-                        .getData();
-                String afosId = selection.getTableCellData().get(1)
-                        .getCellText();
-                MessageType messageType = dataManager.getMessageType(afosId);
-                BroadcastMsg broadcastMsg = dataManager
-                        .getBroadcastMessage(dataEntry.getBroadcastId());
-
-                detailsDlg = new MessageDetailsDlg(getShell(), messageType,
-                        broadcastMsg);
-                detailsDlg.open();
-            } catch (Exception e) {
-                statusHandler.error("ERROR accessing BMH Database", e);
+        try {
+            List<TableRowData> selectionList = tableComp.getSelection();
+            if (selectionList.isEmpty()) {
+                return;
             }
-        } else {
-            detailsDlg.bringToTop();
+            TableRowData selection = selectionList.get(0);
+            BroadcastCycleTableDataEntry dataEntry = (BroadcastCycleTableDataEntry) selection
+                    .getData();
+            String afosId = selection.getTableCellData().get(1).getCellText();
+            MessageType messageType = dataManager.getMessageType(afosId);
+            BroadcastMsg broadcastMsg = dataManager
+                    .getBroadcastMessage(dataEntry.getBroadcastId());
+            long key = broadcastMsg.getId();
+            MessageDetailsDlg dlg = detailsMap.get(key);
+            if (dlg != null) {
+                dlg.bringToTop();
+            } else {
+                MessageDetailsDlg detailsDlg = new MessageDetailsDlg(
+                        getShell(), messageType, broadcastMsg);
+                detailsDlg.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        long key = (long) returnValue;
+                        detailsMap.remove(key);
+                    }
+                });
+                detailsDlg.open();
+                detailsMap.put(key, detailsDlg);
+            }
+        } catch (Exception e) {
+            statusHandler.error("ERROR accessing BMH Database", e);
         }
     }
 
