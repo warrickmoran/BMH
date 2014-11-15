@@ -76,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 02, 2014   3785     mpduff       Set the Validated Message on inputAudioMessageData
  * Nov 03, 2014   3790     lvenable     Added Active to the table column and made the dialog
  *                                      resizable.
+ * Nov 15, 2014   3832     mpduff       Make creation hours on the 24 hr clock
  * 
  * </pre>
  * 
@@ -283,7 +284,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
      * Populate the message type table data.
      */
     private void populateInputMsgTableData() {
-        SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+        SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
         for (InputMessage im : inputMessageList) {
             TableRowData trd = new TableRowData();
