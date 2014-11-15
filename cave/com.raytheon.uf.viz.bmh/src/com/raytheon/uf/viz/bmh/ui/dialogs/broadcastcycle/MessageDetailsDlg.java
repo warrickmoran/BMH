@@ -39,6 +39,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
@@ -71,6 +72,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 11, 2014    3825       lvenable  Fixed text control to wrap text and
  *                                      populate it after the control has been
  *                                      sized.
+ * Nov 15, 2014    3828       mpduff    Use InputMessage for creation date
  * 
  * </pre>
  * 
@@ -260,11 +262,12 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         createTimeLbl.setText("Creation Time: ");
         createTimeLbl.setLayoutData(gd);
 
+        InputMessage msg = broadcastMsg.getInputMessage();
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label createTimeValueLbl = new Label(comp, SWT.NONE);
         if (broadcastMsg != null) {
-            String creationDate = dateFormat.format(broadcastMsg
-                    .getCreationDate().getTime());
+            String creationDate = dateFormat.format(msg.getCreationTime()
+                    .getTime());
             createTimeValueLbl.setText(creationDate);
         }
         createTimeValueLbl.setLayoutData(gd);
@@ -277,8 +280,8 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label effectiveTimeValueLbl = new Label(comp, SWT.NONE);
         if (broadcastMsg != null) {
-            String effectiveDate = dateFormat.format(broadcastMsg
-                    .getInputMessage().getEffectiveTime().getTime());
+            String effectiveDate = dateFormat.format(msg.getEffectiveTime()
+                    .getTime());
             effectiveTimeValueLbl.setText(effectiveDate);
         }
         effectiveTimeValueLbl.setLayoutData(gd);
@@ -291,8 +294,8 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label expirationTimeValueLbl = new Label(comp, SWT.NONE);
         if (broadcastMsg != null) {
-            String expDate = dateFormat.format(broadcastMsg.getInputMessage()
-                    .getExpirationTime().getTime());
+            String expDate = dateFormat.format(msg.getExpirationTime()
+                    .getTime());
             expirationTimeValueLbl.setText(expDate);
         }
         expirationTimeValueLbl.setLayoutData(gd);
