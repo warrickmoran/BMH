@@ -28,9 +28,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
@@ -63,6 +60,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Nov 3, 2014  3655       bkowal      Increase timeout for same tone playback. Handle
  *                                     multiple audio packets.
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
+ * Nov 15, 2014 3630       bkowal      Extend AbstractBroadcastingTask.
  * 
  * </pre>
  * 
@@ -70,16 +68,13 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * @version 1.0
  */
 
-public class BroadcastStreamTask extends Thread {
+public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
     private static enum STATE {
         INIT, READY, TRIGGER, LIVE, STOP, ERROR
     }
 
-    private static final Logger logger = LoggerFactory
-            .getLogger(BroadcastStreamTask.class);
-
-    private final Socket socket;
+    private static final String DESCRIPTION = "broadcast streaming task";
 
     private final BroadcastStreamServer streamingServer;
 
@@ -106,8 +101,7 @@ public class BroadcastStreamTask extends Thread {
             final LiveBroadcastStartCommand command,
             final BroadcastStreamServer streamingServer,
             final ClusterServer clusterServer, final DacTransmitServer dacServer) {
-        super(determineName(command));
-        this.socket = socket;
+        super(determineName(command), DESCRIPTION, socket);
         this.streamingServer = streamingServer;
         this.clusterServer = clusterServer;
         this.dacServer = dacServer;
@@ -425,10 +419,10 @@ public class BroadcastStreamTask extends Thread {
      *            the reply msg to send
      * @return true if the reply was successful; false, otherwise
      */
-    private synchronized boolean sendClientReplyMessage(BroadcastStatus msg) {
+    @Override
+    protected synchronized boolean sendClientReplyMessage(BroadcastStatus msg) {
         try {
-            SerializationUtil.transformToThriftUsingStream(msg,
-                    this.socket.getOutputStream());
+            super.sendClientReplyMessage(msg);
         } catch (Exception e) {
             final String errorText = "Failed to send reply message "
                     + msg.getClass().getName() + " to the client.";
@@ -561,19 +555,6 @@ public class BroadcastStreamTask extends Thread {
             }
             this.dacServer.sendToDac(key, command);
         }
-    }
-
-    private BroadcastStatus buildErrorStatus(final String message,
-            final Exception exception, final List<Transmitter> transmitters) {
-        BroadcastStatus status = new BroadcastStatus();
-        status.setMsgSource(MSGSOURCE.COMMS);
-        status.setBroadcastId(this.getName());
-        status.setStatus(false);
-        status.setTransmitterGroups(transmitters);
-        status.setMessage(message);
-        status.setException(exception);
-
-        return status;
     }
 
     private void notifyShareholdersProblem(final String message,

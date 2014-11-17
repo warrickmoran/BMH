@@ -19,13 +19,16 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.NotImplementedException;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -40,6 +43,7 @@ import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
+import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.TransmitterAlignmentTestCommand;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -72,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 05, 2014    3630    bkowal      Initial implementation of run test.
  * Nov 10, 2014    3630    bkowal      Build the TransmitterAlignmentTestCommand.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Nov 15, 2014    3630    bkowal      Run the test and report the result.
  * 
  * </pre>
  * 
@@ -82,6 +87,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
 public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(TransmitterAlignmentDlg.class);
+
+    private static final long TRANSMITTER_ALIGNMENT_TEST_TIMEOUT = 45000;
 
     /** Constant */
     private final String STATUS_PREFIX = "Transmitter is ";
@@ -121,6 +128,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
 
     /** "Run Test" Button **/
     private Button testBtn;
+
+    private TransmitterAlignmentTestThread alignmentTestThread;
 
     /**
      * Constructor.
@@ -516,12 +525,61 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         } catch (TransmitterAlignmentException e) {
             statusHandler.error(
                     "Failed to configure the transmitter alignment test.", e);
+            return;
+        }
+        this.testBtn.setEnabled(false);
+
+        this.alignmentTestThread = new TransmitterAlignmentTestThread(command);
+        this.alignmentTestThread.start();
+
+        /*
+         * Block all interaction. Will only last a maximum of 45 seconds
+         * worst-case scenario.
+         */
+        ProgressMonitorDialog dialog = new ProgressMonitorDialog(
+                this.getShell());
+        try {
+            dialog.run(true, false, new IRunnableWithProgress() {
+
+                @Override
+                public void run(IProgressMonitor monitor) {
+                    monitor.beginTask("Running Transmitter Alignment Test",
+                            IProgressMonitor.UNKNOWN);
+                    try {
+                        alignmentTestThread
+                                .join(TRANSMITTER_ALIGNMENT_TEST_TIMEOUT);
+                    } catch (InterruptedException e) {
+                        statusHandler
+                                .error("Interrupted while waiting for the alignment test to finish.",
+                                        e);
+                    }
+                }
+            });
+        } catch (InvocationTargetException | InterruptedException e) {
+            statusHandler.error(
+                    "Failed to run the transmitter alignment test.", e);
         }
 
-        // TODO: submit the command to the Comms Manager
-        throw new NotImplementedException(
-                "Awaiting comms manager updates. Ready to process: "
-                        + command.toString());
+        // check the status of the task.
+        int icon = 9999;
+        String message = null;
+        switch (this.alignmentTestThread.getStatus()) {
+        case FAIL:
+            icon = SWT.ICON_ERROR;
+            message = this.alignmentTestThread.getStatusDetails();
+            break;
+        case SUCCESS:
+            icon = SWT.ICON_INFORMATION;
+            message = this.alignmentTestThread.getStatusDetails();
+            break;
+        case UNKNOWN:
+            icon = SWT.ICON_WARNING;
+            message = "The final status of the alignment test is unknown. Please check the server logs.";
+            break;
+        }
+        DialogUtility.showMessageBox(this.shell, icon | SWT.OK,
+                "Transmitter Alignment Test Result", message);
+        this.testBtn.setEnabled(true);
     }
 
     private TransmitterAlignmentTestCommand buildCommand()
@@ -579,8 +637,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         Arrays.sort(radios);
 
         TransmitterAlignmentTestCommand command = new TransmitterAlignmentTestCommand();
+        command.setMsgSource(MSGSOURCE.VIZ);
+        command.setTransmitterGroup(this.selectedTransmitterGrp);
         command.setDacHostname(dac.getAddress());
-        command.setRadios(radios);
         /*
          * Make comms manager find an available data port when it receives this
          * request. There is not a pure mapping between available / unavailable
@@ -589,6 +648,13 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
          * any, are available. If an available data port cannot be found, comms
          * manager will return a {@link TransmitterAlignmentException}.
          */
+        if (dac.getDataPorts() == null || dac.getDataPorts().isEmpty()) {
+            throw new TransmitterAlignmentException(
+                    "No data ports have been assigned to dac " + dac.getName()
+                            + ".");
+        }
+        command.setAllowedDataPorts(dac.getDataPorts());
+        command.setRadios(radios);
         command.setDecibelTarget(Double.parseDouble(this.dbValueLbl.getText()));
         command.setInputAudioFile(audioLocation);
         command.setBroadcastDuration(this.durScaleComp.getSelectedValue());

@@ -97,6 +97,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Oct 21, 2014  3655     bkowal      Use the new message types.
  * Nov 03, 2014  3525     bsteffen    Mark dac transmit errors in logs.
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
+ * Nov 15, 2014  3630     bkowal      Allow for retrieval of most recent config. Use
+ *                                    dynamic log naming.
  * 
  * </pre>
  * 
@@ -167,7 +169,7 @@ public class CommsManager {
      * changes. To maintain consistent state, after construction this should
      * only be accessed from the thread executing the {@link #run()} method.
      */
-    private CommsConfig config;
+    private volatile CommsConfig config;
 
     private final Map<DacTransmitKey, Process> startedProcesses = new HashMap<>();
 
@@ -211,7 +213,7 @@ public class CommsManager {
         }
         try {
             this.broadcastStreamServer = new BroadcastStreamServer(
-                    clusterServer, transmitServer, config);
+                    clusterServer, transmitServer, config, this);
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Unable to start the broadcast stream server.", e);
@@ -501,7 +503,8 @@ public class CommsManager {
         ProcessBuilder startCommand = new ProcessBuilder(args);
         startCommand.environment().put("TRANSMITTER_GROUP", group);
         if (!operational) {
-            startCommand.environment().put("BMH_PRACTICE_MODE", "TRUE");
+            startCommand.environment().put("BMH_LOG_BASE",
+                    "dactransmit-practice");
         }
 
         /*
@@ -660,6 +663,10 @@ public class CommsManager {
 
     public void forwardDacBroadcastMsg(ILiveBroadcastMessage msg) {
         broadcastStreamServer.handleDacBroadcastMsg(msg);
+    }
+
+    public CommsConfig getCurrentConfigState() {
+        return this.config;
     }
 
     /**

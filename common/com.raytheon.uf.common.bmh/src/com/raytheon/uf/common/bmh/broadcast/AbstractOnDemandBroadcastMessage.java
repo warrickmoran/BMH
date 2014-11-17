@@ -25,6 +25,7 @@ import java.util.ArrayList;
 
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -40,6 +41,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Oct 20, 2014 3655       bkowal      Initial creation
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
+ * Nov 15, 2014 3630       bkowal      Added a temporary transmitter group variable.
  * 
  * </pre>
  * 
@@ -61,8 +63,16 @@ public abstract class AbstractOnDemandBroadcastMessage implements
      * TODO: need to use {@link TransmitterGroup}. Note: the GUIs also need to
      * be updated to reference the Transmitter Group instead of a Transmitter.
      */
+    @Deprecated
     @DynamicSerializeElement
     private List<Transmitter> transmitterGroups;
+
+    /**
+     * TODO: make a list and replace List<> transmitterGroups after all dialogs
+     * have been updated to use the transmitter groups.
+     */
+    @DynamicSerializeElement
+    private TransmitterGroup transmitterGroup;
 
     /**
      * 
@@ -127,5 +137,19 @@ public abstract class AbstractOnDemandBroadcastMessage implements
             this.transmitterGroups = new ArrayList<>();
         }
         this.transmitterGroups.addAll(transmitters);
+    }
+
+    /**
+     * @return the transmitterGroup
+     */
+    public TransmitterGroup getTransmitterGroup() {
+        return transmitterGroup;
+    }
+
+    /**
+     * @param transmitterGroup the transmitterGroup to set
+     */
+    public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
+        this.transmitterGroup = transmitterGroup;
     }
 }

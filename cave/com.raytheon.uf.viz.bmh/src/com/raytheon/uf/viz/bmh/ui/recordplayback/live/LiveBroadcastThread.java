@@ -19,10 +19,6 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.recordplayback.live;
 
-import java.io.IOException;
-import java.net.Socket;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.TimerTask;
@@ -36,11 +32,9 @@ import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand.ACTION;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
-import com.raytheon.uf.common.serialization.SerializationException;
-import com.raytheon.uf.common.serialization.SerializationUtil;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.BMHServers;
+import com.raytheon.uf.viz.bmh.comms.AbstractThreadedBroadcastCommsMgrCommunicator;
+import com.raytheon.uf.viz.bmh.comms.CommsCommunicationException;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
 
 /**
@@ -60,6 +54,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  * Nov 3, 2014  3655       bkowal      Cache live broadcast audio on the Viz side.
  * Nov 4, 2014  3655       bkowal      Eliminate audio echo. Decrease buffer delay.
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
+ * Nov 15, 2014 3630       bkowal      Extend AbstractThreadedBroadcastCommsMgrCommunicator.
  * Nov 17, 2014 3820       bkowal      Recognize a separate error state due to broadcast
  *                                     initialization failure.
  * 
@@ -69,11 +64,9 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  * @version 1.0
  */
 
-public class LiveBroadcastThread extends Thread implements
+public class LiveBroadcastThread extends
+        AbstractThreadedBroadcastCommsMgrCommunicator implements
         IAudioRecorderListener {
-
-    private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(LiveBroadcastThread.class);
 
     public static enum BROADCAST_STATE {
         INITIALIZING, LIVE, STOPPED, ERROR, INIT_ERROR
@@ -84,8 +77,6 @@ public class LiveBroadcastThread extends Thread implements
     private IBroadcastStateListener listener;
 
     private volatile BROADCAST_STATE state;
-
-    private Socket socket;
 
     private String broadcastId;
 
@@ -190,48 +181,16 @@ public class LiveBroadcastThread extends Thread implements
             return;
         }
 
-        if (this.socket != null && this.socket.isClosed() == false) {
-            try {
-                this.socket.close();
-            } catch (IOException e) {
-                statusHandler.error("Failed to close socket connection!", e);
-            }
+        if (this.state != BROADCAST_STATE.INIT_ERROR) {
+            this.closeCommsConnection();
         }
     }
 
     private void initialize() {
-        String commsLoc = BMHServers.getBroadcastServer();
-        if (commsLoc == null) {
-            Exception e = new IllegalStateException(
-                    "No address has been specified for comms manager "
-                            + BMHServers.getBroadcastServerKey() + ".");
-            statusHandler.error("Failed to start live broadcast!", e);
-            this.state = BROADCAST_STATE.INIT_ERROR;
-            return;
-        }
-
-        URI commsURI = null;
         try {
-            commsURI = new URI(commsLoc);
-        } catch (URISyntaxException e) {
-            Exception exc = new IllegalStateException(
-                    "Invalid address specified for comms manager "
-                            + BMHServers.getBroadcastServerKey() + ": "
-                            + commsLoc + ".", e);
-            statusHandler.error("Failed to start live broadcast!", exc);
-            this.state = BROADCAST_STATE.INIT_ERROR;
-            return;
-        }
-
-        try {
-            this.socket = new Socket(commsURI.getHost(), commsURI.getPort());
-            this.socket.setTcpNoDelay(true);
-        } catch (IOException e) {
-            Exception exc = new BroadcastException(
-                    "Failed to connect to comms manager "
-                            + BMHServers.getBroadcastServerKey() + ": "
-                            + commsLoc + ".", e);
-            statusHandler.error("Failed to start live broadcast!", exc);
+            this.openCommsConnection();
+        } catch (CommsCommunicationException e1) {
+            statusHandler.error("Failed to connect to the Comms Manager!", e1);
             this.state = BROADCAST_STATE.INIT_ERROR;
             return;
         }
@@ -283,35 +242,6 @@ public class LiveBroadcastThread extends Thread implements
             statusHandler.error("Failed to start live broadcast!", exc);
             this.state = BROADCAST_STATE.INIT_ERROR;
         }
-    }
-
-    private synchronized void writeToCommsManager(Object broadcastMsg)
-            throws BroadcastException {
-        if (this.socket == null || this.socket.isClosed()
-                || this.state == BROADCAST_STATE.INIT_ERROR) {
-            return;
-        }
-        try {
-            SerializationUtil.transformToThriftUsingStream(broadcastMsg,
-                    this.socket.getOutputStream());
-        } catch (SerializationException | IOException e) {
-            throw new BroadcastException(
-                    "Failed to send data to comms manager "
-                            + BMHServers.getBroadcastServer() + ".", e);
-        }
-    }
-
-    private Object readFromCommsManager() throws BroadcastException {
-        Object object = null;
-        try {
-            object = SerializationUtil.transformFromThrift(Object.class,
-                    this.socket.getInputStream());
-        } catch (SerializationException | IOException e) {
-            throw new BroadcastException(
-                    "Failed to receive data from comms manager "
-                            + BMHServers.getBroadcastServer() + ".", e);
-        }
-        return object;
     }
 
     public void halt() {

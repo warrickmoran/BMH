@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.bmh.broadcast;
 
+import java.util.Set;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -33,6 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 7, 2014  3630       bkowal      Initial creation
+ * Nov 15, 2014 3630       bkowal      Added allowedDataPorts
  * 
  * </pre>
  * 
@@ -47,7 +50,7 @@ public class TransmitterAlignmentTestCommand extends
     private String dacHostname;
 
     @DynamicSerializeElement
-    private Integer dacDataPort;
+    private Set<Integer> allowedDataPorts;
 
     @DynamicSerializeElement
     private int[] radios;
@@ -83,18 +86,18 @@ public class TransmitterAlignmentTestCommand extends
     }
 
     /**
-     * @return the dacDataPort
+     * @return the allowedDataPorts
      */
-    public int getDacDataPort() {
-        return dacDataPort;
+    public Set<Integer> getAllowedDataPorts() {
+        return allowedDataPorts;
     }
 
     /**
-     * @param dacDataPort
-     *            the dacDataPort to set
+     * @param allowedDataPorts
+     *            the allowedDataPorts to set
      */
-    public void setDacDataPort(int dacDataPort) {
-        this.dacDataPort = dacDataPort;
+    public void setAllowedDataPorts(Set<Integer> allowedDataPorts) {
+        this.allowedDataPorts = allowedDataPorts;
     }
 
     /**
@@ -163,19 +166,27 @@ public class TransmitterAlignmentTestCommand extends
                 "TransmitterAlignmentTestCommand [");
         stringBuilder.append("dacHostname=");
         stringBuilder.append(this.dacHostname);
-        if (this.dacDataPort != null) {
-            stringBuilder.append(", dacDataPort=");
-            stringBuilder.append(this.dacDataPort);
+        stringBuilder.append(", allowedDataPorts={");
+        boolean firstPort = true;
+        for (Integer dataPort : this.allowedDataPorts) {
+            if (firstPort == false) {
+                stringBuilder.append(", ");
+            } else {
+                firstPort = false;
+            }
+            stringBuilder.append(dataPort);
         }
+        stringBuilder.append("}");
         stringBuilder.append(", radios=");
         StringBuilder radiosSB = new StringBuilder("{");
-        int radiosAdded = 0;
+        boolean firstRadio = true;
         for (int radio : this.radios) {
-            if (radiosAdded > 0) {
+            if (firstRadio == false) {
                 radiosSB.append(", ");
+            } else {
+                firstRadio = false;
             }
             radiosSB.append(radio);
-            ++radiosAdded;
         }
         radiosSB.append("}");
         stringBuilder.append(radiosSB.toString());

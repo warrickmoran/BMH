@@ -28,12 +28,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.AbstractServerThread;
+import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitCommunicator;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.broadcast.IOnDemandBroadcastMsg;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
+import com.raytheon.uf.common.bmh.broadcast.TransmitterAlignmentTestCommand;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 
@@ -52,6 +55,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Oct 21, 2014 3655       bkowal      Use the new message types. Improved
  *                                     error handling.
  * Oct 22, 2014 3687       bsteffen    Fix NPE in edge case.
+ * Nov 15, 2014 3630       bkowal      Support alignment tests.
  * 
  * </pre>
  * 
@@ -66,14 +70,15 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 
 public class BroadcastStreamServer extends AbstractServerThread {
 
-    private static final Logger logger = LoggerFactory
-            .getLogger(BroadcastStreamServer.class);
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final ClusterServer clusterServer;
 
     private final DacTransmitServer transmitServer;
 
-    private ConcurrentMap<String, BroadcastStreamTask> broadcastStreamingTasksMap;
+    private final CommsManager commsManager;
+
+    private ConcurrentMap<String, AbstractBroadcastingTask> broadcastStreamingTasksMap;
 
     /*
      * TODO: will need to update the implementation if the message directory is
@@ -87,11 +92,12 @@ public class BroadcastStreamServer extends AbstractServerThread {
      * @throws IOException
      */
     public BroadcastStreamServer(ClusterServer clusterServer,
-            final DacTransmitServer transmitServer, CommsConfig config)
-            throws IOException {
+            final DacTransmitServer transmitServer, CommsConfig config,
+            final CommsManager commsManager) throws IOException {
         super(config.getBroadcastLivePort());
         this.clusterServer = clusterServer;
         this.transmitServer = transmitServer;
+        this.commsManager = commsManager;
         this.broadcastStreamingTasksMap = new ConcurrentHashMap<>();
         this.availableDacConnectionsMap = new ConcurrentHashMap<>();
     }
@@ -105,9 +111,8 @@ public class BroadcastStreamServer extends AbstractServerThread {
      */
     @Override
     protected void handleConnection(Socket socket) throws Exception {
-        LiveBroadcastStartCommand command = SerializationUtil
-                .transformFromThrift(LiveBroadcastStartCommand.class,
-                        socket.getInputStream());
+        IOnDemandBroadcastMsg command = SerializationUtil.transformFromThrift(
+                IOnDemandBroadcastMsg.class, socket.getInputStream());
 
         logger.info("Handling {} request.", command.getClass().getName());
 
@@ -115,14 +120,47 @@ public class BroadcastStreamServer extends AbstractServerThread {
          * TODO: verify that there are not already active broadcast tasks for
          * any of the specified transmitters.
          */
+        AbstractBroadcastingTask task = null;
+        if (command instanceof LiveBroadcastStartCommand) {
+            task = this.handleLiveBroadcastCommand(
+                    (LiveBroadcastStartCommand) command, socket);
+        } else if (command instanceof TransmitterAlignmentTestCommand) {
+            task = this.handleTransmitterAlignmentCommand(
+                    (TransmitterAlignmentTestCommand) command, socket);
+        } else {
+            logger.error(
+                    "On Demand Broadcast Command {} is not currently supported!",
+                    command.getClass().getName());
+            return;
+        }
 
-        this.startBroadcastTask(socket, command);
+        task.start();
+        logger.info("Started {} task {}.", task.getDescription(),
+                task.getName());
+        this.broadcastStreamingTasksMap.put(task.getName(), task);
+    }
+
+    /*
+     * Presently there are only two possible options both of which are related
+     * to special cases. So, at this point, we see no need to abstract and
+     * generalize how the tasks are created.
+     */
+    private AbstractBroadcastingTask handleLiveBroadcastCommand(
+            final LiveBroadcastStartCommand command, final Socket socket) {
+        return new BroadcastStreamTask(socket, command, this,
+                this.clusterServer, this.transmitServer);
+    }
+
+    private AbstractBroadcastingTask handleTransmitterAlignmentCommand(
+            final TransmitterAlignmentTestCommand command, final Socket socket) {
+        return new AlignmentTestTask(socket, command,
+                this.commsManager.getCurrentConfigState(), this);
     }
 
     @Override
     public void shutdown() {
         super.shutdown();
-        for (BroadcastStreamTask task : this.broadcastStreamingTasksMap
+        for (AbstractBroadcastingTask task : this.broadcastStreamingTasksMap
                 .values()) {
             task.shutdown();
             try {
@@ -169,30 +207,26 @@ public class BroadcastStreamServer extends AbstractServerThread {
         return this.availableDacConnectionsMap.get(group);
     }
 
-    private void startBroadcastTask(Socket socket,
-            LiveBroadcastStartCommand command) {
-        BroadcastStreamTask task = new BroadcastStreamTask(socket, command,
-                this, this.clusterServer, this.transmitServer);
-        task.start();
-
-        logger.info("Started broadcast streaming task {}.", task.getName());
-        this.broadcastStreamingTasksMap.put(task.getName(), task);
-    }
-
     public void broadcastTaskFinished(final String broadcastId) {
         this.broadcastStreamingTasksMap.remove(broadcastId);
     }
 
     public void handleDacBroadcastMsg(ILiveBroadcastMessage msg) {
-        BroadcastStreamTask task = this.broadcastStreamingTasksMap.get(msg
+        AbstractBroadcastingTask task = this.broadcastStreamingTasksMap.get(msg
                 .getBroadcastId());
         if (task == null) {
+            // unlikely scenario
             logger.warn(
                     "Ignoring dac live broadcast {} msg. Broadcast {} does not exist or is no longer active.",
                     msg.getClass().getName(), msg.getBroadcastId());
 
             return;
         }
-        task.handleDacBroadcastMsg(msg);
+        if (task instanceof BroadcastStreamTask == false) {
+            // unlikely scenario
+            logger.warn("Ignoring dac live broadcast {} msg. Broadcast {} is not a live streamed broadcast.");
+            return;
+        }
+        ((BroadcastStreamTask) task).handleDacBroadcastMsg(msg);
     }
 }
