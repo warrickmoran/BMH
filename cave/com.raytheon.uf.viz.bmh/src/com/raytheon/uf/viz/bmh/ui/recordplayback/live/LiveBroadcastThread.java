@@ -60,6 +60,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  * Nov 3, 2014  3655       bkowal      Cache live broadcast audio on the Viz side.
  * Nov 4, 2014  3655       bkowal      Eliminate audio echo. Decrease buffer delay.
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
+ * Nov 17, 2014 3820       bkowal      Recognize a separate error state due to broadcast
+ *                                     initialization failure.
  * 
  * </pre>
  * 
@@ -74,7 +76,7 @@ public class LiveBroadcastThread extends Thread implements
             .getHandler(LiveBroadcastThread.class);
 
     public static enum BROADCAST_STATE {
-        INITIALIZING, LIVE, STOPPED, ERROR
+        INITIALIZING, LIVE, STOPPED, ERROR, INIT_ERROR
     }
 
     private final ILiveBroadcastMessage command;
@@ -116,7 +118,8 @@ public class LiveBroadcastThread extends Thread implements
     @Override
     public void run() {
         while (this.state != BROADCAST_STATE.STOPPED
-                && this.state != BROADCAST_STATE.ERROR) {
+                && this.state != BROADCAST_STATE.ERROR
+                && this.state != BROADCAST_STATE.INIT_ERROR) {
             try {
                 this.notifyListener();
                 switch (this.state) {
@@ -165,6 +168,7 @@ public class LiveBroadcastThread extends Thread implements
                     break;
                 case STOPPED:
                 case ERROR:
+                case INIT_ERROR:
                     // Do Nothing.
                     break;
                 }
@@ -176,7 +180,8 @@ public class LiveBroadcastThread extends Thread implements
             }
         }
 
-        if (this.state == BROADCAST_STATE.ERROR) {
+        if (this.state == BROADCAST_STATE.ERROR
+                || this.state == BROADCAST_STATE.INIT_ERROR) {
             /*
              * stop the recording which will trigger the proper shutdown of
              * everything else.
@@ -201,7 +206,7 @@ public class LiveBroadcastThread extends Thread implements
                     "No address has been specified for comms manager "
                             + BMHServers.getBroadcastServerKey() + ".");
             statusHandler.error("Failed to start live broadcast!", e);
-            this.state = BROADCAST_STATE.ERROR;
+            this.state = BROADCAST_STATE.INIT_ERROR;
             return;
         }
 
@@ -214,7 +219,7 @@ public class LiveBroadcastThread extends Thread implements
                             + BMHServers.getBroadcastServerKey() + ": "
                             + commsLoc + ".", e);
             statusHandler.error("Failed to start live broadcast!", exc);
-            this.state = BROADCAST_STATE.ERROR;
+            this.state = BROADCAST_STATE.INIT_ERROR;
             return;
         }
 
@@ -227,7 +232,7 @@ public class LiveBroadcastThread extends Thread implements
                             + BMHServers.getBroadcastServerKey() + ": "
                             + commsLoc + ".", e);
             statusHandler.error("Failed to start live broadcast!", exc);
-            this.state = BROADCAST_STATE.ERROR;
+            this.state = BROADCAST_STATE.INIT_ERROR;
             return;
         }
 
@@ -235,7 +240,7 @@ public class LiveBroadcastThread extends Thread implements
             this.writeToCommsManager(this.command);
         } catch (BroadcastException e) {
             statusHandler.error("Failed to start live broadcast!", e);
-            this.state = BROADCAST_STATE.ERROR;
+            this.state = BROADCAST_STATE.INIT_ERROR;
             return;
         }
 
@@ -251,7 +256,7 @@ public class LiveBroadcastThread extends Thread implements
             if (this.state != BROADCAST_STATE.STOPPED
                     && this.state != BROADCAST_STATE.ERROR) {
                 statusHandler.error("Failed to start live broadcast!", e);
-                this.state = BROADCAST_STATE.ERROR;
+                this.state = BROADCAST_STATE.INIT_ERROR;
             }
             return;
         }
@@ -266,7 +271,7 @@ public class LiveBroadcastThread extends Thread implements
                         INITIAL_BUFFER_DELAY, BUFFER_DELAY,
                         TimeUnit.MILLISECONDS);
             } else if (status.getStatus() == false) {
-                this.state = BROADCAST_STATE.ERROR;
+                this.state = BROADCAST_STATE.INIT_ERROR;
                 this.notifyListener();
                 statusHandler.error("Failed to start live broadcast! REASON = "
                         + status.getMessage(), status.getException());
@@ -276,13 +281,14 @@ public class LiveBroadcastThread extends Thread implements
                     "Received unexpected message type during the initialization phase: "
                             + responseObject.getClass().getName() + ".");
             statusHandler.error("Failed to start live broadcast!", exc);
-            this.state = BROADCAST_STATE.ERROR;
+            this.state = BROADCAST_STATE.INIT_ERROR;
         }
     }
 
     private synchronized void writeToCommsManager(Object broadcastMsg)
             throws BroadcastException {
-        if (this.socket == null || this.socket.isClosed()) {
+        if (this.socket == null || this.socket.isClosed()
+                || this.state == BROADCAST_STATE.INIT_ERROR) {
             return;
         }
         try {
@@ -309,6 +315,14 @@ public class LiveBroadcastThread extends Thread implements
     }
 
     public void halt() {
+        if (this.state == BROADCAST_STATE.INIT_ERROR) {
+            /*
+             * nothing to shutdown because nothing was ever started due to the
+             * failed initialization.
+             */
+            return;
+        }
+
         if (this.timer != null) {
             this.timer.shutdown();
         }

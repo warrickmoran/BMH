@@ -72,6 +72,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 1, 2014   #3657     bkowal       Created okAction and cancelAction for subclasses.
  * Nov 5, 2014   #3780     bkowal       Prevent timer update when the dialog has been closed / is closing.
  * Nov 12, 2014  #3819     bkowal       Disable OK/Cancel during audio playback.
+ * Nov 17, 2014  #3820     bkowal       okToClose is now protected.
+ * 
  * 
  * 
  * </pre>
@@ -165,7 +167,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
 
     protected ByteBuffer recordedAudio;
 
-    private volatile boolean okToClose;
+    protected volatile boolean okToClose;
 
     /**
      * Constructor.
@@ -593,7 +595,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
                 recBtn.setEnabled(true);
                 playBtn.setEnabled(true);
                 stopBtn.setEnabled(false);
-                
+
                 okBtn.setEnabled(true);
                 cancelBtn.setEnabled(true);
                 okToClose = true;

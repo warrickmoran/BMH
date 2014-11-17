@@ -62,6 +62,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastThread.BROADC
  *                                     configuration.
  * Nov 1, 2014  3657       bkowal      Updated dialog flow to match legacy system.
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
+ * Nov 17, 2014 3820       bkowal      Execute a separate shutdown sequence when stopping
+ *                                     due to broadcast initialization failure.
  * 
  * </pre>
  * 
@@ -78,6 +80,8 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
     private LiveBroadcastThread broadcastThread;
 
     private final LiveBroadcastSettings settings;
+
+    private volatile boolean shutdownInitializationFailure;
 
     /**
      * @param parentShell
@@ -104,17 +108,24 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
 
     @Override
     protected void disposed() {
-        if (this.broadcastThread != null) {
-            this.broadcastThread.halt();
-            try {
-                this.broadcastThread.join();
-            } catch (InterruptedException e) {
-                // Do Nothing.
+        if (this.shutdownInitializationFailure == false) {
+            /**
+             * Do not join with the {@link LiveBroadcastThread} if the shutdown
+             * is due to an error because it is the one that is triggering the
+             * shutdown.
+             */
+            if (this.broadcastThread != null) {
+                this.broadcastThread.halt();
+                try {
+                    this.broadcastThread.join();
+                } catch (InterruptedException e) {
+                    // Do Nothing.
+                }
+                statusHandler
+                        .warn("You have just improperly terminated a live broadcast!");
             }
-            statusHandler
-                    .warn("You have just improperly terminated a live broadcast!");
+            this.broadcastThread = null;
         }
-        this.broadcastThread = null;
 
         super.disposed();
     }
@@ -135,6 +146,15 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
 
     @Override
     protected void stopAction() {
+        if (this.shutdownInitializationFailure) {
+            this.okToClose = true;
+            /**
+             * Do not join with the {@link LiveBroadcastThread} if the shutdown
+             * is due to an error because it is the one that is triggering the
+             * shutdown.
+             */
+            return;
+        }
         super.stopAction();
         if (this.broadcastThread == null) {
             return;
@@ -203,7 +223,13 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
                     startBroadcastLive();
                 }
             });
-        } else if (state == BROADCAST_STATE.ERROR) {
+        } else if (state == BROADCAST_STATE.ERROR
+                || state == BROADCAST_STATE.INIT_ERROR) {
+
+            if (state == BROADCAST_STATE.INIT_ERROR) {
+                this.shutdownInitializationFailure = true;
+            }
+
             /*
              * Eliminate any saved audio so that a failed message cannot be
              * scheduled.
