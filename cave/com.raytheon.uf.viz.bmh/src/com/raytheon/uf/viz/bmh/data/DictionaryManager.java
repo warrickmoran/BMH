@@ -51,6 +51,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  *                                     changed to use response objects.
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Aug 05, 2014 3175       rjpeter     Added replaceWord.
+ * Nov 13, 2014 3803       bkowal      Added default constructor.
  * </pre>
  * 
  * @author mpduff
@@ -68,6 +69,13 @@ public class DictionaryManager {
      * The voice object
      */
     private final NeoSpeechPhonemeMapping phonemeMapping;
+
+    /**
+     * Constructor
+     */
+    public DictionaryManager() {
+        this(new NeoSpeechPhonemeMapping());
+    }
 
     /**
      * Constructor.

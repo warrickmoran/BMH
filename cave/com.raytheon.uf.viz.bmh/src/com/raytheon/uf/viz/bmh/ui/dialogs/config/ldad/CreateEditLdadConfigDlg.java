@@ -20,7 +20,9 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
@@ -38,14 +40,24 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.DictionaryManager;
+import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
+import com.raytheon.uf.viz.bmh.voice.VoiceDataManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -60,6 +72,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jul 11, 2014    3381    mpduff      Initial creation
  * Nov 10, 2014    3381    bkowal      Dialog redesign.
+ * Nov 13, 2014    3803    bkowal      Implemented dialog.
  * 
  * </pre>
  * 
@@ -69,10 +82,21 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 public class CreateEditLdadConfigDlg extends CaveSWTDialog {
 
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(CreateEditLdadConfigDlg.class);
+
+    private static final String CREATE_TITLE = "Create New LDAD Configuration";
+
+    private static final String EDIT_TITLE = "Edit LDAD Configuration";
+
     /**
-     * Data manager
+     * Data managers
      */
     private final LdadConfigDataManager dataManager = new LdadConfigDataManager();
+
+    private final DictionaryManager dictionaryMgr = new DictionaryManager();
+
+    private final VoiceDataManager vdm = new VoiceDataManager();
 
     /**
      * Name text field
@@ -104,9 +128,13 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
      */
     private Combo encodingCbo;
 
+    private Button addMsgTypeButton;
+
     private Button removeMsgTypeButton;
 
     private MsgTypeTable selectedMsgTableComp;
+
+    private LdadConfig ldadConfig;
 
     /**
      * Construtor.
@@ -115,9 +143,22 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
      *            The parent
      */
     public CreateEditLdadConfigDlg(Shell parentShell) {
+        this(parentShell, null);
+    }
+
+    /**
+     * Construtor.
+     * 
+     * @param parentShell
+     *            The parent
+     * @param ldadConfig
+     *            An existing {@link LdadConfig}
+     */
+    public CreateEditLdadConfigDlg(Shell parentShell, LdadConfig ldadConfig) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
-        setText("Create New LDAD Configuration");
+        this.ldadConfig = ldadConfig;
+        setText(this.ldadConfig == null ? CREATE_TITLE : EDIT_TITLE);
     }
 
     /*
@@ -165,7 +206,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
 
         createBottomButtons();
 
-        populateDictCombo();
+        this.populateDialog();
     }
 
     /**
@@ -189,6 +230,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         nameTxt = new Text(configComp, SWT.BORDER);
         nameTxt.setLayoutData(gd);
+        nameTxt.setTextLimit(40);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label hostLbl = new Label(configComp, SWT.NONE);
@@ -198,6 +240,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         hostTxt = new Text(configComp, SWT.BORDER);
         hostTxt.setLayoutData(gd);
+        hostTxt.setTextLimit(60);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label directoryLbl = new Label(configComp, SWT.NONE);
@@ -207,6 +250,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         directoryTxt = new Text(configComp, SWT.BORDER);
         directoryTxt.setLayoutData(gd);
+        directoryTxt.setTextLimit(250);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label encodingLbl = new Label(configComp, SWT.NONE);
@@ -216,7 +260,6 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         encodingCbo = new Combo(configComp, SWT.SINGLE | SWT.READ_ONLY);
         encodingCbo.setLayoutData(gd);
-        encodingCbo.setItems(dataManager.getEncodingOptions());
         encodingCbo.select(0);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -227,25 +270,6 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         voiceCbo = new Combo(configComp, SWT.SINGLE | SWT.READ_ONLY);
         voiceCbo.setLayoutData(gd);
-        voiceCbo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                populateDictCombo();
-            }
-        });
-
-        List<TtsVoice> voices = this.dataManager.getTtsVoices();
-        if (voices != null) {
-            List<String> voiceList = new ArrayList<String>(voices.size());
-            for (TtsVoice voice : voices) {
-                voiceList.add(voice.getVoiceName());
-            }
-
-            Collections.sort(voiceList);
-
-            voiceCbo.setItems(voiceList.toArray(new String[voiceList.size()]));
-            voiceCbo.select(0);
-        }
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label dictLbl = new Label(configComp, SWT.NONE);
@@ -279,7 +303,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         selectedMsgTypeComposite.setLayoutData(gd);
 
         /* Add Button */
-        Button addMsgTypeButton = new Button(selectedMsgTypeComposite, SWT.PUSH);
+        addMsgTypeButton = new Button(selectedMsgTypeComposite, SWT.PUSH);
         addMsgTypeButton.setText("Add...");
         gd = new GridData();
         gd.widthHint = 80;
@@ -297,6 +321,12 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         gd = new GridData();
         gd.widthHint = 80;
         removeMsgTypeButton.setLayoutData(gd);
+        removeMsgTypeButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleMsgTypeRemoveAction();
+            }
+        });
         removeMsgTypeButton.setEnabled(false);
 
         /* Table */
@@ -308,6 +338,16 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         columnNames.add(tcd);
         TableData selectedMsgTypeTableData = new TableData(columnNames);
         selectedMsgTableComp.populateTable(selectedMsgTypeTableData);
+        selectedMsgTableComp.setCallbackAction(new ITableActionCB() {
+            @Override
+            public void tableSelectionChange(int selectionCount) {
+                if (selectionCount > 0) {
+                    removeMsgTypeButton.setEnabled(true);
+                } else {
+                    removeMsgTypeButton.setEnabled(false);
+                }
+            }
+        });
     }
 
     /**
@@ -327,7 +367,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         saveUpdateBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-
+                handleSaveAction();
             }
         });
 
@@ -344,17 +384,105 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
     }
 
     /**
+     * 
+     */
+    private void populateDialog() {
+        this.populateVoiceList();
+        this.populateEncodingCombo();
+        this.populateDictCombo();
+
+        if (this.ldadConfig == null) {
+            return;
+        }
+
+        this.nameTxt.setText(this.ldadConfig.getName());
+        this.hostTxt.setText(this.ldadConfig.getHost());
+        this.directoryTxt.setText(this.ldadConfig.getDirectory());
+        this.encodingCbo.setText(this.ldadConfig.getEncoding().getExtension());
+        this.voiceCbo.setText(this.ldadConfig.getVoice().getVoiceName());
+        if (this.ldadConfig.getDictionary() != null) {
+            this.dictCbo.setText(this.ldadConfig.getDictionary().getName());
+        }
+        this.addSelectedMsgType(this.ldadConfig.getMessageTypes());
+    }
+
+    private void populateVoiceList() {
+        List<TtsVoice> voices = null;
+
+        try {
+            voices = vdm.getAllVoices();
+        } catch (Exception e) {
+            statusHandler.error("Failed to retrieve the available voices.", e);
+        }
+
+        if (voices != null) {
+            List<String> voiceList = new ArrayList<String>(voices.size());
+            for (TtsVoice voice : voices) {
+                voiceList.add(voice.getVoiceName());
+                voiceCbo.setData(voice.getVoiceName(), voice);
+            }
+
+            Collections.sort(voiceList);
+
+            voiceCbo.setItems(voiceList.toArray(new String[voiceList.size()]));
+            voiceCbo.select(0);
+        }
+    }
+
+    /**
+     * Populate the encoding selection combo
+     */
+    private void populateEncodingCombo() {
+        for (BMHAudioFormat bmhAudioFormat : BMHAudioFormat.values()) {
+            this.encodingCbo.add(bmhAudioFormat.getExtension());
+        }
+    }
+
+    /**
      * Populate the dictionary selection combo
      */
     private void populateDictCombo() {
-        // TODO: implement
+        List<String> dictionaryNames = null;
+        try {
+            dictionaryNames = dictionaryMgr.getAllBMHDictionaryNames();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to retrieve the available dictionaries.", e);
+            return;
+        }
+
+        if (dictionaryNames == null || dictionaryNames.isEmpty()) {
+            // no dictionaries.
+            return;
+        }
+
+        Collections.sort(dictionaryNames);
+        // TODO: need to update if we switch to a numeric dictionary id.
+        for (String dictionaryName : dictionaryNames) {
+            this.dictCbo.add(dictionaryName);
+        }
     }
 
     private void handleMsgTypeAddAction() {
+        this.addMsgTypeButton.setEnabled(false);
         SelectMessageTypeDlg dlg = new SelectMessageTypeDlg(this.shell, true);
+        if (this.selectedMsgTableComp.getTableData().getTableRows().isEmpty() == false) {
+            /*
+             * Construct the msg type filter.
+             */
+            List<String> msgTypeIds = new ArrayList<>(this.selectedMsgTableComp
+                    .getTableData().getTableRows().size());
+            for (TableRowData trd : this.selectedMsgTableComp.getTableData()
+                    .getTableRows()) {
+                msgTypeIds
+                        .add(((MessageTypeSummary) trd.getData()).getAfosid());
+            }
+            dlg.setFilteredMessageTypes(msgTypeIds);
+        }
         dlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
+                addMsgTypeButton.setEnabled(true);
                 if (returnValue == null) {
                     return;
                 }
@@ -369,17 +497,97 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         dlg.open();
     }
 
-    private void addSelectedMsgType(List<?> messageTypes) {
-        TableData tableData = this.selectedMsgTableComp.getTableData();
-        for (Object object : messageTypes) {
-            if (object instanceof MessageType == false) {
+    private void handleMsgTypeRemoveAction() {
+        this.removeMsgTypeButton.setEnabled(false);
+
+        /*
+         * Iterate through the selections and remove the matching message type
+         * summaries from the table data.
+         */
+        for (TableRowData trd : this.selectedMsgTableComp.getSelection()) {
+            this.selectedMsgTableComp.getTableData().deleteRow(trd);
+        }
+        this.selectedMsgTableComp.populateTable(this.selectedMsgTableComp
+                .getTableData());
+    }
+
+    private void handleSaveAction() {
+        if (this.valid() == false) {
+            return;
+        }
+
+        if (this.ldadConfig == null) {
+            this.ldadConfig = new LdadConfig();
+        } else {
+            /*
+             * reset the selected message types. hibernate currently handles
+             * deleting associations with message types that are no longer in
+             * the list.
+             */
+            this.ldadConfig.getMessageTypes().clear();
+        }
+        this.ldadConfig.setName(this.nameTxt.getText());
+        this.ldadConfig.setHost(this.hostTxt.getText());
+        this.ldadConfig.setDirectory(this.directoryTxt.getText());
+        /* add message types. */
+        for (TableRowData trd : this.selectedMsgTableComp.getTableData()
+                .getTableRows()) {
+            if (trd.getData() instanceof MessageTypeSummary == false) {
                 continue;
             }
-            MessageType messageType = (MessageType) object;
+            this.ldadConfig.addMessageType((MessageTypeSummary) trd.getData());
+        }
+        if (this.dictCbo.getSelectionIndex() != -1) {
+            Dictionary dictionary = null;
+            try {
+                dictionary = this.dictionaryMgr.getDictionary(this.dictCbo
+                        .getText());
+            } catch (Exception e) {
+                statusHandler.error("Failed to retrieve the dictionary named: "
+                        + this.dictCbo.getText(), e);
+                return;
+            }
+
+            if (dictionary == null) {
+                statusHandler.error("Failed to find the dictionary named: "
+                        + this.dictCbo.getText());
+                return;
+            }
+            this.ldadConfig.setDictionary(dictionary);
+        }
+        /* tts voice */
+        this.ldadConfig.setVoice((TtsVoice) this.voiceCbo.getData(this.voiceCbo
+                .getText()));
+        this.ldadConfig.setEncoding(BMHAudioFormat
+                .lookupByExtension(this.encodingCbo.getText()));
+
+        LdadConfig savedLdadConfig = null;
+        try {
+            savedLdadConfig = this.dataManager.saveLdadConfig(this.ldadConfig);
+        } catch (Exception e) {
+            statusHandler.error("Failed to save the ldad configuration!", e);
+            return;
+        }
+
+        this.setReturnValue(savedLdadConfig);
+        this.close();
+    }
+
+    private void addSelectedMsgType(Collection<?> messageTypes) {
+        TableData tableData = this.selectedMsgTableComp.getTableData();
+        for (Object object : messageTypes) {
+            MessageTypeSummary messageTypeSummary = null;
+            if (object instanceof MessageType) {
+                messageTypeSummary = ((MessageType) object).getSummary();
+            } else if (object instanceof MessageTypeSummary) {
+                messageTypeSummary = (MessageTypeSummary) object;
+            }
             TableRowData trd = new TableRowData();
-            trd.addTableCellData(new TableCellData(messageType.getAfosid()));
-            trd.addTableCellData(new TableCellData(messageType.getTitle()));
-            trd.setData(messageType);
+            trd.addTableCellData(new TableCellData(messageTypeSummary
+                    .getAfosid()));
+            trd.addTableCellData(new TableCellData(messageTypeSummary
+                    .getTitle()));
+            trd.setData(messageTypeSummary);
             tableData.addDataRow(trd);
         }
 
@@ -392,19 +600,51 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
      * @return true if valid
      */
     private boolean valid() {
-        // TODO: validate that message type(s) have been associated with the
-        // ldad config.
         boolean valid = true;
+
+        /**
+         * Using {@link LinkedList} to maintain the order of the validation
+         * errors.
+         */
+        List<String> validationActionItems = new LinkedList<>();
+
         Color red = getShell().getDisplay().getSystemColor(SWT.COLOR_RED);
         if (nameTxt.getText().trim().length() <= 0) {
             nameTxt.setBackground(red);
+            validationActionItems
+                    .add("Name is a required field. Please enter a name.");
             valid = false;
+        } else {
+            nameTxt.setBackground(null);
+        }
+
+        // verify that the name does not conflict with an existing ldad config
+        LdadConfig existingConfig = null;
+        try {
+            existingConfig = this.dataManager.getLdadConfigByName(this.nameTxt
+                    .getText());
+        } catch (Exception e) {
+            statusHandler
+                    .error("Failed to verify the uniqueness of the ldad configuration.");
+            return false;
+        }
+        if (existingConfig != null
+                && (this.ldadConfig == null || existingConfig.getId() != this.ldadConfig
+                        .getId())) {
+            nameTxt.setBackground(red);
+            valid = false;
+            validationActionItems
+                    .add("Ldad Configuration with the name "
+                            + existingConfig.getName()
+                            + " already exists. Each ldad configuration must have a unique name.");
         } else {
             nameTxt.setBackground(null);
         }
 
         if (hostTxt.getText().trim().length() <= 0) {
             hostTxt.setBackground(red);
+            validationActionItems
+                    .add("Host is a required field. Please enter a host.");
             valid = false;
         } else {
             hostTxt.setBackground(null);
@@ -412,15 +652,53 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
 
         if (directoryTxt.getText().trim().length() <= 0) {
             directoryTxt.setBackground(red);
+            validationActionItems
+                    .add("Directory is a required field. Please enter a directory.");
             valid = false;
         } else {
             directoryTxt.setBackground(null);
+        }
+
+        if (this.encodingCbo.getSelectionIndex() == -1) {
+            this.encodingCbo.setBackground(red);
+            validationActionItems
+                    .add("Encoding is a required field. Please select an encoding.");
+            valid = false;
+        } else {
+            this.encodingCbo.setBackground(null);
+        }
+
+        if (this.voiceCbo.getSelectionIndex() == -1) {
+            this.voiceCbo.setBackground(red);
+            validationActionItems
+                    .add("Voice is a required field. Please select a voice.");
+            valid = false;
+        } else {
+            this.voiceCbo.setBackground(null);
+        }
+
+        if (this.selectedMsgTableComp.getTableData().getTableRows().isEmpty()) {
+            validationActionItems
+                    .add("A Message Type is required. Please add a Message Type.");
+            valid = false;
         }
 
         if (valid) {
             nameTxt.setBackground(null);
             hostTxt.setBackground(null);
             directoryTxt.setBackground(null);
+            this.encodingCbo.setBackground(null);
+            this.voiceCbo.setBackground(null);
+        } else {
+            StringBuilder validationDtlsMsg = new StringBuilder(
+                    "Validation of the Ldad Config has failed. Please address the following issues:\n");
+            for (String vai : validationActionItems) {
+                validationDtlsMsg.append("\n- ");
+                validationDtlsMsg.append(vai);
+            }
+            DialogUtility.showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
+                    "Ldad Configuration - Validation Failed",
+                    validationDtlsMsg.toString());
         }
         return valid;
     }

@@ -115,6 +115,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 21, 2014  #3687     bsteffen    Automatically notify edex when starting/stopping in practice mode.
  * Nov 07, 2014  #3413     rferrel     Added authorization check on dialogs.
  * Nov 10, 2014  #3381     bkowal      Updated to use the new LdadConfigDlg.
+ * Nov 13, 2014  #3803     bkowal      Eliminated NPE on operational db copy.
  * 
  * </pre>
  * 
@@ -1027,7 +1028,6 @@ public class BMHLauncherDlg extends CaveSWTDialog {
          */
         ProgressMonitorDialog dialog = new ProgressMonitorDialog(
                 this.getShell());
-        dialog.getShell().setText(DlgInfo.COPY_OPERATIONAL_DB.getTitle());
 
         try {
             dialog.run(true, false, new IRunnableWithProgress() {

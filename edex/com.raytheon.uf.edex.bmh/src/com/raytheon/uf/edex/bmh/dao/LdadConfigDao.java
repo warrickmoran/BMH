@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 
 /**
@@ -35,6 +36,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3803       bkowal      Initial creation
+ * Nov 13, 2014 3803       bkowal      Added getLdadConfigByName. Fixed
+ *                                     selectConfigReferences.
  * 
  * </pre>
  * 
@@ -52,19 +55,66 @@ public class LdadConfigDao extends AbstractBMHDao<LdadConfig, Long> {
     }
 
     public List<LdadConfig> selectConfigReferences() {
-        List<?> objects = super
+        List<?> ldadConfigs = super
                 .findByNamedQuery(LdadConfig.SELECT_LDAD_CONFIG_REFERENCES);
-        if (objects == null || objects.isEmpty()) {
+        if (ldadConfigs == null || ldadConfigs.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<LdadConfig> ldadConfigurations = new ArrayList<>(objects.size());
-        for (Object object : objects) {
-            if (object instanceof LdadConfig) {
-                ldadConfigurations.add((LdadConfig) object);
+        List<LdadConfig> ldadConfigurations = new ArrayList<>(
+                ldadConfigs.size());
+        for (Object object : ldadConfigs) {
+            if (object instanceof Object[] == false) {
+                logger.error(
+                        "The {} query returned results in the wrong format. Expected an array of Object.",
+                        LdadConfig.SELECT_LDAD_CONFIG_REFERENCES);
+                continue;
             }
+
+            Object[] objects = (Object[]) object;
+            if (objects.length != 5) {
+                logger.error(
+                        "The {} query returned results in the wrong format. Expected an array of Object with 5 elements.",
+                        LdadConfig.SELECT_LDAD_CONFIG_REFERENCES);
+                continue;
+            }
+
+            if (objects[0] instanceof Long == false
+                    || objects[1] instanceof String == false
+                    || objects[2] instanceof String == false
+                    || objects[3] instanceof String == false
+                    || objects[4] instanceof BMHAudioFormat == false) {
+                logger.error(
+                        "The {} query returned results in the wrong format. Expected the object array to have objects of type: [Long, String, String, String, BMHAudioFormat].",
+                        LdadConfig.SELECT_LDAD_CONFIG_REFERENCES);
+                continue;
+            }
+
+            LdadConfig ldadConfig = new LdadConfig();
+            ldadConfig.setId((Long) objects[0]);
+            ldadConfig.setName((String) objects[1]);
+            ldadConfig.setHost((String) objects[2]);
+            ldadConfig.setDirectory((String) objects[3]);
+            ldadConfig.setEncoding((BMHAudioFormat) objects[4]);
+
+            ldadConfigurations.add(ldadConfig);
         }
 
         return ldadConfigurations;
+    }
+
+    public LdadConfig getLdadConfigByName(final String name) {
+        List<?> ldadConfigs = super.findByNamedQueryAndNamedParam(
+                LdadConfig.SELECT_LDAD_CONFIG_BY_NAME, new String[] { "name" },
+                new String[] { name });
+        if (ldadConfigs == null || ldadConfigs.isEmpty()) {
+            return null;
+        }
+
+        if (ldadConfigs.get(0) instanceof LdadConfig) {
+            return (LdadConfig) ldadConfigs.get(0);
+        }
+
+        return null;
     }
 }

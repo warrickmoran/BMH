@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.Column;
@@ -61,6 +62,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
  * Nov 11, 2014 3803       bkowal      Added fields and methods.
+ * Nov 13, 2014 3803       bkowal      Added selectLdadConfigByName
  * 
  * </pre>
  * 
@@ -69,7 +71,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Entity
 @DynamicSerialize
-@NamedQueries({ @NamedQuery(name = LdadConfig.SELECT_LDAD_CONFIG_REFERENCES, query = LdadConfig.SELECT_LDAD_CONFIG_REFERENCES_QUERY) })
+@NamedQueries({
+        @NamedQuery(name = LdadConfig.SELECT_LDAD_CONFIG_REFERENCES, query = LdadConfig.SELECT_LDAD_CONFIG_REFERENCES_QUERY),
+        @NamedQuery(name = LdadConfig.SELECT_LDAD_CONFIG_BY_NAME, query = LdadConfig.SELECT_LDAD_CONFIG_BY_NAME_QUERY) })
 @Table(name = "ldad_config", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }) })
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = LdadConfig.GEN, sequenceName = "ldad_config_gen")
 @BatchSize(size = 100)
@@ -79,6 +83,10 @@ public class LdadConfig {
     public static final String SELECT_LDAD_CONFIG_REFERENCES = "selectedLdadConfigReferences";
 
     protected static final String SELECT_LDAD_CONFIG_REFERENCES_QUERY = "SELECT l.id, l.name, l.host, l.directory, l.encoding FROM LdadConfig l";
+
+    public static final String SELECT_LDAD_CONFIG_BY_NAME = "selectLdadConfigByName";
+
+    protected static final String SELECT_LDAD_CONFIG_BY_NAME_QUERY = "FROM LdadConfig l WHERE l.name = :name";
 
     // use surrogate key
     @Id
@@ -191,6 +199,13 @@ public class LdadConfig {
      */
     public void setMessageTypes(Set<MessageTypeSummary> messageTypes) {
         this.messageTypes = messageTypes;
+    }
+
+    public void addMessageType(MessageTypeSummary messageType) {
+        if (this.messageTypes == null) {
+            this.messageTypes = new HashSet<>();
+        }
+        this.messageTypes.add(messageType);
     }
 
     /**
