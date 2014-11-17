@@ -87,6 +87,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Oct 2, 2014   #3642     bkowal       Updated to use the audio buffer abstraction
  * Oct 30, 2014  #3617     dgilling     Take tone blackout period into account
  *                                      when calculating playback time.
+ * Nov 17, 2014  #3630     bkowal       Added doesMessageFileExist.
  * 
  * </pre>
  * 
@@ -306,6 +307,23 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             this.eventBus.post(event);
             return null;
         }
+    }
+
+    /**
+     * Determines whether a message file associated with the specified
+     * {@link DacPlaylistMessageId} actually exists. Currently used at startup
+     * to ensure that a playlist does not contain references to a message that
+     * no longer exists (most likely due to expiration). Possibly handles a rare
+     * scenario.
+     * 
+     * @param id
+     *            the specified {@link DacPlaylistMessageId}
+     * @return true if the file does exist; false, otherwise
+     */
+    public boolean doesMessageFileExist(DacPlaylistMessageId id) {
+        Path messagePath = messageDirectory.resolve(id.getBroadcastId()
+                + ".xml");
+        return Files.exists(messagePath);
     }
 
     /**

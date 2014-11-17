@@ -111,6 +111,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
  *                                      audio buffer abstraction.
  * Oct 21, 2014  #3655     bkowal       Support delaying interrupts.
  * Oct 30, 2014  #3617     dgilling     Support tone blackout period.
+ * Nov 17, 2014  #3630     bkowal       Ensure that all messages in the playlist exist
+ *                                      before caching. Handles a condition that is only
+ *                                      encountered on startup.
  * 
  * </pre>
  * 
@@ -281,6 +284,25 @@ public final class PlaylistScheduler implements
                 inputDirectory.resolve("messages"), this, this.eventBus,
                 dbTarget, timezone);
         for (DacPlaylist playlist : this.activePlaylists) {
+            /*
+             * Verify that all messages in the playlist exist before caching
+             * them.
+             */
+            Iterator<DacPlaylistMessageId> messageIterator = playlist
+                    .getMessages().iterator();
+            while (messageIterator.hasNext()) {
+                DacPlaylistMessageId id = messageIterator.next();
+                if (this.cache.doesMessageFileExist(id) == false) {
+                    logger.error(id.toString() + " referenced by playlist "
+                            + playlist.toString()
+                            + " no longer exists. Ignoring message ...");
+                    messageIterator.remove();
+                }
+            }
+
+            /*
+             * Cache the playlist messages.
+             */
             this.cache.retrieveAudio(playlist.getMessages());
         }
 
