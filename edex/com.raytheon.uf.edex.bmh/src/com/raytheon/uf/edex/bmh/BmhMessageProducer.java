@@ -36,6 +36,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Date         Ticket#  Engineer    Description
  * ------------ -------- ----------- --------------------------
  * Oct 8, 2014  3687     bsteffen    Initial creation
+ * Nov 18, 2014 3807     bkowal      Use BMHJmsDestinations.
  * 
  * </pre>
  * 
@@ -44,18 +45,13 @@ import com.raytheon.uf.edex.core.EdexException;
  */
 public class BmhMessageProducer {
 
-    private static final String OPERATIONAL_CONFIG_URI = "jms-generic:topic:BMH.Config";
-
-    private static final String PRACTICE_CONFIG_URI = "jms-generic:topic:BMH.Practice.Config";
-
     public static void sendConfigMessage(ConfigNotification notification,
-            boolean operational)
-            throws EdexException, SerializationException {
+            boolean operational) throws EdexException, SerializationException {
         if (notification == null) {
             return;
         }
-        String uri = operational ? OPERATIONAL_CONFIG_URI : PRACTICE_CONFIG_URI;
-        EDEXUtil.getMessageProducer().sendAsyncUri(uri,
+        EDEXUtil.getMessageProducer().sendAsyncUri(
+                BMHJmsDestinations.getBMHConfigDestination(operational),
                 SerializationUtil.transformToThrift(notification));
     }
 }
