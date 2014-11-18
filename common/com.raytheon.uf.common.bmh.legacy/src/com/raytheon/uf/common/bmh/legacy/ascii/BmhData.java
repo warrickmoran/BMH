@@ -19,13 +19,15 @@
  **/
 package com.raytheon.uf.common.bmh.legacy.ascii;
 
-import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
@@ -45,7 +47,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3175       rjpeter     Initial creation
  * Aug 19, 2014 3411       mpduff      Handle {@link MessageTypeReplacement}
- * 
+ * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * </pre>
  * 
  * @author rjpeter
@@ -68,7 +70,7 @@ public class BmhData {
 
     private Map<String, Program> programs;
 
-    private List<MessageTypeReplacement> replaceList;
+    private Map<MessageType, Set<MessageTypeSummary>> replaceMap;
 
     public Map<String, Dictionary> getDictionaries() {
         return dictionaries;
@@ -136,18 +138,19 @@ public class BmhData {
     }
 
     /**
-     * @return the replaceList
+     * @return the replaceMap
      */
-    public List<MessageTypeReplacement> getReplaceList() {
-        return replaceList;
+    public Map<MessageType, Set<MessageTypeSummary>> getReplaceMap() {
+        return replaceMap;
     }
 
     /**
-     * @param replaceList
-     *            the replaceList to set
+     * @param replaceMap
+     *            the replaceMap to set
      */
-    public void setReplaceList(List<MessageTypeReplacement> replaceList) {
-        this.replaceList = replaceList;
+    public void setReplaceMap(
+            Map<MessageType, Set<MessageTypeSummary>> replaceMap) {
+        this.replaceMap = replaceMap;
     }
 
     /**
@@ -155,12 +158,17 @@ public class BmhData {
      * 
      * @param replacement
      */
-    public void addReplacementMsg(MessageTypeReplacement replacement) {
-        if (replaceList == null) {
-            replaceList = new ArrayList<>();
+    public void addReplacementMsg(MessageType msg, MessageTypeSummary replaced) {
+        if (replaceMap == null) {
+            replaceMap = new HashMap<>();
         }
 
-        replaceList.add(replacement);
+        Set<MessageTypeSummary> replaceSet = replaceMap.get(msg);
+        if (replaceSet == null) {
+            replaceSet = new HashSet<>();
+            replaceMap.put(msg, replaceSet);
+        }
+        replaceSet.add(replaced);
     }
 
 }

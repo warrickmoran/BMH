@@ -39,7 +39,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
@@ -69,6 +69,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * </pre>
  * 
  * @author lvenable
@@ -381,14 +382,12 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
                 + selectedMessageType.getAfosid() + msgReplaceGrpTextSuffix);
 
         selectedMessageTableData.deleteAllRows();
-        for (MessageTypeReplacement replace : selectedMessageType
+        for (MessageTypeSummary replace : selectedMessageType
                 .getReplacementMsgs()) {
             TableRowData row = new TableRowData();
-            row.addTableCellData(new TableCellData(replace.getReplaceMsgType()
-                    .getAfosid()));
-            row.addTableCellData(new TableCellData(replace.getReplaceMsgType()
-                    .getTitle()));
-            row.setData(replace.getReplaceMsgType());
+            row.addTableCellData(new TableCellData(replace.getAfosid()));
+            row.addTableCellData(new TableCellData(replace.getTitle()));
+            row.setData(replace);
             selectedMessageTableData.addDataRow(row);
         }
 
@@ -427,7 +426,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         List<TableRowData> selectedList = msgAvailTableComp.getSelection();
         for (TableRowData trd : selectedList) {
             if (!selectedMessageTableData.getTableRows().contains(trd)) {
-                if (!((MessageType) trd.getData()).getAfosid().equals(
+                if (!((MessageTypeSummary) trd.getData()).getAfosid().equals(
                         selectedMessageType.getAfosid())) {
                     selectedMessageTableData.addDataRow(trd);
                 }
@@ -456,7 +455,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
             TableRowData trd = new TableRowData();
             trd.addTableCellData(new TableCellData(mt.getAfosid()));
             trd.addTableCellData(new TableCellData(mt.getTitle()));
-            trd.setData(mt);
+            trd.setData(mt.getSummary());
             availableMessageTableData.addDataRow(trd);
         }
 
@@ -484,13 +483,9 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
      */
     private boolean save() {
         List<TableRowData> rows = selectedMessageTableData.getTableRows();
-        Set<MessageTypeReplacement> set = new HashSet<>();
+        Set<MessageTypeSummary> set = new HashSet<>();
         for (TableRowData trd : rows) {
-            MessageTypeReplacement replacement = new MessageTypeReplacement();
-            replacement.setMsgType(selectedMessageType.getSummary());
-            replacement.setReplaceMsgType(((MessageType) trd.getData())
-                    .getSummary());
-            set.add(replacement);
+            set.add(((MessageTypeSummary) trd.getData()));
         }
 
         selectedMessageType.setReplacementMsgs(set);

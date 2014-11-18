@@ -39,6 +39,8 @@ import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
@@ -50,7 +52,6 @@ import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
-import com.raytheon.uf.edex.bmh.dao.MessageTypeReplacementDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.SuiteDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
@@ -79,6 +80,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  *                                     config change notifications.
  * Oct 13, 2014 3687       bsteffen    Send ResetNotification instead of individual notifications.
  * Nov 02, 2014 2746       rjpeter     Updated DAC population and transmitter assignment.
+ * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * </pre>
  * 
  * @author rjpeter
@@ -233,13 +235,16 @@ public class DatabaseImport {
                                         + data.getMsgTypes().values().size()
                                         + " message types");
                                 msgTypeDao.loadAll();
-                                MessageTypeReplacementDao msgTypeReplacementDao = new MessageTypeReplacementDao();
-                                msgTypeReplacementDao.persistAll(data
-                                        .getReplaceList());
+                                for (Map.Entry<MessageType, Set<MessageTypeSummary>> entry : data
+                                        .getReplaceMap().entrySet()) {
+                                    MessageType mt = entry.getKey();
+                                    mt.setReplacementMsgs(entry.getValue());
+                                }
+                                msgTypeDao.persistAll(data.getReplaceMap()
+                                        .keySet());
                                 statusHandler.info("Saved "
-                                        + data.getReplaceList().size()
+                                        + data.getReplaceMap().size()
                                         + " replacement message types");
-                                msgTypeReplacementDao.loadAll();
                                 SuiteDao suiteDao = new SuiteDao();
                                 suiteDao.persistAll(data.getSuites().values());
                                 statusHandler.info("Saved "

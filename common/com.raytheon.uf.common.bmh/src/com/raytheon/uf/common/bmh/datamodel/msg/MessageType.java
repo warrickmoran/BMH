@@ -22,7 +22,6 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
@@ -35,10 +34,8 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
-import javax.persistence.MapKey;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
-import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
@@ -81,7 +78,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * Oct 23, 2014  #3728     lvenable    Added query for getting AFOS IDs by designation.
  * Nov 13, 2014  3717      bsteffen    Add staticDesignation field to Designation
- * 
+ * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * </pre>
  * 
  * @author rjpeter
@@ -145,7 +142,7 @@ public class MessageType {
 
     public static final String GET_REPLACEMENT_AFOSIDS = "getReplacementAfosids";
 
-    protected static final String GET_REPLACEMENT_AFOSIDS_QUERY = "SELECT mr.replaceMsgType FROM MessageType mt inner join mt.replacementMsgs mr WHERE mt.afosid = :afosid";
+    protected static final String GET_REPLACEMENT_AFOSIDS_QUERY = "SELECT mt.replacementMsgs FROM MessageType mt WHERE mt.afosid = :afosid";
 
     // use surrogate key
     @Id
@@ -215,33 +212,36 @@ public class MessageType {
     private String toneBlackOutEnd;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @MapKey(name = "mnemonic")
-    @JoinTable(name = "message_same_tx", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
+    @JoinTable(name = "message_same_tx", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
+    @ForeignKey(name = "msg_same_tx_to_msg_type", inverseName = "msg_same_tx_to_tx")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Transmitter> sameTransmitters;
 
-    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @ManyToMany(fetch = FetchType.EAGER)
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
-    @ForeignKey(name = "message_type_to_replace_delete_me")
-    @JoinColumn(name = "msgtype_id")
-    private Set<MessageTypeReplacement> replacementMsgs;
+    @JoinTable(name = "message_replace", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "msgtype_replace_id"))
+    @ForeignKey(name = "msg_replace_to_msg_type", inverseName = "msg_replace_to_replaced_msgs")
+    private Set<MessageTypeSummary> replacementMsgs;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "message_default_areas", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "areacode"))
+    @JoinTable(name = "message_default_areas", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "area_id"))
+    @ForeignKey(name = "msg_def_areas_to_msg_type", inverseName = "msg_def_areas_to_area")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Area> defaultAreas;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "message_default_zones", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "zonecode"))
+    @JoinTable(name = "message_default_zones", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "zone_id"))
+    @ForeignKey(name = "msg_def_zones_to_msg_type", inverseName = "msg_def_zones_to_zone")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Zone> defaultZones;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "message_default_transmitters", schema = "bmh", joinColumns = @JoinColumn(name = "afosid"), inverseJoinColumns = @JoinColumn(name = "mnemonic"))
+    @JoinTable(name = "message_default_transmitter_groups", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_id"))
+    @ForeignKey(name = "msg_def_tx_to_msg_type", inverseName = "msg_def_tx_to_tx_group")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<TransmitterGroup> defaultTransmitterGroups;
@@ -385,7 +385,7 @@ public class MessageType {
         }
     }
 
-    public Set<MessageTypeReplacement> getReplacementMsgs() {
+    public Set<MessageTypeSummary> getReplacementMsgs() {
         if (replacementMsgs == null) {
             replacementMsgs = new HashSet<>();
         }
@@ -396,23 +396,16 @@ public class MessageType {
      * @param replacementMsgs
      *            the replacementMsgs to set
      */
-    public void setReplacementMsgs(Set<MessageTypeReplacement> replacementMsgs) {
+    public void setReplacementMsgs(Set<MessageTypeSummary> replacementMsgs) {
         this.replacementMsgs = replacementMsgs;
-
-        if (replacementMsgs != null) {
-            for (MessageTypeReplacement mtr : replacementMsgs) {
-                mtr.setMsgType(this.getSummary());
-            }
-        }
     }
 
-    public void addReplacementMsg(MessageTypeReplacement replaceMsg) {
+    public void addReplacementMsg(MessageTypeSummary replaceMsg) {
         if (replaceMsg != null) {
             if (replacementMsgs == null) {
                 replacementMsgs = new HashSet<>();
             }
 
-            replaceMsg.setMsgType(this.getSummary());
             replacementMsgs.add(replaceMsg);
         }
     }
@@ -575,8 +568,8 @@ public class MessageType {
 
         sb.append("], replacementMsgs=[");
         if (getReplacementMsgs().size() > 0) {
-            for (MessageTypeReplacement mtr : getReplacementMsgs()) {
-                sb.append(mtr.getMsgType().getAfosid()).append(", ");
+            for (MessageTypeSummary mtr : getReplacementMsgs()) {
+                sb.append(mtr.getAfosid()).append(", ");
             }
             sb.setLength(sb.length() - 2);
         }

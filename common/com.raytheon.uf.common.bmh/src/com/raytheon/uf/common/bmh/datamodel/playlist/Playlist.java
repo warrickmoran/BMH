@@ -41,6 +41,7 @@ import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
@@ -62,6 +63,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Aug 15, 2014  3515     rjpeter     Add eager fetch.
  * Sep 09, 2014  3554     bsteffen    Add QUERY_BY_GROUP_NAME
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
+ * Nov 18, 2014  3746     rjpeter     Labeled ForeignKeys.
  * </pre>
  * 
  * @author bsteffen
@@ -72,7 +74,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
         @NamedQuery(name = Playlist.QUERY_BY_GROUP_NAME, query = Playlist.QUERY_BY_GROUP_NAME_HQL) })
 @Entity
 @Table(name = "playlist", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
-        "transmitter_group_name", "suite_name" }) })
+        "transmitter_group_id", "suite_id" }) })
 @SequenceGenerator(initialValue = 1, name = Playlist.GEN, sequenceName = "playlist_seq")
 public class Playlist {
 
@@ -95,11 +97,13 @@ public class Playlist {
     private int id;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "transmitter_group_name")
+    @JoinColumn(name = "transmitter_group_id")
+    @ForeignKey(name = "playlist_to_tx_group")
     private TransmitterGroup transmitterGroup;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "suite_name")
+    @JoinColumn(name = "suite_id")
+    @ForeignKey(name = "playlist_to_suite")
     private Suite suite;
 
     @Column

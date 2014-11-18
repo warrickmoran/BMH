@@ -41,6 +41,7 @@ import javax.persistence.Table;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -64,6 +65,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 12, 2014  3588     bsteffen    Support audio fragments.
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Oct 23, 2014  3748     bkowal      Added getBroadcastMsgsByInputMsg.
+ * Nov 18, 2014  3746     rjpeter     Labeled foreign key.
  * </pre>
  * 
  * @author bkowal
@@ -122,7 +124,8 @@ public class BroadcastMsg {
      * field is set to the transmitter group in that combination.
      */
     @ManyToOne(optional = false)
-    @JoinColumn(name = "transmitter_group_name")
+    @JoinColumn(name = "transmitter_group_id")
+    @ForeignKey(name = "broadcast_msg_to_tx_group")
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
 
