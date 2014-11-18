@@ -118,9 +118,17 @@ alter table bmh.zone_area add constraint fk_f1enmjbmmqdm8ufueky0cop5a
 /**
  * Playlist to transmitter group
  */
-alter table bmh.playlist drop constraint fk_6kdc3pt6pa1xwcnsoj71ljcvw;
-alter table bmh.playlist add constraint fk_6kdc3pt6pa1xwcnsoj71ljcvw
-    foreign key (transmitter_group_name) references bmh.transmitter_group(id) on delete cascade;
+alter table bmh.playlist drop constraint playlist_to_tx_group;
+alter table bmh.playlist add constraint playlist_to_tx_group
+    foreign key (transmitter_group_id) references bmh.transmitter_group(id) on delete cascade;
+
+/**
+ * Playlist to suite
+ */
+alter table bmh.playlist drop constraint playlist_to_suite;
+alter table bmh.playlist add constraint playlist_to_suite
+    foreign key (suite_id) references bmh.suite(id) on delete cascade;
+
 
 /**
  * Playlist message to playlist
@@ -130,11 +138,26 @@ alter table bmh.playlist_messages add constraint fk_m2ap9u9gtxgdj45jux5po6h6g
     foreign key (playlist_id) references bmh.playlist(id) on delete cascade;
 
 /**
+ * Broadcast message to transmitter group
+ */
+alter table bmh.broadcast_msg drop constraint broadcast_msg_to_tx_group;
+alter table bmh.broadcast_msg add constraint broadcast_msg_to_tx_group
+    foreign key (transmitter_group_id) references bmh.transmitter_group (id) on delete cascade;
+
+/**
+ * Message Same Tx to Transmitter
+ */
+alter table bmh.message_same_tx drop constraint msg_same_tx_to_tx;
+alter table bmh.message_same_tx add constraint msg_same_tx_to_tx
+    foreign key (transmitter_id) references bmh.transmitter (id) on delete cascade;
+
+/**
  * Ldad Config to Dictionary
  **/
 alter table bmh.ldad_config drop constraint fk_5s2c03labr2wnrww2ek27ybne;
 alter table bmh.ldad_config add constraint fk_5s2c03labr2wnrww2ek27ybne
     foreign key (dictionary_name) references bmh.dictionary(name) on delete set null;
+
 /**
  * Ldad Config to Voice
  **/

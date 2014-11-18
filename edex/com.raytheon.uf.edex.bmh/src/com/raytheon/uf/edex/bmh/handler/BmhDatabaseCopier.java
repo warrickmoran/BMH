@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +35,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
@@ -49,6 +49,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.common.util.CollectionUtil;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
@@ -57,7 +59,6 @@ import com.raytheon.uf.edex.bmh.dao.DacDao;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
-import com.raytheon.uf.edex.bmh.dao.MessageTypeReplacementDao;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.SuiteDao;
@@ -88,6 +89,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Oct 08, 2014  3687     bsteffen    Null out some fields during copy.
  * Oct 29, 2014  3746     rjpeter     Reorder clearAllPracticeTables.
  *                                    Auto assignment of transmitter to dac.
+ * Nov 18, 2014  3746     rjpeter     Refactored MessageTypeReplacement.
  * </pre>
  * 
  * @author bsteffen
@@ -118,7 +120,6 @@ public class BmhDatabaseCopier {
         copyAreas();
         copyZones();
         copyMessageTypes();
-        copyMessageTypeReplacements();
         copySuites();
         copyPrograms();
         copyInputMessages();
@@ -133,7 +134,6 @@ public class BmhDatabaseCopier {
         clearTable(new InputMessageDao(false));
         clearTable(new ProgramDao(false));
         clearTable(new SuiteDao(false));
-        clearTable(new MessageTypeReplacementDao(false));
         clearTable(new MessageTypeDao(false));
         clearTable(new ZoneDao(false));
         clearTable(new AreaDao(false));
@@ -258,6 +258,8 @@ public class BmhDatabaseCopier {
         List<MessageType> messageTypes = opDao.getAll();
         Map<Integer, MessageTypeSummary> messageTypeMap = new HashMap<>(
                 messageTypes.size(), 1.0f);
+        List<Pair<MessageType, Set<MessageTypeSummary>>> replaceMsgs = new LinkedList<>();
+
         for (MessageType messageType : messageTypes) {
             Set<Transmitter> transmitters = new HashSet<>(messageType
                     .getSameTransmitters().size(), 1.0f);
@@ -285,25 +287,28 @@ public class BmhDatabaseCopier {
                         .getId()));
             }
             messageType.setDefaultTransmitterGroups(transmitterGroups);
+            Set<MessageTypeSummary> replaceMsgSet = messageType
+                    .getReplacementMsgs();
+            if (!CollectionUtil.isNullOrEmpty(replaceMsgSet)) {
+                replaceMsgs.add(new Pair<>(messageType, replaceMsgSet));
+            }
             messageType.setReplacementMsgs(null);
             messageTypeMap.put(messageType.getId(), messageType.getSummary());
             messageType.setId(0);
         }
         prDao.persistAll(messageTypes);
-        this.messageTypeMap = messageTypeMap;
-    }
 
-    private void copyMessageTypeReplacements() {
-        MessageTypeReplacementDao opDao = new MessageTypeReplacementDao(true);
-        MessageTypeReplacementDao prDao = new MessageTypeReplacementDao(false);
-        List<MessageTypeReplacement> messageTypeReplacements = opDao.getAll();
-        for (MessageTypeReplacement messageTypeReplacement : messageTypeReplacements) {
-            messageTypeReplacement.setMsgType(messageTypeMap
-                    .get(messageTypeReplacement.getId().getMsgId()));
-            messageTypeReplacement.setReplaceMsgType(messageTypeMap
-                    .get(messageTypeReplacement.getId().getReplaceId()));
+        // save any replace messages
+        for (Pair<MessageType, Set<MessageTypeSummary>> replaceMsg : replaceMsgs) {
+            MessageType mt = replaceMsg.getFirst();
+            for (MessageTypeSummary oldReplacedMessage : replaceMsg.getSecond()) {
+                mt.addReplacementMsg(messageTypeMap.get(oldReplacedMessage
+                        .getId()));
+            }
+            prDao.persist(mt);
         }
-        prDao.persistAll(messageTypeReplacements);
+
+        this.messageTypeMap = messageTypeMap;
     }
 
     private void copySuites() {

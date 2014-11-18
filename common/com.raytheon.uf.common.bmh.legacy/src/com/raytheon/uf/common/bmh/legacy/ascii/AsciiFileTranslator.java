@@ -40,7 +40,6 @@ import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeReplacement;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
@@ -78,6 +77,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Oct 08, 2014 3687       bsteffen    Remove ProgramTrigger.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Oct 24, 2014  3617      dgilling    Support unified time zone field for transmitter groups.
+ * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * </pre>
  * 
  * @author rjpeter
@@ -818,11 +818,7 @@ public class AsciiFileTranslator {
                             reader.getSourceFile());
                 }
 
-                MessageTypeReplacement replacement = new MessageTypeReplacement();
-                replacement.setMsgType(current.getSummary());
-                replacement.setReplaceMsgType(replaces.getSummary());
-
-                bmhData.addReplacementMsg(replacement);
+                bmhData.addReplacementMsg(current, replaces.getSummary());
             }
         }
     }
