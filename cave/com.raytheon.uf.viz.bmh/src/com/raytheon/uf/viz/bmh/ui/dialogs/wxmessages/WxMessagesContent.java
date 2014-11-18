@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
 
+import java.util.List;
+
+import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
+
 /**
  * Used to track / identify Weather Messages content.
  * 
@@ -30,6 +34,8 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
  * ------------ ---------- ----------- --------------------------
  * Oct 26, 2014 3748       bkowal      Initial creation
  * Oct 28, 2014 3759       bkowal      Added a validation mechanism.
+ * Nov 18, 2014 3829       bkowal      Standardize the management / tracking
+ *                                     of audio.
  * 
  * </pre>
  * 
@@ -47,7 +53,7 @@ public class WxMessagesContent {
 
     private String text;
 
-    private byte[] audio;
+    private List<InputMessageAudioData> audioDataList;
 
     /**
      * 
@@ -71,19 +77,12 @@ public class WxMessagesContent {
         this.text = text;
     }
 
-    /**
-     * @return the audio
-     */
-    public byte[] getAudio() {
-        return audio;
+    public List<InputMessageAudioData> getAudioDataList() {
+        return audioDataList;
     }
 
-    /**
-     * @param audio
-     *            the audio to set
-     */
-    public void setAudio(byte[] audio) {
-        this.audio = audio;
+    public void setAudioDataList(List<InputMessageAudioData> audioDataList) {
+        this.audioDataList = audioDataList;
     }
 
     /**
@@ -98,7 +97,9 @@ public class WxMessagesContent {
             return this.text != null && this.text.isEmpty() == false;
         } else {
             // audio
-            return this.audio != null;
+            return this.audioDataList != null
+                    && this.audioDataList.isEmpty() == false
+                    && this.audioDataList.get(0) != null;
         }
     }
 }

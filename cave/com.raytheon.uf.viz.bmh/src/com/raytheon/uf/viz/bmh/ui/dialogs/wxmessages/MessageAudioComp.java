@@ -42,6 +42,8 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
  * ------------ ---------- ----------- --------------------------
  * Oct 26, 2014  #3728     lvenable     Initial creation
  * Oct 26, 2014  #3748     bkowal       Clear audio list on reset.
+ * Nov 18, 2014  #3829     bkowal       Track all audio managed by the control. Added
+ *                                      getAudioDataList.
  * 
  * </pre>
  * 
@@ -72,8 +74,11 @@ public class MessageAudioComp extends Composite implements IAudioControlAction {
     public MessageAudioComp(Composite parent,
             List<InputMessageAudioData> audioDataList, RecordImages recordImages) {
         super(parent, SWT.NONE);
-
-        this.audioDataList = audioDataList;
+        if (audioDataList == null) {
+            this.audioDataList = new ArrayList<>(1);
+        } else {
+            this.audioDataList = audioDataList;
+        }
         this.recordImages = recordImages;
 
         init();
@@ -132,6 +137,7 @@ public class MessageAudioComp extends Composite implements IAudioControlAction {
      *            Audio data.
      */
     public void addAudioControl(InputMessageAudioData audioData) {
+        this.audioDataList.add(audioData);
         MessageAudioControlComp macc = new MessageAudioControlComp(this,
                 audioData, recordImages, this);
         maccList.add(macc);
@@ -147,5 +153,14 @@ public class MessageAudioComp extends Composite implements IAudioControlAction {
         for (MessageAudioControlComp macc : maccList) {
             macc.enableAudioControls(enable);
         }
+    }
+
+    /**
+     * Return all audio records that are displayed in the composite.
+     * 
+     * @return all audio records that are displayed in the composite.
+     */
+    public List<InputMessageAudioData> getAudioDataList() {
+        return audioDataList;
     }
 }
