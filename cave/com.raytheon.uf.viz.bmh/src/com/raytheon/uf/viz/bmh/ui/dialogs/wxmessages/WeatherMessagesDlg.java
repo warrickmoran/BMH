@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,9 +50,7 @@ import org.eclipse.swt.widgets.Text;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -112,6 +111,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 4, 2014   3778     bsteffen    Change the id after a submit.
  * Nov 11, 2014  3413     rferrel     Use DlgInfo to get title.
  * Nov 12, 2014  3823     bkowal      Use the stored wx message content.
+ * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
  * 
  * </pre>
  * 
@@ -318,7 +318,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                         if (returnValue instanceof InputAudioMessage) {
                             InputAudioMessage im = (InputAudioMessage) returnValue;
                             populateControlsForEdit(im.getInputMessage(),
-                                    im.getAudioDataList(), im.getValidatedMsg());
+                                    im.getAudioDataList());
                         }
                     }
                 });
@@ -343,7 +343,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         im.setExpirationTime(expire);
         resetControls();
 
-        this.populateControlsForEdit(im, null, null);
+        this.populateControlsForEdit(im, null);
     }
 
     /**
@@ -896,6 +896,11 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         userInputMessage.setNwrsameTone(!sameTransmitters.getCheckedItems()
                 .getCheckedItems().isEmpty());
 
+        if (Boolean.TRUE.equals(userInputMessage.getNwrsameTone())) {
+            userInputMessage.setSameTransmitterSet(new HashSet<String>(
+                    sameTransmitters.getCheckedItems().getCheckedItems()));
+        }
+
         // TODO: need to handle input message area on message type selection.
         List<Transmitter> selectedTransmitters = new ArrayList<Transmitter>();
         for (String transmitterMnemonic : this.sameTransmitters
@@ -1069,8 +1074,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      *            The ValidatedMessage
      */
     private void populateControlsForEdit(InputMessage im,
-            List<InputMessageAudioData> audioList,
-            ValidatedMessage validatedMessage) {
+            List<InputMessageAudioData> audioList) {
         userInputMessage = im;
         selectedMessageType = null;
 
@@ -1145,29 +1149,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                     periodicityValues[3]);
         }
 
-        // update same transmitters
-        if (validatedMessage != null) {
-            CheckListData cld = new CheckListData();
-            Set<TransmitterGroup> tGroups = validatedMessage
-                    .getTransmitterGroups();
-            if (tGroups != null && !tGroups.isEmpty()) {
-                for (TransmitterGroup g : tGroups) {
-                    for (Transmitter t : g.getTransmitterList()) {
-                        cld.addDataItem(t.getMnemonic(), true);
-                        transmitterMap.put(t.getMnemonic(), t);
-                    }
-                }
-            } else {
-                Set<Transmitter> transmitters = selectedMessageType
-                        .getSameTransmitters();
-                for (Transmitter t : transmitters) {
-                    cld.addDataItem(t.getMnemonic(), true);
-                    transmitterMap.put(t.getMnemonic(), t);
-                }
-            }
-
-            sameTransmitters.selectCheckboxes(cld);
+        CheckListData cld = new CheckListData();
+        for (String mnemonic : userInputMessage.getSameTransmitterSet()) {
+            cld.addDataItem(mnemonic, true);
         }
+        sameTransmitters.selectCheckboxes(cld);
+
 
         // handle message contents.
         WxMessagesContent msgContent = new WxMessagesContent(

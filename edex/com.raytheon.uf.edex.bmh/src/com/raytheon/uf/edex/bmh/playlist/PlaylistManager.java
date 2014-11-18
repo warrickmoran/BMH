@@ -32,6 +32,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -127,6 +128,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Nov 04, 2014  3781     dgilling    Use MessageType configured SAME transmitters 
  *                                    when generating SAME tones.
  * Nov 13, 2014  3717     bsteffen    Do not persist forced.
+ * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
  * 
  * </pre>
  * 
@@ -818,23 +820,17 @@ public class PlaylistManager implements IContextStateProcessor {
                 dac.setAlertTone(input.getAlertTone());
                 if ((input.getAreaCodes() != null)
                         && Boolean.TRUE.equals(input.getNwrsameTone())) {
-                    /*
-                     * TODO: What happens if only a portion of the transmitter
-                     * groups transmitters are included in the MessageType's
-                     * configured SAME transmitters??? For now, as long as one
-                     * transmitter is in the configured SAME transmitters, all
-                     * will get the SAME tones.
-                     * 
-                     * FIXME: For user-generated weather messages, determine a
-                     * method to retrieve the user-selected SAME transmitters
-                     * (which can be different the MessageType defaults) and use
-                     * that Set instead.
-                     */
-                    Set<Transmitter> sameTransmitters = messageType
-                            .getSameTransmitters();
+                    Set<String> sameTransmittersNames = input
+                            .getSameTransmitterSet();
+                    Set<Transmitter> sameTransmitters = new HashSet<>();
                     Set<Transmitter> groupTransmitters = broadcast
                             .getTransmitterGroup().getTransmitters();
-                    sameTransmitters.retainAll(groupTransmitters);
+                    for (Transmitter transmitter : groupTransmitters) {
+                        if (sameTransmittersNames.contains(transmitter
+                                .getMnemonic())) {
+                            sameTransmitters.add(transmitter);
+                        }
+                    }
 
                     if (!sameTransmitters.isEmpty()) {
                         SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
