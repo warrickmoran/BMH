@@ -41,6 +41,7 @@ import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
@@ -52,7 +53,6 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
-import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -68,6 +68,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 10, 2014 3381       bkowal      Initial creation
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Nov 13, 2014  3803      bkowal      Implemented.
+ * Nov 18, 2014  3807      bkowal      Use BMHJmsDestinations.
  * 
  * </pre>
  * 
@@ -80,11 +81,6 @@ public class LdadConfigDlg extends AbstractBMHDialog implements
 
     private final static IUFStatusHandler statusHandler = UFStatus
             .getHandler(LdadConfigDlg.class);
-
-    // TODO: DR #3807
-    private final String BMH_CONFIG = "BMH.Config";
-
-    private final String BMH_PRACTICE_CONFIG = "BMH.Practice.Config";
 
     /**
      * Data manager
@@ -168,22 +164,16 @@ public class LdadConfigDlg extends AbstractBMHDialog implements
 
         this.populateDialog();
 
-        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
-            NotificationManagerJob.addObserver(BMH_CONFIG, this);
-        } else {
-            NotificationManagerJob.addObserver(BMH_PRACTICE_CONFIG, this);
-        }
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
     }
 
     @Override
     protected void disposed() {
         super.disposed();
 
-        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
-            NotificationManagerJob.removeObserver(BMH_CONFIG, this);
-        } else {
-            NotificationManagerJob.removeObserver(BMH_PRACTICE_CONFIG, this);
-        }
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
     }
 
     /*

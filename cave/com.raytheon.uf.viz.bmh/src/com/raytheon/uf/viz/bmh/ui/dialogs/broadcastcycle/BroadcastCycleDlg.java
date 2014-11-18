@@ -71,6 +71,7 @@ import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -84,7 +85,6 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.Dis
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
-import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -119,6 +119,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Nov 12, 2014  3816      lvenable    Fixed transmitter label size.
  * Nov 15, 2014  3818      mpduff      Allow multiple message detail dialogs to be open.
+ * Nov 18, 2014  3807      bkowal      Use BMHJmsDestinations.
  * 
  * </pre>
  * 
@@ -131,14 +132,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private final String NA = "N/A";
 
     private final SimpleDateFormat timeFormatter = new SimpleDateFormat("mm:ss");
-
-    private final String BMH_DAC_STATUS = "BMH.DAC.Status";
-
-    private final String BMH_CONFIG = "BMH.Config";
-
-    private final String BMH_PRACTICE_DAC_STATUS = "BMH.Practice.DAC.Status";
-
-    private final String BMH_PRACTICE_CONFIG = "BMH.Practice.Config";
 
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(BroadcastCycleDlg.class);
@@ -275,13 +268,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
          */
         populateTransmitters();
 
-        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
-            NotificationManagerJob.addObserver(BMH_DAC_STATUS, this);
-            NotificationManagerJob.addObserver(BMH_CONFIG, this);
-        } else {
-            NotificationManagerJob.addObserver(BMH_PRACTICE_DAC_STATUS, this);
-            NotificationManagerJob.addObserver(BMH_PRACTICE_CONFIG, this);
-        }
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getDacStatusDestination(), this);
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
 
         initialTablePopulation();
     }
@@ -1043,14 +1033,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             monitorThread.removeDisconnectListener(this);
             monitorThread = null;
         }
-        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
-            NotificationManagerJob.removeObserver(BMH_DAC_STATUS, this);
-            NotificationManagerJob.removeObserver(BMH_CONFIG, this);
-        } else {
-            NotificationManagerJob
-                    .removeObserver(BMH_PRACTICE_DAC_STATUS, this);
-            NotificationManagerJob.removeObserver(BMH_PRACTICE_CONFIG, this);
-        }
+
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getDacStatusDestination(), this);
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
 
         if (eoFont != null) {
             eoFont.dispose();
