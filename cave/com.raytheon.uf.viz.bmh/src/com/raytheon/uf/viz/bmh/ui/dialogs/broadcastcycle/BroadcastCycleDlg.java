@@ -122,6 +122,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 15, 2014  3818      mpduff      Allow multiple message detail dialogs to be open.
  * Nov 17, 2014  3808      bkowal      Support broadcast live.
  * Nov 18, 2014  3807      bkowal      Use BMHJmsDestinations.
+ * Nov 19, 2014 3817       bsteffen    Use status queue for more than just dacs.
  * 
  * </pre>
  * 
@@ -273,7 +274,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         populateTransmitters();
 
         NotificationManagerJob.addObserver(
-                BMHJmsDestinations.getDacStatusDestination(), this);
+                BMHJmsDestinations.getStatusDestination(), this);
         NotificationManagerJob.addObserver(
                 BMHJmsDestinations.getBMHConfigDestination(), this);
 
@@ -1040,7 +1041,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         }
 
         NotificationManagerJob.removeObserver(
-                BMHJmsDestinations.getDacStatusDestination(), this);
+                BMHJmsDestinations.getStatusDestination(), this);
         NotificationManagerJob.removeObserver(
                 BMHJmsDestinations.getBMHConfigDestination(), this);
 

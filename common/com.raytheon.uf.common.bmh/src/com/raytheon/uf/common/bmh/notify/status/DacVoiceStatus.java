@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.notify;
+package com.raytheon.uf.common.bmh.notify.status;
 
 /**
  * {@code Enum} that describes the current output status of a channel on the

@@ -61,6 +61,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  *                                    Add methods to specifically listen for playlist changes.
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * Nov 03, 2014  3525     bsteffen    Allow sending of status messages to alert topic.
+ * Nov 19, 2014  3817     bsteffen    Change name of status queue
  * 
  * </pre>
  * 
@@ -84,9 +85,9 @@ public class JmsCommunicator extends JmsNotificationManager {
             throws URLSyntaxException {
         super(new AMQConnectionFactory(config.getJmsConnection()));
         this.operational = operational;
-        String topic = "BMH.DAC.Status";
+        String topic = "BMH.Status";
         if (!operational) {
-            topic = "BMH.Practice.DAC.Status";
+            topic = "BMH.Practice.Status";
         }
         this.dacStatusProducer = new ProducerWrapper(topic, DAC_STATUS_QUEUE_SIZE);
 
