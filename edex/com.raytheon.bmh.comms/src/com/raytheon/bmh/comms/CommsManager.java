@@ -21,6 +21,8 @@ package com.raytheon.bmh.comms;
 
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -54,6 +56,7 @@ import com.raytheon.bmh.comms.linetap.LineTapServer;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
+import com.raytheon.uf.common.bmh.notify.status.CommsManagerStatus;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
@@ -99,6 +102,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * Nov 15, 2014  3630     bkowal      Allow for retrieval of most recent config. Use
  *                                    dynamic log naming.
+ * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
  * 
  * </pre>
  * 
@@ -323,6 +327,7 @@ public class CommsManager {
         }
         while (transmitServer.isAlive() && lineTapServer.isAlive()
                 && clusterServer.isAlive() && broadcastStreamServer.isAlive()) {
+            sendStatus();
             int sleeptime = NORMAL_SLEEP_TIME;
             clusterServer.attempClusterConnections(config);
             try {
@@ -576,6 +581,7 @@ public class CommsManager {
         transmitServer.dacConnected(key);
         clusterServer.dacConnectedLocal(key);
         broadcastStreamServer.dacConnected(key, group);
+        sendStatus();
     }
 
     /**
@@ -623,6 +629,7 @@ public class CommsManager {
         }
         clusterServer.dacDisconnectedLocal(key);
         attemptLaunchDacTransmits();
+        sendStatus();
     }
 
     /**
@@ -643,7 +650,7 @@ public class CommsManager {
      */
     public void transmitDacStatus(Object statusObject) {
         if (jms != null) {
-            jms.sendDacStatus(statusObject);
+            jms.sendBmhStatus(statusObject);
         }
     }
 
@@ -715,6 +722,33 @@ public class CommsManager {
 
                 }
             });
+        }
+    }
+
+    private void sendStatus() {
+        if (jms != null) {
+            try {
+                CommsManagerStatus status = new CommsManagerStatus(InetAddress
+                        .getLocalHost().getHostName());
+                if (config.getDacs() != null) {
+                    for (DacConfig dac : config.getDacs()) {
+                        for (DacChannelConfig channel : dac.getChannels()) {
+                            DacTransmitKey key = new DacTransmitKey(dac,
+                                    channel);
+                            if (transmitServer.isConnectedToDac(key)) {
+                                status.addConnectedTransmitterGroup(channel
+                                        .getTransmitterGroup());
+                            }
+                        }
+                    }
+                }
+                jms.sendBmhStatus(status);
+            } catch (UnknownHostException e) {
+                logger.error(
+                        "Unable to send status due to problems resolving hostname:",
+                        e);
+
+            }
         }
     }
 

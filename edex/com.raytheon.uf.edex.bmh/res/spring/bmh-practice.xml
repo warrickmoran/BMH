@@ -1,35 +1,45 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-    <bean id="practiceManager" class="com.raytheon.uf.edex.bmh.practice.PracticeManager">
-      <property name="commsManagerStarter" value="${bmh.practice.comms.manager.starter}"/>
-      <property name="dacSimulatorStarter" value="${bmh.practice.dac.simulator.starter}"/>
-      <property name="dacSimulatorStopper" value="${bmh.practice.dac.simulator.stopper}"/>
-      <property name="timeoutMinutes" value="${bmh.practice.timeout.minutes}"/>
-    </bean>
+  <bean id="practiceManager" class="com.raytheon.uf.edex.bmh.practice.PracticeManager">
+    <property name="commsManagerStarter" value="${bmh.practice.comms.manager.starter}" />
+    <property name="dacSimulatorStarter" value="${bmh.practice.dac.simulator.starter}" />
+    <property name="dacSimulatorStopper" value="${bmh.practice.dac.simulator.stopper}" />
+    <property name="timeoutMinutes" value="${bmh.practice.timeout.minutes}" />
+  </bean>
 
   <camelContext id="bmhPracticeManagerContext" xmlns="http://camel.apache.org/schema/spring"
     errorHandlerRef="errorHandler">
 
     <route id="practiceTimeoutCheck">
-        <from uri="timer://foo?fixedRate=true&amp;period=5m" /> 
-        <bean ref="practiceManager" method="checkPracticeTimeout" />
+      <from uri="timer://practiceTimeoutCheck?fixedRate=true&amp;period=30s" />
+      <bean ref="practiceManager" method="checkPracticeTimeout" />
+      <filter>
+        <simple>${body} == true</simple>
+        <bean ref="practice_statusMonitor" method="getCurrentStatus" />
+        <bean ref="serializationUtil" method="transformToThrift" />
+        <to uri="jms-generic:topic:BMH.Practice.Status" />
+      </filter>
     </route>
 
     <route id="bmhPracticeManagerRoute">
       <from uri="jms-generic:topic:BMH.Practice.Config" />
       <doTry>
-          <bean ref="serializationUtil" method="transformFromThrift" />
-          <filter>
-              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification"</simple>
-              <bean ref="practiceManager" method="handleModeNotification" />
-          </filter>
-          <filter>
-              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.DacConfigNotification"</simple>
-              <bean ref="practiceManager" method="handleDacNotification" />
-          </filter>
+        <bean ref="serializationUtil" method="transformFromThrift" />
+        <filter>
+          <simple>${body} is
+            "com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification"
+          </simple>
+          <bean ref="practiceManager" method="handleModeNotification" />
+        </filter>
+        <filter>
+          <simple>${body} is
+            "com.raytheon.uf.common.bmh.notify.config.DacConfigNotification"
+          </simple>
+          <bean ref="practiceManager" method="handleDacNotification" />
+        </filter>
         <doCatch>
           <exception>java.lang.Throwable</exception>
           <to uri="log:bmh?level=ERROR" />
@@ -38,5 +48,5 @@
     </route>
 
   </camelContext>
-  
+
 </beans>

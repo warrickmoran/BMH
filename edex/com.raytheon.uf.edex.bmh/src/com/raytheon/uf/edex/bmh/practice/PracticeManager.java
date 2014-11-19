@@ -64,7 +64,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * 
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
- * Oct 21, 2014  3687     bsteffen     Initial creation
+ * Oct 21, 2014  3687     bsteffen    Initial creation
+ * Nov 19, 2014  3817     bsteffen    Return boolean from checkTimeout to indicate if practice mode is running
  * 
  * </pre>
  * 
@@ -123,7 +124,12 @@ public class PracticeManager {
         }
     }
 
-    public void checkPracticeTimeout() {
+    /**
+     * Determine if the practice mode processes need to be shut down.
+     * 
+     * @return true if practice mode is running, false if not.
+     */
+    public boolean checkPracticeTimeout() {
         long time = System.currentTimeMillis();
         ClusterTask task = locker.lookupLock(LOCK_NAME, LOCK_DETAILS);
         long runTime = time - task.getLastExecution();
@@ -137,7 +143,9 @@ public class PracticeManager {
             } catch (EdexException | SerializationException e) {
                 logger.error("Unable to stop practice mode.", e);
             }
+            return false;
         }
+        return task.isRunning();
     }
 
     private synchronized void handlePracticeStartup() {

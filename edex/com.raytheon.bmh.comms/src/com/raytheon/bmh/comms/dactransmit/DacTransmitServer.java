@@ -62,6 +62,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Oct 15, 2014  3655     bkowal      Support live broadcasting to the DAC.
  * Oct 21, 2014  3655     bkowal      Use the new message types.
  * Nov 03, 2014  3762     bsteffen    Add load balancing of dac transmits.
+ * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
  * 
  * </pre>
  * 
@@ -158,6 +159,23 @@ public class DacTransmitServer extends AbstractServerThread {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Check if the server is connected to a dac transmit process for the
+     * provided key and if that process is currently communicating with a dac.
+     */
+    public boolean isConnectedToDac(DacTransmitKey key) {
+        List<DacTransmitCommunicator> communicators = this.communicators
+                .get(key);
+        if (communicators != null && !communicators.isEmpty()) {
+            for (DacTransmitCommunicator communicator : communicators) {
+                if (communicator.isConnectedToDac()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

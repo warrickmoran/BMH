@@ -1,0 +1,45 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans
+                      http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+                      http://camel.apache.org/schema/spring
+                      http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+  <bean id="statusMonitor"
+    class="com.raytheon.uf.edex.bmh.systemstatus.EdexStatusMonitor" />
+
+  <bean id="statusRequestHandler"
+    class="com.raytheon.uf.edex.bmh.systemstatus.StatusRequestHandler">
+    <property name="statusMonitor" ref="statusMonitor" />
+  </bean>
+  <bean factory-bean="handlerRegistry" factory-method="register">
+    <constructor-arg
+      value="com.raytheon.uf.common.bmh.systemstatus.SystemStatusRequest" />
+    <constructor-arg ref="statusRequestHandler" />
+  </bean>
+
+  <camelContext id="bmhStatusContext" xmlns="http://camel.apache.org/schema/spring"
+    errorHandlerRef="errorHandler">
+
+    <route id="statusUpdateCron">
+      <from uri="timer://statusUpdateCron?fixedRate=true&amp;period=30s" />
+      <bean ref="statusMonitor" method="getCurrentStatus" />
+      <bean ref="serializationUtil" method="transformToThrift" />
+      <to uri="jms-durable:topic:BMH.Status" />
+    </route>
+
+    <route id="bmhCommsConfiguratorRoute">
+      <from uri="jms-durable:topic:BMH.Status" />
+      <doTry>
+        <bean ref="serializationUtil" method="transformFromThrift" />
+        <bean ref="statusMonitor" method="handleStatusMessage" />
+        <doCatch>
+          <exception>java.lang.Throwable</exception>
+          <to uri="log:bmh?level=ERROR" />
+        </doCatch>
+      </doTry>
+    </route>
+
+  </camelContext>
+
+</beans>

@@ -61,7 +61,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  *                                    Add methods to specifically listen for playlist changes.
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * Nov 03, 2014  3525     bsteffen    Allow sending of status messages to alert topic.
- * Nov 19, 2014  3817     bsteffen    Change name of status queue
+ * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
  * 
  * </pre>
  * 
@@ -73,11 +73,11 @@ public class JmsCommunicator extends JmsNotificationManager {
     private static final Logger logger = LoggerFactory
             .getLogger(JmsCommunicator.class);
 
-    private static final int DAC_STATUS_QUEUE_SIZE = 100;
+    private static final int BMH_STATUS_QUEUE_SIZE = 100;
 
     private final boolean operational;
     
-    private final ProducerWrapper dacStatusProducer;
+    private final ProducerWrapper bmhStatusProducer;
 
     private final ProducerWrapper alertProducer;
 
@@ -89,15 +89,16 @@ public class JmsCommunicator extends JmsNotificationManager {
         if (!operational) {
             topic = "BMH.Practice.Status";
         }
-        this.dacStatusProducer = new ProducerWrapper(topic, DAC_STATUS_QUEUE_SIZE);
+        this.bmhStatusProducer = new ProducerWrapper(topic,
+                BMH_STATUS_QUEUE_SIZE);
 
         this.alertProducer = new ProducerWrapper("edex.alerts.msg");
         JmsStatusMessageAppender.setJmsCommunicator(this);
     }
 
-    public void sendDacStatus(Object notification) {
-        dacStatusProducer.enqueue(notification);
-        dacStatusProducer.sendQueued();
+    public void sendBmhStatus(Object notification) {
+        bmhStatusProducer.enqueue(notification);
+        bmhStatusProducer.sendQueued();
     }
 
     public void sendStatusMessage(StatusMessage message) throws JMSException,
@@ -108,7 +109,7 @@ public class JmsCommunicator extends JmsNotificationManager {
     @Override
     public void connect(boolean notifyError) {
         super.connect(notifyError);
-        dacStatusProducer.sendQueued();
+        bmhStatusProducer.sendQueued();
     }
 
     @Override
@@ -139,7 +140,7 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     protected synchronized void disconnectProducers() {
         alertProducer.disconnect();
-        dacStatusProducer.disconnect();
+        bmhStatusProducer.disconnect();
     }
 
     @Override
