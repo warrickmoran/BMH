@@ -68,6 +68,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Oct 26, 2014  #3728     lvenable     Initial creation
  * Oct 26, 2014  #3748     bkowal       Implement content interactions.
+ * Nov 18, 2014  #3829     bkowal       Set content type back to TEXT when
+ *                                      applicable.
  * 
  * </pre>
  * 
@@ -110,11 +112,6 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
     private final String originalMessageContent;
 
     private CONTENT_TYPE contentType;
-
-    /**
-     * Will always be set when the contentType is audio.
-     */
-    private byte[] audio;
 
     /**
      * Constructor.
@@ -236,6 +233,7 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
                 if (choice == SWT.OK) {
                     messageSt.setEditable(true);
                     msgAudioComp.removeAllAudioControls();
+                    contentType = CONTENT_TYPE.TEXT;
                 }
             }
         });
@@ -275,6 +273,7 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
                     messageSt.setEditable(true);
                     playBtn.setEnabled(true);
                     msgAudioComp.removeAllAudioControls();
+                    contentType = CONTENT_TYPE.TEXT;
                 }
             }
         });
@@ -403,9 +402,11 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         // TODO : is validation needed?
         WxMessagesContent content = new WxMessagesContent(this.contentType);
         content.setText(this.messageSt.getText());
-        content.setAudio(this.audio);
+        if (this.contentType == CONTENT_TYPE.AUDIO) {
+            content.setAudioDataList(this.msgAudioComp.getAudioDataList());
+        }
         setReturnValue(content);
-        
+
         close();
     }
 
@@ -532,7 +533,6 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         final int playbackTimeS = (int) playbackTimeMS / 1000;
         recordedInputAudio.setAudioDuration(playbackTimeS);
         recordedInputAudio.setAudio(messageAudio);
-        this.audio = messageAudio;
         // TODO: format duration string if it end up being used.
         this.msgAudioComp.addAudioControl(recordedInputAudio);
 

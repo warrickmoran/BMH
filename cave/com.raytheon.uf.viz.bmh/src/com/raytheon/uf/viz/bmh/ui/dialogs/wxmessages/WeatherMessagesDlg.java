@@ -112,6 +112,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 11, 2014  3413     rferrel     Use DlgInfo to get title.
  * Nov 12, 2014  3823     bkowal      Use the stored wx message content.
  * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
+ * Nov 18, 2014  3829     bkowal      Use WxMessagesContent for all content tracking.
  * 
  * </pre>
  * 
@@ -197,12 +198,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     /** Button used to change the message type. */
     private Button changeMsgTypeBtn;
 
-    /** Message text selected from file. */
-    // private String messageContent = null;
-
-    /** Audio data list. */
-    private List<InputMessageAudioData> audioData = null;
-
+    /** Wx Message Content. */
     private WxMessagesContent content = null;
 
     /**
@@ -693,12 +689,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         contentsBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // clone the list to ensure that the original is maintained.
-                List<InputMessageAudioData> audioList = (audioData != null) ? new ArrayList<>(
-                        audioData) : new ArrayList<InputMessageAudioData>(1);
-
-                MessageContentsDlg mcd = new MessageContentsDlg(shell,
-                        audioList, content.getText(), content.getContentType());
+                MessageContentsDlg mcd = new MessageContentsDlg(shell, content
+                        .getAudioDataList(), content.getText(), content
+                        .getContentType());
                 mcd.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
@@ -884,7 +877,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         this.userInputMessage.setContent(this.content.getText());
         // audio?
         if (this.content.getContentType() == CONTENT_TYPE.AUDIO) {
-            request.setMessageAudio(this.content.getAudio());
+            request.setMessageAudio(this.content.getAudioDataList().get(0)
+                    .getAudio());
         }
         request.setInputMessage(this.userInputMessage);
 
@@ -1078,9 +1072,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         userInputMessage = im;
         selectedMessageType = null;
 
-        // Get the list of audio data.
-        audioData = audioList;
-
         changeMsgTypeBtn.setEnabled(false);
 
         // Input message name.
@@ -1155,22 +1146,13 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         }
         sameTransmitters.selectCheckboxes(cld);
 
-
         // handle message contents.
         WxMessagesContent msgContent = new WxMessagesContent(
                 this.determineContentType(this.userInputMessage.getContent()));
         // there will always be text no matter what the content type is like
         msgContent.setText(this.userInputMessage.getContent());
-        if (msgContent.getContentType() == CONTENT_TYPE.AUDIO) {
-            // we only care about audio when the content type is actually audio.
+        msgContent.setAudioDataList(audioList);
 
-            // all audio records will be the same so, we only need to get the
-            // first one.
-            // TODO: can we guarantee that the audio will exist with
-            // user-generated
-            // audio?
-            msgContent.setAudio(this.audioData.get(0).getAudio());
-        }
         this.content = msgContent;
     }
 
