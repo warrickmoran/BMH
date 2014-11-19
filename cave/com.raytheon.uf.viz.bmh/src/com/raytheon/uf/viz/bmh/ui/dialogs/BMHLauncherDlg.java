@@ -52,6 +52,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -79,6 +80,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.listening.zones.ListeningZoneDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypesDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.StatusMonitorDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WeatherMessagesDlg;
 import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -96,28 +98,29 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 07, 2014  #3338     lvenable    Initial creation
+ * Jul 07, 2014   3338     lvenable    Initial creation
  * Jul 08, 2014   3355     mpduff      Implement legacy dictionary converter
- * Jul 15, 2014  #3387     lvenable    Implemented code for the abstract BMH dialog
+ * Jul 15, 2014   3387     lvenable    Implemented code for the abstract BMH dialog
  * Jul 17, 2014   3406     mpduff      Added Listening area and zone dialogs
  * Jul 21, 2014   3407     mpduff      Added DictionaryManagerDlg
- * Jul 27, 2014  #3420     lvenable    Added Message types dialog.
+ * Jul 27, 2014   3420     lvenable    Added Message types dialog.
  * Aug 04, 2014   3173     mpduff      Added Transmitter Config dialog.
- * Aug 17, 2014  #3490     lvenable    Updated for disable silence alarm.
+ * Aug 17, 2014   3490     lvenable    Updated for disable silence alarm.
  * Aug 20, 2014   3411     mpduff      Added bringToTop for message dialog
- * Aug 21, 2014  #3490     lvenable    Updated disable silence alarm to use transmitter group.
- * Aug 25, 2014  #3490     lvenable    Disabled Status Dialog since it will be redesigned.
- * Sep 14, 2014  #3610     lvenable    Added launching of Weather Messages dialog.
+ * Aug 21, 2014   3490     lvenable    Updated disable silence alarm to use transmitter group.
+ * Aug 25, 2014   3490     lvenable    Disabled Status Dialog since it will be redesigned.
+ * Sep 14, 2014   3610     lvenable    Added launching of Weather Messages dialog.
  * Sep 14, 2014   3630     mpduff      Add the Transmitter Alignment dialog.
- * Sep 19, 2014  #3611     lvenable    Added launching of Emergency Override dialog.
- * Oct 06, 2014  #3700     lvenable    Added code for force hiding the tool tip.
- * Oct 08, 2014  #3687     bsteffen    Add menu item to copy operational db in practice mode.
- * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * Oct 21, 2014  #3687     bsteffen    Automatically notify edex when starting/stopping in practice mode.
- * Nov 07, 2014  #3413     rferrel     Added authorization check on dialogs.
- * Nov 10, 2014  #3381     bkowal      Updated to use the new LdadConfigDlg.
- * Nov 13, 2014  #3803     bkowal      Eliminated NPE on operational db copy.
- * Nov 17, 2014  #3808     bkowal      Add the Broadcast Live dialog.
+ * Sep 19, 2014   3611     lvenable    Added launching of Emergency Override dialog.
+ * Oct 06, 2014   3700     lvenable    Added code for force hiding the tool tip.
+ * Oct 08, 2014   3687     bsteffen    Add menu item to copy operational db in practice mode.
+ * Oct 08, 2014   3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 21, 2014   3687     bsteffen    Automatically notify edex when starting/stopping in practice mode.
+ * Nov 07, 2014   3413     rferrel     Added authorization check on dialogs.
+ * Nov 10, 2014   3381     bkowal      Updated to use the new LdadConfigDlg.
+ * Nov 13, 2014   3803     bkowal      Eliminated NPE on operational db copy.
+ * Nov 17, 2014   3808     bkowal      Add the Broadcast Live dialog.
+ * Nov 19, 2014   3349     lvenable    Use the new System status dialog.
  * 
  * </pre>
  * 
@@ -155,7 +158,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     private Image broadcastCycleImg;
 
     /** Status dialog. */
-    // private SystemStatusDlg statusDlg;
+    private StatusMonitorDlg statusDlg;
 
     /** Message type association dialog. */
     private MessageTypeAssocDlg msgTypeAssocDlg;
@@ -268,6 +271,15 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     }
 
     @Override
+    protected void opened() {
+        /*
+         * Launch the System status monitor after the BMH Launcher opens so the
+         * system status dialog doesn't get tied to the Cave dialog.
+         */
+        launchStatusDialog();
+    }
+
+    @Override
     protected void initializeComponents(Shell shell) {
         setText(DlgInfo.BMH_MENU.getTitle());
 
@@ -300,13 +312,6 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
         createMenuComp(shell);
         createQuickAccessButtons(shell);
-
-        /*
-         * TODO : implement after the demo with the redesigned dialog
-         */
-        // statusDlg = new SystemStatusDlg(getParent());
-        // statusDlg.open();
-        // dialogsSet.add(statusDlg);
     }
 
     /**
@@ -816,19 +821,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         systemStatusMI.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                /*
-                 * TODO : implement new redesigned dialog
-                 */
-                if (isAuthorized(DlgInfo.SYSTEM_STATUS)) {
-                    DialogUtility
-                            .showMessageBox(shell, SWT.ICON_INFORMATION
-                                    | SWT.OK, "Redesign Needed",
-                                    "The status dialog is being redesigned and will be available at a later date.");
-                    // if (statusDlg == null || statusDlg.isDisposed()) {
-                    // statusDlg = new SystemStatusDlg(shell);
-                    // statusDlg.open();
-                    // }
-                }
+                launchStatusDialog();
             }
         });
 
@@ -1048,6 +1041,24 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         }
     }
 
+    /**
+     * Launch the system status dialog.
+     */
+    private void launchStatusDialog() {
+        if (statusDlg == null || statusDlg.isDisposed()) {
+            statusDlg = new StatusMonitorDlg(getShell());
+            statusDlg.setCloseCallback(new ICloseCallback() {
+
+                @Override
+                public void dialogClosed(Object returnValue) {
+                    dialogsSet.remove(statusDlg);
+                }
+            });
+            statusDlg.open();
+            dialogsSet.add(statusDlg);
+        }
+    }
+
     private void copyOperationalDb() {
         /*
          * TODO this dialog prevents the user from using cave while they wait,
@@ -1094,7 +1105,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         List<TransmitterGroup> transmitterGrps = null;
 
         try {
-            transmitterGrps = tdm.getTransmitterGroups();
+            transmitterGrps = tdm
+                    .getTransmitterGroups(new TransmitterGroupPositionComparator());
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving transmitter data from the database: ", e);

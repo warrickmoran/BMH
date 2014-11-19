@@ -243,7 +243,6 @@ public class PlaylistData {
                         .error("Broadcast message is null.  Setting data to unknown.");
             }
 
-            cycleTableData.setMessageId(message.getAfosid());
             String title = messageTypeMap.get(broadcastId).getTitle();
             cycleTableData.setMessageTitle(title);
 
