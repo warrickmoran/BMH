@@ -40,6 +40,7 @@ import java.util.Map;
  * Jul 10, 2014 3285       bsteffen    Added a category for playlist manager.
  * Jul 17, 2014 3175       rjpeter     Added legacy parsing category.
  * Oct 2, 2014  3642       bkowal      Added STATIC_MSG_ERROR.
+ * Nov 19, 2014 3385       bkowal      Added {@link BMH_CATEGORY#LDAD_ERROR}
  * 
  * </pre>
  * 
@@ -129,6 +130,10 @@ public enum BMH_CATEGORY {
      * An error has occurred during static message generation.
      */
     STATIC_MSG_ERROR(16),
+    /*
+     * An error has occurred during ldad processing.
+     */
+    LDAD_ERROR(20),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.
