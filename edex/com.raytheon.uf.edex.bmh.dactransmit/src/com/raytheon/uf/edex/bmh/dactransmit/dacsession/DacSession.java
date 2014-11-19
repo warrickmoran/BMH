@@ -36,6 +36,7 @@ import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
@@ -92,6 +93,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Nov 7, 2014   #3630     bkowal       Implement IDacSession
  * Nov 10, 2014  #3630     bkowal       Re-factor to support on-demand broadcasting.
  * Nov 11, 2014  #3762     bsteffen     Add delayed shutdown.
+ * Nov 17, 2014  #3808     bkowal       Support broadcast live. Initial transition to
+ *                                      transmitter group.
  * 
  * </pre>
  * 
@@ -321,8 +324,17 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     private void prepareLiveBroadcast(
             final LiveBroadcastStartCommand startCommand) {
 
-        final BroadcastTransmitterConfiguration config = startCommand
-                .getTransmitterConfigurationMap().values().iterator().next();
+        BroadcastTransmitterConfiguration config = null;
+        String transmitterName = null;
+        if (startCommand.getType() == BROADCASTTYPE.EO) {
+            config = startCommand.getTransmitterConfigurationMap().values()
+                    .iterator().next();
+            transmitterName = config.getTransmitter().getMnemonic();
+        } else if (startCommand.getType() == BROADCASTTYPE.BL) {
+            config = startCommand.getTransmitterGroupConfigurationMap()
+                    .values().iterator().next();
+            transmitterName = config.getTransmitterGroup().getName();
+        }
 
         /*
          * Is an interrupt currently playing?
@@ -331,12 +343,12 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         // already running.
         if (this.dataThread.isPlayingInterrupt()) {
             logger.info(
-                    "Unable to fulfill live broadcast request; an interrupt is currently playing on transmitter {}.",
-                    config.getTransmitter().getMnemonic());
+                    "Unable to fulfill live broadcast request; an interrupt is currently playing on transmitter group {}.",
+                    transmitterName);
             this.notifyLiveClientFailure(startCommand.getBroadcastId(),
-                    startCommand.getTransmitterGroups(),
+                    startCommand.getTransmitters(),
                     "An interrupt is currently already playing on Transmitter "
-                            + config.getTransmitter().getMnemonic() + ".", null);
+                            + transmitterName + ".", null);
             return;
         }
 
@@ -354,14 +366,15 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                     this.eventBus, this.config.getDacAddress(),
                     this.config.getDataPort(), this.config.getTransmitters(),
                     startCommand.getBroadcastId(), this.dataThread,
-                    this.commsManager, config, this.config.getDbTarget());
+                    this.commsManager, config, this.config.getDbTarget(),
+                    startCommand.getType());
         } catch (IOException e) {
             logger.error("Failed to create a thread for broadcast "
                     + startCommand.getBroadcastId() + "!", e);
 
             // failure - notify the client.
             this.notifyLiveClientFailure(startCommand.getBroadcastId(),
-                    startCommand.getTransmitterGroups(),
+                    startCommand.getTransmitters(),
                     "Failed to create a broadcast thread.", e);
 
             this.broadcastThread = null;
@@ -372,6 +385,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(true);
         status.setBroadcastId(startCommand.getBroadcastId());
+        status.setTransmitters(startCommand.getTransmitters());
         status.setTransmitterGroups(startCommand.getTransmitterGroups());
         commsManager.sendDacLiveBroadcastMsg(status);
     }
@@ -394,7 +408,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         BroadcastStatus status = new BroadcastStatus();
         status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(false);
-        status.setTransmitterGroups(transmitters);
+        status.setTransmitters(transmitters);
         status.setMessage(message);
         status.setException(exception);
 

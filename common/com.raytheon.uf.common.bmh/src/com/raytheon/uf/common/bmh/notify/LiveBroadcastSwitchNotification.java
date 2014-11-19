@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.notify;
 
 import java.util.Calendar;
 
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -38,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Oct 21, 2014 3655       bkowal      Initial creation
  * Oct 27, 2014 3712       bkowal      Added broadcastState.
+ * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * 
  * </pre>
  * 
@@ -55,6 +57,9 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     private static final String TONE_SENT = "SENT";
 
     private static final String TONE_NONE = "NONE";
+
+    @DynamicSerializeElement
+    private BROADCASTTYPE type;
 
     @DynamicSerializeElement
     private STATE broadcastState;
@@ -81,6 +86,14 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
      * 
      */
     public LiveBroadcastSwitchNotification() {
+    }
+
+    public BROADCASTTYPE getType() {
+        return type;
+    }
+
+    public void setType(BROADCASTTYPE type) {
+        this.type = type;
     }
 
     public STATE getBroadcastState() {

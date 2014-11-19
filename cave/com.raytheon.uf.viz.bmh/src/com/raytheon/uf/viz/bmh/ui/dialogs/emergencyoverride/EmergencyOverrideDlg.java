@@ -99,7 +99,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      SAME / Alert Tones will be played.
  * Nov 3, 2014   #3655     bkowal       Enable Duration label. Fix for duration population
  *                                      based on message type.
- * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Nov 11, 2014  3413      rferrel      Use DlgInfo to get title.
+ * Nov 17, 2014  3808      bkowal       Initial support for broadcast live.
  * 
  * </pre>
  * 
@@ -559,7 +560,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
         final LiveBroadcastSettings settings = new LiveBroadcastSettings();
         try {
-            settings.populate(this.selectedMsgType, transmitters,
+            settings.populate(this.selectedMsgType, transmitters, null,
                     this.alertChk.getSelection(),
                     this.durHourSpnr.getSelection(),
                     this.durMinuteSpnr.getSelection());

@@ -57,6 +57,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  * Nov 15, 2014 3630       bkowal      Extend AbstractThreadedBroadcastCommsMgrCommunicator.
  * Nov 17, 2014 3820       bkowal      Recognize a separate error state due to broadcast
  *                                     initialization failure.
+ * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * 
  * </pre>
  * 
@@ -260,6 +261,7 @@ public class LiveBroadcastThread extends
         LiveBroadcastCommand command = new LiveBroadcastCommand();
         command.setBroadcastId(this.broadcastId);
         command.setMsgSource(MSGSOURCE.VIZ);
+        command.setTransmitters(this.command.getTransmitters());
         command.setTransmitterGroups(this.command.getTransmitterGroups());
         command.setAction(ACTION.STOP);
 
@@ -308,8 +310,8 @@ public class LiveBroadcastThread extends
             LiveBroadcastPlayCommand playCommand = new LiveBroadcastPlayCommand();
             playCommand.setMsgSource(MSGSOURCE.VIZ);
             playCommand.setBroadcastId(this.broadcastId);
-            playCommand.setTransmitterGroups(this.command
-                    .getTransmitterGroups());
+            playCommand.setTransmitters(this.command
+                    .getTransmitters());
             playCommand.setAudio(this.bufferedAudio);
             try {
                 this.writeToCommsManager(playCommand);

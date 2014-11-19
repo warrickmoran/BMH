@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -73,6 +74,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 5, 2014   #3780     bkowal       Prevent timer update when the dialog has been closed / is closing.
  * Nov 12, 2014  #3819     bkowal       Disable OK/Cancel during audio playback.
  * Nov 17, 2014  #3820     bkowal       okToClose is now protected.
+ * Nov 17, 2014  #3808     bkowal       Support broadcast live.
  * 
  * 
  * 
@@ -86,6 +88,8 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
 
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(RecordPlaybackDlg.class);
+
+    public static final int INDETERMINATE_PROGRESS = Integer.MAX_VALUE;
 
     /** Status label. */
     /*
@@ -104,7 +108,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     private Font elapsedTimeFont;
 
     /** Recording progress bar. */
-    private ProgressBar recordingProgBar;
+    protected ProgressBar recordingProgBar;
 
     /** Update rate in milliseconds. */
     private long updateRate = 1000;
@@ -118,6 +122,9 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     /** Seconds elapsed during recording/playback. */
     private int elapsedSeconds = 0;
 
+    /** Hours elapsed during recording/playback. */
+    private int elapsedHours = 0;
+
     /** Total seconds elapsed during recording/playback */
     private int totalElapsedSeconds = 0;
 
@@ -125,7 +132,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     private int maxRecordingSeconds = 0;
 
     /** Minute/Second format string. */
-    private String formatStr = "%02d:%02d";
+    private String minutesSecondsFormatStr = "%02d:%02d";
 
     /** Recording/playback timer. */
     private ScheduledExecutorService timer;
@@ -288,7 +295,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         elapsedTimeFont = new Font(getDisplay(), "Courier", 12, SWT.BOLD);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         elapsedTimeLbl = new Label(recordingComp, SWT.CENTER);
-        elapsedTimeLbl.setText(String.format(formatStr, 0, 0));
+        elapsedTimeLbl.setText(String.format(minutesSecondsFormatStr, 0, 0));
         elapsedTimeLbl.setLayoutData(gd);
         elapsedTimeLbl.setFont(elapsedTimeFont);
 
@@ -300,11 +307,16 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.minimumWidth = 350;
-        recordingProgBar = new ProgressBar(recordingComp, SWT.HORIZONTAL
-                | SWT.SMOOTH);
+        if (this.maxRecordingSeconds == INDETERMINATE_PROGRESS) {
+            recordingProgBar = new ProgressBar(recordingComp, SWT.HORIZONTAL
+                    | SWT.SMOOTH | SWT.INDETERMINATE);
+        } else {
+            recordingProgBar = new ProgressBar(recordingComp, SWT.HORIZONTAL
+                    | SWT.SMOOTH);
+            recordingProgBar.setMinimum(0);
+            recordingProgBar.setMaximum(maxRecordingSeconds);
+        }
         recordingProgBar.setLayoutData(gd);
-        recordingProgBar.setMinimum(0);
-        recordingProgBar.setMaximum(maxRecordingSeconds);
 
         // Filler label
         new Label(recordingComp, SWT.NONE);
@@ -408,10 +420,19 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
              */
             return;
         }
-        calculateMinutesSeconds();
-        elapsedTimeLbl.setText(String.format(formatStr, elapsedMinutes,
-                elapsedSeconds));
+        calculateHoursMinutesSeconds();
+        String hoursString = StringUtils.EMPTY;
+        if (this.elapsedHours > 0) {
+            hoursString = Integer.toString(elapsedHours) + ":";
+        }
+        elapsedTimeLbl.setText(hoursString
+                + String.format(minutesSecondsFormatStr, elapsedMinutes,
+                        elapsedSeconds));
 
+        this.updateRecordingProgressBar();
+    }
+
+    protected void updateRecordingProgressBar() {
         if (totalElapsedSeconds <= recordingProgBar.getMaximum()) {
             recordingProgBar.setSelection(totalElapsedSeconds);
         }
@@ -435,12 +456,16 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     /**
      * Calculate the minutes and seconds to be displayed.
      */
-    private void calculateMinutesSeconds() {
+    private void calculateHoursMinutesSeconds() {
         ++totalElapsedSeconds;
         ++elapsedSeconds;
         if (elapsedSeconds > 59) {
             elapsedSeconds = 0;
             ++elapsedMinutes;
+        }
+        if (elapsedMinutes > 59) {
+            elapsedMinutes = 0;
+            ++elapsedHours;
         }
     }
 
@@ -555,8 +580,8 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         elapsedMinutes = 0;
         elapsedSeconds = 0;
         totalElapsedSeconds = 0;
-        elapsedTimeLbl.setText(String.format(formatStr, elapsedMinutes,
-                elapsedSeconds));
+        elapsedTimeLbl.setText(String.format(minutesSecondsFormatStr,
+                elapsedMinutes, elapsedSeconds));
         recordingProgBar.setSelection(0);
         statusLbl.setText("Press REC Button to Start Recording...");
     }

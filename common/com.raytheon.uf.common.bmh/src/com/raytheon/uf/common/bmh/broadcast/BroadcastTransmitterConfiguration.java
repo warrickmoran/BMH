@@ -23,6 +23,7 @@ import java.util.Calendar;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -40,6 +41,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 21, 2014 3655       bkowal      Added additional information about
  *                                     the broadcast.
  * Nov 1, 2014  3655       bkowal      Added end of message tones.
+ * Nov 17, 2014 3808       bkowal      Initial support for transmitter groups.
  * 
  * </pre>
  * 
@@ -52,8 +54,12 @@ public class BroadcastTransmitterConfiguration {
     @DynamicSerializeElement
     private MessageType selectedMessageType;
 
+    @Deprecated
     @DynamicSerializeElement
     private Transmitter transmitter;
+
+    @DynamicSerializeElement
+    private TransmitterGroup transmitterGroup;
 
     @DynamicSerializeElement
     private byte[] toneAudio;
@@ -79,12 +85,22 @@ public class BroadcastTransmitterConfiguration {
     public BroadcastTransmitterConfiguration() {
     }
 
+    @Deprecated
     public Transmitter getTransmitter() {
         return transmitter;
     }
 
+    @Deprecated
     public void setTransmitter(Transmitter transmitter) {
         this.transmitter = transmitter;
+    }
+
+    public TransmitterGroup getTransmitterGroup() {
+        return transmitterGroup;
+    }
+
+    public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
+        this.transmitterGroup = transmitterGroup;
     }
 
     public byte[] getToneAudio() {

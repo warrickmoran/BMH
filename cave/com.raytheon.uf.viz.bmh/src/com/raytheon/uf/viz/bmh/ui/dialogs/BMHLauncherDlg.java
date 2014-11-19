@@ -64,6 +64,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
+import com.raytheon.uf.viz.bmh.ui.dialogs.broadcast.BroadcastLiveDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterAlignmentDlg;
@@ -116,6 +117,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 07, 2014  #3413     rferrel     Added authorization check on dialogs.
  * Nov 10, 2014  #3381     bkowal      Updated to use the new LdadConfigDlg.
  * Nov 13, 2014  #3803     bkowal      Eliminated NPE on operational db copy.
+ * Nov 17, 2014  #3808     bkowal      Add the Broadcast Live dialog.
  * 
  * </pre>
  * 
@@ -199,6 +201,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     /** Transmitter Alignment Dialog */
     private TransmitterAlignmentDlg transmitterAlignmentDlg;
+
+    /** Broadcast Live Dialog. */
+    private BroadcastLiveDlg broadcastLiveDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -869,8 +874,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.LDAD_CONFIGURATION)) {
                     if (ldadConfigDlg == null || ldadConfigDlg.isDisposed()) {
-                    ldadConfigDlg = new LdadConfigDlg(dlgsToValidateCloseMap,
-                            getShell());
+                        ldadConfigDlg = new LdadConfigDlg(
+                                dlgsToValidateCloseMap, getShell());
                         ldadConfigDlg.open();
                     } else {
                         ldadConfigDlg.bringToTop();
@@ -919,6 +924,28 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                         dacConfigDlg.open();
                     } else {
                         dacConfigDlg.bringToTop();
+                    }
+                }
+            }
+        });
+
+        /*
+         * Broadcast Live
+         */
+        new MenuItem(this.maintenanceMenu, SWT.SEPARATOR);
+        MenuItem broadcastLiveMI = new MenuItem(this.maintenanceMenu, SWT.PUSH);
+        broadcastLiveMI.setText("Broadcast Live...");
+        broadcastLiveMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                if (isAuthorized(DlgInfo.BROADCAST_LIVE)) {
+                    if (broadcastLiveDlg == null
+                            || broadcastLiveDlg.isDisposed() == true) {
+                        broadcastLiveDlg = new BroadcastLiveDlg(
+                                dlgsToValidateCloseMap, shell);
+                        broadcastLiveDlg.open();
+                    } else {
+                        broadcastLiveDlg.bringToTop();
                     }
                 }
             }

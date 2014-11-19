@@ -51,6 +51,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -119,6 +120,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Nov 12, 2014  3816      lvenable    Fixed transmitter label size.
  * Nov 15, 2014  3818      mpduff      Allow multiple message detail dialogs to be open.
+ * Nov 17, 2014  3808      bkowal      Support broadcast live.
  * Nov 18, 2014  3807      bkowal      Use BMHJmsDestinations.
  * 
  * </pre>
@@ -220,9 +222,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private String cycleDurationTime;
 
     /** Emergency override font. */
-    private Font eoFont;
+    private Font liveBroadcastFont;
 
     private final String eoText = "Emergency Override";
+
+    private final String blText = "Broadcast Live";
 
     /** Map of BroadcastMessage id to MessageDetailsDlg for that id */
     private final Map<Long, MessageDetailsDlg> detailsMap = new HashMap<>();
@@ -315,7 +319,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         FontData fd = progValueLbl.getFont().getFontData()[0];
         fd.setStyle(SWT.BOLD);
-        eoFont = new Font(getDisplay(), fd);
+        liveBroadcastFont = new Font(getDisplay(), fd);
     }
 
     private void createMenus() {
@@ -706,7 +710,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) playlistDataRecord;
                 TableData tableData = playlistData
                         .getLiveTableData(notification);
-                this.updateDisplayForLiveBroadcast(tableData);
+                this.updateDisplayForLiveBroadcast(tableData,
+                        notification.getType());
             }
         } catch (Exception e) {
             statusHandler.error("Error getting initial playback data", e);
@@ -1039,8 +1044,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         NotificationManagerJob.removeObserver(
                 BMHJmsDestinations.getBMHConfigDestination(), this);
 
-        if (eoFont != null) {
-            eoFont.dispose();
+        if (liveBroadcastFont != null) {
+            liveBroadcastFont.dispose();
         }
     }
 
@@ -1141,7 +1146,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         }
                     });
                 } else if (o instanceof LiveBroadcastSwitchNotification) {
-                    LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) o;
+                    final LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) o;
                     if (notification.getTransmitterGroup().equals(
                             this.selectedTransmitterGrp) == false) {
                         return;
@@ -1154,7 +1159,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         VizApp.runAsync(new Runnable() {
                             @Override
                             public void run() {
-                                updateDisplayForLiveBroadcast(liveTableData);
+                                updateDisplayForLiveBroadcast(liveTableData,
+                                        notification.getType());
                             }
                         });
                     } else {
@@ -1186,11 +1192,16 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         }
     }
 
-    private void updateDisplayForLiveBroadcast(final TableData liveTableData) {
+    private void updateDisplayForLiveBroadcast(final TableData liveTableData,
+            final BROADCASTTYPE type) {
         this.messageDetailBtn.setEnabled(false);
         suiteValueLbl.setText("N/A");
         cycleDurValueLbl.setText("N/A");
-        setProgramLabelTextFontAndColor(eoText);
+        if (type == BROADCASTTYPE.EO) {
+            setProgramLabelTextFontAndColor(eoText);
+        } else if (type == BROADCASTTYPE.BL) {
+            setProgramLabelTextFontAndColor(blText);
+        }
 
         tableComp.populateTable(liveTableData);
         if (tableComp.getSelectedIndex() == -1) {
@@ -1209,8 +1220,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      *            Test to put in the label.
      */
     private void setProgramLabelTextFontAndColor(String text) {
-        if (eoText.equals(text)) {
-            progValueLbl.setFont(eoFont);
+        if (eoText.equals(text) || blText.equals(text)) {
+            progValueLbl.setFont(liveBroadcastFont);
             progValueLbl.setForeground(getDisplay().getSystemColor(
                     SWT.COLOR_BLUE));
 

@@ -35,11 +35,13 @@ import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand.ACTION;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 
 /**
@@ -61,6 +63,8 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  *                                     multiple audio packets.
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
  * Nov 15, 2014 3630       bkowal      Extend AbstractBroadcastingTask.
+ * Nov 17, 2014 3808       bkowal      Support broadcast live. Initial transition to
+ *                                     transmitter group.
  * 
  * </pre>
  * 
@@ -84,7 +88,10 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
     private final LiveBroadcastStartCommand command;
 
-    private List<Transmitter> managedTransmitterGroups;
+    @Deprecated
+    private List<Transmitter> managedTransmitters;
+
+    private List<TransmitterGroup> managedTransmitterGroups;
 
     private volatile boolean live;
 
@@ -106,8 +113,17 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         this.clusterServer = clusterServer;
         this.dacServer = dacServer;
         this.command = command;
-        this.managedTransmitterGroups = new ArrayList<>(this.command
-                .getRequestedTransmitters().size());
+        /*
+         * TODO: this if statement will not be necessary when everything is
+         * using Transmitter Groups.
+         */
+        if (command.getType() == BROADCASTTYPE.EO) {
+            this.managedTransmitters = new ArrayList<>(this.command
+                    .getRequestedTransmitters().size());
+        } else if (command.getType() == BROADCASTTYPE.BL) {
+            this.managedTransmitterGroups = new ArrayList<>(this.command
+                    .getTransmitterGroups().size());
+        }
     }
 
     private static String determineName(final LiveBroadcastStartCommand command) {
@@ -134,14 +150,26 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * transmitters across multiple systems?
          * ..........................................
          */
-        for (Transmitter transmitterGroup : this.command
-                .getRequestedTransmitters()) {
-            DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup.getMnemonic());
-            if (key == null) {
-                continue;
+        if (this.command.getType() == BROADCASTTYPE.EO) {
+            for (Transmitter transmitter : this.command
+                    .getRequestedTransmitters()) {
+                DacTransmitKey key = this.streamingServer
+                        .getLocalDacCommunicationKey(transmitter.getMnemonic());
+                if (key == null) {
+                    continue;
+                }
+                this.managedTransmitters.add(transmitter);
             }
-            this.managedTransmitterGroups.add(transmitterGroup);
+        } else {
+            for (TransmitterGroup transmitterGrp : this.command
+                    .getTransmitterGroups()) {
+                DacTransmitKey key = this.streamingServer
+                        .getLocalDacCommunicationKey(transmitterGrp.getName());
+                if (key == null) {
+                    continue;
+                }
+                this.managedTransmitterGroups.add(transmitterGrp);
+            }
         }
 
         if (count > 0) {
@@ -180,22 +208,47 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * ALL that can be managed by the cluster members prior to completing
          * this verification when clustering is involved.
          */
-        if (this.managedTransmitterGroups.size() != this.command
-                .getRequestedTransmitters().size()) {
-            final String clientMsg = this.buildMissingTransmittersMsg(
-                    this.managedTransmitterGroups,
-                    this.command.getRequestedTransmitters());
+        if (this.command.getType() == BROADCASTTYPE.EO) {
+            if (this.managedTransmitters.size() != this.command
+                    .getRequestedTransmitters().size()) {
+                final String clientMsg = this.buildMissingTransmittersMsg(
+                        this.managedTransmitters,
+                        this.command.getRequestedTransmitters());
 
-            // failure
-            this.notifyShareholdersProblem(
-                    "Failed to start broadcast " + this.getName() + ". "
-                            + clientMsg.toString(), null,
-                    this.command.getTransmitterGroups());
-            return;
+                // failure
+                this.notifyShareholdersProblem("Failed to start broadcast "
+                        + this.getName() + ". " + clientMsg.toString(), null,
+                        this.command.getTransmitters());
+                return;
+            }
+        } else {
+            if (this.managedTransmitterGroups.size() != this.command
+                    .getTransmitterGroups().size()) {
+                final String clientMsg = this.buildMissingTransmitterGrpsMsg(
+                        this.managedTransmitterGroups,
+                        this.command.getTransmitterGroups());
+
+                // failure
+                this.notifyShareholdersProblem("Failed to start broadcast "
+                        + this.getName() + ". " + clientMsg.toString());
+                return;
+            }
         }
 
         this.state = STATE.READY;
         this.noteStateTransition();
+        
+        if (this.command.getType() == BROADCASTTYPE.EO) {
+            this.responseLock = new CountDownLatch(
+                    this.managedTransmitters.size());
+            this.responses = new ArrayList<>(this.managedTransmitters.size());
+        } else {
+            this.responseLock = new CountDownLatch(
+                    this.managedTransmitterGroups.size());
+            this.responses = new ArrayList<>(
+                    this.managedTransmitterGroups.size());
+        }        
+        
         /*
          * at this point we know all required transmitters are available (at
          * least < 1 ms ago). So, we send another notification to the dac
@@ -203,36 +256,69 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * broadcast. If an interrupt occurs before all transmitters can be
          * notified, the live broadcast will fail.
          */
+        if (this.command.getType() == BROADCASTTYPE.EO) {
+            for (Transmitter transmitter : this.managedTransmitters) {
+                DacTransmitKey key = this.streamingServer
+                        .getLocalDacCommunicationKey(transmitter.getMnemonic());
+                if (key == null) {
+                    this.dacMsgFailed(transmitter);
+                    continue;
+                }
+                BroadcastTransmitterConfiguration config = this.command
+                        .getTransmitterConfigurationMap().get(transmitter);
+                if (config == null) {
+                    continue;
+                }
+                LiveBroadcastStartCommand startCommand = new LiveBroadcastStartCommand();
+                startCommand.setBroadcastId(this.getName());
+                startCommand.setMsgSource(MSGSOURCE.COMMS);
+                startCommand.addTransmitterConfiguration(config);
+                startCommand.addTransmitter(transmitter);
 
-        for (Transmitter transmitterGroup : this.managedTransmitterGroups) {
-            DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup.getMnemonic());
-            if (key == null) {
-                this.dacMsgFailed(transmitterGroup);
-                continue;
+                this.dacServer.sendToDac(key, startCommand);
             }
-            BroadcastTransmitterConfiguration config = this.command
-                    .getTransmitterConfigurationMap().get(transmitterGroup);
-            if (config == null) {
-                continue;
-            }
-            LiveBroadcastStartCommand startCommand = new LiveBroadcastStartCommand();
-            startCommand.setBroadcastId(this.getName());
-            startCommand.setMsgSource(MSGSOURCE.COMMS);
-            startCommand.addTransmitterConfiguration(config);
-            startCommand.addTransmitter(transmitterGroup);
+        } else {
+            for (TransmitterGroup transmitterGroup : this.managedTransmitterGroups) {
+                DacTransmitKey key = this.streamingServer
+                        .getLocalDacCommunicationKey(transmitterGroup.getName());
+                if (key == null) {
+                    this.dacMsgFailed(transmitterGroup);
+                    continue;
+                }
+                BroadcastTransmitterConfiguration config = this.command
+                        .getTransmitterGroupConfigurationMap().get(
+                                transmitterGroup);
+                if (config == null) {
+                    continue;
+                }
+                LiveBroadcastStartCommand startCommand = new LiveBroadcastStartCommand();
+                startCommand.setType(BROADCASTTYPE.BL);
+                startCommand.setBroadcastId(this.getName());
+                startCommand.setMsgSource(MSGSOURCE.COMMS);
+                startCommand.addTransmitterConfiguration(config);
+                startCommand.addTransmitterGroup(transmitterGroup);
 
-            this.dacServer.sendToDac(key, startCommand);
+                this.dacServer.sendToDac(key, startCommand);
+            }
         }
 
-        this.responseLock = new CountDownLatch(
-                this.managedTransmitterGroups.size());
-        this.responses = new ArrayList<>(this.managedTransmitterGroups.size());
         if (this.verifyTransmitterAccess(3000) == false) {
             /*
              * the broadcast has failed. cleanup what has been started.
              */
             this.shutdownDacLiveBroadcasts();
+            return;
+        }
+        
+        if (this.command.getType() == BROADCASTTYPE.EO) {
+            this.responseLock = new CountDownLatch(
+                    this.managedTransmitters.size());
+        } else if (this.command.getType() == BROADCASTTYPE.BL) {
+            this.responseLock = new CountDownLatch(
+                    this.managedTransmitterGroups.size());
+        }
+        synchronized (this.responses) {
+            this.responses.clear();
         }
 
         /*
@@ -245,24 +331,36 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
         this.state = STATE.TRIGGER;
         this.noteStateTransition();
-        for (Transmitter transmitterGroup : this.managedTransmitterGroups) {
-            DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup.getMnemonic());
-            if (key == null) {
-                this.dacMsgFailed(transmitterGroup);
-                continue;
+        if (this.command.getType() == BROADCASTTYPE.EO) {
+            for (Transmitter transmitter : this.managedTransmitters) {
+                DacTransmitKey key = this.streamingServer
+                        .getLocalDacCommunicationKey(transmitter.getMnemonic());
+                if (key == null) {
+                    this.dacMsgFailed(transmitter);
+                    continue;
+                }
+                // TODO: cleanup during clustering.
+                LiveBroadcastCommand command = new LiveBroadcastCommand();
+                command.setBroadcastId(this.getName());
+                command.setMsgSource(MSGSOURCE.COMMS);
+                command.setAction(ACTION.TRIGGER);
+                this.dacServer.sendToDac(key, command);
             }
-            LiveBroadcastCommand command = new LiveBroadcastCommand();
-            command.setBroadcastId(this.getName());
-            command.setMsgSource(MSGSOURCE.COMMS);
-            command.setAction(ACTION.TRIGGER);
-            this.dacServer.sendToDac(key, command);
-        }
-
-        this.responseLock = new CountDownLatch(
-                this.managedTransmitterGroups.size());
-        synchronized (this.responses) {
-            this.responses.clear();
+        } else if (this.command.getType() == BROADCASTTYPE.BL) {
+            for (TransmitterGroup transmitterGrp : this.managedTransmitterGroups) {
+                DacTransmitKey key = this.streamingServer
+                        .getLocalDacCommunicationKey(transmitterGrp.getName());
+                if (key == null) {
+                    this.dacMsgFailed(transmitterGrp);
+                    continue;
+                }
+                // TODO: cleanup during clustering.
+                LiveBroadcastCommand command = new LiveBroadcastCommand();
+                command.setBroadcastId(this.getName());
+                command.setMsgSource(MSGSOURCE.COMMS);
+                command.setAction(ACTION.TRIGGER);
+                this.dacServer.sendToDac(key, command);
+            }
         }
 
         /*
@@ -282,14 +380,14 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         }
 
         /*
-         * All SAME tones were submitted successfully. Notify the client and
-         * prepare to start streaming audio.
+         * Ready to start streaming audio. Notify the client and prepare to
+         * start streaming audio.
          */
         BroadcastStatus status = new BroadcastStatus();
         status.setMsgSource(MSGSOURCE.COMMS);
         status.setStatus(true);
         status.setBroadcastId(this.getName());
-        status.setTransmitterGroups(this.managedTransmitterGroups);
+        status.setTransmitters(this.managedTransmitters);
 
         this.state = STATE.LIVE;
         this.noteStateTransition();
@@ -302,7 +400,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             } catch (Exception e) {
                 this.notifyShareholdersProblem(
                         "Failed to read data from the socket connection.", e,
-                        this.command.getTransmitterGroups());
+                        this.command.getTransmitters());
                 this.live = false;
             }
             if (object instanceof ILiveBroadcastMessage) {
@@ -334,6 +432,12 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                 this.state.toString());
     }
 
+    /**
+     * Note: This will not truly be used until DR #3797
+     * 
+     * @param timeout
+     * @return
+     */
     private boolean verifyTransmitterAccess(long timeout) {
         boolean ready = false;
         // TODO: wait with timeout. Do not want to allow unlimited time.
@@ -344,65 +448,116 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         }
 
         if (ready == false) {
-            this.notifyShareholdersProblem(
-                    "Failed to receive a response from all transmitters in a reasonable amount of time.",
-                    null, this.command.getTransmitterGroups());
+            this.notifyShareholdersProblem("Failed to receive a response from all transmitter groups in a reasonable amount of time.");
             return ready;
         }
 
-        List<Transmitter> readyTransmitters = new ArrayList<Transmitter>(
-                this.managedTransmitterGroups.size());
-        // analyze the responses to our latest request.
-        synchronized (this.responses) {
-            for (ILiveBroadcastMessage responseMsg : this.responses) {
-                BroadcastStatus status = (BroadcastStatus) responseMsg;
+        List<Transmitter> readyTransmitters = null;
+        List<TransmitterGroup> readyTransmitterGroups = null;
+        if (this.command.getType() == BROADCASTTYPE.EO) {
+            readyTransmitters = new ArrayList<Transmitter>(
+                    this.managedTransmitters.size());
+            // analyze the responses to our latest request.
+            synchronized (this.responses) {
+                for (ILiveBroadcastMessage responseMsg : this.responses) {
+                    BroadcastStatus status = (BroadcastStatus) responseMsg;
 
-                if (status.getStatus() == false) {
-                    this.notifyShareholdersProblem(status);
-                    continue;
-                }
+                    if (status.getStatus() == false) {
+                        this.notifyShareholdersProblem(status);
+                        continue;
+                    }
 
-                // verify it is actually one of the transmitters we are
-                // interested in.
-                for (Transmitter transmitter : status.getTransmitterGroups()) {
-                    if (this.managedTransmitterGroups.contains(transmitter)) {
-                        readyTransmitters.add(transmitter);
+                    // verify it is actually one of the transmitters we are
+                    // interested in.
+                    for (Transmitter transmitter : status.getTransmitters()) {
+                        if (this.managedTransmitters.contains(transmitter)) {
+                            readyTransmitters.add(transmitter);
+                        }
                     }
                 }
             }
         }
 
-        if (ready == false) {
-            return false;
+        if (this.command.getType() == BROADCASTTYPE.BL) {
+            readyTransmitterGroups = new ArrayList<TransmitterGroup>(
+                    this.managedTransmitterGroups.size());
+            // analyze the responses to our latest request.
+            synchronized (this.responses) {
+                for (ILiveBroadcastMessage responseMsg : this.responses) {
+                    BroadcastStatus status = (BroadcastStatus) responseMsg;
+
+                    if (status.getStatus() == false) {
+                        this.notifyShareholdersProblem(status);
+                        continue;
+                    }
+
+                    // verify it is actually one of the transmitters we are
+                    // interested in.
+                    for (TransmitterGroup transmitterGroup : status
+                            .getTransmitterGroups()) {
+                        readyTransmitterGroups.add(transmitterGroup);
+                    }
+                }
+            }
         }
 
         // are all transmitters accounted for?
-        if (readyTransmitters.size() != this.managedTransmitterGroups.size()) {
-            final String clientMsg = this.buildMissingTransmittersMsg(
-                    readyTransmitters, this.managedTransmitterGroups);
-            this.notifyShareholdersProblem(
-                    "Failed to start broadcast " + this.getName() + "! "
-                            + clientMsg, null,
-                    this.command.getTransmitterGroups());
-            return false;
+        if (this.command.getType() == BROADCASTTYPE.EO) {
+            if (readyTransmitters.size() != this.managedTransmitters.size()) {
+                final String clientMsg = this.buildMissingTransmittersMsg(
+                        readyTransmitters, this.managedTransmitters);
+                this.notifyShareholdersProblem("Failed to start broadcast "
+                        + this.getName() + "! " + clientMsg, null,
+                        this.command.getTransmitters());
+                return false;
+            }
+        } else {
+            if (readyTransmitterGroups.size() != this.managedTransmitterGroups
+                    .size()) {
+                final String clientMsg = this.buildMissingTransmitterGrpsMsg(
+                        readyTransmitterGroups, this.managedTransmitterGroups);
+                this.notifyShareholdersProblem("Failed to start broadcast "
+                        + this.getName() + "! " + clientMsg);
+                return false;
+            }
         }
 
         return true;
     }
 
+    @Deprecated
     private String buildMissingTransmittersMsg(final List<Transmitter> actual,
             final Collection<Transmitter> expected) {
         StringBuilder clientMsg = new StringBuilder(
-                "Unable to access the following transmitters: ");
+                "Unable to access the following transmitter groups: ");
         int counter = 0;
-        for (Transmitter transmitterGroup : expected) {
-            if (actual.contains(transmitterGroup) == false) {
+        for (Transmitter transmitter : expected) {
+            if (actual.contains(transmitter) == false) {
                 if (counter > 0) {
                     clientMsg.append(", ");
                 }
-                clientMsg.append(transmitterGroup.getMnemonic());
+                clientMsg.append(transmitter.getMnemonic());
                 ++counter;
             }
+        }
+        clientMsg.append(".");
+
+        return clientMsg.toString();
+    }
+
+    final String buildMissingTransmitterGrpsMsg(
+            final List<TransmitterGroup> actual,
+            final Collection<TransmitterGroup> expected) {
+        StringBuilder clientMsg = new StringBuilder(
+                "Unable to access the following transmitter groups: ");
+        boolean first = true;
+        for (TransmitterGroup transmitterGrp : expected) {
+            if (first == false) {
+                clientMsg.append(", ");
+            } else {
+                first = false;
+            }
+            clientMsg.append(transmitterGrp.getName());
         }
         clientMsg.append(".");
 
@@ -429,7 +584,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
             logger.error(errorText, e);
             BroadcastStatus errorStatus = this.buildErrorStatus(errorText, e,
-                    msg.getTransmitterGroups());
+                    msg.getTransmitters());
             this.clusterServer.sendDataToAll(errorStatus);
             return false;
         }
@@ -443,11 +598,20 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                 playCommand.getAudio().size(), this.getName());
 
         // TODO: thread audio data transmissions to the managed dacs.
-        for (Transmitter transmitterGroup : this.managedTransmitterGroups) {
-            this.dacServer.sendToDac(
-                    this.streamingServer
-                            .getLocalDacCommunicationKey(transmitterGroup
-                                    .getMnemonic()), playCommand);
+        if (this.command.getType() == BROADCASTTYPE.EO) {
+            for (Transmitter transmitter : this.managedTransmitters) {
+                this.dacServer.sendToDac(
+                        this.streamingServer
+                                .getLocalDacCommunicationKey(transmitter
+                                        .getMnemonic()), playCommand);
+            }
+        } else if (this.command.getType() == BROADCASTTYPE.BL) {
+            for (TransmitterGroup transmitterGroup : this.managedTransmitterGroups) {
+                this.dacServer.sendToDac(
+                        this.streamingServer
+                                .getLocalDacCommunicationKey(transmitterGroup
+                                        .getName()), playCommand);
+            }
         }
     }
 
@@ -524,6 +688,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         }
     }
 
+    @Deprecated
     private void dacMsgFailed(final Transmitter transmitterGroup) {
         /*
          * TODO: handle. Should the entire live broadcast be stopped? Should
@@ -533,8 +698,14 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          */
 
         this.notifyShareholdersProblem("Broadcast " + this.getName()
-                + " is no longer able to communicate with transmitter "
+                + " is no longer able to communicate with transmitter group "
                 + transmitterGroup.getMnemonic() + ".", null, transmitterGroup);
+    }
+
+    private void dacMsgFailed(final TransmitterGroup transmitterGroup) {
+        this.notifyShareholdersProblem("Broadcast " + this.getName()
+                + " is no longer able to communicate with transmitter group "
+                + transmitterGroup.getName() + ".");
     }
 
     private void shutdownDacLiveBroadcasts() {
@@ -546,15 +717,32 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         command.setMsgSource(MSGSOURCE.COMMS);
         command.setAction(ACTION.STOP);
 
-        for (Transmitter transmitterGroup : this.managedTransmitterGroups) {
-            DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup.getMnemonic());
-            if (key == null) {
-                this.dacMsgFailed(transmitterGroup);
-                continue;
+        if (this.command.getType() == BROADCASTTYPE.EO) {
+            for (Transmitter transmitter : this.managedTransmitters) {
+                DacTransmitKey key = this.streamingServer
+                        .getLocalDacCommunicationKey(transmitter.getMnemonic());
+                if (key == null) {
+                    this.dacMsgFailed(transmitter);
+                    continue;
+                }
+                this.dacServer.sendToDac(key, command);
             }
-            this.dacServer.sendToDac(key, command);
+        } else if (this.command.getType() == BROADCASTTYPE.BL) {
+            for (TransmitterGroup transmitterGroup : this.managedTransmitterGroups) {
+                DacTransmitKey key = this.streamingServer
+                        .getLocalDacCommunicationKey(transmitterGroup.getName());
+                if (key == null) {
+                    this.dacMsgFailed(transmitterGroup);
+                    continue;
+                }
+                this.dacServer.sendToDac(key, command);
+            }
         }
+    }
+
+    private void notifyShareholdersProblem(final String message) {
+        this.notifyShareholdersProblem(this.buildErrorStatus(message, null,
+                null));
     }
 
     private void notifyShareholdersProblem(final String message,

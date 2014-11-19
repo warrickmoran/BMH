@@ -63,6 +63,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  *                                     allow us to track down the issue.
  * Nov 04, 2014   3781     dgilling    Fix SAME and alert tone display.
  * Nov 04, 2014   3778     bsteffen    Allow null transmit time.
+ * Nov 17, 2014   3808     bkowal      Support broadcast live.
  * 
  * </pre>
  * 
@@ -323,8 +324,10 @@ public class PlaylistData {
 
         final String[] columnText = new String[] {
                 sdf.format(notification.getTransitTime().getTime()),
-                notification.getMessageType().getAfosid(),
-                notification.getMessageType().getTitle(), "LiveMsg", "-",
+                (notification.getMessageType() != null) ? notification
+                        .getMessageType().getAfosid() : "-",
+                (notification.getMessageType() != null) ? notification
+                        .getMessageType().getTitle() : "-", "LiveMsg", "-",
                 sdf.format(notification.getExpirationTime().getTime()),
                 notification.getAlertTone(), notification.getSameTone(), "1" };
         TableRowData tableRowData = new TableRowData();

@@ -30,6 +30,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3413       rferrel     Initial creation
+ * Nov 17, 2014 3808       bkowal      Added an enum for broadcast live.
  * 
  * </pre>
  * 
@@ -81,7 +82,9 @@ public enum DlgInfo {
     CONVERT_LEGACY_DICTIONARY("bmh.dialog.convertLegacyDictionary",
             "Convert Legacy Dictionary"),
 
-    DAC_CONFIGURATION("bmh.dialog.dacConfiguration", "DAC Configuration");
+    DAC_CONFIGURATION("bmh.dialog.dacConfiguration", "DAC Configuration"),
+
+    BROADCAST_LIVE("bmh.dialog.broadcastLive", "Broadcast Live");
 
     private final String roleId;
 

@@ -23,6 +23,7 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
  * Definition of a request type that is used to interact with on-demand
@@ -35,6 +36,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 7, 2014  3630       bkowal      Initial creation
+ * Nov 17, 2014 3808       bkowal      Initial support for transmitter groups.
  * 
  * </pre>
  * 
@@ -47,5 +49,8 @@ public interface IOnDemandBroadcastMsg {
 
     public Boolean getStatus();
 
-    public List<Transmitter> getTransmitterGroups();
+    @Deprecated
+    public List<Transmitter> getTransmitters();
+    
+    public List<TransmitterGroup> getTransmitterGroups();
 }

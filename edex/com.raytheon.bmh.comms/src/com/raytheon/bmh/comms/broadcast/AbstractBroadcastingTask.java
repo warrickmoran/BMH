@@ -90,7 +90,7 @@ public abstract class AbstractBroadcastingTask extends Thread {
         status.setMsgSource(MSGSOURCE.COMMS);
         status.setBroadcastId(this.getName());
         status.setStatus(false);
-        status.setTransmitterGroups(transmitters);
+        status.setTransmitters(transmitters);
         status.setMessage(message);
         status.setException(exception);
 

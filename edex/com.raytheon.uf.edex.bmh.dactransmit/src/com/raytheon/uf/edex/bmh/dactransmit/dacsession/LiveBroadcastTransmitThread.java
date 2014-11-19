@@ -31,6 +31,7 @@ import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
@@ -66,6 +67,8 @@ import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
  * Nov 4, 2014  3655       bkowal      Eliminate audio echo. Decrease buffer delay.
  * Nov 7, 2014  3630       bkowal      Refactor for maintenance mode.
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
+ * Nov 17, 2014 3808       bkowal      Support broadcast live. Initial transition to
+ *                                     transmitter group.
  * 
  * </pre>
  * 
@@ -83,6 +86,8 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
     private final BroadcastTransmitterConfiguration config;
 
+    private final BROADCASTTYPE type;
+
     private volatile boolean streaming;
 
     public LiveBroadcastTransmitThread(final EventBus eventBus,
@@ -91,13 +96,14 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             final DataTransmitThread dataThread,
             final CommsManagerCommunicator commsManager,
             final BroadcastTransmitterConfiguration config,
-            final double dbTarget) throws IOException {
+            final double dbTarget, final BROADCASTTYPE type) throws IOException {
         super("LiveBroadcastTransmitThread", eventBus, address, port,
                 transmitters, dbTarget);
         this.broadcastId = broadcastId;
         this.dataThread = dataThread;
         this.commsManager = commsManager;
         this.config = config;
+        this.type = type;
     }
 
     @Override
@@ -112,18 +118,20 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         }
 
         this.dataThread.pausePlayback();
-
         // Build playlist switch notification
         this.notifyBroadcastSwitch(STATE.STARTED);
-        // play the Alert / SAME tones.
-        this.playTones(this.config.getToneAudio(), "SAME / Alert");
-
+        if (this.type == BROADCASTTYPE.EO) {
+            // play the Alert / SAME tones.
+            this.playTones(this.config.getToneAudio(), "SAME / Alert");
+        }
         BroadcastStatus status = new BroadcastStatus();
         status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(true);
         status.setBroadcastId(this.broadcastId);
         status.addTransmitter(this.config.getTransmitter());
+        status.addTransmitterGroup(this.config.getTransmitterGroup());
         this.commsManager.sendDacLiveBroadcastMsg(status);
+
         this.streaming = true;
         AudioPacketLogger packetLog = new AudioPacketLogger(
                 "Live Broadcast Audio", getClass(), 30);
@@ -149,13 +157,16 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         }
         packetLog.close();
 
-        this.playTones(this.config.getEndToneAudio(), "End of Message");
-        // give the tones enough time to finish.
-        long duration = ((this.config.getEndToneAudio().length / 160) * 20) + 1;
-        try {
-            Thread.sleep(duration);
-        } catch (InterruptedException e) {
-            logger.warn("LiveBroadcastTransmitThread sleep was interrupted.", e);
+        if (this.type == BROADCASTTYPE.EO) {
+            this.playTones(this.config.getEndToneAudio(), "End of Message");
+            // give the tones enough time to finish.
+            long duration = ((this.config.getEndToneAudio().length / 160) * 20) + 1;
+            try {
+                Thread.sleep(duration);
+            } catch (InterruptedException e) {
+                logger.warn(
+                        "LiveBroadcastTransmitThread sleep was interrupted.", e);
+            }
         }
         this.notifyBroadcastSwitch(STATE.FINISHED);
 
@@ -212,9 +223,15 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
     private void notifyBroadcastSwitch(final STATE broadcastState) {
         LiveBroadcastSwitchNotification notification = new LiveBroadcastSwitchNotification();
+        notification.setType(this.type);
         notification.setBroadcastState(broadcastState);
-        notification.setTransmitterGroup(this.config.getTransmitter()
-                .getMnemonic());
+        if (this.type == BROADCASTTYPE.EO) {
+            notification.setTransmitterGroup(this.config.getTransmitter()
+                    .getMnemonic());
+        } else if (this.type == BROADCASTTYPE.BL) {
+            notification.setTransmitterGroup(this.config.getTransmitterGroup()
+                    .getName());
+        }
         notification.setMessageType(this.config.getSelectedMessageType());
         notification.setTransitTime(this.config.getEffectiveTime());
         notification.setExpirationTime(this.config.getExpireTime());

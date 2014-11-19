@@ -27,9 +27,11 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride.LiveBroadcastSettings;
@@ -64,6 +66,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastThread.BROADC
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
  * Nov 17, 2014 3820       bkowal      Execute a separate shutdown sequence when stopping
  *                                     due to broadcast initialization failure.
+ * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * 
  * </pre>
  * 
@@ -169,6 +172,13 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
         super.okAction();
     }
 
+    @Override
+    protected void updateRecordingProgressBar() {
+        if (this.settings.getType() == BROADCASTTYPE.EO) {
+            super.updateRecordingProgressBar();
+        }
+    }
+
     private void initializeBroadcastLive() throws Exception {
         ILiveBroadcastMessage command = this.configureBroadcastLive();
 
@@ -178,34 +188,51 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
     }
 
     private ILiveBroadcastMessage configureBroadcastLive() throws Exception {
-        /*
-         * first build the SAME tones.
-         */
-        Map<Transmitter, byte[]> transmitterToneMap = new HashMap<>();
-        long longestDurationMS = this.settings
-                .getTransmitterSAMETones(transmitterToneMap);
-
         // Build the configuration
         LiveBroadcastStartCommand startCommand = new LiveBroadcastStartCommand();
-        startCommand.setMsgSource(MSGSOURCE.DAC);
+        startCommand.setMsgSource(MSGSOURCE.VIZ);
+        if (this.settings.getType() == BROADCASTTYPE.EO) {
+            /*
+             * first build the SAME tones.
+             */
+            Map<Transmitter, byte[]> transmitterToneMap = new HashMap<>();
+            long longestDurationMS = this.settings
+                    .getTransmitterSAMETones(transmitterToneMap);
 
-        for (Transmitter transmitter : transmitterToneMap.keySet()) {
-            BroadcastTransmitterConfiguration config = new BroadcastTransmitterConfiguration();
-            config.setSelectedMessageType(this.settings
-                    .getSelectedMessageType());
-            config.setTransmitter(transmitter);
-            byte[] tonesAudio = transmitterToneMap.get(transmitter);
-            long duration = tonesAudio.length / 160L * 20L;
-            config.setToneAudio(transmitterToneMap.get(transmitter));
-            config.setEndToneAudio(TonesGenerator.getEndOfMessageTones()
-                    .array());
-            config.setDelayMilliseconds(longestDurationMS - duration);
-            config.setEffectiveTime(this.settings.getEffectiveTime());
-            config.setExpireTime(this.settings.getExpireTime());
-            config.setPlayAlertTones(this.settings.isPlayAlertTones());
-            startCommand.addTransmitterConfiguration(config);
+            for (Transmitter transmitter : transmitterToneMap.keySet()) {
+                BroadcastTransmitterConfiguration config = new BroadcastTransmitterConfiguration();
+                config.setSelectedMessageType(this.settings
+                        .getSelectedMessageType());
+                config.setTransmitter(transmitter);
+                byte[] tonesAudio = transmitterToneMap.get(transmitter);
+                long duration = tonesAudio.length / 160L * 20L;
+                config.setToneAudio(transmitterToneMap.get(transmitter));
+                config.setEndToneAudio(TonesGenerator.getEndOfMessageTones()
+                        .array());
+                config.setDelayMilliseconds(longestDurationMS - duration);
+                config.setEffectiveTime(this.settings.getEffectiveTime());
+                config.setExpireTime(this.settings.getExpireTime());
+                config.setPlayAlertTones(this.settings.isPlayAlertTones());
+                startCommand.addTransmitterConfiguration(config);
+            }
+            startCommand.addAllTransmitter(startCommand
+                    .getRequestedTransmitters());
+        } else if (this.settings.getType() == BROADCASTTYPE.BL) {
+            startCommand.setType(this.settings.getType());
+
+            for (TransmitterGroup transmitterGrp : this.settings
+                    .getSelectedTransmitterGroups()) {
+                BroadcastTransmitterConfiguration config = new BroadcastTransmitterConfiguration();
+                config.setTransmitterGroup(transmitterGrp);
+                // no tones for broadcast live
+                config.setEffectiveTime(this.settings.getEffectiveTime());
+                config.setExpireTime(this.settings.getExpireTime());
+                config.setPlayAlertTones(this.settings.isPlayAlertTones());
+                startCommand.addTransmitterConfiguration(config);
+            }
+            startCommand.addAllTransmitterGroup(this.settings
+                    .getSelectedTransmitterGroups());
         }
-        startCommand.addAllTransmitter(startCommand.getRequestedTransmitters());
         return startCommand;
     }
 

@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.broadcast;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -37,6 +38,7 @@ import java.util.Set;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 20, 2014 3655       bkowal      Initial creation
+ * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * 
  * </pre>
  * 
@@ -46,8 +48,22 @@ import java.util.Set;
 @DynamicSerialize
 public class LiveBroadcastStartCommand extends LiveBroadcastCommand {
 
+    public static enum BROADCASTTYPE {
+        /* enum constant for Emergency Override */
+        EO,
+        /* enum constant for Broadcast Live */
+        BL
+    }
+
     @DynamicSerializeElement
+    private BROADCASTTYPE type = BROADCASTTYPE.EO;
+
+    @DynamicSerializeElement
+    @Deprecated
     private Map<Transmitter, BroadcastTransmitterConfiguration> transmitterConfigurationMap = new HashMap<>();
+
+    @DynamicSerializeElement
+    private Map<TransmitterGroup, BroadcastTransmitterConfiguration> transmitterGroupConfigurationMap = new HashMap<>();
 
     /**
      * 
@@ -59,12 +75,25 @@ public class LiveBroadcastStartCommand extends LiveBroadcastCommand {
 
     public void addTransmitterConfiguration(
             BroadcastTransmitterConfiguration configuration) {
-        this.transmitterConfigurationMap.put(configuration.getTransmitter(),
-                configuration);
+        if (configuration.getTransmitter() != null) {
+            this.transmitterConfigurationMap.put(
+                    configuration.getTransmitter(), configuration);
+        } else if (configuration.getTransmitterGroup() != null) {
+            this.transmitterGroupConfigurationMap.put(
+                    configuration.getTransmitterGroup(), configuration);
+        }
     }
 
     public Set<Transmitter> getRequestedTransmitters() {
         return this.transmitterConfigurationMap.keySet();
+    }
+
+    public BROADCASTTYPE getType() {
+        return type;
+    }
+
+    public void setType(BROADCASTTYPE type) {
+        this.type = type;
     }
 
     public Map<Transmitter, BroadcastTransmitterConfiguration> getTransmitterConfigurationMap() {
@@ -74,5 +103,14 @@ public class LiveBroadcastStartCommand extends LiveBroadcastCommand {
     public void setTransmitterConfigurationMap(
             Map<Transmitter, BroadcastTransmitterConfiguration> transmitterConfigurationMap) {
         this.transmitterConfigurationMap = transmitterConfigurationMap;
+    }
+
+    public Map<TransmitterGroup, BroadcastTransmitterConfiguration> getTransmitterGroupConfigurationMap() {
+        return transmitterGroupConfigurationMap;
+    }
+
+    public void setTransmitterGroupConfigurationMap(
+            Map<TransmitterGroup, BroadcastTransmitterConfiguration> transmitterGroupConfigurationMap) {
+        this.transmitterGroupConfigurationMap = transmitterGroupConfigurationMap;
     }
 }

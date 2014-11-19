@@ -42,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 20, 2014 3655       bkowal      Initial creation
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
  * Nov 15, 2014 3630       bkowal      Added a temporary transmitter group variable.
+ * Nov 17, 2014 3808       bkowal      Initial support for transmitter groups.
  * 
  * </pre>
  * 
@@ -65,7 +66,10 @@ public abstract class AbstractOnDemandBroadcastMessage implements
      */
     @Deprecated
     @DynamicSerializeElement
-    private List<Transmitter> transmitterGroups;
+    private List<Transmitter> transmitters;
+
+    @DynamicSerializeElement
+    private List<TransmitterGroup> transmitterGroups;
 
     /**
      * TODO: make a list and replace List<> transmitterGroups after all dialogs
@@ -113,30 +117,65 @@ public abstract class AbstractOnDemandBroadcastMessage implements
     /*
      * (non-Javadoc)
      * 
-     * @see com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage#
+     * @see
+     * com.raytheon.uf.common.bmh.broadcast.IOnDemandBroadcastMsg#getTransmitters
+     * ()
+     */
+    @Deprecated
+    @Override
+    public List<Transmitter> getTransmitters() {
+        return this.transmitters;
+    }
+
+    @Deprecated
+    public void setTransmitters(List<Transmitter> transmitters) {
+        this.transmitters = transmitters;
+    }
+
+    @Deprecated
+    public void addTransmitter(Transmitter transmitter) {
+        if (this.transmitters == null) {
+            this.transmitters = new ArrayList<>();
+        }
+        this.transmitters.add(transmitter);
+    }
+
+    @Deprecated
+    public void addAllTransmitter(Collection<Transmitter> transmitters) {
+        if (this.transmitters == null) {
+            this.transmitters = new ArrayList<>();
+        }
+        this.transmitters.addAll(transmitters);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.bmh.broadcast.IOnDemandBroadcastMsg#
      * getTransmitterGroups()
      */
     @Override
-    public List<Transmitter> getTransmitterGroups() {
-        return this.transmitterGroups;
+    public List<TransmitterGroup> getTransmitterGroups() {
+        return transmitterGroups;
     }
 
-    public void setTransmitterGroups(List<Transmitter> transmitterGroups) {
+    public void setTransmitterGroups(List<TransmitterGroup> transmitterGroups) {
         this.transmitterGroups = transmitterGroups;
     }
 
-    public void addTransmitter(Transmitter transmitter) {
+    public void addTransmitterGroup(TransmitterGroup transmitterGroup) {
         if (this.transmitterGroups == null) {
             this.transmitterGroups = new ArrayList<>();
         }
-        this.transmitterGroups.add(transmitter);
+        this.transmitterGroups.add(transmitterGroup);
     }
 
-    public void addAllTransmitter(Collection<Transmitter> transmitters) {
+    public void addAllTransmitterGroup(
+            Collection<TransmitterGroup> transmitterGroups) {
         if (this.transmitterGroups == null) {
             this.transmitterGroups = new ArrayList<>();
         }
-        this.transmitterGroups.addAll(transmitters);
+        this.transmitterGroups.addAll(transmitterGroups);
     }
 
     /**

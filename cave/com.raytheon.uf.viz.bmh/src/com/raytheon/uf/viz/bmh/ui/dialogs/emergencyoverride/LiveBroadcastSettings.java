@@ -26,10 +26,12 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.same.SAMEOriginatorMapper;
 import com.raytheon.uf.common.bmh.same.SAMEStateCodes;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
@@ -53,6 +55,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  *                                     will be used to populate a 
  *                                     {@link LiveBroadcastSwitchNotification}.
  * Oct 26, 2014 3712       bkowal      Added getAreaCodes
+ * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * 
  * </pre>
  * 
@@ -62,9 +65,17 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
 
 public class LiveBroadcastSettings {
 
+    /*
+     * Default will be Emergency Override. The existence of Broadcast Live is
+     * not publicized.
+     */
+    private BROADCASTTYPE type = BROADCASTTYPE.EO;
+
     private MessageType selectedMessageType;
 
     private Map<Transmitter, List<Area>> selectedTransmitterAreasMap;
+
+    private List<TransmitterGroup> selectedTransmitterGroups;
 
     private boolean playAlertTones;
 
@@ -86,12 +97,24 @@ public class LiveBroadcastSettings {
     public LiveBroadcastSettings() {
     }
 
+    /**
+     * TODO: eliminate selectedTransmitters argument when Emergency Override is
+     * updated to use Transmitter Groups.
+     */
     public void populate(final MessageType selectedMessageType,
             final List<Transmitter> selectedTransmitters,
+            final List<TransmitterGroup> selectedTransmitterGroups,
             final boolean playAlertTones, final int durationHours,
             final int durationMinutes) throws Exception {
         this.selectedMessageType = selectedMessageType;
-        this.populateTransmitterAreaMap(selectedTransmitters);
+        if (this.type == BROADCASTTYPE.EO) {
+            /*
+             * Only prepare transmitter, same-tone mapping for Emergency
+             * Override.
+             */
+            this.populateTransmitterAreaMap(selectedTransmitters);
+        }
+        this.selectedTransmitterGroups = selectedTransmitterGroups;
         this.playAlertTones = playAlertTones;
         this.durationHours = durationHours;
         this.durationMinutes = durationMinutes;
@@ -169,6 +192,15 @@ public class LiveBroadcastSettings {
         return this.selectedTransmitterAreasMap.keySet();
     }
 
+    public List<TransmitterGroup> getSelectedTransmitterGroups() {
+        return selectedTransmitterGroups;
+    }
+
+    public void setSelectedTransmitterGroups(
+            List<TransmitterGroup> selectedTransmitterGroups) {
+        this.selectedTransmitterGroups = selectedTransmitterGroups;
+    }
+
     public String getAreaCodes() {
         StringBuilder stringBuilder = new StringBuilder();
         boolean first = true;
@@ -190,6 +222,14 @@ public class LiveBroadcastSettings {
         }
 
         return stringBuilder.toString();
+    }
+
+    public BROADCASTTYPE getType() {
+        return type;
+    }
+
+    public void setType(BROADCASTTYPE type) {
+        this.type = type;
     }
 
     /**
