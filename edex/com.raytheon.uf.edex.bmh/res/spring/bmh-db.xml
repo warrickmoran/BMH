@@ -93,5 +93,7 @@
     
   <bean id="transmitterLanguageDao" class="com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao"
   	depends-on="bmhTxTemplate" />
-
+  	
+  <bean id="ldadConfigDao" class="com.raytheon.uf.edex.bmh.dao.LdadConfigDao"
+	depends-on="bmhTxTemplate" />
 </beans>
