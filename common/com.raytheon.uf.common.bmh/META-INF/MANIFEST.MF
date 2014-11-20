@@ -33,6 +33,8 @@ Export-Package: com.raytheon.uf.common.bmh,
  com.raytheon.uf.common.bmh.jms,
  com.raytheon.uf.common.bmh.notify,
  com.raytheon.uf.common.bmh.notify.config,
+ com.raytheon.uf.common.bmh.notify.status,
  com.raytheon.uf.common.bmh.request,
  com.raytheon.uf.common.bmh.same,
+ com.raytheon.uf.common.bmh.systemstatus,
  com.raytheon.uf.common.bmh.tones

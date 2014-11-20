@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.common.bmh.jms;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification;
+
 /**
  * Abstract JMS destination lookup. Returns the appropriate jms destination for
  * operational and practice mode.
@@ -30,6 +34,7 @@ package com.raytheon.uf.common.bmh.jms;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 18, 2014 3807       bkowal      Initial creation
+ * Nov 19, 2014 3817       bsteffen    Use status queue for more than just dacs.
  * 
  * </pre>
  * 
@@ -39,10 +44,10 @@ package com.raytheon.uf.common.bmh.jms;
 
 public abstract class AbstractBMHJMSDestinations {
 
-    /* Dac Status Notification Destinations */
-    private static final String BMH_DAC_STATUS = "BMH.DAC.Status";
+    /* Status Notification Destinations */
+    private static final String BMH_STATUS = "BMH.Status";
 
-    private static final String BMH_PRACTICE_DAC_STATUS = "BMH.Practice.DAC.Status";
+    private static final String BMH_PRACTICE_STATUS = "BMH.Practice.Status";
 
     /* BMH Configuration Notification Destinations */
     private static final String BMH_CONFIG = "BMH.Config";
@@ -74,16 +79,17 @@ public abstract class AbstractBMHJMSDestinations {
     }
 
     /**
-     * Returns the DAC Status URI. {@link DacStatusMessage} are written to and
-     * can be retrieved from this location.
+     * Returns the Status URI. Message of types with a package of
+     * com.raytheon.uf.common.bmh.notify.status are written to and can be
+     * retrieved from this location.
      * 
      * @param operational
      *            true indicates return operational uri, false indicates return
      *            practice uri
      * @return the request jms uri
      */
-    protected String getDacStatusURI(final boolean operational) {
-        return (operational) ? BMH_DAC_STATUS : BMH_PRACTICE_DAC_STATUS;
+    protected String getStatusURI(final boolean operational) {
+        return (operational) ? BMH_STATUS : BMH_PRACTICE_STATUS;
     }
 
     /**

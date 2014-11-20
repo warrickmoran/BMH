@@ -31,7 +31,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Nov 18, 2014            bkowal     Initial creation
+ * Nov 18, 2014            bkowal      Initial creation
+ * Nov 19, 2014 3817       bsteffen    Use status queue for more than just dacs.
  * 
  * </pre>
  * 
@@ -49,9 +50,9 @@ public class BMHJmsDestinations extends AbstractBMHJMSDestinations {
     protected BMHJmsDestinations() {
     }
 
-    public static String getDacStatusDestination() {
+    public static String getStatusDestination() {
         return instance
-                .getDacStatusURI(CAVEMode.getMode() == CAVEMode.OPERATIONAL);
+                .getStatusURI(CAVEMode.getMode() == CAVEMode.OPERATIONAL);
     }
 
     public static String getBMHConfigDestination() {

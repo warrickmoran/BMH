@@ -25,8 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.primitives.Ints;
-import com.raytheon.uf.common.bmh.notify.DacHardwareStatusNotification;
-import com.raytheon.uf.common.bmh.notify.DacVoiceStatus;
+import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
+import com.raytheon.uf.common.bmh.notify.status.DacVoiceStatus;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusException;
 
 /**

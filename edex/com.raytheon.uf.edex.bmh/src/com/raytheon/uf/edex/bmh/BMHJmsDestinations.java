@@ -32,6 +32,7 @@ import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 18, 2014 3807       bkowal      Initial creation
+ * Nov 19, 2014 3817       bsteffen    Use status queue for more than just dacs.
  * 
  * </pre>
  * 
@@ -67,14 +68,14 @@ public class BMHJmsDestinations extends AbstractBMHJMSDestinations {
         return (operational) ? JMS_DURABLE_QUEUE : JMS_GENERIC_QUEUE;
     }
 
-    public static String getDacStatusDestination(final boolean operational) {
+    public static String getStatusDestination(final boolean operational) {
         return String.format(jmsFormatStr, getJmsTopic(operational),
-                instance.getDacStatusURI(operational));
+                instance.getStatusURI(operational));
     }
 
-    public static String getDacStatusDestination(
+    public static String getStatusDestination(
             final AbstractBMHServerRequest request) {
-        return getDacStatusDestination(request.isOperational());
+        return getStatusDestination(request.isOperational());
     }
 
     public static String getBMHConfigDestination(final boolean operational) {
