@@ -63,6 +63,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014 3175       rjpeter     Initial creation
  * Nov 11, 2014 3803       bkowal      Added fields and methods.
  * Nov 13, 2014 3803       bkowal      Added selectLdadConfigByName
+ * Nov 19, 2014 3385       bkowal      Added {@link LdadConfig#SELECT_LDAD_CONFIG_BY_MSG_TYPE_QUERY}
  * 
  * </pre>
  * 
@@ -73,7 +74,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 @NamedQueries({
         @NamedQuery(name = LdadConfig.SELECT_LDAD_CONFIG_REFERENCES, query = LdadConfig.SELECT_LDAD_CONFIG_REFERENCES_QUERY),
-        @NamedQuery(name = LdadConfig.SELECT_LDAD_CONFIG_BY_NAME, query = LdadConfig.SELECT_LDAD_CONFIG_BY_NAME_QUERY) })
+        @NamedQuery(name = LdadConfig.SELECT_LDAD_CONFIG_BY_NAME, query = LdadConfig.SELECT_LDAD_CONFIG_BY_NAME_QUERY),
+        @NamedQuery(name = LdadConfig.SELECT_LDAD_CONFIG_BY_MSG_TYPE, query = LdadConfig.SELECT_LDAD_CONFIG_BY_MSG_TYPE_QUERY) })
 @Table(name = "ldad_config", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }) })
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = LdadConfig.GEN, sequenceName = "ldad_config_gen")
 @BatchSize(size = 100)
@@ -87,6 +89,10 @@ public class LdadConfig {
     public static final String SELECT_LDAD_CONFIG_BY_NAME = "selectLdadConfigByName";
 
     protected static final String SELECT_LDAD_CONFIG_BY_NAME_QUERY = "FROM LdadConfig l WHERE l.name = :name";
+
+    public static final String SELECT_LDAD_CONFIG_BY_MSG_TYPE = "selectLdadConfigByMsgType";
+
+    protected static final String SELECT_LDAD_CONFIG_BY_MSG_TYPE_QUERY = "SELECT l FROM LdadConfig l INNER JOIN l.messageTypes mts WHERE mts.afosid = :afosid";
 
     // use surrogate key
     @Id

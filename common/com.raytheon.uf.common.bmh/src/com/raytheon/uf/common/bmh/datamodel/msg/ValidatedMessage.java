@@ -64,6 +64,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 2, 2014   3568     bkowal      Added the getValidatedMsgForInputMsg named query.
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Nov 02, 2014  3785     mpduff      Added DynamicSerialize annotations.
+ * Nov 19, 2014  3385     bkowal      Added {@link LdadStatus#NONE}
  * </pre>
  * 
  * @author bsteffen
@@ -100,6 +101,8 @@ public class ValidatedMessage {
     public static enum LdadStatus {
         /** This status must be set for a message to continue processing. */
         ACCEPTED,
+        /** This message does not have any associated ldad configuration **/
+        NONE,
         /** Validation did not complete successfully */
         ERROR;
     }

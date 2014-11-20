@@ -30,17 +30,33 @@
 		<route id="ttsEncodeAudio">
 			<from uri="jms-durable:queue:BMH.TTS" />
 			<doTry>
-				<bean ref="broadcastMsgDao" method="getByID" />
-				<bean ref="ttsManager" method="process" />
-				<bean ref="broadcastMsgDao" method="saveOrUpdate" />
-				<filter>
-					<simple>${body.isSuccess} == false</simple>
-					<stop />
-				</filter>
-				<setBody>
-					<simple>${body.getId}</simple>
-				</setBody>
-				<to uri="jms-durable:queue:BMH.Schedule" />
+				<choice>
+					<when>
+						<simple>
+							${body} is "java.lang.Long"
+						</simple>
+						<bean ref="broadcastMsgDao" method="getByID" />
+						<bean ref="ttsManager" method="process" />
+						<bean ref="broadcastMsgDao" method="saveOrUpdate" />
+						<filter>
+							<simple>${body.isSuccess} == false</simple>
+							<stop />
+						</filter>
+						<setBody>
+							<simple>${body.getId}</simple>
+						</setBody>
+						<to uri="jms-durable:queue:BMH.Schedule" />
+					</when>
+					<otherwise>
+						<bean ref="serializationUtil" method="transformFromThrift" />
+						<bean ref="ttsManager" method="process" />
+						<!-- 
+							TODO: will be sent to an ldad jms destination for
+							dissemination.
+						 -->
+					</otherwise>
+				</choice>
+				
 				<doCatch>
 					<exception>java.lang.Throwable</exception>
 					<to uri="log:bmh?level=ERROR" />

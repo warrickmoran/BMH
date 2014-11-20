@@ -43,6 +43,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
@@ -78,6 +79,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 21, 2014 3747       bkowal      Set update time manually.
  * Oct 26, 2014 3759       bkowal      Update to support practice mode.
  * Nov 5, 2014  3630       bkowal      Use constants audio directory.
+ * Nov 19, 2014 3385       bkowal      Initial ldad implementation.
  * 
  * </pre>
  * 
@@ -522,6 +524,13 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             fragment.setSuccess(success);
         }
         message.setUpdateDate(TimeUtil.newGmtCalendar());
+
+        return message;
+    }
+
+    public LdadMsg process(LdadMsg message) throws Exception {
+        // TODO: implement
+        statusHandler.info("Succcessfully received: " + message.toString());
 
         return message;
     }
