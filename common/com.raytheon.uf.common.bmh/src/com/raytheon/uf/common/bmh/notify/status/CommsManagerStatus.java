@@ -52,6 +52,10 @@ public class CommsManagerStatus extends PeriodicStatusMessage {
         super();
     }
 
+    public CommsManagerStatus(String host) {
+        this(host, null);
+    }
+
     public CommsManagerStatus(String host,
             Set<String> connectedTransmitterGroups) {
         super(host);

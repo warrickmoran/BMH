@@ -17,15 +17,17 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.systemstatus;
+package com.raytheon.uf.edex.bmh.systemstatus;
 
-import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
+import com.raytheon.uf.common.bmh.notify.status.BmhEdexStatus;
+import com.raytheon.uf.common.bmh.systemstatus.SystemStatusMonitor;
 
 /**
  * 
- * Request a {@link SystemStatusMonitor} which reflects the current status of
- * the system.
+ * Object to hold and monitor the status of various BMH components.
  * 
  * <pre>
  * 
@@ -40,7 +42,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * @author bsteffen
  * @version 1.0
  */
-@DynamicSerialize
-public class SystemStatusRequest extends AbstractBMHServerRequest {
-    /* No additional information is needed */
+public class EdexStatusMonitor extends SystemStatusMonitor {
+
+    public BmhEdexStatus getCurrentStatus() throws UnknownHostException {
+        return new BmhEdexStatus(InetAddress.getLocalHost().getHostName());
+    }
+    
 }
