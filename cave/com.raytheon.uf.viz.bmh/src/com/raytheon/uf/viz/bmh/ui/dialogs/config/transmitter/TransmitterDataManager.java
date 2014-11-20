@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
@@ -48,6 +50,9 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Aug 27, 2014    3432    mpduff      Added dac methods
  * Oct 13, 2014    3654    rjpeter     Updated to use ProgramSummary.
  * Oct 23, 2014    3687    bsteffen    Remove getDacs().
+ * Nov 17, 2014    3349    lvenable    Added method to pass in a comparator
+ *                                     for sorting when getting the transmitter
+ *                                     groups.
  * 
  * </pre>
  * 
@@ -57,19 +62,43 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 
 public class TransmitterDataManager {
     /**
-     * Get a list of {@link TransmitterGroup}s
+     * Get a list of {@link TransmitterGroup}s in any order.
      * 
      * @return List of TransmitterGroups
      * @throws Exception
      */
     public List<TransmitterGroup> getTransmitterGroups() throws Exception {
+        return getTransmitterGroups(null);
+    }
+
+    /**
+     * Get a list of {@link TransmitterGroup}s sorted using the provided
+     * comparator.
+     * 
+     * @param comparator
+     *            Comparator.
+     * @return List of TransmitterGroups using the comparator.
+     * @throws Exception
+     */
+    public List<TransmitterGroup> getTransmitterGroups(
+            Comparator<TransmitterGroup> comparator) throws Exception {
+
         TransmitterRequest request = new TransmitterRequest();
         request.setAction(TransmitterRequestAction.GetTransmitterGroups);
 
         TransmitterResponse response = (TransmitterResponse) BmhUtils
                 .sendRequest(request);
+        List<TransmitterGroup> tgList = response.getTransmitterGroupList();
 
-        return response.getTransmitterGroupList();
+        if (tgList == null) {
+            tgList = Collections.emptyList();
+        }
+
+        if (comparator != null && tgList.isEmpty() == false) {
+            Collections.sort(tgList, comparator);
+        }
+
+        return tgList;
     }
 
     /**
