@@ -31,6 +31,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs;
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3413       rferrel     Initial creation
  * Nov 17, 2014 3808       bkowal      Added an enum for broadcast live.
+ * Nov 20, 2014 3413       rferrel     Removed enum BMH_MENU.
  * 
  * </pre>
  * 
@@ -38,8 +39,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs;
  * @version 1.0
  */
 public enum DlgInfo {
-    BMH_MENU("bmh.dialog.menu", "BMH Menu"),
-
     TRANSMITTER_CONFIGURATION("bmh.dialog.transmitterConfiguration",
             "Transmitter Configuration"),
 
@@ -67,8 +66,6 @@ public enum DlgInfo {
     WEATHER_MESSAGES("bmh.dialog.weatherMessages", "Weather Messages"),
 
     EMERGENCY_OVERRIDE("bmh.dialog.emergencyOverride", "Emergency Override"),
-
-    SYSTEM_STATUS("bmh.dialog.systemStatus", "System Status"),
 
     ALERT_MONITOR("bmh.dialog.alertMonitor", "Alert Monitor"),
 

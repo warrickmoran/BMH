@@ -38,7 +38,6 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.viz.bmh.Activator;
-import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -88,7 +87,7 @@ public class SystemStatusDlg extends CaveSWTDialog {
     public SystemStatusDlg(Shell parentShell) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
                 | CAVE.DO_NOT_BLOCK);
-        setText(DlgInfo.SYSTEM_STATUS.getTitle());
+        setText("System Status");
     }
 
     @Override
