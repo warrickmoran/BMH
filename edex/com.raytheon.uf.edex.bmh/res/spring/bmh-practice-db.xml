@@ -102,10 +102,10 @@
   	depends-on="bmh_practiceTxTemplate">
   	<constructor-arg value="false" />
   </bean>
-
+  
   <bean id="practice_ldadConfigDao" class="com.raytheon.uf.edex.bmh.dao.LdadConfigDao"
-	depends-on="bmh_practiceTxTemplate">
-	<constructor-arg value="false" />
+  	depends-on="bmh_practiceTxTemplate">
+  	<constructor-arg value="false" />
   </bean>
 
 </beans>

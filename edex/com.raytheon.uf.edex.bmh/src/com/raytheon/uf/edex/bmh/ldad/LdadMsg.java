@@ -19,8 +19,15 @@
  **/
 package com.raytheon.uf.edex.bmh.ldad;
 
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+
 /**
- * Temporary Placeholder. Full message is in a separate changeset.
+ * Message associated with a {@link LdadConfig}. Ldad Messages are generated
+ * similar to the way that {@link BroadcastMsg}s are. The main different is that
+ * Ldad Messages are never sent to the playlist manager so that they can be
+ * scheduled for broadcast, they are sent to the ldad disseminator so that they
+ * can be transferred to a remote location.
  * 
  * <pre>
  * 
@@ -28,7 +35,7 @@ package com.raytheon.uf.edex.bmh.ldad;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Nov 19, 2014            bkowal     Initial creation
+ * Nov 19, 2014 3385       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -36,41 +43,88 @@ package com.raytheon.uf.edex.bmh.ldad;
  * @version 1.0
  */
 
+@DynamicSerialize
 public class LdadMsg {
+
+    /**
+     * Id of the ldad configuration that the additional synthesis is being
+     * completed for.
+     */
+    @DynamicSerializeElement
     private long ldadId;
 
+    /**
+     * SSML to synthesize.
+     */
+    @DynamicSerializeElement
+    private String ssml;
+
+    /**
+     * Flag indicating whether or not the TTS Synthesis was successful.
+     */
+    @DynamicSerializeElement
+    private boolean success;
+
+    /**
+     * Output file associated with the audio generated for the ldad
+     * configuration. Will only be present when {@link LdadMsg#success} is true.
+     */
+    @DynamicSerializeElement
     private String outputName;
 
+    /**
+     * 
+     */
     public LdadMsg() {
     }
 
-    /**
-     * @return the ldadId
-     */
     public long getLdadId() {
         return ldadId;
     }
 
-    /**
-     * @param ldadId
-     *            the ldadId to set
-     */
     public void setLdadId(long ldadId) {
         this.ldadId = ldadId;
     }
 
-    /**
-     * @return the outputName
-     */
+    public String getSsml() {
+        return ssml;
+    }
+
+    public void setSsml(String ssml) {
+        this.ssml = ssml;
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
     public String getOutputName() {
         return outputName;
     }
 
-    /**
-     * @param outputName
-     *            the outputName to set
-     */
     public void setOutputName(String outputName) {
         this.outputName = outputName;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("LdadMsg [");
+        sb.append("ldadId=");
+        sb.append(this.ldadId);
+        sb.append(", ssml=");
+        sb.append(this.ssml);
+        sb.append(", success=");
+        sb.append(this.success);
+        if (this.outputName != null) {
+            sb.append(", outputName=");
+            sb.append(this.outputName);
+        }
+        sb.append("]");
+
+        return sb.toString();
     }
 }

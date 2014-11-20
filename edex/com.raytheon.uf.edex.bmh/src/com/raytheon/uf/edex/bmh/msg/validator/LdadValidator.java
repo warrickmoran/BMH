@@ -19,9 +19,12 @@
  **/
 package com.raytheon.uf.edex.bmh.msg.validator;
 
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
+import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
+import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
  * 
@@ -34,6 +37,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
+ * Nov 19, 2014  3385     bkowal      Implemented.
  * 
  * </pre>
  * 
@@ -42,8 +46,27 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
  */
 public class LdadValidator {
 
-    public void validate(ValidatedMessage message) {
-        message.setLdadStatus(LdadStatus.ERROR);
-    }
+    protected static final BMHStatusHandler statusHandler = BMHStatusHandler
+            .getInstance(LdadValidator.class);
 
+    private final LdadConfigDao ldadConfigDao = new LdadConfigDao();
+
+    public void validate(ValidatedMessage message) {
+        LdadStatus status = LdadStatus.NONE;
+        try {
+            if (this.ldadConfigDao.getLdadConfigsForMsgType(message
+                    .getInputMessage().getAfosid()) != null) {
+                status = LdadStatus.ACCEPTED;
+            }
+        } catch (Exception e) {
+            statusHandler.error(
+                    BMH_CATEGORY.MESSAGE_VALIDATION_FAILED,
+                    "Failed to determine if validated message: "
+                            + message.getId()
+                            + " has any applicable ldad configurations.", e);
+            status = LdadStatus.ERROR;
+        }
+
+        message.setLdadStatus(status);
+    }
 }

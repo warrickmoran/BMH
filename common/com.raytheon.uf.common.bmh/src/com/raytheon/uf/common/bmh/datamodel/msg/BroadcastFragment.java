@@ -84,8 +84,8 @@ public class BroadcastFragment {
 
     /*
      * The name of the output file; generated at the conclusion of the
-     * transformation - will initially be NULL; but, will be updated after a
-     * successful text transformation.
+     * synthesis - will initially be NULL; but, will be updated after a
+     * successful text synthesis.
      */
     @Column(nullable = true)
     @DynamicSerializeElement

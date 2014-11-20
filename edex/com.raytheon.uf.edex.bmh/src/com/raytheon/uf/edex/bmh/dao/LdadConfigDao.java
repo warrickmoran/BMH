@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
  * Nov 11, 2014 3803       bkowal      Initial creation
  * Nov 13, 2014 3803       bkowal      Added getLdadConfigByName. Fixed
  *                                     selectConfigReferences.
+ * Nov 19, 2014 3385       bkowal      Added {@link LdadConfigDao#getLdadConfigsForMsgType(int)}
  * 
  * </pre>
  * 
@@ -65,17 +66,17 @@ public class LdadConfigDao extends AbstractBMHDao<LdadConfig, Long> {
                 ldadConfigs.size());
         for (Object object : ldadConfigs) {
             if (object instanceof Object[] == false) {
-                logger.error(
-                        "The {} query returned results in the wrong format. Expected an array of Object.",
-                        LdadConfig.SELECT_LDAD_CONFIG_REFERENCES);
+                logger.error("The "
+                        + LdadConfig.SELECT_LDAD_CONFIG_REFERENCES
+                        + " query returned results in the wrong format. Expected an array of Object.");
                 continue;
             }
 
             Object[] objects = (Object[]) object;
             if (objects.length != 5) {
-                logger.error(
-                        "The {} query returned results in the wrong format. Expected an array of Object with 5 elements.",
-                        LdadConfig.SELECT_LDAD_CONFIG_REFERENCES);
+                logger.error("The "
+                        + LdadConfig.SELECT_LDAD_CONFIG_REFERENCES
+                        + " query returned results in the wrong format. Expected an array of Object with 5 elements.");
                 continue;
             }
 
@@ -84,9 +85,9 @@ public class LdadConfigDao extends AbstractBMHDao<LdadConfig, Long> {
                     || objects[2] instanceof String == false
                     || objects[3] instanceof String == false
                     || objects[4] instanceof BMHAudioFormat == false) {
-                logger.error(
-                        "The {} query returned results in the wrong format. Expected the object array to have objects of type: [Long, String, String, String, BMHAudioFormat].",
-                        LdadConfig.SELECT_LDAD_CONFIG_REFERENCES);
+                logger.error("The "
+                        + LdadConfig.SELECT_LDAD_CONFIG_REFERENCES
+                        + " query returned results in the wrong format. Expected the object array to have objects of type: [Long, String, String, String, BMHAudioFormat].");
                 continue;
             }
 
@@ -116,5 +117,33 @@ public class LdadConfigDao extends AbstractBMHDao<LdadConfig, Long> {
         }
 
         return null;
+    }
+
+    public List<LdadConfig> getLdadConfigsForMsgType(final String afosid) {
+        List<?> ldadConfigObjects = super.findByNamedQueryAndNamedParam(
+                LdadConfig.SELECT_LDAD_CONFIG_BY_MSG_TYPE,
+                new String[] { "afosid" }, new Object[] { afosid });
+        if (ldadConfigObjects == null || ldadConfigObjects.isEmpty()) {
+            return null;
+        }
+
+        List<LdadConfig> ldadConfigs = new ArrayList<>(ldadConfigObjects.size());
+        for (Object object : ldadConfigObjects) {
+            if (object instanceof LdadConfig == false) {
+                StringBuilder errMsg = new StringBuilder("The ");
+                errMsg.append(LdadConfig.SELECT_LDAD_CONFIG_BY_NAME);
+                errMsg.append(" returned results in the wrong format. Expected an object of type ");
+                errMsg.append(LdadConfig.class.getName());
+                errMsg.append("; received an object of type ");
+                errMsg.append(object.getClass().getName());
+                errMsg.append(".");
+                logger.error(errMsg.toString());
+
+                return null;
+            }
+            ldadConfigs.add((LdadConfig) object);
+        }
+
+        return ldadConfigs;
     }
 }

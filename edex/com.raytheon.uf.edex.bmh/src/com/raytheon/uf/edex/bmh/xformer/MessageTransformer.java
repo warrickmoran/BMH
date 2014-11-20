@@ -21,9 +21,11 @@ package com.raytheon.uf.edex.bmh.xformer;
 
 import java.nio.file.Paths;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,6 +44,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
@@ -50,8 +54,10 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.Sentence;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
+import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
+import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.staticmsg.StaticMessageIdentifierUtil;
 import com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator;
 import com.raytheon.uf.edex.bmh.staticmsg.TimeTextFragment;
@@ -89,6 +95,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 22, 2014 3747       bkowal      Set creation / update time manually.
  * Oct 27, 2014 3759       bkowal      Update to support practice mode.
  * Nov 5, 2014  3759       bkowal      Practice Mode Support for time messages.
+ * Nov 19, 2014 3385       bkowal      Implemented ldad support.
  * 
  * </pre>
  * 
@@ -114,6 +121,9 @@ public class MessageTransformer implements IContextStateProcessor {
     /* Used to retrieve the dictionary. */
     private TransmitterLanguageDao transmitterLanguageDao;
 
+    /* Used to retrieve ldad configuration(s). */
+    private LdadConfigDao ldadConfigDao;
+
     /* Used to retrieve directory paths associated with time audio. */
     private final TimeMessagesGenerator tmGenerator;
 
@@ -126,17 +136,17 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     /**
-     * Creates a collection of {@link BroadcastMsg} based on the specified
-     * {@link ValidatedMessage}
+     * Creates a collection of {@link BroadcastMsg} and, possibly,
+     * {@link LdadMsg} based on the specified {@link ValidatedMessage}
      * 
      * @param message
      *            the specified {@link ValidatedMessage}
-     * @return the list of broadcast messages that were generated
+     * @return the list of {@link BroadcastMsg}s and, when applicable,
+     *         {@link LdadMsg}s that were generated.
      * @throws Exception
      *             when the transformation fails
      */
-    public List<BroadcastMsg> process(ValidatedMessage message)
-            throws Exception {
+    public List<Object> process(ValidatedMessage message) throws Exception {
         final String completionError = "Receieved an uninitialized or incomplete Validated Message to process!";
 
         if (message == null) {
@@ -176,7 +186,12 @@ public class MessageTransformer implements IContextStateProcessor {
          * Iterate through the destination transmitters; determine which
          * dictionary to use.
          */
-        List<BroadcastMsg> generatedMessages = new LinkedList<>();
+        /*
+         * TODO: not sure if we will leave it as an object or if we will create
+         * some type of generic interface for the BroadcastMsg and LdadMsg to
+         * extend?
+         */
+        List<Object> generatedMessages = new LinkedList<>();
         for (TransmitterGroup group : message.getTransmitterGroups()) {
             Dictionary dictionary = this.getDictionary(group, messageType
                     .getVoice().getLanguage(), message.getId());
@@ -221,7 +236,95 @@ public class MessageTransformer implements IContextStateProcessor {
                 + " was successful. Generated " + generatedMessages.size()
                 + " Broadcast Message(s).");
 
+        if (message.getLdadStatus() == LdadStatus.ACCEPTED) {
+            statusHandler.info("Building ldad message(s) for message: "
+                    + message.getId() + "...");
+            try {
+                generatedMessages.addAll(this.processLdad(messageType,
+                        formattedText));
+            } catch (SSMLConversionException e) {
+                StringBuilder errorString = new StringBuilder(
+                        "Failed to generate ldad message(s) for message: ");
+                errorString.append(message.getId());
+                errorString.append(".");
+
+                /*
+                 * Currently the generated broadcast message(s) will still be
+                 * sent through the processing routes.
+                 */
+                statusHandler.error(BMH_CATEGORY.XFORM_SSML_GENERATION_FAILED,
+                        errorString.toString(), e);
+            }
+        }
+
         return generatedMessages;
+    }
+
+    private List<LdadMsg> processLdad(final MessageType messageType,
+            final String formattedText) throws SSMLConversionException {
+        /*
+         * Retrieve all ldad configuration(s) associated with the specified
+         * message type.
+         */
+        List<LdadConfig> ldadConfigurations = this.ldadConfigDao
+                .getLdadConfigsForMsgType(messageType.getAfosid());
+        if (ldadConfigurations == null || ldadConfigurations.isEmpty()) {
+            /*
+             * in the rare case that an ldad configuration exists during
+             * validation; but, it is removed before the message is processed.
+             */
+            return Collections.emptyList();
+        }
+
+        statusHandler.info("Found " + ldadConfigurations.size()
+                + " ldad configuration(s) for message type: "
+                + messageType.getAfosid() + ".");
+        List<LdadMsg> ldadMessages = new ArrayList<>(ldadConfigurations.size());
+
+        /*
+         * Generate the default case. Transformed text/ssml without any
+         * dictionary.
+         */
+        final List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
+        transformationCandidates.add(new RulingFreeText(formattedText));
+
+        SSMLDocument defaultSSMLDocument = this.applyTransformations(
+                new LinkedList<>(transformationCandidates), formattedText);
+        for (LdadConfig ldadConfig : ldadConfigurations) {
+            LdadMsg ldadMsg = new LdadMsg();
+            ldadMsg.setLdadId(ldadConfig.getId());
+            if (ldadConfig.getDictionary() == null) {
+                /*
+                 * No dictionary defined, use the default ssml.
+                 */
+                ldadMsg.setSsml(defaultSSMLDocument.toSSML());
+                ldadMessages.add(ldadMsg);
+                continue;
+            }
+
+            /*
+             * Generate ssml based on text transformed using the specified
+             * dictionary.
+             */
+            // Generate the transformation rules.
+            List<ITextTransformation> textTransformations = this
+                    .buildDictionaryTransformationList(ldadConfig
+                            .getDictionary());
+
+            // Apply the rules.
+            List<ITextRuling> transformedCandidates = this.setTransformations(
+                    textTransformations, new LinkedList<>(
+                            transformationCandidates));
+
+            // Generate the Transformed SSML.
+            SSMLDocument ssmlDocument = this.applyTransformations(
+                    transformedCandidates, formattedText);
+
+            ldadMsg.setSsml(ssmlDocument.toSSML());
+            ldadMessages.add(ldadMsg);
+        }
+
+        return ldadMessages;
     }
 
     /**
@@ -329,19 +432,8 @@ public class MessageTransformer implements IContextStateProcessor {
             throws SSMLConversionException, BMHConfigurationException {
 
         /* Create Transformation rules based on the dictionary. */
-        List<ITextTransformation> textTransformations = new LinkedList<ITextTransformation>();
-        if (dictionary != null) {
-            for (Word word : dictionary.getWords()) {
-                if (word.isDynamic()) {
-                    textTransformations
-                            .add(new DynamicNumericTextTransformation(word
-                                    .getWord(), word.getSubstitute()));
-                } else {
-                    textTransformations.add(new SimpleTextTransformation(word
-                            .getWord(), word.getSubstitute()));
-                }
-            }
-        }
+        List<ITextTransformation> textTransformations = this
+                .buildDictionaryTransformationList(dictionary);
 
         /*
          * Handle the static message type special case.
@@ -479,6 +571,36 @@ public class MessageTransformer implements IContextStateProcessor {
                 StringUtils.EMPTY);
 
         return WordUtils.capitalizeFully(content);
+    }
+
+    /**
+     * Creates the text transformation rules based on the specified dictionary.
+     * When no dictionary is specified, an empty list will be returned.
+     * 
+     * @param dictionary
+     *            the specified dictionary
+     * @return a list of text transformation rules; an empty list of rules is
+     *         possible.
+     * @throws SSMLConversionException
+     */
+    private List<ITextTransformation> buildDictionaryTransformationList(
+            final Dictionary dictionary) throws SSMLConversionException {
+        /* Create Transformation rules based on the dictionary. */
+        List<ITextTransformation> textTransformations = new LinkedList<ITextTransformation>();
+        if (dictionary != null) {
+            for (Word word : dictionary.getWords()) {
+                if (word.isDynamic()) {
+                    textTransformations
+                            .add(new DynamicNumericTextTransformation(word
+                                    .getWord(), word.getSubstitute()));
+                } else {
+                    textTransformations.add(new SimpleTextTransformation(word
+                            .getWord(), word.getSubstitute()));
+                }
+            }
+        }
+
+        return textTransformations;
     }
 
     /**
@@ -630,6 +752,21 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     /**
+     * @return the ldadConfigDao
+     */
+    public LdadConfigDao getLdadConfigDao() {
+        return ldadConfigDao;
+    }
+
+    /**
+     * @param ldadConfigDao
+     *            the ldadConfigDao to set
+     */
+    public void setLdadConfigDao(LdadConfigDao ldadConfigDao) {
+        this.ldadConfigDao = ldadConfigDao;
+    }
+
+    /**
      * Validate all DAOs are set correctly and throw an exception if any are not
      * set.
      * 
@@ -642,6 +779,9 @@ public class MessageTransformer implements IContextStateProcessor {
         } else if (this.transmitterLanguageDao == null) {
             throw new IllegalStateException(
                     "TransmitterLanguageDao has not been set on the MessageTransformer");
+        } else if (this.ldadConfigDao == null) {
+            throw new IllegalStateException(
+                    "LdadConfigDao has not been set on the MessageTransformer");
         }
     }
 

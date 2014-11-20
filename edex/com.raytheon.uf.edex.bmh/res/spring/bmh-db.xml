@@ -95,5 +95,6 @@
   	depends-on="bmhTxTemplate" />
   	
   <bean id="ldadConfigDao" class="com.raytheon.uf.edex.bmh.dao.LdadConfigDao"
-	depends-on="bmhTxTemplate" />
+  	depends-on="bmhTxTemplate" />
+
 </beans>
