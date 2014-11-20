@@ -103,6 +103,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 28, 2014   3750     bkowal      Add Suite to the SuiteMessage relation when
  *                                     adding Message Types to a Suite.
  * Nov 12, 2014   3815     lvenable    Fixed category not being saved.
+ * Nov 20, 2014   3830     rferrel     Remove assignProgramBtn button and supporting methods.
  * </pre>
  * 
  * @author lvenable
@@ -172,9 +173,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
     /** Label containing a list of programs. */
     private Label programListLbl;
-
-    /** Assign program button. */
-    private Button assignProgramBtn;
 
     /** Enumeration of dialog types. */
     public enum DialogType {
@@ -359,15 +357,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         gd.minimumWidth = 350;
         programListLbl = new Label(progTransComp, SWT.BORDER);
         programListLbl.setLayoutData(gd);
-
-        assignProgramBtn = new Button(progTransComp, SWT.PUSH);
-        assignProgramBtn.setText("Assign to Program(s)...");
-        assignProgramBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                displayAssignProgramsToSuiteDialog();
-            }
-        });
     }
 
     /**
@@ -791,122 +780,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                 && (this.msgTypesInSuiteList.isEmpty() == false)) {
             this.selectedSuite.setSuiteMessages(this.msgTypesInSuiteList);
         }
-    }
-
-    /**
-     * Assign the selected programs to the current suite.
-     */
-    private void displayAssignProgramsToSuiteDialog() {
-
-        CheckListData cld = new CheckListData();
-
-        for (Program p : programsArray) {
-            if (!assignedProgramNames.contains(p.getName())) {
-                cld.addDataItem(p.getName(), false);
-            }
-        }
-
-        String msg = null;
-        if (dialogType == DialogType.CREATE) {
-            msg = "Add new suite to selected programs:";
-        } else if (dialogType == DialogType.EDIT) {
-            msg = "Add suite " + selectedSuite.getName()
-                    + "to selected programs:";
-        }
-
-        CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
-                "Add to Programs", msg, cld, true, 250, 300);
-
-        checkListDlg.setCloseCallback(new ICloseCallback() {
-            @Override
-            public void dialogClosed(Object returnValue) {
-                if ((returnValue != null)
-                        && (returnValue instanceof CheckListData)) {
-                    if (dialogType == DialogType.EDIT) {
-                        saveSuiteToPrograms((CheckListData) returnValue);
-                    } else if (dialogType == DialogType.CREATE) {
-                        addProgramsToSaveList((CheckListData) returnValue);
-                    }
-                }
-            }
-        });
-
-        checkListDlg.open();
-    }
-
-    /**
-     * Save the suite to the selected programs.
-     * 
-     * @param listData
-     *            List data of the programs that were selected.
-     */
-    private void saveSuiteToPrograms(CheckListData listData) {
-
-        Map<String, Boolean> checkedPrograms = listData.getDataMap();
-        ProgramDataManager pdm = new ProgramDataManager();
-
-        // TODO: since I am doing a loadAll on the programs we can get better
-        // performance with a different query. Fix this after the demo as it
-        // works now.
-        List<Program> progs = null;
-
-        try {
-            progs = pdm.getAllPrograms(new ProgramNameComparator());
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving program data from the database: ", e);
-        }
-
-        for (Program p : progs) {
-            if (checkedPrograms.containsKey(p.getName())
-                    && (checkedPrograms.get(p.getName()) == true)) {
-                p.addSuite(selectedSuite);
-
-                try {
-                    pdm.saveProgram(p);
-                } catch (Exception e) {
-                    statusHandler.error(
-                            "Error saving suite " + selectedSuite.getName()
-                                    + " to program " + p.getName() + ": ", e);
-                }
-            }
-        }
-
-        retrieveProgramDataFromDB();
-        populateAssignedProgramsLabel();
-    }
-
-    /**
-     * Add the programs to a save programs array. This is used when creating a
-     * new suite.
-     * 
-     * @param listData
-     *            List data of the programs that were selected.
-     */
-    private void addProgramsToSaveList(CheckListData listData) {
-        Map<String, Boolean> checkedPrograms = listData.getDataMap();
-        ProgramDataManager pdm = new ProgramDataManager();
-
-        // TODO: since I am doing a loadAll on the programs we can get better
-        // performance with a different query. Fix this after the demo as it
-        // works now.
-        List<Program> progs = null;
-
-        try {
-            progs = pdm.getAllPrograms(new ProgramNameComparator());
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving program data from the database: ", e);
-        }
-
-        for (Program p : progs) {
-            if (checkedPrograms.containsKey(p.getName())
-                    && (checkedPrograms.get(p.getName()) == true)) {
-                newAssignedProgramsArray.add(p);
-            }
-        }
-
-        populateAssignedProgramsLabel();
     }
 
     /**
