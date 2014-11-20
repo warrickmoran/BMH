@@ -29,6 +29,7 @@ import com.raytheon.uf.common.bmh.notify.status.BmhEdexStatus;
 import com.raytheon.uf.common.bmh.notify.status.CommsManagerStatus;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.status.PeriodicStatusMessage;
+import com.raytheon.uf.common.bmh.notify.status.TTSStatus;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -63,7 +64,8 @@ public class SystemStatusMonitor {
     @DynamicSerializeElement
     private Map<String, BmhEdexStatus> edexStatus;
 
-    /* TODO TTS Status, possibly a dedicated object possibly a part of edex. */
+    @DynamicSerializeElement
+    private Map<String, TTSStatus> ttsStatus;
 
     public SystemStatusMonitor() {
         this(null);
@@ -74,10 +76,12 @@ public class SystemStatusMonitor {
             dacStatus = new HashMap<>();
             commsStatus = new HashMap<>(4);
             edexStatus = new HashMap<>(4);
+            ttsStatus = new HashMap<>(4);
         } else {
             dacStatus = new HashMap<>(other.getDacStatus());
             commsStatus = new HashMap<>(other.getCommsStatus());
             edexStatus = new HashMap<>(other.getEdexStatus());
+            ttsStatus = new HashMap<>(other.getTtsStatus());
         }
     }
 
@@ -112,6 +116,16 @@ public class SystemStatusMonitor {
         this.edexStatus = new HashMap<>(edexStatus);
     }
 
+    public Map<String, TTSStatus> getTtsStatus() {
+        synchronized (ttsStatus) {
+            return new HashMap<>(ttsStatus);
+        }
+    }
+
+    public void setTtsStatus(Map<String, TTSStatus> ttsStatus) {
+        this.ttsStatus = new HashMap<>(ttsStatus);
+    }
+
     public void handleStatusMessage(Object statusMessage) {
         if (statusMessage instanceof DacHardwareStatusNotification) {
             updateDacHardwareStatus((DacHardwareStatusNotification) statusMessage);
@@ -119,6 +133,8 @@ public class SystemStatusMonitor {
             updateEdexStatus((BmhEdexStatus) statusMessage);
         } else if (statusMessage instanceof CommsManagerStatus) {
             updateCommsManagerStatus((CommsManagerStatus) statusMessage);
+        } else if (statusMessage instanceof TTSStatus) {
+            updateTtsStatus((TTSStatus) statusMessage);
         }
     }
 
@@ -137,6 +153,12 @@ public class SystemStatusMonitor {
     private void updateCommsManagerStatus(CommsManagerStatus commsStatus) {
         synchronized (this.commsStatus) {
             this.commsStatus.put(commsStatus.getHost(), commsStatus);
+        }
+    }
+
+    private void updateTtsStatus(TTSStatus ttsStatus) {
+        synchronized (this.ttsStatus) {
+            this.ttsStatus.put(ttsStatus.getHost(), ttsStatus);
         }
     }
 
@@ -197,6 +219,21 @@ public class SystemStatusMonitor {
     public boolean isEdexConnected(String host) {
         synchronized (edexStatus) {
             return edexStatus.containsKey(host);
+        }
+    }
+
+    public boolean isTtsConnected(String host) {
+        if (isEdexConnected(host)) {
+            synchronized (ttsStatus) {
+                TTSStatus ttsStatus = this.ttsStatus.get(host);
+                if (ttsStatus != null) {
+                    return ttsStatus.isConnected();
+                } else {
+                    return false;
+                }
+            }
+        } else {
+            return false;
         }
     }
 

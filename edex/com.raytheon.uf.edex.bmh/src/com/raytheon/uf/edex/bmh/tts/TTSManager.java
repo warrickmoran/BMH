@@ -21,6 +21,7 @@ package com.raytheon.uf.edex.bmh.tts;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -40,9 +41,11 @@ import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.notify.status.TTSStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
@@ -80,6 +83,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 26, 2014 3759       bkowal      Update to support practice mode.
  * Nov 5, 2014  3630       bkowal      Use constants audio directory.
  * Nov 19, 2014 3385       bkowal      Initial ldad implementation.
+ * Nov 20, 2014 3817       bsteffen    send status messages.
  * 
  * </pre>
  * 
@@ -134,6 +138,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     private TTSSynthesisFactory synthesisFactory;
 
     private ScheduledThreadPoolExecutor heartbeatMonitor;
+
+    private volatile boolean connected = false;
 
     public TTSManager() {
         this.disabled = Boolean.getBoolean(TTS_DISABLED_PROPERTY);
@@ -287,7 +293,19 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             ++attempt;
             TTS_RETURN_VALUE returnValue = this.synthesisFactory
                     .validateServerAvailability();
-
+            boolean connected = returnValue == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS;
+            if (connected != this.connected) {
+                try {
+                    TTSStatus status = new TTSStatus(InetAddress.getLocalHost()
+                            .getHostName(), connected);
+                    BmhMessageProducer.sendStatusMessage(status, true);
+                    BmhMessageProducer.sendStatusMessage(status, false);
+                } catch (Throwable e) {
+                    statusHandler.error(BMH_CATEGORY.TTS_SOFTWARE_ERROR,
+                            "Unable to send status of TTS", e);
+                }
+                this.connected = connected;
+            }
             retry = this.checkRetry(attempt, returnValue);
         }
 

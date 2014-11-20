@@ -35,8 +35,9 @@ import com.raytheon.uf.edex.core.EdexException;
  * 
  * Date         Ticket#  Engineer    Description
  * ------------ -------- ----------- --------------------------
- * Oct 8, 2014  3687     bsteffen    Initial creation
+ * Oct 08, 2014 3687     bsteffen    Initial creation
  * Nov 18, 2014 3807     bkowal      Use BMHJmsDestinations.
+ * Nov 20, 2014 3817     bsteffen    add sendStatusMessage
  * 
  * </pre>
  * 
@@ -53,5 +54,15 @@ public class BmhMessageProducer {
         EDEXUtil.getMessageProducer().sendAsyncUri(
                 BMHJmsDestinations.getBMHConfigDestination(operational),
                 SerializationUtil.transformToThrift(notification));
+    }
+
+    public static void sendStatusMessage(Object status, boolean operational)
+            throws EdexException, SerializationException {
+        if (status == null) {
+            return;
+        }
+        EDEXUtil.getMessageProducer().sendAsyncUri(
+                BMHJmsDestinations.getStatusDestination(operational),
+                SerializationUtil.transformToThrift(status));
     }
 }
