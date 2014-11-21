@@ -52,6 +52,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Jul 31, 2014  #3286     dgilling     Send DAC status back to CommsManager.
  * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
  * Aug 25, 2014  #3286     bsteffen     Fix buffer size alerting logic.
+ * Nov 11, 2014  #3817     bsteffen     Make buildNotification public
  * 
  * </pre>
  * 
@@ -62,7 +63,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
 public final class DacStatusMessage {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-
+    
     private final static char STATUS_MSG_INDICATOR = '0';
 
     private final static String SEPARATOR = ",";
@@ -381,7 +382,7 @@ public final class DacStatusMessage {
         return notify;
     }
 
-    private DacHardwareStatusNotification buildNotification(
+    public DacHardwareStatusNotification buildNotification(
             final DacSessionConfig sessionConfig) {
         int[] validChannels = Ints.toArray(sessionConfig.getTransmitters());
 

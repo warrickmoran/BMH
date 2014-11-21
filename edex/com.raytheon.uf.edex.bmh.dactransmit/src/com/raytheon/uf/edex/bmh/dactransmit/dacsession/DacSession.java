@@ -95,6 +95,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Nov 11, 2014  #3762     bsteffen     Add delayed shutdown.
  * Nov 17, 2014  #3808     bkowal       Support broadcast live. Initial transition to
  *                                      transmitter group.
+ * Nov 11, 2014  #3817     bsteffen     Periodically resend status.
  * 
  * </pre>
  * 
@@ -104,6 +105,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 public final class DacSession implements IDacStatusUpdateEventHandler,
         IShutdownRequestEventHandler, IDacSession {
+
+    private static final int RESEND_HARDWARE_STATUS_MS = 30 * 1000;
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -130,6 +133,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     private final Semaphore shutdownSignal;
 
     private DacStatusMessage previousStatus;
+
+    private long nextSendHardwareStatusTime = 0;
 
     /**
      * Constructor for the {@code DacSession} class. Reads the input directory
@@ -263,8 +268,12 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                 previousStatus);
         previousStatus = newStatus;
         commsManager.sendConnectionStatus(true);
+        if (notify == null && System.currentTimeMillis() > nextSendHardwareStatusTime) {
+            notify = newStatus.buildNotification(config);
+        }
         if (notify != null) {
             commsManager.sendDacHardwareStatus(notify);
+            nextSendHardwareStatusTime = System.currentTimeMillis() + RESEND_HARDWARE_STATUS_MS;
         }
     }
 
