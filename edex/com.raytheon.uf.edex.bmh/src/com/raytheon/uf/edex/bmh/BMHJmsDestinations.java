@@ -33,6 +33,7 @@ import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
  * ------------ ---------- ----------- --------------------------
  * Nov 18, 2014 3807       bkowal      Initial creation
  * Nov 19, 2014 3817       bsteffen    Use status queue for more than just dacs.
+ * Nov 21, 2014 3385       bkowal      Added ldad dissemination destinations.
  * 
  * </pre>
  * 
@@ -116,5 +117,15 @@ public class BMHJmsDestinations extends AbstractBMHJMSDestinations {
     public static String getBMHScheduleDestination(
             final AbstractBMHServerRequest request) {
         return getBMHScheduleDestination(request.isOperational());
+    }
+
+    public static String getBMHLdadDestination(final boolean operational) {
+        return String.format(jmsFormatStr, getJmsQueue(operational),
+                instance.getBMHLdadURI(operational));
+    }
+
+    public static String getBMHLdadDestination(
+            final AbstractBMHServerRequest request) {
+        return getBMHLdadDestination(request.isOperational());
     }
 }

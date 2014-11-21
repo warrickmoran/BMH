@@ -35,6 +35,7 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification;
  * ------------ ---------- ----------- --------------------------
  * Nov 18, 2014 3807       bkowal      Initial creation
  * Nov 19, 2014 3817       bsteffen    Use status queue for more than just dacs.
+ * Nov 21, 2014 3385       bkowal      Added ldad dissemination uris
  * 
  * </pre>
  * 
@@ -71,6 +72,12 @@ public abstract class AbstractBMHJMSDestinations {
     private static final String BMH_SCHEDULE = "BMH.Schedule";
 
     private static final String BMH_PRACTICE_SCHEDULE = "BMH.Practice.Schedule";
+
+    /* Ldad Dissemination Destinations */
+
+    private static final String BMH_LDAD = "BMH.LDAD";
+
+    private static final String BMH_PRACTICE_LDAD = "BMH.Practice.LDAD";
 
     /**
      * 
@@ -145,5 +152,18 @@ public abstract class AbstractBMHJMSDestinations {
      */
     protected String getBMHScheduleURI(final boolean operational) {
         return (operational) ? BMH_SCHEDULE : BMH_PRACTICE_SCHEDULE;
+    }
+
+    /**
+     * Returns the BMH Ldad Dissemination URI. {@link LdadMsg} are posted to and
+     * read from this location.
+     * 
+     * @param operational
+     *            true indicates return operational uri, false indicates return
+     *            practice uri
+     * @return the request jms uri
+     */
+    protected String getBMHLdadURI(final boolean operational) {
+        return (operational) ? BMH_LDAD : BMH_PRACTICE_LDAD;
     }
 }
