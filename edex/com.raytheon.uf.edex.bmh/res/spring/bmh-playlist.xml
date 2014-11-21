@@ -75,7 +75,7 @@
 		</route>
 
 		<route id="bmhPlaylistStateRoute">
-			<from uri="jms-generic:topic:BMH.DAC.Status" />
+			<from uri="jms-generic:topic:BMH.Status" />
 			<doTry>
 				<pipeline>
 					<bean ref="serializationUtil" method="transformFromThrift" />
