@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.common.bmh.notify.status;
 
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+
 /**
  * 
  * Status message sent from edex to communicate the state of the tts connection.
@@ -36,10 +39,13 @@ package com.raytheon.uf.common.bmh.notify.status;
  * @author bsteffen
  * @version 1.0
  */
+@DynamicSerialize
 public class TTSStatus {
 
+    @DynamicSerializeElement
     private String host;
 
+    @DynamicSerializeElement
     private boolean connected;
 
     public TTSStatus() {
