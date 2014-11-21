@@ -50,10 +50,12 @@
 					<otherwise>
 						<bean ref="serializationUtil" method="transformFromThrift" />
 						<bean ref="ttsManager" method="process" />
-						<!-- 
-							TODO: will be sent to an ldad jms destination for
-							dissemination.
-						 -->
+						<filter>
+							<simple>${body.isSuccess} == false</simple>
+							<stop />
+						</filter>
+						<bean ref="serializationUtil" method="transformToThrift" />
+						<to uri="jms-durable:queue:BMH.LDAD" />
 					</otherwise>
 				</choice>
 				

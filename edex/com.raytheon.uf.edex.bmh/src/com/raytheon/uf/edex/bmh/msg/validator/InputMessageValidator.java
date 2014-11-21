@@ -34,6 +34,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
+ * Nov 20, 2014  3385     bkowal      Create an operational {@link LdadValidator}.
  * 
  * </pre>
  * 
@@ -47,7 +48,10 @@ public class InputMessageValidator {
 
     private final TransmissionValidator transmissionCheck = new TransmissionValidator();
 
-    private final LdadValidator ldadCheck = new LdadValidator();
+    /**
+     * Currently {@link InputMessageValidator} is only used in operational mode.
+     */
+    private final LdadValidator ldadCheck = new LdadValidator(true);
 
     /**
      * Validate an InputMessage.

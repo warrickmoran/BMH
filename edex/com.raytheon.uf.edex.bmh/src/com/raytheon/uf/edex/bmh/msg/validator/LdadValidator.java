@@ -38,6 +38,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
  * Nov 19, 2014  3385     bkowal      Implemented.
+ * Nov 20, 2014  3385     bkowal      Initialize {@link LdadConfigDao} based on the
+ *                                    run mode.
  * 
  * </pre>
  * 
@@ -49,7 +51,11 @@ public class LdadValidator {
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(LdadValidator.class);
 
-    private final LdadConfigDao ldadConfigDao = new LdadConfigDao();
+    private final LdadConfigDao ldadConfigDao;
+
+    public LdadValidator(boolean operational) {
+        this.ldadConfigDao = new LdadConfigDao(operational);
+    }
 
     public void validate(ValidatedMessage message) {
         LdadStatus status = LdadStatus.NONE;

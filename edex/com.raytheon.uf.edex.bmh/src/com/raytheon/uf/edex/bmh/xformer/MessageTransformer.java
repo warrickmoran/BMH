@@ -96,6 +96,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 27, 2014 3759       bkowal      Update to support practice mode.
  * Nov 5, 2014  3759       bkowal      Practice Mode Support for time messages.
  * Nov 19, 2014 3385       bkowal      Implemented ldad support.
+ * Nov 20, 2014 3385       bkowal      Set afos id, voice number, and encoding on
+ *                                     {@link LdadMsg}.
  * 
  * </pre>
  * 
@@ -293,6 +295,9 @@ public class MessageTransformer implements IContextStateProcessor {
         for (LdadConfig ldadConfig : ldadConfigurations) {
             LdadMsg ldadMsg = new LdadMsg();
             ldadMsg.setLdadId(ldadConfig.getId());
+            ldadMsg.setAfosid(messageType.getAfosid());
+            ldadMsg.setVoiceNumber(ldadConfig.getVoice().getVoiceNumber());
+            ldadMsg.setEncoding(ldadConfig.getEncoding());
             if (ldadConfig.getDictionary() == null) {
                 /*
                  * No dictionary defined, use the default ssml.

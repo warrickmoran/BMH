@@ -58,6 +58,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.uf.viz.bmh.voice.VoiceDataManager;
+import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -84,6 +85,11 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CreateEditLdadConfigDlg.class);
+
+    /*
+     * localhost will be the only valid host in practice mode.
+     */
+    private static final String PRACTICE_HOST = "localhost";
 
     private static final String CREATE_TITLE = "Create New LDAD Configuration";
 
@@ -396,7 +402,15 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         }
 
         this.nameTxt.setText(this.ldadConfig.getName());
-        this.hostTxt.setText(this.ldadConfig.getHost());
+        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
+            this.hostTxt.setText(this.ldadConfig.getHost());
+        } else {
+            /*
+             * The host cannot be changed in practice mode.
+             */
+            this.hostTxt.setText(PRACTICE_HOST);
+            this.hostTxt.setEnabled(false);
+        }
         this.directoryTxt.setText(this.ldadConfig.getDirectory());
         this.encodingCbo.setText(this.ldadConfig.getEncoding().getExtension());
         this.voiceCbo.setText(this.ldadConfig.getVoice().getVoiceName());

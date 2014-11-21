@@ -22,6 +22,11 @@ package com.raytheon.uf.edex.bmh.ldad;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
+import com.raytheon.uf.edex.bmh.xformer.MessageTransformer;
+import com.raytheon.uf.edex.bmh.tts.TTSManager;
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+
 /**
  * Message associated with a {@link LdadConfig}. Ldad Messages are generated
  * similar to the way that {@link BroadcastMsg}s are. The main different is that
@@ -36,6 +41,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 19, 2014 3385       bkowal      Initial creation
+ * Nov 20, 2014 3385       bkowal      Add additional fields that will be
+ *                                     required by TTS Manager.
  * 
  * </pre>
  * 
@@ -48,19 +55,46 @@ public class LdadMsg {
 
     /**
      * Id of the ldad configuration that the additional synthesis is being
-     * completed for.
+     * completed for. Set by the {@link MessageTransformer}.
      */
     @DynamicSerializeElement
     private long ldadId;
 
     /**
-     * SSML to synthesize.
+     * Afos Id of the {@link MessageType} that this ldad message is being
+     * created for. Used when naming the output file that audio is written to.
+     * Set by the {@link MessageTransformer}.
+     */
+    @DynamicSerializeElement
+    private String afosid;
+
+    /**
+     * SSML to synthesize. Set by the {@link MessageTransformer}.
      */
     @DynamicSerializeElement
     private String ssml;
 
     /**
-     * Flag indicating whether or not the TTS Synthesis was successful.
+     * Identifier of the voice that will be used for the synthesis. Included
+     * directly in the {@link LdadMsg} so that the {@link TTSManager} will not
+     * need to query for additional information that the
+     * {@link MessageTransformer} already had access to. Set by the
+     * {@link MessageTransformer}.
+     */
+    @DynamicSerializeElement
+    private int voiceNumber;
+
+    /**
+     * Format of the synthesized audio that should be written to the output
+     * file. The synthesized audio will be converted to the specified format, if
+     * necessary. Set by the {@link MessageTransformer}.
+     */
+    @DynamicSerializeElement
+    private BMHAudioFormat encoding;
+
+    /**
+     * Flag indicating whether or not the TTS Synthesis was successful. Set by
+     * the {@link TTSManager}.
      */
     @DynamicSerializeElement
     private boolean success;
@@ -68,6 +102,7 @@ public class LdadMsg {
     /**
      * Output file associated with the audio generated for the ldad
      * configuration. Will only be present when {@link LdadMsg#success} is true.
+     * Set by the {@link TTSManager}.
      */
     @DynamicSerializeElement
     private String outputName;
@@ -86,12 +121,56 @@ public class LdadMsg {
         this.ldadId = ldadId;
     }
 
+    /**
+     * @return the afosid
+     */
+    public String getAfosid() {
+        return afosid;
+    }
+
+    /**
+     * @param afosid
+     *            the afosid to set
+     */
+    public void setAfosid(String afosid) {
+        this.afosid = afosid;
+    }
+
     public String getSsml() {
         return ssml;
     }
 
     public void setSsml(String ssml) {
         this.ssml = ssml;
+    }
+
+    /**
+     * @return the voiceNumber
+     */
+    public int getVoiceNumber() {
+        return voiceNumber;
+    }
+
+    /**
+     * @param voiceNumber
+     *            the voiceNumber to set
+     */
+    public void setVoiceNumber(int voiceNumber) {
+        this.voiceNumber = voiceNumber;
+    }
+
+    /**
+     * @return the encoding
+     */
+    public BMHAudioFormat getEncoding() {
+        return encoding;
+    }
+
+    /**
+     * @param encoding the encoding to set
+     */
+    public void setEncoding(BMHAudioFormat encoding) {
+        this.encoding = encoding;
     }
 
     public boolean isSuccess() {

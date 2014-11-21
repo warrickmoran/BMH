@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -30,14 +31,16 @@ import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.TTSSynthesisException;
+import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
+import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -84,6 +87,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Nov 5, 2014  3630       bkowal      Use constants audio directory.
  * Nov 19, 2014 3385       bkowal      Initial ldad implementation.
  * Nov 20, 2014 3817       bsteffen    send status messages.
+ * Nov 20, 2014 3385       bkowal      Support synthesis for ldad.
  * 
  * </pre>
  * 
@@ -108,7 +112,9 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     /* For now, just default the format to a MULAW file. */
     private static final TTS_FORMAT TTS_DEFAULT_FORMAT = TTS_FORMAT.TTS_FORMAT_MULAW;
 
-    private static final String DEFAULT_TTS_FILE_EXTENSION = BMHAudioFormat.ULAW
+    private static final BMHAudioFormat DEFAULT_OUTPUT_FORMAT = BMHAudioFormat.ULAW;
+
+    private static final String DEFAULT_TTS_FILE_EXTENSION = DEFAULT_OUTPUT_FORMAT
             .getExtension();
 
     /* Configuration Property Name Constants */
@@ -381,7 +387,9 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      * 
      * @param message
      *            the message to process
-     * @return
+     * @return an updated {@link BroadcastMsg} that will indicate whether or not
+     *         the synthesis and file write are successful as well as the output
+     *         file location when synthesis is successful
      */
     public BroadcastMsg process(BroadcastMsg message) throws Exception {
         if (message == null) {
@@ -407,90 +415,24 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                     && Files.exists(Paths.get(fragment.getOutputName()))) {
                 continue;
             }
-            int attempt = 0;
-            TTSReturn ttsReturn = null;
-            boolean success = false;
-            IOException ioException = null;
 
-            while (true) {
-                ++attempt;
-                ioException = null;
+            final StringBuilder logIdentifier = new StringBuilder("message: ");
+            logIdentifier.append(message.getId());
+            logIdentifier.append(" (fragment: ");
+            logIdentifier.append(fragment.getId());
+            logIdentifier.append(")");
 
-                /* Attempt the Conversion */
-                try {
-                    ttsReturn = this.synthesisFactory.synthesize(fragment
-                            .getSsml(), fragment.getVoice().getVoiceNumber(),
-                            TTS_DEFAULT_FORMAT);
-                } catch (TTSSynthesisException e) {
-                    statusHandler.error(BMH_CATEGORY.UNKNOWN,
-                            "TTS synthesis of message " + message.getId()
-                                    + " has failed! Attempt (" + attempt + ")",
-                            e);
-                    if (attempt > this.ttsRetryThreshold) {
-                        break;
-                    } else {
-                        continue;
-                    }
-                }
+            TTSReturn ttsReturn = this.attemptAudioSynthesis(
+                    fragment.getSsml(), fragment.getVoice().getVoiceNumber(),
+                    logIdentifier.toString());
 
-                if (ttsReturn.isIoFailed()) {
-                    ioException = ttsReturn.getIoFailureCause();
-                } else {
-                    if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
-                        statusHandler.info("Successfully retrieved "
-                                + ttsReturn.getVoiceData().length
-                                + " bytes of audio data for message: "
-                                + message.getId() + "(fragment: "
-                                + fragment.getId()
-                                + "). Data retrieval complete!");
-                        /* Successful Conversion */
-                        success = true;
-                        break;
-                    }
-
-                    if (this.retry(ttsReturn.getReturnValue()) == false) {
-                        /* Absolute Failure */
-                        break;
-                    }
-                }
-
-                /* Have we reached the retry threshold? */
-
-                if (attempt > this.ttsRetryThreshold) {
-                    /*
-                     * maximum retry count reached; halt text-to-speech
-                     * transformation attempts
-                     */
-                    break;
-                } else {
-                    String logMessage = "Text-to-Speech Transformation was unsuccessful for message: "
-                            + message.getId() + "; ";
-                    BMH_CATEGORY category = null;
-                    if (ioException == null) {
-                        /* Build the log message. */
-                        logMessage += this.getTTSErrorLogStatement(ttsReturn
-                                .getReturnValue());
-                        category = ttsReturn.getReturnValue()
-                                .getAssociatedBMHCategory();
-                    } else {
-                        logMessage += "IO Error = "
-                                + ioException.getLocalizedMessage();
-                        category = BMH_CATEGORY.TTS_SYSTEM_ERROR;
-                    }
-                    logMessage += "! Attempt (" + attempt + ")";
-
-                    /* Just log a warning. */
-                    statusHandler.warn(category, logMessage);
-
-                    this.sleepDelayTime();
-                }
-            }
-
-            if (success) {
+            fragment.setSuccess(ttsReturn.isSynthesisSuccess());
+            if (ttsReturn.isSynthesisSuccess()) {
+                /* Synthesis Success */
                 int totalBytes = ttsReturn.getVoiceData().length;
                 statusHandler
-                        .info("Text-to-Speech Transformation completed successfully for message: "
-                                + message.getId()
+                        .info("Text-to-Speech Transformation completed successfully for "
+                                + logIdentifier.toString()
                                 + ".  Length of playback = "
                                 + (((totalBytes / 160) * 20) / 1000)
                                 + " seconds");
@@ -498,59 +440,300 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 File outputFile = this.determineOutputFile(message.getId(),
                         message.getInputMessage().getAfosid(),
                         fragment.getVoice());
-                try {
-                    FileUtils.writeByteArrayToFile(outputFile,
-                            ttsReturn.getVoiceData());
+                boolean writeSuccess = this.writeSynthesizedAudio(
+                        ttsReturn.getVoiceData(),
+                        Paths.get(outputFile.getAbsolutePath()),
+                        logIdentifier.toString());
+                fragment.setSuccess(writeSuccess);
+                if (writeSuccess) {
                     fragment.setOutputName(outputFile.getAbsolutePath());
-                    statusHandler.info("Successfully wrote audio output file: "
-                            + outputFile.getAbsolutePath() + " for message: "
-                            + message.getId() + ". " + totalBytes
-                            + " bytes were written.");
-                } catch (IOException e) {
-                    ioException = e;
-                    StringBuilder stringBuilder = new StringBuilder(
-                            "Failed to write audio output file: ");
-                    stringBuilder.append(outputFile.getAbsolutePath());
-                    stringBuilder.append("; REASON = ");
-                    stringBuilder.append(e.getLocalizedMessage());
-                    statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
-                            stringBuilder.toString(), e);
-                    /*
-                     * TTS Conversion may have succeeded; however, the file
-                     * write has failed!
-                     */
-                    success = false;
                 }
             } else {
-                StringBuilder stringBuilder = new StringBuilder(
-                        "Text-to-Speech Transformation failed for message: ");
-                stringBuilder.append(message.getId());
-                if (ioException == null) {
-                    stringBuilder.append("; ");
-                    stringBuilder.append(this.getTTSErrorLogStatement(ttsReturn
-                            .getReturnValue()));
-                    stringBuilder.append("!");
-                    statusHandler.error(ttsReturn.getReturnValue()
-                            .getAssociatedBMHCategory(), stringBuilder
-                            .toString());
-                } else {
-                    stringBuilder.append("!");
-                    statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
-                            stringBuilder.toString(), ioException);
-                }
+                /* Synthesis Failed */
+                this.logSynthesisError(ttsReturn, logIdentifier.toString());
             }
-            fragment.setSuccess(success);
         }
         message.setUpdateDate(TimeUtil.newGmtCalendar());
 
         return message;
     }
 
+    /**
+     * Special case to synthesize audio data for ldad configurations. This audio
+     * may be converted to another format and it is never added to a playlist
+     * for broadcast.
+     * 
+     * @param message
+     *            the {@link LdadMessage} to synthesize audio for
+     * @return an updated {@link LdadMessage} that will indicate whether or not
+     *         the synthesis and file write are successful as well as the output
+     *         file location when synthesis is successful
+     * @throws Exception
+     */
     public LdadMsg process(LdadMsg message) throws Exception {
-        // TODO: implement
-        statusHandler.info("Succcessfully received: " + message.toString());
+        statusHandler
+                .info("Performing Text-to-Speech Transformation for ldad configuration: "
+                        + message.getLdadId());
+
+        /*
+         * TODO: optimize the ldad generation to share similar files across ldad
+         * messages. Files with the same format and dictionary.
+         */
+
+        StringBuilder logIdentifier = new StringBuilder("ldad configuration: ");
+        logIdentifier.append(message.getLdadId());
+        logIdentifier.append(" (message type: ");
+        logIdentifier.append(message.getAfosid());
+        logIdentifier.append(")");
+
+        /*
+         * Attempt Synthesis.
+         */
+        TTSReturn ttsReturn = this.attemptAudioSynthesis(message.getSsml(),
+                message.getVoiceNumber(), logIdentifier.toString());
+        message.setSuccess(ttsReturn.isSynthesisSuccess());
+        if (ttsReturn.isSynthesisSuccess()) {
+            /* Synthesis Success */
+            int totalBytes = ttsReturn.getVoiceData().length;
+            statusHandler
+                    .info("Text-to-Speech Transformation completed successfully for "
+                            + logIdentifier.toString()
+                            + ". Length of playback = "
+                            + (((totalBytes / 160) * 20) / 1000) + " seconds");
+
+            Path outputPath = this.determineLdadOutputPath(message.getLdadId(),
+                    message.getAfosid(), message.getEncoding());
+            /*
+             * Determine if the audio needs to be converted to a different
+             * format.
+             */
+            byte[] audioData = ttsReturn.getVoiceData();
+            if (DEFAULT_OUTPUT_FORMAT != message.getEncoding()) {
+                /*
+                 * need the audio to be in a format other than the default.
+                 */
+                try {
+                    audioData = AudioConvererterManager.getInstance()
+                            .convertAudio(audioData, DEFAULT_OUTPUT_FORMAT,
+                                    message.getEncoding());
+                } catch (UnsupportedAudioFormatException
+                        | AudioConversionException e) {
+                    statusHandler.error(
+                            BMH_CATEGORY.LDAD_ERROR,
+                            "Failed to convert the audio for "
+                                    + logIdentifier.toString() + " from the "
+                                    + DEFAULT_OUTPUT_FORMAT.toString()
+                                    + " format to the "
+                                    + message.getEncoding().toString()
+                                    + " format.");
+                    /*
+                     * Audio conversion failed; no need to attempt to write the
+                     * audio.
+                     */
+                    message.setSuccess(false);
+
+                    return message;
+                }
+            }
+            /* Write the output file. */
+            boolean writeSuccess = this.writeSynthesizedAudio(audioData,
+                    outputPath, logIdentifier.toString());
+            message.setSuccess(writeSuccess);
+            if (writeSuccess) {
+                message.setOutputName(outputPath.toString());
+            }
+        } else {
+            /* Synthesis Failed */
+            this.logSynthesisError(ttsReturn, logIdentifier.toString());
+        }
 
         return message;
+    }
+
+    /**
+     * Attempt to synthesize the specified ssml into audio using the specified
+     * voice identifier.
+     * 
+     * @param ssml
+     *            the specified ssml
+     * @param voiceNumber
+     *            the specified voice identifier
+     * @param logIdentifier
+     *            identifies the entity that triggered the synthesis. exists for
+     *            logging purposes.
+     * @return a {@link TTSReturn} with all applicable synthesis results
+     */
+    public TTSReturn attemptAudioSynthesis(final String ssml,
+            final int voiceNumber, final String logIdentifier) {
+
+        int attempt = 0;
+        TTSReturn ttsReturn = null;
+
+        while (true) {
+            ++attempt;
+
+            /* Attempt the Conversion */
+            try {
+                ttsReturn = this.synthesisFactory.synthesize(ssml, voiceNumber,
+                        TTS_DEFAULT_FORMAT);
+            } catch (TTSSynthesisException e) {
+                statusHandler.error(BMH_CATEGORY.UNKNOWN, "TTS synthesis of "
+                        + logIdentifier + " has failed! Attempt (" + attempt
+                        + ")", e);
+                if (attempt > this.ttsRetryThreshold) {
+                    break;
+                } else {
+                    continue;
+                }
+            }
+
+            if (ttsReturn.isIoFailed() == false) {
+                if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
+                    statusHandler.info("Successfully retrieved "
+                            + ttsReturn.getVoiceData().length
+                            + " bytes of audio data for " + logIdentifier
+                            + ". Data retrieval complete!");
+                    break;
+                }
+
+                if (this.retry(ttsReturn.getReturnValue()) == false) {
+                    /* Absolute Failure */
+                    break;
+                }
+            }
+
+            /* Have we reached the retry threshold? */
+
+            if (attempt > this.ttsRetryThreshold) {
+                /*
+                 * maximum retry count reached; halt text-to-speech
+                 * transformation attempts
+                 */
+                break;
+            } else {
+                String logMessage = "Text-to-Speech Transformation was unsuccessful for "
+                        + logIdentifier + "; ";
+                BMH_CATEGORY category = null;
+                if (ttsReturn.getIoFailureCause() == null) {
+                    /* Build the log message. */
+                    logMessage += this.getTTSErrorLogStatement(ttsReturn
+                            .getReturnValue());
+                    category = ttsReturn.getReturnValue()
+                            .getAssociatedBMHCategory();
+                } else {
+                    logMessage += "IO Error = "
+                            + ttsReturn.getIoFailureCause()
+                                    .getLocalizedMessage();
+                    category = BMH_CATEGORY.TTS_SYSTEM_ERROR;
+                }
+                logMessage += "! Attempt (" + attempt + ")";
+
+                /* Just log a warning. */
+                statusHandler.warn(category, logMessage);
+
+                this.sleepDelayTime();
+            }
+        }
+
+        return ttsReturn;
+    }
+
+    /**
+     * Convenience method to log synthesis errors with all applicable
+     * information. Will throw a {@link IllegalStateException} if the tts
+     * results indicate that the synthesis was actually successful.
+     * 
+     * @param ttsReturn
+     *            the results of the synthesis attempt
+     * @param logIdentifier
+     *            identifies the entity that triggered the synthesis. exists for
+     *            logging purposes.
+     */
+    private void logSynthesisError(final TTSReturn ttsReturn,
+            final String logIdentifier) {
+        if (ttsReturn.isSynthesisSuccess()) {
+            throw new IllegalStateException(
+                    "The specified TTSReturn synthesis results indicate that the synthesis completed successfully. There are no synthesis errors to log.");
+        }
+
+        StringBuilder stringBuilder = new StringBuilder(
+                "Text-to-Speech Transformation failed for ");
+        stringBuilder.append(logIdentifier);
+        if (ttsReturn.getIoFailureCause() == null) {
+            stringBuilder.append("; ");
+            stringBuilder.append(this.getTTSErrorLogStatement(ttsReturn
+                    .getReturnValue()));
+            stringBuilder.append("!");
+            statusHandler.error(ttsReturn.getReturnValue()
+                    .getAssociatedBMHCategory(), stringBuilder.toString());
+        } else {
+            stringBuilder.append("!");
+            statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
+                    stringBuilder.toString(), ttsReturn.getIoFailureCause());
+        }
+    }
+
+    /**
+     * Convenience method to write the specified audio bytes to the specified
+     * audio file. Handles logging I/O failures that cause the file write to
+     * fail.
+     * 
+     * @param audio
+     *            the specified audio bytes to write
+     * @param outputPath
+     *            the specified path to the audio file to write
+     * @param logIdentifier
+     *            identifies the entity that triggered the synthesis. exists for
+     *            logging purposes.
+     * 
+     * @return true if the file was written successfully; false, otherwise
+     */
+    private boolean writeSynthesizedAudio(final byte[] audio,
+            final Path outputPath, final String logIdentifier) {
+        /*
+         * Ensure that the required directories exist.
+         */
+        final Path containingDirectory = outputPath.getParent();
+        if (Files.exists(containingDirectory) == false) {
+            /*
+             * attempt to create the root directories.
+             */
+            try {
+                Files.createDirectories(containingDirectory);
+            } catch (IOException e) {
+                StringBuilder stringBuilder = new StringBuilder(
+                        "Failed to create audio directory: ");
+                stringBuilder.append(containingDirectory.toString());
+                stringBuilder.append("; REASON = ");
+                stringBuilder.append(e.getLocalizedMessage());
+                statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
+                        stringBuilder.toString(), e);
+
+                return false;
+            }
+        }
+
+        try {
+            Files.write(outputPath, audio);
+            statusHandler.info("Successfully wrote audio output file: "
+                    + outputPath.toString() + " for "
+                    + logIdentifier.toString() + ". " + audio.length
+                    + " bytes were written.");
+            return true;
+        } catch (IOException e) {
+            StringBuilder stringBuilder = new StringBuilder(
+                    "Failed to write audio output file: ");
+            stringBuilder.append(outputPath.toString());
+            stringBuilder.append("; REASON = ");
+            stringBuilder.append(e.getLocalizedMessage());
+            statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
+                    stringBuilder.toString(), e);
+            /*
+             * TTS Conversion may have succeeded; however, the file write has
+             * failed!
+             */
+            return false;
+        }
     }
 
     /**
@@ -637,6 +820,57 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         fileName.append(DEFAULT_TTS_FILE_EXTENSION);
 
         return new File(FilenameUtils.normalize(fileName.toString()));
+    }
+
+    /**
+     * Determines the name of the ldad audio output file based on the date/time
+     * and other parameters that are available in the ldad configuration.
+     * 
+     * The audio conversion and output could optionally be relocated to the ldad
+     * route. However, this fits into the current TTS flow of synthesizing the
+     * audio and writing the output.
+     * 
+     * @param ldadId
+     *            id of the ldad configuration that triggered the audio
+     *            generation
+     * @param afosId
+     *            afos id associated with the message type that has been
+     *            assigned to the ldad configuration
+     * @param encoding
+     *            the file format of the output file. Ldad audio allows for more
+     *            than just the standard {@link BMHAudioFormat#ULAW} format.
+     * @return {@link Path} to the location of the ldad audio output file
+     */
+    private Path determineLdadOutputPath(final long ldadId,
+            final String afosId, final BMHAudioFormat encoding) {
+
+        final String fileNamePartsSeparator = "_";
+
+        /* get the current date and time */
+        Date currentDate = TimeUtil.newDate();
+
+        /*
+         * ldad audio included in the dated audio directories for automatic
+         * removal by purge.
+         */
+        final String bmhDatedDirectory = TODAY_DATED_DIRECTORY_FORMAT.get()
+                .format(currentDate);
+
+        StringBuilder fileName = new StringBuilder("LDAD");
+        fileName.append(fileNamePartsSeparator);
+        /* Id of the ldad configuration this audio was generated for */
+        fileName.append(ldadId);
+        fileName.append(fileNamePartsSeparator);
+        /* afos id of the message type associated with the ldad configuration */
+        fileName.append(afosId);
+        fileName.append(fileNamePartsSeparator);
+        /* formatted creation time */
+        fileName.append(FILE_NAME_TIME_FORMAT.get().format(currentDate));
+        /* file extension */
+        fileName.append(encoding.getExtension());
+
+        return Paths.get(this.bmhDataDirectory).resolve(bmhDatedDirectory)
+                .resolve(fileName.toString());
     }
 
     /**

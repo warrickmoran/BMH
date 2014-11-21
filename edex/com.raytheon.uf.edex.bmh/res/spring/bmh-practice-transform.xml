@@ -24,11 +24,25 @@
 				<bean ref="practice_messageTransformer" method="process" />
 				<split>
 					<simple>${body}</simple>
-					<bean ref="practice_broadcastMsgDao" method="persist" />
-					<setBody>
-						<simple>${body.getId}</simple>
-					</setBody>
-					<to uri="jms-generic:queue:BMH.Practice.TTS" />
+					<choice>
+						<when>
+							<simple>${body} is
+								"com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg"
+							</simple>
+							<bean ref="practice_broadcastMsgDao" method="persist" />
+							<setBody>
+								<simple>${body.getId}</simple>
+							</setBody>
+							<to uri="jms-generic:queue:BMH.Practice.TTS" />
+						</when>
+						<when>
+							<simple>${body} is
+								"com.raytheon.uf.edex.bmh.ldad.LdadMsg"
+							</simple>
+							<bean ref="serializationUtil" method="transformToThrift" />
+							<to uri="jms-generic:queue:BMH.Practice.TTS" />
+						</when>
+					</choice>
 				</split>
 				<doCatch>
 					<exception>java.lang.Throwable</exception>

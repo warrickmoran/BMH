@@ -45,6 +45,8 @@ import com.raytheon.uf.common.util.RunProcess;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 19, 2014 3385       bkowal      Initial creation
+ * Nov 20, 2014 3385       bkowal      Run scp in batch mode. Allow for scp user
+ *                                     override. Escape scp spaces correctly.
  * 
  * </pre>
  * 
@@ -61,19 +63,33 @@ public class LdadDisseminator implements IContextStateProcessor {
 
     private static final String BMH_LDAD_SCP_PROPERTY = "bmh.ldad.scp";
 
-    private static final String SCP_USER = "awips";
+    private static final String BMH_LDAD_USER_PROPERTY = "bmh.ldad.user";
+
+    /**
+     * when running in batch mode, scp will fail immediately if it cannot
+     * connect to the host without a password.
+     */
+    private static final String SCP_BATCH_MODE = "-B";
+
+    private static final String SCP_USER = "ldad";
 
     private static final String AT_HOST = "@";
 
     private static final String TO_DIRECTORY = ":";
 
-    private static final String CMD_LINE_ARG_SEPARATOR = " ";
+    /**
+     * Use \\\ to escape spaces when using scp. Spaces probably will not be
+     * common in this system?
+     */
+    private static final String ESCAPE_SPACE = "\\\\\\";
 
-    private static final String DELIMITED_QUOTE = "\"";
+    protected static final String CONSTANT_SPACE = " ";
 
     private LdadConfigDao ldadConfigDao;
 
     private String ldadScp;
+
+    private String ldadUser;
 
     private void initialize() {
         statusHandler.info("Initializing the Ldad Disseminator ...");
@@ -90,6 +106,11 @@ public class LdadDisseminator implements IContextStateProcessor {
                     "Unable to find the scp executable. Please specify the scp location using the "
                             + BMH_LDAD_SCP_PROPERTY + " property.");
         }
+
+        /*
+         * Allow an override of the default user.
+         */
+        this.ldadUser = System.getProperty(BMH_LDAD_USER_PROPERTY, SCP_USER);
 
         statusHandler.info("Initialization Successful!");
     }
@@ -146,6 +167,7 @@ public class LdadDisseminator implements IContextStateProcessor {
          */
         statusHandler.info("Running scp for ldad configuration: "
                 + ldadConfig.getName() + " ...");
+        statusHandler.info("Running scp command: " + scpCommadLine);
 
         ITimer scpTimer = TimeUtil.getTimer();
 
@@ -208,24 +230,24 @@ public class LdadDisseminator implements IContextStateProcessor {
      *            species the host and destination for the transfer
      * @return the scp command line
      */
-    private String buildScpCommandLine(final LdadMsg message,
-            final LdadConfig ldadConfig) {
+    protected String buildScpCommandLine(final LdadMsg message,
+            LdadConfig ldadConfig) {
         StringBuilder stringBuilder = new StringBuilder(this.ldadScp);
-        stringBuilder.append(CMD_LINE_ARG_SEPARATOR);
+        stringBuilder.append(CONSTANT_SPACE);
+        stringBuilder.append(SCP_BATCH_MODE);
+        stringBuilder.append(CONSTANT_SPACE);
         // specify the file.
-        stringBuilder.append(DELIMITED_QUOTE);
-        stringBuilder.append(message.getOutputName());
-        stringBuilder.append(DELIMITED_QUOTE);
+        stringBuilder.append(message.getOutputName().replaceAll(CONSTANT_SPACE,
+                ESCAPE_SPACE));
 
-        stringBuilder.append(CMD_LINE_ARG_SEPARATOR);
+        stringBuilder.append(CONSTANT_SPACE);
         // specify the destination
-        stringBuilder.append(SCP_USER);
+        stringBuilder.append(this.ldadUser);
         stringBuilder.append(AT_HOST);
         stringBuilder.append(ldadConfig.getHost());
         stringBuilder.append(TO_DIRECTORY);
-        stringBuilder.append(DELIMITED_QUOTE);
-        stringBuilder.append(ldadConfig.getDirectory());
-        stringBuilder.append(DELIMITED_QUOTE);
+        stringBuilder.append(ldadConfig.getDirectory().replaceAll(
+                CONSTANT_SPACE, ESCAPE_SPACE));
 
         return stringBuilder.toString();
     }

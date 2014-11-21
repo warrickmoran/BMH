@@ -42,7 +42,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
-import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -55,6 +54,7 @@ import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
+import com.raytheon.uf.edex.bmh.msg.validator.LdadValidator;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
@@ -74,6 +74,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Oct 28, 2014  #3759     bkowal      Support practice mode.
  * Oct 31, 2014  #3778     bsteffen    When only activation changes do not create new message.
  * Nov 18, 2014  #3807     bkowal      Use BMHJmsDestinations.
+ * Nov 20, 2014  #3385     bkowal      Complete ldad validation of messages.
  * 
  * </pre>
  * 
@@ -192,10 +193,13 @@ public class NewBroadcastMsgHandler extends
             }
             inputMessage.setId(0);
         }
+
+        LdadValidator ldadCheck = new LdadValidator(request.isOperational());
+
         // Build a validated message.
         ValidatedMessage validMsg = new ValidatedMessage();
         validMsg.setInputMessage(inputMessage);
-        validMsg.setLdadStatus(LdadStatus.ERROR);
+        ldadCheck.validate(validMsg);
         validMsg.setTransmissionStatus(TransmissionStatus.ACCEPTED);
 
         Set<TransmitterGroup> transmitterGroups = this
@@ -232,9 +236,10 @@ public class NewBroadcastMsgHandler extends
         validatedMsgDao.persistAll(entitiesToPersist);
 
         // send the broadcast message(s) to the playlist scheduler.
+        // do we need to ldad recorded messages?
         for (BroadcastMsg broadcastRecord : broadcastRecords) {
             this.sendToDestination(
-                    BMHJmsDestinations.getBMHTransformDestination(request),
+                    BMHJmsDestinations.getBMHScheduleDestination(request),
                     broadcastRecord.getId());
         }
 
