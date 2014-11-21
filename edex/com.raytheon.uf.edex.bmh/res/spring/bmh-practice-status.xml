@@ -19,7 +19,7 @@
       <from uri="jms-durable:topic:BMH.Practice.Status" />
       <doTry>
         <bean ref="serializationUtil" method="transformFromThrift" />
-        <bean ref="statusMonitor" method="handleStatusMessage" />
+        <bean ref="practice_statusMonitor" method="handleStatusMessage" />
         <doCatch>
           <exception>java.lang.Throwable</exception>
           <to uri="log:bmh?level=ERROR" />
