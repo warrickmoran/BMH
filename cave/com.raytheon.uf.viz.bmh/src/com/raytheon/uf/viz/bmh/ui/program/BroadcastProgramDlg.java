@@ -92,6 +92,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Oct 27, 2014  3750      lvenable    fixed message type table update when adding new suite.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Nov 22, 2014  3842      mpduff      Fully populate dialog on new program
  * 
  * </pre>
  * 
@@ -639,6 +640,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
         populateMsgTypeTable(suiteConfigGroup.getSelectedSuite());
         updateSuiteGroupText();
+        handleProgramChange();
     }
 
     /**
