@@ -26,9 +26,12 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 
@@ -36,24 +39,30 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.EqualsBuilder;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BMHJmsDestinations;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
+import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
+import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.validator.LdadValidator;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
@@ -75,6 +84,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Oct 31, 2014  #3778     bsteffen    When only activation changes do not create new message.
  * Nov 18, 2014  #3807     bkowal      Use BMHJmsDestinations.
  * Nov 20, 2014  #3385     bkowal      Complete ldad validation of messages.
+ * Nov 21, 2014  #3385     bkowal      Support ldad dissemination of recorded audio.
  * 
  * </pre>
  * 
@@ -99,7 +109,9 @@ public class NewBroadcastMsgHandler extends
 
     private static final String WX_MESSAGES_DIRECTORY = "WXMessages";
 
-    private static final String DEFAULT_TTS_FILE_EXTENSION = BMHAudioFormat.ULAW
+    private static final BMHAudioFormat DEFAULT_TTS_FORMAT = BMHAudioFormat.ULAW;
+
+    private static final String DEFAULT_TTS_FILE_EXTENSION = DEFAULT_TTS_FORMAT
             .getExtension();
 
     private Path wxMessagesPath;
@@ -221,9 +233,17 @@ public class NewBroadcastMsgHandler extends
             return inputMessage.getId();
         }
 
-        // TODO: need to create broadcast msg records.
+        /*
+         * Write the audio output. The audio in this case is uniform across all
+         * transmitters and (when applicable) ldad configurations because
+         * dictionaries cannot be applied.
+         */
+        Path recordedAudioOutputPath = this.writeOutputAudio(
+                request.getMessageAudio(), inputMessage);
+
+        /* build broadcast messages. */
         List<BroadcastMsg> broadcastRecords = this.buildBroadcastRecords(
-                validMsg, transmitterGroups, request.getMessageAudio());
+                validMsg, transmitterGroups, recordedAudioOutputPath);
 
         // persist all entities.
         List<Object> entitiesToPersist = new LinkedList<Object>();
@@ -236,11 +256,157 @@ public class NewBroadcastMsgHandler extends
         validatedMsgDao.persistAll(entitiesToPersist);
 
         // send the broadcast message(s) to the playlist scheduler.
-        // do we need to ldad recorded messages?
         for (BroadcastMsg broadcastRecord : broadcastRecords) {
             this.sendToDestination(
                     BMHJmsDestinations.getBMHScheduleDestination(request),
                     broadcastRecord.getId());
+        }
+
+        /*
+         * we only reach this point if the message is a completely new recorded
+         * audio message or if the audio has been altered in an existing
+         * message. The {@link InputMessage} content is altered every time new
+         * audio is recorded.
+         */
+        // will it be necessary to trigger ldad dissemination?
+        if (LdadStatus.ACCEPTED.equals(validMsg.getLdadStatus()) == false) {
+            /*
+             * no ldad configuration exists.
+             */
+            return inputMessage.getId();
+        }
+
+        /*
+         * ldad configuration exists. we will not be able to apply dictionaries
+         * because the audio already exists. It is only a matter of ensuring
+         * that the audio exists in the required formats. ldad dissemination
+         * failure will not prevent scheduling the audio for broadcast. However,
+         * the user that submitted the request will be notified via AlertViz
+         * that an audio dissemination will not be completed.
+         */
+
+        // retrieve the ldad configurations
+        LdadConfigDao ldadConfigDao = new LdadConfigDao(request.isOperational());
+        List<LdadConfig> ldadConfigList = ldadConfigDao
+                .getLdadConfigsForMsgType(inputMessage.getAfosid());
+
+        // prepare to build the ldad messages
+        Map<LdadConfig, LdadMsg> ldadConfigMsgMap = new HashMap<>(
+                ldadConfigList.size(), 1.0f);
+        Map<BMHAudioFormat, Path> audioFormatsPathMap = new HashMap<>(
+                BMHAudioFormat.values().length, 1.0f);
+        // the default format.
+        audioFormatsPathMap.put(DEFAULT_TTS_FORMAT, recordedAudioOutputPath);
+        for (LdadConfig ldadConfig : ldadConfigList) {
+            LdadMsg ldadMsg = new LdadMsg();
+            ldadMsg.setLdadId(ldadConfig.getId());
+            ldadMsg.setAfosid(inputMessage.getAfosid());
+            ldadMsg.setEncoding(ldadConfig.getEncoding());
+            ldadMsg.setSuccess(true);
+            Path ldadOutputName = audioFormatsPathMap.get(ldadConfig
+                    .getEncoding());
+            if (ldadOutputName != null) {
+                // audio already exists in the required format.
+                ldadMsg.setOutputName(ldadOutputName.toString());
+                ldadConfigMsgMap.put(ldadConfig, ldadMsg);
+                continue;
+            }
+
+            /*
+             * audio does not exist in the required format. audio in the default
+             * format needs to be converted to the required format.
+             */
+
+            /*
+             * determine the name of the new audio output file using the
+             * alternate file extension. The Java file API does not provide
+             * support for interacting with file extensions; so, basic string
+             * operations will be used.
+             */
+            String containingDirectoryString = recordedAudioOutputPath
+                    .getParent().toString();
+            String audioFileNameString = recordedAudioOutputPath.getFileName()
+                    .toString();
+            audioFileNameString = StringUtils.removeEnd(audioFileNameString,
+                    DEFAULT_TTS_FILE_EXTENSION);
+            audioFileNameString += ldadConfig.getEncoding().getExtension();
+            Path alternateRecordedAudioOutputPath = Paths.get(
+                    containingDirectoryString, audioFileNameString);
+
+            /*
+             * attempt the conversion
+             */
+            byte[] convertedAudio = null;
+            try {
+                convertedAudio = AudioConvererterManager.getInstance()
+                        .convertAudio(request.getMessageAudio(),
+                                DEFAULT_TTS_FORMAT, ldadConfig.getEncoding());
+            } catch (Exception e) {
+                statusHandler
+                        .error(BMH_CATEGORY.LDAD_ERROR,
+                                "Failed to convert audio to the "
+                                        + ldadConfig.getEncoding().toString()
+                                        + " format for ldad configuration: "
+                                        + ldadConfig.getName()
+                                        + " (id = "
+                                        + ldadConfig.getId()
+                                        + "). Scheduled audio will not be disseminated for this configuration.",
+                                e);
+                // skip dissemination for this configuration.
+                continue;
+            }
+
+            /*
+             * write the converted audio.
+             */
+            try {
+                this.writeOutputAudio(convertedAudio,
+                        alternateRecordedAudioOutputPath);
+            } catch (Exception e) {
+                statusHandler
+                        .error(BMH_CATEGORY.LDAD_ERROR,
+                                "Failed to write audio: "
+                                        + alternateRecordedAudioOutputPath
+                                                .toString()
+                                        + " in an alternate format for ldad configuration: "
+                                        + ldadConfig.getName()
+                                        + " (id = "
+                                        + ldadConfig.getId()
+                                        + "). Scheduled audio will not be disseminated for this configuration.",
+                                e);
+            }
+            /*
+             * cache the converted audio path.
+             */
+            audioFormatsPathMap.put(ldadConfig.getEncoding(),
+                    alternateRecordedAudioOutputPath);
+
+            /*
+             * complete the ldad message and continue.
+             */
+            ldadMsg.setOutputName(alternateRecordedAudioOutputPath.toString());
+            ldadConfigMsgMap.put(ldadConfig, ldadMsg);
+        }
+
+        /*
+         * Ldad messages have been generated. Submit the messages to trigger
+         * dissemination.
+         */
+        for (LdadConfig ldadConfig : ldadConfigMsgMap.keySet()) {
+            LdadMsg ldadMsg = ldadConfigMsgMap.get(ldadConfig);
+            try {
+                this.sendToDestination(
+                        BMHJmsDestinations.getBMHLdadDestination(request),
+                        SerializationUtil.transformToThrift(ldadMsg));
+            } catch (Exception e) {
+                statusHandler.error(
+                        BMH_CATEGORY.LDAD_ERROR,
+                        "Failed to trigger the ldad dissemination of: "
+                                + ldadMsg.getOutputName()
+                                + " for ldad configuration: "
+                                + ldadConfig.getName() + " (id = "
+                                + ldadConfig.getId() + ").", e);
+            }
         }
 
         return inputMessage.getId();
@@ -248,8 +414,8 @@ public class NewBroadcastMsgHandler extends
 
     private List<BroadcastMsg> buildBroadcastRecords(
             final ValidatedMessage validMsg,
-            final Set<TransmitterGroup> transmitterGroups, final byte[] audio)
-            throws IOException {
+            final Set<TransmitterGroup> transmitterGroups,
+            Path recordedAudioOutputPath) throws IOException {
         List<BroadcastMsg> broadcastRecords = new ArrayList<>(
                 transmitterGroups.size());
         for (TransmitterGroup transmitterGroup : transmitterGroups) {
@@ -269,9 +435,7 @@ public class NewBroadcastMsgHandler extends
             fragment.setVoice(null);
             fragment.setSuccess(true);
 
-            final Path outputPath = this.writeOutputAudio(audio, broadcastMsg,
-                    validMsg.getInputMessage());
-            fragment.setOutputName(outputPath.toString());
+            fragment.setOutputName(recordedAudioOutputPath.toString());
 
             broadcastMsg.addFragment(fragment);
             broadcastRecords.add(broadcastMsg);
@@ -280,14 +444,13 @@ public class NewBroadcastMsgHandler extends
         return broadcastRecords;
     }
 
-    private Path writeOutputAudio(final byte[] audio,
-            final BroadcastMsg broadcastMsg, InputMessage inputMsg)
+    private Path writeOutputAudio(final byte[] audio, InputMessage inputMsg)
             throws IOException {
         final String fileNamePartsSeparator = "_";
 
+        Date current = TimeUtil.newGmtCalendar().getTime();
         Path datedWxMsgDirectory = this.wxMessagesPath
-                .resolve(TODAY_DATED_DIRECTORY_FORMAT.get().format(
-                        broadcastMsg.getCreationDate().getTime()));
+                .resolve(TODAY_DATED_DIRECTORY_FORMAT.get().format(current));
 
         Files.createDirectories(datedWxMsgDirectory);
 
@@ -295,25 +458,27 @@ public class NewBroadcastMsgHandler extends
         fileName.append(fileNamePartsSeparator);
         fileName.append(inputMsg.getName());
         fileName.append(fileNamePartsSeparator);
-        fileName.append(FILE_NAME_TIME_FORMAT.get().format(
-                broadcastMsg.getCreationDate().getTime()));
+        fileName.append(FILE_NAME_TIME_FORMAT.get().format(current));
         fileName.append(DEFAULT_TTS_FILE_EXTENSION);
 
         Path audioFilePath = datedWxMsgDirectory.resolve(fileName.toString());
-
-        Files.write(audioFilePath, audio);
-        statusHandler.info("Successfully wrote Weather Message audio file: "
-                + audioFilePath.toString() + ".");
+        this.writeOutputAudio(audio, audioFilePath);
 
         return audioFilePath;
     }
 
-    private void sendToDestination(final String destinationURI, final Number id)
-            throws EdexException, SerializationException {
-        EDEXUtil.getMessageProducer().sendAsyncUri(destinationURI, id);
+    private void writeOutputAudio(final byte[] audio, final Path audioFilePath)
+            throws IOException {
+        Files.write(audioFilePath, audio);
+        statusHandler.info("Successfully wrote Weather Message audio file: "
+                + audioFilePath.toString() + ".");
     }
 
-    @Deprecated
+    private void sendToDestination(final String destinationURI,
+            final Object message) throws EdexException, SerializationException {
+        EDEXUtil.getMessageProducer().sendAsyncUri(destinationURI, message);
+    }
+
     private Set<TransmitterGroup> retrieveTransmitterGroups(
             NewBroadcastMsgRequest request) {
         TransmitterDao transmitterDao = new TransmitterDao(

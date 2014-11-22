@@ -23,7 +23,6 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -39,6 +38,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Oct 23, 2014  #3748     bkowal      Initial creation
  * Oct 31, 2014  #3778     bsteffen    Do not clear the id when editing messages.
+ * Nov 21, 2014  #3385     bkowal      Transmitter selection is valid in the case of
+ *                                     Weather Msgs and Emergency Override
  * 
  * </pre>
  * 
@@ -54,19 +55,8 @@ public class NewBroadcastMsgRequest extends AbstractBMHServerRequest {
     @DynamicSerializeElement
     private byte[] messageAudio;
 
-    /**
-     * TODO: use the {@link TransmitterGroup} list after the dialogs have been
-     * updated. Until then, the server-side handler will need to look up the
-     * associated transmitter group based on specified transmitter.
-     */
-    @Deprecated
     @DynamicSerializeElement
     private List<Transmitter> selectedTransmitters;
-
-    /*
-     * This may be changed to a Set instead of a List.
-     */
-    private List<TransmitterGroup> selectedTransmitterGroups;
 
     /**
 	 * 
@@ -97,7 +87,8 @@ public class NewBroadcastMsgRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @param messageAudio the messageAudio to set
+     * @param messageAudio
+     *            the messageAudio to set
      */
     public void setMessageAudio(byte[] messageAudio) {
         this.messageAudio = messageAudio;
@@ -116,21 +107,5 @@ public class NewBroadcastMsgRequest extends AbstractBMHServerRequest {
      */
     public void setSelectedTransmitters(List<Transmitter> selectedTransmitters) {
         this.selectedTransmitters = selectedTransmitters;
-    }
-
-    /**
-     * @return the selectedTransmitterGroups
-     */
-    public List<TransmitterGroup> getSelectedTransmitterGroups() {
-        return selectedTransmitterGroups;
-    }
-
-    /**
-     * @param selectedTransmitterGroups
-     *            the selectedTransmitterGroups to set
-     */
-    public void setSelectedTransmitterGroups(
-            List<TransmitterGroup> selectedTransmitterGroups) {
-        this.selectedTransmitterGroups = selectedTransmitterGroups;
     }
 }
