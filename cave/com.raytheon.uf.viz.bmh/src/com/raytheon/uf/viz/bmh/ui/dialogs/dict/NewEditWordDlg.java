@@ -56,6 +56,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 05, 2014 3175       rjpeter     Fixed saveWord validation.
  * Aug 23, 2014    3432    mpduff      Changed to Primary_modal
  * Aug 27, 2014    3432    mpduff      Set the phoneme
+ * Nov 22, 2014    3740    mpduff      Clear phoneme var when phoneme text field is cleared
  * </pre>
  * 
  * @author mpduff
@@ -200,6 +201,7 @@ public class NewEditWordDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 phonemeTxt.setText("");
+                phoneme = null;
             }
         });
 
