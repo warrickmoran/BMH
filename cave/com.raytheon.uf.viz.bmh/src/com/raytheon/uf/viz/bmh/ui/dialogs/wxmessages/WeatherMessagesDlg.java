@@ -113,6 +113,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 12, 2014  3823     bkowal      Use the stored wx message content.
  * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
  * Nov 18, 2014  3829     bkowal      Use WxMessagesContent for all content tracking.
+ * Nov 22, 2014  3796     mpduff      Checks for areas on unsaved messages.
  * 
  * </pre>
  * 
@@ -929,6 +930,11 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
         // if input message id is not null and not a new input message object
         if (userInputMessage != null && userInputMessage.getId() != 0) {
+            dlg = new AreaSelectionDlg(getShell(),
+                    userInputMessage.getAreaCodes());
+        } else if (userInputMessage != null && userInputMessage.getId() == 0
+                && userInputMessage.getAreaCodes() != null
+                && userInputMessage.getAreaCodes().length() > 0) {
             dlg = new AreaSelectionDlg(getShell(),
                     userInputMessage.getAreaCodes());
         } else {
