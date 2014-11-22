@@ -41,6 +41,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.draw2d.LightweightSystem;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -75,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 12, 2014  #3819     bkowal       Disable OK/Cancel during audio playback.
  * Nov 17, 2014  #3820     bkowal       okToClose is now protected.
  * Nov 17, 2014  #3808     bkowal       Support broadcast live.
+ * Nov 22, 2014  #3862     bkowal       Preparation for realtime graphing of audio decibel levels.
  * 
  * 
  * 
@@ -175,6 +177,13 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
     protected ByteBuffer recordedAudio;
 
     protected volatile boolean okToClose;
+    
+    /*
+     * Used for realtime plotting of audio decibels.
+     * VIZ DEPENDENCY TEST/VERIFICATION
+     * TODO: finish usage DR #3863
+     */
+    private final LightweightSystem lightweightSystem;
 
     /**
      * Constructor.
@@ -189,6 +198,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
                 CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
 
         this.maxRecordingSeconds = maxRecordingSeconds;
+        this.lightweightSystem = new LightweightSystem(this.shell);
     }
 
     @Override
