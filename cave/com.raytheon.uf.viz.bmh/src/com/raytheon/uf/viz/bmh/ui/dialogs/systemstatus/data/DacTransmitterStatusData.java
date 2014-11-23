@@ -38,6 +38,7 @@ import java.util.TreeMap;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 30, 2014  3349      lvenable     Initial creation
+ * Nov 23, 2014  #3287     lvenable     Removed constructor.
  * 
  * </pre>
  * 
@@ -51,12 +52,6 @@ public class DacTransmitterStatusData {
 
     /** List of transmitter groups that are not associated with a DAC. */
     private SortedMap<String, TransmitterGrpInfo> noTransmitterGrpInfoMap = new TreeMap<String, TransmitterGrpInfo>();
-
-    /**
-     * Constructor.
-     */
-    public DacTransmitterStatusData() {
-    }
 
     /**
      * Add the DAC information to the DAC data info map.

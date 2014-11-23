@@ -47,6 +47,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 15, 2014            lvenable     Initial creation
+ * Nov 23, 2014  #3287     lvenable     Silent alarm updates.
  * 
  * </pre>
  * 
@@ -94,7 +95,7 @@ public class TransmitterGroupStatusComp extends Composite {
         GridLayout gl = new GridLayout(1, false);
         gl.marginHeight = 1;
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.horizontalIndent = 20;
+        gd.horizontalIndent = 10;
         this.setLayout(gl);
         this.setLayoutData(gd);
     }
@@ -116,10 +117,17 @@ public class TransmitterGroupStatusComp extends Composite {
         gd.widthHint = 16;
         Label silentAlarmLbl = new Label(xmitGrpComp, SWT.NONE);
         silentAlarmLbl.setLayoutData(gd);
-        if (transmitterGrpInfo.isSilenceAlarm()) {
-            // silentAlarmLbl.setImage(silentAlarmImg);
+
+        if (transmitterGrpInfo.isSilenceAlarm()
+                && transmitterGrpInfo.isDisabledSilenceAlarm()) {
             silentAlarmLbl.setImage(statusImages
-                    .getStatusImage(StatusImage.SilentAlarm));
+                    .getStatusImage(StatusImage.AlarmPlusDisabledSilentAlarm));
+        } else if (transmitterGrpInfo.isDisabledSilenceAlarm()) {
+            silentAlarmLbl.setImage(statusImages
+                    .getStatusImage(StatusImage.DisabledSilentAlarm));
+        } else if (transmitterGrpInfo.isSilenceAlarm()) {
+            silentAlarmLbl.setImage(statusImages
+                    .getStatusImage(StatusImage.Alarm));
         }
 
         /*
@@ -140,7 +148,7 @@ public class TransmitterGroupStatusComp extends Composite {
         transmitterGrpDescLbl.setText(transmitterGrpInfo.getGroupName());
 
         /*
-         * Create the transmitters.
+         * Create the transmitters for the transmitter group.
          */
         SortedMap<Integer, List<TransmitterInfo>> transInfoMap = transmitterGrpInfo
                 .getTransmitterInfoMap();
@@ -148,7 +156,7 @@ public class TransmitterGroupStatusComp extends Composite {
         gl = new GridLayout(3, false);
         gl.marginHeight = 1;
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.horizontalIndent = 60;
+        gd.horizontalIndent = 40;
         Composite xmitComp = new Composite(this, SWT.NONE);
         xmitComp.setLayout(gl);
         xmitComp.setLayoutData(gd);
@@ -223,7 +231,7 @@ public class TransmitterGroupStatusComp extends Composite {
         GridLayout gl = new GridLayout(1, false);
         gl.marginHeight = 1;
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.horizontalIndent = 20;
+        gd.horizontalIndent = 5;
         this.setLayout(gl);
         this.setLayoutData(gd);
 
@@ -245,9 +253,22 @@ public class TransmitterGroupStatusComp extends Composite {
         gd.widthHint = 16;
         Label silentAlarmLbl = new Label(xmitComp, SWT.NONE);
         silentAlarmLbl.setLayoutData(gd);
-        if (transmitterGrpInfo.isSilenceAlarm()) {
+
+        // There are three possible images to display:
+        // 1.) if the silent alarm is flagged and the user disabled the silent
+        // alarm then show the alarm & disabled silent alarm image.
+        // 2.) if the silent alarm is disabled
+        // 3.) if the silent alarm is flagged (no audio playing)
+        if (transmitterGrpInfo.isSilenceAlarm()
+                && transmitterGrpInfo.isDisabledSilenceAlarm()) {
             silentAlarmLbl.setImage(statusImages
-                    .getStatusImage(StatusImage.SilentAlarm));
+                    .getStatusImage(StatusImage.AlarmPlusDisabledSilentAlarm));
+        } else if (transmitterGrpInfo.isDisabledSilenceAlarm()) {
+            silentAlarmLbl.setImage(statusImages
+                    .getStatusImage(StatusImage.DisabledSilentAlarm));
+        } else if (transmitterGrpInfo.isSilenceAlarm()) {
+            silentAlarmLbl.setImage(statusImages
+                    .getStatusImage(StatusImage.Alarm));
         }
 
         /*
@@ -266,7 +287,7 @@ public class TransmitterGroupStatusComp extends Composite {
                     .getStatusImage(StatusImage.TransmitterDisabled));
         }
         createTransmitterToolTip(transmitterImgLbl, transmitterInfo,
-                transmitterGrpInfo.isSilenceAlarm());
+                transmitterGrpInfo.isDisabledSilenceAlarm());
 
         gd = new GridData();
         gd.widthHint = 30;
@@ -290,12 +311,12 @@ public class TransmitterGroupStatusComp extends Composite {
     private void createTransmitterGroupToolTip(Label lbl) {
         StringBuilder sb = new StringBuilder();
 
-        String silentAlarm = (transmitterGrpInfo.isSilenceAlarm()) ? "Yes"
+        String silentAlarm = (transmitterGrpInfo.isDisabledSilenceAlarm()) ? "Yes"
                 : "No";
 
         sb.append("Name         : ").append(transmitterGrpInfo.getGroupName())
                 .append("\n");
-        sb.append("Silent Alarm : ").append(silentAlarm);
+        sb.append("Disabled Silent Alarm : ").append(silentAlarm);
 
         new CustomToolTip(lbl, sb.toString());
     }
@@ -329,7 +350,8 @@ public class TransmitterGroupStatusComp extends Composite {
                 .append(checkForNull(transmitterInfo.getTxStatus()))
                 .append("\n");
 
-        sb.append("Silence Alarm : ").append((silentAlarm) ? "Yes" : "No");
+        sb.append("Disabled Silence Alarm : ").append(
+                (silentAlarm) ? "Yes" : "No");
 
         new CustomToolTip(lbl, sb.toString());
     }

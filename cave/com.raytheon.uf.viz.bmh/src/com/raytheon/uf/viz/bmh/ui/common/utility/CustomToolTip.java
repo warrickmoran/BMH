@@ -22,6 +22,8 @@ package com.raytheon.uf.viz.bmh.ui.common.utility;
 import java.awt.Toolkit;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseMoveListener;
 import org.eclipse.swt.events.MouseTrackAdapter;
@@ -54,6 +56,8 @@ import org.eclipse.swt.widgets.Shell;
  *                                      multiple monitors.
  * Oct 06, 2014  #3700     lvenable     Added a force hide that will dispose of the tool tip text.
  * Oct 08, 2014  #3479     lvenable     Fixed margin.
+ * Nov 23, 2014  #3287     lvenable     Added a dispose listener to the tip control so the tool
+ *                                      tip will dispose when the tip control does.
  * 
  * </pre>
  * 
@@ -115,6 +119,14 @@ public class CustomToolTip {
 
         setupMouseListeners();
         setupPaintListeners();
+        setupDisposeListener();
+
+        this.tipControl.addDisposeListener(new DisposeListener() {
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                forceHideToolTip();
+            }
+        });
     }
 
     /**
@@ -154,6 +166,19 @@ public class CustomToolTip {
      */
     public void setBackgroundColor(RGB bgColor) {
         this.tipBackgroundClr = bgColor;
+    }
+
+    /**
+     * Add a dispose listener to the tip control so when it gets disposed the
+     * tool tip goes away.
+     */
+    private void setupDisposeListener() {
+        this.tipControl.addDisposeListener(new DisposeListener() {
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                forceHideToolTip();
+            }
+        });
     }
 
     /**

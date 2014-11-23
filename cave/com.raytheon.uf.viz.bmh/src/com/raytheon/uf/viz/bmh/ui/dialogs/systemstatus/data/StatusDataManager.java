@@ -19,12 +19,16 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
+import com.raytheon.uf.common.bmh.notify.status.DacVoiceStatus;
 
 /**
  * This class will take all of the DAC and Transmitter Group information and
@@ -38,6 +42,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 30, 2014  3349      lvenable     Initial creation
+ * Nov 23, 2014  #3287     lvenable     Added addition status for reporting.
  * 
  * </pre>
  * 
@@ -67,7 +72,8 @@ public class StatusDataManager {
      * @return DAC/Transmitter status data object.
      */
     public DacTransmitterStatusData createDacTransmitterStatusData(
-            List<Dac> dacs, List<TransmitterGroup> transmitterGroups) {
+            List<Dac> dacs, List<TransmitterGroup> transmitterGroups,
+            Map<String, DacHardwareStatusNotification> dacStatus) {
 
         dtsd = new DacTransmitterStatusData();
 
@@ -87,6 +93,8 @@ public class StatusDataManager {
          * objects. Add each transmitter group info object to the associated DAC
          * or put them in a separate list if they are not associated with a DAC.
          */
+        Set<Integer> updatedDac = new HashSet<>();
+
         for (TransmitterGroup tg : transmitterGroups) {
             TransmitterGrpInfo tgi = createTransGroupInfo(tg);
 
@@ -95,6 +103,31 @@ public class StatusDataManager {
                 DacInfo di = dtsd.getDacInfo(tgDac);
                 if (di != null) {
                     di.addTransmitterGroupInfo(tgi);
+
+                    // If the DAC info hasn't been updated then add the DAC
+                    // status information.
+                    if (updatedDac.contains(tgDac) == false) {
+                        DacHardwareStatusNotification dhsn = dacStatus.get(tg
+                                .getName());
+
+                        // Check for a silence alarm and flag it so the
+                        // transmitter group and be set
+                        boolean silence = false;
+                        DacVoiceStatus[] dvsArray = dhsn.getVoiceStatus();
+
+                        for (DacVoiceStatus dvs : dvsArray) {
+                            if (dvs != DacVoiceStatus.IP_AUDIO) {
+                                silence = true;
+                                break;
+                            }
+                        }
+                        tgi.setSilenceAlarm(silence);
+
+                        di.setPsu1Voltage(dhsn.getPsu1Voltage());
+                        di.setPsu2Voltage(dhsn.getPsu2Voltage());
+                        di.setBufferSize(dhsn.getBufferSize());
+                        updatedDac.add(tgDac);
+                    }
                 } else {
                     dtsd.addTranmitterWithNoDac(tgi);
                 }
@@ -116,7 +149,7 @@ public class StatusDataManager {
     private TransmitterGrpInfo createTransGroupInfo(TransmitterGroup tg) {
         TransmitterGrpInfo tgi = new TransmitterGrpInfo();
         tgi.setId(tg.getId());
-        tgi.setSilenceAlarm(tg.getSilenceAlarm());
+        tgi.setDisabledSilenceAlarm(tg.getSilenceAlarm());
         tgi.setGroupName(tg.getName());
 
         List<Transmitter> transmitters = tg.getTransmitterList();
@@ -137,6 +170,8 @@ public class StatusDataManager {
     }
 
     /**
+     * TODO : REMOVE WHEN TESTING IS DONE.
+     * 
      * Print the data (for testing).
      */
     public void printData() {
@@ -156,7 +191,8 @@ public class StatusDataManager {
                 System.out.println("\t****** Transmitter Group Info ********");
                 System.out.println("\t ID          :" + tgi.getId());
                 System.out.println("\t Group Name  :" + tgi.getGroupName());
-                System.out.println("\t Silent Alarm:" + tgi.isSilenceAlarm());
+                System.out.println("\t Silent Alarm:"
+                        + tgi.isDisabledSilenceAlarm());
 
                 Map<Integer, List<TransmitterInfo>> transmitterInfoMap = tgi
                         .getTransmitterInfoMap();
@@ -191,7 +227,7 @@ public class StatusDataManager {
             System.out.println("\t****** Transmitter Group Info ********");
             System.out.println("ID          :" + tgi.getId());
             System.out.println("Group Name  :" + tgi.getGroupName());
-            System.out.println("Silent Alarm:" + tgi.isSilenceAlarm());
+            System.out.println("Silent Alarm:" + tgi.isDisabledSilenceAlarm());
 
             System.out.println("\t****** Transmitter Info ********");
             Map<Integer, List<TransmitterInfo>> transmitterInfoMap = tgi
