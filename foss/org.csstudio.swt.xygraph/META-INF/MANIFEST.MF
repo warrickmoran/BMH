@@ -1,0 +1,22 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: SWT XY Graph
+Bundle-SymbolicName: org.csstudio.swt.xygraph
+Bundle-Version: 2.1.0
+Bundle-ClassPath: org.csstudio.swt.widgets.source_2.1.0.201209121549.jar,
+ org.csstudio.swt.widgets_2.1.0.201209121549.jar,
+ org.csstudio.swt.xygraph.source_2.1.0.201209121540.jar,
+ org.csstudio.swt.xygraph_2.1.0.201209121540.jar
+Export-Package: org.csstudio.swt.widgets.datadefinition,
+ org.csstudio.swt.widgets.figureparts,
+ org.csstudio.swt.widgets.figures,
+ org.csstudio.swt.widgets.introspection,
+ org.csstudio.swt.widgets.util,
+ org.csstudio.swt.xygraph,
+ org.csstudio.swt.xygraph.dataprovider,
+ org.csstudio.swt.xygraph.figures,
+ org.csstudio.swt.xygraph.linearscale,
+ org.csstudio.swt.xygraph.toolbar,
+ org.csstudio.swt.xygraph.undo,
+ org.csstudio.swt.xygraph.util
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7

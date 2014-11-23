@@ -19,5 +19,7 @@ Require-Bundle: org.eclipse.ui,
  org.apache.commons.lang;bundle-version="2.3.0",
  com.raytheon.uf.common.message;bundle-version="1.14.1",
  com.raytheon.uf.common.auth;bundle-version="1.14.0",
- org.slf4j;bundle-version="1.7.5"
+ org.slf4j;bundle-version="1.7.5",
+ org.eclipse.draw2d;bundle-version="3.7.2",
+ org.csstudio.swt.xygraph;bundle-version="2.1.0"
 Import-Package: com.raytheon.viz.core.mode
