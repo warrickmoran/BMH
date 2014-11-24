@@ -281,7 +281,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText(DlgInfo.BMH_MENU.getTitle());
+        setText("BMH Menu");
 
         shell.addShellListener(new ShellAdapter() {
             @Override

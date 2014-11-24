@@ -25,9 +25,7 @@ import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
-import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.dialogs.BMHLauncherDlg;
-import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 
 /**
  * Action to bring up BHH Menu dialog.
@@ -40,7 +38,6 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
  * ------------ ---------- ----------- --------------------------
  * Jun 18, 2014            mpduff     Initial creation
  * Jul 15, 2014  #3387     lvenable   Updated to bring dialog to top if it already exists.
- * Nov 07, 2014  #3413     rferrel    Added user authorization check.
  * 
  * </pre>
  * 
@@ -55,14 +52,13 @@ public class BmhAction extends AbstractHandler {
 
     @Override
     public Object execute(ExecutionEvent event) throws ExecutionException {
-        Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                .getShell();
 
         if (bmhLauncher == null || bmhLauncher.isDisposed()) {
-            if (BmhUtils.isAuthorized(shell, DlgInfo.BMH_MENU)) {
-                bmhLauncher = new BMHLauncherDlg(shell);
-                bmhLauncher.open();
-            }
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+
+            bmhLauncher = new BMHLauncherDlg(shell);
+            bmhLauncher.open();
         } else {
             bmhLauncher.bringToTop();
         }
