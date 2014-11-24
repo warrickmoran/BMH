@@ -44,6 +44,7 @@ import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
  * ------------ ---------- ----------- --------------------------
  * Oct 7, 2014  3657       bkowal      Initial creation
  * Oct 29, 2014 3774       bsteffen    Log Packets
+ * Nov 24, 2014 3862       bkowal      Added a plot listener.
  * 
  * </pre>
  * 
@@ -57,7 +58,9 @@ public class AudioRecorderThread extends Thread {
     private static final AudioFormat ULAW_AUDIO_FMT = new AudioFormat(
             Encoding.ULAW, 8000, 8, 1, 1, 8000, true);
 
-    final int sampleCount;
+    private final int sampleCount;
+
+    private final IAudioRecorderListener plotListener;
 
     private List<byte[]> samples;
 
@@ -65,10 +68,12 @@ public class AudioRecorderThread extends Thread {
 
     private IAudioRecorderListener listener;
 
-    public AudioRecorderThread(final int sampleCount) throws AudioException {
+    public AudioRecorderThread(final int sampleCount,
+            final IAudioRecorderListener plotListener) throws AudioException {
         super(AudioRecorderThread.class.getName());
         this.samples = new LinkedList<>();
         this.sampleCount = sampleCount;
+        this.plotListener = plotListener;
 
         try {
             this.line = AudioSystem.getTargetDataLine(null);
@@ -109,6 +114,8 @@ public class AudioRecorderThread extends Thread {
          * May end up threading it so that the recorder does not end up waiting
          * for the listener to finish its work?
          */
+        // the plot listener will always exist.
+        this.plotListener.audioReady(audioData);
         if (this.listener != null) {
             this.listener.audioReady(audioData);
         }
