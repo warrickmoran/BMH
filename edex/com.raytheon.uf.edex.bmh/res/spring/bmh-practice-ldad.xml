@@ -8,7 +8,7 @@
 	</bean>
 	
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
-		<constructor-arg ref="bmh-ldad" />
+		<constructor-arg ref="practice_bmh-ldad" />
 		<constructor-arg ref="practice_ldadDisseminator" />
 	</bean>
 
