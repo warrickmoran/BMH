@@ -158,7 +158,7 @@ public class SystemStatusMonitor {
             Map<String, TTSStatus> ttsStatus = new HashMap<>(
                     connectedEdices.size(), 1.0f);
             for (String group : connectedEdices) {
-                dacStatus.put(group, this.dacStatus.get(group));
+                ttsStatus.put(group, this.ttsStatus.get(group));
             }
             return ttsStatus;
         }

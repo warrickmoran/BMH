@@ -17,6 +17,7 @@
 		destroy-method="dispose">
 		<property name="synthesisFactory" ref="ttsSynthesisFactory" />
 		<property name="bmhDataDirectory" value="${BMH_DATA}" />
+        <property name="bmhStatusDestination" ref="bmhStatusDestination" />
 	</bean>
 
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
