@@ -53,6 +53,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 15, 2014  3636     rferrel     Implement logging of changes.
+ * Nov 21, 2014  3845     bkowal      Added getTransmitterGroupWithTransmitter
  * 
  * </pre>
  * 
@@ -76,6 +77,9 @@ public class TransmitterHandler extends
             break;
         case GetEnabledTransmitterGroups:
             response = getEnabledTransmitterGroups(request);
+            break;
+        case GetTransmitterGroupWithTransmitter:
+            response = this.getTransmitterGroupWithTransmitter(request);
             break;
         case SaveTransmitter:
             response = saveTransmitter(request);
@@ -241,6 +245,25 @@ public class TransmitterHandler extends
                 request.isOperational());
         List<TransmitterGroup> groups = dao.getEnabledTransmitterGroups();
         response.setTransmitterGroupList(groups);
+
+        return response;
+    }
+
+    private TransmitterResponse getTransmitterGroupWithTransmitter(
+            TransmitterRequest request) {
+        TransmitterResponse response = new TransmitterResponse();
+        TransmitterGroupDao dao = new TransmitterGroupDao(
+                request.isOperational());
+        TransmitterGroup transmitterGroup = dao
+                .getTransmitterGroupWithTransmitter(request.getTransmitter()
+                        .getId());
+        if (transmitterGroup == null) {
+            return response;
+        }
+
+        List<TransmitterGroup> transmitterGroups = new ArrayList<>(1);
+        transmitterGroups.add(transmitterGroup);
+        response.setTransmitterGroupList(transmitterGroups);
 
         return response;
     }

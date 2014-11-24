@@ -85,6 +85,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * 
  * Oct 28, 2014 3617       dgilling    Encapsulate time zone/DST flag into single
  *                                     time zone field using Java TimeZone id string.
+ * Nov 21, 2014 3845       bkowal      Added getTransmitterGroupContainsTransmitter
  * </pre>
  * 
  * @author rjpeter
@@ -92,7 +93,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  */
 @NamedQueries({
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME, query = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME_QUERY),
-        @NamedQuery(name = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS_QUERY) })
+        @NamedQuery(name = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS_QUERY),
+        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER, query = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER_QUERY) })
 @Entity
 @Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }) })
 @SequenceGenerator(initialValue = 1, name = TransmitterGroup.GEN, sequenceName = "zone_seq")
@@ -109,6 +111,10 @@ public class TransmitterGroup {
     public static final String GET_ENABLED_TRANSMITTER_GROUPS = "getEnabledTransmitterGroups";
 
     protected static final String GET_ENABLED_TRANSMITTER_GROUPS_QUERY = "select tg FROM TransmitterGroup tg inner join tg.transmitters t WHERE t.txStatus = 'ENABLED'";
+
+    public static final String GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER = "getTransmitterGroupContainsTransmitter";
+
+    protected static final String GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER_QUERY = "SELECT tg FROM TransmitterGroup tg INNER JOIN tg.transmitters t WHERE t.id = :transmitterId";
 
     public static final int NAME_LENGTH = 40;
 

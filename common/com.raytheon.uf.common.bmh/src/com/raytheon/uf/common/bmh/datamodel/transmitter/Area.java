@@ -60,12 +60,15 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 14, 2014  3411     mpduff      Add areaName to unique constraint
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Oct 24, 2014  3636     rferrel     Implement logging.
+ * Nov 21, 2014  3845     bkowal      Added getAreaForTransmitter
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
-@NamedQueries({ @NamedQuery(name = Area.GET_AREA_FOR_CODE, query = Area.GET_AREA_FOR_CODE_QUERY) })
+@NamedQueries({
+        @NamedQuery(name = Area.GET_AREA_FOR_CODE, query = Area.GET_AREA_FOR_CODE_QUERY),
+        @NamedQuery(name = Area.GET_AREAS_FOR_TRANSMITTER, query = Area.GET_AREAS_FOR_TRANSMITTER_QUERY) })
 @Entity
 @Table(name = "area", schema = "bmh", uniqueConstraints = {
         @UniqueConstraint(columnNames = { "areaCode" }),
@@ -78,6 +81,10 @@ public class Area {
     public static final String GET_AREA_FOR_CODE = "getAreaForCode";
 
     protected static final String GET_AREA_FOR_CODE_QUERY = "FROM Area a WHERE a.areaCode = :areaCode";
+
+    public static final String GET_AREAS_FOR_TRANSMITTER = "getAreaForTransmitter";
+
+    protected static final String GET_AREAS_FOR_TRANSMITTER_QUERY = "SELECT a FROM Area a INNER JOIN a.transmitters t WHERE t.id = :transmitterId";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)

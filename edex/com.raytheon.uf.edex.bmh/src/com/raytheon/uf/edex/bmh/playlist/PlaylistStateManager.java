@@ -56,7 +56,9 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Aug 24, 2014    3558    rjpeter     Fixed population of MessagePlaybackPrediction.
  * Oct 07, 2014    3687    bsteffen    Remove singleton and inject daos to allow practice mode.
  * Oct 21, 2014    3655    bkowal      Support LiveBroadcastSwitchNotification.
- * Oct 27, 2014    3712    bkowal      Supper LiveBroadcastSwitchNotification#broadcastState.
+ * Oct 27, 2014    3712    bkowal      Support LiveBroadcastSwitchNotification#broadcastState.
+ * Nov 21, 2014    3845    bkowal      LiveBroadcastSwitchNotification now references a
+ *                                     {@link TransmitterGroup}.
  * 
  * </pre>
  * 
@@ -87,11 +89,11 @@ public class PlaylistStateManager {
                 .info("Received a Live Broadcast Switch Notification for Transmitter "
                         + notification.getTransmitterGroup() + ".");
         if (notification.getBroadcastState() == STATE.STARTED) {
-            this.liveBroadcastDataMap.put(notification.getTransmitterGroup(),
-                    notification);
+            this.liveBroadcastDataMap.put(notification.getTransmitterGroup()
+                    .getName(), notification);
         } else {
             if (this.liveBroadcastDataMap.remove(notification
-                    .getTransmitterGroup()) != null) {
+                    .getTransmitterGroup().getName()) != null) {
                 statusHandler
                         .info("Evicting Live Broadcast information for Transmitter "
                                 + notification.getTransmitterGroup() + ".");

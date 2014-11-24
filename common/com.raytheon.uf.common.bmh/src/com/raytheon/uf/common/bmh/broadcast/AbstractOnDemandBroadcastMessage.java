@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.ArrayList;
 
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -43,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
  * Nov 15, 2014 3630       bkowal      Added a temporary transmitter group variable.
  * Nov 17, 2014 3808       bkowal      Initial support for transmitter groups.
+ * Nov 21, 2014 3845       bkowal      Use Transmitter Groups.
  * 
  * </pre>
  * 
@@ -60,23 +60,8 @@ public abstract class AbstractOnDemandBroadcastMessage implements
     @DynamicSerializeElement
     private Boolean status;
 
-    /**
-     * TODO: need to use {@link TransmitterGroup}. Note: the GUIs also need to
-     * be updated to reference the Transmitter Group instead of a Transmitter.
-     */
-    @Deprecated
-    @DynamicSerializeElement
-    private List<Transmitter> transmitters;
-
     @DynamicSerializeElement
     private List<TransmitterGroup> transmitterGroups;
-
-    /**
-     * TODO: make a list and replace List<> transmitterGroups after all dialogs
-     * have been updated to use the transmitter groups.
-     */
-    @DynamicSerializeElement
-    private TransmitterGroup transmitterGroup;
 
     /**
      * 
@@ -117,40 +102,6 @@ public abstract class AbstractOnDemandBroadcastMessage implements
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.uf.common.bmh.broadcast.IOnDemandBroadcastMsg#getTransmitters
-     * ()
-     */
-    @Deprecated
-    @Override
-    public List<Transmitter> getTransmitters() {
-        return this.transmitters;
-    }
-
-    @Deprecated
-    public void setTransmitters(List<Transmitter> transmitters) {
-        this.transmitters = transmitters;
-    }
-
-    @Deprecated
-    public void addTransmitter(Transmitter transmitter) {
-        if (this.transmitters == null) {
-            this.transmitters = new ArrayList<>();
-        }
-        this.transmitters.add(transmitter);
-    }
-
-    @Deprecated
-    public void addAllTransmitter(Collection<Transmitter> transmitters) {
-        if (this.transmitters == null) {
-            this.transmitters = new ArrayList<>();
-        }
-        this.transmitters.addAll(transmitters);
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
      * @see com.raytheon.uf.common.bmh.broadcast.IOnDemandBroadcastMsg#
      * getTransmitterGroups()
      */
@@ -176,19 +127,5 @@ public abstract class AbstractOnDemandBroadcastMessage implements
             this.transmitterGroups = new ArrayList<>();
         }
         this.transmitterGroups.addAll(transmitterGroups);
-    }
-
-    /**
-     * @return the transmitterGroup
-     */
-    public TransmitterGroup getTransmitterGroup() {
-        return transmitterGroup;
-    }
-
-    /**
-     * @param transmitterGroup the transmitterGroup to set
-     */
-    public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
-        this.transmitterGroup = transmitterGroup;
     }
 }

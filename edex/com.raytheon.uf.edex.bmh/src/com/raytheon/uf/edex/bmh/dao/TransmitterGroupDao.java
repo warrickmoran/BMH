@@ -37,6 +37,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Aug 04, 2014  3173     mpduff      Added getTransmitterGroups()
  * Aug 25, 2014  3558     rjpeter     Added getEnabledTransmitterGroups()
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Nov 21, 2014  3845     bkowal      Added getTransmitterGroupWithTransmitter
  * 
  * </pre>
  * 
@@ -85,5 +86,21 @@ public class TransmitterGroupDao extends
     @SuppressWarnings("unchecked")
     public List<TransmitterGroup> getEnabledTransmitterGroups() {
         return (List<TransmitterGroup>) findByNamedQuery(TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS);
+    }
+
+    public TransmitterGroup getTransmitterGroupWithTransmitter(
+            final int transmitterId) {
+        List<?> results = this.findByNamedQueryAndNamedParam(
+                TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER,
+                "transmitterId", transmitterId);
+        if (results == null || results.isEmpty()) {
+            return null;
+        }
+
+        if (results.get(0) instanceof TransmitterGroup) {
+            return (TransmitterGroup) results.get(0);
+        }
+
+        return null;
     }
 }

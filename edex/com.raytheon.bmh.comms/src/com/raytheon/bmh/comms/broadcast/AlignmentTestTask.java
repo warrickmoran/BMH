@@ -52,6 +52,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacMaintenanceArgParser;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3630       bkowal      Initial creation
+ * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
  * 
  * </pre>
  * 
@@ -105,10 +106,15 @@ public class AlignmentTestTask extends AbstractBroadcastingTask {
             return;
         }
 
+        /*
+         * There will only be one transmitter group.
+         */
+        final String tgName = this.command.getTransmitterGroups().get(0)
+                .getName();
+
         logger.info("Starting a dac session in maintenance mode ...");
         ProcessBuilder startCommand = new ProcessBuilder(args);
-        startCommand.environment().put("TRANSMITTER_GROUP",
-                this.command.getTransmitterGroup().getName());
+        startCommand.environment().put("TRANSMITTER_GROUP", tgName);
         startCommand.environment().put("BMH_LOG_BASE",
                 "dactransmit-maintenance");
 
@@ -121,10 +127,10 @@ public class AlignmentTestTask extends AbstractBroadcastingTask {
          * logs and we do not want them to be silently discarded.
          */
         String logDate = logDateFormat.format(new Date());
-        StringBuilder logFileName = new StringBuilder(64);
+        StringBuilder logFileName = new StringBuilder();
         logFileName.append("dactransmit-");
         logFileName.append("maintenance-");
-        logFileName.append(this.command.getTransmitterGroup().getName());
+        logFileName.append(tgName);
         logFileName.append("-console-");
         logFileName.append(logDate);
         logFileName.append(".log");

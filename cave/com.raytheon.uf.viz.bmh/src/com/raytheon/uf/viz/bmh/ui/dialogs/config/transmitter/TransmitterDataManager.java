@@ -52,8 +52,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Oct 23, 2014    3687    bsteffen    Remove getDacs().
  * Nov 17, 2014    3349    lvenable    Added method to pass in a comparator
  *                                     for sorting when getting the transmitter
- *                                     groups.
- * 
+ *                                     groups. 
+ * Nov 21, 2014    3845    bkowal      Added getTransmitterGroupContainsTransmitter.
  * </pre>
  * 
  * @author mpduff
@@ -91,14 +91,39 @@ public class TransmitterDataManager {
         List<TransmitterGroup> tgList = response.getTransmitterGroupList();
 
         if (tgList == null) {
-            tgList = Collections.emptyList();
+            return Collections.emptyList();
         }
 
-        if (comparator != null && tgList.isEmpty() == false) {
+        if (comparator != null) {
             Collections.sort(tgList, comparator);
         }
 
         return tgList;
+    }
+
+    /**
+     * Get the {@link TransmitterGroup} that a {@link Transmitter} has been
+     * assigned to.
+     * 
+     * @param transmitter
+     * @return the {@link TransmitterGroup} that the specified
+     *         {@link Transmitter} is assigned to.
+     * @throws Exception
+     */
+    public TransmitterGroup getTransmitterGroupContainsTransmitter(
+            final Transmitter transmitter) throws Exception {
+        TransmitterRequest request = new TransmitterRequest();
+        request.setAction(TransmitterRequestAction.GetTransmitterGroupWithTransmitter);
+        request.setTransmitter(transmitter);
+
+        TransmitterResponse response = (TransmitterResponse) BmhUtils
+                .sendRequest(request);
+
+        if (response.getTransmitterGroupList() == null) {
+            return null;
+        }
+
+        return response.getTransmitterGroupList().get(0);
     }
 
     /**

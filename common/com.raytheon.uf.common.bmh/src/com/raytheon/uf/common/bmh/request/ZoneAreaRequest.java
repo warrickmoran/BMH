@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -38,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Jul 15, 2014  3406     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Nov 21, 2014  3845     bkowal      Added GetAreasForTransmitter
  * 
  * </pre>
  * 
@@ -48,7 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class ZoneAreaRequest extends AbstractBMHServerRequest {
 
     public enum ZoneAreaAction {
-        GetZones, GetAreas, GetTransmitters, SaveZones, SaveAreas, DeleteArea, DeleteZone;
+        GetZones, GetAreas, GetAreasForTransmitter, GetTransmitters, SaveZones, SaveAreas, DeleteArea, DeleteZone;
     }
 
     /**
@@ -68,6 +70,12 @@ public class ZoneAreaRequest extends AbstractBMHServerRequest {
      */
     @DynamicSerializeElement
     private List<Area> areaList;
+
+    /**
+     * Transmitter used to lookup areas.
+     */
+    @DynamicSerializeElement
+    private Transmitter transmitter;
 
     /**
      * @return the action
@@ -112,6 +120,20 @@ public class ZoneAreaRequest extends AbstractBMHServerRequest {
      */
     public void setAreaList(List<Area> areaList) {
         this.areaList = areaList;
+    }
+
+    /**
+     * @return the transmitter
+     */
+    public Transmitter getTransmitter() {
+        return transmitter;
+    }
+
+    /**
+     * @param transmitter the transmitter to set
+     */
+    public void setTransmitter(Transmitter transmitter) {
+        this.transmitter = transmitter;
     }
 
     /**

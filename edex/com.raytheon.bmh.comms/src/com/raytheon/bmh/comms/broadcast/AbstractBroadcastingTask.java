@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 
 /**
@@ -41,6 +41,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3630       bkowal      Initial creation
+ * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
  * 
  * </pre>
  * 
@@ -85,12 +86,13 @@ public abstract class AbstractBroadcastingTask extends Thread {
     }
 
     protected BroadcastStatus buildErrorStatus(final String message,
-            final Exception exception, final List<Transmitter> transmitters) {
+            final Exception exception,
+            final List<TransmitterGroup> transmitterGroups) {
         BroadcastStatus status = new BroadcastStatus();
         status.setMsgSource(MSGSOURCE.COMMS);
         status.setBroadcastId(this.getName());
         status.setStatus(false);
-        status.setTransmitters(transmitters);
+        status.setTransmitterGroups(transmitterGroups);
         status.setMessage(message);
         status.setException(exception);
 

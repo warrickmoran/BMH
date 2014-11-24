@@ -37,7 +37,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
-import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -48,7 +47,6 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
-import com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride.LiveBroadcastSettings;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybackDlg;
 
@@ -62,6 +60,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 15, 2014 3808       bkowal      Initial creation
+ * Nov 21, 2014 3845       bkowal      Use BLBroadcastSettingsBuilder
  * 
  * </pre>
  * 
@@ -182,15 +181,8 @@ public class BroadcastLiveDlg extends AbstractBMHDialog {
         }
 
         /* Build the broadcast settings. */
-        final LiveBroadcastSettings settings = new LiveBroadcastSettings();
-        settings.setType(BROADCASTTYPE.BL);
-        try {
-            settings.populate(null, null, this.getSelectedTransmitterGroups(),
-                    false, 0, 0);
-        } catch (Exception e) {
-            statusHandler.error("Failed to configure the live broadcast!", e);
-            return;
-        }
+        BLBroadcastSettingsBuilder settingsBuilder = new BLBroadcastSettingsBuilder(
+                this.getSelectedTransmitterGroups());
 
         /*
          * alert the user that they are about to start a live stream
@@ -207,7 +199,8 @@ public class BroadcastLiveDlg extends AbstractBMHDialog {
         }
 
         LiveBroadcastRecordPlaybackDlg dlg = new LiveBroadcastRecordPlaybackDlg(
-                this.shell, RecordPlaybackDlg.INDETERMINATE_PROGRESS, settings);
+                this.shell, RecordPlaybackDlg.INDETERMINATE_PROGRESS,
+                settingsBuilder);
         dlg.open();
     }
 

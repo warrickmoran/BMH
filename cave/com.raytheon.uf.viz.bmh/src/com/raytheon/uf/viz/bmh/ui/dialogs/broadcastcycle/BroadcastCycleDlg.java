@@ -123,6 +123,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 17, 2014  3808      bkowal      Support broadcast live.
  * Nov 18, 2014  3807      bkowal      Use BMHJmsDestinations.
  * Nov 19, 2014 3817       bsteffen    Use status queue for more than just dacs.
+ * Nov 21, 2014  3845      bkowal      {@link LiveBroadcastSwitchNotification} now includes the
+ *                                     full {@link TransmitterGroup}.
  * 
  * </pre>
  * 
@@ -1148,8 +1150,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     });
                 } else if (o instanceof LiveBroadcastSwitchNotification) {
                     final LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) o;
-                    if (notification.getTransmitterGroup().equals(
-                            this.selectedTransmitterGrp) == false) {
+                    if (notification.getTransmitterGroup().getName()
+                            .equals(this.selectedTransmitterGrp) == false) {
                         return;
                     }
 

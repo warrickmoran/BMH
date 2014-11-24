@@ -57,6 +57,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014    3406    mpduff      Initial creation
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
+ * Nov 21, 2014  3845      bkowal      Added getAreasForTransmitters.
  * </pre>
  * 
  * @author mpduff
@@ -82,7 +83,7 @@ public class ZonesAreasDataManager {
      * Constructor.
      */
     public ZonesAreasDataManager() {
-        Class[] classes = new Class[] { StatesXML.class, StateXML.class };
+        Class<?>[] classes = new Class[] { StatesXML.class, StateXML.class };
 
         try {
             jax = JAXBContext.newInstance(classes);
@@ -121,6 +122,24 @@ public class ZonesAreasDataManager {
         ZoneAreaResponse response = (ZoneAreaResponse) BmhUtils
                 .sendRequest(req);
         return response.getAreaList();
+    }
+
+    /**
+     * Get the {@link Area}s that have been assigned to the specified
+     * {@link Transmitter}.
+     * 
+     * @param transmitter
+     *            the specified {@link Transmitter}
+     * @return {@link Area}s that have been assigned to the {@link Transmitter}
+     * @throws Exception
+     */
+    public List<Area> getAreasForTransmitter(final Transmitter transmitter)
+            throws Exception {
+        ZoneAreaRequest request = new ZoneAreaRequest();
+        request.setAction(ZoneAreaAction.GetAreasForTransmitter);
+        request.setTransmitter(transmitter);
+
+        return ((ZoneAreaResponse) BmhUtils.sendRequest(request)).getAreaList();
     }
 
     /**

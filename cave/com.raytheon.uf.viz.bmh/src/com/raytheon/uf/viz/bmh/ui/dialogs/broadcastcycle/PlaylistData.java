@@ -64,6 +64,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Nov 04, 2014   3781     dgilling    Fix SAME and alert tone display.
  * Nov 04, 2014   3778     bsteffen    Allow null transmit time.
  * Nov 17, 2014   3808     bkowal      Support broadcast live.
+ * Nov 21, 2014   3845     bkowal      Made {@link PlaylistData#sdf} public so other Viz
+ *                                     components could utilize the common playlist date format.
  * 
  * </pre>
  * 
@@ -75,8 +77,10 @@ public class PlaylistData {
     private static IUFStatusHandler statusHandler = UFStatus
             .getHandler(PlaylistData.class);
 
+    public static final String PLAYLIST_DATE_FORMAT = "MM/dd/yy HH:mm:ss";
+
     private final SimpleDateFormat sdf = new SimpleDateFormat(
-            "MM/dd/yy HH:mm:ss");
+            PLAYLIST_DATE_FORMAT);
 
     private final String UNKNOWN_TIME_STR = "--/--/-- --:--:--";
 
@@ -323,12 +327,10 @@ public class PlaylistData {
 
         final String[] columnText = new String[] {
                 sdf.format(notification.getTransitTime().getTime()),
-                (notification.getMessageType() != null) ? notification
-                        .getMessageType().getAfosid() : "-",
-                (notification.getMessageType() != null) ? notification
-                        .getMessageType().getTitle() : "-", "LiveMsg", "-",
-                sdf.format(notification.getExpirationTime().getTime()),
-                notification.getAlertTone(), notification.getSameTone(), "1" };
+                notification.getMessageId(), notification.getMessageTitle(),
+                notification.getMessageName(), notification.getMrd(),
+                notification.getExpirationTime(), notification.getAlertTone(),
+                notification.getSameTone(), notification.getPlayCount() };
         TableRowData tableRowData = new TableRowData();
         for (String text : columnText) {
             TableCellData tableCellData = new TableCellData(text);

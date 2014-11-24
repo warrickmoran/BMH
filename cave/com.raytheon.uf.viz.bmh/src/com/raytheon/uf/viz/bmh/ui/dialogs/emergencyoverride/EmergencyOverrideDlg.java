@@ -101,6 +101,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      based on message type.
  * Nov 11, 2014  3413      rferrel      Use DlgInfo to get title.
  * Nov 17, 2014  3808      bkowal       Initial support for broadcast live.
+ * Nov 21, 2014  3845      bkowal       Use EOBroadcastSettingsBuilder.
  * 
  * </pre>
  * 
@@ -548,7 +549,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         // get the selected transmitters.
         List<String> transmitterNames = this.sameTransmitters.getCheckedItems()
                 .getCheckedItems();
-        List<Transmitter> transmitters = new ArrayList<>(
+        final List<Transmitter> transmitters = new ArrayList<>(
                 transmitterNames.size());
         for (String transmitterName : transmitterNames) {
             /*
@@ -558,9 +559,10 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             transmitters.add(this.transmitterMap.get(transmitterName));
         }
 
-        final LiveBroadcastSettings settings = new LiveBroadcastSettings();
+        final EOBroadcastSettingsBuilder settingsBuilder;
         try {
-            settings.populate(this.selectedMsgType, transmitters, null,
+            settingsBuilder = new EOBroadcastSettingsBuilder(
+                    this.selectedMsgType, transmitters,
                     this.alertChk.getSelection(),
                     this.durHourSpnr.getSelection(),
                     this.durMinuteSpnr.getSelection());
@@ -582,7 +584,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         }
 
         LiveBroadcastRecordPlaybackDlg dlg = new LiveBroadcastRecordPlaybackDlg(
-                this.shell, 120, settings);
+                this.shell, 120, settingsBuilder);
         dlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -598,7 +600,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                  * We will need the audio that was recorded for potential
                  * rebroadcast scheduling.
                  */
-                handleTransmitComplete((ByteBuffer) returnValue, settings);
+                handleTransmitComplete((ByteBuffer) returnValue,
+                        settingsBuilder);
             }
         });
         dlg.open();
@@ -629,22 +632,22 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     }
 
     private void handleTransmitComplete(ByteBuffer recordedAudio,
-            final LiveBroadcastSettings settings) {
+            final EOBroadcastSettingsBuilder settingsBuilder) {
 
         if (this.autoScheduleChk.getSelection()) {
-            this.handleMessageScheduling(recordedAudio, settings,
-                    this.buildInputMsg(settings));
+            this.handleMessageScheduling(recordedAudio, settingsBuilder,
+                    this.buildInputMsg(settingsBuilder));
         } else {
-            this.handleManualMsgScheduling(recordedAudio, settings);
+            this.handleManualMsgScheduling(recordedAudio, settingsBuilder);
         }
     }
 
     private void handleManualMsgScheduling(final ByteBuffer recordedAudio,
-            final LiveBroadcastSettings settings) {
-        InputMessage inputMsg = this.buildInputMsg(settings);
+            final EOBroadcastSettingsBuilder settingsBuilder) {
+        InputMessage inputMsg = this.buildInputMsg(settingsBuilder);
 
         MessageScheduleDlg scheduleDlg = new MessageScheduleDlg(this.shell,
-                inputMsg, settings.getSelectedMessageType());
+                inputMsg, settingsBuilder.getMessageType());
         scheduleDlg.setCloseCallback(new ICloseCallback() {
 
             @Override
@@ -662,7 +665,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                     return;
                 }
 
-                handleMessageScheduling(recordedAudio, settings,
+                handleMessageScheduling(recordedAudio, settingsBuilder,
                         (InputMessage) returnValue);
             }
         });
@@ -670,13 +673,13 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     }
 
     private void handleMessageScheduling(final ByteBuffer recordedAudio,
-            final LiveBroadcastSettings settings,
+            final EOBroadcastSettingsBuilder settingsBuilder,
             final InputMessage inputMessage) {
         NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
         request.setInputMessage(inputMessage);
         request.setMessageAudio(recordedAudio.array());
-        request.setSelectedTransmitters(new ArrayList<>(settings
-                .getSelectedTransmitters()));
+        request.setSelectedTransmitters(new ArrayList<>(settingsBuilder
+                .getTransmitters()));
         try {
             BmhUtils.sendRequest(request);
         } catch (Exception e) {
@@ -684,7 +687,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         }
     }
 
-    private InputMessage buildInputMsg(final LiveBroadcastSettings settings) {
+    private InputMessage buildInputMsg(
+            final EOBroadcastSettingsBuilder settingsBuilder) {
         /*
          * Generate a message name.
          */
@@ -693,13 +697,12 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
         InputMessage inputMsg = new InputMessage();
         inputMsg.setName(generatedMsgName);
-        inputMsg.setLanguage(settings.getSelectedMessageType().getVoice()
+        inputMsg.setLanguage(settingsBuilder.getMessageType().getVoice()
                 .getLanguage());
-        inputMsg.setAfosid(settings.getSelectedMessageType().getAfosid());
+        inputMsg.setAfosid(this.selectedMsgType.getAfosid());
         inputMsg.setCreationTime(TimeUtil.newGmtCalendar());
-        inputMsg.setEffectiveTime(settings.getEffectiveTime());
-        inputMsg.setPeriodicity(settings.getSelectedMessageType()
-                .getPeriodicity());
+        inputMsg.setEffectiveTime(settingsBuilder.getEffectiveTime());
+        inputMsg.setPeriodicity(this.selectedMsgType.getPeriodicity());
         // no default mrd
         inputMsg.setActive(true);
         // default confirm to FALSE to prevent NPE
@@ -709,8 +712,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         // already played SAME and Alert tones during the initial broadcast.
         inputMsg.setAlertTone(false);
         inputMsg.setNwrsameTone(false);
-        inputMsg.setAreaCodes(settings.getAreaCodes());
-        inputMsg.setExpirationTime(settings.getExpireTime());
+        inputMsg.setAreaCodes(settingsBuilder.getAreaCodeString());
+        inputMsg.setExpirationTime(settingsBuilder.getExpireTime());
         inputMsg.setContent(StringUtils.EMPTY);
         inputMsg.setValidHeader(true);
 

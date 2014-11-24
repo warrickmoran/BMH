@@ -36,6 +36,7 @@ import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
 
 /**
@@ -69,6 +70,8 @@ import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
  * Nov 10, 2014 3630       bkowal      Re-factor to support on-demand broadcasting.
  * Nov 17, 2014 3808       bkowal      Support broadcast live. Initial transition to
  *                                     transmitter group.
+ * Nov 21, 2014 3845       bkowal      Transition to transmitter group complete.
+ * 
  * 
  * </pre>
  * 
@@ -128,7 +131,6 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(true);
         status.setBroadcastId(this.broadcastId);
-        status.addTransmitter(this.config.getTransmitter());
         status.addTransmitterGroup(this.config.getTransmitterGroup());
         this.commsManager.sendDacLiveBroadcastMsg(status);
 
@@ -200,7 +202,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(false);
         status.setBroadcastId(this.broadcastId);
-        status.addTransmitter(this.config.getTransmitter());
+        status.addTransmitterGroup(this.config.getTransmitterGroup());
         status.setMessage(detail);
         status.setException(e);
         this.commsManager.sendDacLiveBroadcastMsg(status);
@@ -223,20 +225,21 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
     private void notifyBroadcastSwitch(final STATE broadcastState) {
         LiveBroadcastSwitchNotification notification = new LiveBroadcastSwitchNotification();
+
+        /* identification and broadcast state information */
         notification.setType(this.type);
         notification.setBroadcastState(broadcastState);
-        if (this.type == BROADCASTTYPE.EO) {
-            notification.setTransmitterGroup(this.config.getTransmitter()
-                    .getMnemonic());
-        } else if (this.type == BROADCASTTYPE.BL) {
-            notification.setTransmitterGroup(this.config.getTransmitterGroup()
-                    .getName());
-        }
-        notification.setMessageType(this.config.getSelectedMessageType());
-        notification.setTransitTime(this.config.getEffectiveTime());
-        notification.setExpirationTime(this.config.getExpireTime());
-        notification.setSameTone(true);
-        notification.setAlertTone(this.config.isPlayAlertTones());
+        notification.setTransmitterGroup(this.config.getTransmitterGroup());
+
+        /* broadcast cycle dialog playlist display information */
+        notification.setTransitTime(TimeUtil.newGmtCalendar());
+        notification.setMessageId(this.config.getMessageId());
+        notification.setMessageTitle(this.config.getMessageTitle());
+        notification.setMessageName(this.config.getMessageName());
+        notification.setExpirationTime(this.config.getExpirationTime());
+        notification.setSameTone(this.config.getSame());
+        notification.setAlertTone(this.config.getAlert());
+
         eventBus.post(notification);
     }
 }

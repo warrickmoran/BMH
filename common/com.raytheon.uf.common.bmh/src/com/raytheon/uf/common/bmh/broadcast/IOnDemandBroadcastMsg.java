@@ -22,7 +22,6 @@ package com.raytheon.uf.common.bmh.broadcast;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
@@ -37,6 +36,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * ------------ ---------- ----------- --------------------------
  * Nov 7, 2014  3630       bkowal      Initial creation
  * Nov 17, 2014 3808       bkowal      Initial support for transmitter groups.
+ * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
  * 
  * </pre>
  * 
@@ -48,9 +48,6 @@ public interface IOnDemandBroadcastMsg {
     public MSGSOURCE getMsgSource();
 
     public Boolean getStatus();
-
-    @Deprecated
-    public List<Transmitter> getTransmitters();
     
     public List<TransmitterGroup> getTransmitterGroups();
 }

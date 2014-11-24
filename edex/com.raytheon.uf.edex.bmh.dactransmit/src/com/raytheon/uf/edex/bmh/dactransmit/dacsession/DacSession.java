@@ -36,9 +36,8 @@ import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
-import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
@@ -96,6 +95,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Nov 17, 2014  #3808     bkowal       Support broadcast live. Initial transition to
  *                                      transmitter group.
  * Nov 11, 2014  #3817     bsteffen     Periodically resend status.
+ * Nov 21, 2014  #3845     bkowal       Transition to transmitter group is complete.
  * 
  * </pre>
  * 
@@ -333,17 +333,10 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     private void prepareLiveBroadcast(
             final LiveBroadcastStartCommand startCommand) {
 
-        BroadcastTransmitterConfiguration config = null;
-        String transmitterName = null;
-        if (startCommand.getType() == BROADCASTTYPE.EO) {
-            config = startCommand.getTransmitterConfigurationMap().values()
-                    .iterator().next();
-            transmitterName = config.getTransmitter().getMnemonic();
-        } else if (startCommand.getType() == BROADCASTTYPE.BL) {
-            config = startCommand.getTransmitterGroupConfigurationMap()
-                    .values().iterator().next();
-            transmitterName = config.getTransmitterGroup().getName();
-        }
+        final BroadcastTransmitterConfiguration config = startCommand
+                .getTransmitterGroupConfigurationMap().values().iterator()
+                .next();
+        final String transmitterName = config.getTransmitterGroup().getName();
 
         /*
          * Is an interrupt currently playing?
@@ -355,8 +348,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                     "Unable to fulfill live broadcast request; an interrupt is currently playing on transmitter group {}.",
                     transmitterName);
             this.notifyLiveClientFailure(startCommand.getBroadcastId(),
-                    startCommand.getTransmitters(),
-                    "An interrupt is currently already playing on Transmitter "
+                    startCommand.getTransmitterGroups(),
+                    "An interrupt is currently already playing on Transmitter Group "
                             + transmitterName + ".", null);
             return;
         }
@@ -383,7 +376,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
 
             // failure - notify the client.
             this.notifyLiveClientFailure(startCommand.getBroadcastId(),
-                    startCommand.getTransmitters(),
+                    startCommand.getTransmitterGroups(),
                     "Failed to create a broadcast thread.", e);
 
             this.broadcastThread = null;
@@ -394,7 +387,6 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(true);
         status.setBroadcastId(startCommand.getBroadcastId());
-        status.setTransmitters(startCommand.getTransmitters());
         status.setTransmitterGroups(startCommand.getTransmitterGroups());
         commsManager.sendDacLiveBroadcastMsg(status);
     }
@@ -412,12 +404,12 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     }
 
     private void notifyLiveClientFailure(final String broadcastId,
-            List<Transmitter> transmitters, final String message,
+            List<TransmitterGroup> transmitterGroups, final String message,
             final Exception exception) {
         BroadcastStatus status = new BroadcastStatus();
         status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(false);
-        status.setTransmitters(transmitters);
+        status.setTransmitterGroups(transmitterGroups);
         status.setMessage(message);
         status.setException(exception);
 

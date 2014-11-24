@@ -19,10 +19,6 @@
  **/
 package com.raytheon.uf.common.bmh.broadcast;
 
-import java.util.Calendar;
-
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -42,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                     the broadcast.
  * Nov 1, 2014  3655       bkowal      Added end of message tones.
  * Nov 17, 2014 3808       bkowal      Initial support for transmitter groups.
+ * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
  * 
  * </pre>
  * 
@@ -51,33 +48,47 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class BroadcastTransmitterConfiguration {
 
-    @DynamicSerializeElement
-    private MessageType selectedMessageType;
+    public static final String TONE_SENT = "SENT";
 
-    @Deprecated
-    @DynamicSerializeElement
-    private Transmitter transmitter;
+    public static final String TONE_NONE = "NONE";
 
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
 
+    /*
+     * Broadcast cycle playlist text. Already pre-formatted and ready for
+     * immediate display.
+     */
     @DynamicSerializeElement
-    private byte[] toneAudio;
+    private String messageId;
 
     @DynamicSerializeElement
-    private byte[] endToneAudio;
+    private String messageTitle;
+
+    @DynamicSerializeElement
+    private String messageName;
+
+    @DynamicSerializeElement
+    private String expirationTime;
+
+    @DynamicSerializeElement
+    private String alert;
+
+    @DynamicSerializeElement
+    private String same;
+
+    /*
+     * Tones and associated information (when applicable). Currently not worth
+     * abstracting this class to provide constructs both with and without tones.
+     */
+    @DynamicSerializeElement
+    private byte[] toneAudio;
 
     @DynamicSerializeElement
     private long delayMilliseconds;
 
     @DynamicSerializeElement
-    private Calendar effectiveTime;
-
-    @DynamicSerializeElement
-    private Calendar expireTime;
-
-    @DynamicSerializeElement
-    private boolean playAlertTones;
+    private byte[] endToneAudio;
 
     /**
      * 
@@ -85,105 +96,153 @@ public class BroadcastTransmitterConfiguration {
     public BroadcastTransmitterConfiguration() {
     }
 
-    @Deprecated
-    public Transmitter getTransmitter() {
-        return transmitter;
-    }
-
-    @Deprecated
-    public void setTransmitter(Transmitter transmitter) {
-        this.transmitter = transmitter;
-    }
-
+    /**
+     * @return the transmitterGroup
+     */
     public TransmitterGroup getTransmitterGroup() {
         return transmitterGroup;
     }
 
+    /**
+     * @param transmitterGroup
+     *            the transmitterGroup to set
+     */
     public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
     }
 
+    /**
+     * @return the messageId
+     */
+    public String getMessageId() {
+        return messageId;
+    }
+
+    /**
+     * @param messageId
+     *            the messageId to set
+     */
+    public void setMessageId(String messageId) {
+        this.messageId = messageId;
+    }
+
+    /**
+     * @return the messageTitle
+     */
+    public String getMessageTitle() {
+        return messageTitle;
+    }
+
+    /**
+     * @param messageTitle
+     *            the messageTitle to set
+     */
+    public void setMessageTitle(String messageTitle) {
+        this.messageTitle = messageTitle;
+    }
+
+    /**
+     * @return the messageName
+     */
+    public String getMessageName() {
+        return messageName;
+    }
+
+    /**
+     * @param messageName
+     *            the messageName to set
+     */
+    public void setMessageName(String messageName) {
+        this.messageName = messageName;
+    }
+
+    /**
+     * @return the expirationTime
+     */
+    public String getExpirationTime() {
+        return expirationTime;
+    }
+
+    /**
+     * @param expirationTime
+     *            the expirationTime to set
+     */
+    public void setExpirationTime(String expirationTime) {
+        this.expirationTime = expirationTime;
+    }
+
+    /**
+     * @return the alert
+     */
+    public String getAlert() {
+        return alert;
+    }
+
+    /**
+     * @param alert
+     *            the alert to set
+     */
+    public void setAlert(String alert) {
+        this.alert = alert;
+    }
+
+    /**
+     * @return the same
+     */
+    public String getSame() {
+        return same;
+    }
+
+    /**
+     * @param same
+     *            the same to set
+     */
+    public void setSame(String same) {
+        this.same = same;
+    }
+
+    /**
+     * @return the toneAudio
+     */
     public byte[] getToneAudio() {
         return toneAudio;
     }
 
+    /**
+     * @param toneAudio
+     *            the toneAudio to set
+     */
     public void setToneAudio(byte[] toneAudio) {
         this.toneAudio = toneAudio;
     }
 
-    public byte[] getEndToneAudio() {
-        return endToneAudio;
-    }
-
-    public void setEndToneAudio(byte[] endToneAudio) {
-        this.endToneAudio = endToneAudio;
-    }
-
+    /**
+     * @return the delayMilliseconds
+     */
     public long getDelayMilliseconds() {
         return delayMilliseconds;
     }
 
+    /**
+     * @param delayMilliseconds
+     *            the delayMilliseconds to set
+     */
     public void setDelayMilliseconds(long delayMilliseconds) {
         this.delayMilliseconds = delayMilliseconds;
     }
 
     /**
-     * @return the selectedMessageType
+     * @return the endToneAudio
      */
-    public MessageType getSelectedMessageType() {
-        return selectedMessageType;
+    public byte[] getEndToneAudio() {
+        return endToneAudio;
     }
 
     /**
-     * @param selectedMessageType
-     *            the selectedMessageType to set
+     * @param endToneAudio
+     *            the endToneAudio to set
      */
-    public void setSelectedMessageType(MessageType selectedMessageType) {
-        this.selectedMessageType = selectedMessageType;
-    }
-
-    /**
-     * @return the effectiveTime
-     */
-    public Calendar getEffectiveTime() {
-        return effectiveTime;
-    }
-
-    /**
-     * @param effectiveTime
-     *            the effectiveTime to set
-     */
-    public void setEffectiveTime(Calendar effectiveTime) {
-        this.effectiveTime = effectiveTime;
-    }
-
-    /**
-     * @return the expireTime
-     */
-    public Calendar getExpireTime() {
-        return expireTime;
-    }
-
-    /**
-     * @param expireTime
-     *            the expireTime to set
-     */
-    public void setExpireTime(Calendar expireTime) {
-        this.expireTime = expireTime;
-    }
-
-    /**
-     * @return the playAlertTones
-     */
-    public boolean isPlayAlertTones() {
-        return playAlertTones;
-    }
-
-    /**
-     * @param playAlertTones
-     *            the playAlertTones to set
-     */
-    public void setPlayAlertTones(boolean playAlertTones) {
-        this.playAlertTones = playAlertTones;
+    public void setEndToneAudio(byte[] endToneAudio) {
+        this.endToneAudio = endToneAudio;
     }
 }

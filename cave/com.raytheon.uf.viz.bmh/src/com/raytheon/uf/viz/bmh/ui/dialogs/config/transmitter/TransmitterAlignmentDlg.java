@@ -44,6 +44,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
+import com.raytheon.uf.common.bmh.broadcast.AbstractOnDemandBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.TransmitterAlignmentTestCommand;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -77,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 10, 2014    3630    bkowal      Build the TransmitterAlignmentTestCommand.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Nov 15, 2014    3630    bkowal      Run the test and report the result.
+ * Nov 21, 2014    3845    bkowal      Updates to {@link AbstractOnDemandBroadcastMessage}.
  * 
  * </pre>
  * 
@@ -638,7 +640,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
 
         TransmitterAlignmentTestCommand command = new TransmitterAlignmentTestCommand();
         command.setMsgSource(MSGSOURCE.VIZ);
-        command.setTransmitterGroup(this.selectedTransmitterGrp);
+        command.addTransmitterGroup(this.selectedTransmitterGrp);
         command.setDacHostname(dac.getAddress());
         /*
          * Make comms manager find an available data port when it receives this

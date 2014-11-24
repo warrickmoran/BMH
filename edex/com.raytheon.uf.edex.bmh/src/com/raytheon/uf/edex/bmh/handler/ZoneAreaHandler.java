@@ -47,6 +47,7 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 24, 2014  3636     rferrel     Implement logging.
+ * Nov 21, 2014  3845     bkowal      Added getAreasForTransmitter
  * 
  * </pre>
  * 
@@ -63,6 +64,9 @@ public class ZoneAreaHandler extends
         switch (request.getAction()) {
         case GetAreas:
             response = getAreas(request);
+            break;
+        case GetAreasForTransmitter:
+            response = this.getAreasForTransmitter(request);
             break;
         case GetZones:
             response = getZones(request);
@@ -101,6 +105,16 @@ public class ZoneAreaHandler extends
     private ZoneAreaResponse getAreas(ZoneAreaRequest request) {
         AreaDao dao = new AreaDao(request.isOperational());
         List<Area> areas = dao.getAllAreas();
+        ZoneAreaResponse response = new ZoneAreaResponse();
+        response.setAreaList(areas);
+
+        return response;
+    }
+
+    private ZoneAreaResponse getAreasForTransmitter(ZoneAreaRequest request) {
+        AreaDao dao = new AreaDao(request.isOperational());
+        List<Area> areas = dao.getAreasForTransmitter(request.getTransmitter()
+                .getId());
         ZoneAreaResponse response = new ZoneAreaResponse();
         response.setAreaList(areas);
 

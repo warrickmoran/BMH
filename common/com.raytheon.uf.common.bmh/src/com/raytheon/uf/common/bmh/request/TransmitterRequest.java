@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 30, 2014  3173     mpduff      Initial creation
  * Aug 24, 2014  3432     mpduff      Added GetEnabledTransmitterGroups
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Nov 21, 2014  3845     bkowal      Added GetTransmitterGroupWithTransmitter
  * 
  * </pre>
  * 
@@ -47,7 +48,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class TransmitterRequest extends AbstractBMHServerRequest {
     public enum TransmitterRequestAction {
-        GetTransmitterGroups, GetTransmitters, GetEnabledTransmitterGroups, SaveTransmitter, SaveTransmitterDeleteGroup, SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup;
+        GetTransmitterGroups, GetTransmitters, GetEnabledTransmitterGroups, GetTransmitterGroupWithTransmitter, SaveTransmitter, SaveTransmitterDeleteGroup, SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup;
     }
 
     /**
