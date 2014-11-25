@@ -41,6 +41,7 @@ import java.util.Map;
  * Jul 17, 2014 3175       rjpeter     Added legacy parsing category.
  * Oct 2, 2014  3642       bkowal      Added STATIC_MSG_ERROR.
  * Nov 19, 2014 3385       bkowal      Added {@link BMH_CATEGORY#LDAD_ERROR}
+ * Nov 26, 2014 3821       bsteffen    Add some dac and comms categories
  * 
  * </pre>
  * 
@@ -130,6 +131,12 @@ public enum BMH_CATEGORY {
      * An error has occurred during static message generation.
      */
     STATIC_MSG_ERROR(16),
+
+    COMMS_MANAGER_ERROR(17),
+
+    DAC_TRANSMIT_ERROR(18),
+
+    DAC_TRANSMIT_SILENCE(19),
     /*
      * An error has occurred during ldad processing.
      */

@@ -31,10 +31,15 @@ import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.Layout;
 
 import com.raytheon.bmh.comms.CommsManager;
+import com.raytheon.bmh.comms.SilenceAlarm;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.message.StatusMessage;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.edex.bmh.status.BMHNotificationAction;
+import com.raytheon.uf.edex.bmh.status.BMHNotificationManager;
+import com.raytheon.uf.edex.bmh.status.BMH_ACTION;
 
 /**
  * 
@@ -48,6 +53,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Nov 03, 2014  3525     bsteffen    Initial Implementation
+ * Nov 26, 2014  3821     bsteffen    Utilize the BMHNotificationManager
+ * 
  * 
  * </pre>
  * 
@@ -74,26 +81,46 @@ public class JmsStatusMessageAppender extends AppenderBase<ILoggingEvent> {
         } else {
             sm.setPriority(Priority.EVENTB);
         }
-        sm.setPlugin(event.getLoggerName());
+        BMH_CATEGORY bmhCategory = null;
         Marker marker = event.getMarker();
-        if (marker != null && marker.contains("Dac Transmit")) {
-            sm.setCategory("Dac Transmit");
+        if (event.getLoggerName().equals(SilenceAlarm.class.getName())) {
+            sm.setCategory("DAC_TRANSMIT");
+            bmhCategory = BMH_CATEGORY.DAC_TRANSMIT_SILENCE;
+        } else if (marker != null && marker.contains("Dac Transmit")) {
+            sm.setCategory("DAC_TRANSMIT");
+            bmhCategory = BMH_CATEGORY.DAC_TRANSMIT_ERROR;
         } else {
-            sm.setCategory("Comms Manager");
+            sm.setCategory("COMMS_MANAGER");
+            bmhCategory = BMH_CATEGORY.COMMS_MANAGER_ERROR;
         }
-        sm.setMessage(event.getFormattedMessage());
-        sm.setMachineToCurrent();
-        sm.setSourceKey("BMH");
-        sm.setDetails(layout.doLayout(event));
-        sm.setEventTime(new Date(event.getTimeStamp()));
-        JmsCommunicator communicator = JmsStatusMessageAppender.communicator;
-        if (communicator != null) {
-            try {
-                communicator.sendStatusMessage(sm);
-            } catch (JMSException | SerializationException e) {
-                addError("Unable to append message to jms.", e);
+        BMHNotificationAction notificationAction = BMHNotificationManager
+                .getInstance().getAction(bmhCategory, sm.getPriority());
+        for (BMH_ACTION action : notificationAction.getActions()) {
+            switch (action) {
+            case ACTION_ALERTVIZ_AUDIO:
+                sm.setAudioFile(notificationAction.getAudioFile());
+            case ACTION_ALERTVIZ:
+                sm.setPlugin(event.getLoggerName());
+                sm.setMessage(event.getFormattedMessage());
+                sm.setMachineToCurrent();
+                sm.setSourceKey("BMH");
+                sm.setDetails(layout.doLayout(event));
+                sm.setEventTime(new Date(event.getTimeStamp()));
+                JmsCommunicator communicator = JmsStatusMessageAppender.communicator;
+                if (communicator != null) {
+                    try {
+                        communicator.sendStatusMessage(sm);
+                    } catch (JMSException | SerializationException e) {
+                        addError("Unable to append message to jms.", e);
+                    }
+                }
+            case ACTION_DEFAULT:
+            case ACTION_LOG:
+                // Logging is handled by other appenders, do not handle here.
             }
         }
+
+
     }
 
     public void setLayout(Layout<ILoggingEvent> layout) {

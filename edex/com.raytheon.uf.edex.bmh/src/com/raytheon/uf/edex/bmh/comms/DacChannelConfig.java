@@ -43,6 +43,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * Sep 5, 2014   3532     bkowal      Replaced decibel range with decibel target
  * Oct 2, 2014   3642     bkowal      Added transmitter timezone.
  * Oct 16, 2014  3687     bsteffen    Add playlistDirectory to xml.
+ * Nov 26, 2014  3821     bsteffen    Add silenceAlarm
  * 
  * </pre>
  * 
@@ -72,6 +73,9 @@ public class DacChannelConfig {
 
     @XmlAttribute
     private Integer controlPort;
+
+    @XmlAttribute
+    private boolean silenceAlarm;
 
     public Path getInputDirectory() {
         return Paths.get(playlistDirectory);
@@ -144,6 +148,14 @@ public class DacChannelConfig {
         this.controlPort = controlPort;
     }
 
+    public boolean isSilenceAlarm() {
+        return silenceAlarm;
+    }
+
+    public void setSilenceAlarm(boolean silenceAlarm) {
+        this.silenceAlarm = silenceAlarm;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -154,7 +166,12 @@ public class DacChannelConfig {
         long temp;
         temp = Double.doubleToLongBits(dbTarget);
         result = prime * result + (int) (temp ^ (temp >>> 32));
+        result = prime
+                * result
+                + ((playlistDirectory == null) ? 0 : playlistDirectory
+                        .hashCode());
         result = prime * result + Arrays.hashCode(radios);
+        result = prime * result + (silenceAlarm ? 1231 : 1237);
         result = prime * result
                 + ((timezone == null) ? 0 : timezone.hashCode());
         result = prime
@@ -182,7 +199,14 @@ public class DacChannelConfig {
         if (Double.doubleToLongBits(dbTarget) != Double
                 .doubleToLongBits(other.dbTarget))
             return false;
+        if (playlistDirectory == null) {
+            if (other.playlistDirectory != null)
+                return false;
+        } else if (!playlistDirectory.equals(other.playlistDirectory))
+            return false;
         if (!Arrays.equals(radios, other.radios))
+            return false;
+        if (silenceAlarm != other.silenceAlarm)
             return false;
         if (timezone == null) {
             if (other.timezone != null)
