@@ -17,6 +17,7 @@
 		destroy-method="dispose">
 		<property name="synthesisFactory" ref="practice_ttsSynthesisFactory" />
 		<property name="bmhDataDirectory" value="${BMH_DATA}/practice" />
+        <property name="bmhStatusDestination" ref="practice_bmhStatusDestination" />
 	</bean>
 	
 	<bean factory-bean="ttsHandler" factory-method="setPracticeTTSManager"

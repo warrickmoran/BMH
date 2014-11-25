@@ -45,13 +45,14 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.notify.status.TTSStatus;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
-import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
+import com.raytheon.uf.edex.core.EDEXUtil;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
 
 /**
@@ -131,6 +132,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     /* Configuration */
     private String bmhDataDirectory;
 
+    private String bmhStatusDestination;
+
     private long ttsHeartbeat;
 
     private Integer ttsValidationVoice;
@@ -144,8 +147,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     private TTSSynthesisFactory synthesisFactory;
 
     private ScheduledThreadPoolExecutor heartbeatMonitor;
-
-    private volatile boolean connected = false;
 
     public TTSManager() {
         this.disabled = Boolean.getBoolean(TTS_DISABLED_PROPERTY);
@@ -300,17 +301,17 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             TTS_RETURN_VALUE returnValue = this.synthesisFactory
                     .validateServerAvailability();
             boolean connected = returnValue == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS;
-            if (connected != this.connected) {
+            if ((connected || attempt == 1) && bmhStatusDestination != null) {
                 try {
                     TTSStatus status = new TTSStatus(InetAddress.getLocalHost()
                             .getHostName(), connected);
-                    BmhMessageProducer.sendStatusMessage(status, true);
-                    BmhMessageProducer.sendStatusMessage(status, false);
+                    EDEXUtil.getMessageProducer().sendAsyncUri(
+                            bmhStatusDestination,
+                            SerializationUtil.transformToThrift(status));
                 } catch (Throwable e) {
                     statusHandler.error(BMH_CATEGORY.TTS_SOFTWARE_ERROR,
                             "Unable to send status of TTS", e);
                 }
-                this.connected = connected;
             }
             retry = this.checkRetry(attempt, returnValue);
         }
@@ -932,6 +933,10 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      */
     public void setBmhDataDirectory(String bmhDataDirectory) {
         this.bmhDataDirectory = bmhDataDirectory;
+    }
+
+    public void setBmhStatusDestination(String bmhStatusDestination) {
+        this.bmhStatusDestination = bmhStatusDestination;
     }
 
     /**

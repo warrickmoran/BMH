@@ -18,6 +18,11 @@
     <constructor-arg ref="statusRequestHandler" />
   </bean>
 
+  <bean id="bmhStatusDestination" class="com.raytheon.uf.edex.bmh.BMHJmsDestinations"
+    factory-method="getStatusDestination">
+    <constructor-arg value="true" />
+  </bean>
+
   <camelContext id="bmhStatusContext" xmlns="http://camel.apache.org/schema/spring"
     errorHandlerRef="errorHandler">
 

@@ -12,6 +12,11 @@
     <constructor-arg ref="practice_statusMonitor" />
   </bean>
 
+  <bean id="practice_bmhStatusDestination" class="com.raytheon.uf.edex.bmh.BMHJmsDestinations"
+    factory-method="getStatusDestination">
+    <constructor-arg value="false" />
+  </bean>
+
   <camelContext id="practice_statusMonitorbmhStatusContext" xmlns="http://camel.apache.org/schema/spring"
     errorHandlerRef="errorHandler">
 
