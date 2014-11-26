@@ -129,6 +129,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    when generating SAME tones.
  * Nov 13, 2014  3717     bsteffen    Do not persist forced.
  * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
+ * Nov 17, 2014  3827     bsteffen    Fix merging of arealess messages
  * 
  * </pre>
  * 
@@ -655,17 +656,20 @@ public class PlaylistManager implements IContextStateProcessor {
             matReplacementMap.put(afosid, matReplacements);
         }
         matReplacements.add(afosid);
+        String areaCodes = msg.getInputMessage().getAreaCodes();
+
 
         ListIterator<BroadcastMsg> messageIterator = list.listIterator();
         while (messageIterator.hasNext()) {
             BroadcastMsg potentialReplacee = messageIterator.next();
-            int mrd = potentialReplacee.getInputMessage().getMrdId();
-            String msgCodes = msg.getInputMessage().getAreaCodes();
-            boolean areaCodesEqual = (msgCodes != null)
-                    && msgCodes.equals(potentialReplacee.getInputMessage()
-                            .getAreaCodes());
-            boolean mrdReplacement = mrdReplacements.contains(mrd);
-            boolean matReplacement = (mrd == -1)
+            int potentialMrd = potentialReplacee.getInputMessage().getMrdId();
+            String potentialAreaCodes = potentialReplacee.getInputMessage()
+                    .getAreaCodes();
+            boolean areaCodesEqual = areaCodes == potentialAreaCodes
+                    || (areaCodes != null && areaCodes
+                            .equals(potentialAreaCodes));
+            boolean mrdReplacement = mrdReplacements.contains(potentialMrd);
+            boolean matReplacement = (potentialMrd == -1)
                     && matReplacements.contains(potentialReplacee.getAfosid());
             matReplacement = matReplacement && areaCodesEqual;
             if (mrdReplacement || matReplacement) {
