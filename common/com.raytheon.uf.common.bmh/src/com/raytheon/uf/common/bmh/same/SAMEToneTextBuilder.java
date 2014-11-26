@@ -61,6 +61,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jul 03, 2014  3285     bsteffen    Initial creation
  * Aug 04, 2014  3286     dgilling    Remove automatic addition of EOM
  *                                    to SAME string.
+ * Nov 26, 2014  3616     bsteffen    Handle demo messages specially.
  * 
  * </pre>
  * 
@@ -72,6 +73,10 @@ public class SAMEToneTextBuilder {
     private static final String START_CODE = "ZCZC";
 
     private static final String SEP = "-";
+
+    private static final String DEMO_EVENT = "DMO";
+
+    private static final String DEMO_AREA_CODE = "999000";
 
     public static final String CIVIL_ORIGINATOR = "CIV";
 
@@ -336,8 +341,12 @@ public class SAMEToneTextBuilder {
         text.append(START_CODE);
         text.append(SEP).append(originator);
         text.append(SEP).append(event);
-        for (CharSequence code : area) {
-            text.append(SEP).append(code);
+        if (event.equals(DEMO_EVENT)) {
+            text.append(SEP).append(DEMO_AREA_CODE);
+        } else {
+            for (CharSequence code : area) {
+                text.append(SEP).append(code);
+            }
         }
         try (Formatter formatter = new Formatter(text)) {
             formatter.format("+%02d%02d", purgeHours, purgeMinutes);
@@ -360,7 +369,7 @@ public class SAMEToneTextBuilder {
                 originator = originatorMapper.getOriginator(event);
             }
         }
-        if (area.isEmpty()) {
+        if (area.isEmpty() && (event.equals(DEMO_EVENT) == false)) {
             throw new IllegalStateException("Must specify at least one area.");
         }
         if (effectiveTime == null) {
