@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.systemstatus;
 
+import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -70,7 +71,9 @@ public class SystemStatusMonitor {
     @DynamicSerializeElement
     private Map<String, TTSStatus> ttsStatus;
 
-    private transient Set<ISystemStatusListener> listeners = new CopyOnWriteArraySet<>();
+    protected transient Set<ISystemStatusListener> listeners = new CopyOnWriteArraySet<>();
+
+    private transient SystemStatusTimeoutThread timeoutThread = null;
 
     public SystemStatusMonitor() {
         this(null);
@@ -209,7 +212,9 @@ public class SystemStatusMonitor {
         }
         if (prev == null || !prev.equals(commsStatus)) {
             notifyListeners(BmhComponent.CommsManager, commsStatus.getHost());
-            // TODO might need to notify of new dacs.
+            for (String group : commsStatus.getConnectedTransmitterGroups()) {
+                notifyListeners(BmhComponent.DAC, group);
+            }
         }
     }
 
@@ -281,11 +286,78 @@ public class SystemStatusMonitor {
     }
 
     public void addListener(ISystemStatusListener listener) {
-        listeners.add(listener);
+        synchronized (listeners) {
+            if (timeoutThread == null || !timeoutThread.isAlive()) {
+                removeExpiredStatuses();
+                timeoutThread = new SystemStatusTimeoutThread(this);
+                timeoutThread.start();
+            }
+            listeners.add(listener);
+        }
     }
 
     public void removeListener(ISystemStatusListener listener) {
         listeners.remove(listener);
+    }
+
+    /**
+     * Remove any periodic status messages that have expired.
+     * 
+     * @return the time(in ms) at which the next status might expire if it is
+     *         not updated.
+     */
+    protected long removeExpiredStatuses() {
+        long nextCheck = System.currentTimeMillis();
+        Set<String> removedComms = new HashSet<>(2);
+        Set<String> removedGroups = new HashSet<>(2);
+        synchronized (commsStatus) {
+            for (CommsManagerStatus commsStatus : this.commsStatus.values()) {
+                if (isExpired(commsStatus)) {
+                    removedComms.add(commsStatus.getHost());
+                    removedGroups.addAll(commsStatus
+                            .getConnectedTransmitterGroups());
+                } else {
+                    nextCheck = Math
+                            .min(nextCheck, commsStatus.getStatusTime());
+                }
+            }
+            this.commsStatus.keySet().removeAll(removedComms);
+        }
+        for (String commsHost : removedComms) {
+            notifyListeners(BmhComponent.CommsManager, commsHost);
+        }
+        synchronized (dacStatus) {
+            dacStatus.keySet().removeAll(removedGroups);
+        }
+        for (String groupName : removedGroups) {
+            notifyListeners(BmhComponent.DAC, groupName);
+        }
+        Set<String> removedEdices = new HashSet<>(2);
+        synchronized (edexStatus) {
+            for (BmhEdexStatus edexStatus : this.edexStatus.values()) {
+                if (isExpired(edexStatus)) {
+                    removedEdices.add(edexStatus.getHost());
+                } else {
+                    nextCheck = Math.min(nextCheck, edexStatus.getStatusTime());
+                }
+            }
+            this.edexStatus.keySet().removeAll(removedEdices);
+        }
+        for (String edexHost : removedEdices) {
+            notifyListeners(BmhComponent.EDEX, edexHost);
+        }
+        Set<String> removedTTS = new HashSet<>(2);
+        synchronized (ttsStatus) {
+            for (String host : removedEdices) {
+                if (ttsStatus.remove(host) != null) {
+                    removedTTS.add(host);
+                }
+            }
+        }
+        for (String ttsHost : removedTTS) {
+            notifyListeners(BmhComponent.TTS, ttsHost);
+        }
+        return nextCheck + PERIODIC_TIMEOUT_MS + 1;
     }
 
     private static void removeExpired(
@@ -301,6 +373,46 @@ public class SystemStatusMonitor {
     private static boolean isExpired(PeriodicStatusMessage statusObject) {
         return statusObject.getStatusTime() + PERIODIC_TIMEOUT_MS < System
                 .currentTimeMillis();
+    }
+
+    /**
+     * Background thread to periodically remove expired statuses. This only
+     * needs to be run when there are active listeners because all of the get
+     * methods check timeout.
+     */
+    private static class SystemStatusTimeoutThread extends Thread {
+
+        private final WeakReference<SystemStatusMonitor> monitorRef;
+
+        public SystemStatusTimeoutThread(SystemStatusMonitor monitor) {
+            super("SystemStatusTimeout");
+            monitorRef = new WeakReference<SystemStatusMonitor>(monitor);
+        }
+
+        @Override
+        public void run() {
+            while (true) {
+                SystemStatusMonitor monitor = monitorRef.get();
+                if (monitor == null) {
+                    return;
+                }
+                if (monitor.listeners.isEmpty()) {
+                    return;
+                }
+                long nextWakeTime = monitor.removeExpiredStatuses();
+                /* Must null local variable so WeakReference can clear. */
+                monitor = null;
+                long sleepTime = nextWakeTime - System.currentTimeMillis();
+                if (sleepTime > 0) {
+                    try {
+                        sleep(sleepTime);
+                    } catch (InterruptedException e) {
+                        /* No harm in running through the loop again. */
+                    }
+                }
+            }
+        }
+
     }
 
 }

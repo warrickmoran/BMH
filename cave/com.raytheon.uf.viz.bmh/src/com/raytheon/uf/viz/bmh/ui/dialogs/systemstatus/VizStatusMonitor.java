@@ -76,6 +76,7 @@ public class VizStatusMonitor extends SystemStatusMonitor implements
     public void dispose() {
         NotificationManagerJob.removeObserver(
                 BMHJmsDestinations.getStatusDestination(), this);
+        listeners.clear();
     }
 
     private static SystemStatusMonitor requestStatus() {
