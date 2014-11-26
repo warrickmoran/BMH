@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
  * Aug 15, 2014  3432     mpduff      Added getPeriodicMessages
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Nov 03, 2014  3790     lvenable    Added code for the active field.
+ * Nov 26, 2014  3613     bsteffen    Add getPurgableMessages
  * 
  * </pre>
  * 
@@ -185,4 +186,12 @@ public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
 
         return imList;
     }
+
+    @SuppressWarnings("unchecked")
+    public List<InputMessage> getPurgableMessages(final Calendar purgeTime) {
+        return (List<InputMessage>) findByNamedQueryAndNamedParam(
+                InputMessage.PURGE_QUERY_NAME, "purgeTime", purgeTime);
+
+    }
+
 }

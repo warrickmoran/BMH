@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -48,6 +49,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Aug 29, 2014  3568     bkowal      Added getMessageExistence
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Oct 23, 2014  3748     bkowal      Added getMessagesByInputMsgId
+ * Nov 26, 2014  3613     bsteffen    Add getMessageByFragmentPath
  * 
  * </pre>
  * 
@@ -133,5 +135,16 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
         results.add(msg);
 
         return results;
+    }
+
+    public BroadcastMsg getMessageByFragmentPath(Path path) {
+        List<?> messages = findByNamedQueryAndNamedParam(
+                BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH, "path", path
+                        .toAbsolutePath().toString());
+        if (messages.isEmpty()) {
+            return null;
+        } else {
+            return (BroadcastMsg) messages.get(0);
+        }
     }
 }

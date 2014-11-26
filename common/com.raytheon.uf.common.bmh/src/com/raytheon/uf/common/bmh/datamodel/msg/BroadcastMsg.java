@@ -66,6 +66,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Oct 23, 2014  3748     bkowal      Added getBroadcastMsgsByInputMsg.
  * Nov 18, 2014  3746     rjpeter     Labeled foreign key.
+ * Nov 26, 2014  3613     bsteffen    Add getBroadcastMsgsByFragmentPath
+ * 
  * </pre>
  * 
  * @author bkowal
@@ -76,7 +78,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID, query = BroadcastMsg.GET_MSGS_BY_AFOS_ID_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE, query = BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_INPUT_MSG, query = BroadcastMsg.GET_MSGS_BY_INPUT_MSG_QUERY),
-        @NamedQuery(name = BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP, query = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosID AND m.inputMessage.expirationTime > :expirationTime AND m.transmitterGroup = :group") })
+        @NamedQuery(name = BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP, query = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosID AND m.inputMessage.expirationTime > :expirationTime AND m.transmitterGroup = :group"),
+        @NamedQuery(name = BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH, query = BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "broadcast_msg", schema = "bmh")
@@ -97,6 +100,10 @@ public class BroadcastMsg {
     public static final String GET_MSGS_BY_INPUT_MSG = "getBroadcastMsgsByInputMsg";
 
     protected static final String GET_MSGS_BY_INPUT_MSG_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.id = :inputMsgId";
+
+    public static final String GET_MSG_BY_FRAGMENT_PATH = "getBroadcastMsgsByFragmentPath";
+
+    protected static final String GET_MSG_BY_FRAGMENT_PATH_QUERY = "SELECT m FROM BroadcastMsg m inner join m.fragments fragment where fragment.outputName = :path";
 
     /* A unique auto-generated numerical id. Long = SQL BIGINT */
     @Id

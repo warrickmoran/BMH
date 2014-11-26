@@ -65,7 +65,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 03, 2014  3790     lvenable    Update query to include the active field.
  * Nov 03, 2014  3728     lvenable    Made active default to true when creating a new object.
  * Nov 17, 2014  3793     bsteffen    Add same transmitters.
- * 
+ * Nov 26, 2014  3613     bsteffen    Add getPurgableInputMessages
  * 
  * </pre>
  * 
@@ -74,7 +74,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @NamedQueries({
         @NamedQuery(name = InputMessage.DUP_QUERY_NAME, query = InputMessage.DUP_QUERY),
-        @NamedQuery(name = InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION, query = InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY) })
+        @NamedQuery(name = InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION, query = InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY),
+        @NamedQuery(name = InputMessage.PURGE_QUERY_NAME, query = InputMessage.PURGE_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "input_msg", schema = "bmh")
@@ -94,6 +95,13 @@ public class InputMessage {
     public static final String DUP_QUERY_NAME = "getDuplicateInputMessages";
 
     protected static final String DUP_QUERY = "FROM InputMessage m WHERE m.id != :id AND m.afosid = :afosid AND ((m.mrd = :mrd) OR (m.effectiveTime <= :effectiveTime AND m.expirationTime >= :expirationTime))";
+
+    /**
+     * Named query to delete all old messages
+     */
+    public static final String PURGE_QUERY_NAME = "getPurgableInputMessages";
+
+    protected static final String PURGE_QUERY = "FROM InputMessage m WHERE m.expirationTime < :purgeTime OR (m.active=false and m.creationTime < :purgeTime))";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)

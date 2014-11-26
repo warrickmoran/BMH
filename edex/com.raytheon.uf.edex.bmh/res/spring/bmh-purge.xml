@@ -1,0 +1,26 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans
+                      http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+                      http://camel.apache.org/schema/spring
+                      http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+  <bean id="bmhMessagePurger" class="com.raytheon.uf.edex.bmh.purge.MessagePurger">
+    <constructor-arg value="${bmh.purge.days}"/>
+  </bean>
+
+  <camelContext id="bmhPurgeRoutes" xmlns="http://camel.apache.org/schema/spring"
+    errorHandlerRef="errorHandler">
+
+    <route id="bmhTimesPurge">
+      <from uri="timer://purgeInterval?fixedRate=true&amp;period=24h" />
+      <bean ref="bmhMessagePurger" method="purge"/>
+    </route>
+
+  </camelContext>
+
+
+  <bean factory-bean="contextManager" factory-method="registerClusteredContext">
+    <constructor-arg ref="bmhPurgeRoutes" />
+ </bean>
+</beans>
