@@ -67,6 +67,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 03, 2014  3485     bsteffen    Better handling of poorly configured dacs.
  * Oct 13, 2014  3656     bkowal      Copy broadcast live port from old config to new.
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
+ * Nov 26, 2014  3821     bsteffen    Write silence alarm
  * 
  * </pre>
  * 
@@ -199,6 +200,7 @@ public class CommsConfigurator implements IContextStateProcessor {
             }
             DacChannelConfig channel = new DacChannelConfig();
             channel.setTransmitterGroup(group.getName());
+            channel.setSilenceAlarm(Boolean.TRUE.equals(group.getSilenceAlarm()));
             channel.setPlaylistDirectoryPath(playlistDirectoryPath
                     .resolve(group.getName()));
             channel.setDbTarget(group.getAudioDBTarget());

@@ -57,6 +57,7 @@ import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
 import com.raytheon.uf.common.bmh.notify.status.CommsManagerStatus;
+import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
@@ -103,6 +104,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Nov 15, 2014  3630     bkowal      Allow for retrieval of most recent config. Use
  *                                    dynamic log naming.
  * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
+ * Nov 26, 2014  3821     bsteffen    Add SilenceAlarm
  * 
  * </pre>
  * 
@@ -155,6 +157,8 @@ public class CommsManager {
     private final ClusterServer clusterServer;
 
     private final BroadcastStreamServer broadcastStreamServer;
+
+    private final SilenceAlarm silenceAlarm;
 
     /**
      * This is the thread currently executing in a loop in the {@link #run()}
@@ -233,6 +237,8 @@ public class CommsManager {
                     "Error parsing jms connection url, jms will be disabled.",
                     e);
         }
+
+        silenceAlarm = new SilenceAlarm(config);
     }
 
     /**
@@ -452,6 +458,7 @@ public class CommsManager {
                     + e.getKey().getInputDirectory());
             e.getValue().destroy();
         }
+        silenceAlarm.reconfigure(config);
     }
 
     protected void launchDacTransmit(DacTransmitKey key,
@@ -651,6 +658,10 @@ public class CommsManager {
     public void transmitDacStatus(Object statusObject) {
         if (jms != null) {
             jms.sendBmhStatus(statusObject);
+        }
+        if (statusObject instanceof DacHardwareStatusNotification) {
+            silenceAlarm
+                    .handleDacHardwareStatus((DacHardwareStatusNotification) statusObject);
         }
     }
 
