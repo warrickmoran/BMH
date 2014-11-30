@@ -66,6 +66,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Nov 17, 2014   3808     bkowal      Support broadcast live.
  * Nov 21, 2014   3845     bkowal      Made {@link PlaylistData#sdf} public so other Viz
  *                                     components could utilize the common playlist date format.
+ * Nov 29, 2014   3844     mpduff      Implement interrupt and periodic message coloring
  * 
  * </pre>
  * 
@@ -254,16 +255,29 @@ public class PlaylistData {
 
             if (message != null) {
                 mrd = message.getInputMessage().getMrd();
+
+                if (message.getInputMessage().isPeriodic()) {
+                    cycleTableData.setMessageIdColor(colorManager
+                            .getPeriodicColor());
+                }
+
+                if (message.getInputMessage().getInterrupt()) {
+                    cycleTableData.setMessageIdColor(colorManager
+                            .getInterruptColor());
+                }
             }
 
             if (mrd == null) {
                 mrd = EMPTY;
+                // TODO how to determine if MRD color or not
+                // } else {
+                // cycleTableData
+                // .setMessageIdColor(colorManager.getReplaceColor());
             }
             cycleTableData.setMrd(mrd);
 
             cycleTableData.setBroadcastId(broadcastId);
 
-            // TODO set other background colors
             dataEntries.add(cycleTableData);
         }
 
@@ -282,7 +296,12 @@ public class PlaylistData {
             }
             cell.setBackgroundColor(data.getTransmitTimeColor());
             row.addTableCellData(cell);
-            row.addTableCellData(new TableCellData(data.getMessageId()));
+            TableCellData messageIdCell = new TableCellData(data.getMessageId());
+            if (data.getMessageIdColor() != null) {
+                messageIdCell.setBackgroundColor(data.getMessageIdColor());
+            }
+
+            row.addTableCellData(messageIdCell);
             row.addTableCellData(new TableCellData(data.getMessageTitle()));
 
             if (data.getInputMsg() != null) {
