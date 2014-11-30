@@ -47,6 +47,8 @@ import com.raytheon.uf.viz.bmh.Activator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 17, 2014  3349      lvenable     Initial creation
+ * Nov 23, 2014  #3287     lvenable     Added image for a silent alarm and
+ *                                      if it's disabled.
  * 
  * </pre>
  * 
@@ -57,14 +59,14 @@ public class StatusImages {
 
     /** Enumeration of record states. */
     public enum StatusImage {
-        Dac, Transmitter, TransmitterGrp, TransmitterDisabled, Alarm, SilentAlarm;
+        Dac, Transmitter, TransmitterGrp, TransmitterDisabled, Alarm, DisabledSilentAlarm, AlarmPlusDisabledSilentAlarm;
     };
 
     /** Transmitter image. */
     private Image transmitterImg;
 
     /** Silent Alarm image. */
-    private Image silentAlarmImg;
+    private Image disabledSilentAlarmImg;
 
     /** Disabled Silent Alarm image. */
     private Image disabledTransmitterImg;
@@ -74,6 +76,8 @@ public class StatusImages {
 
     /** Transmitter group image. */
     private Image transmitterGrpImg;
+
+    private Image alarmPlusDisabledSilentAlarmImg;
 
     /** Map of images. */
     private Map<StatusImage, Image> imageMap = new HashMap<StatusImage, Image>();
@@ -136,15 +140,22 @@ public class StatusImages {
 
         // Silent Alarm
         id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
-                "icons/silentAlarm.png");
-        silentAlarmImg = id.createImage();
-        imageMap.put(StatusImage.SilentAlarm, silentAlarmImg);
+                "icons/disabledSilentAlarm.png");
+        disabledSilentAlarmImg = id.createImage();
+        imageMap.put(StatusImage.DisabledSilentAlarm, disabledSilentAlarmImg);
 
         // Transmitter group
         id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/xmit_grp.png");
         transmitterGrpImg = id.createImage();
         imageMap.put(StatusImage.TransmitterGrp, transmitterGrpImg);
+
+        // Alarm active with SilentAlarm disabled
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
+                "icons/alarmDisabledSilent.png");
+        alarmPlusDisabledSilentAlarmImg = id.createImage();
+        imageMap.put(StatusImage.AlarmPlusDisabledSilentAlarm,
+                alarmPlusDisabledSilentAlarmImg);
     }
 
     /**

@@ -27,6 +27,8 @@ import java.util.SortedMap;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -50,6 +52,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 17, 2014  3349      lvenable     Initial creation
+ * Nov 23, 2014  #3287     lvenable     Additional status updates.
  * 
  * </pre>
  * 
@@ -71,6 +74,12 @@ public class DacStatusComp extends Composite {
 
     /** Label used to display the DAC image. */
     private Label dacImgLbl;
+
+    /** DAC label font. */
+    private Font dacLabelFont = null;
+
+    /** DAC information label. */
+    private Label dacInfoLbl;
 
     /**
      * Constructor.
@@ -112,6 +121,10 @@ public class DacStatusComp extends Composite {
                 if (dacImage != null) {
                     dacImage.dispose();
                 }
+
+                if (dacLabelFont != null) {
+                    dacLabelFont.dispose();
+                }
             }
         });
 
@@ -128,8 +141,7 @@ public class DacStatusComp extends Composite {
          */
         for (TransmitterGrpInfo tgi : transmitterGrpInfoList) {
             // Create the transmitters/groups controls.
-            TransmitterGroupStatusComp tgsc = new TransmitterGroupStatusComp(
-                    this, tgi, statusImages);
+            new TransmitterGroupStatusComp(this, tgi, statusImages);
 
             // Find the assigned ports
             SortedMap<Integer, List<TransmitterInfo>> transmittersMap = tgi
@@ -147,8 +159,15 @@ public class DacStatusComp extends Composite {
 
         // Color the port(s) that have transmitters and color the DAC image
         // based on the status of the DAC.
-        statusImages.changeDacStatus(activePorts, dacImage, true);
+
+        boolean goodDacStatus = validateDacStatus();
+        statusImages.changeDacStatus(activePorts, dacImage, goodDacStatus);
         dacImgLbl.setImage(dacImage);
+
+        if (!goodDacStatus) {
+            dacInfoLbl
+                    .setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
+        }
     }
 
     /**
@@ -166,8 +185,32 @@ public class DacStatusComp extends Composite {
         dacImgLbl.setImage(statusImages.getStatusImage(StatusImage.Dac));
         createToolTip(dacImgLbl);
 
-        Label dacInfoLbl = new Label(dacComp, SWT.NONE);
+        gd = new GridData();
+        gd.horizontalIndent = 5;
+        dacInfoLbl = new Label(dacComp, SWT.NONE);
         dacInfoLbl.setText(dacInfo.getDacName());
+        dacInfoLbl.setLayoutData(gd);
+
+        FontData fd = dacInfoLbl.getFont().getFontData()[0];
+        fd.setStyle(SWT.BOLD);
+        dacLabelFont = new Font(getDisplay(), fd);
+        dacInfoLbl.setFont(dacLabelFont);
+    }
+
+    /**
+     * Validate the DAC status.
+     * 
+     * @return
+     */
+    private boolean validateDacStatus() {
+        // TODO : add more validation
+
+        if (dacInfo.getPsu1Voltage().isNaN()
+                || dacInfo.getPsu2Voltage().isNaN()) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -179,8 +222,23 @@ public class DacStatusComp extends Composite {
     private void createToolTip(Label lbl) {
         StringBuilder sb = new StringBuilder();
         sb.append("Name    : ").append(dacInfo.getDacName()).append("\n");
-        sb.append("Address : ").append(dacInfo.getDacAddress());
+        sb.append("Address : ").append(dacInfo.getDacAddress()).append("\n");
+        sb.append("PSU1 Voltage : ")
+                .append(getVoltageDisplay(dacInfo.getPsu1Voltage()))
+                .append("\n");
+        sb.append("PSU1 Voltage : ")
+                .append(getVoltageDisplay(dacInfo.getPsu2Voltage()))
+                .append("\n");
+        sb.append("Buffer Size  : ").append(dacInfo.getBufferSize());
 
         new CustomToolTip(lbl, sb.toString());
+    }
+
+    private String getVoltageDisplay(Double voltage) {
+        if (voltage.isNaN()) {
+            return "NO READING";
+        }
+
+        return voltage.toString();
     }
 }

@@ -35,6 +35,7 @@ import java.util.TreeMap;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 30, 2014  3349      lvenable     Initial creation
+ * Nov 23, 2014  #3287     lvenable     Added silent alarm flag.
  * 
  * </pre>
  * 
@@ -42,6 +43,9 @@ import java.util.TreeMap;
  * @version 1.0
  */
 public class TransmitterGrpInfo {
+
+    /** Disabled silence alarm flag. */
+    private boolean disabledSilenceAlarm = false;
 
     /** Silence alarm flag. */
     private boolean silenceAlarm = false;
@@ -54,21 +58,30 @@ public class TransmitterGrpInfo {
 
     /**
      * Map of transmitter information that is related to a transmitter group.
+     * The key is the DAC port number. If multiple transmitters are on the same
+     * port it is added to the list.
      */
     private SortedMap<Integer, List<TransmitterInfo>> transmitterInfoMap = new TreeMap<Integer, List<TransmitterInfo>>();
 
     /**
      * A port number that is assigned to a transmitter if the DAC port number is
-     * null. Once assigned the variable is automatically incremented. This is
-     * done so the valuse in the map don't get replaced.
+     * null.
      */
-    private int tmpPortNumber = 1000;
+    private final int tmpPortNumber = 9999;
 
     /**
      * Constructor.
      */
     public TransmitterGrpInfo() {
 
+    }
+
+    public boolean isDisabledSilenceAlarm() {
+        return disabledSilenceAlarm;
+    }
+
+    public void setDisabledSilenceAlarm(boolean silenceAlarm) {
+        this.disabledSilenceAlarm = silenceAlarm;
     }
 
     public boolean isSilenceAlarm() {
@@ -110,7 +123,6 @@ public class TransmitterGrpInfo {
 
         if (port == null) {
             port = tmpPortNumber;
-            ++tmpPortNumber;
         }
 
         if (transmitterInfoMap.containsKey(port)) {
