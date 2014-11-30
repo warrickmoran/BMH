@@ -26,6 +26,7 @@ import org.apache.commons.lang.math.Range;
 
 import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
+import com.raytheon.uf.common.bmh.audio.BMHAudioConstants;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 
@@ -45,6 +46,7 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  *                                     verse }.
  * Sep 3, 2014  3532       bkowal      Updated the algorithm to use a target instead of
  *                                     a range.
+ * Nov 24, 2014 3863       bkowal      Use {@link BMHAudioConstants}.
  * 
  * 
  * </pre>
@@ -54,21 +56,6 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  */
 
 public class AudioRegulator {
-    /*
-     * The maximum amplitude that can be associated with the PCM audio samples
-     * recognized and supported by the BMH components.
-     */
-    private static final double MAX_AMPLITUDE = 32767.0;
-
-    /*
-     * Reference: http://www.rapidtables.com/electric/decibel.htm
-     * 
-     * The "Amplitude ratio to dB conversion" formula.
-     */
-    private static final double AMPLITUDE_TO_DB_CONSTANT = 20.0;
-
-    private static final double DB_ALTERATION_CONSTANT = 10.0;
-
     private long duration;
 
     /**
@@ -98,7 +85,7 @@ public class AudioRegulator {
         for (int i = 0; i < adjustedPCMData.length; i += 2) {
             short audioSample = (short) (((sample[i + 1] & 0xff) << 8) | (sample[i] & 0xff));
             audioSample = (short) (audioSample * volumeAdjustment);
-            if (Math.abs(audioSample) > MAX_AMPLITUDE) {
+            if (Math.abs(audioSample) > BMHAudioConstants.MAX_AMPLITUDE) {
                 throw new AudioOverflowException(volumeAdjustment,
                         Math.abs(audioSample));
             }
@@ -160,8 +147,9 @@ public class AudioRegulator {
         }
 
         double difference = dbTarget - decibelRange.getMaximumDouble();
-        double adjustmentRate = Math.pow(DB_ALTERATION_CONSTANT,
-                (difference / AMPLITUDE_TO_DB_CONSTANT));
+        double adjustmentRate = Math.pow(
+                BMHAudioConstants.DB_ALTERATION_CONSTANT,
+                (difference / BMHAudioConstants.AMPLITUDE_TO_DB_CONSTANT));
 
         return this.regulateAudioVolume(sample, adjustmentRate);
     }
@@ -215,8 +203,9 @@ public class AudioRegulator {
      */
     private double calculateDecibels(double amplitude) {
         amplitude = Math.abs(amplitude);
-        double amplitudeRatio = amplitude / MAX_AMPLITUDE;
-        return AMPLITUDE_TO_DB_CONSTANT * Math.log10(amplitudeRatio);
+        double amplitudeRatio = amplitude / BMHAudioConstants.MAX_AMPLITUDE;
+        return BMHAudioConstants.AMPLITUDE_TO_DB_CONSTANT
+                * Math.log10(amplitudeRatio);
     }
 
     /**

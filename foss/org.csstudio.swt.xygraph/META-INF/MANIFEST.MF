@@ -20,3 +20,5 @@ Export-Package: org.csstudio.swt.widgets.datadefinition,
  org.csstudio.swt.xygraph.undo,
  org.csstudio.swt.xygraph.util
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Require-Bundle: org.eclipse.draw2d;bundle-version="3.7.2",
+ org.eclipse.jface;bundle-version="3.8.0"
