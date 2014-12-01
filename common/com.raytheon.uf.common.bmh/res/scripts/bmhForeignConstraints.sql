@@ -29,6 +29,7 @@
  * Oct 13, 2014 3654       rjpeter     Updated constraint names.
  * Oct 22, 2014 3746       rjpeter     Hibernate upgrade.
  * Nov 11, 2014 3803       bkowal      Added on delete cascade for ldad config and ldad msg type.
+ * Nov 26, 2014 3613       bkowal      Added cascade for broadcast_fragment
  **/
 
 /**
@@ -49,6 +50,10 @@ alter table bmh.broadcast_msg add constraint fk_p29wngg6tdbtcr7ukef334213
 
 alter table bmh.playlist_messages drop constraint fk_dna1dgu6xkltlusrwgc8s913q;
 alter table bmh.playlist_messages add constraint fk_dna1dgu6xkltlusrwgc8s913q
+    foreign key (message_id) references bmh.broadcast_msg (id) on delete cascade;
+
+alter table bmh.broadcast_fragment drop constraint fk_m87w4p7uk2l0vyjb1es2xs4vm;
+alter table bmh.broadcast_fragment add constraint fk_m87w4p7uk2l0vyjb1es2xs4vm
     foreign key (message_id) references bmh.broadcast_msg (id) on delete cascade;
 
 
