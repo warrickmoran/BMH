@@ -84,6 +84,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.DisconnectListener;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
+import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -125,6 +126,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 19, 2014 3817       bsteffen    Use status queue for more than just dacs.
  * Nov 21, 2014  3845      bkowal      {@link LiveBroadcastSwitchNotification} now includes the
  *                                     full {@link TransmitterGroup}.
+ * Nov 30, 2014  3752      mpduff      Populate Suite name, suite category, and cycle duration on startup.
  * 
  * </pre>
  * 
@@ -520,7 +522,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         gd.widthHint = 250;
         suiteValueLbl = new Label(leftProgSuiteComp, SWT.NONE);
         suiteValueLbl.setLayoutData(gd);
-        suiteValueLbl.setText("Suite Name");
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, false);
         Label suiteCatLbl = new Label(leftProgSuiteComp, SWT.NONE);
@@ -530,7 +531,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
         suiteCatValueLbl = new Label(leftProgSuiteComp, SWT.NONE);
         suiteCatValueLbl.setLayoutData(gd);
-        suiteCatValueLbl.setText("TBD");
 
         // Right comp
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
@@ -700,6 +700,18 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             if (playlistDataRecord instanceof PlaylistDataStructure) {
                 PlaylistDataStructure dataStruct = (PlaylistDataStructure) playlistDataRecord;
                 if (dataStruct != null) {
+                    String suiteName = dataStruct.getSuiteName();
+                    suiteValueLbl.setText(suiteName);
+                    cycleDurValueLbl.setText(String.valueOf(dataStruct
+                            .getPlaybackCycleTime()));
+                    SuiteDataManager sdm = new SuiteDataManager();
+                    List<Suite> suiteList = sdm.getAllSuites(null);
+                    for (Suite suite : suiteList) {
+                        if (suite.getName().equals(suiteName)) {
+                            suiteCatValueLbl.setText(suite.getType().name());
+                            break;
+                        }
+                    }
                     playlistData.setData(selectedTransmitterGrp, dataStruct);
                     tableData = playlistData
                             .getUpdatedTableData(selectedTransmitterGrp);

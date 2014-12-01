@@ -42,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 24, 2014     3432   mpduff      Added Copy constructor
  * Oct 21, 2014     3655   bkowal      Updated to use {@link IPlaylistData}.
  * Nov 04, 2014     3778   bsteffen    Preserve the order of the prediction map.
+ * Nov 30, 2014     3752   mpduff      Added Suite name and playlist cycle duration time.
  * 
  * </pre>
  * 
@@ -67,6 +68,18 @@ public class PlaylistDataStructure implements IPlaylistData {
      */
     @DynamicSerializeElement
     private Map<Long, MessageType> messageTypeMap;
+
+    /**
+     * Suite name
+     */
+    @DynamicSerializeElement
+    private String suiteName;
+
+    /**
+     * Time for the entire cycle to play
+     */
+    @DynamicSerializeElement
+    private long playbackCycleTime;
 
     public PlaylistDataStructure() {
 
@@ -113,5 +126,35 @@ public class PlaylistDataStructure implements IPlaylistData {
 
     public void setMessageTypeMap(Map<Long, MessageType> messageTypeMap) {
         this.messageTypeMap = messageTypeMap;
+    }
+
+    /**
+     * @return the suiteName
+     */
+    public String getSuiteName() {
+        return suiteName;
+    }
+
+    /**
+     * @param suiteName
+     *            the suiteName to set
+     */
+    public void setSuiteName(String suiteName) {
+        this.suiteName = suiteName;
+    }
+
+    /**
+     * @return the playbackCycleTime
+     */
+    public long getPlaybackCycleTime() {
+        return playbackCycleTime;
+    }
+
+    /**
+     * @param playbackCycleTime
+     *            the playbackCycleTime to set
+     */
+    public void setPlaybackCycleTime(long playbackCycleTime) {
+        this.playbackCycleTime = playbackCycleTime;
     }
 }
