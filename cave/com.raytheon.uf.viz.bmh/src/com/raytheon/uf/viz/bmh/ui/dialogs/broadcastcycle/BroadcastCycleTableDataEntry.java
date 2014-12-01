@@ -35,6 +35,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 21, 2014     3432   mpduff      Initial creation
+ * Nov 22, 2014     3844   mpduff      Add message id color
  * 
  * </pre>
  * 
@@ -65,6 +66,8 @@ public class BroadcastCycleTableDataEntry {
     private Color transmitTimeColor;
 
     private InputMessage inputMsg;
+
+    private Color messageIdColor;
 
     /**
      * @return the transmitTime
@@ -229,5 +232,20 @@ public class BroadcastCycleTableDataEntry {
      */
     public void setInputMsg(InputMessage inputMsg) {
         this.inputMsg = inputMsg;
+    }
+
+    /**
+     * @return the messageIdColor
+     */
+    public Color getMessageIdColor() {
+        return messageIdColor;
+    }
+
+    /**
+     * @param messageIdColor
+     *            the messageIdColor to set
+     */
+    public void setMessageIdColor(Color messageIdColor) {
+        this.messageIdColor = messageIdColor;
     }
 }
