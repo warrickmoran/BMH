@@ -33,10 +33,14 @@ import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitCommunicator;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
+import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.IOnDemandBroadcastMsg;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
+import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.TransmitterAlignmentTestCommand;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 
@@ -56,6 +60,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  *                                     error handling.
  * Oct 22, 2014 3687       bsteffen    Fix NPE in edge case.
  * Nov 15, 2014 3630       bkowal      Support alignment tests.
+ * Dec 1, 2014  3797       bkowal      Support broadcast clustering.
  * 
  * </pre>
  * 
@@ -116,10 +121,14 @@ public class BroadcastStreamServer extends AbstractServerThread {
 
         logger.info("Handling {} request.", command.getClass().getName());
 
-        /*
-         * TODO: verify that there are not already active broadcast tasks for
-         * any of the specified transmitters.
-         */
+        if (this.areTransmitterGroupsAvailable(command, socket) == false) {
+            /*
+             * An existing {@link AbstractBroadcastingTask} is already using one
+             * of the requested {@link TransmitterGroup}.
+             */
+            return;
+        }
+
         AbstractBroadcastingTask task = null;
         if (command instanceof LiveBroadcastStartCommand) {
             task = this.handleLiveBroadcastCommand(
@@ -134,9 +143,81 @@ public class BroadcastStreamServer extends AbstractServerThread {
             return;
         }
 
+        this.runDelegate(task);
+    }
+
+    /**
+     * Verifies that no other {@link AbstractBroadcastTask} is currently using
+     * one of the requested {@link TransmitterGroup}s specified in the
+     * {@link IOnDemandBroadcastMsg}.
+     * 
+     * @param command
+     *            the specified {@link IOnDemandBroadcastMsg}
+     * @return true, if the requested {@link TransmitterGroup}s are available;
+     *         false, otherwise.
+     */
+    private synchronized boolean areTransmitterGroupsAvailable(
+            final IOnDemandBroadcastMsg command, final Socket socket) {
+        AbstractBroadcastingTask conflictingTask = null;
+
+        for (AbstractBroadcastingTask task : this.broadcastStreamingTasksMap
+                .values()) {
+            /*
+             * {@link List} does not natively support any type of intersection
+             * operation ...
+             */
+            for (TransmitterGroup tg : command.getTransmitterGroups()) {
+                if (task.getTransmitterGroups().contains(tg)) {
+                    conflictingTask = task;
+                    break;
+                }
+            }
+        }
+
+        if (conflictingTask != null) {
+            /*
+             * Notify the client that the requested {@link TransmitterGroup}s
+             * are not available.
+             */
+            StringBuilder clientMsg = new StringBuilder(
+                    "One or multiple of the requested Transmitter Group(s) are already being used by ");
+            clientMsg.append(conflictingTask.getDescription());
+            clientMsg.append(" ");
+            clientMsg.append(conflictingTask.getName());
+            clientMsg.append(".");
+
+            BroadcastStatus status = new BroadcastStatus();
+            status.setMsgSource(MSGSOURCE.COMMS);
+            status.setBroadcastId(this.getName());
+            status.setStatus(false);
+            status.setTransmitterGroups(command.getTransmitterGroups());
+            status.setMessage(clientMsg.toString());
+
+            try {
+                SerializationUtil.transformToThriftUsingStream(status,
+                        socket.getOutputStream());
+            } catch (SerializationException | IOException e) {
+                logger.error(
+                        "Failed to send an unavailability status to the client.",
+                        e);
+                /*
+                 * Failure will be indicated by the unexpected comms manager
+                 * disconnect that will occur when this function exits.
+                 * Although, the source of the failure will not be clear in that
+                 * case. But, options are limited.
+                 */
+            }
+        }
+
+        return (conflictingTask == null);
+    }
+
+    private void runDelegate(AbstractBroadcastingTask task) {
+        if (task == null) {
+            return;
+        }
         task.start();
-        logger.info("Started {} task {}.", task.getDescription(),
-                task.getName());
+        logger.info("Started {} {}.", task.getDescription(), task.getName());
         this.broadcastStreamingTasksMap.put(task.getName(), task);
     }
 
@@ -190,8 +271,18 @@ public class BroadcastStreamServer extends AbstractServerThread {
                     key.toString());
             this.availableDacConnectionsMap.put(group, key);
         }
+        for (AbstractBroadcastingTask task : this.broadcastStreamingTasksMap
+                .values()) {
+            task.dacConnectedToServer(group);
+        }
     }
 
+    /**
+     * {@link BroadcastStreamServer#dacConnected()} and
+     * {@link BroadcastStreamServer#dacDisconnected()} are only interested in
+     * local activity because the {@link DacTransmitCommunicator} currently only
+     * allows for local connections.
+     */
     public void dacDisconnected(final DacTransmitKey key, final String group) {
         if (group == null) {
             /*
@@ -201,6 +292,10 @@ public class BroadcastStreamServer extends AbstractServerThread {
             return;
         }
         this.availableDacConnectionsMap.remove(group, key);
+        for (AbstractBroadcastingTask task : this.broadcastStreamingTasksMap
+                .values()) {
+            task.dacDisconnectedFromServer(group);
+        }
     }
 
     public DacTransmitKey getLocalDacCommunicationKey(final String group) {
@@ -211,7 +306,37 @@ public class BroadcastStreamServer extends AbstractServerThread {
         this.broadcastStreamingTasksMap.remove(broadcastId);
     }
 
+    public void handleBroadcastMsgExternal(ILiveBroadcastMessage msg) {
+        if (msg.getMsgSource() == MSGSOURCE.DAC) {
+            this.handleDacBroadcastMsg(msg);
+        } else if (msg.getMsgSource() == MSGSOURCE.COMMS) {
+            if (msg instanceof LiveBroadcastStartCommand) {
+                AbstractBroadcastingTask task = new ClusteredBroadcastStreamTask(
+                        (LiveBroadcastStartCommand) msg, this,
+                        this.clusterServer, this.transmitServer);
+                this.runDelegate(task);
+            } else {
+                BroadcastStreamTask task = this.getDelegateTask(msg);
+                if (task == null) {
+                    return;
+                }
+                task.handleClusteredBroadcastMsg(msg);
+            }
+        }
+    }
+
     public void handleDacBroadcastMsg(ILiveBroadcastMessage msg) {
+        if (msg == null) {
+            return;
+        }
+        BroadcastStreamTask task = this.getDelegateTask(msg);
+        if (task == null) {
+            return;
+        }
+        task.handleDacBroadcastMsg(msg);
+    }
+
+    private BroadcastStreamTask getDelegateTask(ILiveBroadcastMessage msg) {
         AbstractBroadcastingTask task = this.broadcastStreamingTasksMap.get(msg
                 .getBroadcastId());
         if (task == null) {
@@ -220,13 +345,14 @@ public class BroadcastStreamServer extends AbstractServerThread {
                     "Ignoring dac live broadcast {} msg. Broadcast {} does not exist or is no longer active.",
                     msg.getClass().getName(), msg.getBroadcastId());
 
-            return;
+            return null;
         }
         if (task instanceof BroadcastStreamTask == false) {
             // unlikely scenario
             logger.warn("Ignoring dac live broadcast {} msg. Broadcast {} is not a live streamed broadcast.");
-            return;
+            return null;
         }
-        ((BroadcastStreamTask) task).handleDacBroadcastMsg(msg);
+
+        return (BroadcastStreamTask) task;
     }
 }

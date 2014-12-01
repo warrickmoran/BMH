@@ -105,6 +105,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  *                                    dynamic log naming.
  * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
  * Nov 26, 2014  3821     bsteffen    Add SilenceAlarm
+ * Dec 1, 2014   3797     bkowal      Support broadcast clustering.
  * 
  * </pre>
  * 
@@ -618,7 +619,6 @@ public class CommsManager {
     public void dacTransmitDisconnected(DacTransmitKey key, String group) {
         logger.info("dac transmit disconnected for {}", group);
         transmitServer.dacTransmitDisconnected(key);
-        broadcastStreamServer.dacDisconnected(key, group);
         attemptLaunchDacTransmits();
     }
 
@@ -635,6 +635,7 @@ public class CommsManager {
             jms.unlistenForPlaylistChanges(key, group, transmitServer);
         }
         clusterServer.dacDisconnectedLocal(key);
+        broadcastStreamServer.dacDisconnected(key, group);
         attemptLaunchDacTransmits();
         sendStatus();
     }
@@ -679,8 +680,15 @@ public class CommsManager {
                         + e.getErrorMessage(), e.getThrowable());
     }
 
+    /**
+     * Forwards any {@link ILiveBroadcastMessage}s that are received by other
+     * components to the {@link BroadcastStreamServer}.
+     * 
+     * @param msg
+     *            the {@link ILiveBroadcastMessage} to forward
+     */
     public void forwardDacBroadcastMsg(ILiveBroadcastMessage msg) {
-        broadcastStreamServer.handleDacBroadcastMsg(msg);
+        broadcastStreamServer.handleBroadcastMsgExternal(msg);
     }
 
     public CommsConfig getCurrentConfigState() {

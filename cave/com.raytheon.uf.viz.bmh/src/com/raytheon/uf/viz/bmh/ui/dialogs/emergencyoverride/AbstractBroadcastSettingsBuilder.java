@@ -40,6 +40,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 19, 2014 3845       bkowal      Initial creation
+ * Dec 1, 2014  3797       bkowal      Added abstract getTonesDuration
  * 
  * </pre>
  * 
@@ -73,6 +74,7 @@ public abstract class AbstractBroadcastSettingsBuilder {
             config.setTransmitterGroup(tg);
             command.addTransmitterConfiguration(config);
         }
+        command.setTonesDuration(this.getTonesDuration());
 
         return command;
     }
@@ -88,6 +90,13 @@ public abstract class AbstractBroadcastSettingsBuilder {
      */
     protected abstract BroadcastTransmitterConfiguration buildTransmitterConfiguration(
             TransmitterGroup tg);
+
+    /**
+     * Returns the maximum duration of of the tones that must be played.
+     * 
+     * @return the tones duration
+     */
+    protected abstract long getTonesDuration();
 
     /**
      * @return the type

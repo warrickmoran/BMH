@@ -38,6 +38,7 @@ import java.util.HashMap;
  * Oct 20, 2014 3655       bkowal      Initial creation
  * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
+ * Dec 1, 2014  3797       bkowal      Aded get/set tonesDuration
  * 
  * </pre>
  * 
@@ -59,6 +60,9 @@ public class LiveBroadcastStartCommand extends LiveBroadcastCommand {
 
     @DynamicSerializeElement
     private Map<TransmitterGroup, BroadcastTransmitterConfiguration> transmitterGroupConfigurationMap = new HashMap<>();
+
+    @DynamicSerializeElement
+    private long tonesDuration;
 
     /**
      * 
@@ -90,5 +94,13 @@ public class LiveBroadcastStartCommand extends LiveBroadcastCommand {
     public void setTransmitterGroupConfigurationMap(
             Map<TransmitterGroup, BroadcastTransmitterConfiguration> transmitterGroupConfigurationMap) {
         this.transmitterGroupConfigurationMap = transmitterGroupConfigurationMap;
+    }
+
+    public long getTonesDuration() {
+        return tonesDuration;
+    }
+
+    public void setTonesDuration(long tonesDuration) {
+        this.tonesDuration = tonesDuration;
     }
 }

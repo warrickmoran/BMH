@@ -56,6 +56,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 19, 2014 3845       bkowal      Initial creation
+ * Dec 1, 2014  3797       bkowal      Implemented getTonesDuration.
  * 
  * </pre>
  * 
@@ -263,6 +264,11 @@ public class EOBroadcastSettingsBuilder extends
         config.setEndToneAudio(this.endTonesAudio);
 
         return config;
+    }
+
+    @Override
+    protected long getTonesDuration() {
+        return this.longestDuration;
     }
 
     /**

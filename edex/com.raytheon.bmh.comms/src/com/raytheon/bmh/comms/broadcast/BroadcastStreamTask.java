@@ -22,13 +22,13 @@ package com.raytheon.bmh.comms.broadcast;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import com.raytheon.bmh.comms.DacTransmitKey;
+import com.raytheon.bmh.comms.broadcast.ManagedTransmitterGroup.STREAMING_STATUS;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
@@ -43,9 +43,20 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 
 /**
- * Used to manage a live broadcast. Executes the SAME tones and will continue
+ * Used to manage a broadcast stream. Executes the SAME tones and will continue
  * streaming live audio to the Dac until the conclusion of the broadcast after
  * successful initialization.
+ * 
+ * Responsible for managing the {@link TransmitterGroup}s that it is responsible
+ * for and forwarding commands to other member
+ * {@link ClusteredBroadcastStreamTask}s that are created on other cluster
+ * members. It will also keep track of the {@link TransmitterGroup}s that the
+ * {@link ClusteredBroadcastStreamTask}s are managing to ensure that all
+ * requested {@link TransmitterGroup}s are accounted for.
+ * 
+ * The {@link ClusterServer} is used to communicate with other cluster members.
+ * The {@link BroadcastStreamTask} also has a direct connection to Viz (the
+ * client) via a {@link Socket}.
  * 
  * <pre>
  * 
@@ -64,6 +75,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Nov 17, 2014 3808       bkowal      Support broadcast live. Initial transition to
  *                                     transmitter group.
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
+ * Dec 1, 2014  3797       bkowal      Support broadcast clustering.
  * 
  * </pre>
  * 
@@ -73,29 +85,35 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
 
 public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
-    private static enum STATE {
-        INIT, READY, TRIGGER, LIVE, STOP, ERROR
+    protected static enum STATE {
+        INIT, READY, TRIGGER, LIVE, SHUTDOWN, STOP, ERROR
     }
 
     private static final String DESCRIPTION = "broadcast streaming task";
 
-    private final BroadcastStreamServer streamingServer;
+    protected final BroadcastStreamServer streamingServer;
 
     private final ClusterServer clusterServer;
 
     private final DacTransmitServer dacServer;
 
-    private final LiveBroadcastStartCommand command;
+    protected final LiveBroadcastStartCommand command;
 
-    private List<TransmitterGroup> managedTransmitterGroups;
+    protected final TransmitterGroupManager tgManager;
 
-    private volatile boolean live;
+    protected volatile STATE state;
 
-    private CountDownLatch responseLock;
+    /**
+     * Used to wait for information from all managed {@link TransmitterGroup}s
+     * and all member {@link ClusteredBroadcastStreamTask}s.
+     */
+    protected final Semaphore communicationLock = new Semaphore(1);
 
-    private List<ILiveBroadcastMessage> responses;
-
-    private volatile STATE state;
+    /**
+     * Amount of time to wait for a response from a {@link TransmitterGroup} in
+     * milliseconds.
+     */
+    private final long PER_TRANSMITTER_WAIT_DURATION = 10000;
 
     /**
      * 
@@ -109,8 +127,8 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         this.clusterServer = clusterServer;
         this.dacServer = dacServer;
         this.command = command;
-        this.managedTransmitterGroups = new ArrayList<>(this.command
-                .getTransmitterGroups().size());
+        this.tgManager = new TransmitterGroupManager(
+                this.command.getTransmitterGroups());
     }
 
     private static String determineName(final LiveBroadcastStartCommand command) {
@@ -118,11 +136,57 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                 .getBroadcastId() : UUID.randomUUID().toString().toUpperCase();
     }
 
-    @Override
-    public void run() {
-        this.state = STATE.INIT;
-        this.noteStateTransition();
+    private void handleStateTransition() {
+        logger.info("Broadcast {} state transition to: {}", this.getName(),
+                this.state.toString());
+        logger.info("CURRENT MANAGED STATE: {}", this.tgManager.toString());
 
+        if (this.state == STATE.READY || this.state == STATE.TRIGGER) {
+            /**
+             * Lock on the READY state and the TRIGGER state for both the
+             * {@link BroadcastStreamTask} and the
+             * {@link ClusteredBroadcastStreamTask}. This use of the locking
+             * provides time for the dac transmits associated with the managed
+             * {@link TransmitterGroup}s to provide responses.
+             */
+            try {
+                /*
+                 * lock should be available immediately or else it is already
+                 * locked.
+                 */
+                if (this.communicationLock
+                        .tryAcquire(10, TimeUnit.MILLISECONDS) == false) {
+                    logger.warn("The Communication Lock is currently already locked. Expected State ... Continuing");
+                }
+            } catch (InterruptedException e) {
+                logger.warn("Broadcast Stream Task was interrupted while waiting for the Communication Lock.");
+            }
+        }
+
+        switch (this.state) {
+        case ERROR:
+        case STOP:
+            // do nothing.
+            break;
+        case INIT:
+            this.initializeBroadcast();
+            break;
+        case LIVE:
+            this.broadcastLive();
+            break;
+        case READY:
+            this.broadcastReady();
+            break;
+        case SHUTDOWN:
+            this.stopBroadcast();
+            break;
+        case TRIGGER:
+            this.triggerBroadcast();
+            break;
+        }
+    }
+
+    protected void initializeBroadcast() {
         /*
          * First need to notify other Comms Managers of the existence of the
          * streaming task.
@@ -144,64 +208,100 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             if (key == null) {
                 continue;
             }
-            this.managedTransmitterGroups.add(transmitterGrp);
+            this.tgManager.claimResponsibility(transmitterGrp);
         }
 
+        /**
+         * We will only acquire the communication lock if there are other
+         * cluster members that we want to allow to respond
+         */
         if (count > 0) {
-            this.responseLock = new CountDownLatch(count);
-
-            /*
-             * Wait for the ready confirmation from other comms manager(s). If
-             * we do not have access to all involved dacs, verify that the
-             * remaining dacs have been covered by other comms manager(s).
-             * 
-             * Ideally, the user would not be able to select a disabled
-             * transmitter.
-             * 
-             * TODO: This will need to be able to handle cluster member
-             * shutdowns. Note: A cluster member shutdown may increase the
-             * probability, that all required transmitters will not be accounted
-             * for.
-             */
             try {
-                /*
-                 * Wait for replies from the other cluster members. They need
-                 * time to start their own tasks and determine which
-                 * transmitters they will be responsible for managing.
-                 */
-                this.responseLock.await(6000, TimeUnit.MILLISECONDS);
+                if (this.communicationLock
+                        .tryAcquire(10, TimeUnit.MILLISECONDS) == false) {
+                    logger.warn("The Communication Lock is currently already locked. Expected State ... Continuing");
+                }
             } catch (InterruptedException e) {
-                // Ignore until clustering.
+                logger.warn("Broadcast Stream Task was interrupted while waiting for the Communication Lock.");
             }
         }
 
         /*
          * Every specified transmitter group must be a transmitter group that we
          * can access or that a different cluster member can access.
-         * 
-         * TODO: will need to separate handled specifically by this thread and
-         * ALL that can be managed by the cluster members prior to completing
-         * this verification when clustering is involved.
          */
-        if (this.managedTransmitterGroups.size() != this.command
-                .getTransmitterGroups().size()) {
-            final String clientMsg = this.buildMissingTransmitterGrpsMsg(
-                    this.managedTransmitterGroups,
-                    this.command.getTransmitterGroups());
+        if ((count > 0 && this.communicationWait(this.calculateWaitDuration()) == false)
+                || this.tgManager.allTransmittersAssigned() == false) {
+            final String preText = "Failed to start broadcast "
+                    + this.getName()
+                    + ". Unable to access the following transmitter groups: ";
+            final String clientMsg = this.buildTransmitterListMsg(preText,
+                    this.tgManager.getUnassignedTransmitters());
 
             // failure
-            this.notifyShareholdersProblem("Failed to start broadcast "
-                    + this.getName() + ". " + clientMsg.toString());
+            this.notifyShareholdersProblem(clientMsg);
+
+            /*
+             * due to the fact that we are only in the initialization phase, we
+             * will also need to notify broadcast stream tasks running on other
+             * cluster members that they will need to be shutdown because Viz
+             * will only initiate the shutdown if an error occurs at any point
+             * after a successful initialization.
+             */
+            // build and submit a stop command.
+            LiveBroadcastCommand command = new LiveBroadcastCommand();
+            command.setAction(ACTION.STOP);
+            command.setBroadcastId(this.getName());
+            command.setMsgSource(MSGSOURCE.COMMS);
+            this.handleStopCommand(command);
+
             return;
         }
 
         this.state = STATE.READY;
-        this.noteStateTransition();
+    }
 
-        this.responseLock = new CountDownLatch(
-                this.managedTransmitterGroups.size());
-        this.responses = new ArrayList<>(this.managedTransmitterGroups.size());
+    protected void broadcastLive() {
+        /*
+         * allow any clustered broadcast streams to transition to the next state
+         * to prepare the dacs that they are responsible for managing.
+         */
+        this.clusterServer
+                .sendDataToAll(new ClusteredBroadcastTransitionTrigger(this
+                        .getName()));
+        /*
+         * Ready to start streaming audio. Notify the client and prepare to
+         * start streaming audio.
+         */
+        BroadcastStatus status = new BroadcastStatus();
+        status.setMsgSource(MSGSOURCE.COMMS);
+        status.setStatus(true);
+        status.setBroadcastId(this.getName());
+        status.setTransmitterGroups(this.tgManager.getManagedTransmitters());
 
+        if (this.sendClientReplyMessage(status)) {
+            this.state = STATE.LIVE;
+        } else {
+            this.state = STATE.ERROR;
+        }
+        while (this.state == STATE.LIVE) {
+            Object object = null;
+            try {
+                object = SerializationUtil.transformFromThrift(Object.class,
+                        this.socket.getInputStream());
+            } catch (Exception e) {
+                this.notifyShareholdersProblem(
+                        "Failed to read data from the socket connection.", e,
+                        this.command.getTransmitterGroups());
+                this.state = STATE.ERROR;
+            }
+            if (object instanceof ILiveBroadcastMessage) {
+                this.handleMessageInternal((ILiveBroadcastMessage) object);
+            }
+        }
+    }
+
+    protected void broadcastReady() {
         /*
          * at this point we know all required transmitters are available (at
          * least < 1 ms ago). So, we send another notification to the dac
@@ -209,11 +309,84 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * broadcast. If an interrupt occurs before all transmitters can be
          * notified, the live broadcast will fail.
          */
-        for (TransmitterGroup transmitterGroup : this.managedTransmitterGroups) {
+
+        /*
+         * allow any clustered broadcast streams to transition to the next state
+         * to prepare the dacs that they are responsible for managing.
+         */
+        this.clusterServer
+                .sendDataToAll(new ClusteredBroadcastTransitionTrigger(this
+                        .getName()));
+        this.sendStartCmdToDacs();
+
+        /*
+         * give dac transmits and member comms managers some amount of time to
+         * respond based on the total number of transmitters required. The wait
+         * will end early if we receive a response for all transmitters before
+         * time expires.
+         */
+
+        /*
+         * verify all transmitter groups are available for streaming.
+         */
+        if (this.communicationWait(this.calculateWaitDuration()) == false
+                || this.tgManager
+                        .doAllTransmittersHaveStreamStatus(STREAMING_STATUS.AVAILABLE) == false) {
+            StringBuilder msgBuilder = new StringBuilder(
+                    "Failed to start broadcast " + this.getName() + ".");
+            if (this.tgManager
+                    .doAnyTransmittersHaveStreamStatus(STREAMING_STATUS.UNKNOWN)) {
+                msgBuilder
+                        .append(this
+                                .buildTransmitterListMsg(
+                                        " Unable to determine the status of the following transmitter groups: ",
+                                        this.tgManager
+                                                .getTransmittersWithStreamStatus(STREAMING_STATUS.UNKNOWN)));
+            }
+            if (this.tgManager
+                    .doAnyTransmittersHaveStreamStatus(STREAMING_STATUS.BUSY)) {
+                msgBuilder
+                        .append(this
+                                .buildTransmitterListMsg(
+                                        " The following transmitter groups are not currently available: ",
+                                        this.tgManager
+                                                .getTransmittersWithStreamStatus(STREAMING_STATUS.BUSY)));
+            }
+
+            // failure
+            this.notifyShareholdersProblem(msgBuilder.toString());
+
+            /*
+             * due to the fact that we are only in the initialization phase, we
+             * will also need to notify broadcast stream tasks running on other
+             * cluster members that they will need to be shutdown because Viz
+             * will only initiate the shutdown if an error occurs at any point
+             * after a successful initialization.
+             */
+            // build and submit a stop command.
+            LiveBroadcastCommand command = new LiveBroadcastCommand();
+            command.setAction(ACTION.STOP);
+            command.setBroadcastId(this.getName());
+            command.setMsgSource(MSGSOURCE.COMMS);
+            this.handleStopCommand(command);
+
+            return;
+        }
+
+        this.state = STATE.TRIGGER;
+    }
+
+    protected void sendStartCmdToDacs() {
+        for (TransmitterGroup transmitterGroup : this.tgManager
+                .getManagedTransmitters()) {
             DacTransmitKey key = this.streamingServer
                     .getLocalDacCommunicationKey(transmitterGroup.getName());
             if (key == null) {
-                this.dacMsgFailed(transmitterGroup);
+                /*
+                 * for now assume that the dac transmit was given to another
+                 * comms manager.
+                 */
+                this.tgManager.forfeitResponsibility(transmitterGroup);
                 continue;
             }
             BroadcastTransmitterConfiguration config = this.command
@@ -230,21 +403,9 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
             this.dacServer.sendToDac(key, startCommand);
         }
+    }
 
-        if (this.verifyTransmitterAccess(3000) == false) {
-            /*
-             * the broadcast has failed. cleanup what has been started.
-             */
-            this.shutdownDacLiveBroadcasts();
-            return;
-        }
-
-        this.responseLock = new CountDownLatch(
-                this.managedTransmitterGroups.size());
-        synchronized (this.responses) {
-            this.responses.clear();
-        }
-
+    protected void triggerBroadcast() {
         /*
          * At this point, all transmitters are waiting for the signal to
          * proceed. Any incoming interrupt messages will be delayed because an
@@ -252,78 +413,90 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * possible to start other live broadcast messages from other
          * workstations on the same transmitter(s).
          */
-
-        this.state = STATE.TRIGGER;
-        this.noteStateTransition();
-        for (TransmitterGroup transmitterGrp : this.managedTransmitterGroups) {
-            DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGrp.getName());
-            if (key == null) {
-                this.dacMsgFailed(transmitterGrp);
-                continue;
-            }
-            // TODO: cleanup during clustering.
-            LiveBroadcastCommand command = new LiveBroadcastCommand();
-            command.setBroadcastId(this.getName());
-            command.setMsgSource(MSGSOURCE.COMMS);
-            command.setAction(ACTION.TRIGGER);
-            this.dacServer.sendToDac(key, command);
-        }
+        /*
+         * allow any clustered broadcast streams to transition to the next state
+         * to prepare the dacs that they are responsible for managing.
+         */
+        this.clusterServer
+                .sendDataToAll(new ClusteredBroadcastTransitionTrigger(this
+                        .getName()));
+        this.sendCmdToDacs(ACTION.TRIGGER);
 
         /*
-         * Proceed signal is transmitted. SAME Tone playback begins. The delay
-         * on the playback indicates when the data thread should be halted for
-         * each transmitter.
+         * verify all transmitter groups are now available to start streaming -
+         * indicating that the required tones have been played and all existing
+         * playback has been paused.
          */
+        if (this.communicationWait(this.calculateWaitDuration()) == false
+                || this.tgManager
+                        .doAllTransmittersHaveStreamStatus(STREAMING_STATUS.READY) == false) {
+            StringBuilder msgBuilder = new StringBuilder(
+                    "Failed to start broadcast " + this.getName() + ".");
+            if (this.tgManager
+                    .doAnyTransmittersHaveStreamStatus(STREAMING_STATUS.AVAILABLE)) {
+                msgBuilder
+                        .append(this
+                                .buildTransmitterListMsg(
+                                        " Unable to determine the status of the following transmitter groups: ",
+                                        this.tgManager
+                                                .getTransmittersWithStreamStatus(STREAMING_STATUS.AVAILABLE)));
+            }
+            if (this.tgManager
+                    .doAnyTransmittersHaveStreamStatus(STREAMING_STATUS.BUSY)) {
+                msgBuilder
+                        .append(this
+                                .buildTransmitterListMsg(
+                                        " The following transmitter groups are not currently available: ",
+                                        this.tgManager
+                                                .getTransmittersWithStreamStatus(STREAMING_STATUS.BUSY)));
+            }
 
-        // wait for the current broadcast to stop and tones to be played.
-        // Extra time to allow for tone playback.
-        if (this.verifyTransmitterAccess(80000) == false) {
+            // failure
+            this.notifyShareholdersProblem(msgBuilder.toString());
+
             /*
-             * the broadcast has failed. cleanup what has been started.
+             * due to the fact that we are only in the initialization phase, we
+             * will also need to notify broadcast stream tasks running on other
+             * cluster members that they will need to be shutdown because Viz
+             * will only initiate the shutdown if an error occurs at any point
+             * after a successful initialization.
              */
-            this.shutdownDacLiveBroadcasts();
+            // build and submit a stop command.
+            LiveBroadcastCommand command = new LiveBroadcastCommand();
+            command.setAction(ACTION.STOP);
+            command.setBroadcastId(this.getName());
+            command.setMsgSource(MSGSOURCE.COMMS);
+            this.handleStopCommand(command);
+
             return;
         }
 
-        /*
-         * Ready to start streaming audio. Notify the client and prepare to
-         * start streaming audio.
-         */
-        BroadcastStatus status = new BroadcastStatus();
-        status.setMsgSource(MSGSOURCE.COMMS);
-        status.setStatus(true);
-        status.setBroadcastId(this.getName());
-        status.setTransmitterGroups(this.managedTransmitterGroups);
-
         this.state = STATE.LIVE;
-        this.noteStateTransition();
-        this.live = this.sendClientReplyMessage(status);
-        while (this.live) {
-            Object object = null;
-            try {
-                object = SerializationUtil.transformFromThrift(Object.class,
-                        this.socket.getInputStream());
-            } catch (Exception e) {
-                this.notifyShareholdersProblem(
-                        "Failed to read data from the socket connection.", e,
-                        this.command.getTransmitterGroups());
-                this.live = false;
-            }
-            if (object instanceof ILiveBroadcastMessage) {
-                this.handleMessageInternal((ILiveBroadcastMessage) object);
-            }
-        }
+    }
 
-        /*
-         * TODO: may need to handle the socket connection differently when we
-         * are spawn rather than the original. May end up abstracting cluster
-         * aspects to allow for multiple components to utilize the connections
-         * that are formed between clustered components without potentially
-         * interfering with each other.
-         */
-        this.state = STATE.STOP;
-        this.noteStateTransition();
+    protected void sendCmdToDacs(ACTION cmdAction) {
+        for (TransmitterGroup transmitterGrp : this.tgManager
+                .getManagedTransmitters()) {
+            DacTransmitKey key = this.streamingServer
+                    .getLocalDacCommunicationKey(transmitterGrp.getName());
+            if (key == null) {
+                /*
+                 * for now assume that the dac transmit was given to another
+                 * comms manager.
+                 */
+                this.tgManager.forfeitResponsibility(transmitterGrp);
+                continue;
+            }
+
+            LiveBroadcastCommand command = new LiveBroadcastCommand();
+            command.setBroadcastId(this.getName());
+            command.setMsgSource(MSGSOURCE.COMMS);
+            command.setAction(cmdAction);
+            this.dacServer.sendToDac(key, command);
+        }
+    }
+
+    protected void stopBroadcast() {
         logger.info("Broadcast {} is shutting down ...", this.getName());
         try {
             this.socket.close();
@@ -332,74 +505,59 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                     + this.getName() + ")!", e);
         }
         this.streamingServer.broadcastTaskFinished(this.getName());
-    }
-
-    private void noteStateTransition() {
-        logger.info("Broadcast {} state transition to: {}", this.getName(),
-                this.state.toString());
+        this.state = STATE.STOP;
     }
 
     /**
-     * Note: This will not truly be used until DR #3797
+     * Provides a common location to wait for communicationLock to unlock. The
+     * unlock indicates that the required information has been successfully
+     * received from all managed {@link TransmitterGroup}s and all member
+     * {@link ClusteredBroadcastStreamTask}s.
      * 
-     * @param timeout
-     * @return
+     * @param waitDuration
+     *            the maximum amount of time to wait in milliseconds for
+     *            communicationLock to unlock
+     * @return true, if the lock was successfully acquired; false, otherwise
      */
-    private boolean verifyTransmitterAccess(long timeout) {
-        boolean ready = false;
-        // TODO: wait with timeout. Do not want to allow unlimited time.
+    protected boolean communicationWait(long waitDuration) {
+        boolean acquired = false;
         try {
-            ready = this.responseLock.await(timeout, TimeUnit.MILLISECONDS);
+            acquired = this.communicationLock.tryAcquire(waitDuration,
+                    TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
-            // Ignore.
+            logger.warn("Broadcast Stream Task was interrupted while waiting for the Communication Lock.");
         }
 
-        if (ready == false) {
-            this.notifyShareholdersProblem("Failed to receive a response from all transmitter groups in a reasonable amount of time.");
-            return ready;
+        if (acquired) {
+            this.communicationLock.release();
         }
 
-        List<TransmitterGroup> readyTransmitterGroups = new ArrayList<TransmitterGroup>(
-                this.managedTransmitterGroups.size());
-        // analyze the responses to our latest request.
-        synchronized (this.responses) {
-            for (ILiveBroadcastMessage responseMsg : this.responses) {
-                BroadcastStatus status = (BroadcastStatus) responseMsg;
-
-                if (status.getStatus() == false) {
-                    this.notifyShareholdersProblem(status);
-                    continue;
-                }
-
-                // verify it is actually one of the transmitters we are
-                // interested in.
-                for (TransmitterGroup transmitterGroup : status
-                        .getTransmitterGroups()) {
-                    readyTransmitterGroups.add(transmitterGroup);
-                }
-            }
-        }
-
-        // are all transmitters accounted for?
-        if (readyTransmitterGroups.size() != this.managedTransmitterGroups
-                .size()) {
-            final String clientMsg = this.buildMissingTransmitterGrpsMsg(
-                    readyTransmitterGroups, this.managedTransmitterGroups);
-            this.notifyShareholdersProblem("Failed to start broadcast "
-                    + this.getName() + "! " + clientMsg);
-            return false;
-        }
-
-        return true;
+        return acquired;
     }
 
-    final String buildMissingTransmitterGrpsMsg(
-            final List<TransmitterGroup> actual,
-            final Collection<TransmitterGroup> expected) {
-        StringBuilder clientMsg = new StringBuilder(
-                "Unable to access the following transmitter groups: ");
+    @Override
+    public void run() {
+        if (this.command.getMsgSource() == MSGSOURCE.VIZ) {
+            logger.info("Running broadcast streaming task {}.", this.getName());
+        } else if (this.command.getMsgSource() == MSGSOURCE.COMMS) {
+            logger.info("Running CLUSTERED broadcast streaming task {}.",
+                    this.getName());
+        }
+
+        this.state = STATE.INIT;
+        while (this.state != STATE.STOP && this.state != STATE.ERROR) {
+            this.handleStateTransition();
+        }
+    }
+
+    private String buildTransmitterListMsg(String preText,
+            List<TransmitterGroup> tgList) {
+        if (preText == null) {
+            preText = "";
+        }
+        StringBuilder clientMsg = new StringBuilder(preText);
         boolean first = true;
-        for (TransmitterGroup transmitterGrp : expected) {
+        for (TransmitterGroup transmitterGrp : tgList) {
             if (first == false) {
                 clientMsg.append(", ");
             } else {
@@ -446,19 +604,20 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                 playCommand.getAudio().size(), this.getName());
 
         // TODO: thread audio data transmissions to the managed dacs.
-        for (TransmitterGroup transmitterGroup : this.managedTransmitterGroups) {
+        for (TransmitterGroup transmitterGroup : this.tgManager
+                .getManagedTransmitters()) {
             this.dacServer.sendToDac(this.streamingServer
                     .getLocalDacCommunicationKey(transmitterGroup.getName()),
                     playCommand);
         }
     }
 
-    private void handleMessageInternal(ILiveBroadcastMessage command) {
-        if (command == null) {
+    protected void handleMessageInternal(ILiveBroadcastMessage msg) {
+        if (msg == null) {
             return;
         }
-        if (command instanceof LiveBroadcastCommand) {
-            LiveBroadcastCommand liveCommand = (LiveBroadcastCommand) command;
+        if (msg instanceof LiveBroadcastCommand) {
+            LiveBroadcastCommand liveCommand = (LiveBroadcastCommand) msg;
             logger.info("Handling {} command for Broadcast {}.", liveCommand
                     .getAction().toString(), this.getName());
             switch (liveCommand.getAction()) {
@@ -473,11 +632,102 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                 // Do Nothing.
                 break;
             }
+        } else if (msg instanceof BroadcastStatus) {
+            BroadcastStatus status = (BroadcastStatus) msg;
+            switch (this.state) {
+            case INIT:
+                if (status.getStatus() == false
+                        || status.getTransmitterGroups() == null) {
+                    return;
+                }
+
+                /*
+                 * determine which transmitters other comms managers are
+                 * managing.
+                 */
+                for (TransmitterGroup tg : msg.getTransmitterGroups()) {
+                    this.tgManager.giveResponsibility(tg);
+                }
+
+                logger.info("UPDATED MANAGED STATE: {}",
+                        this.tgManager.toString());
+
+                // if all transmitters have now been accounted for, unlock
+                if (this.tgManager.allTransmittersAssigned()) {
+                    /*
+                     * Note: at this point, we may not have necessarily received
+                     * a response from every cluster member (granted this design
+                     * does allow for more than one additional cluster member).
+                     * But, if all transmitters have been accounted for, there
+                     * is no reason to wait for other cluster members to
+                     * respond.
+                     */
+                    this.communicationLock.release();
+                }
+                break;
+            case READY:
+            case TRIGGER:
+                if (status.getTransmitterGroups() == null) {
+                    return;
+                }
+
+                STREAMING_STATUS newStatus = null;
+                if (status.getStatus()) {
+                    newStatus = (this.state == STATE.READY) ? STREAMING_STATUS.AVAILABLE
+                            : STREAMING_STATUS.READY;
+                } else {
+                    newStatus = STREAMING_STATUS.BUSY;
+                }
+                for (TransmitterGroup tg : msg.getTransmitterGroups()) {
+                    this.tgManager.updateStreamStatus(tg, newStatus);
+                }
+
+                logger.info("UPDATED MANAGED STATE: {}",
+                        this.tgManager.toString());
+
+                STREAMING_STATUS nonDesiredStatus = (this.state == STATE.READY) ? STREAMING_STATUS.UNKNOWN
+                        : STREAMING_STATUS.AVAILABLE;
+                if (this.tgManager
+                        .doAnyTransmittersHaveStreamStatus(nonDesiredStatus) == false) {
+                    this.communicationLock.release();
+                }
+                break;
+            default:
+                if (status.getStatus() == false) {
+                    logger.error(
+                            "Received ERROR status message from cluster member: "
+                                    + status.getMessage(),
+                            status.getException());
+                }
+                break;
+            }
+        } else if (msg instanceof ClusteredBroadcastTransitionTrigger) {
+            this.invokeTransitionExecution();
         }
     }
 
+    /**
+     * Handles a {@link ILiveBroadcastMessage} received from another cluster
+     * member.
+     * 
+     * @param command
+     *            the {@link ILiveBroadcastMessage} received from another
+     *            cluster member.
+     */
+    public void handleClusteredBroadcastMsg(ILiveBroadcastMessage command) {
+        this.handleMessageInternal(command);
+    }
+
+    /**
+     * Handles a {@link ILiveBroadcastMessage} received from a dac transmit
+     * process.
+     * 
+     * @param msg
+     *            the {@link ILiveBroadcastMessage} received from a dac transmit
+     *            process.
+     */
     public void handleDacBroadcastMsg(ILiveBroadcastMessage msg) {
-        logger.info("Handling dac live broadcast {} msg (Broadcast {}).", msg
+        logger.info("Handling dac broadcast {} msg (Broadcast {}).", msg
                 .getClass().getName(), this.getName());
         switch (this.state) {
         case INIT:
@@ -489,10 +739,46 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             break;
         case READY:
         case TRIGGER:
-            synchronized (this.responses) {
-                this.responses.add(msg);
+            if (msg instanceof BroadcastStatus == false) {
+                return;
             }
-            this.responseLock.countDown();
+
+            final STREAMING_STATUS desiredStatus = (this.state == STATE.READY) ? STREAMING_STATUS.AVAILABLE
+                    : STREAMING_STATUS.READY;
+            final STREAMING_STATUS notWantedStatus = (this.state == STATE.READY) ? STREAMING_STATUS.UNKNOWN
+                    : STREAMING_STATUS.AVAILABLE;
+
+            BroadcastStatus status = (BroadcastStatus) msg;
+            STREAMING_STATUS streamingStatus = null;
+            if (status.getStatus()) {
+                /*
+                 * Listed {@link TransmitterGroup}s are available and/or ready
+                 * to start streaming audio.
+                 */
+                streamingStatus = desiredStatus;
+            } else {
+                /*
+                 * An interrupt may have been playing on one of the requested
+                 * transmitters.
+                 */
+                streamingStatus = STREAMING_STATUS.BUSY;
+            }
+            for (TransmitterGroup tg : status.getTransmitterGroups()) {
+                this.tgManager.updateStreamStatus(tg, streamingStatus);
+            }
+            logger.info("UPDATED MANAGED STATE: {}", this.tgManager.toString());
+
+            // have all transmitters been accounted for?
+            if (this.isPrimary()
+                    && this.tgManager
+                            .doAnyTransmittersHaveStreamStatus(notWantedStatus) == false) {
+                this.communicationLock.release();
+            } else if (this.isPrimary() == false
+                    && this.tgManager
+                            .doManagedTransmittersHaveStreamStatus(notWantedStatus) == false) {
+                this.communicationLock.release();
+            }
+
             break;
         case LIVE:
             /*
@@ -502,7 +788,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                 /*
                  * Set to error state to avoid multiple status notifications.
                  */
-                final BroadcastStatus status = (BroadcastStatus) msg;
+                status = (BroadcastStatus) msg;
                 if (status.getStatus() == false) {
                     this.state = STATE.ERROR;
 
@@ -518,6 +804,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             break;
         case STOP:
         case ERROR:
+        case SHUTDOWN:
             /*
              * Ignore messages when we are stopped or in the process of
              * stopping.
@@ -526,19 +813,26 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         }
     }
 
+    /**
+     * Used to submit a notification to other cluster members and the client to
+     * inform them that we are no longer able to interact with a
+     * {@link TransmitterGroup} that we were able to interact with previously.
+     * Only invoked if the communication lapse occurs when the broadcast stream
+     * is in the process of shutting down.
+     * 
+     * @param transmitterGroup
+     *            the {@link TransmitterGroup} that can no longer be reached.
+     */
     private void dacMsgFailed(final TransmitterGroup transmitterGroup) {
-        /*
-         * TODO: handle. Should the entire live broadcast be stopped? Should
-         * other potential comms manager(s) be checked to determine if they can
-         * now interact with the desired transmitter? Or should the broadcast be
-         * continued on the transmitters that are still available?
-         */
-
         this.notifyShareholdersProblem("Broadcast " + this.getName()
                 + " is no longer able to communicate with transmitter group "
                 + transmitterGroup.getName() + ".", null, transmitterGroup);
     }
 
+    /**
+     * Sends a shutdown {@link LiveBroadcastCommand} to all managed
+     * {@link TransmitterGroup} broadcast streams.
+     */
     private void shutdownDacLiveBroadcasts() {
         /*
          * Shutdown the transmitter live streams.
@@ -547,7 +841,8 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         command.setBroadcastId(this.getName());
         command.setMsgSource(MSGSOURCE.COMMS);
         command.setAction(ACTION.STOP);
-        for (TransmitterGroup transmitterGroup : this.managedTransmitterGroups) {
+        for (TransmitterGroup transmitterGroup : this.tgManager
+                .getManagedTransmitters()) {
             DacTransmitKey key = this.streamingServer
                     .getLocalDacCommunicationKey(transmitterGroup.getName());
             if (key == null) {
@@ -579,7 +874,9 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
     private void notifyShareholdersProblem(final BroadcastStatus status) {
         this.clusterServer.sendDataToAll(status);
-        this.sendClientReplyMessage(status);
+        if (this.isPrimary()) {
+            this.sendClientReplyMessage(status);
+        }
         logger.error(status.getMessage(), status.getException());
 
         /*
@@ -594,11 +891,13 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * Verify that the request is actually for us.
          */
         if (playCommand.getBroadcastId().equals(this.getName()) == false
-                || this.live == false) {
+                || this.state != STATE.LIVE) {
             return;
         }
         playCommand.setMsgSource(MSGSOURCE.COMMS);
-        this.clusterServer.sendDataToAll(playCommand);
+        if (this.isPrimary()) {
+            this.clusterServer.sendDataToAll(playCommand);
+        }
         this.streamDacAudio(playCommand);
     }
 
@@ -611,9 +910,12 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
              */
             command.setBroadcastId(this.getName());
         }
-        this.clusterServer.sendDataToAll(command);
+        command.setMsgSource(MSGSOURCE.COMMS);
+        if (this.isPrimary()) {
+            this.clusterServer.sendDataToAll(command);
+        }
         this.shutdownDacLiveBroadcasts();
-        this.live = false;
+        this.shutdown();
     }
 
     public void shutdown() {
@@ -621,6 +923,152 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * should shutdown wait until the live broadcasts have ended (max: 2
          * minutes)?
          */
-        this.live = false;
+        this.state = STATE.SHUTDOWN;
+    }
+
+    /**
+     * Indicates whether or not this {@link BroadcastStreamTask} has an active
+     * connection to the client. Indicates that it is the task responsible for
+     * orchestrating the entire broadcast stream.
+     * 
+     * @return true, if primary; false, otherwise
+     */
+    private boolean isPrimary() {
+        return this.socket != null;
+    }
+
+    /**
+     * Used to trigger the transition to the next state for any tasks that do
+     * not manage their own state transitions.
+     */
+    protected void invokeTransitionExecution() {
+    }
+
+    /**
+     * Sends a {@link BroadcastStatus} to other cluster members to provide
+     * updates about the streaming status of the {@link TransmitterGroup}s that
+     * it is responsible for.
+     * 
+     * @param statusToCheck
+     *            indicates which {@link TransmitterGroup}s the status should be
+     *            reported for
+     * @param indicatesSuccess
+     *            whether or not the specified statusToCheck indicates that the
+     *            {@link TransmitterGroup} is in a usable state.
+     */
+    protected void notifyClusterMembersDacStatus(
+            final STREAMING_STATUS statusToCheck, final boolean indicatesSuccess) {
+        if (this.tgManager.doAnyTransmittersHaveStreamStatus(statusToCheck) == false) {
+            return;
+        }
+
+        BroadcastStatus status = new BroadcastStatus();
+        status.setBroadcastId(this.getName());
+        status.setMsgSource(MSGSOURCE.COMMS);
+        status.setStatus(indicatesSuccess);
+        status.setTransmitterGroups(this.tgManager
+                .getTransmittersWithStreamStatus(statusToCheck));
+        this.clusterServer.sendDataToAll(status);
+    }
+
+    /**
+     * Sends a {@link BroadcastStatus} to other cluster members to provide
+     * updates about which {@link TransmitterGroup}s this process will be
+     * responsible for.
+     */
+    protected void notifyClusterMembersDacResponsibility() {
+        /*
+         * notify all comms managers to inform them which transmitters we will
+         * be responsible for.
+         */
+        BroadcastStatus status = new BroadcastStatus();
+        status.setBroadcastId(this.getName());
+        status.setMsgSource(MSGSOURCE.COMMS);
+        status.setStatus(true);
+        status.setTransmitterGroups(this.tgManager.getManagedTransmitters());
+        this.clusterServer.sendDataToAll(status);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.bmh.comms.broadcast.AbstractBroadcastingTask#
+     * getTransmitterGroups()
+     */
+    @Override
+    public List<TransmitterGroup> getTransmitterGroups() {
+        return this.command.getTransmitterGroups();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.bmh.comms.broadcast.AbstractBroadcastingTask#
+     * dacConnectedToServer(java.lang.String)
+     */
+    @Override
+    public void dacConnectedToServer(final String tgName) {
+        /*
+         * Is it a {@link TransmitterGroup} we care about?
+         */
+        TransmitterGroup tg = this.getTransmitterGroupByIdentifier(tgName);
+        if (tg == null) {
+            return;
+        }
+
+        /*
+         * We are now responsible for the {@link TransmitterGroup}.
+         * 
+         * Note: if a dac transmit switches servers during the first phase of
+         * live stream initialization, the initialization will most likely fail.
+         */
+        this.tgManager.claimResponsibility(tg);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.bmh.comms.broadcast.AbstractBroadcastingTask#
+     * dacDisconnectedFromServer(java.lang.String)
+     */
+    @Override
+    public void dacDisconnectedFromServer(final String tgName) {
+        /*
+         * Is it a {@link TransmitterGroup} we care about?
+         */
+        TransmitterGroup tg = this.getTransmitterGroupByIdentifier(tgName);
+        if (tg == null) {
+            return;
+        }
+
+        /*
+         * We are no longer responsible for this {@link TransmitterGroup}.
+         * 
+         * Note: if a dac transmit switches servers during the first phase of
+         * live stream initialization, the initialization will most likely fail.
+         */
+        this.tgManager.forfeitResponsibility(tg);
+    }
+
+    /**
+     * Calculates the amount of time in milliseconds to wait for responses from
+     * other managed and member, when applicable, processes.
+     * 
+     * @return the amount of time to wait in milliseconds.
+     */
+    protected long calculateWaitDuration() {
+        long duration = this.command.getTransmitterGroups().size()
+                * PER_TRANSMITTER_WAIT_DURATION;
+
+        /*
+         * if this is the trigger step, we will want to increase the wait
+         * duration by the duration of the longest tone to allow for the full
+         * playback of tones before timing out.
+         */
+        if (this.state == STATE.TRIGGER) {
+            duration += this.command.getTonesDuration();
+        }
+
+        return duration;
     }
 }

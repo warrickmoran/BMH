@@ -34,6 +34,7 @@ import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.TransmitterAlignmentTestCommand;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
@@ -53,6 +54,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacMaintenanceArgParser;
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3630       bkowal      Initial creation
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
+ * Dec 1, 2014  3797       bkowal      Implement getTransmitterGroups and dac
+ *                                     connection methods.
  * 
  * </pre>
  * 
@@ -289,5 +292,64 @@ public class AlignmentTestTask extends AbstractBroadcastingTask {
 
         // stop the process forcefully. error status will be returned to CAVE.
         this.maintenanceDacSession.destroy();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.bmh.comms.broadcast.AbstractBroadcastingTask#
+     * getTransmitterGroups()
+     */
+    @Override
+    public List<TransmitterGroup> getTransmitterGroups() {
+        return this.command.getTransmitterGroups();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.bmh.comms.broadcast.AbstractBroadcastingTask#
+     * dacConnectedToServer(java.lang.String)
+     */
+    @Override
+    public void dacConnectedToServer(final String tgName) {
+        /*
+         * Is it a {@link TransmitterGroup} we care about?
+         */
+        TransmitterGroup tg = this.getTransmitterGroupByIdentifier(tgName);
+        if (tg == null) {
+            return;
+        }
+
+        /*
+         * Indicates that someone or something external has interacted with a
+         * transmitter in maintenance mode.
+         */
+        logger.warn("Received unexpected CONNECT notification for Transmitter Group: "
+                + tg.getName() + "!");
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.bmh.comms.broadcast.AbstractBroadcastingTask#
+     * dacDisconnectedFromServer(java.lang.String)
+     */
+    @Override
+    public void dacDisconnectedFromServer(final String tgName) {
+        /*
+         * Is it a {@link TransmitterGroup} we care about?
+         */
+        TransmitterGroup tg = this.getTransmitterGroupByIdentifier(tgName);
+        if (tg == null) {
+            return;
+        }
+
+        /*
+         * Indicates that someone or something external has interacted with a
+         * transmitter in maintenance mode.
+         */
+        logger.warn("Received unexpected DISCONNECT notification for Transmitter Group: "
+                + tg.getName() + "!");
     }
 }

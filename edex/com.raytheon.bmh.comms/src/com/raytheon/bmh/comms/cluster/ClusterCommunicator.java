@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterStateMessage.ClusterDacTransmitKey;
+import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 
@@ -45,6 +46,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Oct 10, 2014  3656     bkowal      Updates to allow sending other message
  *                                    types to cluster members.
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
+ * Dec 1, 2014   3797     bkowal      Support broadcast clustering.
  * 
  * </pre>
  * 
@@ -131,6 +133,9 @@ public class ClusterCommunicator extends Thread {
                 send(new ClusterShutdownMessage(true));
                 disconnect();
             }
+        } else if (message instanceof ILiveBroadcastMessage) {
+            this.manager
+                    .forwardDacBroadcastMsg((ILiveBroadcastMessage) message);
         } else {
             logger.error("Unexpected message from cluster member of type: {}",
                     message.getClass().getSimpleName());

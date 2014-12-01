@@ -42,6 +42,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3630       bkowal      Initial creation
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
+ * Dec 1, 2014  3797       bkowal      Support broadcast clustering.
  * 
  * </pre>
  * 
@@ -55,7 +56,7 @@ public abstract class AbstractBroadcastingTask extends Thread {
 
     private final String description;
 
-    protected final Socket socket;
+    protected Socket socket;
 
     /**
      * @param name
@@ -101,6 +102,67 @@ public abstract class AbstractBroadcastingTask extends Thread {
 
     public abstract void shutdown();
 
+    /**
+     * Returns a {@link List} of {@link TransmitterGroup}s that the
+     * {@link AbstractBroadcastingTask} is responsible for/interacting with.
+     * 
+     * @return a {@link List} of {@link TransmitterGroup}s that the
+     *         {@link AbstractBroadcastingTask} is responsible for/interacting
+     *         with.
+     */
+    public abstract List<TransmitterGroup> getTransmitterGroups();
+
+    /**
+     * Returns the {@link TransmitterGroup} associated with the specified name
+     * if the {@link AbstractBroadcastingTask} is responsible for managing /
+     * interacting with the associated {@link TransmitterGroup}.
+     * 
+     * Note: if the comms manager identifier is ever changed, this function will
+     * need to be updated.
+     * 
+     * @param name
+     *            the specified name
+     * @return the {@link TransmitterGroup} when it is managed by the current
+     *         {@link AbstractBroadcastingTask}; NULL, otherwise
+     */
+    protected TransmitterGroup getTransmitterGroupByIdentifier(final String name) {
+        for (TransmitterGroup tg : this.getTransmitterGroups()) {
+            if (tg.getName().equals(name)) {
+                return tg;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Allows a {@link AbstractBroadcastingTask} to respond to a dac transmit
+     * starting on the same server. The specified {@link TransmitterGroup}
+     * identifier indicates which {@link TransmitterGroup} is affected by the
+     * change.
+     * 
+     * @param tg
+     *            The specified {@link TransmitterGroup} identifier
+     */
+    public abstract void dacConnectedToServer(final String tg);
+
+    /**
+     * Allows a {@link AbstractBroadcastingTask} to respond to a dac transmit
+     * stopping on the same server. The specified {@link TransmitterGroup}
+     * identifier indicates which {@link TransmitterGroup} is affected by the
+     * change.
+     * 
+     * @param tg
+     *            The specified {@link TransmitterGroup} identifier
+     */
+    public abstract void dacDisconnectedFromServer(final String tg);
+
+    /**
+     * Returns text used to differentiate the different type of
+     * {@link AbstractBroadcastingTask}s.
+     * 
+     * @return text for identification/differentiation purposes
+     */
     public String getDescription() {
         return this.description;
     }

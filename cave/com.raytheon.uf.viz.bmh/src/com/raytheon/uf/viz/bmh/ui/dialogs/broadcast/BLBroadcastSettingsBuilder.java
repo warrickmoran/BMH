@@ -35,7 +35,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride.AbstractBroadcastSet
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Nov 19, 2014 3845       bkowal     Initial creation
+ * Nov 19, 2014 3845       bkowal      Initial creation
+ * Dec 1, 2014  3797       bkowal      Implemented getTonesDuration.
  * 
  * </pre>
  * 
@@ -72,5 +73,13 @@ public class BLBroadcastSettingsBuilder extends
         config.setSame(BroadcastTransmitterConfiguration.TONE_NONE);
 
         return config;
+    }
+
+    @Override
+    protected long getTonesDuration() {
+        /*
+         * There are never any tones for Broadcast Live.
+         */
+        return 0;
     }
 }
