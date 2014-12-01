@@ -34,7 +34,8 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Nov 24, 2014            bkowal     Initial creation
+ * Nov 24, 2014 3863       bkowal      Initial creation
+ * Dec 1, 2014  3863       bkowal      Accumulate audio amplitude as an integer.
  * 
  * </pre>
  * 
@@ -77,20 +78,22 @@ public abstract class DecibelCalculator {
          * We need to calculate the signal strength of every sample within the
          * provided audio data and average them together.
          */
-        short runningAmplitudeTotal = 0;
+        int runningAmplitudeTotal = 0;
         int totalSampleCount = (pcmData.length / SAMPLE_BYTES);
-        for (int i = 0; i < pcmData.length; i += 2) {
+        for (int i = 0; i < pcmData.length; i += SAMPLE_BYTES) {
             short amplitude = (short) (((pcmData[i + 1] & 0xff) << 8) | (pcmData[i] & 0xff));
+
+            amplitude = (short) Math.abs(amplitude);
 
             runningAmplitudeTotal += amplitude;
         }
 
-        final short amplitudeAverage = (short) (runningAmplitudeTotal / totalSampleCount);
-
+        final double amplitudeAverage = runningAmplitudeTotal
+                / totalSampleCount;
         /*
          * Convert the signal strength to decibels.
          */
-        double amplitudeRatio = (double) amplitudeAverage
+        double amplitudeRatio = amplitudeAverage
                 / BMHAudioConstants.MAX_AMPLITUDE;
         return BMHAudioConstants.AMPLITUDE_TO_DB_CONSTANT
                 * Math.log10(amplitudeRatio);
