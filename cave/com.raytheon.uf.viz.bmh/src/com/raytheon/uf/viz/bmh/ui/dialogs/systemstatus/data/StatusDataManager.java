@@ -43,6 +43,7 @@ import com.raytheon.uf.common.bmh.notify.status.DacVoiceStatus;
  * ------------ ---------- ----------- --------------------------
  * Sep 30, 2014  3349      lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Added addition status for reporting.
+ * Dec 01, 2014  #3287     lvenable     Added null check.
  * 
  * </pre>
  * 
@@ -110,23 +111,25 @@ public class StatusDataManager {
                         DacHardwareStatusNotification dhsn = dacStatus.get(tg
                                 .getName());
 
-                        // Check for a silence alarm and flag it so the
-                        // transmitter group and be set
-                        boolean silence = false;
-                        DacVoiceStatus[] dvsArray = dhsn.getVoiceStatus();
+                        if (dhsn != null) {
+                            // Check for a silence alarm and flag it so the
+                            // transmitter group and be set
+                            boolean silence = false;
+                            DacVoiceStatus[] dvsArray = dhsn.getVoiceStatus();
 
-                        for (DacVoiceStatus dvs : dvsArray) {
-                            if (dvs != DacVoiceStatus.IP_AUDIO) {
-                                silence = true;
-                                break;
+                            for (DacVoiceStatus dvs : dvsArray) {
+                                if (dvs != DacVoiceStatus.IP_AUDIO) {
+                                    silence = true;
+                                    break;
+                                }
                             }
-                        }
-                        tgi.setSilenceAlarm(silence);
+                            tgi.setSilenceAlarm(silence);
 
-                        di.setPsu1Voltage(dhsn.getPsu1Voltage());
-                        di.setPsu2Voltage(dhsn.getPsu2Voltage());
-                        di.setBufferSize(dhsn.getBufferSize());
-                        updatedDac.add(tgDac);
+                            di.setPsu1Voltage(dhsn.getPsu1Voltage());
+                            di.setPsu2Voltage(dhsn.getPsu2Voltage());
+                            di.setBufferSize(dhsn.getBufferSize());
+                            updatedDac.add(tgDac);
+                        }
                     }
                 } else {
                     dtsd.addTranmitterWithNoDac(tgi);
