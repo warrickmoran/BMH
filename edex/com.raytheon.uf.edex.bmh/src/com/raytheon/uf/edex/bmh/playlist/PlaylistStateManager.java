@@ -30,6 +30,7 @@ import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
@@ -59,6 +60,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Oct 27, 2014    3712    bkowal      Support LiveBroadcastSwitchNotification#broadcastState.
  * Nov 21, 2014    3845    bkowal      LiveBroadcastSwitchNotification now references a
  *                                     {@link TransmitterGroup}.
+ * Nov 30, 2014    3752    mpduff      Store Suite name and playlist cycle duration time.
  * 
  * </pre>
  * 
@@ -140,6 +142,8 @@ public class PlaylistStateManager {
         Map<Long, MessagePlaybackPrediction> predictionMap = playlistData
                 .getPredictionMap();
 
+        playlistData.setSuiteName(notification.getSuiteName());
+        playlistData.setPlaybackCycleTime(notification.getPlaybackCycleTime());
         predictionMap.clear();
 
         for (MessagePlaybackPrediction mpp : messageList) {
