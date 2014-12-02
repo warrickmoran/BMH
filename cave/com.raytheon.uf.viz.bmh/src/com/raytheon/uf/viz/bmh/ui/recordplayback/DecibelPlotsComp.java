@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.recordplayback;
 
+import java.nio.ByteBuffer;
+
 import org.apache.commons.lang.StringUtils;
 import org.csstudio.swt.widgets.figures.MeterFigure;
 import org.csstudio.swt.xygraph.dataprovider.CircularBufferDataProvider;
@@ -36,7 +38,6 @@ import org.eclipse.swt.widgets.Display;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * Composite used to render and maintain/update the decibel meter and decibel
@@ -49,6 +50,7 @@ import com.raytheon.uf.viz.core.VizApp;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 24, 2014 3863       bkowal      Initial creation
+ * Dec 1, 2014  3863       bkowal      Average audio over one second.
  * 
  * </pre>
  * 
@@ -62,26 +64,26 @@ public class DecibelPlotsComp extends Composite implements
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(DecibelPlotsComp.class);
 
-    private static final double DECIBEL_MIN_VALUE = -20.0;
+    private final double DECIBEL_MIN_VALUE = -20.0;
 
-    private static final double DECIBEL_MAX_VALUE = 10.0;
+    private final double DECIBEL_MAX_VALUE = 10.0;
 
     /* All must be specified for the level color bar to show up correctly. */
-    private static final double METER_LOLO_LEVEL = -15.0;
+    private final double METER_LOLO_LEVEL = -15.0;
 
-    private static final double METER_LO_LEVEL = -10.0;
+    private final double METER_LO_LEVEL = -10.0;
 
-    private static final double METER_HI_LEVEL = 0.0;
+    private final double METER_HI_LEVEL = 0.0;
 
-    private static final double METER_HIHI_LEVEL = 2.0;
+    private final double METER_HIHI_LEVEL = 2.0;
 
-    private static final String TREND_X_TITLE = "Sample";
+    private final String TREND_X_TITLE = "Second";
 
-    private static final String TREND_Y_TITLE = "Decibels";
+    private final String TREND_Y_TITLE = "Decibels";
 
-    private static final int INITIAL_TREND_X_MIN = 0;
+    private final int INITIAL_TREND_X_MIN = 0;
 
-    private static final int INITIAL_TREND_X_MAX = 50;
+    private final int INITIAL_TREND_X_MAX = 50;
 
     private int trendXMin = INITIAL_TREND_X_MIN;
 
@@ -99,12 +101,21 @@ public class DecibelPlotsComp extends Composite implements
 
     private CircularBufferDataProvider trendData;
 
-    private double sampleCount;
+    private double secondCount;
+
+    /*
+     * want to collect one full second of audio before plotting it.
+     */
+    private final int REQUIRED_SAMPLE_SIZE = 8000;
+
+    private final ByteBuffer audioBuffer = ByteBuffer
+            .allocate(REQUIRED_SAMPLE_SIZE);
 
     /**
      * Constructor
      * 
-     * @param parent the parent of the composite
+     * @param parent
+     *            the parent of the composite
      */
     public DecibelPlotsComp(Composite parent) {
         super(parent, SWT.NONE);
@@ -200,7 +211,7 @@ public class DecibelPlotsComp extends Composite implements
     public void resetPlots() {
         this.decibelMeter.setValue(0.0);
         this.trendData.clearTrace();
-        this.sampleCount = 0;
+        this.secondCount = 0;
         this.trendXMin = INITIAL_TREND_X_MIN;
         this.trendXMax = INITIAL_TREND_X_MAX;
         this.decibelTrend.primaryXAxis.setRange(trendXMin, trendXMax);
@@ -218,19 +229,19 @@ public class DecibelPlotsComp extends Composite implements
             return;
         }
 
-        VizApp.runAsync(new Runnable() {
+        getDisplay().asyncExec(new Runnable() {
             @Override
             public void run() {
                 decibelMeter.setValue(sampleDecibelLevel);
-                ++sampleCount;
+                ++secondCount;
                 // determine if the min x, max x need to be adjusted
-                if (sampleCount >= trendXMax - trendEmptyBuffer) {
+                if (secondCount >= trendXMax - trendEmptyBuffer) {
                     trendXMin += trendEmptyBuffer;
                     trendXMax += trendEmptyBuffer;
                     decibelTrend.primaryXAxis.setRange(trendXMin, trendXMax);
                 }
                 trendData
-                        .addSample(new Sample(sampleCount, sampleDecibelLevel));
+                        .addSample(new Sample(secondCount, sampleDecibelLevel));
             }
         });
     }
@@ -244,16 +255,20 @@ public class DecibelPlotsComp extends Composite implements
      */
     @Override
     public void audioReady(byte[] audioData) {
+        this.audioBuffer.put(audioData);
+        if (this.audioBuffer.hasRemaining()) {
+            return;
+        }
         double sampleDecibelLevel = 0.;
         try {
             sampleDecibelLevel = DecibelCalculator
-                    .calculateAudioDecibels(audioData);
+                    .calculateAudioDecibels(this.audioBuffer.array());
         } catch (Exception e) {
             // unlikely scenario
             statusHandler
                     .warn("Failed to determine the decibel level of the current audio sample!");
         }
         updateDecibelPlots(sampleDecibelLevel);
+        this.audioBuffer.clear();
     }
-
 }
