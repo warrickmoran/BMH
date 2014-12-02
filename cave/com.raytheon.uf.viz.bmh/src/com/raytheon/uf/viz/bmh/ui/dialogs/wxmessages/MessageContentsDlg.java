@@ -27,11 +27,16 @@ import java.nio.file.Files;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -45,7 +50,10 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
@@ -70,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 26, 2014  #3748     bkowal       Implement content interactions.
  * Nov 18, 2014  #3829     bkowal       Set content type back to TEXT when
  *                                      applicable.
+ * Dec 2, 2014   #3874     bkowal       Implemented the play action.
  * 
  * </pre>
  * 
@@ -77,6 +86,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 public class MessageContentsDlg extends CaveSWTDialogBase {
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(MessageContentsDlg.class);
 
     /** Message text styled text control. */
     private StyledText messageSt;
@@ -185,9 +196,6 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         messageSt.setWordWrap(true);
         messageSt.setLayoutData(gd);
         messageSt.setEditable(false);
-        if (this.originalMessageContent != null) {
-            messageSt.setText(this.originalMessageContent);
-        }
 
         Composite textActionBtnComp = new Composite(messageContentsGroup,
                 SWT.NONE);
@@ -208,9 +216,22 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO : add play code
+                handlePlayAction();
             }
         });
+        /*
+         * add text change listener and set the text now that the play button
+         * exists.
+         */
+        messageSt.addModifyListener(new ModifyListener() {
+            @Override
+            public void modifyText(ModifyEvent e) {
+                handleTextChange();
+            }
+        });
+        if (this.originalMessageContent != null) {
+            messageSt.setText(this.originalMessageContent);
+        }
 
         gd = new GridData();
         gd.widthHint = buttonWidth;
@@ -395,6 +416,52 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         });
     }
 
+    private void handleTextChange() {
+        if (this.messageSt.getText().trim().isEmpty() == false) {
+            /*
+             * The play button is only enabled when text exists within the text
+             * control.
+             */
+            this.playBtn.setEnabled(true);
+        } else {
+            this.playBtn.setEnabled(false);
+        }
+    }
+
+    /**
+     * Handle the Play action. Sends the text in the style text field to the
+     * server for synthesis.
+     */
+    private void handlePlayAction() {
+        /*
+         * ensure that the user cannot click Play again until the audio playback
+         * either succeeds or fails.
+         */
+        this.playBtn.setEnabled(false);
+        /**
+         * as implemented via {@link BmhUtils}, audio synthesis and playback
+         * currently occurs on the UI thread. So, this dialog is displayed so
+         * that a progress indicator is displayed while the display is "locked".
+         * Weather Messages can be significantly longer than dictionary words.
+         */
+        final String text = messageSt.getText().trim();
+        ProgressMonitorDialog dialog = new ProgressMonitorDialog(
+                this.getShell());
+        try {
+            dialog.run(true, false, new IRunnableWithProgress() {
+                @Override
+                public void run(IProgressMonitor monitor) {
+                    monitor.beginTask("Playing Text", IProgressMonitor.UNKNOWN);
+                    BmhUtils.playText(text);
+                    monitor.done();
+                }
+            });
+        } catch (Exception e) {
+            statusHandler.error("Failed to play the text!", e);
+        }
+        this.playBtn.setEnabled(true);
+    }
+
     /**
      * Handle the OK action.
      */
@@ -459,16 +526,9 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
 
                 messageSt.setText(sb.toString());
 
-                if (sb.toString().length() > 0) {
-                    playBtn.setEnabled(true);
-                }
-
                 return true;
 
             } catch (IOException e) {
-                // statusHandler.error("Error reading data from file: " + fn
-                // + " --- ", e);
-                //
                 StringBuilder msg = new StringBuilder();
 
                 msg.append("The file: \n");

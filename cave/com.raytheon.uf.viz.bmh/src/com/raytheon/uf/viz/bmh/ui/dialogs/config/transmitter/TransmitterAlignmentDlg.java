@@ -248,7 +248,6 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                         if (returnValue != null
                                 && returnValue instanceof String) {
                             String dbLevelStr = (String) returnValue;
-                            System.out.println("dB Level: " + dbLevelStr);
                             selectedTransmitterGrp.setAudioDBTarget(Double
                                     .parseDouble(dbLevelStr));
                             try {
