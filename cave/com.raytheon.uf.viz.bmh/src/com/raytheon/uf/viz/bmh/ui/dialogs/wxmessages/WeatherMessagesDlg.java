@@ -55,6 +55,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicCompa
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
@@ -117,6 +118,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 02, 2014  3877     lvenable    Added null checks.
  * Dec 02, 2014  3876     lvenable    Added check for area selection.
  * Dec 03, 2014  3876     lvenable    Added null check & cleared out area codes if they are removed.
+ * Dec 02, 2014  3614     bsteffen    Do not report success when submit fails.
  * 
  * </pre>
  * 
@@ -923,7 +925,13 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 userInputMessage.setId((Integer) result);
             }
         } catch (Exception e) {
-            statusHandler.error("Failed to submit the weather message.", e);
+            statusHandler.handle(Priority.WARN,
+                    "Failed to submit the weather message.", e);
+            DialogUtility
+                    .showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
+                            "Weather Messages",
+                            "Failed to submit the weather message.");
+            return;
         }
 
         /*

@@ -19,9 +19,13 @@
  **/
 package com.raytheon.uf.edex.bmh.msg.validator;
 
+import java.util.List;
+
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
@@ -35,6 +39,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * ------------- -------- ----------- --------------------------
  * Jun 23, 2014  3283     bsteffen    Initial creation
  * Nov 20, 2014  3385     bkowal      Create an operational {@link LdadValidator}.
+ * Dec 02, 2014  3614     bsteffen    Check for unacceptable words.
  * 
  * </pre>
  * 
@@ -64,13 +69,27 @@ public class InputMessageValidator {
     public ValidatedMessage validate(InputMessage input) {
         ValidatedMessage valid = new ValidatedMessage();
         valid.setInputMessage(input);
-        transmissionCheck.validate(valid);
-        ldadCheck.validate(valid);
-        if (!valid.isAccepted()) {
-            statusHandler.error(BMH_CATEGORY.MESSAGE_VALIDATION_FAILED,
-                    input.getAfosid()
-                            + " failed to validate with transmission status: "
-                            + valid.getTransmissionStatus());
+        List<String> unacceptableWords = UnacceptableWordFilter.check(input);
+        if (unacceptableWords.isEmpty()) {
+            transmissionCheck.validate(valid);
+            ldadCheck.validate(valid);
+            if (!valid.isAccepted()) {
+                statusHandler
+                        .error(BMH_CATEGORY.MESSAGE_VALIDATION_FAILED,
+                                input.getName()
+                                        + " failed to validate with transmission status: "
+                                        + valid.getTransmissionStatus());
+            }
+        } else {
+            valid.setTransmissionStatus(TransmissionStatus.UNACCEPTABLE);
+            valid.setLdadStatus(LdadStatus.UNACCEPTABLE);
+            statusHandler
+                    .error(BMH_CATEGORY.MESSAGE_VALIDATION_FAILED,
+                            input.getName()
+                                    + "("
+                                    + input.getAfosid()
+                                    + ") failed to validate because it contains unacceptable words.");
+
         }
         return valid;
     }

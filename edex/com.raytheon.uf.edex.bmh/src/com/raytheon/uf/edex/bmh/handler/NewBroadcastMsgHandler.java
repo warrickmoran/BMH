@@ -64,6 +64,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.validator.LdadValidator;
+import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
@@ -85,6 +86,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Nov 18, 2014  #3807     bkowal      Use BMHJmsDestinations.
  * Nov 20, 2014  #3385     bkowal      Complete ldad validation of messages.
  * Nov 21, 2014  #3385     bkowal      Support ldad dissemination of recorded audio.
+ * Dec 02, 2014  #3614     bsteffen    Check for unacceptable words.
  * 
  * </pre>
  * 
@@ -210,10 +212,16 @@ public class NewBroadcastMsgHandler extends
 
         // Build a validated message.
         ValidatedMessage validMsg = new ValidatedMessage();
+        List<String> unacceptableWords = UnacceptableWordFilter
+                .check(inputMessage);
         validMsg.setInputMessage(inputMessage);
-        ldadCheck.validate(validMsg);
-        validMsg.setTransmissionStatus(TransmissionStatus.ACCEPTED);
-
+        if (unacceptableWords.isEmpty()) {
+            ldadCheck.validate(validMsg);
+            validMsg.setTransmissionStatus(TransmissionStatus.ACCEPTED);
+        } else {
+            validMsg.setTransmissionStatus(TransmissionStatus.UNACCEPTABLE);
+            validMsg.setLdadStatus(LdadStatus.UNACCEPTABLE);
+        }
         Set<TransmitterGroup> transmitterGroups = this
                 .retrieveTransmitterGroups(request);
 
@@ -221,7 +229,15 @@ public class NewBroadcastMsgHandler extends
 
         ValidatedMessageDao validatedMsgDao = new ValidatedMessageDao(
                 request.isOperational());
-        if (request.getMessageAudio() == null) {
+        if (!validMsg.isAccepted()) {
+            validatedMsgDao.persistCascade(validMsg);
+            throw new IllegalArgumentException(
+                    inputMessage.getName()
+                            + "("
+                            + inputMessage.getAfosid()
+                            + ") failed to validate because it contains the following unacceptable words: "
+                            + unacceptableWords.toString());
+        } else if (request.getMessageAudio() == null) {
             validatedMsgDao.persistCascade(validMsg);
 
             // we are finished, send the validated message to the message

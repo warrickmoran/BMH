@@ -65,6 +65,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Nov 02, 2014  3785     mpduff      Added DynamicSerialize annotations.
  * Nov 19, 2014  3385     bkowal      Added {@link LdadStatus#NONE}
+ * Dec 02, 2014  3614     bsteffen    Add Unacceptable status.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -94,6 +96,8 @@ public class ValidatedMessage {
         UNASSIGNED,
         /** An identical message has already been received */
         DUPLICATE,
+        /** The message contents contains unnacceptable words. */
+        UNACCEPTABLE,
         /** Validation did not complete successfully */
         ERROR;
     }
@@ -103,6 +107,8 @@ public class ValidatedMessage {
         ACCEPTED,
         /** This message does not have any associated ldad configuration **/
         NONE,
+        /** The message contents contains unnacceptable words. */
+        UNACCEPTABLE,
         /** Validation did not complete successfully */
         ERROR;
     }
