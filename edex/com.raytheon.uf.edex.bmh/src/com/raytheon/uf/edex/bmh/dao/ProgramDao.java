@@ -60,6 +60,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Oct 08, 2014  3687     bsteffen    Remove ProgramTrigger.
  * Oct 13, 2014  3654     rjpeter     Updated to use ProgramSummary.
  * Nov 20, 2014  3698     rferrel     Added methods getSuitePrograms and getSuiteEnabledGroups.
+ * Dec 02, 2014  3838     rferrel     Added getProgramGeneralSuite.
  * </pre>
  * 
  * @author bsteffen
@@ -177,6 +178,24 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
             return Collections.emptyList();
         }
         return groups;
+    }
+
+    /**
+     * Get list with the program's suite that is of type GENERAL. List should
+     * only have 0 or 1 entry.
+     * 
+     * @param programId
+     * @return suite
+     */
+    public Suite getProgramGeneralSuite(int programId) {
+        @SuppressWarnings("unchecked")
+        List<Suite> suites = (List<Suite>) findByNamedQueryAndNamedParam(
+                Program.GET_PROGRAM_GENERAL_SUITE, "programId", programId);
+        if ((suites == null) || suites.isEmpty()) {
+            return null;
+        }
+        return suites.get(0);
+
     }
 
     /**

@@ -41,7 +41,6 @@ import com.raytheon.uf.common.auth.resp.SuccessfulExecution;
 import com.raytheon.uf.common.auth.user.IUser;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
-import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.bmh.request.BmhAuthorizationRequest;
@@ -78,6 +77,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Nov 07, 2014   3413      rferrel     Added check to get not authorized message
  *                                       in method sendRequest.
  * Nov 13, 2014   3698      rferrel     Added containsGeneralSuite.
+ * Dec 01, 2014   3838      rferrel     containsGeneralSuite updated to use query.
  * </pre>
  * 
  * @author mpduff
@@ -446,17 +446,23 @@ public class BmhUtils {
      *         does not contain a suite with type GENERAL
      * @throws Exception
      */
-    public static boolean containsGeneralSuite(Program program) {
-        if (program != null) {
-            List<Suite> programSuites = program.getSuites();
-            if (programSuites != null) {
-                for (Suite suite : program.getSuites()) {
-                    if (suite.getType() == SuiteType.GENERAL) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+    public static boolean containsGeneralSuite(Program program)
+            throws Exception {
+        ProgramDataManager pdm = new ProgramDataManager();
+        return pdm.getProgramGeneralSuite(program) != null;
+    }
+
+    /**
+     * Get programs GENERAL type suite. Should only zero or one.
+     * 
+     * @param program
+     * @return generalSuite - null if no GENERAL suite associated with the
+     *         program
+     * @throws Exception
+     */
+    public static Suite getProgramGeneralSuite(Program program)
+            throws Exception {
+        ProgramDataManager pdm = new ProgramDataManager();
+        return pdm.getProgramGeneralSuite(program);
     }
 }
