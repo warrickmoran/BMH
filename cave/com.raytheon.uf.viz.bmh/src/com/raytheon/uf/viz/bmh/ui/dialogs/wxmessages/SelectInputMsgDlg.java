@@ -77,6 +77,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 03, 2014   3790     lvenable     Added Active to the table column and made the dialog
  *                                      resizable.
  * Nov 15, 2014   3832     mpduff       Make creation hours on the 24 hr clock
+ * Dec 02, 2014   3877     lvenable     Added null checks.
  * 
  * </pre>
  * 
@@ -287,14 +288,34 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
         for (InputMessage im : inputMessageList) {
+
             TableRowData trd = new TableRowData();
 
-            trd.addTableCellData(new TableCellData(im.getName()));
-            trd.addTableCellData(new TableCellData(im.getAfosid()));
-            trd.addTableCellData(new TableCellData((im.getActive()) ? "Yes"
-                    : "No"));
-            trd.addTableCellData(new TableCellData(dateFmt.format(im
-                    .getCreationTime().getTime())));
+            if (im.getName() == null) {
+                trd.addTableCellData(new TableCellData("??????"));
+            } else {
+                trd.addTableCellData(new TableCellData(im.getName()));
+            }
+
+            if (im.getAfosid() == null) {
+                trd.addTableCellData(new TableCellData("????"));
+            } else {
+                trd.addTableCellData(new TableCellData(im.getAfosid()));
+            }
+
+            if (im.getActive() == null) {
+                trd.addTableCellData(new TableCellData("???"));
+            } else {
+                trd.addTableCellData(new TableCellData((im.getActive()) ? "Yes"
+                        : "No"));
+            }
+
+            if (im.getCreationTime() == null) {
+                trd.addTableCellData(new TableCellData("??????"));
+            } else {
+                trd.addTableCellData(new TableCellData(dateFmt.format(im
+                        .getCreationTime().getTime())));
+            }
 
             inputMsgTableData.addDataRow(trd);
         }

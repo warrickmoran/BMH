@@ -114,6 +114,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
  * Nov 18, 2014  3829     bkowal      Use WxMessagesContent for all content tracking.
  * Nov 22, 2014  3796     mpduff      Checks for areas on unsaved messages.
+ * Dec 02, 2014  3877     lvenable    Added null checks.
  * 
  * </pre>
  * 
@@ -1121,9 +1122,19 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         }
 
         // Creation, Expiration, Effective date time fields.
-        creationDTF.setDateTimeSpinners(userInputMessage.getCreationTime());
-        effectiveDTF.setDateTimeSpinners(userInputMessage.getEffectiveTime());
-        expirationDTF.setDateTimeSpinners(userInputMessage.getExpirationTime());
+        if (userInputMessage.getCreationTime() != null) {
+            creationDTF.setDateTimeSpinners(userInputMessage.getCreationTime());
+        }
+
+        if (userInputMessage.getEffectiveTime() != null) {
+            effectiveDTF.setDateTimeSpinners(userInputMessage
+                    .getEffectiveTime());
+        }
+
+        if (userInputMessage.getExpirationTime() != null) {
+            expirationDTF.setDateTimeSpinners(userInputMessage
+                    .getExpirationTime());
+        }
 
         // Update periodicity
         String peridicityStr = userInputMessage.getPeriodicity();
