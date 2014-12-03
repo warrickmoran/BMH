@@ -116,6 +116,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 22, 2014  3796     mpduff      Checks for areas on unsaved messages.
  * Dec 02, 2014  3877     lvenable    Added null checks.
  * Dec 02, 2014  3876     lvenable    Added check for area selection.
+ * Dec 03, 2014  3876     lvenable    Added null check & cleared out area codes if they are removed.
  * 
  * </pre>
  * 
@@ -803,22 +804,19 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         }
 
         /*
-         * verify that transmitters have been selected.
+         * Set the NWR same tone flag if no transmitters were selected.
          */
         if (this.sameTransmitters.getCheckedItems().getCheckedItems().isEmpty()) {
-            DialogUtility
-                    .showMessageBox(
-                            this.shell,
-                            SWT.ICON_ERROR | SWT.OK,
-                            "Weather Messages - SAME",
-                            "SAME Transmitters must be selected. Please select one or more SAME transmitters.");
-            return false;
+            userInputMessage.setNwrsameTone(false);
+        } else {
+            userInputMessage.setNwrsameTone(true);
         }
 
         /*
          * verify that area codes have been selected.
          */
-        if (userInputMessage.getAreaCodes().isEmpty()) {
+        if (userInputMessage.getAreaCodes() == null
+                || userInputMessage.getAreaCodes().isEmpty()) {
             DialogUtility
                     .showMessageBox(
                             this.shell,
@@ -967,6 +965,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 Set<String> areaCodes = areaData.getSelectedAreaCodes();
 
                 if (areaCodes == null || areaCodes.isEmpty()) {
+                    userInputMessage.setAreaCodes("");
                     return;
                 }
 
