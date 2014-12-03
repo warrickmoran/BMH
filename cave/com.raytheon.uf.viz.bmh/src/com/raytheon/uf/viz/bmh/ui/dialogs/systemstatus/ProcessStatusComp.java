@@ -43,7 +43,8 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Nov 22, 2014            lvenable     Initial creation
+ * Nov 22, 2014            lvenable    Initial creation
+ * Dec 03, 2014  3876      lvenable    Added null check.
  * 
  * </pre>
  * 
@@ -161,10 +162,19 @@ public class ProcessStatusComp extends Composite {
                 .getConnectedTtsHosts();
 
         for (TTSStatus tts : ttsStatusList) {
+
+            String host = null;
+
+            if (tts == null || tts.getHost() == null) {
+                host = "N/A";
+            } else {
+                host = tts.getHost();
+            }
+
             gd = new GridData();
             gd.horizontalIndent = 10;
             Label ttsStatusLbl = new Label(this, SWT.NONE);
-            ttsStatusLbl.setText("Host: " + tts.getHost());
+            ttsStatusLbl.setText("Host: " + host);
         }
     }
 }
