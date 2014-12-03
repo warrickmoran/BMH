@@ -115,6 +115,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 18, 2014  3829     bkowal      Use WxMessagesContent for all content tracking.
  * Nov 22, 2014  3796     mpduff      Checks for areas on unsaved messages.
  * Dec 02, 2014  3877     lvenable    Added null checks.
+ * Dec 02, 2014  3876     lvenable    Added check for area selection.
  * 
  * </pre>
  * 
@@ -570,7 +571,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         areaSelectionBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                handleAreadSelectionAction();
+                handleAreaSelectionAction();
             }
         });
     }
@@ -815,6 +816,19 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         }
 
         /*
+         * verify that area codes have been selected.
+         */
+        if (userInputMessage.getAreaCodes().isEmpty()) {
+            DialogUtility
+                    .showMessageBox(
+                            this.shell,
+                            SWT.ICON_ERROR | SWT.OK,
+                            "Weather Messages - Area Selection",
+                            "Area/Zone/Transmitter codes must be selected. Please add them by clicking the Area Selection button.");
+            return false;
+        }
+
+        /*
          * verify that message contents have been set.
          */
         if (this.content != null && this.content.isComplete() == false) {
@@ -926,7 +940,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     /**
      * Handle the area selection action.
      */
-    private void handleAreadSelectionAction() {
+    private void handleAreaSelectionAction() {
         AreaSelectionDlg dlg = null;
 
         // if input message id is not null and not a new input message object
