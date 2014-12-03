@@ -31,6 +31,7 @@ import java.util.Set;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2014 3383       bkowal      Initial creation
+ * Dec 3, 2014  3880       bkowal      Added verifyCompatibility.
  * 
  * </pre>
  * 
@@ -82,4 +83,18 @@ public interface IAudioConverter {
      * @return a list of recognized source (input) formats.
      */
     public Set<BMHAudioFormat> getSupportedSourceFormats();
+
+    /**
+     * Allows the {@link AudioConvererterManager} to verify that the associated
+     * {@link BMHAudioFormat} conversion is supported on this system. This
+     * method was used as opposed to just using a method that returns a Boolean
+     * because the {@link ConversionNotSupportedException} that will be thrown
+     * if the conversion is not supported can provide additional information
+     * about why the conversion is not supported.
+     * 
+     * @throws ConversionNotSupportedException
+     *             if audio conversion is not supported for the associated
+     *             {@link BMHAudioFormat} on the current machine.
+     */
+    public void verifyCompatibility() throws ConversionNotSupportedException;
 }

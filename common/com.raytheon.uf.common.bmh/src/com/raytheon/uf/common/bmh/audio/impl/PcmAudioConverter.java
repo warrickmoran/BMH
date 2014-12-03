@@ -28,7 +28,6 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
-import com.raytheon.uf.common.bmh.audio.AbstractAudioConverter;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
@@ -46,6 +45,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.DecompressInputStream.DEC
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 21, 2014 3383       bkowal      Initial creation
+ * Dec 3, 2014  3880       bkowal      Extend JavaRecognizedAudioConverter.
  * 
  * </pre>
  * 
@@ -53,7 +53,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.DecompressInputStream.DEC
  * @version 1.0
  */
 
-public class PcmAudioConverter extends AbstractAudioConverter {
+public class PcmAudioConverter extends JavaRecognizedAudioConverter {
 
     private static final BMHAudioFormat CONVERSION_FORMAT = BMHAudioFormat.PCM;
 

@@ -33,6 +33,7 @@ package com.raytheon.uf.common.bmh.audio;
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2014 3383       bkowal      Initial creation
  * Oct 2, 2014  3642       bkowal      Fix file extension specifiers
+ * Dec 3, 2014  3880       bkowal      Added MP3.
  * 
  * </pre>
  * 
@@ -46,7 +47,9 @@ public enum BMHAudioFormat {
     /* The ULAW Audio Format. */
     ULAW(".ulaw"),
     /* The PCM Audio Format. */
-    PCM(".pcm");
+    PCM(".pcm"),
+    /* The proprietary MP3 Audio Format. */
+    MP3(".mp3");
 
     private final String extension;
 

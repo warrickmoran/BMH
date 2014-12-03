@@ -23,6 +23,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+
 /**
  * Abstract representation of an audio converter.
  * 
@@ -33,6 +36,7 @@ import java.util.Set;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2014 3383       bkowal      Initial creation
+ * Dec 3, 2014  3880       bkowal      Added statusHandler.
  * 
  * </pre>
  * 
@@ -41,6 +45,9 @@ import java.util.Set;
  */
 
 public abstract class AbstractAudioConverter implements IAudioConverter {
+
+    protected final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
 
     private final BMHAudioFormat outputFormat;
 

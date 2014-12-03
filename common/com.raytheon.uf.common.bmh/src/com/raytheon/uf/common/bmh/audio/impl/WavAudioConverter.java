@@ -30,7 +30,6 @@ import javax.sound.sampled.AudioFileFormat.Type;
 import javax.sound.sampled.AudioFormat.Encoding;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
-import com.raytheon.uf.common.bmh.audio.AbstractAudioConverter;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 
@@ -45,6 +44,7 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2014 3383       bkowal      Initial creation
+ * Dec 3, 2014  3880       bkowal      Extend JavaRecognizedAudioConverter.
  * 
  * </pre>
  * 
@@ -52,7 +52,7 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  * @version 1.0
  */
 
-public class WavAudioConverter extends AbstractAudioConverter {
+public class WavAudioConverter extends JavaRecognizedAudioConverter {
 
     private static final BMHAudioFormat CONVERSION_FORMAT = BMHAudioFormat.WAV;
 

@@ -29,7 +29,6 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.sound.sampled.AudioFormat.Encoding;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
-import com.raytheon.uf.common.bmh.audio.AbstractAudioConverter;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.audio.impl.algorithm.AlgorithmicAudioUtils;
@@ -46,6 +45,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.CompressInputStream.COMPR
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3383       bkowal      Initial creation
+ * Dec 3, 2014  3880       bkowal      Extend JavaRecognizedAudioConverter.
  * 
  * </pre>
  * 
@@ -53,7 +53,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.CompressInputStream.COMPR
  * @version 1.0
  */
 
-public class UlawAudioConverter extends AbstractAudioConverter {
+public class UlawAudioConverter extends JavaRecognizedAudioConverter {
 
     private static final BMHAudioFormat CONVERSION_FORMAT = BMHAudioFormat.ULAW;
 

@@ -46,13 +46,14 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
  * Jul 8, 2014  3302       bkowal      Re-factor. Abstract common functionality
  *                                     into a new parent class.
  * Jul 17, 2014 3383       bkowal      Updated to use the Audio Conversion API.
+ * Dec 3, 2014  3880       bkowal      Deprecated.
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
-
+@Deprecated
 public abstract class AbstractWavFileGeneratingTest extends AbstractBMHTester {
     private static final String DEFAULT_OUTPUT_DIRECTORY = File.separatorChar
             + "tmp";
@@ -132,21 +133,7 @@ public abstract class AbstractWavFileGeneratingTest extends AbstractBMHTester {
     }
 
     protected boolean writeWavData(File sourceFile, final String outputFileName) {
-        File destinationFile = new File(
-                this.buildOutputFilePath(outputFileName));
-
-        try {
-            AudioConvererterManager.getInstance().convertAudio(sourceFile,
-                    destinationFile);
-            statusHandler.info("Successfully wrote wav file: "
-                    + destinationFile.getAbsolutePath());
-        } catch (UnsupportedAudioFormatException | AudioConversionException e) {
-            statusHandler.error("Failed to create the wav file: "
-                    + destinationFile.getAbsolutePath(), e);
-            return false;
-        }
-
-        return true;
+        return false;
     }
 
     private String buildOutputFilePath(final String outputFileName) {

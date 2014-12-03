@@ -19,17 +19,10 @@
  **/
 package com.raytheon.uf.common.bmh.audio;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.HashMap;
 
-import org.apache.commons.io.FilenameUtils;
-
+import com.raytheon.uf.common.bmh.audio.impl.Mp3AudioConverter;
 import com.raytheon.uf.common.bmh.audio.impl.PcmAudioConverter;
 import com.raytheon.uf.common.bmh.audio.impl.UlawAudioConverter;
 import com.raytheon.uf.common.bmh.audio.impl.WavAudioConverter;
@@ -47,6 +40,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014 3383       bkowal      Initial creation
+ * Dec 3, 2014  3880       bkowal      Remove test code. Verify arguments
+ *                                     to the convertAudio method.
  * 
  * </pre>
  * 
@@ -94,6 +89,7 @@ public class AudioConvererterManager {
         this.registerConverter(new WavAudioConverter());
         this.registerConverter(new UlawAudioConverter());
         this.registerConverter(new PcmAudioConverter());
+        this.registerConverter(new Mp3AudioConverter());
     }
 
     /**
@@ -104,6 +100,18 @@ public class AudioConvererterManager {
      */
     public void registerConverter(IAudioConverter converter) {
         synchronized (this.registeredAudioConverters) {
+            /**
+             * verify that the audio conversion is supported on this machine.
+             */
+            try {
+                converter.verifyCompatibility();
+            } catch (ConversionNotSupportedException e) {
+                statusHandler.error(
+                        "Failed to register an audio converter for the "
+                                + converter.getOutputFormat().toString()
+                                + " format.", e);
+            }
+
             if (this.registeredAudioConverters.containsKey(converter
                     .getOutputFormat())) {
                 // warn and replace the previously registered converter.
@@ -141,6 +149,20 @@ public class AudioConvererterManager {
     public byte[] convertAudio(byte[] source, BMHAudioFormat sourceFormat,
             BMHAudioFormat destinationFormat)
             throws UnsupportedAudioFormatException, AudioConversionException {
+
+        if (source == null) {
+            throw new IllegalArgumentException(
+                    "Required argument source can not be NULL.");
+        }
+        if (sourceFormat == null) {
+            throw new IllegalArgumentException(
+                    "Required argument sourceFormat can not be NULL.");
+        }
+        if (destinationFormat == null) {
+            throw new IllegalArgumentException(
+                    "Required argument destinationFormat can not be NULL.");
+        }
+
         /* Does a converter exist for the output audio type? */
         IAudioConverter converter = this.registeredAudioConverters
                 .get(destinationFormat);
@@ -154,95 +176,6 @@ public class AudioConvererterManager {
         converter.verifySupportedAudioFormat(sourceFormat);
 
         return converter.convertAudio(source, sourceFormat);
-    }
-
-    /**
-     * Performs the audio conversion provided that the necessary converter has
-     * been registered.
-     * 
-     * @param sourceFile
-     *            the audio file to convert
-     * @param destinationFile
-     *            the file to write the converted audio to
-     * @throws UnsupportedAudioFormatException
-     *             when an unrecognized and/or unsupported audio format is
-     *             encountered
-     * @throws AudioConversionException
-     *             when the audio conversion fails
-     */
-    public void convertAudio(File sourceFile, File destinationFile)
-            throws UnsupportedAudioFormatException, AudioConversionException {
-        /* Verify that the source file exists. */
-        if (sourceFile.exists() == false) {
-            throw new AudioConversionException("The specified source file: "
-                    + sourceFile.getAbsolutePath() + " does not exist!");
-        }
-
-        /* Determine the location of the destination directory. */
-        final File destinationDirectory = new File(
-                FilenameUtils.getFullPath(destinationFile.getAbsolutePath()));
-        /* Verify that the specified destination exists. */
-        if (destinationDirectory.exists() == false) {
-            /* Attempt to create the destination directory. */
-            if (destinationDirectory.mkdirs() == false) {
-                throw new AudioConversionException(
-                        "The specified destination directory: "
-                                + destinationDirectory.getAbsolutePath()
-                                + " does not exist. Attempts to create the directory have failed!");
-            }
-        }
-
-        /* Determine the input audio type. */
-        final String inputExtension = FilenameUtils.getExtension(sourceFile
-                .getAbsolutePath());
-
-        /* Determine the output audio type. */
-        final String outputExtension = FilenameUtils
-                .getExtension(destinationFile.getAbsolutePath());
-
-        /* Is the input audio type supported? */
-        final BMHAudioFormat inputFormat = BMHAudioFormat
-                .lookupByExtension(inputExtension);
-        if (inputFormat == null) {
-            throw new UnsupportedAudioFormatException(inputExtension);
-        }
-
-        /* Is the output audio type supported? */
-        final BMHAudioFormat outputFormat = BMHAudioFormat
-                .lookupByExtension(outputExtension);
-        if (outputFormat == null) {
-            throw new UnsupportedAudioFormatException(outputExtension);
-        }
-
-        final Path sourceFilePath = FileSystems.getDefault().getPath(
-                sourceFile.getAbsolutePath());
-
-        /* Read the input bytes. */
-        byte[] source = null;
-        try {
-            source = Files.readAllBytes(sourceFilePath);
-        } catch (IOException e) {
-            throw new AudioConversionException(
-                    "Failed to read the source file: "
-                            + sourceFile.getAbsolutePath() + "!", e);
-        }
-
-        byte[] destination = this.convertAudio(source, inputFormat,
-                outputFormat);
-        try {
-            Files.write(
-                    FileSystems.getDefault().getPath(
-                            destinationFile.getAbsolutePath()), destination,
-                    StandardOpenOption.CREATE);
-        } catch (IOException e) {
-            throw new AudioConversionException(
-                    "Failed to write the destination file: "
-                            + destinationFile.getAbsolutePath() + "!", e);
-        }
-
-        statusHandler.info("Audio conversion from format "
-                + inputFormat.toString() + " to format "
-                + outputFormat.toString() + " was successful!");
     }
 
     /**
