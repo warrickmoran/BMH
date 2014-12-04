@@ -78,6 +78,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Nov 19, 2014  3349      lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Added listeners and process status code.
+ * Dec 04, 2014  #3287     lvenable     Added fix for practice code color & layout of status
+ *                                      messages on change.
  * 
  * </pre>
  * 
@@ -326,6 +328,7 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
 
         dacTransmittersComp.layout();
         scrolledComp.layout();
+        shell.redraw();
     }
 
     private void repopulateProcessStatus() {
@@ -339,6 +342,8 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
 
         populateProcessStatusControls();
         processStatusGrp.layout();
+        shell.layout();
+        shell.redraw();
     }
 
     /**
