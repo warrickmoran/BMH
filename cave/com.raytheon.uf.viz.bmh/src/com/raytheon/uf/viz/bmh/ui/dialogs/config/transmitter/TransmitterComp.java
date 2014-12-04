@@ -46,6 +46,8 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -55,6 +57,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DetailsDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.NewEditTransmitterDlg.TransmitterEditType;
@@ -76,6 +79,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 24, 2014    3432    mpduff      Handle null ports
  * Sep 23, 2014    3649    rferrel     Changes to handle all types of groups.
  * Oct 23, 2014    3687    bsteffen    Display dac name instead of id.
+ * Nov 21, 2014    3838    rferrel     Enable transmitter added check to see if its
+ *                                      group's program contains a GENERAL suite.
  * 
  * </pre>
  * 
@@ -252,17 +257,15 @@ public class TransmitterComp extends Composite implements
                     }
                 });
 
-                if (group.getTransmitters().size() == 0) {
-                    MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
-                    deleteItem.setText("Delete Group");
-                    deleteItem.addSelectionListener(new SelectionAdapter() {
-                        @Override
-                        public void widgetSelected(SelectionEvent e) {
-                            deleteGroup();
-                        }
-                    });
-                }
-
+                MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
+                deleteItem.setText("Delete Group");
+                deleteItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        deleteGroup();
+                    }
+                });
+                deleteItem.setEnabled(group.getTransmitters().size() == 0);
             } else {
                 editItem.setText("Edit Transmitter...");
                 editItem.addSelectionListener(new SelectionAdapter() {
@@ -302,14 +305,22 @@ public class TransmitterComp extends Composite implements
                 });
                 enableStatusItem.setSelection(transmitterEnabled);
 
-                // Enable only when transmitter has a DAC and DAC port.
+                /*
+                 * Enable only when transmitter has a DAC, DAC port, group has a
+                 * program and the program contains a GENERAL suite.
+                 */
                 enableStatusItem
                         .setEnabled(((standaloneGroup != null)
-                                && (standaloneGroup.getDac() != null) && (standaloneGroup
-                                .getTransmitterList().get(0).getDacPort() != null))
+                                && (standaloneGroup.getDac() != null)
+                                && (standaloneGroup.getTransmitterList().get(0)
+                                        .getDacPort() != null) && containsGeneralSuite(standaloneGroup
+                                    .getProgramSummary()))
                                 || ((groupTransmitter != null)
-                                        && (groupTransmitter.getDacPort() != null) && (groupTransmitter
-                                        .getTransmitterGroup().getDac() != null)));
+                                        && (groupTransmitter.getDacPort() != null)
+                                        && (groupTransmitter
+                                                .getTransmitterGroup().getDac() != null) && containsGeneralSuite(groupTransmitter
+                                        .getTransmitterGroup()
+                                        .getProgramSummary())));
 
                 MenuItem disableStatusItem = new MenuItem(statusMenu, SWT.RADIO);
                 disableStatusItem.setText("Disable Transmitter");
@@ -971,6 +982,28 @@ public class TransmitterComp extends Composite implements
                 tree.getItem(i).setExpanded(true);
             }
         }
+    }
+
+    /**
+     * Determine if a program contains a suite of type GENERAL.
+     * 
+     * @param ps
+     * @return false if no program or program does not contain a GENERAL suite.
+     */
+    private boolean containsGeneralSuite(ProgramSummary ps) {
+        if (ps == null) {
+            return false;
+        }
+        Boolean value = null;
+        try {
+            Program program = new Program();
+            program.setId(ps.getId());
+            value = BmhUtils.containsGeneralSuite(program);
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Unable to get program information.", e);
+        }
+        return value;
     }
 
     /**

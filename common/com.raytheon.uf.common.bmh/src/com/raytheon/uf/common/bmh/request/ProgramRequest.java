@@ -42,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Oct 13, 2014  3654     rjpeter     Updated to use ProgramSummary.
  * Nov 20, 2014  3698     rferrel     Added SuitePrograms and SuiteEnabledGroups.
+ * Dec 02, 2014  3838     rferrel     Added ProgramGeneralSuite.
  * </pre>
  * 
  * @author lvenable
@@ -55,7 +56,7 @@ public class ProgramRequest extends AbstractBMHServerRequest {
 
         ProgramSuites, Delete, GetProgramForTransmitterGroup,
 
-        GetProgramsWithTrigger, AddGroup, SuitePrograms, SuiteEnabledGroups;
+        GetProgramsWithTrigger, AddGroup, SuitePrograms, SuiteEnabledGroups, ProgramGeneralSuite;
     }
 
     @DynamicSerializeElement

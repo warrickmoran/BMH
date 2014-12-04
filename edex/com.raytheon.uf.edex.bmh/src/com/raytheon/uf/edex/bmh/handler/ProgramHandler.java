@@ -25,6 +25,7 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
@@ -55,6 +56,7 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * Oct 13, 2014  3654     rjpeter     Updated to use ProgramSummary.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Nov 20, 2014  3698     rferrel     Implement SuitePrograms and SuiteEnabledGroups.
+ * Dec 01, 2014  3838     rferrel     Added getProgramGeneralSuite.
  * 
  * </pre>
  * 
@@ -106,6 +108,9 @@ public class ProgramHandler extends
             break;
         case SuiteEnabledGroups:
             return getSuiteEnabledGroups(request);
+        case ProgramGeneralSuite:
+            return getProgramGeneralSuite(request);
+
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -162,6 +167,12 @@ public class ProgramHandler extends
         List<TransmitterGroup> enabledGroups = dao
                 .getSuiteEnabledGroups(request.getSuiteId());
         return enabledGroups;
+    }
+
+    private Suite getProgramGeneralSuite(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao(request.isOperational());
+        Suite suite = dao.getProgramGeneralSuite(request.getProgram().getId());
+        return suite;
     }
 
     private ProgramResponse getProgramForTransmitterGroup(ProgramRequest request) {

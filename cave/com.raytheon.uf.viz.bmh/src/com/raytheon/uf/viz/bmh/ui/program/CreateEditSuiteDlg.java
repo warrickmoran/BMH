@@ -108,6 +108,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 12, 2014   3815     lvenable    Fixed category not being saved.
  * Nov 13, 2014  3698      rferrel     Checks to allow only one GENERAL type suite per program.
  * Nov 20, 2014   3830     rferrel     Remove assignProgramBtn button and supporting methods.
+ * Dec 01, 2014   3838     rferrel     Change for new BmhUtil.getProgramGeneralSuite.
  * </pre>
  * 
  * @author lvenable
@@ -793,20 +794,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * then save the suite to the selected programs.
      */
     private void handleCreateAction() {
-        if ((selectedProgram != null)
-                && (getSelectedSuiteType() == SuiteType.GENERAL)
-                && BmhUtils.containsGeneralSuite(selectedProgram)) {
-            DialogUtility
-                    .showMessageBox(
-                            shell,
-                            SWT.ICON_WARNING | SWT.OK,
-                            "Create Suite",
-                            "The \""
-                                    + selectedProgram.getName()
-                                    + "\" program already contains a GENERAL category suite.");
-            return;
-        }
-
         this.createNewSuite();
 
         SuiteNameValidator snv = new SuiteNameValidator(existingSuiteNames);
@@ -833,6 +820,36 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             }
         }
 
+        try {
+            if ((selectedProgram != null)
+                    && (getSelectedSuiteType() == SuiteType.GENERAL)) {
+                Suite oldGeneralSuite = BmhUtils
+                        .getProgramGeneralSuite(selectedProgram);
+                if (oldGeneralSuite != null) {
+                    int result = DialogUtility
+                            .showMessageBox(
+                                    shell,
+                                    SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                                    "Create Suite",
+                                    "The \""
+                                            + selectedProgram.getName()
+                                            + "\" program already contains a GENERAL category suite: "
+                                            + oldGeneralSuite.getName()
+                                            + ".\n\nSelect OK to replace with new suite: "
+                                            + suiteNameTF.getText().trim()
+                                            + ".");
+                    if (result != SWT.OK) {
+                        return;
+                    }
+                    selectedProgram.removeSuite(oldGeneralSuite);
+                }
+            }
+        } catch (Exception e1) {
+            statusHandler
+                    .handle(Priority.PROBLEM, e1.getLocalizedMessage(), e1);
+        }
+
+        ProgramDataManager pdm = new ProgramDataManager();
         SuiteDataManager sdm = new SuiteDataManager();
 
         Suite savedSuite = null;
@@ -855,8 +872,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         /*
          * Add the suites to the programs and then save the programs.
          */
-        ProgramDataManager pdm = new ProgramDataManager();
-
         for (Program p : newAssignedProgramsArray) {
             p.addSuite(savedSuite);
 

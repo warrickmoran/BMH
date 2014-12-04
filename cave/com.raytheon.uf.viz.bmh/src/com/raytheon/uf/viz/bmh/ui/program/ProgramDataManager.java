@@ -48,6 +48,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Oct 02, 2014  #3649     rferrel     Added methods addGroup and getProgramForTransmitterGroup.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Nov 20, 2014  3698      rferrel     Methods for getting programs/enabled groups based on suite.
+ * Dec 02, 2014  3838      rferrel     Added getProgramGeneralSuite;
  * </pre>
  * 
  * @author lvenable
@@ -186,6 +187,21 @@ public class ProgramDataManager {
         List<TransmitterGroup> suiteEnabledGroups = (List<TransmitterGroup>) BmhUtils
                 .sendRequest(pr);
         return suiteEnabledGroups;
+    }
+
+    /**
+     * Get program's suite with type GENERAL.
+     * 
+     * @param program
+     * @return null when no suite with type GENERAL for the program
+     * @throws Exception
+     */
+    public Suite getProgramGeneralSuite(Program program) throws Exception {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.ProgramGeneralSuite);
+        pr.setProgram(program);
+        Suite suite = (Suite) BmhUtils.sendRequest(pr);
+        return suite;
     }
 
     /**

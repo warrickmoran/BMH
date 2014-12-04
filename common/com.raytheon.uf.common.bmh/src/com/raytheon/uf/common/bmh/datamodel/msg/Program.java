@@ -82,6 +82,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 28, 2014 3636      rferrel     Implement Logging.
  * Nov 14, 2014 3558      rjpeter     Set length of program name to 40.
  * Nov 20, 2014 3698      rferrel     Updated to add suite/query for getting Programs/Enabled transmitter Groups.
+ * Dec 01, 2014 3838      rferrel     Add get program's general suite.
  * </pre>
  * 
  * @author rjpeter
@@ -95,7 +96,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE_QUERY),
         @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY),
         @NamedQuery(name = Program.GET_SUITE_PROGRAMS, query = Program.GET_SUITE_PROGRAMS_QUERY),
-        @NamedQuery(name = Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS, query = Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS_QUERY) })
+        @NamedQuery(name = Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS, query = Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS_QUERY),
+        @NamedQuery(name = Program.GET_PROGRAM_GENERAL_SUITE, query = Program.GET_PROGRAM_GENERAL_SUITE_QUERY) })
 @Entity
 @Table(name = "program", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = Program.GEN, sequenceName = "program_seq")
@@ -134,6 +136,10 @@ public class Program {
     public static final String GET_SUITE_ENABLED_TRANSMITTER_GROUPS = "getSuiteEnabledTransmitterGroups";
 
     protected static final String GET_SUITE_ENABLED_TRANSMITTER_GROUPS_QUERY = "SELECT tg FROM Program p INNER JOIN p.programSuites ps INNER JOIN p.transmitterGroups tg  INNER JOIN tg.transmitters t WHERE ps.id.suiteId = :suiteId AND t.txStatus = 'ENABLED'";
+
+    public static final String GET_PROGRAM_GENERAL_SUITE = "getProgramGeneralSuite";
+
+    protected static final String GET_PROGRAM_GENERAL_SUITE_QUERY = "SELECT s FROM Program p INNER JOIN p.programSuites ps INNER Join ps.suite s WHERE p.id = :programId AND s.type = 'GENERAL'";
 
     // use surrogate key
     @Id
@@ -324,6 +330,22 @@ public class Program {
                 }
             }
             this.programSuites.add(programSuite);
+        }
+    }
+
+    public void removeSuite(Suite suite) {
+        if ((suite != null)) {
+            cancelNewSuite(suite);
+            if ((programSuites != null) && !programSuites.isEmpty()) {
+                Iterator<ProgramSuite> iter = programSuites.iterator();
+                while (iter.hasNext()) {
+                    ProgramSuite ps = iter.next();
+                    if (suite.equals(ps.getSuite())) {
+                        iter.remove();
+                        break;
+                    }
+                }
+            }
         }
     }
 
