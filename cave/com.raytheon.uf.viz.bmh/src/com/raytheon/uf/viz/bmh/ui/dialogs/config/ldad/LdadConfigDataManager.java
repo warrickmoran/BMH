@@ -20,7 +20,9 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad;
 
 import java.util.List;
+import java.util.Set;
 
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.request.LdadConfigRequest;
 import com.raytheon.uf.common.bmh.request.LdadConfigRequest.LdadConfigAction;
@@ -38,6 +40,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * ------------ ---------- ----------- --------------------------
  * Jul 11, 2014    3381    mpduff      Initial creation
  * Nov 13, 2014    3803    bkowal      Implemented.
+ * Dec 4, 2014     3880    bkowal      Added getSupportedLdadEncodings.
  * 
  * </pre>
  * 
@@ -86,6 +89,19 @@ public class LdadConfigDataManager {
         }
 
         return response.getLdadConfigurations().get(0);
+    }
+
+    public Set<BMHAudioFormat> getSupportedLdadEncodings() throws Exception {
+        LdadConfigRequest request = new LdadConfigRequest();
+        request.setAction(LdadConfigAction.RetrieveSupportedEncodings);
+        LdadConfigResponse response = (LdadConfigResponse) BmhUtils
+                .sendRequest(request);
+        if (response.getEncodings() == null
+                || response.getEncodings().isEmpty()) {
+            return null;
+        }
+
+        return response.getEncodings();
     }
 
     public void deleteLdadConfig(LdadConfig ldadConfig) throws Exception {

@@ -20,7 +20,9 @@
 package com.raytheon.uf.common.bmh.request;
 
 import java.util.List;
+import java.util.Set;
 
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -37,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3803       bkowal      Initial creation
+ * Dec 4, 2014  3880       bkowal      Added encodings.
  * 
  * </pre>
  * 
@@ -48,6 +51,9 @@ public class LdadConfigResponse {
 
     @DynamicSerializeElement
     private List<LdadConfig> ldadConfigurations;
+
+    @DynamicSerializeElement
+    private Set<BMHAudioFormat> encodings;
 
     /**
      * 
@@ -68,5 +74,20 @@ public class LdadConfigResponse {
      */
     public void setLdadConfigurations(List<LdadConfig> ldadConfigurations) {
         this.ldadConfigurations = ldadConfigurations;
+    }
+
+    /**
+     * @return the encodings
+     */
+    public Set<BMHAudioFormat> getEncodings() {
+        return encodings;
+    }
+
+    /**
+     * @param encodings
+     *            the encodings to set
+     */
+    public void setEncodings(Set<BMHAudioFormat> encodings) {
+        this.encodings = encodings;
     }
 }

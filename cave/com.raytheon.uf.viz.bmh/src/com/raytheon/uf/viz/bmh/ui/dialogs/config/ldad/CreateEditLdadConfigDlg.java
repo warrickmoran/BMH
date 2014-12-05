@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -74,6 +75,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 11, 2014    3381    mpduff      Initial creation
  * Nov 10, 2014    3381    bkowal      Dialog redesign.
  * Nov 13, 2014    3803    bkowal      Implemented dialog.
+ * Dec 4, 2014     3880    bkowal      Only allow the user to select a supported
+ *                                     conversion format.
  * 
  * </pre>
  * 
@@ -103,6 +106,8 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
     private final DictionaryManager dictionaryMgr = new DictionaryManager();
 
     private final VoiceDataManager vdm = new VoiceDataManager();
+
+    private final LdadConfigDataManager ldadMgr = new LdadConfigDataManager();
 
     /**
      * Name text field
@@ -397,6 +402,14 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         this.populateEncodingCombo();
         this.populateDictCombo();
 
+        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+            /*
+             * The host cannot be changed in practice mode.
+             */
+            this.hostTxt.setText(PRACTICE_HOST);
+            this.hostTxt.setEnabled(false);
+        }
+
         if (this.ldadConfig == null) {
             return;
         }
@@ -404,12 +417,6 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         this.nameTxt.setText(this.ldadConfig.getName());
         if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
             this.hostTxt.setText(this.ldadConfig.getHost());
-        } else {
-            /*
-             * The host cannot be changed in practice mode.
-             */
-            this.hostTxt.setText(PRACTICE_HOST);
-            this.hostTxt.setEnabled(false);
         }
         this.directoryTxt.setText(this.ldadConfig.getDirectory());
         this.encodingCbo.setText(this.ldadConfig.getEncoding().getExtension());
@@ -427,6 +434,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
             voices = vdm.getAllVoices();
         } catch (Exception e) {
             statusHandler.error("Failed to retrieve the available voices.", e);
+            return;
         }
 
         if (voices != null) {
@@ -447,7 +455,20 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
      * Populate the encoding selection combo
      */
     private void populateEncodingCombo() {
-        for (BMHAudioFormat bmhAudioFormat : BMHAudioFormat.values()) {
+        Set<BMHAudioFormat> supportedEncodings = null;
+        try {
+            supportedEncodings = this.ldadMgr.getSupportedLdadEncodings();
+        } catch (Exception e) {
+            statusHandler.error("Failed to retrieve the supported encodings.",
+                    e);
+            return;
+        }
+
+        if (supportedEncodings == null || supportedEncodings.isEmpty()) {
+            return;
+        }
+
+        for (BMHAudioFormat bmhAudioFormat : supportedEncodings) {
             this.encodingCbo.add(bmhAudioFormat.getExtension());
         }
     }
