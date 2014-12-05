@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.dao;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -47,6 +48,8 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * Oct 22, 2014  3747     bkowal      Wrap all database actions in txTemplate with
  *                                    getCurrentSession.
  * Nov 02, 2014  3746     rjpeter     Updated loadAll to return empty list on null.
+ * Dec 08, 2014  3864     bsteffen    Support collections in findByNamedQueryAndNamedParam
+ * 
  * </pre>
  * 
  * @author bkowal
@@ -180,7 +183,12 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
                 Session session = getCurrentSession();
                 Query query = session.getNamedQuery(queryName);
                 for (int i = 0; i < names.length; i++) {
-                    query.setParameter(names[i], values[i]);
+                    if (values[i] instanceof Collection) {
+                        query.setParameterList(names[i],
+                                (Collection<?>) values[i]);
+                    } else {
+                        query.setParameter(names[i], values[i]);
+                    }
                 }
                 return query.list();
             }

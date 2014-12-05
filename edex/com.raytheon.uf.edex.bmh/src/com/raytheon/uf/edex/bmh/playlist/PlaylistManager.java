@@ -27,15 +27,12 @@ import java.nio.file.Path;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -43,14 +40,12 @@ import java.util.TimeZone;
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
 
-import com.google.common.primitives.Ints;
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
@@ -61,6 +56,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -133,6 +129,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Nov 17, 2014  3827     bsteffen    Fix merging of arealess messages
  * Dec 08, 2014  3878     bkowal      Set the static flag on the {@link DacPlaylistMessage}.
  * Dec 08, 2014  3651     bkowal      Message logging preparation
+ * Dec 08, 2014  3864     bsteffen    Shift some logic into the playlist.
  * 
  * </pre>
  * 
@@ -338,8 +335,8 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setModTime(TimeUtil.newGmtCalendar());
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
-                sortAndPersistPlaylist(playlist, programSuite,
-                        Collections.<BroadcastMsg> emptyList(), false);
+                playlist.getMessages().clear();
+                persistPlaylist(playlist, programSuite, false);
             }
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
@@ -364,23 +361,19 @@ public class PlaylistManager implements IContextStateProcessor {
         ITimer timer = TimeUtil.getTimer();
         timer.start();
         try {
-            Calendar currentTime = TimeUtil.newGmtCalendar();
             Playlist playlist = playlistDao.getBySuiteAndGroupName(programSuite
                     .getSuite().getName(), group.getName());
-            List<BroadcastMsg> messages = loadExistingMessages(programSuite,
-                    group, currentTime, true, forced);
-            if (!messages.isEmpty()) {
-                if (playlist == null) {
-                    playlist = new Playlist();
-                    playlist.setSuite(programSuite.getSuite());
-                    playlist.setTransmitterGroup(group);
-                }
+            if (playlist == null) {
+                playlist = new Playlist();
+                playlist.setSuite(programSuite.getSuite());
+                playlist.setTransmitterGroup(group);
             }
-            if (playlist != null) {
-                playlist.setModTime(currentTime);
+            playlist.refresh();
+            loadExistingMessages(playlist);
+            if (playlist.getId() != 0 || !playlist.getMessages().isEmpty()) {
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
-                sortAndPersistPlaylist(playlist, programSuite, messages, forced);
+                persistPlaylist(playlist, programSuite, forced);
             }
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
@@ -405,30 +398,31 @@ public class PlaylistManager implements IContextStateProcessor {
             Suite suite = new Suite();
             suite.setName("Interrupt" + msg.getId());
             suite.setType(SuiteType.INTERRUPT);
+            MessageTypeSummary summary = new MessageTypeSummary();
+            summary.setAfosid(msg.getAfosid());
+            SuiteMessage suiteMessage = new SuiteMessage();
+            suiteMessage.setMsgTypeSummary(summary);
+            suite.addSuiteMessage(suiteMessage);
+            suite.addSuiteMessage(new SuiteMessage());
             Playlist playlist = new Playlist();
             playlist.setTransmitterGroup(group);
             playlist.setSuite(suite);
-            playlist.setMessages(Arrays.asList(msg));
+            playlist.addBroadcastMessage(msg, null);
             playlist.setModTime(TimeUtil.newGmtCalendar());
             playlist.setStartTime(msg.getInputMessage().getEffectiveTime());
             playlist.setEndTime(msg.getInputMessage().getExpirationTime());
             writePlaylistFile(playlist, playlist.getStartTime());
         }
 
-        // TODO: optimize.
-        Map<String, Set<String>> matReplacementMap = new HashMap<>();
         for (ProgramSuite programSuite : program.getProgramSuites()) {
             if (programSuite.getSuite().containsSuiteMessage(msg.getAfosid())) {
-                boolean isTrigger = programSuite.isTrigger(msg.getAfosid());
-                addMessageToPlaylist(msg, group, programSuite, isTrigger,
-                        matReplacementMap);
+                addMessageToPlaylist(msg, group, programSuite);
             }
         }
     }
 
     private void addMessageToPlaylist(BroadcastMsg msg, TransmitterGroup group,
-            ProgramSuite programSuite, boolean trigger,
-            Map<String, Set<String>> matReplacementMap) {
+            ProgramSuite programSuite) {
         ClusterTask ct = null;
         do {
             ct = locker.lock("playlist", group.getName() + "-"
@@ -437,132 +431,57 @@ public class PlaylistManager implements IContextStateProcessor {
         try {
             Playlist playlist = playlistDao.getBySuiteAndGroupName(programSuite
                     .getSuite().getName(), group.getName());
-            Calendar currentTime = TimeUtil.newGmtCalendar();
             if (playlist == null) {
                 playlist = new Playlist();
-                if (programSuite.getSuite().getType() == SuiteType.GENERAL) {
-                    playlist.setMessages(Collections.<BroadcastMsg> emptyList());
-                } else if (trigger) {
-                    playlist.setMessages(loadExistingMessages(programSuite,
-                            group, currentTime, false, false));
-                } else {
-                    return;
-                }
                 playlist.setSuite(programSuite.getSuite());
                 playlist.setTransmitterGroup(group);
+                playlist.refresh();
+                if (programSuite.getSuite().getType() != SuiteType.GENERAL) {
+                    if (programSuite.isTrigger(msg.getAfosid())) {
+                        loadExistingMessages(playlist);
+                    } else {
+                        return;
+                    }
+                }
+            } else {
+                playlist.refresh();
+                mergeMessage(playlist, msg, new HashMap<String, Set<String>>());
             }
-            playlist.setModTime(currentTime);
-            List<BroadcastMsg> messages = mergeMessage(msg,
-                    playlist.getMessages(), matReplacementMap);
-            sortAndPersistPlaylist(playlist, programSuite, messages, false);
+            persistPlaylist(playlist, programSuite, false);
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
         }
     }
 
-    private void sortAndPersistPlaylist(Playlist playlist,
-            ProgramSuite programSuite, List<BroadcastMsg> messages,
+    private void persistPlaylist(Playlist playlist, ProgramSuite programSuite,
             boolean forced) {
-        Calendar currentTime = playlist.getModTime();
-        Suite suite = playlist.getSuite();
-        /*
-         * Sort the messages by afosid so they can be added back in the order
-         * specified by the suite, this skips any expired messages so they are
-         * removed from the list.
-         */
-        Map<String, List<BroadcastMsg>> afosMapping = new HashMap<>();
-        for (BroadcastMsg message : messages) {
-            if (currentTime
-                    .after(message.getInputMessage().getExpirationTime())) {
-                continue;
-            }
-            List<BroadcastMsg> afosMessages = afosMapping.get(message
-                    .getAfosid());
-            if (afosMessages == null) {
-                afosMessages = new ArrayList<>(1);
-                afosMapping.put(message.getAfosid(), afosMessages);
-            }
-            afosMessages.add(message);
-        }
-
-        /*
-         * Add messages back into the list in the same order as the suite
-         * messages, also calculate the start and end time of the playlist by
-         * looking at the effective and expire times of any trigger messages.
-         */
-        Calendar startTime = playlist.getStartTime();
-        Calendar latestTrigger = null;
-        List<Calendar> futureTriggers = new ArrayList<>(1);
-        Calendar endTime = playlist.getEndTime();
-        messages.clear();
-        for (SuiteMessage smessage : suite.getSuiteMessages()) {
-            List<BroadcastMsg> afosMessages = afosMapping.remove(smessage
-                    .getAfosid());
-            if (afosMessages != null) {
-                messages.addAll(afosMessages);
-
-                Designation msgType = smessage.getMsgTypeSummary()
-                        .getDesignation();
-                boolean isTrigger = programSuite.isTrigger(smessage
-                        .getMsgTypeSummary());
-                if (isTrigger || suite.getType() == SuiteType.GENERAL
-                        || (forced && !msgType.isStatic())) {
-                    for (BroadcastMsg bmessage : afosMessages) {
-                        Calendar messageStart = bmessage.getInputMessage()
-                                .getEffectiveTime();
-                        Calendar messageEnd = bmessage.getInputMessage()
-                                .getExpirationTime();
-                        if ((startTime == null)
-                                || startTime.after(messageStart)) {
-                            startTime = messageStart;
-                        }
-                        if (messageStart.before(currentTime)) {
-                            if ((latestTrigger == null)
-                                    || latestTrigger.before(messageStart)) {
-                                latestTrigger = messageStart;
-                            }
-                        } else {
-                            futureTriggers.add(messageStart);
-                        }
-                        if ((endTime == null) || endTime.before(messageEnd)) {
-                            endTime = messageEnd;
-                        }
-                    }
-                }
-
-            }
-        }
-        if (startTime == null) {
-            startTime = endTime = latestTrigger = playlist.getModTime();
-        } else if ((latestTrigger == null) && !futureTriggers.isEmpty()) {
-            latestTrigger = startTime;
-            futureTriggers.remove(latestTrigger);
-        }
-        playlist.setStartTime(startTime);
-        playlist.setEndTime(endTime);
-        playlist.setMessages(messages);
-        if (startTime == endTime) {
+        List<Calendar> triggerTimes = playlist.setTimes(
+                programSuite.getTriggers(), forced);
+        if (triggerTimes.isEmpty()) {
+            /*
+             * setTimes only returns no triggers if the list should not be
+             * played.
+             */
             playlistDao.delete(playlist);
         } else {
             playlistDao.persist(playlist);
         }
-        if (futureTriggers.isEmpty() || suite.getType() == SuiteType.GENERAL
-                || forced) {
-            writePlaylistFile(playlist, latestTrigger);
+        if (triggerTimes.isEmpty()) {
+            writePlaylistFile(playlist, playlist.getModTime());
+        } else if (triggerTimes.size() == 1) {
+            writePlaylistFile(playlist, triggerTimes.get(0));
         } else {
             /*
              * If there are multiple triggers, need to write one file per
-             * trigger.
+             * trigger so that the dac transmit process knows enough about
+             * triggers to always play the list which triggered most recently.
              */
-            Collections.sort(futureTriggers);
-            playlist.setEndTime(futureTriggers.get(0));
-            writePlaylistFile(playlist, latestTrigger);
-            for (int i = 0; i < (futureTriggers.size() - 1); i += 1) {
-                playlist.setStartTime(futureTriggers.get(i));
-                playlist.setEndTime(futureTriggers.get(i + 1));
-                writePlaylistFile(playlist, futureTriggers.get(i));
+            Calendar endTime = playlist.getEndTime();
+            for (int i = 0; i < (triggerTimes.size() - 1); i += 1) {
+                playlist.setEndTime(triggerTimes.get(0));
+                writePlaylistFile(playlist, triggerTimes.get(i));
+                playlist.setStartTime(triggerTimes.get(i));
             }
-            playlist.setStartTime(futureTriggers.get(futureTriggers.size() - 1));
             playlist.setEndTime(endTime);
             writePlaylistFile(playlist, playlist.getStartTime());
         }
@@ -589,110 +508,35 @@ public class PlaylistManager implements IContextStateProcessor {
      * @return all the messages from the database for a playlist (optionally
      *         excluding triggers).
      */
-    private List<BroadcastMsg> loadExistingMessages(
-            final ProgramSuite programSuite, TransmitterGroup group,
-            Calendar expirationTime, boolean checkTrigger, boolean forced) {
-        List<BroadcastMsg> messages = new ArrayList<>();
-        if (checkTrigger) {
-            for (MessageTypeSummary programTrigger : programSuite.getTriggers()) {
-                /* TODO filter out inactive and expired messages in the query */
-                messages.addAll(broadcastMsgDao
-                        .getMessagesByAfosid(programTrigger.getAfosid()));
-            }
-            if (messages.isEmpty()
-                    && (programSuite.getSuite().getType() != SuiteType.GENERAL)
-                    && !forced) {
-                return Collections.emptyList();
-            }
+    private void loadExistingMessages(Playlist playlist) {
+        List<SuiteMessage> suiteMessages = playlist.getSuite()
+                .getSuiteMessages();
+        List<String> afosids = new ArrayList<>(suiteMessages.size());
+        for (SuiteMessage suiteMessage : suiteMessages) {
+            afosids.add(suiteMessage.getAfosid());
         }
-        for (SuiteMessage smessage : programSuite.getSuite().getSuiteMessages()) {
-            if (programSuite.isTrigger(smessage.getMsgTypeSummary()) == false) {
-                /* TODO filter out inactive messages in the query */
-                messages.addAll(broadcastMsgDao
-                        .getUnexpiredMessagesByAfosidAndGroup(
-                                smessage.getAfosid(), expirationTime, group));
-            }
-        }
-        Collections.sort(messages, new Comparator<BroadcastMsg>() {
-
-            @Override
-            public int compare(BroadcastMsg m1, BroadcastMsg m2) {
-                return m1.getCreationDate().compareTo(m2.getCreationDate());
-            }
-
-        });
-        List<BroadcastMsg> result = Collections.emptyList();
-
-        /*
-         * TODO: potential enhancment would be to load all replacement afos ides
-         * for current set of broadcast messages in one go
-         */
+        List<BroadcastMsg> messages = broadcastMsgDao
+                .getUnexpiredMessagesByAfosidsAndGroup(afosids,
+                        playlist.getModTime(), playlist.getTransmitterGroup());
         Map<String, Set<String>> matReplacementMap = new HashMap<>();
-
         for (BroadcastMsg message : messages) {
-            result = mergeMessage(message, result, matReplacementMap);
+            mergeMessage(playlist, message, matReplacementMap);
         }
-
-        return result;
     }
 
-    /**
-     * Add the message to the list of message, if there are any replacements,
-     * add it by replacing the first message that it is a replacement for,
-     * otherwise it is just added to the list.
-     * 
-     * @param msg
-     * @param list
-     * @param matReplacements
-     * @return
-     */
-    private List<BroadcastMsg> mergeMessage(BroadcastMsg msg,
-            List<BroadcastMsg> list, Map<String, Set<String>> matReplacementMap) {
+    private void mergeMessage(Playlist playlist, BroadcastMsg msg,
+            Map<String, Set<String>> matReplacementMap) {
         if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
-            return list;
+            return;
         }
-        list = new ArrayList<>(list);
-        boolean added = false;
         String afosid = msg.getAfosid();
-
-        List<Integer> mrdReplacements = Ints.asList(msg.getInputMessage()
-                .getMrdReplacements());
         Set<String> matReplacements = matReplacementMap.get(afosid);
         if (matReplacements == null) {
             matReplacements = messageTypeDao
                     .getReplacementAfosIdsForAfosId(afosid);
             matReplacementMap.put(afosid, matReplacements);
         }
-        matReplacements.add(afosid);
-        String areaCodes = msg.getInputMessage().getAreaCodes();
-
-        ListIterator<BroadcastMsg> messageIterator = list.listIterator();
-        while (messageIterator.hasNext()) {
-            BroadcastMsg potentialReplacee = messageIterator.next();
-            int potentialMrd = potentialReplacee.getInputMessage().getMrdId();
-            String potentialAreaCodes = potentialReplacee.getInputMessage()
-                    .getAreaCodes();
-            boolean areaCodesEqual = areaCodes == potentialAreaCodes
-                    || (areaCodes != null && areaCodes
-                            .equals(potentialAreaCodes));
-            boolean mrdReplacement = mrdReplacements.contains(potentialMrd);
-            boolean matReplacement = (potentialMrd == -1)
-                    && matReplacements.contains(potentialReplacee.getAfosid());
-            matReplacement = matReplacement && areaCodesEqual;
-            if (mrdReplacement || matReplacement) {
-                if (added) {
-                    messageIterator.remove();
-                } else {
-                    messageIterator.set(msg);
-                    added = true;
-                }
-            }
-        }
-
-        if (!added) {
-            list.add(msg);
-        }
-        return list;
+        playlist.addBroadcastMessage(msg, matReplacements);
 
     }
 
@@ -749,9 +593,10 @@ public class PlaylistManager implements IContextStateProcessor {
         dac.setStart(db.getStartTime());
         dac.setExpired(db.getEndTime());
         dac.setInterrupt(suite.getType() == SuiteType.INTERRUPT);
-        for (BroadcastMsg message : db.getMessages()) {
-            if (message.isSuccess()) {
-                dac.addMessage(convertMessageForDAC(message));
+        for (PlaylistMessage message : db.getSortedMessages()) {
+            BroadcastMsg broadcast = message.getBroadcastMsg();
+            if (broadcast.isSuccess()) {
+                dac.addMessage(convertMessageForDAC(broadcast));
             }
         }
         return dac;
@@ -944,10 +789,6 @@ public class PlaylistManager implements IContextStateProcessor {
 
     public void setTransmitterGroupDao(TransmitterGroupDao transmitterGroupDao) {
         this.transmitterGroupDao = transmitterGroupDao;
-    }
-
-    public MessageTypeDao getMessageTypeDao() {
-        return messageTypeDao;
     }
 
     public void setMessageTypeDao(MessageTypeDao messageTypeDao) {

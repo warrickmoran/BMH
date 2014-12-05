@@ -19,9 +19,18 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -29,12 +38,10 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
-import javax.persistence.OrderColumn;
+import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
@@ -44,8 +51,13 @@ import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
+import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage.ReplacementType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
  * 
@@ -64,6 +76,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Sep 09, 2014  3554     bsteffen    Add QUERY_BY_GROUP_NAME
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Nov 18, 2014  3746     rjpeter     Labeled ForeignKeys.
+ * Dec 08, 2014  3864     bsteffen    Add a PlaylistMsg class.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -115,12 +129,9 @@ public class Playlist {
     @Column
     private Calendar endTime;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(schema = "bmh", name = "playlist_messages", joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "message_id", referencedColumnName = "id"), uniqueConstraints = @UniqueConstraint(columnNames = {
-            "playlist_id", "message_position" }))
-    @OrderColumn(name = "message_position", nullable = false)
-    @Fetch(FetchMode.SELECT)
-    private List<BroadcastMsg> messages;
+    @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SUBSELECT)
+    private List<PlaylistMessage> messages = new ArrayList<>();
 
     public int getId() {
         return id;
@@ -170,12 +181,221 @@ public class Playlist {
         this.endTime = endTime;
     }
 
-    public List<BroadcastMsg> getMessages() {
+    /**
+     * @return a {@link SortedSet} of {@link PlaylistMessage}s in the order they
+     *         should be played according to the {@link Suite}
+     */
+    public SortedSet<PlaylistMessage> getSortedMessages() {
+        SortedSet<PlaylistMessage> sorted = new TreeSet<>(
+                new PlaylistMessageSuiteOrderComparator(suite));
+        sorted.addAll(messages);
+        return sorted;
+    }
+
+    /**
+     * Intended for things like serialization and persistence which don't
+     * actually play messages. Most of the time {@link #getSortedMessages()}
+     * should be used instead.
+     */
+    public List<PlaylistMessage> getMessages() {
         return messages;
     }
 
-    public void setMessages(List<BroadcastMsg> messages) {
+    public void setMessages(List<PlaylistMessage> messages) {
         this.messages = messages;
+    }
+
+    /**
+     * Update the modTime to be the currentTime and expire all messages who's
+     * expiration is before that time. Also rechecks that all messages are
+     * active and in the suite and removes any that are not.
+     */
+    public void refresh() {
+        modTime = TimeUtil.newGmtCalendar();
+        Iterator<PlaylistMessage> it = messages.iterator();
+        while (it.hasNext()) {
+            PlaylistMessage existing = it.next();
+            if (!suite.containsSuiteMessage(existing.getAfosid())) {
+                it.remove();
+            } else if (modTime.after(existing.getExpirationTime())) {
+                it.remove();
+            } else if (!existing.isActive()) {
+                it.remove();
+            }
+        }
+    }
+
+    /**
+     * Calculate the start end, and trigger times of this playlist. The start
+     * and end times are stored in their respective fields and the trigger times
+     * are returned.
+     * 
+     * @param triggers
+     *            all the message types that are considered triggers for this
+     *            playlist. This can be omitted for general suites or when
+     *            forced is true because all messages are treated as triggers.
+     * @param forced
+     *            true if the playlist should be forced, this will ignore
+     *            triggers and treat all messages as triggers.
+     * @return the applicable trigger times for this playlist, essentially every
+     *         start time of a trigger type message. Only the most recent past
+     *         trigger time is included, along with all future trigger times.
+     */
+    public List<Calendar> setTimes(Set<MessageTypeSummary> triggers,
+            boolean forced) {
+        Set<String> triggerAfosids = new HashSet<>(triggers == null ? 0
+                : triggers.size(), 1.0f);
+        if (!forced) {
+            if (suite.getType() == SuiteType.GENERAL) {
+                for (SuiteMessage message : suite.getSuiteMessages()) {
+                    triggerAfosids.add(message.getAfosid());
+                }
+            } else if (triggers != null) {
+                for (MessageTypeSummary trigger : triggers) {
+                    triggerAfosids.add(trigger.getAfosid());
+                }
+            }
+        }
+        Calendar startTime = this.startTime;
+        List<Calendar> triggerTimes = new LinkedList<>();
+        Calendar endTime = this.endTime;
+        for (PlaylistMessage message : messages) {
+            if (forced || triggerAfosids.contains(message.getAfosid())) {
+                Calendar messageStart = message.getEffectiveTime();
+                Calendar messageEnd = message.getExpirationTime();
+                if ((startTime == null) || startTime.after(messageStart)) {
+                    startTime = messageStart;
+                }
+                triggerTimes.add(messageStart);
+                if (endTime == null || endTime.before(messageEnd)) {
+                    endTime = messageEnd;
+                }
+            }
+        }
+        if (startTime == null) {
+            startTime = this.modTime;
+            endTime = this.modTime;
+            return Collections.emptyList();
+        }
+        this.startTime = startTime;
+        this.endTime = endTime;
+        if (forced || suite.getType() == SuiteType.GENERAL) {
+            return Collections.singletonList(modTime);
+        }
+        Collections.sort(triggerTimes);
+        Iterator<Calendar> it = triggerTimes.iterator();
+        Calendar mostRecentPastTrigger = null;
+        while (it.hasNext()) {
+            Calendar next = it.next();
+            if (modTime.after(next)) {
+                it.remove();
+                mostRecentPastTrigger = next;
+            } else {
+                break;
+            }
+        }
+        if (mostRecentPastTrigger != null) {
+            triggerTimes.add(0, mostRecentPastTrigger);
+        }
+        return triggerTimes;
+    }
+
+    /**
+     * Attempt to add a message to the playlist. The message is not added if it
+     * is inactive or if the message type is not part of the suite. MAT, MRD,
+     * and Identity replacement are all processed and messages that should be
+     * replaced will be removed from this list.
+     * 
+     * @param message
+     *            the new message.
+     * @param matReplacements
+     *            the afosids of messages this message should replace.
+     */
+    public void addBroadcastMessage(BroadcastMsg message,
+            Set<String> matReplacements) {
+        PlaylistMessage playlistMessage = new PlaylistMessage(message, this);
+        if (playlistMessage.isActive() && !messages.contains(playlistMessage)
+                && suite.containsSuiteMessage(message.getAfosid())) {
+            removeMrdReplacements(playlistMessage);
+            removeMatReplacements(playlistMessage, matReplacements);
+            removeIdentityReplacements(playlistMessage);
+            messages.add(playlistMessage);
+        }
+    }
+
+    /**
+     * Remove any messages with the same type, and areas.
+     */
+    private void removeIdentityReplacements(PlaylistMessage message) {
+        String afosid = message.getAfosid();
+        Iterator<PlaylistMessage> it = messages.iterator();
+        while (it.hasNext()) {
+            PlaylistMessage existing = it.next();
+            if (afosid.equals(existing.getAfosid())) {
+                String areaCodes = message.getAreaCodes();
+                String existingAreaCodes = existing.getAreaCodes();
+                int mrd = message.getMrdId();
+                int existingMrd = existing.getMrdId();
+                boolean areaCodesEqual = areaCodes == existingAreaCodes
+                        || (areaCodes != null && areaCodes
+                        .equals(existingAreaCodes));
+                boolean mrdEqual = mrd == existingMrd;
+                if (areaCodesEqual && mrdEqual) {
+                    it.remove();
+                }
+            }
+        }
+    }
+
+    /**
+     * Remove any messages whose type is in matRepklacements.
+     */
+    private void removeMatReplacements(PlaylistMessage message,
+            Set<String> matReplacements) {
+        if (matReplacements == null || message.getMrdId() != -1) {
+            return;
+        }
+        Iterator<PlaylistMessage> it = messages.iterator();
+        while (it.hasNext()) {
+            PlaylistMessage existing = it.next();
+            if (matReplacements.contains(existing.getAfosid())) {
+                String areaCodes = message.getAreaCodes();
+                String existingAreaCodes = existing.getAreaCodes();
+                if (areaCodes == existingAreaCodes
+                        || (areaCodes != null && areaCodes
+                                .equals(existingAreaCodes))) {
+                    it.remove();
+                    if (message.getReplacementType() == null) {
+                        message.setReplacementType(ReplacementType.MAT);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Remove any messages whose mrd id is in the set of ids that this messages
+     * should replace.
+     */
+    private void removeMrdReplacements(PlaylistMessage message) {
+        int[] mrdReplacements = message.getBroadcastMsg().getInputMessage()
+                .getMrdReplacements();
+        if (mrdReplacements != null && mrdReplacements.length > 0) {
+            Set<Integer> mrdReplacementSet = new HashSet<>(
+                    mrdReplacements.length, 1.0f);
+            for (int mrdReplacement : mrdReplacements) {
+                mrdReplacementSet.add(mrdReplacement);
+            }
+            Iterator<PlaylistMessage> it = messages.iterator();
+            while (it.hasNext()) {
+                int existingMrdId = it.next().getBroadcastMsg()
+                        .getInputMessage().getMrdId();
+                if (mrdReplacementSet.contains(existingMrdId)) {
+                    it.remove();
+                    message.setReplacementType(ReplacementType.MRD);
+                }
+            }
+        }
     }
 
 }

@@ -31,6 +31,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -76,6 +77,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  *                                     MessageTypeDataManager class.
  * Sep 12, 2014    3588    bsteffen    Broadcast msg support audio fragments.
  * Oct 21, 2014    3655    bkowal      Updated to use {@link IPlaylistData}.
+ * Dec 08, 2014    3864    bsteffen    Add a PlaylistMsg class.
  * 
  * </pre>
  * 
@@ -139,18 +141,20 @@ public class BroadcastCycleDataManager {
         }
 
         // TODO fix with simulator data
-        for (BroadcastMsg msg : playlist.getMessages()) {
-            if (msg.getInputMessage().isPeriodic()) {
+        for (PlaylistMessage msg : playlist.getMessages()) {
+            BroadcastMsg broadcast = msg.getBroadcastMsg();
+            if (broadcast.getInputMessage().isPeriodic()) {
                 TableRowData rowData = new TableRowData();
 
-                TableCellData cell = new TableCellData(msg.getUpdateDate()
+                TableCellData cell = new TableCellData(broadcast
+                        .getUpdateDate()
                         .getTime().toString());
                 rowData.addTableCellData(cell);
 
                 cell = new TableCellData("N/A");
                 rowData.addTableCellData(cell);
 
-                cell = new TableCellData(msg.getInputMessage().getAfosid());
+                cell = new TableCellData(broadcast.getAfosid());
                 rowData.addTableCellData(cell);
 
                 data.addDataRow(rowData);

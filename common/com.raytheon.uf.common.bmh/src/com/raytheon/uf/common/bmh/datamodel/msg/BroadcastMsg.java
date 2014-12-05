@@ -67,6 +67,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 23, 2014  3748     bkowal      Added getBroadcastMsgsByInputMsg.
  * Nov 18, 2014  3746     rjpeter     Labeled foreign key.
  * Nov 26, 2014  3613     bsteffen    Add getBroadcastMsgsByFragmentPath
+ * Dec 08, 2014  3864     bsteffen    Redo some of the playlist manager queries.
  * 
  * </pre>
  * 
@@ -75,10 +76,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 
 @NamedQueries({
-        @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID, query = BroadcastMsg.GET_MSGS_BY_AFOS_ID_QUERY),
+        @NamedQuery(name = BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_IDS_AND_GROUP, query = BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_IDS_AND_GROUP_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE, query = BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_INPUT_MSG, query = BroadcastMsg.GET_MSGS_BY_INPUT_MSG_QUERY),
-        @NamedQuery(name = BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP, query = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosID AND m.inputMessage.expirationTime > :expirationTime AND m.transmitterGroup = :group"),
         @NamedQuery(name = BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH, query = BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH_QUERY) })
 @Entity
 @DynamicSerialize
@@ -87,15 +87,13 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class BroadcastMsg {
     public static final String GEN = "Broadcast Msg Generator";
 
-    public static final String GET_MSGS_BY_AFOS_ID = "getBroadcastMsgsByAfosId";
+    public static final String GET_UNEXPIRED_MSGS_BY_AFOS_IDS_AND_GROUP = "getBroadcastMsgsByAfosIdsAndGroup";
 
-    protected static final String GET_MSGS_BY_AFOS_ID_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosId";
-
-    public static final String GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP = "getUnexpiredBroadcastMsgsByAfosIDAndGroup";
+    protected static final String GET_UNEXPIRED_MSGS_BY_AFOS_IDS_AND_GROUP_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid IN :afosIDs AND m.inputMessage.expirationTime > :expirationTime AND m.transmitterGroup = :group ORDER BY m.inputMessage.creationTime DESC";
 
     public static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE = "getBroadcastMsgsByAfosIdGroupAndLanguage";
 
-    protected static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosId AND m.transmitterGroup = :group AND m.inputMessage.language = :language ORDER BY m.inputMessage.creationTime DESC";
+    protected static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosId AND m.transmitterGroup = :group AND m.inputMessage.language = :language ORDER BY m.inputMessage.creationTime ASC";
 
     public static final String GET_MSGS_BY_INPUT_MSG = "getBroadcastMsgsByInputMsg";
 

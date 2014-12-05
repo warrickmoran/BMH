@@ -50,6 +50,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Oct 23, 2014  3748     bkowal      Added getMessagesByInputMsgId
  * Nov 26, 2014  3613     bsteffen    Add getMessageByFragmentPath
+ * Dec 08, 2014  3864     bsteffen    Redo some of the playlist manager queries.
  * 
  * </pre>
  * 
@@ -68,19 +69,13 @@ public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
     }
 
     @SuppressWarnings("unchecked")
-    public List<BroadcastMsg> getMessagesByAfosid(final String afosid) {
-        return (List<BroadcastMsg>) findByNamedQueryAndNamedParam(
-                BroadcastMsg.GET_MSGS_BY_AFOS_ID, "afosId", afosid);
-    }
-
-    @SuppressWarnings("unchecked")
-    public List<BroadcastMsg> getUnexpiredMessagesByAfosidAndGroup(
-            final String afosid, final Calendar expirationTime,
+    public List<BroadcastMsg> getUnexpiredMessagesByAfosidsAndGroup(
+            final List<String> afosids, final Calendar expirationTime,
             final TransmitterGroup group) {
         return (List<BroadcastMsg>) findByNamedQueryAndNamedParam(
-                BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_ID_AND_GROUP,
-                new String[] { "afosID", "expirationTime", "group" },
-                new Object[] { afosid, expirationTime, group });
+                BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_IDS_AND_GROUP,
+                new String[] { "afosIDs", "expirationTime", "group" },
+                new Object[] { afosids, expirationTime, group });
     }
 
     public BroadcastMsg getMessageExistence(final TransmitterGroup group,

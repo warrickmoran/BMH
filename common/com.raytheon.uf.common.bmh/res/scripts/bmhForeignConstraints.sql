@@ -31,6 +31,7 @@
  * Nov 11, 2014 3803       bkowal      Added on delete cascade for ldad config and ldad msg type.
  * Nov 26, 2014 3613       bkowal      Added cascade for broadcast_fragment
  * Dec 09, 2014 3603       bsteffen    Add cascade for transmitter language
+ * Dec 08, 2014 3864       bsteffen    Add a PlaylistMsg class.
  **/
 
 /**
@@ -49,9 +50,9 @@ alter table bmh.broadcast_msg drop constraint fk_p29wngg6tdbtcr7ukef334213;
 alter table bmh.broadcast_msg add constraint fk_p29wngg6tdbtcr7ukef334213
     foreign key (input_message_id) references bmh.input_msg (id) on delete cascade;
 
-alter table bmh.playlist_messages drop constraint fk_dna1dgu6xkltlusrwgc8s913q;
-alter table bmh.playlist_messages add constraint fk_dna1dgu6xkltlusrwgc8s913q
-    foreign key (message_id) references bmh.broadcast_msg (id) on delete cascade;
+alter table bmh.playlist_msg drop constraint fk_n7wab174o6f0cmvw3cetrtsl8;
+alter table bmh.playlist_msg add constraint fk_n7wab174o6f0cmvw3cetrtsl8
+    foreign key (broadcast_msg_id) references bmh.broadcast_msg (id) on delete cascade;
 
 alter table bmh.broadcast_fragment drop constraint fk_m87w4p7uk2l0vyjb1es2xs4vm;
 alter table bmh.broadcast_fragment add constraint fk_m87w4p7uk2l0vyjb1es2xs4vm
@@ -139,8 +140,8 @@ alter table bmh.playlist add constraint playlist_to_suite
 /**
  * Playlist message to playlist
  **/
-alter table bmh.playlist_messages drop constraint fk_m2ap9u9gtxgdj45jux5po6h6g;
-alter table bmh.playlist_messages add constraint fk_m2ap9u9gtxgdj45jux5po6h6g
+alter table bmh.playlist_msg drop constraint fk_4xn6yclcydx4g61id81rdhuki;
+alter table bmh.playlist_msg add constraint fk_4xn6yclcydx4g61id81rdhuki
     foreign key (playlist_id) references bmh.playlist(id) on delete cascade;
 
 /**
