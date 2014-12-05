@@ -97,7 +97,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Nov 13, 2014  3698      rferrel     Checks to allow only one GENERAL type suite per program.
  * Nov 22, 2014  3842      mpduff      Fully populate dialog on new program.
+ * Dec 01, 2014  3698      rferrel     Changed message dialogs to only perform action when OK button is selected.
  * Dec 07, 2014  3846      mpduff      Only load the selected Program rather than all programs.
+ *                                      Changing program selection now updates program's transmitters.
  * 
  * </pre>
  * 
@@ -614,7 +616,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
                 | SWT.OK | SWT.CANCEL, "Confirm Delete", sb.toString());
 
-        if (result == SWT.CANCEL) {
+        if (result != SWT.OK) {
             return;
         }
 
@@ -708,7 +710,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                 SWT.ICON_WARNING | SWT.OK | SWT.CANCEL, "Confirm Delete",
                 sb.toString());
 
-        if (result == SWT.CANCEL) {
+        if (result != SWT.OK) {
             return;
         }
 
@@ -881,6 +883,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
             enableProgramControls(true);
             updateSelectedProgram();
+            populateTransmitters();
         }
     }
 

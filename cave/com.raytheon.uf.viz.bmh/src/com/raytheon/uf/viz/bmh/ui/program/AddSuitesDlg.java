@@ -37,6 +37,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
@@ -110,20 +111,24 @@ public class AddSuitesDlg extends CaveSWTDialog {
     /** List of exiting suites. */
     private final List<Suite> existingSuites;
 
+    /** Program to add suites to. */
+    private final Program selectedProgram;
+
     /**
      * Constructor.
      * 
      * @param parentShell
      *            Parent shell.
      */
-    public AddSuitesDlg(Shell parentShell, List<Suite> existingSuites) {
+    public AddSuitesDlg(Shell parentShell, Program selectedProgram) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
-        if (existingSuites == null) {
+        this.selectedProgram = selectedProgram;
+        if (selectedProgram == null) {
             this.existingSuites = new ArrayList<>();
         } else {
-            this.existingSuites = new ArrayList<>(existingSuites);
+            this.existingSuites = new ArrayList<>(selectedProgram.getSuites());
         }
     }
 
@@ -359,20 +364,49 @@ public class AddSuitesDlg extends CaveSWTDialog {
             }
         }
 
+        Suite oldGeneralSuite = null;
+
         if (validSuites.isEmpty()) {
             String message = "All of the suites selected already exist in the program.";
             return warningMessage(message);
         } else {
             int generalSuiteCnt = 0;
+            Suite newGeneralSuite = null;
             for (Suite s : validSuites) {
                 if (s.getType() == SuiteType.GENERAL) {
                     ++generalSuiteCnt;
+                    newGeneralSuite = s;
                 }
             }
 
             if (existingContainsGeneral() && (generalSuiteCnt > 0)) {
-                String message = "Cannot add GENERAL category suite to a program that already contains one.";
-                return warningMessage(message);
+                if (generalSuiteCnt > 1) {
+                    String message = "Cannot add multiple GENERAL category suites to a program that already contains one.";
+                    return warningMessage(message);
+                }
+
+                for (Suite s : existingSuites) {
+                    if (s.getType() == SuiteType.GENERAL) {
+                        oldGeneralSuite = s;
+                        break;
+                    }
+                }
+
+                int result = DialogUtility
+                        .showMessageBox(
+                                shell,
+                                SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                                "Replace Suite",
+                                "The \""
+                                        + selectedProgram.getName()
+                                        + "\" program already contains a GENERAL category suite: "
+                                        + oldGeneralSuite.getName()
+                                        + ".\n\nSelect OK to replace with suite: "
+                                        + newGeneralSuite.getName());
+                if (result != SWT.OK) {
+                    validSuites.remove(newGeneralSuite);
+                    oldGeneralSuite = null;
+                }
             } else if (generalSuiteCnt > 1) {
                 String message = "Can only add one GENERAL category suite.";
                 return warningMessage(message);
@@ -389,6 +423,10 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
             DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
                     "Existing Suites", sb.toString());
+        }
+
+        if (oldGeneralSuite != null) {
+            selectedProgram.removeSuite(oldGeneralSuite);
         }
 
         setReturnValue(validSuites);

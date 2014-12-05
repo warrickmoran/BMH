@@ -446,7 +446,7 @@ public class SuiteConfigGroup extends Composite {
                      */
 
                     AddSuitesDlg asd = new AddSuitesDlg(getShell(),
-                            existingSuites);
+                            selectedProgram);
                     asd.setCloseCallback(new ICloseCallback() {
                         @SuppressWarnings("unchecked")
                         @Override

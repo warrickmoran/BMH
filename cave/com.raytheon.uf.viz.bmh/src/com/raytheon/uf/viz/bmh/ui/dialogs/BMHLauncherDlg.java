@@ -121,6 +121,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 13, 2014   3803     bkowal      Eliminated NPE on operational db copy.
  * Nov 17, 2014   3808     bkowal      Add the Broadcast Live dialog.
  * Nov 19, 2014   3349     lvenable    Use the new System status dialog.
+ * Dec 01, 2014   3698     rferrel     Add warning to copyOperationalDb.
  * 
  * </pre>
  * 
@@ -1060,6 +1061,16 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     }
 
     private void copyOperationalDb() {
+
+        int result = DialogUtility
+                .showMessageBox(
+                        shell,
+                        SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                        "Copy Operation data base",
+                        "This will wipe out the current contents of your pratice data base.\n\nSelect OK to continue.");
+        if (result != SWT.OK) {
+            return;
+        }
         /*
          * TODO this dialog prevents the user from using cave while they wait,
          * ideally it would only block BMH.
