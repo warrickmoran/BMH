@@ -120,7 +120,7 @@ public class SilenceAlarm {
         }
         synchronized (silenceTimes) {
             for (DacVoiceStatus voiceStatus : status.getVoiceStatus()) {
-                if (voiceStatus == DacVoiceStatus.SILENCE) {
+                if (voiceStatus != DacVoiceStatus.IP_AUDIO) {
                     if (!silenceTimes.containsKey(group)) {
                         silenceTimes.put(group, new SilenceTime(group));
                         if (thread == null) {
