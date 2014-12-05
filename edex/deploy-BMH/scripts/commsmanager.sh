@@ -32,6 +32,7 @@
 #                                                 redirect to log file, and background script.
 #    09/09/14        3456          bkowal         Use yajsw to start.
 #    10/17/14        3687          bsteffen       Practice mode.
+#    12/04/14        3890          bkowal         Use centralized yajsw.
 ##############################################################################
 
 CONF_FILE="wrapper.conf"
@@ -69,4 +70,4 @@ fi
 export PATH=${awips_home}/bin:${JAVA_HOME}/bin:${PATH}
 
 $JAVA -Xmx32m -XX:MaxPermSize=12m -XX:ReservedCodeCacheSize=4m -jar \
-	${BMH_HOME}/bin/yajsw/wrapper.jar -c ${BMH_HOME}/conf/${CONF_FILE}
+	${YAJSW_HOME}/wrapper.jar -c ${BMH_HOME}/conf/${CONF_FILE}
