@@ -36,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Nov 18, 2014  3817     bsteffen    Initial creation
+ * Dec 05, 2014  3287     lvenable    Check for null when retrieving connectedTransmitterGroups.
  * 
  * </pre>
  * 
@@ -63,6 +64,9 @@ public class CommsManagerStatus extends PeriodicStatusMessage {
     }
 
     public Set<String> getConnectedTransmitterGroups() {
+        if (connectedTransmitterGroups == null) {
+            connectedTransmitterGroups = new HashSet<>();
+        }
         return connectedTransmitterGroups;
     }
 
