@@ -57,6 +57,7 @@ export EDEX_HOME="${awips_home}/edex"
 
 export JAVA_HOME="${awips_home}/java"
 export JAVA=${JAVA_HOME}/bin/java
+export YAJSW_HOME="${awips_home}/yajsw"
 export CONSOLE_LOGLEVEL=DEBUG
 comms_pid=`pgrep -f "java.*-c ${BMH_HOME}/conf/${CONF_FILE}"`
 if [ $? -eq 0 ]; then
