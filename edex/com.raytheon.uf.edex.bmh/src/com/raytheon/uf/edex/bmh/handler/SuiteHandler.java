@@ -51,6 +51,7 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 21, 2014  3715     bkowal      Updates due to hibernate upgrade.
  * Oct 29, 2014  3636     rferrel     Implement logging,
+ * Dec 07, 2014  3752     mpduff      Add getSuiteByName
  * 
  * </pre>
  * 
@@ -84,6 +85,9 @@ public class SuiteHandler extends AbstractBMHServerRequestHandler<SuiteRequest> 
             suiteResponse = saveSuite(request);
             notification = new SuiteConfigNotification(ConfigChangeType.Update,
                     request.getSuite());
+            break;
+        case GetSuiteByName:
+            suiteResponse = getSuiteByName(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -187,6 +191,15 @@ public class SuiteHandler extends AbstractBMHServerRequestHandler<SuiteRequest> 
                 BMHLoggerUtils.logSave(request, user, oldSuite, suite);
             }
         }
+
+        return suiteResponse;
+    }
+
+    private SuiteResponse getSuiteByName(SuiteRequest request) {
+        SuiteDao dao = new SuiteDao(request.isOperational());
+        SuiteResponse suiteResponse = new SuiteResponse();
+        Suite suite = dao.getSuiteByName(request.getSuiteName());
+        suiteResponse.addSuite(suite);
 
         return suiteResponse;
     }

@@ -43,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 21, 2014     3655   bkowal      Updated to use {@link IPlaylistData}.
  * Nov 04, 2014     3778   bsteffen    Preserve the order of the prediction map.
  * Nov 30, 2014     3752   mpduff      Added Suite name and playlist cycle duration time.
+ * Nov 30, 2014     3752   mpduff      Added Suite name and playlist cycle duration time to copy constructor.
  * 
  * </pre>
  * 
@@ -89,6 +90,8 @@ public class PlaylistDataStructure implements IPlaylistData {
         this.playlistMap = new HashMap<>(that.getPlaylistMap());
         this.predictionMap = new LinkedHashMap<>(that.getPredictionMap());
         this.messageTypeMap = new HashMap<>(that.getMessageTypeMap());
+        this.suiteName = that.getSuiteName();
+        this.playbackCycleTime = that.getPlaybackCycleTime();
     }
 
     public Map<Long, BroadcastMsg> getPlaylistMap() {

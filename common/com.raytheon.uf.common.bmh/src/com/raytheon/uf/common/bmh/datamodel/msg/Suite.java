@@ -76,6 +76,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 21, 2014 3746      rjpeter     Hibernate upgrade.
  * Oct 29, 2014 3636      rferrel     Implement Logging.
  * Nov 13, 2014 3717      bsteffen    Add containsSuiteMessage
+ * Dec 07, 2014 3752      mpduff      Add getSuiteByName
  * 
  * </pre>
  * 
@@ -84,7 +85,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @NamedQueries({
         @NamedQuery(name = Suite.GET_SUITE_NAMES_CATS_IDS, query = Suite.GET_SUITE_NAMES_CATS_IDS_QUERY),
-        @NamedQuery(name = Suite.GET_SUITE_MSG_TYPES, query = Suite.GET_SUITE_MSG_TYPES_QUERY) })
+        @NamedQuery(name = Suite.GET_SUITE_MSG_TYPES, query = Suite.GET_SUITE_MSG_TYPES_QUERY),
+        @NamedQuery(name = Suite.GET_SUITE_BY_NAME, query = Suite.GET_SUITE_BY_NAME_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "suite", schema = "bmh")
@@ -102,6 +104,10 @@ public class Suite {
     public static final String GET_SUITE_MSG_TYPES = "getSuiteMessageTypes";
 
     protected static final String GET_SUITE_MSG_TYPES_QUERY = "select s.id, s.name, s.type, mt.afosid FROM Suite s inner join s.suiteMessages sm inner join sm.msgTypeSummary mt";
+
+    public static final String GET_SUITE_BY_NAME = "getSuiteByName";
+
+    protected static final String GET_SUITE_BY_NAME_QUERY = "FROM Suite s WHERE s.name = :name";
 
     static final String GEN = "Suite Id Generator";
 

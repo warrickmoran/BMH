@@ -40,6 +40,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * ------------ ---------- ----------- --------------------------
  * Aug 17, 2014 #3490      lvenable     Initial creation
  * Aug 18, 2014 #3490      lvenable     Added save action.
+ * Dec 07, 2014  3752      mpduff       Add getSuiteByName.
  * 
  * </pre>
  * 
@@ -125,5 +126,29 @@ public class SuiteDataManager {
         suiteResponse = (SuiteResponse) BmhUtils.sendRequest(sr);
 
         return suiteResponse;
+    }
+
+    /**
+     * Get a Suite by name
+     * 
+     * @param suiteName
+     *            Suite Name
+     * @return The Suite
+     * @throws Exception
+     */
+    public Suite getSuiteByName(String suiteName) throws Exception {
+        SuiteRequest sr = new SuiteRequest();
+        sr.setAction(SuiteAction.GetSuiteByName);
+        sr.setSuiteName(suiteName);
+        SuiteResponse suiteResponse = null;
+
+        suiteResponse = (SuiteResponse) BmhUtils.sendRequest(sr);
+
+        List<Suite> suiteList = suiteResponse.getSuiteList();
+        if (suiteList != null && !suiteList.isEmpty()) {
+            return suiteList.get(0);
+        }
+
+        return null;
     }
 }

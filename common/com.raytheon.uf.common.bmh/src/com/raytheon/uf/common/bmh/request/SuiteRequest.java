@@ -36,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 12, 2014  3490     lvenable    Added SuitesMsgTypes action.
  * Aug 17, 2014  3490     lvenable    Added suite and getter/setters.
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Dec 07, 2014  3752     mpduff      Add getSuiteByName
  * 
  * </pre>
  * 
@@ -46,7 +47,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class SuiteRequest extends AbstractBMHServerRequest {
 
     public enum SuiteAction {
-        Save, ListSuitesCats, AllSuites, SuitesMsgTypes, Delete;
+        Save, ListSuitesCats, AllSuites, SuitesMsgTypes, Delete, GetSuiteByName;
     }
 
     @DynamicSerializeElement
@@ -54,6 +55,9 @@ public class SuiteRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private Suite suite;
+
+    @DynamicSerializeElement
+    private String suiteName;
 
     /**
      * Get the suite action.
@@ -80,5 +84,20 @@ public class SuiteRequest extends AbstractBMHServerRequest {
 
     public void setSuite(Suite suite) {
         this.suite = suite;
+    }
+
+    /**
+     * @return the suiteName
+     */
+    public String getSuiteName() {
+        return suiteName;
+    }
+
+    /**
+     * @param suiteName
+     *            the suiteName to set
+     */
+    public void setSuiteName(String suiteName) {
+        this.suiteName = suiteName;
     }
 }

@@ -56,6 +56,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessagePk;
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * Oct 29, 2014  3636     rferrel     Change template for id to Integer.
+ * Dec 07, 2014  3752     mpduff      Add getSuiteByName
  * </pre>
  * 
  * @author bsteffen
@@ -259,5 +260,23 @@ public class SuiteDao extends AbstractBMHDao<Suite, Integer> {
         } else {
             session.save(suite);
         }
+    }
+
+    /**
+     * Get a Suite by name.
+     * 
+     * @param name
+     *            The Suite Name
+     * @return The Suite
+     */
+    public Suite getSuiteByName(String name) {
+        List<Suite> suiteList = (List<Suite>) findByNamedQueryAndNamedParam(
+                Suite.GET_SUITE_BY_NAME, "name", name);
+
+        if (suiteList != null && !suiteList.isEmpty()) {
+            return suiteList.get(0);
+        }
+
+        return null;
     }
 }
