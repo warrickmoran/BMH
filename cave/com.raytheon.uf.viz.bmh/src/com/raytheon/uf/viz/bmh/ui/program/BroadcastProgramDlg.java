@@ -20,7 +20,6 @@
 package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -44,6 +43,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
@@ -96,7 +96,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 27, 2014  3750      lvenable    fixed message type table update when adding new suite.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Nov 13, 2014  3698      rferrel     Checks to allow only one GENERAL type suite per program.
- * Nov 22, 2014  3842      mpduff      Fully populate dialog on new program
+ * Nov 22, 2014  3842      mpduff      Fully populate dialog on new program.
+ * Dec 07, 2014  3846      mpduff      Only load the selected Program rather than all programs.
  * 
  * </pre>
  * 
@@ -142,8 +143,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     /** List of program controls. */
     private final List<Control> programControls = new ArrayList<Control>();
 
-    /** List of program and associated data. */
-    private List<Program> programsArray = new ArrayList<Program>();
+    /** List of PrgramSummary objects */
+    private List<ProgramSummary> programSummaryList = new ArrayList<>();
 
     /** Message Type table data. */
     private TableData msgTypeTableData = null;
@@ -204,8 +205,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     protected void initializeComponents(Shell shell) {
         setText(DlgInfo.BROADCAST_PROGRAMS.getTitle());
 
-        // Get the Program data.
-        retrieveProgramDataFromDB();
+        // Get the ProgramSummary data.
+        retrieveProgramSummariesFromDB();
 
         createProgramControls();
         createTransmitterControls();
@@ -246,7 +247,6 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         programCbo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                updateSelectedProgram();
                 handleProgramChange();
             }
         });
@@ -288,8 +288,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             public void widgetSelected(SelectionEvent e) {
                 Set<String> programNames = new HashSet<String>();
 
-                for (Program p : programsArray) {
-                    programNames.add(p.getName());
+                for (ProgramSummary ps : programSummaryList) {
+                    programNames.add(ps.getName());
                 }
 
                 ProgramNameValidator pnv = new ProgramNameValidator(
@@ -354,33 +354,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         assignTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                Map<String, String> transGrpProgramMap = new HashMap<String, String>();
-
-                for (Program p : programsArray) {
-                    for (TransmitterGroup tg : p.getTransmitterGroups()) {
-                        if (transGrpProgramMap.containsKey(tg.getName())) {
-                            continue;
-                        }
-                        transGrpProgramMap.put(tg.getName(), p.getName());
-                    }
-                }
-
-                AddTransmittersDlg atd = new AddTransmittersDlg(shell,
-                        programCbo.getItem(programCbo.getSelectionIndex()),
-                        transGrpProgramMap);
-                atd.setCloseCallback(new ICloseCallback() {
-                    @Override
-                    public void dialogClosed(Object returnValue) {
-                        if ((returnValue != null)
-                                && (returnValue instanceof List<?>)) {
-
-                            List<TransmitterGroup> selectedTransmitters = (List<TransmitterGroup>) returnValue;
-
-                            handleAddTransmitters(selectedTransmitters);
-                        }
-                    }
-                });
-                atd.open();
+                handleAssignTransmitter();
             }
         });
         programControls.add(assignTransmitterBtn);
@@ -454,7 +428,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                     + selectedProgram.getName(), e);
         }
 
-        retrieveProgramDataFromDB();
+        retrieveProgramSummariesFromDB();
         populateProgramCombo(true);
         populateSuiteTable(true);
 
@@ -464,6 +438,26 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
         populateMsgTypeTable(suiteConfigGroup.getSelectedSuite());
         updateSuiteGroupText();
+    }
+
+    /**
+     * Assign transmitter action handler.
+     */
+    private void handleAssignTransmitter() {
+        AddTransmittersDlg atd = new AddTransmittersDlg(shell,
+                selectedProgram.getName());
+        atd.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if ((returnValue != null) && (returnValue instanceof List<?>)) {
+
+                    List<TransmitterGroup> selectedTransmitters = (List<TransmitterGroup>) returnValue;
+
+                    handleAddTransmitters(selectedTransmitters);
+                }
+            }
+        });
+        atd.open();
     }
 
     /**
@@ -486,7 +480,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                     + selectedProgram.getName(), e);
         }
 
-        retrieveProgramDataFromDB();
+        retrieveProgramSummariesFromDB();
         populateProgramCombo(true);
         populateTransmitters();
         populateSuiteTable(true);
@@ -517,7 +511,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         if ((programCbo.getItemCount() > 0)
                 && (programCbo.getSelectionIndex() >= 0)) {
             suiteConfigGroup.updateSuiteGroupText(suiteGroupTextPrefix
-                    + programCbo.getItem(programCbo.getSelectionIndex()));
+                    + selectedProgram.getName());
         } else {
             suiteConfigGroup.updateSuiteGroupText("N/A");
         }
@@ -632,13 +626,13 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                             + " from the database: ", e);
         }
 
-        retrieveProgramDataFromDB();
+        retrieveProgramSummariesFromDB();
         populateProgramCombo();
         handleProgramChange();
     }
 
     private void handleNewProgram(String programName) {
-        retrieveProgramDataFromDB();
+        retrieveProgramSummariesFromDB();
         populateProgramCombo(programName);
         populateSuiteTable(true);
 
@@ -740,7 +734,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                     "Error saving program data from the database: ", e);
         }
 
-        retrieveProgramDataFromDB();
+        retrieveProgramSummariesFromDB();
         populateProgramCombo(true);
         populateSuiteTable(true);
 
@@ -765,7 +759,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             }
         }
 
-        retrieveProgramDataFromDB();
+        retrieveProgramSummariesFromDB();
         populateProgramCombo(true);
         populateSuiteTable(true);
 
@@ -800,7 +794,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             statusHandler.error("Error renaming the program: ", e);
         }
 
-        retrieveProgramDataFromDB();
+        retrieveProgramSummariesFromDB();
         populateProgramCombo(name);
         populateSuiteTable(true);
 
@@ -809,15 +803,16 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     }
 
     /**
-     * Retrieve the data from the database.
+     * Retrieve the ProgramSummary objects from the database.
      */
-    private void retrieveProgramDataFromDB() {
+    private void retrieveProgramSummariesFromDB() {
         try {
-            programsArray = programDataMgr
-                    .getAllPrograms(new ProgramNameComparator());
+            programSummaryList = programDataMgr
+                    .getProgramSummaries(new ProgramSummaryNameComparator());
         } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving program data from the database: ", e);
+            statusHandler
+                    .error("Error retrieving program summary data from the database: ",
+                            e);
         }
     }
 
@@ -853,22 +848,25 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      */
     private void populateProgramCombo(String programToSelect) {
 
-        // If there are items in the combo then remove them before
-        // populating.
+        /*
+         * If there are items in the combo then remove them before populating.
+         */
         if (programCbo.getItemCount() > 0) {
             programCbo.removeAll();
         }
 
         existingProgramNames.clear();
-        for (Program prog : programsArray) {
-            programCbo.add(prog.getName());
-            existingProgramNames.add(prog.getName());
+        for (ProgramSummary ps : programSummaryList) {
+            programCbo.add(ps.getName());
+            existingProgramNames.add(ps.getName());
         }
 
         enableProgramControls(false);
 
-        // If the program name passed in is not null then select it. If it is
-        // null or the string is not found then select item 0.
+        /*
+         * If the program name passed in is not null then select it. If it is
+         * null or the string is not found then select item 0.
+         */
         if (programCbo.getItemCount() > 0) {
             if (programToSelect != null) {
                 int idx = programCbo.indexOf(programToSelect);
@@ -891,8 +889,17 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      */
     private void updateSelectedProgram() {
         if (programCbo.getSelectionIndex() >= 0) {
-            selectedProgram = programsArray.get(programCbo.getSelectionIndex());
-            suiteConfigGroup.setSelectedProgram(selectedProgram);
+            int idx = programCbo.getSelectionIndex();
+            ProgramSummary summ = programSummaryList.get(idx);
+            try {
+                selectedProgram = programDataMgr.getProgramById(summ.getId());
+                if (selectedProgram != null) {
+                    suiteConfigGroup.setSelectedProgram(selectedProgram);
+                }
+            } catch (Exception e) {
+                statusHandler.error("Error getting Program " + summ.getName(),
+                        e);
+            }
         }
     }
 
@@ -906,8 +913,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             transmitterList.clear();
             StringBuilder sb = new StringBuilder();
             StringBuilder sbToolTip = new StringBuilder();
-            Program prog = programsArray.get(index);
-            Set<TransmitterGroup> transGrp = prog.getTransmitterGroups();
+            Set<TransmitterGroup> transGrp = selectedProgram
+                    .getTransmitterGroups();
             for (TransmitterGroup tg : transGrp) {
                 sbToolTip.append(tg.getName()).append(": ");
                 Set<Transmitter> transmitters = tg.getTransmitters();
@@ -932,7 +939,6 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             } else {
                 transmitterToolTip.setText(sbToolTip.toString());
             }
-
         }
     }
 
@@ -940,11 +946,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      * Populate the suite table.
      */
     private void populateSuiteTable(boolean replaceTableItems) {
-        int index = programCbo.getSelectionIndex();
-
-        if (index >= 0) {
-            Program prog = programsArray.get(index);
-            List<Suite> suiteList = prog.getSuites();
+        if (programCbo.getSelectionIndex() >= 0) {
+            List<Suite> suiteList = selectedProgram.getSuites();
             suiteConfigGroup.populateSuiteTable(suiteList, replaceTableItems);
         }
     }

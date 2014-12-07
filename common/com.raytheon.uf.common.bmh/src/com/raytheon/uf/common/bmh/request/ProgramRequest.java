@@ -43,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 13, 2014  3654     rjpeter     Updated to use ProgramSummary.
  * Nov 20, 2014  3698     rferrel     Added SuitePrograms and SuiteEnabledGroups.
  * Dec 02, 2014  3838     rferrel     Added ProgramGeneralSuite.
+ * Dec 07, 2014  3846     mpduff      Added id and GetProgramById
  * </pre>
  * 
  * @author lvenable
@@ -56,7 +57,7 @@ public class ProgramRequest extends AbstractBMHServerRequest {
 
         ProgramSuites, Delete, GetProgramForTransmitterGroup,
 
-        GetProgramsWithTrigger, AddGroup, SuitePrograms, SuiteEnabledGroups, ProgramGeneralSuite;
+        GetProgramsWithTrigger, AddGroup, SuitePrograms, SuiteEnabledGroups, ProgramGeneralSuite, GetProgramById;
     }
 
     @DynamicSerializeElement
@@ -67,6 +68,9 @@ public class ProgramRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
+
+    @DynamicSerializeElement
+    private int programId;
 
     /*
      * At this point in time, it is not necessary to transfer the entire Suite
@@ -148,5 +152,20 @@ public class ProgramRequest extends AbstractBMHServerRequest {
      */
     public void setMsgTypeId(int msgTypeId) {
         this.msgTypeId = msgTypeId;
+    }
+
+    /**
+     * @return the programId
+     */
+    public int getProgramId() {
+        return programId;
+    }
+
+    /**
+     * @param programId
+     *            the programId to set
+     */
+    public void setProgramId(int programId) {
+        this.programId = programId;
     }
 }

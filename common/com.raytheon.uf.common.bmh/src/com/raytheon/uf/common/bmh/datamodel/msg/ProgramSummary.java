@@ -106,7 +106,7 @@ public class ProgramSummary {
      */
     @Override
     public String toString() {
-        return "ProgramSUmmary [name=" + getName() + "]";
+        return "ProgramSummary [name=" + getName() + "]";
     }
 
     @Override

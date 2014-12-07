@@ -57,6 +57,7 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Nov 20, 2014  3698     rferrel     Implement SuitePrograms and SuiteEnabledGroups.
  * Dec 01, 2014  3838     rferrel     Added getProgramGeneralSuite.
+ * Dec 07, 2014  3846     mpduff      Added getProgramById
  * 
  * </pre>
  * 
@@ -110,7 +111,8 @@ public class ProgramHandler extends
             return getSuiteEnabledGroups(request);
         case ProgramGeneralSuite:
             return getProgramGeneralSuite(request);
-
+        case GetProgramById:
+            return getProgramById(request);
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -286,6 +288,21 @@ public class ProgramHandler extends
             String user = BMHLoggerUtils.getUser(request);
             BMHLoggerUtils.logSave(request, user, oldProgram, program);
         }
+        response.addProgram(program);
+
+        return response;
+    }
+
+    /**
+     * Get a Program by id.
+     * 
+     * @return ProgramResponse with a list containing the one Program
+     */
+    private ProgramResponse getProgramById(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao(request.isOperational());
+        ProgramResponse response = new ProgramResponse();
+        Program program = dao.getByID(request.getProgramId());
+
         response.addProgram(program);
 
         return response;

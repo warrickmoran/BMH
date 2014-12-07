@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +42,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPosition
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
+import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -62,7 +64,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 23, 2014  #3490     lvenable     Hook up transmitter data.
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 09, 2014  #3646     rferrel      Convert tableComp to GenericTable.
- * 
+ * Dec 07, 2014   3846     mpduff       Populate hashmap internally, handle state of add button
  * </pre>
  * 
  * @author lvenable
@@ -70,12 +72,14 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 public class AddTransmittersDlg extends CaveSWTDialog {
 
+    private final String NA = "N/A";
+
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(AddTransmittersDlg.class);
 
     /** Program name. */
-    private String programName;
+    private final String programName;
 
     /** Table listing the available transmitters. */
     private GenericTable tableComp;
@@ -84,10 +88,13 @@ public class AddTransmittersDlg extends CaveSWTDialog {
     private List<TransmitterGroup> transmitterGrps = null;
 
     /** Map of transmitter group name (key) and program name (value). */
-    private Map<String, String> transGrpProgramMap = null;
+    private final Map<String, String> transGrpProgramMap = new HashMap<>();
 
     /** List of selected transmitters. */
-    private List<TransmitterGroup> selectedTransmitters = new ArrayList<TransmitterGroup>();
+    private final List<TransmitterGroup> selectedTransmitters = new ArrayList<TransmitterGroup>();
+
+    /** Add button */
+    private Button addBtn;
 
     /**
      * Constructor.
@@ -97,13 +104,10 @@ public class AddTransmittersDlg extends CaveSWTDialog {
      * @param programName
      *            Program name.
      */
-    public AddTransmittersDlg(Shell parentShell, String programName,
-            Map<String, String> transGrpProgramMap) {
+    public AddTransmittersDlg(Shell parentShell, String programName) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
                 | CAVE.PERSPECTIVE_INDEPENDENT);
-
         this.programName = programName;
-        this.transGrpProgramMap = transGrpProgramMap;
     }
 
     @Override
@@ -147,7 +151,14 @@ public class AddTransmittersDlg extends CaveSWTDialog {
                 + programName + ": ");
         selectLbl.setLayoutData(gd);
 
+        ITableActionCB callback = new ITableActionCB() {
+            @Override
+            public void tableSelectionChange(int selectionCount) {
+                enableAddBtn(selectionCount);
+            }
+        };
         tableComp = new GenericTable(shell, 650, 150);
+        tableComp.setCallbackAction(callback);
 
         populateTransmitterTable();
     }
@@ -165,9 +176,10 @@ public class AddTransmittersDlg extends CaveSWTDialog {
 
         GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        Button addBtn = new Button(buttonComp, SWT.PUSH);
+        addBtn = new Button(buttonComp, SWT.PUSH);
         addBtn.setText(" Add ");
         addBtn.setLayoutData(gd);
+        addBtn.setEnabled(false);
         addBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -209,7 +221,9 @@ public class AddTransmittersDlg extends CaveSWTDialog {
         StringBuilder sb = new StringBuilder();
         for (TransmitterGroup tg : selectedTransmitters) {
             if (transGrpProgramMap.containsKey(tg.getName())) {
-                sb.append(tg.getName()).append("\n");
+                if (!transGrpProgramMap.get(tg.getName()).equals(NA)) {
+                    sb.append(tg.getName()).append("\n");
+                }
             }
         }
 
@@ -242,6 +256,19 @@ public class AddTransmittersDlg extends CaveSWTDialog {
 
             Collections.sort(transmitterGrps,
                     new TransmitterGroupPositionComparator());
+
+            for (TransmitterGroup tg : transmitterGrps) {
+                if (transGrpProgramMap.containsKey(tg.getName())) {
+                    continue;
+                }
+                if (tg.getProgramSummary() != null) {
+                    transGrpProgramMap.put(tg.getName(), tg.getProgramSummary()
+                            .getName());
+                } else {
+                    transGrpProgramMap.put(tg.getName(), NA);
+                }
+            }
+
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving transmitter data from the database: ", e);
@@ -297,5 +324,15 @@ public class AddTransmittersDlg extends CaveSWTDialog {
         }
 
         tableComp.populateTable(transGrpTableData);
+    }
+
+    /**
+     * Enable Add button if one or more rows selected
+     * 
+     * @param tableSelectionCount
+     *            number of rows selected
+     */
+    private void enableAddBtn(int tableSelectionCount) {
+        addBtn.setEnabled(tableSelectionCount > 0);
     }
 }
