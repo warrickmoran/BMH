@@ -26,6 +26,7 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
@@ -49,6 +50,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Nov 20, 2014  3698      rferrel     Methods for getting programs/enabled groups based on suite.
  * Dec 02, 2014  3838      rferrel     Added getProgramGeneralSuite;
+ * Dec 07, 2014  3846      mpduff      Added getProgramById.
  * </pre>
  * 
  * @author lvenable
@@ -225,5 +227,44 @@ public class ProgramDataManager {
             return null;
         }
         return programs.get(0);
+    }
+
+    public List<ProgramSummary> getProgramSummaries(
+            ProgramSummaryNameComparator comparator) throws Exception {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.AllProgramSummaries);
+
+        ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(pr);
+        List<ProgramSummary> programSummaryList = response
+                .getProgramSummaryList();
+
+        if (comparator != null) {
+            Collections.sort(programSummaryList, comparator);
+        }
+
+        return programSummaryList;
+    }
+
+    /**
+     * Get the Program identified by the provided id
+     * 
+     * @param id
+     *            The program id
+     * @return The Program
+     * @throws Exception
+     */
+    public Program getProgramById(int id) throws Exception {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.GetProgramById);
+        pr.setProgramId(id);
+
+        ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(pr);
+
+        List<Program> progList = response.getProgramList();
+        if (progList != null && !progList.isEmpty()) {
+            return progList.get(0);
+        }
+
+        return null;
     }
 }
