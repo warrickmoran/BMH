@@ -114,6 +114,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
  * Nov 17, 2014  #3630     bkowal       Ensure that all messages in the playlist exist
  *                                      before caching. Handles a condition that is only
  *                                      encountered on startup.
+ * Dec 08, 2014  #3878     bkowal       Forcefully schedule all non-static periodic messages
+ *                                      when there are only periodic messages in the playlist.
  * 
  * </pre>
  * 
@@ -536,7 +538,7 @@ public final class PlaylistScheduler implements
 
                     if (nextMessage == null) {
                         activePlaylists.remove(nextPlaylist);
-                        logger.info("Puring expired playlist: " + nextPlaylist);
+                        logger.info("Purging expired playlist: " + nextPlaylist);
                     }
                 }
             }
@@ -898,7 +900,12 @@ public final class PlaylistScheduler implements
                 periodicMessages.put(messageId, new MutableLong(nextPlayTime));
             }
         }
-
+        /*
+         * If there are only periodic messages. All non-static period messages
+         * will be forcefully scheduled regardless of their periodicity.
+         */
+        final boolean forceScheduleNonStaticPeriodic = periodicMessages.size() == allMessages
+                .size();
         for (int i = predictStartIndex; i < allMessages.size(); i++) {
             DacPlaylistMessageId messageId = allMessages.get(i);
             DacPlaylistMessage messageData = cache.getMessage(messageId);
@@ -936,35 +943,50 @@ public final class PlaylistScheduler implements
                         .getMessage(periodicMessageId);
                 MutableLong nextPlaybackTime = entry.getValue();
 
-                if (periodicMessage.isValid(playbackStartTime)
-                        && (nextPlaybackTime.longValue() <= playbackStartTime)) {
-                    logger.debug("Scheduling periodic message ["
-                            + periodicMessageId + "].");
+                if (periodicMessage.isValid(playbackStartTime)) {
+                    if (nextPlaybackTime.longValue() <= playbackStartTime
+                            /*
+                             * SCENARIO: There are no predicted messages.
+                             * However, there are non-static periodic
+                             * message(s). If the non-static periodic message(s)
+                             * have not expired, they should be played
+                             * regardless of their periodicity.
+                             */
+                            || (forceScheduleNonStaticPeriodic && periodicMessage
+                                    .isStatic() == false)) {
+                        if (forceScheduleNonStaticPeriodic) {
+                            logger.info("Forcefully scheduling periodic message ["
+                                    + periodicMessageId
+                                    + "] due to a lack of non-periodic messages.");
+                        } else {
+                            logger.debug("Scheduling periodic message ["
+                                    + periodicMessageId + "].");
+                        }
+                        try {
+                            Calendar startTimeCal = TimeUtil
+                                    .newGmtCalendar(new Date(playbackStartTime));
+                            long playbackTime = cache.getPlaybackTime(
+                                    periodicMessageId, startTimeCal);
 
-                    try {
-                        Calendar startTimeCal = TimeUtil
-                                .newGmtCalendar(new Date(playbackStartTime));
-                        long playbackTime = cache.getPlaybackTime(
-                                periodicMessageId, startTimeCal);
+                            MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
+                                    periodicMessageId.getBroadcastId(),
+                                    startTimeCal, periodicMessage);
+                            predictedMessages.add(prediction);
 
-                        MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
-                                periodicMessageId.getBroadcastId(),
-                                startTimeCal, periodicMessage);
-                        predictedMessages.add(prediction);
+                            cycleTime += playbackTime;
+                            playbackStartTime += playbackTime;
+                        } catch (NoSoundFileException e) {
+                            logger.error("Message " + messageId
+                                    + " has no soundFile attribute. Skipping.");
+                        }
 
-                        cycleTime += playbackTime;
-                        playbackStartTime += playbackTime;
-                    } catch (NoSoundFileException e) {
-                        logger.error("Message " + messageId
-                                + " has no soundFile attribute. Skipping.");
+                        /*
+                         * Now that we've scheduled the message, we jump the
+                         * next play time way into the future so it doesn't get
+                         * scheduled again.
+                         */
+                        nextPlaybackTime.setValue(Long.MAX_VALUE);
                     }
-
-                    /*
-                     * Now that we've scheduled the message, we jump the next
-                     * play time way into the future so it doesn't get scheduled
-                     * again.
-                     */
-                    nextPlaybackTime.setValue(Long.MAX_VALUE);
                 }
             }
         }
