@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 
+import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.LdadConfigNotification;
@@ -43,6 +44,7 @@ import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3803       bkowal      Initial creation
  * Nov 13, 2014 3803       bkowal      Transmit LdadConfigNotification
+ * Dec 4, 2014  3880       bkowal      Added handleRetrieveSupportedEncodings.
  * 
  * </pre>
  * 
@@ -77,6 +79,9 @@ public class LdadConfigHandler extends
             this.handleSaveRecord(response, request);
             notification = new LdadConfigNotification(ConfigChangeType.Update,
                     response.getLdadConfigurations().get(0));
+            break;
+        case RetrieveSupportedEncodings:
+            this.handleRetrieveSupportedEncodings(response);
             break;
         }
 
@@ -119,6 +124,11 @@ public class LdadConfigHandler extends
             final LdadConfigRequest request) throws Exception {
         LdadConfigDao dao = new LdadConfigDao(request.isOperational());
         dao.delete(request.getLdadConfig());
+    }
+
+    private void handleRetrieveSupportedEncodings(LdadConfigResponse response) {
+        response.setEncodings(AudioConvererterManager.getInstance()
+                .getSupportedFormats());
     }
 
     private List<LdadConfig> wrapSingleRecordList(LdadConfig ldadConfig) {

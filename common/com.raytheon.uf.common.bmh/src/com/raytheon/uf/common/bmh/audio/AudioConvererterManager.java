@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.audio;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.audio.impl.Mp3AudioConverter;
 import com.raytheon.uf.common.bmh.audio.impl.PcmAudioConverter;
@@ -42,6 +43,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jul 15, 2014 3383       bkowal      Initial creation
  * Dec 3, 2014  3880       bkowal      Remove test code. Verify arguments
  *                                     to the convertAudio method.
+ * Dec 4, 2014  3880       bkowal      getSupportedFormats now returns a {@link Set}.
  * 
  * </pre>
  * 
@@ -180,14 +182,13 @@ public class AudioConvererterManager {
 
     /**
      * Returns the supported audio formats based on the converters that have
-     * been registered.
+     * been successfully registered.
      * 
      * @return the supported audio formats.
      */
-    public BMHAudioFormat[] getSupportedFormats() {
+    public Set<BMHAudioFormat> getSupportedFormats() {
         synchronized (this.registeredAudioConverters) {
-            return this.registeredAudioConverters.keySet().toArray(
-                    new BMHAudioFormat[0]);
+            return this.registeredAudioConverters.keySet();
         }
     }
 }

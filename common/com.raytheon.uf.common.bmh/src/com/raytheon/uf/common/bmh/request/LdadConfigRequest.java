@@ -33,6 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3803       bkowal      Initial creation
+ * Dec 4, 2014  3880       bkowal      Added RetrieveSupportedEncodings.
  * 
  * </pre>
  * 
@@ -55,7 +56,12 @@ public class LdadConfigRequest extends AbstractBMHServerRequest {
         /* Save or updates an ldad config record */
         Save,
         /* Deletes an existing ldad config record */
-        Delete
+        Delete,
+        /*
+         * Retrieves the {@link BMHAudioFormat}s that the system has audio
+         * converters for
+         */
+        RetrieveSupportedEncodings
     }
 
     @DynamicSerializeElement
@@ -63,7 +69,7 @@ public class LdadConfigRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private long id;
-    
+
     @DynamicSerializeElement
     private String name;
 
@@ -121,7 +127,8 @@ public class LdadConfigRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @param name the name to set
+     * @param name
+     *            the name to set
      */
     public void setName(String name) {
         this.name = name;
