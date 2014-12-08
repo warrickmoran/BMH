@@ -529,6 +529,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         suiteCatLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
+        gd.widthHint = 250;
         suiteCatValueLbl = new Label(leftProgSuiteComp, SWT.NONE);
         suiteCatValueLbl.setLayoutData(gd);
 
@@ -701,16 +702,15 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 PlaylistDataStructure dataStruct = (PlaylistDataStructure) playlistDataRecord;
                 if (dataStruct != null) {
                     String suiteName = dataStruct.getSuiteName();
-                    suiteValueLbl.setText(suiteName);
-                    cycleDurValueLbl.setText(String.valueOf(dataStruct
-                            .getPlaybackCycleTime()));
+                    if (suiteName != null) {
+                        suiteValueLbl.setText(suiteName);
+                    }
+                    cycleDurValueLbl.setText(timeFormatter.format(new Date(
+                            dataStruct.getPlaybackCycleTime())));
                     SuiteDataManager sdm = new SuiteDataManager();
-                    List<Suite> suiteList = sdm.getAllSuites(null);
-                    for (Suite suite : suiteList) {
-                        if (suite.getName().equals(suiteName)) {
-                            suiteCatValueLbl.setText(suite.getType().name());
-                            break;
-                        }
+                    Suite suite = sdm.getSuiteByName(suiteName);
+                    if (suite != null) {
+                        suiteCatValueLbl.setText(suite.getType().name());
                     }
                     playlistData.setData(selectedTransmitterGrp, dataStruct);
                     tableData = playlistData
@@ -887,8 +887,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         tableComp.populateTable(tableData);
         handleTableSelection();
         handleMonitorInlineEvent();
-        suiteValueLbl.setText("");
-        cycleDurValueLbl.setText("");
     }
 
     private void retrieveProgram() {
