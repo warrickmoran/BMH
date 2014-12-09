@@ -30,6 +30,7 @@
  * Oct 22, 2014 3746       rjpeter     Hibernate upgrade.
  * Nov 11, 2014 3803       bkowal      Added on delete cascade for ldad config and ldad msg type.
  * Nov 26, 2014 3613       bkowal      Added cascade for broadcast_fragment
+ * Dec 09, 2014 3603       bsteffen    Add cascade for transmitter language
  **/
 
 /**
@@ -180,3 +181,10 @@ alter table bmh.ldad_msg_type add constraint fk_8o231lsdsmrvlnmw4p1rjr47t
 alter table bmh.ldad_msg_type drop constraint fk_orp1qpttjs7whbutxov3k370o;
 alter table bmh.ldad_msg_type add constraint fk_orp1qpttjs7whbutxov3k370o
     foreign key (msg_type_id) references bmh.message_type(id) on delete cascade;
+    
+/**
+ * Transmitter Language to Transmitter
+ */
+alter table bmh.transmitter_language drop constraint fk_ag6l0d2oqq951ku6rebv3k2he;
+alter table bmh.transmitter_language add constraint fk_ag6l0d2oqq951ku6rebv3k2he
+    foreign key (transmittergroup_id) references bmh.transmitter_group (id) on delete cascade;
