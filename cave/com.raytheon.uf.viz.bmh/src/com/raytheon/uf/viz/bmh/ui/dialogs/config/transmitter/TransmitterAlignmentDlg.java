@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.ArrayList;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
@@ -76,9 +77,11 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 14, 2014    3630    mpduff      Initial creation
  * Nov 05, 2014    3630    bkowal      Initial implementation of run test.
  * Nov 10, 2014    3630    bkowal      Build the TransmitterAlignmentTestCommand.
- * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Nov 11, 2014    3413    rferrel     Use DlgInfo to get title.
  * Nov 15, 2014    3630    bkowal      Run the test and report the result.
  * Nov 21, 2014    3845    bkowal      Updates to {@link AbstractOnDemandBroadcastMessage}.
+ * Dec 09, 2014    3894    bkowal      Keep track of which {@link TransmitterGroup}s were disabled
+ *                                     using the dialog.
  * 
  * </pre>
  * 
@@ -132,6 +135,12 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     private Button testBtn;
 
     private TransmitterAlignmentTestThread alignmentTestThread;
+
+    /**
+     * Keep track of which {@link TransmitterGroup}s have been disabled via the
+     * dialog.
+     **/
+    java.util.List<TransmitterGroup> transmittersDisabledByDialog = new ArrayList<>();
 
     /**
      * Constructor.
@@ -427,9 +436,12 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                         + TxStatus.DISABLED.toString());
                 /*
                  * If transmitter is disabled then it should not be enabled from
-                 * this dialog
+                 * this dialog (unless the transmitter was disabled using this
+                 * dialog).
                  */
-                this.enableTransmitterBtn.setEnabled(false);
+                this.enableTransmitterBtn
+                        .setEnabled(this.transmittersDisabledByDialog
+                                .contains(this.selectedTransmitterGrp));
                 this.disableTransmitterBtn.setEnabled(false);
                 this.testBtn
                         .setEnabled(this
@@ -478,6 +490,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
 
             statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
                     + " " + TxStatus.ENABLED.toString());
+            this.transmittersDisabledByDialog
+                    .remove(this.selectedTransmitterGrp);
         } catch (Exception e) {
             statusHandler.error("Error enabling Transmitter Group", e);
         }
@@ -494,6 +508,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                     .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
             statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
                     + " " + TxStatus.DISABLED.toString());
+            this.transmittersDisabledByDialog.add(this.selectedTransmitterGrp);
         } catch (Exception e) {
             statusHandler.error("Error enabling Transmitter Group", e);
         }
