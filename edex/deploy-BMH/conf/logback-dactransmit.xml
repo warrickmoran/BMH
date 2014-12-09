@@ -1,44 +1,48 @@
 <configuration debug="false" scan="true">
-   
-<!-- general application log -->
-   <appender name="DacTransmitLog" class="ch.qos.logback.core.rolling.RollingFileAppender">
-      <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-         <fileNamePattern>${BMH_HOME}/logs/${logfile_base}-${TRANSMITTER_GROUP}-%d{yyyyMMdd}.log</fileNamePattern>
-         <maxHistory>30</maxHistory>
-      </rollingPolicy> 
+	<property name="messaging.base" value="${logfile_base}-${TRANSMITTER_GROUP}" />
+	<include file="${BMH_HOME}/conf/logback-bmh-messages.xml" />
 
-      <encoder>
-         <pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
-      </encoder>
-   </appender>
+	<!-- general application log -->
+	<appender name="DacTransmitLog"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${BMH_HOME}/logs/${logfile_base}-${TRANSMITTER_GROUP}-%d{yyyyMMdd}.log
+			</fileNamePattern>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
 
-   <appender name="asyncDacTransmitLog" class="ch.qos.logback.classic.AsyncAppender">
-      <appender-ref ref="DacTransmitLog" />
-   </appender>
-   
-   <appender name="baseDacTransmitLog" class="com.raytheon.uf.common.status.logback.SuppressingAppender">
-      <!-- If any message appears in the last 10 unique messages more than
-           1 time in 1 sec, it will be suppressed. Events that continue for
-           5 or more seconds will log every 5 seconds.
-      -->
-      <cacheSize>10</cacheSize>
-      <duplicateThreshold>1</duplicateThreshold>
-      <timeThreshold>1000</timeThreshold>
-      <suppressionLoggingInterval>5000</suppressionLoggingInterval>
-      <appender-ref ref="asyncDacTransmitLog" />
-   </appender>
+		<encoder>
+			<pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
+		</encoder>
+	</appender>
 
-   <logger name="com.raytheon">
-      <level value="DEBUG"/>
-   </logger>
-   <logger name="org.apache">
-      <level value="INFO"/>
-   </logger>
+	<appender name="asyncDacTransmitLog" class="ch.qos.logback.classic.AsyncAppender">
+		<appender-ref ref="DacTransmitLog" />
+	</appender>
 
-   <!-- default logging --> 
-   <root> 
-      <level value="DEBUG"/> 
-      <appender-ref ref="baseDacTransmitLog"/>
-   </root> 
+	<appender name="baseDacTransmitLog"
+		class="com.raytheon.uf.common.status.logback.SuppressingAppender">
+		<!-- If any message appears in the last 10 unique messages more than 1 
+			time in 1 sec, it will be suppressed. Events that continue for 5 or more 
+			seconds will log every 5 seconds. -->
+		<cacheSize>10</cacheSize>
+		<duplicateThreshold>1</duplicateThreshold>
+		<timeThreshold>1000</timeThreshold>
+		<suppressionLoggingInterval>5000</suppressionLoggingInterval>
+		<appender-ref ref="asyncDacTransmitLog" />
+	</appender>
+
+	<logger name="com.raytheon">
+		<level value="DEBUG" />
+	</logger>
+	<logger name="org.apache">
+		<level value="INFO" />
+	</logger>
+
+	<!-- default logging -->
+	<root>
+		<level value="DEBUG" />
+		<appender-ref ref="baseDacTransmitLog" />
+	</root>
 </configuration>
 

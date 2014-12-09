@@ -4,6 +4,7 @@
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
 	<bean id="playlistManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistManager">
+		<constructor-arg ref="edexMessageLogger" />
 		<property name="playlistDao" ref="playlistDao" />
 		<property name="programDao" ref="programDao" />
 		<property name="zoneDao" ref="zoneDao" />

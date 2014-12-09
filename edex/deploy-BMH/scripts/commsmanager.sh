@@ -33,15 +33,18 @@
 #    09/09/14        3456          bkowal         Use yajsw to start.
 #    10/17/14        3687          bsteffen       Practice mode.
 #    12/04/14        3890          bkowal         Use centralized yajsw.
+#    12/08/14        3651          bkowal         Dynamically set logfile_base based on the
+                                                  mode.
 ##############################################################################
 
 CONF_FILE="wrapper.conf"
-
+export logfile_base="commsmanager"
 for arg in $@
 do
   case $arg in
     -p) 
        CONF_FILE="wrapper_practice.conf"
+       export logfile_base="commsmanager-practice"
        ;;
   esac
 done

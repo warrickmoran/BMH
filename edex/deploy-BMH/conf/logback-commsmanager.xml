@@ -1,40 +1,44 @@
 <configuration debug="false" scan="true">
-   <!-- general application log -->
-   <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
-      <encoder>
-         <pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
-      </encoder>
-   </appender>
+	<property scope="system" name="messaging.base" value="${logfile_base}" />
+	<include file="${BMH_HOME}/conf/logback-bmh-messages.xml" />
 
-   <appender name="asyncConsole" class="ch.qos.logback.classic.AsyncAppender">
-      <appender-ref ref="console" />
-   </appender>
+	<!-- general application log -->
+	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
+		</encoder>
+	</appender>
 
-   <appender name="alertViz" class="com.raytheon.bmh.comms.logging.JmsStatusMessageAppender">
-      <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-        <level>ERROR</level>
-      </filter>
-      <layout>
-         <pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
-      </layout>
-   </appender>
+	<appender name="asyncConsole" class="ch.qos.logback.classic.AsyncAppender">
+		<appender-ref ref="console" />
+	</appender>
 
-   <appender name="asyncAlertViz" class="ch.qos.logback.classic.AsyncAppender">
-      <appender-ref ref="alertViz" />
-   </appender>
+	<appender name="alertViz"
+		class="com.raytheon.bmh.comms.logging.JmsStatusMessageAppender">
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+			<level>ERROR</level>
+		</filter>
+		<layout>
+			<pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
+		</layout>
+	</appender>
 
-   <logger name="org.apache.qpid">
-      <level value="INFO"/>
-   </logger>
+	<appender name="asyncAlertViz" class="ch.qos.logback.classic.AsyncAppender">
+		<appender-ref ref="alertViz" />
+	</appender>
 
-   <logger name="org.apache.qpid.client.BasicMessageProducer_0_10">
-      <level value="WARN"/>
-   </logger>
+	<logger name="org.apache.qpid">
+		<level value="INFO" />
+	</logger>
 
-   <!-- default logging -->
-   <root>
-      <level value="DEBUG"/>
-      <appender-ref ref="asyncConsole"/>
-      <appender-ref ref="asyncAlertViz"/>
-   </root>
+	<logger name="org.apache.qpid.client.BasicMessageProducer_0_10">
+		<level value="WARN" />
+	</logger>
+
+	<!-- default logging -->
+	<root>
+		<level value="DEBUG" />
+		<appender-ref ref="asyncConsole" />
+		<appender-ref ref="asyncAlertViz" />
+	</root>
 </configuration>

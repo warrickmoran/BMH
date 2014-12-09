@@ -5,6 +5,7 @@
 
   <bean id="practice_playlistManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistManager">
     <constructor-arg value="false" />
+    <constructor-arg ref="practice_edexMessageLogger" />
     <property name="playlistDao" ref="practice_playlistDao" />
     <property name="programDao" ref="practice_programDao" />
     <property name="zoneDao" ref="practice_zoneDao" />

@@ -87,6 +87,7 @@ import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
 import com.raytheon.uf.edex.core.EdexException;
@@ -131,6 +132,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
  * Nov 17, 2014  3827     bsteffen    Fix merging of arealess messages
  * Dec 08, 2014  3878     bkowal      Set the static flag on the {@link DacPlaylistMessage}.
+ * Dec 08, 2014  3651     bkowal      Message logging preparation
  * 
  * </pre>
  * 
@@ -166,15 +168,20 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private final SAMEOriginatorMapper originatorMapping = new SAMEOriginatorMapper();
 
-    public PlaylistManager() throws IOException {
-        this(true);
+    private final IMessageLogger messageLogger;
+
+    public PlaylistManager(final IMessageLogger messageLogger)
+            throws IOException {
+        this(true, messageLogger);
     }
 
-    public PlaylistManager(boolean operational) throws IOException {
+    public PlaylistManager(boolean operational,
+            final IMessageLogger messageLogger) throws IOException {
         playlistDir = BMHConstants.getBmhDataDirectory(operational).resolve(
                 "playlist");
         locker = new ClusterLocker(AbstractBMHDao.getDatabaseName(operational));
         this.operational = operational;
+        this.messageLogger = messageLogger;
         Files.createDirectories(playlistDir);
     }
 
