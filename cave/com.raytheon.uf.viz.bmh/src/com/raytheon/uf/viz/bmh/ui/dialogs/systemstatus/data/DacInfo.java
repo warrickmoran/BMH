@@ -24,6 +24,9 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+
 /**
  * 
  * Class containing the information for the DAC and the associated transmitter
@@ -37,6 +40,7 @@ import java.util.TreeMap;
  * ------------ ---------- ----------- --------------------------
  * Sep 30, 2014  3349      lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Added addition DAC information.
+ * Dec 09, 2014  #3910     lvenable     Added null check for DAC port number.
  * 
  * </pre>
  * 
@@ -44,6 +48,10 @@ import java.util.TreeMap;
  * @version 1.0
  */
 public class DacInfo {
+
+    /** Status handler for reporting errors. */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(DacInfo.class);
 
     /** DAC Id. */
     private Integer dacId;
@@ -111,11 +119,21 @@ public class DacInfo {
      */
     public void addTransmitterGroupInfo(TransmitterGrpInfo transmitterGrpInfo) {
 
-        // When inserting the data into the map, use the lowest DAC port number
-        // of all the transmitters in the transmitter group.
+        /*
+         * When inserting the data into the map, use the lowest DAC port number
+         * of all the transmitters in the transmitter group. If the dac port is
+         * null then don't add it to the transmitter group information map.
+         */
         Integer portNumber = transmitterGrpInfo.getLowestDacPortNumber();
 
-        transmitterGrpInfoMap.put(portNumber, transmitterGrpInfo);
+        if (portNumber != null) {
+            transmitterGrpInfoMap.put(portNumber, transmitterGrpInfo);
+        } else {
+            statusHandler
+                    .warn("The lowest DAC port number for a transmitter for Transmitter Goup "
+                            + transmitterGrpInfo.getGroupName()
+                            + " was null.  There are no transmitters for this transmitter group.");
+        }
     }
 
     public String getDacAddress() {

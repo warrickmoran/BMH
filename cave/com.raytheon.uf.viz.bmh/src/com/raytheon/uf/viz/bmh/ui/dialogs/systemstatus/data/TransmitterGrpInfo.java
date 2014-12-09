@@ -36,6 +36,7 @@ import java.util.TreeMap;
  * ------------ ---------- ----------- --------------------------
  * Sep 30, 2014  3349      lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Added silent alarm flag.
+ * Dec 09, 2014  #3910     lvenable     Added check for empty map.
  * 
  * </pre>
  * 
@@ -159,6 +160,9 @@ public class TransmitterGrpInfo {
      * @return
      */
     public Integer getLowestDacPortNumber() {
+        if (transmitterInfoMap.isEmpty()) {
+            return null;
+        }
         return transmitterInfoMap.firstKey();
     }
 }
