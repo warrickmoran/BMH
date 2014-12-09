@@ -130,6 +130,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Nov 13, 2014  3717     bsteffen    Do not persist forced.
  * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
  * Nov 17, 2014  3827     bsteffen    Fix merging of arealess messages
+ * Dec 08, 2014  3878     bkowal      Set the static flag on the {@link DacPlaylistMessage}.
  * 
  * </pre>
  * 
@@ -658,7 +659,6 @@ public class PlaylistManager implements IContextStateProcessor {
         matReplacements.add(afosid);
         String areaCodes = msg.getInputMessage().getAreaCodes();
 
-
         ListIterator<BroadcastMsg> messageIterator = list.listIterator();
         while (messageIterator.hasNext()) {
             BroadcastMsg potentialReplacee = messageIterator.next();
@@ -772,8 +772,13 @@ public class PlaylistManager implements IContextStateProcessor {
                 InputMessage input = broadcast.getInputMessage();
                 String afosid = input.getAfosid();
                 dac.setMessageType(afosid);
-
                 MessageType messageType = messageTypeDao.getByAfosId(afosid);
+                if (messageType != null) {
+                    /*
+                     * determine if the {@link MessageType} is static.
+                     */
+                    dac.setStatic(messageType.getDesignation().isStatic());
+                }
                 dac.setToneBlackoutEnabled(messageType.isToneBlackoutEnabled());
                 if (dac.isToneBlackoutEnabled()) {
                     TimeZone sourceTZ = TimeZone.getTimeZone(broadcast

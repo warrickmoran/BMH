@@ -52,7 +52,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Oct 01, 2014  3485     bsteffen    Add method for getting path of position file.
  * Oct 23, 2014  3617     dgilling    Add support for tone blackout period.
  * Nov 03, 2014  3781     dgilling    Add isSAMETones().
- * 
+ * Dec 08, 2014  3878     bkowal      Added isStatic to indicate whether or not
+ *                                    the message is associated with a static msg type.
  * 
  * </pre>
  * 
@@ -108,6 +109,13 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     @XmlElement
     private boolean playedAlertTone;
+
+    /*
+     * boolean indicating whether or not the message is associated with a static
+     * message type.
+     */
+    @XmlElement
+    private boolean isStatic;
 
     private transient Path path;
 
@@ -262,7 +270,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     /**
      * If this message has a valid "periodicity" setting, this method calculates
-     * the time (in ms) that should ellapse between plays of this message based
+     * the time (in ms) that should elapse between plays of this message based
      * on the periodicity setting (format is DDHHmm).
      * 
      * @return Number of milliseconds between plays, or, -1 if this message does
@@ -390,5 +398,20 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      */
     public boolean isSAMETones() {
         return ((SAMEtone != null) && (!SAMEtone.isEmpty()));
+    }
+
+    /**
+     * @return the isStatic
+     */
+    public boolean isStatic() {
+        return isStatic;
+    }
+
+    /**
+     * @param isStatic
+     *            the isStatic to set
+     */
+    public void setStatic(boolean isStatic) {
+        this.isStatic = isStatic;
     }
 }
