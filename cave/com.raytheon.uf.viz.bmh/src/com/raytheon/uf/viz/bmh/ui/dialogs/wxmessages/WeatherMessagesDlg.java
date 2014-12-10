@@ -119,6 +119,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 02, 2014  3876     lvenable    Added check for area selection.
  * Dec 03, 2014  3876     lvenable    Added null check & cleared out area codes if they are removed.
  * Dec 02, 2014  3614     bsteffen    Do not report success when submit fails.
+ * Dec 09, 2014  3893     lvenable    Fixed the area selection call to not repopulate the
+ *                                    areas/zones/transmitters if they were previously removed.
  * 
  * </pre>
  * 
@@ -954,8 +956,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             dlg = new AreaSelectionDlg(getShell(),
                     userInputMessage.getAreaCodes());
         } else if (userInputMessage != null && userInputMessage.getId() == 0
-                && userInputMessage.getAreaCodes() != null
-                && userInputMessage.getAreaCodes().length() > 0) {
+                && userInputMessage.getAreaCodes() != null) {
             dlg = new AreaSelectionDlg(getShell(),
                     userInputMessage.getAreaCodes());
         } else {
