@@ -54,10 +54,12 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -79,6 +81,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      applicable.
  * Dec 2, 2014   #3874     bkowal       Implemented the play action.
  * Dec 09, 2014  #3909     bkowal       Use {@link RecordedByUtils}.
+ * Dec 9, 2014   #3904     bkowal       Publish a {@link AudioRecordPlaybackNotification}
+ *                                      prior to the start of audio playback.
  * 
  * </pre>
  * 
@@ -433,6 +437,9 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
      * server for synthesis.
      */
     private void handlePlayAction() {
+        BMHDialogNotificationManager.getInstance().post(
+                new AudioRecordPlaybackNotification());
+
         /*
          * ensure that the user cannot click Play again until the audio playback
          * either succeeds or fails.

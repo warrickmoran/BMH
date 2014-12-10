@@ -44,6 +44,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
@@ -78,6 +79,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 22, 2014  #3862     bkowal       Preparation for realtime graphing of audio decibel levels.
  * Nov 24, 2014  #3863     bkowal       Use {@link DecibelPlotsComp} to provide a realtime plot
  *                                      of the decibel levels of the recorded audio.
+ * Dec 09, 2014  #3904     bkowal       Publish a {@link AudioRecordPlaybackNotification}
+ *                                      prior to the start of audio recording / playback.
  * 
  * 
  * </pre>
@@ -503,6 +506,10 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
             statusHandler.error("Audio recording has failed.", e);
             return;
         }
+
+        BMHDialogNotificationManager.getInstance().post(
+                new AudioRecordPlaybackNotification());
+
         this.recorderThread.setRecordingListener(listener);
         this.recordingProgBar.setMaximum(this.maxRecordingSeconds);
         this.recordPlayStatus = RecordPlayStatus.RECORD;
@@ -561,6 +568,10 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
             statusHandler.error("Audio playback has failed.", e);
             return;
         }
+
+        BMHDialogNotificationManager.getInstance().post(
+                new AudioRecordPlaybackNotification());
+
         this.recordingProgBar.setMaximum(this.playbackThread
                 .getAudioLengthInSeconds());
         this.recordPlayStatus = RecordPlayStatus.PLAY;

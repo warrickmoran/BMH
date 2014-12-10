@@ -41,10 +41,12 @@ import org.eclipse.swt.widgets.ProgressBar;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioException;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackThread;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.IPlaybackCompleteListener;
 
 /**
@@ -61,6 +63,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IPlaybackCompleteListener;
  * ------------ ---------- ----------- --------------------------
  * Oct 26, 2014  #3728     lvenable     Initial creation
  * Oct 26, 2014  #3748     bkowal       Implement audio playback.
+ * Dec 09, 2014  #3904     bkowal       Publish a {@link AudioRecordPlaybackNotification}
+ *                                      prior to the start of audio playback.
  * 
  * </pre>
  * 
@@ -236,6 +240,9 @@ public class MessageAudioControlComp extends Composite implements
     }
 
     private void handlePlayAction() {
+        BMHDialogNotificationManager.getInstance().post(
+                new AudioRecordPlaybackNotification());
+
         try {
             this.playbackThread = new AudioPlaybackThread(
                     this.audioData.getAudio());

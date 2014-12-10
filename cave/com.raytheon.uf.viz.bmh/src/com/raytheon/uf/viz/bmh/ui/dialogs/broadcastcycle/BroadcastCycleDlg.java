@@ -51,6 +51,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 
+import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
@@ -74,6 +75,9 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
+import com.raytheon.uf.viz.bmh.dialogs.notify.IDialogNotification;
+import com.raytheon.uf.viz.bmh.dialogs.notify.IDialogNotificationListener;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -85,6 +89,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.DisconnectListener;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -127,6 +132,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 21, 2014  3845      bkowal      {@link LiveBroadcastSwitchNotification} now includes the
  *                                     full {@link TransmitterGroup}.
  * Nov 30, 2014  3752      mpduff      Populate Suite name, suite category, and cycle duration on startup.
+ * Dec 09, 2014  3904      bkowal      Disable inline monitoring whenever a {@link AudioRecordPlaybackNotification}
+ *                                     is received.
  * 
  * </pre>
  * 
@@ -135,7 +142,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  */
 
 public class BroadcastCycleDlg extends AbstractBMHDialog implements
-        DisconnectListener, INotificationObserver {
+        DisconnectListener, INotificationObserver, IDialogNotificationListener {
     private final String NA = "N/A";
 
     private final SimpleDateFormat timeFormatter = new SimpleDateFormat("mm:ss");
@@ -268,6 +275,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     @Override
     protected void opened() {
         shell.setMinimumSize(shell.getSize());
+
+        BMHDialogNotificationManager.getInstance().register(this);
 
         /*
          * Populate the transmitters and table. This code needs to be in the
@@ -1052,6 +1061,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             monitorThread = null;
         }
 
+        BMHDialogNotificationManager.getInstance().unregister(this);
+
         NotificationManagerJob.removeObserver(
                 BMHJmsDestinations.getStatusDestination(), this);
         NotificationManagerJob.removeObserver(
@@ -1259,6 +1270,31 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 tableComp.populateTable(tableData);
                 tableComp.select(selectedRow);
                 handleTableSelection();
+            }
+        });
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.viz.bmh.dialogs.notify.IDialogNotificationListener#
+     * notificationArrived
+     * (com.raytheon.uf.viz.bmh.dialogs.notify.IDialogNotification)
+     */
+    @Override
+    @Subscribe
+    public void notificationArrived(IDialogNotification notification) {
+        if (notification instanceof AudioRecordPlaybackNotification == false) {
+            return;
+        }
+
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                if (monitorBtn.getSelection()) {
+                    monitorBtn.setSelection(false);
+                    handleMonitorInlineEvent();
+                }
             }
         });
     }
