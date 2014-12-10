@@ -73,10 +73,12 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 28, 2014   3432     mpduff      Display areaCode, not areaId
  * Sep 11, 2014   3411     mpduff      Populate upon opening.
  * Oct 09, 2014   3646     rferrel     Converted tableComp to GenerticTable.
- * Oct 14, 2014  #3728     lvenable    Updated to support weather messages functionality
+ * Oct 14, 2014   3728     lvenable    Updated to support weather messages functionality
  * Oct 16, 2014   3657     bkowal      Include affected transmitters in the return object
  * Oct 17, 2014   3655     bkowal      Store transmitter information in the swt data.
- * Oct 21, 2014   #3728    lvenable    Updated to handle a string of area codes and zone codes.
+ * Oct 21, 2014   3728     lvenable    Updated to handle a string of area codes and zone codes.
+ * Oct 21, 2014   3896     lvenable    Fixed the affected transmitters list to be updated when
+ *                                     the dialog is opened and there are area codes.
  * 
  * </pre>
  * 
@@ -738,7 +740,6 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                     tableData.addDataRow(row);
                 }
             }
-            this.updateAffectedTransmitters();
         } else if (areasZoneCodesStr != null && areasZoneCodesStr.length() > 0) {
 
             // Split the area codes.
@@ -763,6 +764,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 }
             }
         }
+
+        this.updateAffectedTransmitters();
     }
 
     /**
