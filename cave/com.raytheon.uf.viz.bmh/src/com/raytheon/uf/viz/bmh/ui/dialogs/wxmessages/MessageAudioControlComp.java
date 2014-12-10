@@ -63,6 +63,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IPlaybackCompleteListener;
  * ------------ ---------- ----------- --------------------------
  * Oct 26, 2014  #3728     lvenable     Initial creation
  * Oct 26, 2014  #3748     bkowal       Implement audio playback.
+ * Dec 10, 2014  #3883     bkowal       No longer dual track the audio playback state.
  * Dec 09, 2014  #3904     bkowal       Publish a {@link AudioRecordPlaybackNotification}
  *                                      prior to the start of audio playback.
  * 
@@ -109,8 +110,6 @@ public class MessageAudioControlComp extends Composite implements
     /** playback timer - used to update the progress bar. */
     private ScheduledExecutorService timer;
 
-    private volatile boolean shouldResume = false;
-
     /**
      * Constructor.
      * 
@@ -135,9 +134,7 @@ public class MessageAudioControlComp extends Composite implements
         parent.addDisposeListener(new DisposeListener() {
             @Override
             public void widgetDisposed(DisposeEvent e) {
-                if (lblFont != null) {
-                    lblFont.dispose();
-                }
+                disposeInternal();
             }
         });
 
@@ -239,10 +236,25 @@ public class MessageAudioControlComp extends Composite implements
         }
     }
 
-    private void handlePlayAction() {
-        BMHDialogNotificationManager.getInstance().post(
-                new AudioRecordPlaybackNotification());
+    private void disposeInternal() {
+        if (this.playbackThread != null) {
+            this.playbackThread.halt();
+        }
 
+        this.shutdownTimer();
+
+        if (lblFont != null) {
+            lblFont.dispose();
+        }
+    }
+
+    private void handlePlayAction() {
+        if (this.playbackThread != null) {
+            /*
+             * only start the audio if no audio is currently already playing.
+             */
+            return;
+        }
         try {
             this.playbackThread = new AudioPlaybackThread(
                     this.audioData.getAudio());
@@ -251,6 +263,9 @@ public class MessageAudioControlComp extends Composite implements
             statusHandler.error("Failed to load the audio for playback!", e);
             return;
         }
+        BMHDialogNotificationManager.getInstance().post(
+                new AudioRecordPlaybackNotification());
+
         this.progressBar.setSelection(0);
         timer = Executors.newSingleThreadScheduledExecutor();
         this.playbackThread.start();
@@ -259,23 +274,37 @@ public class MessageAudioControlComp extends Composite implements
     }
 
     private void handlePauseAction() {
-        if (this.shouldResume) {
-            this.shouldResume = false;
+        if (this.playbackThread == null) {
+            return;
+        }
+
+        if (this.playbackThread.isPaused()) {
             timer = Executors.newSingleThreadScheduledExecutor();
             this.playbackThread.resumePlayback();
             timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, 1000,
                     TimeUnit.MILLISECONDS);
         } else {
-            this.shouldResume = true;
             this.playbackThread.pausePlayback();
             this.shutdownTimer();
         }
     }
 
     private void handleStopAction() {
-        this.shouldResume = false;
-        this.shutdownTimer();
+        if (this.playbackThread == null) {
+            return;
+        }
+
         this.playbackThread.halt();
+        this.playbackThread = null;
+        this.executeStopTransition();
+    }
+
+    private void executeStopTransition() {
+        this.shutdownTimer();
+        if (this.isDisposed()) {
+            // user closes dialog during audio playback
+            return;
+        }
         this.progressBar.setSelection(0);
     }
 
@@ -350,14 +379,14 @@ public class MessageAudioControlComp extends Composite implements
     @Override
     public void notifyPlaybackComplete() {
         this.shutdownTimer();
-        this.shouldResume = false;
         this.isPlaying = false;
+        this.playbackThread = null;
         // Not on the UI Thread.
         getDisplay().asyncExec(new Runnable() {
             @Override
             public void run() {
                 fireEnableCallbackAction(true);
-                shutdownTimer();
+                executeStopTransition();
             }
         });
     }

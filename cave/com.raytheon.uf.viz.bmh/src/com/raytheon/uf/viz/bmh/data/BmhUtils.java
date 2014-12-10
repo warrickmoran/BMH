@@ -78,6 +78,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                       in method sendRequest.
  * Nov 13, 2014   3698      rferrel     Added containsGeneralSuite.
  * Dec 01, 2014   3838      rferrel     containsGeneralSuite updated to use query.
+ * Dec 10, 2014   3883      bkowal      Added {@link #textToAudio(String)}.
  * </pre>
  * 
  * @author mpduff
@@ -120,15 +121,31 @@ public class BmhUtils {
      *            The text to play
      */
     public static void playText(String text) {
-        TextToSpeechRequest req = new TextToSpeechRequest();
-        req.setPhoneme(text);
-        req.setTimeout(10000);
         try {
-            req = (TextToSpeechRequest) BmhUtils.sendRequest(req);
-            playSound(req.getByteData(), req.getStatus());
+            playSound(textToAudio(text));
         } catch (Exception e) {
             statusHandler.error("Error playing text", e);
         }
+    }
+
+    /**
+     * Convert the provided text to audio and return the audio
+     * 
+     * @param text
+     *            the text to convert
+     * @return the generated audio
+     * @throws Exception
+     *             if audio generation fails
+     */
+    public static byte[] textToAudio(String text) throws Exception {
+        TextToSpeechRequest req = new TextToSpeechRequest();
+        req.setPhoneme(text);
+        req.setTimeout(10000);
+        req = (TextToSpeechRequest) BmhUtils.sendRequest(req);
+        if (req.getByteData() == null) {
+            throw new Exception("Failed to generate audio: " + req.getStatus());
+        }
+        return req.getByteData();
     }
 
     /**
@@ -137,12 +154,7 @@ public class BmhUtils {
      * @param data
      *            data to play
      */
-    public static void playSound(byte[] data, String description) {
-        if (data == null) {
-            statusHandler.error(description);
-            return;
-        }
-
+    public static void playSound(byte[] data) {
         AudioFormat audioFormat = new AudioFormat(Encoding.ULAW, 8000, 8, 1, 1,
                 8000, true);
 

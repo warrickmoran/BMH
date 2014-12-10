@@ -44,6 +44,7 @@ import javax.sound.sampled.LineUnavailableException;
  * ------------ ---------- ----------- --------------------------
  * Oct 7, 2014  3657       bkowal      Initial creation
  * Oct 26, 2014 3748       bkowal      Implemented new/resume.
+ * Dec 10, 2014 3883       bkowal      Added {@link #isPaused()}.
  * 
  * </pre>
  * 
@@ -58,7 +59,7 @@ public class AudioPlaybackThread extends Thread implements LineListener {
             Encoding.ULAW, 8000, 8, 1, 1, 8000, true);
 
     private IPlaybackCompleteListener listener;
-  
+
     protected volatile boolean isPaused = false;
 
     private Clip audioClip;
@@ -136,5 +137,15 @@ public class AudioPlaybackThread extends Thread implements LineListener {
                 this.listener.notifyPlaybackComplete();
             }
         }
+    }
+
+    /**
+     * Returns a boolean indicating whether or not the playback thread is
+     * currently paused.
+     * 
+     * @return true if the playback thread has been paused; false, otherwise
+     */
+    public boolean isPaused() {
+        return isPaused;
     }
 }

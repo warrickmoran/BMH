@@ -27,16 +27,11 @@ import java.nio.file.Files;
 import java.util.Iterator;
 import java.util.List;
 
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jface.dialogs.ProgressMonitorDialog;
-import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
-import org.eclipse.swt.events.ModifyEvent;
-import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -50,11 +45,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.RecordedByUtils;
-import com.raytheon.uf.viz.bmh.data.BmhUtils;
-import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
@@ -90,9 +81,6 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 public class MessageContentsDlg extends CaveSWTDialogBase {
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(MessageContentsDlg.class);
-
     /** Message text styled text control. */
     private StyledText messageSt;
 
@@ -107,6 +95,8 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
 
     /** Play button. */
     private Button playBtn;
+
+    private TextAudioPlaybackDelegate delegate;
 
     /** Edit button. */
     private Button editBtn;
@@ -180,6 +170,11 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         createOkCancelButtons();
     }
 
+    @Override
+    protected void disposed() {
+        this.delegate.dispose();
+    }
+
     /**
      * Create the styled text control that displays the message content text.
      * 
@@ -203,11 +198,11 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
 
         Composite textActionBtnComp = new Composite(messageContentsGroup,
                 SWT.NONE);
-        textActionBtnComp.setLayout(new GridLayout(3, false));
+        textActionBtnComp.setLayout(new GridLayout(4, false));
         textActionBtnComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT,
                 true, false));
 
-        int buttonWidth = 80;
+        final int buttonWidth = 80;
         gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
         playBtn = new Button(textActionBtnComp, SWT.PUSH);
@@ -215,24 +210,23 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         playBtn.setImage(recordImages.getImage(RecordAction.PLAY));
         playBtn.setLayoutData(gd);
         playBtn.setToolTipText("Play the test message");
-        playBtn.setEnabled(false);
-        playBtn.addSelectionListener(new SelectionAdapter() {
 
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                handlePlayAction();
-            }
-        });
+        gd = new GridData();
+        gd.widthHint = buttonWidth;
+        Button stopBtn = new Button(textActionBtnComp, SWT.PUSH);
+        stopBtn.setText("Stop");
+        stopBtn.setImage(this.recordImages.getImage(RecordAction.STOP));
+        stopBtn.setLayoutData(gd);
+        stopBtn.setToolTipText("Stop message playback");
+
+        delegate = new TextAudioPlaybackDelegate(this.getShell(), this.playBtn,
+                stopBtn, this.recordImages);
+
         /*
          * add text change listener and set the text now that the play button
          * exists.
          */
-        messageSt.addModifyListener(new ModifyListener() {
-            @Override
-            public void modifyText(ModifyEvent e) {
-                handleTextChange();
-            }
-        });
+        messageSt.addModifyListener(delegate);
         if (this.originalMessageContent != null) {
             messageSt.setText(this.originalMessageContent);
         }
@@ -296,7 +290,6 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
 
                 if (handleContentsFromFileAction()) {
                     messageSt.setEditable(true);
-                    playBtn.setEnabled(true);
                     msgAudioComp.removeAllAudioControls();
                     contentType = CONTENT_TYPE.TEXT;
                 }
@@ -418,55 +411,6 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
                 close();
             }
         });
-    }
-
-    private void handleTextChange() {
-        if (this.messageSt.getText().trim().isEmpty() == false) {
-            /*
-             * The play button is only enabled when text exists within the text
-             * control.
-             */
-            this.playBtn.setEnabled(true);
-        } else {
-            this.playBtn.setEnabled(false);
-        }
-    }
-
-    /**
-     * Handle the Play action. Sends the text in the style text field to the
-     * server for synthesis.
-     */
-    private void handlePlayAction() {
-        BMHDialogNotificationManager.getInstance().post(
-                new AudioRecordPlaybackNotification());
-
-        /*
-         * ensure that the user cannot click Play again until the audio playback
-         * either succeeds or fails.
-         */
-        this.playBtn.setEnabled(false);
-        /**
-         * as implemented via {@link BmhUtils}, audio synthesis and playback
-         * currently occurs on the UI thread. So, this dialog is displayed so
-         * that a progress indicator is displayed while the display is "locked".
-         * Weather Messages can be significantly longer than dictionary words.
-         */
-        final String text = messageSt.getText().trim();
-        ProgressMonitorDialog dialog = new ProgressMonitorDialog(
-                this.getShell());
-        try {
-            dialog.run(true, false, new IRunnableWithProgress() {
-                @Override
-                public void run(IProgressMonitor monitor) {
-                    monitor.beginTask("Playing Text", IProgressMonitor.UNKNOWN);
-                    BmhUtils.playText(text);
-                    monitor.done();
-                }
-            });
-        } catch (Exception e) {
-            statusHandler.error("Failed to play the text!", e);
-        }
-        this.playBtn.setEnabled(true);
     }
 
     /**

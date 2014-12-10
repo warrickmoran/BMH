@@ -44,6 +44,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
  * Oct 26, 2014  #3748     bkowal       Clear audio list on reset.
  * Nov 18, 2014  #3829     bkowal       Track all audio managed by the control. Added
  *                                      getAudioDataList.
+ * Dec 10, 2014  #3883     bkowal       Handle dialog closure during audio playback.
  * 
  * </pre>
  * 
@@ -146,6 +147,10 @@ public class MessageAudioComp extends Composite implements IAudioControlAction {
 
     @Override
     public void enableAudioControls(boolean enable) {
+        if (this.isDisposed()) {
+            // user closes dialog during audio playback
+            return;
+        }
         /*
          * Loop over and disable the audio control buttons on each of the audio
          * controls.
