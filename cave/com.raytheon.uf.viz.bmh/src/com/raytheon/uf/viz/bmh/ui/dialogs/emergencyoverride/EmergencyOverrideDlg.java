@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -53,6 +52,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicCompa
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
@@ -102,6 +102,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 11, 2014  3413      rferrel      Use DlgInfo to get title.
  * Nov 17, 2014  3808      bkowal       Initial support for broadcast live.
  * Nov 21, 2014  3845      bkowal       Use EOBroadcastSettingsBuilder.
+ * Dec 09, 2014  3909      bkowal       Use {@link RecordedByUtils}.
  * 
  * </pre>
  * 
@@ -714,7 +715,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         inputMsg.setNwrsameTone(false);
         inputMsg.setAreaCodes(settingsBuilder.getAreaCodeString());
         inputMsg.setExpirationTime(settingsBuilder.getExpireTime());
-        inputMsg.setContent(StringUtils.EMPTY);
+        inputMsg.setContent(RecordedByUtils.getMessage());
         inputMsg.setValidHeader(true);
 
         return inputMsg;

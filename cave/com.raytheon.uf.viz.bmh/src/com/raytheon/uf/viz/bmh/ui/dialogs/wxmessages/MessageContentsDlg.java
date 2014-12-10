@@ -52,14 +52,13 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
-import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -79,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 18, 2014  #3829     bkowal       Set content type back to TEXT when
  *                                      applicable.
  * Dec 2, 2014   #3874     bkowal       Implemented the play action.
+ * Dec 09, 2014  #3909     bkowal       Use {@link RecordedByUtils}.
  * 
  * </pre>
  * 
@@ -569,14 +569,8 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
          * if we reach this point, the user will have confirmed purging the
          * current information and the user has successfully recorded new audio.
          */
-        StringBuilder recordedByMsg = new StringBuilder("Recorded by ");
-        recordedByMsg.append(VizApp.getWsId().getUserName());
-        recordedByMsg.append(" on ");
-        // TODO: apply date/time formatting.
-        recordedByMsg.append(TimeUtil.newCalendar().getTime().toString());
-        recordedByMsg.append(".");
         this.playBtn.setEnabled(false);
-        this.messageSt.setText(recordedByMsg.toString());
+        this.messageSt.setText(RecordedByUtils.getMessage());
         this.messageSt.setEditable(false);
 
         msgAudioComp.removeAllAudioControls();

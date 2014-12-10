@@ -57,6 +57,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
@@ -121,6 +122,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 02, 2014  3614     bsteffen    Do not report success when submit fails.
  * Dec 09, 2014  3893     lvenable    Fixed the area selection call to not repopulate the
  *                                    areas/zones/transmitters if they were previously removed.
+ * Dec 09, 2014  3909     bkowal      Use {@link RecordedByUtils}.
  * 
  * </pre>
  * 
@@ -1232,9 +1234,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      * @return
      */
     private CONTENT_TYPE determineContentType(final String content) {
-        final String recordedBy = "Recorded by";
-
-        return content.trim().startsWith(recordedBy) ? CONTENT_TYPE.AUDIO
+        return RecordedByUtils.isMessage(content) ? CONTENT_TYPE.AUDIO
                 : CONTENT_TYPE.TEXT;
     }
 
