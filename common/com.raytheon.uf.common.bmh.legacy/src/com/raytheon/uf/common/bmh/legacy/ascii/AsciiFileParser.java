@@ -39,6 +39,7 @@ import java.util.regex.Pattern;
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014 3175       rjpeter     Initial creation.
  * Oct 13, 2014 3654       rjpeter     Fixed words running together on line break.
+ * Dec 10, 2014 3824       rferrel     Constructor for reader and source.
  * </pre>
  * 
  * @author rjpeter
@@ -72,8 +73,12 @@ public class AsciiFileParser implements Closeable {
      * @throws FileNotFoundException
      */
     public AsciiFileParser(File file) throws FileNotFoundException {
-        reader = new BufferedReader(new FileReader(file));
-        sourceFile = file.getAbsolutePath();
+        this(new BufferedReader(new FileReader(file)), file.getAbsolutePath());
+    }
+
+    public AsciiFileParser(BufferedReader reader, String sourceFile) {
+        this.reader = reader;
+        this.sourceFile = sourceFile;
     }
 
     /**

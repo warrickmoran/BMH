@@ -19,7 +19,9 @@
  **/
 package com.raytheon.uf.common.bmh.legacy.ascii;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -78,6 +81,9 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Oct 24, 2014  3617      dgilling    Support unified time zone field for transmitter groups.
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
+ * Dec 10, 2013  3824      rferrel     Remove warning on missing voices exclude Spanish when no Spanish voices.
+ *                                       Added reader/source constructor.
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -174,6 +180,15 @@ public class AsciiFileTranslator {
     private final Map<Language, Map<Boolean, TtsVoice>> voices = new HashMap<>(
             4);
 
+    private final boolean includeSpanish;
+
+    /**
+     * Set to true when data is parsed.
+     */
+    protected final AtomicBoolean parsedData = new AtomicBoolean(false);
+
+    private final String voiceMsg;
+
     /**
      * Translates the given file as a legacy ascii dictionary. If strict is
      * true, then any parsing/validation issues will throw an exception,
@@ -190,11 +205,26 @@ public class AsciiFileTranslator {
      */
     public AsciiFileTranslator(File file, boolean strict,
             List<TtsVoice> definedVoices) throws IOException, ParseException {
+        this(new BufferedReader(new FileReader(file)), file.getAbsolutePath(),
+                strict, definedVoices);
+    }
+
+    public AsciiFileTranslator(BufferedReader buffer, String source,
+            boolean strict, List<TtsVoice> definedVoices) throws IOException,
+            ParseException {
         this.strict = strict;
 
         if ((definedVoices == null) || (definedVoices.size() == 0)) {
             throw new IllegalArgumentException(
                     "No voices configured for BMH, cannot parse legacy database");
+        }
+
+        includeSpanish = conatinsSpanishVoice(definedVoices);
+
+        if (includeSpanish) {
+            voiceMsg = "Including Spanish information.";
+        } else {
+            voiceMsg = "Excluding Spanish information.";
         }
 
         // put voices in to map for look up
@@ -209,8 +239,8 @@ public class AsciiFileTranslator {
             langMap.put(voice.isMale(), voice);
         }
 
-        // scan the file
-        try (AsciiFileParser reader = new AsciiFileParser(file)) {
+        // scan the buffer
+        try (AsciiFileParser reader = new AsciiFileParser(buffer, source)) {
             reader.setStartOfSectionPattern(BLOCK_HEADER);
             reader.setEndOfSectionPattern(BLOCK_HEADER);
             for (Matcher blockMatcher = reader.scanToNextSection(true); blockMatcher != null; blockMatcher = reader
@@ -260,9 +290,11 @@ public class AsciiFileTranslator {
         switch (blockNumber) {
         case 1:
             parseDictionaryData(reader);
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         case 2:
             parseStationIdData(reader);
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         // BLOCK 3 - Keep Alive Data not used in BMH
         // BLOCK 4 - Interrupt Announcement Data not used in BMH
@@ -319,34 +351,43 @@ public class AsciiFileTranslator {
                         "Could not find Site Specific Configuration to get time zone",
                         scanStart, reader.getSourceFile());
             }
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         // BLOCK 6 - Lead-In Data not used in BMH
         // BLOCK 7/7B - Call To Action Data not used in BMH
         case 8:
             parseAreaData(reader);
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         case 9:
             parseZoneData(reader);
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         case 10:
             parseMessageTypeData(reader);
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         case 11:
             parseMessageTypeReplaceData(reader);
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         // BLOCK 12 - Message Type Follow not used in BMH
         // BLOCK 13 - Message Type CTA not used in BMH
         case 14:
             parseMessageGroupData(reader);
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         case 15:
             parseSuiteData(reader);
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         case 16:
             parseProgramData(reader);
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         case 17:
             parseTransmitterProgramData(reader);
+            AsciiFileTranslator.this.parsedData.set(true);
             break;
         // BLOCK 18 - Data not used in BMH
         default:
@@ -480,7 +521,7 @@ public class AsciiFileTranslator {
 
                 lang = parseTransmitterLanguage(Language.SPANISH, group,
                         spaDict, spaStatIdMsg, reader);
-                if (lang != null) {
+                if (includeSpanish && (lang != null)) {
                     langs.add(lang);
                 }
             }
@@ -1174,7 +1215,10 @@ public class AsciiFileTranslator {
         // determine if there are any triggers associated with the suite.
         if (!SuiteType.GENERAL.equals(suite.getType())) {
             for (String trigger : triggers) {
-                programSuite.addTrigger(msgTypes.get(trigger).getSummary());
+                MessageType msgType = msgTypes.get(trigger);
+                if (msgType != null) {
+                    programSuite.addTrigger(msgType.getSummary());
+                }
             }
         }
     }
@@ -1472,6 +1516,9 @@ public class AsciiFileTranslator {
 
     private TtsVoice getTtsVoice(Language lang, boolean isMale,
             int currentLineNumber, String sourceFile) throws ParseException {
+        if (!includeSpanish && (lang == Language.SPANISH)) {
+            return null;
+        }
         Map<Boolean, TtsVoice> langMap = voices.get(lang);
         if (langMap == null) {
             StringBuilder msg = new StringBuilder(80);
@@ -1483,11 +1530,6 @@ public class AsciiFileTranslator {
 
         TtsVoice voice = langMap.get(isMale);
         if (voice == null) {
-            StringBuilder msg = new StringBuilder(80);
-            msg.append("No ").append(lang).append(" ")
-                    .append((isMale ? "Male" : "Female"))
-                    .append(" voice is configured for BMH");
-            handleError(msg, currentLineNumber, sourceFile);
             voice = langMap.values().iterator().next();
         }
         return voice;
@@ -1495,6 +1537,23 @@ public class AsciiFileTranslator {
 
     public List<String> getValidationMessages() {
         return validationMessages;
+    }
+
+    private boolean conatinsSpanishVoice(List<TtsVoice> voices) {
+        for (TtsVoice voice : voices) {
+            if (voice.getLanguage() == Language.SPANISH) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public String getVoiceMsg() {
+        return voiceMsg;
+    }
+
+    public boolean parsedData() {
+        return this.parsedData.get();
     }
 
     public static void main(String args[]) {

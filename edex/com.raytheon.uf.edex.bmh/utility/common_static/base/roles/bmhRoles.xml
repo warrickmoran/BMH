@@ -91,6 +91,11 @@
          This permission allows the user to access BMH DAC Configuration dialog.
        </description>
    </permission>
+    <permission id="bmh.dialog.importLegacyDB">
+      <description>
+         This permission allows the user to access Import Legacy Database dialog.
+       </description>
+   </permission>
    <role roleId="bmh.admin">
        <roleDescription>
           This role is for BMH administrator permissions.
@@ -113,6 +118,7 @@
        <rolePermission>bmh.dialog.manageDictionaries</rolePermission>
        <rolePermission>bmh.dialog.convertLegacyDictionary</rolePermission>
        <rolePermission>bmh.dialog.dacConfiguration</rolePermission>
+       <rolePermission>bmh.dialog.importLegacyDB</rolePermission>
    </role>
    <role roleId="bmh.operator">
        <roleDescription>

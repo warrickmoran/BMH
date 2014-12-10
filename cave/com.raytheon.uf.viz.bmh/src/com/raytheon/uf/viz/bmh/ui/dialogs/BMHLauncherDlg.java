@@ -83,6 +83,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.StatusMonitorDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WeatherMessagesDlg;
 import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
+import com.raytheon.uf.viz.bmh.ui.program.ImportLegacyDbDlg;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
@@ -123,6 +124,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 19, 2014   3349     lvenable    Use the new System status dialog.
  * Dec 01, 2014   3698     rferrel     Add warning to copyOperationalDb.
  * Dec 10, 2014   3900     lvenable    Added some spacing and increaced the size of the quick access
+ * Dec 10, 2014   3824     rferrel     Add importLegacyDB.
  *                                     buttons to make the launcher dialog a bit larger.
  * 
  * </pre>
@@ -210,6 +212,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     /** Broadcast Live Dialog. */
     private BroadcastLiveDlg broadcastLiveDlg;
+
+    /** Import Legacy Dialog. */
+    private ImportLegacyDbDlg importDbDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
@@ -864,6 +869,18 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                 }
             });
         }
+
+        MenuItem legacyImportMI = new MenuItem(systemMenu, SWT.PUSH);
+        legacyImportMI.setText("Import Legacy DB...");
+        legacyImportMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                if (isAuthorized(DlgInfo.IMPORT_LEGACY_DB)) {
+                    importLegacyDB();
+                }
+            }
+        });
+
     }
 
     /**
@@ -1187,6 +1204,15 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                                     + tg.getName() + " to the database: ", e);
                 }
             }
+        }
+    }
+
+    private void importLegacyDB() {
+        if ((importDbDlg == null) || importDbDlg.isDisposed()) {
+            importDbDlg = new ImportLegacyDbDlg(shell, dlgsToValidateCloseMap);
+            importDbDlg.open();
+        } else {
+            importDbDlg.bringToTop();
         }
     }
 
