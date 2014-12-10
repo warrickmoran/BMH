@@ -81,6 +81,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 26, 2014   3750     mpduff       Get updates from filtered list.
  * Oct 28, 2014   3750     lvenable     Updated the selected suite when selecting the table index via suite ID.
  * Nov 17, 2014   3698     rferrel      Added checks to allow only 1 GENERAL type suite in a program.
+ * Dec 09, 2014   3906     lvenable     Added method to change the grid data.
  * 
  * </pre>
  * 
@@ -220,6 +221,26 @@ public class SuiteConfigGroup extends Composite {
      */
     public void setSelectedProgram(Program p) {
         selectedProgram = p;
+    }
+
+    /**
+     * Method to change the horizontal and vertical fill styles.
+     * 
+     * @param horizontal
+     *            Horizontal alignment.
+     * @param vertical
+     *            Vertical alignment.
+     * @param horizontalExcess
+     *            Horizontal excess flag.
+     * @param verticalExcess
+     *            Vertical excess flag.
+     */
+    public void setFillStyleOnTable(int horizontal, int vertical,
+            boolean horizontalExcess, boolean verticalExcess) {
+        ((GridData) this.getLayoutData()).horizontalAlignment = horizontal;
+        ((GridData) this.getLayoutData()).verticalAlignment = vertical;
+        ((GridData) this.getLayoutData()).grabExcessHorizontalSpace = horizontalExcess;
+        ((GridData) this.getLayoutData()).grabExcessVerticalSpace = verticalExcess;
     }
 
     /**

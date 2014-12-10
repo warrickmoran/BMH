@@ -100,6 +100,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 01, 2014  3698      rferrel     Changed message dialogs to only perform action when OK button is selected.
  * Dec 07, 2014  3846      mpduff      Only load the selected Program rather than all programs.
  *                                      Changing program selection now updates program's transmitters.
+ * Dec 09, 2014  3906      lvenable    Chenged the grid data for the suite and message type tables.
  * 
  * </pre>
  * 
@@ -368,6 +369,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     private void createSuiteGroup() {
         suiteConfigGroup = new SuiteConfigGroup(shell, suiteGroupTextPrefix,
                 SuiteGroupType.BROADCAST_PROGRAM, selectedProgram);
+        suiteConfigGroup
+                .setFillStyleOnTable(SWT.FILL, SWT.DEFAULT, true, false);
         suiteConfigGroup.setCallBackAction(new SuiteActionAdapter() {
 
             @Override
@@ -499,7 +502,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         messageTypeGroup = new Group(shell, SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         messageTypeGroup.setLayout(gl);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         messageTypeGroup.setLayoutData(gd);
         messageTypeGroup.setText(messgaeTypeGrpPrefix);
 
