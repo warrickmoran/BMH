@@ -122,6 +122,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 17, 2014   3808     bkowal      Add the Broadcast Live dialog.
  * Nov 19, 2014   3349     lvenable    Use the new System status dialog.
  * Dec 01, 2014   3698     rferrel     Add warning to copyOperationalDb.
+ * Dec 10, 2014   3900     lvenable    Added some spacing and increaced the size of the quick access
+ *                                     buttons to make the launcher dialog a bit larger.
  * 
  * </pre>
  * 
@@ -253,8 +255,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     protected Layout constructShellLayout() {
         // Create the main layout for the shell.
         GridLayout mainLayout = new GridLayout(2, false);
-        mainLayout.marginHeight = 0;
-        mainLayout.marginWidth = 0;
+        mainLayout.marginHeight = 5;
+        mainLayout.marginWidth = 5;
+        mainLayout.horizontalSpacing = 10;
         return mainLayout;
     }
 
@@ -418,7 +421,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         UpDownImages udi = new UpDownImages(shell);
 
         final Composite buttonComp = new Composite(mainComp, SWT.NONE);
-        buttonComp.setLayout(new GridLayout(5, false));
+        GridLayout gl = new GridLayout(5, false);
+        gl.horizontalSpacing = 10;
+        buttonComp.setLayout(gl);
         buttonComp
                 .setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true));
 
@@ -502,7 +507,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     private void createQuickAccessButtons(Composite mainComp) {
 
         Composite buttonComp = new Composite(mainComp, SWT.NONE);
-        buttonComp.setLayout(new GridLayout(3, false));
+        GridLayout gl = new GridLayout(3, false);
+        gl.horizontalSpacing = 10;
+        buttonComp.setLayout(gl);
         buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
@@ -510,8 +517,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
          * Weather Message
          */
         ImageDescriptor id;
-        GridData gd = new GridData();
-        gd.horizontalIndent = 20;
+        int buttonWidth = 50;
+        GridData gd = new GridData(buttonWidth, SWT.DEFAULT);
+        gd.horizontalIndent = 30;
         Button broadcastCycleBtn = new Button(buttonComp, SWT.PUSH);
         id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/BroadcastCycle.png");
@@ -531,11 +539,13 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         /*
          * Weather Message
          */
+        gd = new GridData(buttonWidth, SWT.DEFAULT);
         Button weatherMessageBtn = new Button(buttonComp, SWT.PUSH);
         id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/WeatherMessage.png");
         weatherMessageImg = id.createImage();
         weatherMessageBtn.setImage(weatherMessageImg);
+        weatherMessageBtn.setLayoutData(gd);
         weatherMessageBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
@@ -549,11 +559,13 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         /*
          * Emergency Override
          */
+        gd = new GridData(buttonWidth, SWT.DEFAULT);
         Button emergencyBtn = new Button(buttonComp, SWT.PUSH);
         id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
                 "icons/EmergencyOverride.png");
         emergencyOverrideImg = id.createImage();
         emergencyBtn.setImage(emergencyOverrideImg);
+        emergencyBtn.setLayoutData(gd);
         emergencyBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
