@@ -26,6 +26,8 @@ import java.util.Map;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
@@ -66,6 +68,10 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  * Oct 27, 2014  #3712     bkowal      Fixed how hours are handled when retrieving data
  *                                     from the dtf spinners.
  * Nov 01, 2014   3784     mpduff      Added getBackingCalendar()
+ * Dec 09, 2014   3892     bkowal      Listen for spinner modifications instead of selections.
+ *                                     Listening for modifications handles the case where
+ *                                     the time is set programatically in addition to when
+ *                                     the user manually alters the time.
  * 
  * </pre>
  * 
@@ -220,13 +226,6 @@ public class DateTimeFields extends Composite {
                 spnr.setTextLimit(2);
             }
             spnr.setData(type);
-            spnr.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    Spinner src = (Spinner) e.getSource();
-                    spinnerSelectionAction(src);
-                }
-            });
 
             spinners.put(type, spnr);
 
@@ -258,6 +257,13 @@ public class DateTimeFields extends Composite {
                 }
                 break;
             }
+            spnr.addModifyListener(new ModifyListener() {
+                @Override
+                public void modifyText(ModifyEvent e) {
+                    Spinner src = (Spinner) e.getSource();
+                    spinnerModifiedAction(src);
+                }
+            });
         }
     }
 
@@ -324,12 +330,12 @@ public class DateTimeFields extends Composite {
     }
 
     /**
-     * Spinner selection action handler
+     * Spinner modification action handler
      * 
      * @param spinner
-     *            The selected Spinner
+     *            The modified Spinner
      */
-    private void spinnerSelectionAction(Spinner spinner) {
+    private void spinnerModifiedAction(Spinner spinner) {
         for (DateFieldType type : fieldValuesMap.keySet()) {
             switch (type) {
             case DAY:
