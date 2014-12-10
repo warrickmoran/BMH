@@ -100,7 +100,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 01, 2014  3698      rferrel     Changed message dialogs to only perform action when OK button is selected.
  * Dec 07, 2014  3846      mpduff      Only load the selected Program rather than all programs.
  *                                      Changing program selection now updates program's transmitters.
- * Dec 09, 2014  3906      lvenable    Chenged the grid data for the suite and message type tables.
+ * Dec 09, 2014  3906      lvenable    Changed the grid data for the suite and message type tables.
  * 
  * </pre>
  * 
