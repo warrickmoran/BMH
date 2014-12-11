@@ -35,6 +35,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IInterruptMessageRec
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.DacMessagePlaybackData;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
+import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 
 /**
  * Thread for sending audio data to the DAC. Runs on a cycle time of 20 ms.
@@ -71,6 +72,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Oct 21, 2014  #3655     bkowal       Support delaying interrupts.
  * Oct 29, 2014  #3774     bsteffen     Log Packets
  * Nov 11, 2014  #3762     bsteffen     Add delayed shutdown.
+ * Dec 11, 2014  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg activity.
  * 
  * </pre>
  * 
@@ -194,9 +196,8 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                     playingInterrupt = playbackData.isInterrupt();
                     AudioPacketLogger packetLog = new AudioPacketLogger(
                             "Transmit "
-                                    +
-                            playbackData.getMessage().getMessageType(), logger,
-                            600);
+                                    + playbackData.getMessage()
+                                            .getMessageType(), logger, 600);
                     while ((playbackData.hasRemaining())
                             && (playingInterrupt || (interruptsAvailable.get() == 0))) {
                         try {
@@ -240,6 +241,9 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                     }
                     packetLog.close();
                     playbackData.endPlayback();
+                    // broadcast of the message has finished, log it.
+                    DefaultMessageLogger.getInstance().logBroadcastActivity(
+                            playbackData.getMessage());
                     playingInterrupt = false;
                 } catch (Throwable t) {
                     logger.error("Uncaught exception thrown from main loop.", t);

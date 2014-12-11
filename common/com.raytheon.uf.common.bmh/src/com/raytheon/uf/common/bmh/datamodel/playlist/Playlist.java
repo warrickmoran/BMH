@@ -78,6 +78,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Nov 18, 2014  3746     rjpeter     Labeled ForeignKeys.
  * Dec 08, 2014  3864     bsteffen    Add a PlaylistMsg class.
  * Dec 10, 2014  3917     bsteffen    Avoid null end time.
+ * Dec 11, 2014  3651     bkowal      Track and propagate messages that are replaced.
  * 
  * </pre>
  * 
@@ -313,13 +314,14 @@ public class Playlist {
      *            the afosids of messages this message should replace.
      */
     public void addBroadcastMessage(BroadcastMsg message,
-            Set<String> matReplacements) {
+            Set<String> matReplacements, List<BroadcastMsg> removedMessages) {
         PlaylistMessage playlistMessage = new PlaylistMessage(message, this);
         if (playlistMessage.isActive() && !messages.contains(playlistMessage)
                 && suite.containsSuiteMessage(message.getAfosid())) {
-            removeMrdReplacements(playlistMessage);
-            removeMatReplacements(playlistMessage, matReplacements);
-            removeIdentityReplacements(playlistMessage);
+            removeMrdReplacements(playlistMessage, removedMessages);
+            removeMatReplacements(playlistMessage, matReplacements,
+                    removedMessages);
+            removeIdentityReplacements(playlistMessage, removedMessages);
             messages.add(playlistMessage);
         }
     }
@@ -327,7 +329,8 @@ public class Playlist {
     /**
      * Remove any messages with the same type, and areas.
      */
-    private void removeIdentityReplacements(PlaylistMessage message) {
+    private void removeIdentityReplacements(PlaylistMessage message,
+            List<BroadcastMsg> removedMessages) {
         String afosid = message.getAfosid();
         Iterator<PlaylistMessage> it = messages.iterator();
         while (it.hasNext()) {
@@ -339,9 +342,10 @@ public class Playlist {
                 int existingMrd = existing.getMrdId();
                 boolean areaCodesEqual = areaCodes == existingAreaCodes
                         || (areaCodes != null && areaCodes
-                        .equals(existingAreaCodes));
+                                .equals(existingAreaCodes));
                 boolean mrdEqual = mrd == existingMrd;
                 if (areaCodesEqual && mrdEqual) {
+                    removedMessages.add(existing.getBroadcastMsg());
                     it.remove();
                 }
             }
@@ -352,7 +356,7 @@ public class Playlist {
      * Remove any messages whose type is in matRepklacements.
      */
     private void removeMatReplacements(PlaylistMessage message,
-            Set<String> matReplacements) {
+            Set<String> matReplacements, List<BroadcastMsg> removedMessages) {
         if (matReplacements == null || message.getMrdId() != -1) {
             return;
         }
@@ -365,6 +369,7 @@ public class Playlist {
                 if (areaCodes == existingAreaCodes
                         || (areaCodes != null && areaCodes
                                 .equals(existingAreaCodes))) {
+                    removedMessages.add(existing.getBroadcastMsg());
                     it.remove();
                     if (message.getReplacementType() == null) {
                         message.setReplacementType(ReplacementType.MAT);
@@ -378,7 +383,8 @@ public class Playlist {
      * Remove any messages whose mrd id is in the set of ids that this messages
      * should replace.
      */
-    private void removeMrdReplacements(PlaylistMessage message) {
+    private void removeMrdReplacements(PlaylistMessage message,
+            List<BroadcastMsg> removedMessages) {
         int[] mrdReplacements = message.getBroadcastMsg().getInputMessage()
                 .getMrdReplacements();
         if (mrdReplacements != null && mrdReplacements.length > 0) {
@@ -389,9 +395,11 @@ public class Playlist {
             }
             Iterator<PlaylistMessage> it = messages.iterator();
             while (it.hasNext()) {
-                int existingMrdId = it.next().getBroadcastMsg()
+                PlaylistMessage existing = it.next();
+                int existingMrdId = existing.getBroadcastMsg()
                         .getInputMessage().getMrdId();
                 if (mrdReplacementSet.contains(existingMrdId)) {
+                    removedMessages.add(existing.getBroadcastMsg());
                     it.remove();
                     message.setReplacementType(ReplacementType.MRD);
                 }

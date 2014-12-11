@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 
 /**
  * An implementation of {@link AbstractAudioFileBuffer} that supports
@@ -39,6 +40,8 @@ import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 1, 2014  3642       bkowal      Initial creation
+ * Dec 11, 2014 3651       bkowal      Added {@link DacPlaylistMessage} to
+ *                                     the constructor.
  * 
  * </pre>
  * 
@@ -68,10 +71,11 @@ public final class DynamicTimeAudioFileBuffer extends AbstractAudioFileBuffer {
 
     private final TimeMsgCache timeCache;
 
-    public DynamicTimeAudioFileBuffer(ByteBuffer tonesAudio,
-            List<byte[]> audioSegments,
+    public DynamicTimeAudioFileBuffer(final DacPlaylistMessage dacMsg,
+            ByteBuffer tonesAudio, List<byte[]> audioSegments,
             final Map<Integer, TIME_MSG_TOKENS> dynamicAudioPositionMap,
             ByteBuffer endOfMessageAudio, final TimeMsgCache timeCache) {
+        super(dacMsg);
         this.tonesAudio = tonesAudio;
         this.audioSegments = audioSegments;
         this.dynamicAudioPositionMap = dynamicAudioPositionMap;
@@ -146,7 +150,7 @@ public final class DynamicTimeAudioFileBuffer extends AbstractAudioFileBuffer {
             finalMessageBuffer.put(this.audioSegments.get(i));
         }
 
-        AudioFileBuffer buffer = new AudioFileBuffer(
+        AudioFileBuffer buffer = new AudioFileBuffer(this.message,
                 finalMessageBuffer.array(), this.tonesAudio,
                 this.endOfMessageAudio);
         buffer.rewind();
