@@ -24,6 +24,7 @@ import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.bmh.diff.DiffString;
@@ -44,6 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
  * Oct 24, 2014 3636       rferrel     Implement logging.
+ * Dec 11, 2014 3618       bkowal      Added {@link #dictionary}.
  * </pre>
  * 
  * @author rjpeter
@@ -75,6 +77,10 @@ public class TtsVoice {
     @DynamicSerializeElement
     private boolean male;
 
+    @ManyToOne(optional = true)
+    @DynamicSerializeElement
+    private Dictionary dictionary;
+
     public int getVoiceNumber() {
         return voiceNumber;
     }
@@ -105,6 +111,21 @@ public class TtsVoice {
 
     public void setMale(boolean male) {
         this.male = male;
+    }
+
+    /**
+     * @return the dictionary
+     */
+    public Dictionary getDictionary() {
+        return dictionary;
+    }
+
+    /**
+     * @param dictionary
+     *            the dictionary to set
+     */
+    public void setDictionary(Dictionary dictionary) {
+        this.dictionary = dictionary;
     }
 
     @Override

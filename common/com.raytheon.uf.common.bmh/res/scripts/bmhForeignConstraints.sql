@@ -189,3 +189,10 @@ alter table bmh.ldad_msg_type add constraint fk_orp1qpttjs7whbutxov3k370o
 alter table bmh.transmitter_language drop constraint fk_ag6l0d2oqq951ku6rebv3k2he;
 alter table bmh.transmitter_language add constraint fk_ag6l0d2oqq951ku6rebv3k2he
     foreign key (transmittergroup_id) references bmh.transmitter_group (id) on delete cascade;
+
+/**
+ * Voice to Dictionary
+ */
+alter table bmh.tts_voice drop constraint fk_nsj4b6uq3lxg3xlhfktiqgxk4;
+alter table bmh.tts_voice add constraint fk_nsj4b6uq3lxg3xlhfktiqgxk4
+    foreign key (dictionary_name) references bmh.dictionary (name) on delete set null;    

@@ -23,10 +23,13 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
+import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest;
 import com.raytheon.uf.common.bmh.request.DictionaryResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 
 /**
@@ -43,6 +46,8 @@ import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 16, 2014  3636     rferrel     Implement logging.
+ * Dec 11, 2014  3618     bkowal      Disseminate a {@link NationalDictionaryConfigNotification}
+ *                                    whenever the National {@link Dictionary} is updated.
  * 
  * </pre>
  * 
@@ -56,6 +61,7 @@ public class DictionaryHandler extends
     @Override
     public Object handleRequest(DictionaryRequest request) throws Exception {
         DictionaryResponse response = new DictionaryResponse();
+        NationalDictionaryConfigNotification notification = null;
 
         switch (request.getAction()) {
         case ListNames:
@@ -66,8 +72,16 @@ public class DictionaryHandler extends
             break;
         case Save:
             response = saveDictionary(request);
+            if (request.getDictionary().isNational()) {
+                notification = new NationalDictionaryConfigNotification(
+                        ConfigChangeType.Update);
+            }
             break;
         case Delete:
+            if (request.getDictionary().isNational()) {
+                notification = new NationalDictionaryConfigNotification(
+                        ConfigChangeType.Delete);
+            }
             deleteDictionary(request);
             break;
         default:
@@ -76,6 +90,9 @@ public class DictionaryHandler extends
                     + " cannot handle action "
                     + request.getAction());
         }
+
+        BmhMessageProducer.sendConfigMessage(notification,
+                request.isOperational());
 
         return response;
     }

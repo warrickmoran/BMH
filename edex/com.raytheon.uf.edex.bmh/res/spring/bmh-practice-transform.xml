@@ -8,6 +8,7 @@
 		<property name="messageTypeDao" ref="practice_messageTypeDao" />
 		<property name="transmitterLanguageDao" ref="practice_transmitterLanguageDao" />
 		<property name="ldadConfigDao" ref="practice_ldadConfigDao" />
+		<property name="dictionaryDao" ref="practice_dictionaryDao" />
 	</bean>
 	
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
@@ -44,6 +45,23 @@
 						</when>
 					</choice>
 				</split>
+				<doCatch>
+					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR" />
+				</doCatch>
+			</doTry>
+		</route>
+		
+		<route id="practice_bmhTransformerConfig">
+			<from uri="jms-generic:topic:BMH.Practice.Config" />
+			<doTry>
+				<bean ref="serializationUtil" method="transformFromThrift" />
+				<filter>
+					<simple>${body} is
+						"com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification"
+					</simple>
+					<bean ref="practice_messageTransformer" method="updateNationalDictionary" />
+				</filter>
 				<doCatch>
 					<exception>java.lang.Throwable</exception>
 					<to uri="log:bmh?level=ERROR" />

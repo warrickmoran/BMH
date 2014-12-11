@@ -36,6 +36,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
  * Jun 24, 2014 3302       bkowal      Initial creation
  * Jul 08, 2014 3355       mpduff      Added getDictionaryNames()
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Dec 11, 2014 3618       bkowal      Added {@link #getNationalDictionary()}.
  * 
  * </pre>
  * 
@@ -53,7 +54,6 @@ public class DictionaryDao extends AbstractBMHDao<Dictionary, String> {
         super(operational, Dictionary.class);
     }
 
-
     /**
      * Get a list of all dictionaries in the BMH database.
      * 
@@ -67,5 +67,30 @@ public class DictionaryDao extends AbstractBMHDao<Dictionary, String> {
         }
 
         return names;
+    }
+
+    /**
+     * Retrieves the national {@link Dictionary} if one exists.
+     * 
+     * @return the national {@link Dictionary} if it exists or {@code null} if
+     *         one cannot be found.
+     */
+    public Dictionary getNationalDictionary() {
+        List<?> returnedObjects = this
+                .findByNamedQuery(Dictionary.GET_NATIONAL_DICTIONARY);
+        if (returnedObjects == null || returnedObjects.isEmpty()) {
+            return null;
+        }
+
+        if (returnedObjects.get(0) instanceof Dictionary == false) {
+            logger.error("The "
+                    + Dictionary.GET_NATIONAL_DICTIONARY
+                    + " query returned results in the wrong format. Expected a "
+                    + Dictionary.class.getName() + "; received a "
+                    + returnedObjects.get(0).getClass().getName() + ".");
+            return null;
+        }
+
+        return (Dictionary) returnedObjects.get(0);
     }
 }

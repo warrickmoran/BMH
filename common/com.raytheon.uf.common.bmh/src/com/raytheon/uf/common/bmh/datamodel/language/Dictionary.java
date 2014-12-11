@@ -59,12 +59,15 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Aug 04, 2014 3175       rjpeter     Added serialization adapter to fix circular reference.
  * Oct 16, 2014 3636       rferrel     Added logging.
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
+ * Dec 11, 2014 3618       bkowal      Added {@link #GET_NATIONAL_DICTIONARY}.
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
-@NamedQueries({ @NamedQuery(name = Dictionary.GET_DICTIONARY_NAMES_QUERY, query = "select dict.name from Dictionary dict") })
+@NamedQueries({
+        @NamedQuery(name = Dictionary.GET_DICTIONARY_NAMES_QUERY, query = "select dict.name from Dictionary dict"),
+        @NamedQuery(name = Dictionary.GET_NATIONAL_DICTIONARY, query = Dictionary.GET_NATIONAL_DICTIONARY_QUERY) })
 @Entity
 @Table(name = "dictionary", schema = "bmh")
 @DynamicSerialize
@@ -72,6 +75,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
 public class Dictionary {
 
     public static final String GET_DICTIONARY_NAMES_QUERY = "getDictionaryNames";
+
+    public static final String GET_NATIONAL_DICTIONARY = "getNationalDictionary";
+
+    protected static final String GET_NATIONAL_DICTIONARY_QUERY = "FROM Dictionary d WHERE d.national = true";
 
     @Id
     @Column(length = 20)
@@ -86,6 +93,16 @@ public class Dictionary {
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "dictionary", fetch = FetchType.EAGER)
     @Fetch(FetchMode.SELECT)
     private Set<Word> words;
+
+    /**
+     * boolean indicating whether or not this dictionary is the national
+     * dictionary. There can only be one national dictionary. The national
+     * dictionary is used in every message transformation. However, {@link Word}
+     * s in the dictionary can be overridden by dictionaries assigned to
+     * individual voices and transmitters.
+     */
+    @Column(nullable = false)
+    private boolean national = false;
 
     public String getName() {
         return name;
@@ -117,6 +134,21 @@ public class Dictionary {
                 word.setDictionary(this);
             }
         }
+    }
+
+    /**
+     * @return the national
+     */
+    public boolean isNational() {
+        return national;
+    }
+
+    /**
+     * @param national
+     *            the national to set
+     */
+    public void setNational(boolean national) {
+        this.national = national;
     }
 
     public boolean containsWord(String wordName) {
