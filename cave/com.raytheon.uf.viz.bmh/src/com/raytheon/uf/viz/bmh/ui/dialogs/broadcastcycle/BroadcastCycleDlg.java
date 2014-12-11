@@ -134,6 +134,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 30, 2014  3752      mpduff      Populate Suite name, suite category, and cycle duration on startup.
  * Dec 09, 2014  3904      bkowal      Disable inline monitoring whenever a {@link AudioRecordPlaybackNotification}
  *                                     is received.
+ * Dec 11, 2014  3895      lvenable    Changed time to GMT.
  * 
  * </pre>
  * 
@@ -209,9 +210,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     /** The selected transmitterGroup object */
     private TransmitterGroup selectedTransmitterGroupObject;
-
-    /** Time Zone value label */
-    private Label timeZoneValueLbl;
 
     /** Playlist data object */
     private PlaylistData playlistData;
@@ -446,8 +444,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
         gd.widthHint = 125;
-        timeZoneValueLbl = new Label(tzComp, SWT.NONE);
+        Label timeZoneValueLbl = new Label(tzComp, SWT.NONE);
         timeZoneValueLbl.setLayoutData(gd);
+        timeZoneValueLbl.setText("GMT");
 
         // Transmitter DAC
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, false);
@@ -853,9 +852,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         selectedTransmitterGroupObject = transmitterGroupNameMap
                 .get(selectedTransmitterGrp);
-
-        this.timeZoneValueLbl.setText(selectedTransmitterGroupObject
-                .getTimeZone());
 
         Set<Integer> portSet = new TreeSet<>();
         for (Transmitter t : selectedTransmitterGroupObject.getTransmitters()) {

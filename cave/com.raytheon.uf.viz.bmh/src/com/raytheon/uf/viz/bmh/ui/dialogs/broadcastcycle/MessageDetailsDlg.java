@@ -48,6 +48,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -64,16 +65,17 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 04, 2014    3432       mpduff    Initial creation
- * Aug 14, 2014    3432       mpduff    Remaining capabilities
- * Sep 25, 2014    3620       bsteffen  Add seconds to periodicity.
- * Oct 10, 2014    3646       rferrel   Convert to GenericTable.
- * Nov 01, 2014    3782       mpduff    Added Message Name to dialog.
- * Nov 11, 2014    3825       lvenable  Fixed text control to wrap text and
- *                                      populate it after the control has been
- *                                      sized.
- * Nov 15, 2014    3828       mpduff    Use InputMessage for creation date
- * Nov 15, 2014    3818       mpduff    Set return value.
+ * Jun 04, 2014    3432     mpduff     Initial creation
+ * Aug 14, 2014    3432     mpduff     Remaining capabilities
+ * Sep 25, 2014    3620     bsteffen   Add seconds to periodicity.
+ * Oct 10, 2014    3646     rferrel    Convert to GenericTable.
+ * Nov 01, 2014    3782     mpduff     Added Message Name to dialog.
+ * Nov 11, 2014    3825     lvenable   Fixed text control to wrap text and
+ *                                     populate it after the control has been
+ *                                     sized.
+ * Nov 15, 2014    3828     mpduff     Use InputMessage for creation date
+ * Nov 15, 2014    3818     mpduff     Set return value.
+ * Dec 11, 2014    3895     lvenable   Changed SimpleDateFormat to use GMT.
  * 
  * </pre>
  * 
@@ -128,6 +130,8 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         setText("Message Details/Information");
         dataManager = new BroadcastCycleDataManager();
         setReturnValue(broadcastMsg.getId());
+
+        dateFormat.setTimeZone(TimeUtil.GMT_TIME_ZONE);
     }
 
     @Override

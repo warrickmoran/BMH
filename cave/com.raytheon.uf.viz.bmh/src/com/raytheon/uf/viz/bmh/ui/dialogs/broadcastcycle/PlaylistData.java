@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -67,6 +68,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Nov 21, 2014   3845     bkowal      Made {@link PlaylistData#sdf} public so other Viz
  *                                     components could utilize the common playlist date format.
  * Nov 29, 2014   3844     mpduff      Implement interrupt and periodic message coloring
+ * Dec 11, 2014   3895     lvenable    Changed SimpleDateFormat to use GMT.
  * 
  * </pre>
  * 
@@ -110,6 +112,8 @@ public class PlaylistData {
     public PlaylistData(List<TableColumnData> columns, Shell shell) {
         colorManager = new BroadcastCycleColorManager(shell);
         this.columns = columns;
+
+        sdf.setTimeZone(TimeUtil.GMT_TIME_ZONE);
     }
 
     /**
