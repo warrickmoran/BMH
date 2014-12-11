@@ -77,6 +77,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Nov 18, 2014  3746     rjpeter     Labeled ForeignKeys.
  * Dec 08, 2014  3864     bsteffen    Add a PlaylistMsg class.
+ * Dec 10, 2014  3917     bsteffen    Avoid null end time.
  * 
  * </pre>
  * 
@@ -273,8 +274,8 @@ public class Playlist {
             }
         }
         if (startTime == null) {
-            startTime = this.modTime;
-            endTime = this.modTime;
+            this.startTime = this.modTime;
+            this.endTime = this.modTime;
             return Collections.emptyList();
         }
         this.startTime = startTime;
