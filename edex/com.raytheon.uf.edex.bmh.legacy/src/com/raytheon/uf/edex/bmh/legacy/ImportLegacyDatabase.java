@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.handler;
+package com.raytheon.uf.edex.bmh.legacy;
 
 import java.io.BufferedReader;
 import java.io.StringReader;
@@ -204,10 +204,7 @@ public class ImportLegacyDatabase {
         clearTable(new ZoneDao(operational));
         clearTable(new AreaDao(operational));
         clearTable(new TransmitterLanguageDao(operational));
-        // clearTable(new TtsVoiceDao(operational));
         clearTable(new TransmitterGroupDao(operational));
-        // clearTable(new DictionaryDao(operational));
-        // clearTable(new WordDao(operational));
     }
 
     private void clearTable(AbstractBMHDao<?, ?> dao) {
@@ -216,43 +213,4 @@ public class ImportLegacyDatabase {
             dao.deleteAll(all);
         }
     }
-
-    // /**
-    // * Returns the available Dac ports. TODO: This should just use what is in
-    // db
-    // * and not load from properties.
-    // *
-    // * @param asciiFile
-    // *
-    // * @return
-    // */
-    // protected List<Pair<Integer, Integer>> getAvailableDacs(File asciiFile) {
-    // List<Pair<Integer, Integer>> availableDacPorts = null;
-    // DacDao dacDao = new DacDao(operational);
-    //
-    // List<Dac> rows = dacDao.loadAll();
-    // if ((rows == null) || rows.isEmpty()) {
-    // return Collections.emptyList();
-    // }
-    //
-    // Collections.sort(rows, new DacComparator());
-    // Map<Integer, Dac> dacs = new LinkedHashMap<>(rows.size());
-    // int count = 0;
-    //
-    // for (Dac dac : rows) {
-    // dacs.put(count++, dac);
-    // }
-    //
-    // availableDacPorts = new ArrayList<>(dacs.size() * 4);
-    //
-    // for (Dac dac : dacs.values()) {
-    // Set<Integer> ports = dac.getDataPorts();
-    // if (CollectionUtil.isNullOrEmpty(ports) == false) {
-    // for (Integer port : ports) {
-    // availableDacPorts.add(new Pair<>(dac.getId(), port));
-    // }
-    // }
-    // }
-    // return availableDacPorts;
-    // }
 }

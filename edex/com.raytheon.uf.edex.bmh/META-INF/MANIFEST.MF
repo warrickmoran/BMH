@@ -10,6 +10,7 @@ Export-Package: com.raytheon.uf.edex.bmh,
  com.raytheon.uf.edex.bmh.comms,
  com.raytheon.uf.edex.bmh.dao,
  com.raytheon.uf.edex.bmh.generate.tones,
+ com.raytheon.uf.edex.bmh.handler,
  com.raytheon.uf.edex.bmh.msg,
  com.raytheon.uf.edex.bmh.msg.logging,
  com.raytheon.uf.edex.bmh.status

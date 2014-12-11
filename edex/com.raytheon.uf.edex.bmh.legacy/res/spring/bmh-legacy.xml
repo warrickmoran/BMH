@@ -6,4 +6,10 @@
         <property name="databaseDir" value="${bmh.legacy.database.dir}"/>
     </bean>
 
+    <bean id="importLegacyDbHandler" class="com.raythehon.uf.edex.bmh.legacy.handler.ImportLegacyDbHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.ImportLegacyDbRequest" />
+        <constructor-arg ref="importLegacyDbHandler" />
+    </bean>
 </beans>

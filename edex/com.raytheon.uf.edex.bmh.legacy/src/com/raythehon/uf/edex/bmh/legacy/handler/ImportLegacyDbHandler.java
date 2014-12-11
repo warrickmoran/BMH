@@ -17,12 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.handler;
+package com.raythehon.uf.edex.bmh.legacy.handler;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.request.ImportLegacyDbRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.edex.bmh.handler.AbstractBMHServerRequestHandler;
+import com.raytheon.uf.edex.bmh.legacy.ImportLegacyDatabase;
 
 /**
  * 
@@ -38,7 +40,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author rferrel
  * @version 1.0
  */
 public class ImportLegacyDbHandler extends
