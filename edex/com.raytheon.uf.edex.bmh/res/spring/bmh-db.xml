@@ -96,5 +96,8 @@
   	
   <bean id="ldadConfigDao" class="com.raytheon.uf.edex.bmh.dao.LdadConfigDao"
   	depends-on="bmhTxTemplate" />
+  	
+  <bean id="dictionaryDao" class="com.raytheon.uf.edex.bmh.dao.DictionaryDao"
+  	depends-on="bmhTxTemplate" />
 
 </beans>

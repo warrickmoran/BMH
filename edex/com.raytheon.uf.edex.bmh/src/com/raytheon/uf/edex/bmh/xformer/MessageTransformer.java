@@ -23,9 +23,11 @@ import java.nio.file.Paths;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,11 +51,14 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.Sentence;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
+import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
@@ -98,6 +103,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Nov 19, 2014 3385       bkowal      Implemented ldad support.
  * Nov 20, 2014 3385       bkowal      Set afos id, voice number, and encoding on
  *                                     {@link LdadMsg}.
+ * Dec 11, 2014 3618       bkowal      Handle tiered {@link Dictionary}(ies).
  * 
  * </pre>
  * 
@@ -126,8 +132,16 @@ public class MessageTransformer implements IContextStateProcessor {
     /* Used to retrieve ldad configuration(s). */
     private LdadConfigDao ldadConfigDao;
 
+    /* Used to retrieve the national dictionary */
+    private DictionaryDao dictionaryDao;
+
     /* Used to retrieve directory paths associated with time audio. */
     private final TimeMessagesGenerator tmGenerator;
+
+    /* Cached national dictionary */
+    private Dictionary nationalDictionary;
+
+    private Object nationalDictLock = new Object();
 
     /**
      * Constructor
@@ -195,6 +209,7 @@ public class MessageTransformer implements IContextStateProcessor {
          */
         List<Object> generatedMessages = new LinkedList<>();
         for (TransmitterGroup group : message.getTransmitterGroups()) {
+            /* Get the transmitter level dictionary */
             Dictionary dictionary = this.getDictionary(group, messageType
                     .getVoice().getLanguage(), message.getId());
             BroadcastMsg msg = null;
@@ -437,8 +452,8 @@ public class MessageTransformer implements IContextStateProcessor {
             throws SSMLConversionException, BMHConfigurationException {
 
         /* Create Transformation rules based on the dictionary. */
-        List<ITextTransformation> textTransformations = this
-                .buildDictionaryTransformationList(dictionary);
+        List<ITextTransformation> textTransformations = this.mergeDictionaries(
+                dictionary, messageType.getVoice().getDictionary());
 
         /*
          * Handle the static message type special case.
@@ -579,8 +594,66 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     /**
+     * Merges the National {@link Dictionary}, the Voice {@link Dictionary}, and
+     * the Transmitter {@link Dictionary} into a single {@link List} of
+     * {@link ITextTransformation}s.
+     * 
+     * @param transmitterDictionary
+     *            the Transmitter {@link Dictionary}
+     * @param voiceDictionary
+     *            the Voice {@link Dictionary}
+     * @return the merged list of {@link ITextTransformation} rules.
+     * @throws SSMLConversionException
+     */
+    private List<ITextTransformation> mergeDictionaries(
+            final Dictionary transmitterDictionary,
+            final Dictionary voiceDictionary) throws SSMLConversionException {
+        synchronized (this.nationalDictLock) {
+            // no dictionaries exist?
+            if (this.nationalDictionary == null
+                    && transmitterDictionary == null && voiceDictionary == null) {
+                return Collections.emptyList();
+            }
+
+            Map<Word, ITextTransformation> mergedDictionaryMap = new LinkedHashMap<>();
+            this.mergeDictionary(this.nationalDictionary, mergedDictionaryMap);
+            this.mergeDictionary(voiceDictionary, mergedDictionaryMap);
+            this.mergeDictionary(transmitterDictionary, mergedDictionaryMap);
+            if (mergedDictionaryMap.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            return new LinkedList<ITextTransformation>(
+                    mergedDictionaryMap.values());
+        }
+    }
+
+    /**
+     * Merges the {@link Word}s from the specified {@link Dictionary} into the
+     * specified {@link Word} {@link Map}.
+     * 
+     * @param dictionary
+     *            the specified {@link Dictionary}
+     * @param mergedDictionaryMap
+     *            the specified {@link Word} {@link Map}
+     * @throws SSMLConversionException
+     */
+    private void mergeDictionary(final Dictionary dictionary,
+            Map<Word, ITextTransformation> mergedDictionaryMap)
+            throws SSMLConversionException {
+        if (dictionary == null) {
+            return;
+        }
+
+        for (Word word : dictionary.getWords()) {
+            mergedDictionaryMap.put(word, this.buildTransformationRule(word));
+        }
+    }
+
+    /**
      * Creates the text transformation rules based on the specified dictionary.
-     * When no dictionary is specified, an empty list will be returned.
+     * When no dictionary is specified, an empty list will be returned. Used for
+     * building the Ldad {@link ITextTransformation} {@link List}.
      * 
      * @param dictionary
      *            the specified dictionary
@@ -590,22 +663,36 @@ public class MessageTransformer implements IContextStateProcessor {
      */
     private List<ITextTransformation> buildDictionaryTransformationList(
             final Dictionary dictionary) throws SSMLConversionException {
-        /* Create Transformation rules based on the dictionary. */
+        if (dictionary == null) {
+            return Collections.emptyList();
+        }
+        /* Create Transformation rules based on the dictionaries. */
         List<ITextTransformation> textTransformations = new LinkedList<ITextTransformation>();
-        if (dictionary != null) {
-            for (Word word : dictionary.getWords()) {
-                if (word.isDynamic()) {
-                    textTransformations
-                            .add(new DynamicNumericTextTransformation(word
-                                    .getWord(), word.getSubstitute()));
-                } else {
-                    textTransformations.add(new SimpleTextTransformation(word
-                            .getWord(), word.getSubstitute()));
-                }
-            }
+        for (Word word : dictionary.getWords()) {
+            textTransformations.add(this.buildTransformationRule(word));
         }
 
         return textTransformations;
+    }
+
+    /**
+     * Constructs a {@link ITextTransformation} rule based on the specified
+     * {@link Word}.
+     * 
+     * @param word
+     *            the specified {@link Word}
+     * @return the constructed {@link ITextTransformation} rule
+     * @throws SSMLConversionException
+     */
+    private ITextTransformation buildTransformationRule(Word word)
+            throws SSMLConversionException {
+        if (word.isDynamic()) {
+            return new DynamicNumericTextTransformation(word.getWord(),
+                    word.getSubstitute());
+        } else {
+            return new SimpleTextTransformation(word.getWord(),
+                    word.getSubstitute());
+        }
     }
 
     /**
@@ -726,6 +813,40 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     /**
+     * Responds to changes to the National {@link Dictionary}.
+     * 
+     * @param notification
+     *            a notification of the {@link Dictionary} change
+     */
+    public void updateNationalDictionary(
+            NationalDictionaryConfigNotification notification) {
+        if (notification.getType() == ConfigChangeType.Update) {
+            this.retrieveNationalDictionary();
+        } else {
+            /*
+             * The National {@link Dictionary} no longer exists.
+             */
+            synchronized (this.nationalDictLock) {
+                this.nationalDictionary = null;
+            }
+        }
+    }
+
+    private void retrieveNationalDictionary() {
+        synchronized (this.nationalDictLock) {
+            this.nationalDictionary = this.dictionaryDao
+                    .getNationalDictionary();
+            if (this.nationalDictionary == null) {
+                statusHandler
+                        .info("No National Dictionary currently exists in the system.");
+                return;
+            }
+            statusHandler.info("Using National Dictionary: "
+                    + this.nationalDictionary.toString());
+        }
+    }
+
+    /**
      * @return the messageTypeDao
      */
     public MessageTypeDao getMessageTypeDao() {
@@ -772,6 +893,21 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     /**
+     * @return the dictionaryDao
+     */
+    public DictionaryDao getDictionaryDao() {
+        return dictionaryDao;
+    }
+
+    /**
+     * @param dictionaryDao
+     *            the dictionaryDao to set
+     */
+    public void setDictionaryDao(DictionaryDao dictionaryDao) {
+        this.dictionaryDao = dictionaryDao;
+    }
+
+    /**
      * Validate all DAOs are set correctly and throw an exception if any are not
      * set.
      * 
@@ -787,12 +923,18 @@ public class MessageTransformer implements IContextStateProcessor {
         } else if (this.ldadConfigDao == null) {
             throw new IllegalStateException(
                     "LdadConfigDao has not been set on the MessageTransformer");
+        } else if (this.dictionaryDao == null) {
+            throw new IllegalStateException(
+                    "DictionaryDao has not been set on the MessageTransformer");
         }
     }
 
     @Override
     public void preStart() {
         this.validateDaos();
+
+        /* Attempt to retrieve the national dictionary. */
+        this.retrieveNationalDictionary();
     }
 
     @Override
