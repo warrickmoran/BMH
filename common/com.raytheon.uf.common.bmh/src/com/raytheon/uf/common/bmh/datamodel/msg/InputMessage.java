@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -66,6 +67,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 03, 2014  3728     lvenable    Made active default to true when creating a new object.
  * Nov 17, 2014  3793     bsteffen    Add same transmitters.
  * Nov 26, 2014  3613     bsteffen    Add getPurgableInputMessages
+ * Dec 11, 2014  3905     lvenable    Added a method to return a set of area codes.
  * 
  * </pre>
  * 
@@ -477,6 +479,24 @@ public class InputMessage {
 
     public List<String> getAreaCodeList() {
         return Arrays.asList(areaCodes.split("-"));
+    }
+
+    /**
+     * Get a set of area codes.
+     * 
+     * @return A set of area codes.
+     */
+    public Set<String> getAreaCodeSet() {
+        Set<String> areaCodeSet = new TreeSet<>();
+        List<String> parsedAreas = Arrays.asList(areaCodes.split("-"));
+
+        if (parsedAreas == null) {
+            return areaCodeSet;
+        }
+
+        areaCodeSet.addAll(parsedAreas);
+
+        return areaCodeSet;
     }
 
     public void setAreaCodes(String areaCodes) {

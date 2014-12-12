@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StackLayout;
@@ -46,6 +47,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -54,6 +56,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -76,6 +79,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 15, 2014    3828     mpduff     Use InputMessage for creation date
  * Nov 15, 2014    3818     mpduff     Set return value.
  * Dec 11, 2014    3895     lvenable   Changed SimpleDateFormat to use GMT.
+ * Dec 11, 2014    3905     lvenable   Updated to show area codes for the selected message.
  * 
  * </pre>
  * 
@@ -309,7 +313,8 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
     private void buildStackLayout(Composite comp) {
         GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        Combo combo = new Combo(comp, SWT.NONE);
+        Combo combo = new Combo(comp, SWT.VERTICAL | SWT.DROP_DOWN | SWT.BORDER
+                | SWT.READ_ONLY);
         combo.setLayoutData(gd);
         combo.setItems(COMBO_VALUES);
         combo.addSelectionListener(new SelectionAdapter() {
@@ -383,9 +388,57 @@ public class MessageDetailsDlg extends CaveSWTDialog {
     }
 
     private void populateBroadcastAreaTable() throws Exception {
+
+        /*
+         * Get the input message and the area codes for that input message.
+         */
+        InputMessage inputMsg = broadcastMsg.getInputMessage();
+
+        if (inputMsg == null) {
+            return;
+        }
+
+        Set<String> areaZoneCodesInMessage = inputMsg.getAreaCodeSet();
+        List<Area> areaList = new ArrayList<>();
+
+        try {
+            /*
+             * Find all the matching areas and add them to a list of areas.
+             */
+            ZonesAreasDataManager dataManager = new ZonesAreasDataManager();
+            List<Area> allAreas = dataManager.getAreas();
+            for (Area area : allAreas) {
+                if (areaZoneCodesInMessage.contains(area.getAreaCode())) {
+                    areaList.add(area);
+                }
+            }
+
+            /*
+             * Find all the matching zones and then add their areas to a list of
+             * areas.
+             */
+            List<Zone> zones = dataManager.getZones();
+            for (Zone zone : zones) {
+                if (areaZoneCodesInMessage.contains(zone.getZoneCode())) {
+                    Set<Area> areaSet = zone.getAreas();
+                    for (Area area : areaSet) {
+                        areaList.add(area);
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error retrieving Areas/Zones from database for input message: "
+                            + inputMsg.getName(), e);
+            return;
+        }
+
+        /*
+         * Build the table data using the associated areas.
+         */
         TableData broadcastAreaTableData = getBroadcastAreaTableData();
 
-        List<Area> areaList = dataManager.getAreasForMessageType(messageType);
         for (Area a : areaList) {
             TableRowData row = new TableRowData();
             TableCellData cell = new TableCellData(a.getAreaCode());
