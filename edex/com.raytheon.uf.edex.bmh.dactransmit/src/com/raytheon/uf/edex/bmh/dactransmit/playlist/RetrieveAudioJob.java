@@ -58,6 +58,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Oct 23, 2014 3748       bkowal      AudioRetrievalException is now in common
  * Nov 03, 2014 3781       dgilling    Allow alert tone without SAME tones.
  * Dec 11, 2014 3651       bkowal      Updates to {@link AbstractAudioFileBuffer}.
+ * Dec 12, 2014 3603       bsteffen    Updates to TonesGenerator.
  * 
  * </pre>
  * 
@@ -182,7 +183,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
         if (message.isSAMETones()) {
             try {
                 tones = TonesGenerator.getSAMEAlertTones(message.getSAMEtone(),
-                        message.isAlertTone());
+                        message.isAlertTone(), false);
             } catch (ToneGenerationException e) {
                 String msg = "Unable to generate SAME/alert tones for message: "
                         + message.getBroadcastId();

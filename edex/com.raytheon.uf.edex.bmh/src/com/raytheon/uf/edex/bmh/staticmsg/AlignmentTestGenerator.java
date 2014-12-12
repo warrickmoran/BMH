@@ -19,11 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.staticmsg;
 
-import java.util.List;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
@@ -49,6 +49,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 27, 2014 3630       bkowal      Initial creation
+ * Dec 12, 2014 3603       bsteffen    Move MAINTENANCE_DATA_DIRECTORY to BMHConstants
  * 
  * </pre>
  * 
@@ -68,9 +69,6 @@ public class AlignmentTestGenerator {
      * We can optionally load these from an external, user-editable properties
      * file.
      */
-
-    /* Output root subdirectories */
-    private static final String MAINTENANCE_DATA_DIRECTORY = "maintenance";
 
     private static final String TEXT = "This is a DAC Maintenance Test.";
 
@@ -112,7 +110,8 @@ public class AlignmentTestGenerator {
         this.validateDaos();
 
         Path audioMaintenancePath = Paths.get(this.bmhDataDirectory,
-                BMHConstants.AUDIO_DATA_DIRECTORY, MAINTENANCE_DATA_DIRECTORY);
+                BMHConstants.AUDIO_DATA_DIRECTORY,
+                BMHConstants.MAINTENANCE_DATA_DIRECTORY);
 
         if (Files.exists(audioMaintenancePath) == false) {
             try {

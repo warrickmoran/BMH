@@ -149,4 +149,12 @@
             value="com.raytheon.uf.common.bmh.request.LdadConfigRequest" />
         <constructor-arg ref="ldadConfigHandler" />
     </bean>
+    
+    <bean id="transferToneHandler"
+      class="com.raytheon.uf.edex.bmh.handler.TransferToneHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.TransferToneRequest" />
+        <constructor-arg ref="transferToneHandler" />
+    </bean>
 </beans>

@@ -23,11 +23,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Set;
-import java.util.HashSet;
 
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
@@ -57,6 +57,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * ------------ ---------- ----------- --------------------------
  * Nov 19, 2014 3845       bkowal      Initial creation
  * Dec 1, 2014  3797       bkowal      Implemented getTonesDuration.
+ * Dec 12, 2014 3603       bsteffen    Updates to TonesGenerator.
+ * 
  * 
  * </pre>
  * 
@@ -240,8 +242,8 @@ public class EOBroadcastSettingsBuilder extends
         final String sameTone = toneBuilder.build().toString();
 
         // build the SAME tone
-        return TonesGenerator.getSAMEAlertTones(sameTone, this.playAlertTones)
-                .array();
+        return TonesGenerator.getSAMEAlertTones(sameTone, this.playAlertTones,
+                true).array();
     }
 
     @Override

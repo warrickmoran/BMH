@@ -66,13 +66,17 @@ public final class TonesGenerator {
      *            The SAME tone header to encode into tones.
      * @param includeAlertTone
      *            Whether or not the alert tone needs to be included.
+     * @param includeSilence
+     *            Whether or not to include 4 seconds of silence after the same
+     *            or alert tones.
      * @return The tone patterns, including any necessary pauses.
      * @throws ToneGenerationException
      *             If an error occurred encoding the SAME tone header string or
      *             generating any of the necessary static tones.
      */
     public static ByteBuffer getSAMEAlertTones(String sameHeader,
-            boolean includeAlertTone) throws ToneGenerationException {
+            boolean includeAlertTone, boolean includeSilence)
+            throws ToneGenerationException {
         StaticTones staticTones = getStaticTones();
 
         byte[] preamble = staticTones.getPreambleTones();
@@ -95,8 +99,9 @@ public final class TonesGenerator {
             retVal.put(defaultTonesInstance.getBeforeAlertTonePause());
             retVal.put(defaultTonesInstance.getAlertTone());
         }
-        retVal.put(beforeMessagePause);
-
+        if (includeSilence) {
+            retVal.put(beforeMessagePause);
+        }
         return retVal;
     }
 

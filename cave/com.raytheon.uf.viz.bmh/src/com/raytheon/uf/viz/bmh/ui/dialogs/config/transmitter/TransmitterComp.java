@@ -54,6 +54,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
+import com.raytheon.uf.common.bmh.request.TransferToneRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -81,6 +82,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 23, 2014    3687    bsteffen    Display dac name instead of id.
  * Nov 21, 2014    3838    rferrel     Enable transmitter added check to see if its
  *                                      group's program contains a GENERAL suite.
+ * Dec 12, 2014    3603    bsteffen    Implement transfer tone.
  * 
  * </pre>
  * 
@@ -354,6 +356,7 @@ public class TransmitterComp extends Composite implements
                     }
                 });
                 primaryModeItem.setSelection(transmitterPrimary);
+                primaryModeItem.setEnabled(!transmitterEnabled);
 
                 MenuItem secondaryModeItem = new MenuItem(modeMenu, SWT.RADIO);
                 secondaryModeItem.setText("SECONDARY Mode");
@@ -368,6 +371,7 @@ public class TransmitterComp extends Composite implements
                     }
                 });
                 secondaryModeItem.setSelection(!transmitterPrimary);
+                secondaryModeItem.setEnabled(!transmitterEnabled);
 
                 new MenuItem(menu, SWT.SEPARATOR);
 
@@ -723,9 +727,14 @@ public class TransmitterComp extends Composite implements
         Transmitter transmitter = getSelectedTransmitter();
         Object data = tree.getSelection()[0].getData();
         if (confirmChangeTxMode(transmitter, mode)) {
-            transmitter.setTxMode(mode);
+            TransferToneRequest request = new TransferToneRequest(
+                    transmitter.getId(), mode);
             try {
-                dataManager.saveTransmitter(transmitter);
+                String inputAudioFile = (String) BmhUtils.sendRequest(request);
+                // TransmitterAlignmentTestCommand command = new
+                // TransmitterAlignmentTestCommand();
+                // command.setInputAudioFile(inputAudioFile);
+                // TODO something with the audio file.
                 populateTree(data);
             } catch (Exception e) {
                 statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
