@@ -57,6 +57,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Oct 17, 2014 3655       bkowal      Move tones to common.
  * Oct 23, 2014 3748       bkowal      AudioRetrievalException is now in common
  * Nov 03, 2014 3781       dgilling    Allow alert tone without SAME tones.
+ * Dec 11, 2014 3651       bkowal      Updates to {@link AbstractAudioFileBuffer}.
  * 
  * </pre>
  * 
@@ -245,7 +246,8 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                 }
                 rawData = concatenation.array();
             }
-            buffer = new AudioFileBuffer(rawData, tones, endOfMessage);
+            buffer = new AudioFileBuffer(this.message, rawData, tones,
+                    endOfMessage);
         } else {
             /*
              * Adjust the time cache audio.
@@ -266,8 +268,9 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             logger.info("Successfully finished audio attenuation/amplification in "
                     + TimeUtil.prettyDuration(timeCacheAdjustTimer
                             .getElapsedTime()) + " for all time cached audio.");
-            buffer = new DynamicTimeAudioFileBuffer(tones, rawDataArrays,
-                    dynamicAudioPositionMap, endOfMessage, timeCache);
+            buffer = new DynamicTimeAudioFileBuffer(this.message, tones,
+                    rawDataArrays, dynamicAudioPositionMap, endOfMessage,
+                    timeCache);
         }
 
         logger.info("Successfully retrieved audio for message: "

@@ -54,6 +54,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Nov 03, 2014  3781     dgilling    Add isSAMETones().
  * Dec 08, 2014  3878     bkowal      Added isStatic to indicate whether or not
  *                                    the message is associated with a static msg type.
+ * Dec 11, 2014  3651     bkowal      Added {@link #name} for logging purposes.
  * 
  * </pre>
  * 
@@ -64,6 +65,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 @XmlAccessorType(XmlAccessType.NONE)
 public class DacPlaylistMessage extends DacPlaylistMessageId {
 
+    @XmlElement
+    private String name;
+    
     @XmlElement
     private String messageType;
 
@@ -136,6 +140,20 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
                 .append(", start=").append(start).append(", expire=")
                 .append(expire).append("]");
         return builder.toString();
+    }
+
+    /**
+     * @return the name
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * @param name the name to set
+     */
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getMessageType() {

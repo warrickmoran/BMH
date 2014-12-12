@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+
 /**
  * Abstract representation of an audio file buffer.
  * 
@@ -29,6 +31,8 @@ package com.raytheon.uf.edex.bmh.dactransmit.playlist;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 1, 2014  3642       bkowal      Initial creation
+ * Dec 11, 2014 3651       bkowal      Added {@link message} for logging
+ *                                     purposes.
  * 
  * </pre>
  * 
@@ -37,6 +41,13 @@ package com.raytheon.uf.edex.bmh.dactransmit.playlist;
  */
 
 public abstract class AbstractAudioFileBuffer implements IAudioFileBuffer {
+
+    protected final DacPlaylistMessage message;
+
+    protected AbstractAudioFileBuffer(DacPlaylistMessage message) {
+        this.message = message;
+    }
+
     /*
      * (non-Javadoc)
      * 
@@ -48,7 +59,7 @@ public abstract class AbstractAudioFileBuffer implements IAudioFileBuffer {
     public boolean isDynamic() {
         return false;
     }
-    
+
     @Override
     public void rewind() {
         /* Default is to do nothing. */

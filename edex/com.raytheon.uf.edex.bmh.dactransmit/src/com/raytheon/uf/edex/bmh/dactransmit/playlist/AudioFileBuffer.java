@@ -23,6 +23,9 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
 
 /**
  * A slightly modified {@code ByteBufer} that buffers the contents of an audio
@@ -47,6 +50,8 @@ import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
  * Oct 30, 2014  #3617     dgilling     Add getter for field returnTones.
  * Oct 31, 2014  #3779     dgilling     Add a second of silence to the end of
  *                                      each complete audio file.
+ * Dec 11, 2014  3651      bkowal       Use {@link DefaultMessageLogger} to log tone
+ *                                      msg activity.
  * 
  * </pre>
  * 
@@ -85,8 +90,8 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
      * @param data
      *            Data to wrap as an {@code AudioFileBuffer}.
      */
-    public AudioFileBuffer(final byte[] data) {
-        this(data, null, null);
+    public AudioFileBuffer(final DacPlaylistMessage dacMsg, final byte[] data) {
+        this(dacMsg, data, null, null);
     }
 
     /**
@@ -100,8 +105,9 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
      * @param endOfMessage
      *            The tones to play after playing {@code message}.
      */
-    public AudioFileBuffer(final byte[] message, ByteBuffer tones,
-            ByteBuffer endOfMessage) {
+    public AudioFileBuffer(final DacPlaylistMessage dacMsg,
+            final byte[] message, ByteBuffer tones, ByteBuffer endOfMessage) {
+        super(dacMsg);
         this.messageBuffer = ByteBuffer.wrap(message).asReadOnlyBuffer();
         this.tonesBuffer = (tones != null) ? tones.asReadOnlyBuffer()
                 : ByteBuffer.allocate(0).asReadOnlyBuffer();
@@ -157,6 +163,19 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
             int bytesToRead = Math.min(bytesRemaining, tonesBuffer.remaining());
             tonesBuffer.get(dst, offset, bytesToRead);
             bytesRemaining -= bytesToRead;
+            if (this.tonesBuffer.hasRemaining() == false) {
+                // have we reached the end of the tones?
+
+                // SAME and/or alert tones have been broadcast, log it.
+                if (this.message.getSAMEtone() != null) {
+                    DefaultMessageLogger.getInstance().logTonesActivity(
+                            TONE_TYPE.SAME, this.message);
+                }
+                if (this.message.isAlertTone()) {
+                    DefaultMessageLogger.getInstance().logTonesActivity(
+                            TONE_TYPE.ALERT, this.message);
+                }
+            }
         }
 
         if ((bytesRemaining > 0) && (messageBuffer.hasRemaining())) {
@@ -172,6 +191,11 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
                     endOfMessageTones.remaining());
             endOfMessageTones.get(dst, offset, bytesToRead);
             bytesRemaining -= bytesToRead;
+            if (this.endOfMessageTones.hasRemaining() == false) {
+                // end tones have been broadcast, log it.
+                DefaultMessageLogger.getInstance().logTonesActivity(
+                        TONE_TYPE.END, this.message);
+            }
         }
 
         if ((bytesRemaining > 0) && (endOfMessageSilence.hasRemaining())) {

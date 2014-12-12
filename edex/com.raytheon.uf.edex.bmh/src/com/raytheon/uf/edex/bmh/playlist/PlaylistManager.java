@@ -130,6 +130,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Dec 08, 2014  3878     bkowal      Set the static flag on the {@link DacPlaylistMessage}.
  * Dec 08, 2014  3651     bkowal      Message logging preparation
  * Dec 08, 2014  3864     bsteffen    Shift some logic into the playlist.
+ * Dec 11, 2014  3651     bkowal      Use {@link IMessageLogger} to log message activity.
  * 
  * </pre>
  * 
@@ -229,6 +230,9 @@ public class PlaylistManager implements IContextStateProcessor {
                         .info("Skipping playlist refresh: No program assigned to transmitter group ["
                                 + group.getName() + "]");
                 continue;
+            }
+            if (Boolean.TRUE.equals(message.getInputMessage().getActive())) {
+                this.messageLogger.logActivationActivity(message);
             }
             for (ProgramSuite programSuite : program.getProgramSuites()) {
                 if (programSuite.getSuite().containsSuiteMessage(
@@ -407,7 +411,10 @@ public class PlaylistManager implements IContextStateProcessor {
             Playlist playlist = new Playlist();
             playlist.setTransmitterGroup(group);
             playlist.setSuite(suite);
-            playlist.addBroadcastMessage(msg, null);
+            // to fulfill the message replacement logging requirement.
+            List<BroadcastMsg> replacedMsgs = new ArrayList<>();
+            playlist.addBroadcastMessage(msg, null, replacedMsgs);
+            this.logMsgReplacement(msg, replacedMsgs, playlist);
             playlist.setModTime(TimeUtil.newGmtCalendar());
             playlist.setStartTime(msg.getInputMessage().getEffectiveTime());
             playlist.setEndTime(msg.getInputMessage().getExpirationTime());
@@ -431,6 +438,7 @@ public class PlaylistManager implements IContextStateProcessor {
         try {
             Playlist playlist = playlistDao.getBySuiteAndGroupName(programSuite
                     .getSuite().getName(), group.getName());
+            boolean isTrigger = false; // used for logging purposes
             if (playlist == null) {
                 playlist = new Playlist();
                 playlist.setSuite(programSuite.getSuite());
@@ -439,6 +447,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 if (programSuite.getSuite().getType() != SuiteType.GENERAL) {
                     if (programSuite.isTrigger(msg.getAfosid())) {
                         loadExistingMessages(playlist);
+                        isTrigger = true;
                     } else {
                         return;
                     }
@@ -447,14 +456,18 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.refresh();
                 mergeMessage(playlist, msg, new HashMap<String, Set<String>>());
             }
-            persistPlaylist(playlist, programSuite, false);
+            DacPlaylist dacPlaylist = persistPlaylist(playlist, programSuite,
+                    false);
+            if (dacPlaylist != null && isTrigger) {
+                this.messageLogger.logTriggerActivity(msg, dacPlaylist);
+            }
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
         }
     }
 
-    private void persistPlaylist(Playlist playlist, ProgramSuite programSuite,
-            boolean forced) {
+    private DacPlaylist persistPlaylist(Playlist playlist,
+            ProgramSuite programSuite, boolean forced) {
         List<Calendar> triggerTimes = playlist.setTimes(
                 programSuite.getTriggers(), forced);
         if (triggerTimes.isEmpty()) {
@@ -467,9 +480,9 @@ public class PlaylistManager implements IContextStateProcessor {
             playlistDao.persist(playlist);
         }
         if (triggerTimes.isEmpty()) {
-            writePlaylistFile(playlist, playlist.getModTime());
+            return writePlaylistFile(playlist, playlist.getModTime());
         } else if (triggerTimes.size() == 1) {
-            writePlaylistFile(playlist, triggerTimes.get(0));
+            return writePlaylistFile(playlist, triggerTimes.get(0));
         } else {
             /*
              * If there are multiple triggers, need to write one file per
@@ -483,7 +496,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setStartTime(triggerTimes.get(i));
             }
             playlist.setEndTime(endTime);
-            writePlaylistFile(playlist, playlist.getStartTime());
+            return writePlaylistFile(playlist, playlist.getStartTime());
         }
     }
 
@@ -536,11 +549,14 @@ public class PlaylistManager implements IContextStateProcessor {
                     .getReplacementAfosIdsForAfosId(afosid);
             matReplacementMap.put(afosid, matReplacements);
         }
-        playlist.addBroadcastMessage(msg, matReplacements);
-
+        // to fulfill the message replacement logging requirement.
+        List<BroadcastMsg> replacedMsgs = new ArrayList<>();
+        playlist.addBroadcastMessage(msg, matReplacements, replacedMsgs);
+        this.logMsgReplacement(msg, replacedMsgs, playlist);
     }
 
-    private void writePlaylistFile(Playlist playlist, Calendar latestTriggerTime) {
+    private DacPlaylist writePlaylistFile(Playlist playlist,
+            Calendar latestTriggerTime) {
         DacPlaylist dacList = convertPlaylistForDAC(playlist);
         dacList.setLatestTrigger(latestTriggerTime);
         PlaylistUpdateNotification notif = new PlaylistUpdateNotification(
@@ -561,15 +577,16 @@ public class PlaylistManager implements IContextStateProcessor {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to write playlist xml, cannot create directory:"
                             + playlistDir.toAbsolutePath(), e);
-            return;
+            return null;
         }
         try (BufferedOutputStream os = new BufferedOutputStream(
                 Files.newOutputStream(playlistPath))) {
             JAXB.marshal(dacList, os);
+            this.messageLogger.logPlaylistActivity(dacList);
         } catch (Exception e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to write playlist file.", e);
-            return;
+            return null;
         }
         String queue = PlaylistUpdateNotification.getQueueName(playlist
                 .getTransmitterGroup().getName(), operational);
@@ -581,6 +598,7 @@ public class PlaylistManager implements IContextStateProcessor {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to send playlist notification.", e);
         }
+        return dacList;
     }
 
     private DacPlaylist convertPlaylistForDAC(Playlist db) {
@@ -623,6 +641,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 }
                 InputMessage input = broadcast.getInputMessage();
                 String afosid = input.getAfosid();
+                dac.setName(input.getName());
                 dac.setMessageType(afosid);
                 MessageType messageType = messageTypeDao.getByAfosId(afosid);
                 if (messageType != null) {
@@ -744,7 +763,8 @@ public class PlaylistManager implements IContextStateProcessor {
                         dac,
                         Files.newBufferedWriter(messageFile,
                                 Charset.defaultCharset()));
-
+                this.messageLogger.logCreationActivity(dac,
+                        broadcast.getTransmitterGroup());
             }
         } catch (DataBindingException | IOException e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
@@ -823,6 +843,13 @@ public class PlaylistManager implements IContextStateProcessor {
         } else if (messageTypeDao == null) {
             throw new IllegalStateException(
                     "MessageTypeDao has not been set on the PlaylistManager");
+        }
+    }
+
+    private void logMsgReplacement(BroadcastMsg newMsg,
+            List<BroadcastMsg> replacedMsgs, Playlist playlist) {
+        for (BroadcastMsg msg : replacedMsgs) {
+            this.messageLogger.logReplacementActivity(newMsg, msg);
         }
     }
 
