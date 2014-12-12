@@ -121,7 +121,7 @@ public class ProcessStatusComp extends Composite {
 
             Label edexLbl = new Label(edexCommsComp, SWT.NONE);
             String edexConnected = (vizStatusMonitor.isEdexConnected(s)) ? "Connected"
-                    : "Not Copnnected";
+                    : "Not Connected";
             edexLbl.setText(edexConnected);
 
             gd = new GridData();
@@ -133,7 +133,7 @@ public class ProcessStatusComp extends Composite {
             Label commsMgrLbl = new Label(edexCommsComp, SWT.NONE);
             String commsConnected = (vizStatusMonitor
                     .isCommsManagerConnected(s)) ? "Connected"
-                    : "Not Copnnected";
+                    : "Not Connected";
             commsMgrLbl.setText(commsConnected);
 
             /*
