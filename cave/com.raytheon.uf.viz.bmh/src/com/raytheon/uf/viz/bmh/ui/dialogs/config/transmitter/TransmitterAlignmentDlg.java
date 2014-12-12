@@ -19,17 +19,13 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
-import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.ArrayList;
 
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jface.dialogs.ProgressMonitorDialog;
-import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -44,9 +40,9 @@ import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
-import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.AbstractOnDemandBroadcastMessage;
-import com.raytheon.uf.common.bmh.broadcast.TransmitterAlignmentTestCommand;
+import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
+import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -82,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 21, 2014    3845    bkowal      Updates to {@link AbstractOnDemandBroadcastMessage}.
  * Dec 09, 2014    3894    bkowal      Keep track of which {@link TransmitterGroup}s were disabled
  *                                     using the dialog.
+ * Dec 12, 2014 3603       bsteffen    Move backgrounded execution out for reuse by transfer tones.
  * 
  * </pre>
  * 
@@ -92,8 +89,6 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
 public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(TransmitterAlignmentDlg.class);
-
-    private static final long TRANSMITTER_ALIGNMENT_TEST_TIMEOUT = 45000;
 
     /** Constant */
     private final String STATUS_PREFIX = "Transmitter is ";
@@ -133,8 +128,6 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
 
     /** "Run Test" Button **/
     private Button testBtn;
-
-    private TransmitterAlignmentTestThread alignmentTestThread;
 
     /**
      * Keep track of which {@link TransmitterGroup}s have been disabled via the
@@ -535,7 +528,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     }
 
     private void handleRunTest() {
-        TransmitterAlignmentTestCommand command = null;
+        TransmitterMaintenanceCommand command = null;
         try {
             command = this.buildCommand();
         } catch (TransmitterAlignmentException e) {
@@ -545,60 +538,13 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         }
         this.testBtn.setEnabled(false);
 
-        this.alignmentTestThread = new TransmitterAlignmentTestThread(command);
-        this.alignmentTestThread.start();
+        TransmitterMaintenanceThread.runAndReportResult(statusHandler,
+                this.getShell(), command);
 
-        /*
-         * Block all interaction. Will only last a maximum of 45 seconds
-         * worst-case scenario.
-         */
-        ProgressMonitorDialog dialog = new ProgressMonitorDialog(
-                this.getShell());
-        try {
-            dialog.run(true, false, new IRunnableWithProgress() {
-
-                @Override
-                public void run(IProgressMonitor monitor) {
-                    monitor.beginTask("Running Transmitter Alignment Test",
-                            IProgressMonitor.UNKNOWN);
-                    try {
-                        alignmentTestThread
-                                .join(TRANSMITTER_ALIGNMENT_TEST_TIMEOUT);
-                    } catch (InterruptedException e) {
-                        statusHandler
-                                .error("Interrupted while waiting for the alignment test to finish.",
-                                        e);
-                    }
-                }
-            });
-        } catch (InvocationTargetException | InterruptedException e) {
-            statusHandler.error(
-                    "Failed to run the transmitter alignment test.", e);
-        }
-
-        // check the status of the task.
-        int icon = 9999;
-        String message = null;
-        switch (this.alignmentTestThread.getStatus()) {
-        case FAIL:
-            icon = SWT.ICON_ERROR;
-            message = this.alignmentTestThread.getStatusDetails();
-            break;
-        case SUCCESS:
-            icon = SWT.ICON_INFORMATION;
-            message = this.alignmentTestThread.getStatusDetails();
-            break;
-        case UNKNOWN:
-            icon = SWT.ICON_WARNING;
-            message = "The final status of the alignment test is unknown. Please check the server logs.";
-            break;
-        }
-        DialogUtility.showMessageBox(this.shell, icon | SWT.OK,
-                "Transmitter Alignment Test Result", message);
         this.testBtn.setEnabled(true);
     }
 
-    private TransmitterAlignmentTestCommand buildCommand()
+    private TransmitterMaintenanceCommand buildCommand()
             throws TransmitterAlignmentException {
         String audioLocation = null;
 
@@ -652,7 +598,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         }
         Arrays.sort(radios);
 
-        TransmitterAlignmentTestCommand command = new TransmitterAlignmentTestCommand();
+        TransmitterMaintenanceCommand command = new TransmitterMaintenanceCommand();
+        command.setMaintenanceDetails("Transmitter Alignment Test");
         command.setMsgSource(MSGSOURCE.VIZ);
         command.addTransmitterGroup(this.selectedTransmitterGrp);
         command.setDacHostname(dac.getAddress());

@@ -19,12 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
-import java.util.LinkedList;
-import java.util.List;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -49,6 +48,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
+ * Dec 12, 2014 3603       bsteffen    Allow negative duration of maintenance messages to run full audio.
  * 
  * </pre>
  * 
@@ -122,7 +122,12 @@ public class DacMaintenanceSession implements IDacSession {
          * Based on the requested duration, determine how many bits of audio are
          * required.
          */
-        final int requiredBytes = ((this.config.getTestDuration() * 1000) / 20) * 160;
+        int requiredBytes = ((this.config.getTestDuration() * 1000) / 20) * 160;
+
+        if (requiredBytes < 0) {
+            /* Allow negative duration to be interpreted as full message. */
+            requiredBytes = this.originalMaintenanceAudio.length;
+        }
 
         /*
          * Stage the playback audio for segmentation.
@@ -131,7 +136,7 @@ public class DacMaintenanceSession implements IDacSession {
         /*
          * Determine if the audio that was read need to be sliced or replicated.
          */
-        if (this.originalMaintenanceAudio.length > requiredBytes) {
+        if (this.originalMaintenanceAudio.length >= requiredBytes) {
             stagingBuffer.put(this.originalMaintenanceAudio, 0, requiredBytes);
         } else {
             while (stagingBuffer.remaining() > 0) {

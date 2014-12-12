@@ -25,8 +25,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Used to trigger a transmitter alignment test. Sent to the comms manager and
- * used to configure a dac session that will be ran in maintenance mode.
+ * Used to trigger transmitter maintenance operations(alignment test or transfer
+ * tones). Sent to the comms manager and used to configure a dac session that
+ * will be ran in maintenance mode.
  * 
  * <pre>
  * 
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Nov 7, 2014  3630       bkowal      Initial creation
  * Nov 15, 2014 3630       bkowal      Added allowedDataPorts
+ * Dec 12, 2014 3603       bsteffen    Rename and add maintenanceDetails
  * 
  * </pre>
  * 
@@ -43,8 +45,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class TransmitterAlignmentTestCommand extends
+public class TransmitterMaintenanceCommand extends
         AbstractOnDemandBroadcastMessage {
+
+    @DynamicSerializeElement
+    private String maintenanceDetails;
 
     @DynamicSerializeElement
     private String dacHostname;
@@ -64,10 +69,15 @@ public class TransmitterAlignmentTestCommand extends
     @DynamicSerializeElement
     private int broadcastDuration;
 
-    /**
-     * 
-     */
-    public TransmitterAlignmentTestCommand() {
+    public TransmitterMaintenanceCommand() {
+    }
+
+    public String getMaintenanceDetails() {
+        return maintenanceDetails;
+    }
+
+    public void setMaintenanceDetails(String maintenanceDetails) {
+        this.maintenanceDetails = maintenanceDetails;
     }
 
     /**
@@ -163,7 +173,9 @@ public class TransmitterAlignmentTestCommand extends
     @Override
     public String toString() {
         StringBuilder stringBuilder = new StringBuilder(
-                "TransmitterAlignmentTestCommand [");
+                "TransmitterMaintenanceCommand [");
+        stringBuilder.append("maintenanceDetails=");
+        stringBuilder.append(this.maintenanceDetails);
         stringBuilder.append("dacHostname=");
         stringBuilder.append(this.dacHostname);
         stringBuilder.append(", allowedDataPorts={");

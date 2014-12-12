@@ -46,6 +46,9 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
 
+import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
+import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -729,12 +732,25 @@ public class TransmitterComp extends Composite implements
         if (confirmChangeTxMode(transmitter, mode)) {
             TransferToneRequest request = new TransferToneRequest(
                     transmitter.getId(), mode);
+            TransmitterGroup transmitterGroup = transmitter
+                    .getTransmitterGroup();
             try {
                 String inputAudioFile = (String) BmhUtils.sendRequest(request);
-                // TransmitterAlignmentTestCommand command = new
-                // TransmitterAlignmentTestCommand();
-                // command.setInputAudioFile(inputAudioFile);
-                // TODO something with the audio file.
+                DacDataManager dacDataManager = new DacDataManager();
+                Dac dac = dacDataManager.getDacById(transmitterGroup.getDac());
+
+                TransmitterMaintenanceCommand command = new TransmitterMaintenanceCommand();
+                command.setMaintenanceDetails("Transfer Tone");
+                command.setMsgSource(MSGSOURCE.VIZ);
+                command.addTransmitterGroup(transmitterGroup);
+                command.setDacHostname(dac.getAddress());
+                command.setAllowedDataPorts(dac.getDataPorts());
+                command.setRadios(new int[] { transmitter.getDacPort() });
+                command.setDecibelTarget(transmitterGroup.getAudioDBTarget());
+                command.setInputAudioFile(inputAudioFile);
+                command.setBroadcastDuration(-1);
+                TransmitterMaintenanceThread.runAndReportResult(statusHandler,
+                        this.getShell(), command);
                 populateTree(data);
             } catch (Exception e) {
                 statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
