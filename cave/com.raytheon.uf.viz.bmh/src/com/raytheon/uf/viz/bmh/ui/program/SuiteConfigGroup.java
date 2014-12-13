@@ -63,25 +63,26 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 20, 2014  #3174     lvenable     Initial creation
- * Jul 24, 2014  #3433     lvenable     Updated for Suite manager
- * Jul 27, 2014  #3420     lvenable     Code clean up.
- * Aug 01, 2014  #3479     lvenable     Added additional capability and cleaned up code.
- * Aug 06, 2014  #3490     lvenable     Refactored and added additional functionality.
- * Aug 12, 2014  #3490     lvenable     Updated populate table method call and added additional
+ * Jul 20, 2014  3174      lvenable     Initial creation
+ * Jul 24, 2014  3433      lvenable     Updated for Suite manager
+ * Jul 27, 2014  3420      lvenable     Code clean up.
+ * Aug 01, 2014  3479      lvenable     Added additional capability and cleaned up code.
+ * Aug 06, 2014  3490      lvenable     Refactored and added additional functionality.
+ * Aug 12, 2014  3490      lvenable     Updated populate table method call and added additional
  *                                      functionality so this class could be used in multiple places.
- * Aug 15, 2014  #3490     lvenable     Reworked to use updated interface and allow the suite table to
+ * Aug 15, 2014  3490      lvenable     Reworked to use updated interface and allow the suite table to
  *                                      re-populate without rebuilding the table.
- * Aug 18, 2014  #3490     lvenable     Added callback calls for actions on the suites.
- * Aug 21, 2014  #3490     lvenable     Added capability when creating new programs.
- * Aug 25, 2014  #3490     lvenable     Method to set the selected program.
- * Sep 10, 2014  #3490     lvenable     Fixed existing suite name problem.
- * Oct 15, 2014  #3716     bkowal       Display 'Remove' instead of 'Delete' when within the
+ * Aug 18, 2014  3490      lvenable     Added callback calls for actions on the suites.
+ * Aug 21, 2014  3490      lvenable     Added capability when creating new programs.
+ * Aug 25, 2014  3490      lvenable     Method to set the selected program.
+ * Sep 10, 2014  3490      lvenable     Fixed existing suite name problem.
+ * Oct 15, 2014  3716      bkowal       Display 'Remove' instead of 'Delete' when within the
  *                                      Broadcast Program Dialog.
- * Oct 26, 2014   3750     mpduff       Get updates from filtered list.
- * Oct 28, 2014   3750     lvenable     Updated the selected suite when selecting the table index via suite ID.
- * Nov 17, 2014   3698     rferrel      Added checks to allow only 1 GENERAL type suite in a program.
- * Dec 09, 2014   3906     lvenable     Added method to change the grid data.
+ * Oct 26, 2014  3750      mpduff       Get updates from filtered list.
+ * Oct 28, 2014  3750      lvenable     Updated the selected suite when selecting the table index via suite ID.
+ * Nov 17, 2014  3698      rferrel      Added checks to allow only 1 GENERAL type suite in a program.
+ * Dec 09, 2014  3906      lvenable     Added method to change the grid data.
+ * Dec 13, 2014  3833      lvenable     Fixed selection to get items from correct list.
  * 
  * </pre>
  * 
@@ -89,9 +90,6 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 public class SuiteConfigGroup extends Composite {
-
-    /** Prefix for the suite group text. */
-    private String suiteGroupText = null;
 
     /** Suite group. */
     private Group suiteGroup;
@@ -189,7 +187,6 @@ public class SuiteConfigGroup extends Composite {
         super(parentComp, SWT.NONE);
 
         this.parentComp = parentComp;
-        this.suiteGroupText = suiteGroupText;
         this.suiteGroupType = suiteGroupType;
         this.tableWidth = tableWidth;
         this.tableHeight = tableHeight;
@@ -200,7 +197,7 @@ public class SuiteConfigGroup extends Composite {
             this.existingSuites = selectedProgram.getSuites();
         }
 
-        init();
+        init(suiteGroupText);
     }
 
     /**
@@ -246,7 +243,7 @@ public class SuiteConfigGroup extends Composite {
     /**
      * Initialize method.
      */
-    private void init() {
+    private void init(String suiteGroupText) {
         GridLayout gl = new GridLayout(1, false);
         this.setLayout(gl);
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -291,12 +288,21 @@ public class SuiteConfigGroup extends Composite {
 
                 Button btn = (Button) e.widget;
 
+                if (btn.getSelection() == false) {
+                    return;
+                }
+
                 if (btn.getData() != null) {
                     suiteCatType = (SuiteType) btn.getData();
                 } else {
                     suiteCatType = null;
                 }
                 populateSuiteTable(false);
+
+                if (suiteSelectionCB != null) {
+                    suiteSelectionCB.suiteSelected(filteredSuiteList
+                            .get(suiteTable.getSelectedIndices()[0]));
+                }
             }
         };
 
@@ -353,8 +359,8 @@ public class SuiteConfigGroup extends Composite {
                 if (selectionCount > 0) {
                     enableControls(true);
                     if (suiteSelectionCB != null) {
-                        suiteSelectionCB.suiteSelected(suiteList.get(suiteTable
-                                .getSelectedIndices()[0]));
+                        suiteSelectionCB.suiteSelected(filteredSuiteList
+                                .get(suiteTable.getSelectedIndices()[0]));
                     }
                 } else {
                     enableControls(false);

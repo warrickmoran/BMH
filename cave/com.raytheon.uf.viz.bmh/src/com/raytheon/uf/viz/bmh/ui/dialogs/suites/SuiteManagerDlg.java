@@ -61,17 +61,18 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 24, 2014  #3433     lvenable     Initial creation
- * Jul 27, 2014  #3420     lvenable     Updated to use relationship button.
- * Aug 03, 2014  #3479     lvenable    Updated code for validator changes.
- * Aug 06, 2014  #3490     lvenable    Refactored and moved code to SuiteConfigGroup.
- * Aug 12, 2014  #3490     lvenable    Updated code to use database data.
- * Aug 15, 2014  #3490     lvenable     Sort the list of suites, use suite data manager.
- * Aug 15, 2014  #3490     lvenable     Added copy, rename, other capabilities.
- * Aug 15, 2014  #3490     lvenable     Added existing names.
- * Aug 22, 2014  #3490     lvenable     Added input dialog flag.
- * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Jul 24, 2014  3433      lvenable    Initial creation
+ * Jul 27, 2014  3420      lvenable    Updated to use relationship button.
+ * Aug 03, 2014  3479      lvenable    Updated code for validator changes.
+ * Aug 06, 2014  3490      lvenable    Refactored and moved code to SuiteConfigGroup.
+ * Aug 12, 2014  3490      lvenable    Updated code to use database data.
+ * Aug 15, 2014  3490      lvenable    Sort the list of suites, use suite data manager.
+ * Aug 15, 2014  3490      lvenable    Added copy, rename, other capabilities.
+ * Aug 15, 2014  3490      lvenable    Added existing names.
+ * Aug 22, 2014  3490      lvenable    Added input dialog flag.
+ * Oct 08, 2014  3479      lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Dec 13, 2014  3833      lvenable    Removed unused method.
  * 
  * </pre>
  * 
@@ -148,9 +149,6 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
         suiteConfigGroup = new SuiteConfigGroup(shell, " Available Suites: ",
                 SuiteGroupType.SUITE_MGR, null, 550, 150);
         suiteConfigGroup.setCallBackAction(new SuiteActionAdapter() {
-            @Override
-            public void suiteSelected(Suite suite) {
-            }
 
             @Override
             public void suitesUpdated(Suite suite) {
