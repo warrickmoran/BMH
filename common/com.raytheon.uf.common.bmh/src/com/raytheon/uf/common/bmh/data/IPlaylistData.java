@@ -19,22 +19,25 @@
  **/
 package com.raytheon.uf.common.bmh.data;
 
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+
 /**
  * Generic representation of playlist information.
  * 
  * <pre>
- *
+ * 
  * SOFTWARE HISTORY
- *
+ * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 21, 2014 3655       bkowal      Initial creation
- *
+ * Dec 13, 2014 3843       mpduff      Add DynamicSerialize
+ * 
  * </pre>
- *
+ * 
  * @author bkowal
- * @version 1.0	
+ * @version 1.0
  */
-
+@DynamicSerialize
 public interface IPlaylistData {
 }

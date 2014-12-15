@@ -135,6 +135,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 09, 2014  3904      bkowal      Disable inline monitoring whenever a {@link AudioRecordPlaybackNotification}
  *                                     is received.
  * Dec 11, 2014  3895      lvenable    Changed time to GMT.
+ * Dec 13, 2014  3843      mpduff      Implement periodic messages.
  * 
  * </pre>
  * 
@@ -712,6 +713,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     String suiteName = dataStruct.getSuiteName();
                     if (suiteName != null) {
                         suiteValueLbl.setText(suiteName);
+                        this.selectedSuite = suiteName;
                     }
                     cycleDurValueLbl.setText(timeFormatter.format(new Date(
                             dataStruct.getPlaybackCycleTime())));
@@ -966,15 +968,13 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * Handler for periodic message button
      */
     private void handlePeriodicAction() {
-        DialogUtility.notImplemented(getShell());
-        // TODO pass in group and suite
-        // if ((periodicMsgDlg == null) || periodicMsgDlg.isDisposed()) {
-        // periodicMsgDlg = new PeriodicMessagesDlg(getShell(), selectedSuite,
-        // selectedTransmitterGrp);
-        // periodicMsgDlg.open();
-        // } else {
-        // periodicMsgDlg.bringToTop();
-        // }
+        if ((periodicMsgDlg == null) || periodicMsgDlg.isDisposed()) {
+            periodicMsgDlg = new PeriodicMessagesDlg(getShell(), selectedSuite,
+                    selectedTransmitterGrp);
+            periodicMsgDlg.open();
+        } else {
+            periodicMsgDlg.bringToTop();
+        }
     }
 
     private void handleExpireAction() {

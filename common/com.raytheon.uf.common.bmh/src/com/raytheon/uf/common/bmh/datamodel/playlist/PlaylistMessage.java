@@ -34,6 +34,7 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
@@ -48,6 +49,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Dec 08, 2014  3864     bsteffen    Initial creation
+ * Dec 13, 2014  3843     mpduff      Add DynamicSerialize and id
  * 
  * </pre>
  * 
@@ -57,6 +59,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Entity
 @Table(name = "playlist_msg", schema = "bmh")
 @SequenceGenerator(initialValue = 1, name = PlaylistMessage.GEN, sequenceName = "playlist_msg_seq")
+@DynamicSerialize
 public class PlaylistMessage {
 
     public static final String GEN = "Playlist Msg Generator";
@@ -72,6 +75,7 @@ public class PlaylistMessage {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "broadcast_msg_id")
+    @DynamicSerializeElement
     private BroadcastMsg broadcastMsg;
 
     @ManyToOne(optional = false)
@@ -163,6 +167,21 @@ public class PlaylistMessage {
     }
 
     /**
+     * @return the id
+     */
+    public long getId() {
+        return id;
+    }
+
+    /**
+     * @param id
+     *            the id to set
+     */
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    /**
      * {@link #id} and {@link #replacementType} are not considered in equality.
      */
     @Override
@@ -181,23 +200,30 @@ public class PlaylistMessage {
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         PlaylistMessage other = (PlaylistMessage) obj;
         if (broadcastMsg == null) {
-            if (other.broadcastMsg != null)
+            if (other.broadcastMsg != null) {
                 return false;
-        } else if (!broadcastMsg.equals(other.broadcastMsg))
+            }
+        } else if (!broadcastMsg.equals(other.broadcastMsg)) {
             return false;
+        }
         if (playlist == null) {
-            if (other.playlist != null)
+            if (other.playlist != null) {
                 return false;
-        } else if (!playlist.equals(other.playlist))
+            }
+        } else if (!playlist.equals(other.playlist)) {
             return false;
+        }
         return true;
     }
 

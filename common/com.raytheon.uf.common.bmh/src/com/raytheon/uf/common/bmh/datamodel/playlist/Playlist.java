@@ -57,6 +57,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage.ReplacementType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
@@ -79,6 +81,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Dec 08, 2014  3864     bsteffen    Add a PlaylistMsg class.
  * Dec 10, 2014  3917     bsteffen    Avoid null end time.
  * Dec 11, 2014  3651     bkowal      Track and propagate messages that are replaced.
+ * Dec 13, 2014  3843     mpduff      Add DynamicSerialize and default constructor
  * 
  * </pre>
  * 
@@ -92,6 +95,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 @Table(name = "playlist", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
         "transmitter_group_id", "suite_id" }) })
 @SequenceGenerator(initialValue = 1, name = Playlist.GEN, sequenceName = "playlist_seq")
+@DynamicSerialize
 public class Playlist {
 
     protected static final String GEN = "Playlist Id Generator";
@@ -133,7 +137,12 @@ public class Playlist {
 
     @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @Fetch(FetchMode.SUBSELECT)
+    @DynamicSerializeElement
     private List<PlaylistMessage> messages = new ArrayList<>();
+
+    public Playlist() {
+        // serialization requires
+    }
 
     public int getId() {
         return id;
