@@ -24,16 +24,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -56,8 +55,10 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
+import com.raytheon.uf.viz.bmh.ui.dialogs.MessageTextDlg;
 import com.raytheon.uf.viz.bmh.voice.VoiceDataManager;
 import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * Dialog that manages importing a legacy database.
@@ -137,9 +138,9 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
         Label fileLbl = new Label(fileComp, SWT.NONE);
         fileLbl.setText("File: ");
 
-        fileTxt = new Text(fileComp, SWT.NONE);
+        fileTxt = new Text(fileComp, SWT.BORDER);
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gd.minimumWidth = 300;
+        gd.minimumWidth = 600;
         fileTxt.setLayoutData(gd);
 
         Button browseBtn = new Button(fileComp, SWT.NONE);
@@ -166,35 +167,7 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                getShell().setCursor(
-                        getShell().getDisplay()
-                                .getSystemCursor(SWT.CURSOR_WAIT));
-                final String fileName = fileTxt.getText().trim();
-
-                Job job = new Job("Import Legacy Database") {
-
-                    @Override
-                    protected IStatus run(IProgressMonitor monitor) {
-                        final AtomicBoolean closeDlg = new AtomicBoolean(false);
-                        if (verifyFile(fileName)) {
-                            closeDlg.set(saveImportDB(fileName));
-                        }
-                        VizApp.runAsync(new Runnable() {
-
-                            @Override
-                            public void run() {
-                                if (closeDlg.get()) {
-                                    close();
-                                } else {
-                                    getShell().setCursor(null);
-                                }
-                            }
-                        });
-
-                        return Status.OK_STATUS;
-                    }
-                };
-                job.schedule();
+                verifyFile(fileTxt.getText().trim());
             }
         });
 
@@ -215,25 +188,28 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
      * @param fileName
      * @return true file ok to import.
      */
-    private boolean verifyFile(String fileName) {
+    private void verifyFile(final String fileName) {
         if (fileName.length() == 0) {
-            return false;
+            return;
         }
         File file = new File(fileName);
 
         if (!file.canRead()) {
-            showMessage(SWT.ICON_ERROR | SWT.OK, "Verify Legacy Database",
+            DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
+                    "Verify Legacy Database",
                     "Cannot read file:\n" + file.getAbsolutePath());
-            return false;
+            return;
         }
 
         byte[] fileData = new byte[(int) file.length()];
         try {
             new FileInputStream(file).read(fileData);
         } catch (IOException e) {
-            showMessage(SWT.ICON_ERROR | SWT.OK, "Verify Legacy Database",
+            DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
+                    "Verify Legacy Database",
                     "Unable to ready file:\n" + file.getAbsolutePath());
-            return false;
+            input = null;
+            return;
         }
 
         input = new String(fileData);
@@ -253,60 +229,27 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
                 voices.add(voice);
             }
 
-            AsciiFileTranslator asciiFile = new AsciiFileTranslator(reader,
-                    file.getAbsolutePath(), false, voices);
+            final AsciiFileTranslator asciiFile = new AsciiFileTranslator(
+                    reader, file.getAbsolutePath(), false, voices);
 
             if (!asciiFile.parsedData()) {
-                showMessage(
-                        SWT.ICON_ERROR,
+                DialogUtility.showMessageBox(
+                        shell,
+                        SWT.ICON_ERROR | SWT.OK,
                         "Verify Legacy Database",
                         "No data found in the the file:\n"
                                 + file.getAbsolutePath());
                 input = null;
-                return false;
-            }
-            List<String> msgs = asciiFile.getValidationMessages();
-            BmhData data = asciiFile.getTranslatedData();
-            StringBuilder sb = new StringBuilder();
-            sb.append(asciiFile.getVoiceMsg()).append("\n\nContains:\n");
-            sb.append(data.getTransmitters().size()).append(" transmitters\n");
-            sb.append(data.getTransmitterLanguages().size()).append(
-                    " transmitter languages\n");
-            sb.append(data.getAreas().size()).append(" areas\n");
-            sb.append(data.getZones().size()).append(" zones\n");
-            sb.append(data.getMsgTypes().size()).append(" messaage types\n");
-            sb.append(data.getReplaceMap().size()).append(
-                    " replacement message types\n");
-            sb.append(data.getSuites().size()).append(" suites\n");
-            sb.append(data.getPrograms().size()).append(" programs\n");
-
-            if (msgs.size() > 0) {
-                sb.append("\nThe following issues were found when verifying the legacy database:\n");
-                for (String msg : msgs) {
-                    sb.append(msg).append("\n");
-                }
-            } else {
-                sb.append("\nVerification found no issues.\n");
+                return;
             }
 
-            sb.append("\nSelect OK to overwrite existing database with legacy database.");
-            int result = showMessage(
-                    SWT.ICON_INFORMATION | SWT.OK | SWT.CANCEL,
-                    "Import Legacy Database", sb.toString());
-            if (result != SWT.OK) {
-                input = null;
-                return false;
-            }
+            confirmMessage(fileName, asciiFile);
 
         } catch (Exception ex) {
-            ex.printStackTrace();
-            showMessage(SWT.ICON_ERROR | SWT.OK, "Verify Legacy Database",
+            DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
+                    "Verify Legacy Database",
                     "Unable to access current database.");
-            input = null;
-            return false;
         }
-
-        return true;
     }
 
     /**
@@ -315,21 +258,84 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
      * @param style
      * @param title
      * @param message
-     * @return result
      */
-    private int showMessage(final int style, final String title,
+    private void showMessage(final int style, final String title,
             final String message) {
-        final AtomicInteger value = new AtomicInteger();
         VizApp.runSync(new Runnable() {
 
             @Override
             public void run() {
-                int result = DialogUtility.showMessageBox(shell, style, title,
+                DialogUtility.showMessageBox(shell, style | SWT.OK, title,
                         message);
-                value.set(result);
             }
         });
-        return value.get();
+    }
+
+    private int determineSize(List<?> list) {
+        if (list == null) {
+            return 0;
+        }
+        return list.size();
+    }
+
+    private int determineSize(Map<?, ?> map) {
+        if (map == null) {
+            return 0;
+        }
+        return map.size();
+    }
+
+    private void confirmMessage(final String fileName,
+            final AsciiFileTranslator asciiFile) {
+        shell.setCursor(shell.getDisplay().getSystemCursor(SWT.CURSOR_WAIT));
+        final String question = asciiFile.getVoiceMsg()
+                + "\n\nSelect OK to import legacy database.";
+        List<String> msgs = asciiFile.getValidationMessages();
+        final BmhData data = asciiFile.getTranslatedData();
+        final StringBuilder sb = new StringBuilder();
+        sb.append("Contains:\n");
+        sb.append(determineSize(data.getTransmitters())).append(
+                " transmitters\n");
+        sb.append(determineSize(data.getTransmitterLanguages())).append(
+                " transmitter languages\n");
+        sb.append(determineSize(data.getAreas())).append(" areas\n");
+        sb.append(determineSize(data.getZones())).append(" zones\n");
+        sb.append(determineSize(data.getMsgTypes()))
+                .append(" messaage types\n");
+        sb.append(determineSize(data.getReplaceMap())).append(
+                " replacement message types\n");
+        sb.append(determineSize(data.getSuites())).append(" suites\n");
+
+        if (data.getPrograms() != null) {
+            sb.append(data.getPrograms().size()).append(" programs\n");
+        }
+        if (msgs.size() > 0) {
+            sb.append("\nThe following issues were found when verifying the legacy database:\n");
+            for (String msg : msgs) {
+                sb.append(msg).append("\n");
+            }
+        } else {
+            sb.append("\nVerification found no issues.\n");
+        }
+        MessageTextDlg mtd = new MessageTextDlg(shell,
+                "Import Legacy DataBase", question, sb.toString(),
+                SWT.ICON_QUESTION);
+        mtd.setCloseCallback(new ICloseCallback() {
+
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue instanceof Integer) {
+                    int result = ((Integer) returnValue).intValue();
+                    if (result == SWT.OK) {
+                        saveImportDB(fileName);
+                    } else {
+                        shell.setCursor(null);
+                        input = null;
+                    }
+                }
+            }
+        });
+        mtd.open();
     }
 
     /**
@@ -338,31 +344,56 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
      * @param fileName
      * @return true database save successful
      */
-    private boolean saveImportDB(String fileName) {
+    private void saveImportDB(final String fileName) {
         if (input == null) {
-            return false;
+            return;
         }
 
-        ImportLegacyDbRequest request = new ImportLegacyDbRequest();
-        request.setInput(input.getBytes());
-        request.setSource(fileName);
-        Object o;
-
+        final AtomicBoolean saved = new AtomicBoolean(false);
+        ProgressMonitorDialog dialog = new ProgressMonitorDialog(shell);
         try {
-            o = BmhUtils.sendRequest(request);
-            if (o instanceof Boolean) {
-                boolean result = ((Boolean) o).booleanValue();
-                if (result) {
-                    showMessage(SWT.ICON_INFORMATION, "Import Legacy Dialog",
-                            "Successfully imported:\n" + fileName);
+            dialog.run(true, false, new IRunnableWithProgress() {
+
+                @Override
+                public void run(IProgressMonitor monitor)
+                        throws InvocationTargetException, InterruptedException {
+                    ImportLegacyDbRequest request = new ImportLegacyDbRequest();
+                    request.setInput(input.getBytes());
+                    request.setSource(fileName);
+                    Object o;
+
+                    monitor.beginTask(
+                            "Importing Legacy database file: "
+                                    + fileName.substring(fileName
+                                            .lastIndexOf('/') + 1),
+                            IProgressMonitor.UNKNOWN);
+                    try {
+                        o = BmhUtils.sendRequest(request);
+                        if (o instanceof Boolean) {
+                            boolean result = ((Boolean) o).booleanValue();
+                            if (result) {
+                                saved.set(true);
+                            }
+                        }
+                    } catch (Exception e) {
+                        showMessage(SWT.ICON_ERROR, "Database Access",
+                                "Failed to save legacy database.\nDatabase may be corruptted.");
+                    }
                 }
-                return result;
+            });
+        } catch (InvocationTargetException | InterruptedException e1) {
+            DialogUtility
+                    .showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
+                            "Interrupted",
+                            "Failed to finish save legacy database.\nDatabase may be corruptted.");
+        } finally {
+            if (saved.get()) {
+                close();
+            } else {
+                shell.setCursor(null);
             }
-        } catch (Exception e) {
-            showMessage(SWT.ICON_ERROR | SWT.OK, "Database Access",
-                    "Failed to save legacy database. Database may be corruptted.");
         }
-        return false;
+
     }
 
     private void fileBrowser() {
