@@ -19,21 +19,21 @@
  **/
 package com.raytheon.bmh.comms.broadcast;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.ArrayList;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
-import com.raytheon.uf.common.bmh.broadcast.TransmitterAlignmentTestCommand;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
+import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
@@ -43,8 +43,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
 import com.raytheon.uf.edex.bmh.dactransmit.DacMaintenanceArgParser;
 
 /**
- * Starts a comms manager in maintenance mode to run an alignment test. Reports
- * on the status of the alignment test based on the exit code of the process.
+ * Starts a comms manager in maintenance mode to play a maintenance message.
+ * Reports on the status of the maintenance based on the exit code of the
+ * process.
  * 
  * <pre>
  * 
@@ -56,6 +57,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacMaintenanceArgParser;
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
  * Dec 1, 2014  3797       bkowal      Implement getTransmitterGroups and dac
  *                                     connection methods.
+ * Dec 12, 2014 3603       bsteffen    Rename for use with transfer tones.
  * 
  * </pre>
  * 
@@ -63,11 +65,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacMaintenanceArgParser;
  * @version 1.0
  */
 
-public class AlignmentTestTask extends AbstractBroadcastingTask {
+public class MaintenanceTask extends AbstractBroadcastingTask {
 
-    private static final String DESCRIPTION = "alignment test task";
-
-    private final TransmitterAlignmentTestCommand command;
+    private final TransmitterMaintenanceCommand command;
 
     private final CommsConfig commsConfig;
 
@@ -83,11 +83,12 @@ public class AlignmentTestTask extends AbstractBroadcastingTask {
      * @param name
      * @param socket
      */
-    public AlignmentTestTask(Socket socket,
-            TransmitterAlignmentTestCommand command,
+    public MaintenanceTask(Socket socket,
+            TransmitterMaintenanceCommand command,
             final CommsConfig commsConfig,
             final BroadcastStreamServer streamServer) {
-        super(UUID.randomUUID().toString().toUpperCase(), DESCRIPTION, socket);
+        super(UUID.randomUUID().toString().toUpperCase(), command
+                .getMaintenanceDetails(), socket);
         this.command = command;
         this.commsConfig = commsConfig;
         this.streamServer = streamServer;
@@ -100,9 +101,11 @@ public class AlignmentTestTask extends AbstractBroadcastingTask {
             args = this.prepare();
         } catch (TransmitterAlignmentException e) {
             try {
-                logger.error("Alignment test initialization has failed.", e);
+                logger.error("{} initialization has failed.",
+                        command.getMaintenanceDetails(), e);
                 super.sendClientReplyMessage(super.buildErrorStatus(
-                        "Alignment test initialization has failed.", e, null));
+                        command.getMaintenanceDetails()
+                                + " initialization has failed.", e, null));
             } catch (Exception e1) {
                 logger.error("Failed to send a reply to the client!", e);
             }
@@ -168,14 +171,14 @@ public class AlignmentTestTask extends AbstractBroadcastingTask {
                     e);
         }
 
-        StringBuilder resultMsg = new StringBuilder(
-                "The transmitter alignment test ");
+        StringBuilder resultMsg = new StringBuilder();
+        resultMsg.append("The ").append(command.getMaintenanceDetails());
         boolean success = false;
         if (returnCode == 0) {
-            resultMsg.append("successfully finished");
+            resultMsg.append(" successfully finished");
             success = true;
         } else {
-            resultMsg.append("failed ");
+            resultMsg.append(" failed ");
         }
         resultMsg.append(" in ");
         resultMsg.append(Double.toString((System.currentTimeMillis() - start)));
@@ -196,7 +199,8 @@ public class AlignmentTestTask extends AbstractBroadcastingTask {
     }
 
     private List<String> prepare() throws TransmitterAlignmentException {
-        logger.info("Preparing to run the alignment test ...");
+        logger.info("Preparing to run the " + "The "
+                + command.getMaintenanceDetails() + " ...");
 
         int dacDataPort = this.findDataPort();
         logger.info("Using dac data port: " + dacDataPort + ".");

@@ -38,7 +38,7 @@ import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.IOnDemandBroadcastMsg;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
-import com.raytheon.uf.common.bmh.broadcast.TransmitterAlignmentTestCommand;
+import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -61,6 +61,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Oct 22, 2014 3687       bsteffen    Fix NPE in edge case.
  * Nov 15, 2014 3630       bkowal      Support alignment tests.
  * Dec 1, 2014  3797       bkowal      Support broadcast clustering.
+ * Dec 12, 2014 3603       bsteffen    Reuse alignment task for transfer tones.
  * 
  * </pre>
  * 
@@ -133,9 +134,9 @@ public class BroadcastStreamServer extends AbstractServerThread {
         if (command instanceof LiveBroadcastStartCommand) {
             task = this.handleLiveBroadcastCommand(
                     (LiveBroadcastStartCommand) command, socket);
-        } else if (command instanceof TransmitterAlignmentTestCommand) {
+        } else if (command instanceof TransmitterMaintenanceCommand) {
             task = this.handleTransmitterAlignmentCommand(
-                    (TransmitterAlignmentTestCommand) command, socket);
+                    (TransmitterMaintenanceCommand) command, socket);
         } else {
             logger.error(
                     "On Demand Broadcast Command {} is not currently supported!",
@@ -233,8 +234,8 @@ public class BroadcastStreamServer extends AbstractServerThread {
     }
 
     private AbstractBroadcastingTask handleTransmitterAlignmentCommand(
-            final TransmitterAlignmentTestCommand command, final Socket socket) {
-        return new AlignmentTestTask(socket, command,
+            final TransmitterMaintenanceCommand command, final Socket socket) {
+        return new MaintenanceTask(socket, command,
                 this.commsManager.getCurrentConfigState(), this);
     }
 
