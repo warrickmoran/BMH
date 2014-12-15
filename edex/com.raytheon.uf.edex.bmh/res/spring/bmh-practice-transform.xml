@@ -62,6 +62,12 @@
 					</simple>
 					<bean ref="practice_messageTransformer" method="updateNationalDictionary" />
 				</filter>
+				<filter>
+					<simple>${body} is
+						"com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification"
+					</simple>
+					<bean ref="practice_messageTransformer" method="updateTransmitterDictionary" />
+				</filter>
 				<doCatch>
 					<exception>java.lang.Throwable</exception>
 					<to uri="log:bmh?level=ERROR" />

@@ -81,6 +81,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypesDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.StatusMonitorDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.voice.VoiceConfigDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WeatherMessagesDlg;
 import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
 import com.raytheon.uf.viz.bmh.ui.program.ImportLegacyDbDlg;
@@ -126,6 +127,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 10, 2014   3900     lvenable    Added some spacing and increaced the size of the quick access
  * Dec 10, 2014   3824     rferrel     Add importLegacyDB.
  *                                     buttons to make the launcher dialog a bit larger.
+ * Dec 15, 2014   3618     bkowal      Added the Voice Configuration dialog.
  * 
  * </pre>
  * 
@@ -216,6 +218,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     /** Import Legacy Dialog. */
     private ImportLegacyDbDlg importDbDlg;
 
+    /** TTS Voice Configuration Dialog. */
+    private VoiceConfigDialog voiceDlg;
+
     /**
      * This is a map that contains dialog that may require some sort of save
      * action before closing. These dialogs are reported to the user so they can
@@ -233,7 +238,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
     /** Tool tip for the Broadcast Cycle button. */
     private CustomToolTip broadcastCycleTip;
 
-    /** Tool tip for the Weahter Messages button. */
+    /** Tool tip for the Weather Messages button. */
     private CustomToolTip weatherMessagesTip;
 
     /** Tool tip for the Emergency Override button. */
@@ -947,6 +952,26 @@ public class BMHLauncherDlg extends CaveSWTDialog {
                         dacConfigDlg.open();
                     } else {
                         dacConfigDlg.bringToTop();
+                    }
+                }
+            }
+        });
+
+        /*
+         * TTS Voice Configuration
+         */
+        MenuItem voiceConfigMI = new MenuItem(maintenanceMenu, SWT.PUSH);
+        voiceConfigMI.setText("Voice Configuration...");
+        voiceConfigMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                if (isAuthorized(DlgInfo.TTS_VOICE_CONFIGURATION)) {
+                    if (voiceDlg == null || voiceDlg.isDisposed() == true) {
+                        voiceDlg = new VoiceConfigDialog(
+                                dlgsToValidateCloseMap, shell);
+                        voiceDlg.open();
+                    } else {
+                        voiceDlg.bringToTop();
                     }
                 }
             }

@@ -96,6 +96,11 @@
          This permission allows the user to access Import Legacy Database dialog.
        </description>
    </permission>
+   <permission id="bmh.dialog.voiceConfiguration">
+      <description>
+         This permission allows the user to access the BMH Voice Configuration dialog.
+       </description>
+   </permission>
    <role roleId="bmh.admin">
        <roleDescription>
           This role is for BMH administrator permissions.
@@ -116,6 +121,7 @@
        <rolePermission>bmh.dialog.copyOperationalDB</rolePermission>
        <rolePermission>bmh.dialog.ldadConfiguration</rolePermission>
        <rolePermission>bmh.dialog.manageDictionaries</rolePermission>
+       <rolePermission>bmh.dialog.voiceConfiguration</rolePermission>
        <rolePermission>bmh.dialog.convertLegacyDictionary</rolePermission>
        <rolePermission>bmh.dialog.dacConfiguration</rolePermission>
        <rolePermission>bmh.dialog.importLegacyDB</rolePermission>
@@ -140,6 +146,7 @@
        <rolePermission>bmh.dialog.copyOperationalDB</rolePermission>
        <rolePermission>bmh.dialog.ldadConfiguration</rolePermission>
        <rolePermission>bmh.dialog.manageDictionaries</rolePermission>
+       <rolePermission>bmh.dialog.voiceConfiguration</rolePermission>
        <rolePermission>bmh.dialog.convertLegacyDictionary</rolePermission>
    </role>
    <role roleId="bmh.maintenance">
