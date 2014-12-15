@@ -19,15 +19,23 @@
  **/
 package com.raytheon.uf.edex.bmh.msg.logging;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Calendar;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
 
 /**
@@ -43,6 +51,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  * ------------ ---------- ----------- --------------------------
  * Dec 8, 2014  3651       bkowal      Initial creation
  * Dec 11, 2014 3651       bkowal      Implemented message activity logging.
+ * Dec 15, 2014 3651       bkowal      Implemented message error logging.
  * 
  * </pre>
  * 
@@ -62,6 +71,8 @@ public class DefaultMessageLogger implements IMessageLogger {
 
     private final Logger errorLogger;
 
+    private final String host;
+
     private static final DefaultMessageLogger instance = new DefaultMessageLogger(
             ACTIVITY_LOGGER, ERROR_LOGGER);
 
@@ -80,6 +91,19 @@ public class DefaultMessageLogger implements IMessageLogger {
         this.activityLogger = LoggerFactory.getLogger(activityLoggerName);
 
         this.errorLogger = LoggerFactory.getLogger(errorLoggerName);
+
+        /*
+         * Attempt to determine the host that the logging will be occurring on.
+         * If the host cannot be determined, default to using a host of unknown.
+         */
+        String determinedHost = null;
+        try {
+            determinedHost = InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            /* failed to determine the host */
+            this.errorLogger.error("Failed to determine the hostname.", e);
+        }
+        host = (determinedHost == null) ? "<Unknown>" : determinedHost;
     }
 
     public static DefaultMessageLogger getInstance() {
@@ -96,7 +120,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logBroadcastActivity(DacPlaylistMessage msg) {
         final String expire = this.getExpirationDate(msg.getExpire());
-        Object[] logDetails = new Object[] { this.getMsgId(msg), expire };
+        Object[] logDetails = new Object[] { this.getMsgId(msg, false), expire };
         this.logActivity(MESSAGE_ACTIVITY.BROADCAST, logDetails);
     }
 
@@ -113,8 +137,8 @@ public class DefaultMessageLogger implements IMessageLogger {
             BroadcastMsg replacedMsg) {
         final String expire = this.getExpirationDate(newMsg.getInputMessage()
                 .getExpirationTime());
-        Object[] logDetails = new Object[] { this.getMsgId(newMsg),
-                this.getMsgId(replacedMsg),
+        Object[] logDetails = new Object[] { this.getMsgId(newMsg, false),
+                this.getMsgId(replacedMsg, false),
                 newMsg.getTransmitterGroup().getName(), expire };
         this.logActivity(MESSAGE_ACTIVITY.REPLACEMENT, logDetails);
     }
@@ -130,8 +154,8 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logCreationActivity(DacPlaylistMessage msg, TransmitterGroup tg) {
         final String expire = this.getExpirationDate(msg.getExpire());
-        Object[] logDetails = new Object[] { this.getMsgId(msg), tg.getName(),
-                expire };
+        Object[] logDetails = new Object[] { this.getMsgId(msg, false),
+                tg.getName(), expire };
         this.logActivity(MESSAGE_ACTIVITY.CREATION, logDetails);
     }
 
@@ -146,7 +170,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     public void logActivationActivity(BroadcastMsg msg) {
         final String expire = this.getExpirationDate(msg.getInputMessage()
                 .getExpirationTime());
-        Object[] logDetails = new Object[] { this.getMsgId(msg),
+        Object[] logDetails = new Object[] { this.getMsgId(msg, false),
                 msg.getTransmitterGroup().getName(), expire };
         this.logActivity(MESSAGE_ACTIVITY.ACTIVATION, logDetails);
     }
@@ -167,11 +191,11 @@ public class DefaultMessageLogger implements IMessageLogger {
         if (toneType == TONE_TYPE.SAME) {
             activity = MESSAGE_ACTIVITY.SAME_TONE;
             logDetails = new Object[] { toneType.toString(),
-                    this.getMsgId(msg), msg.getSAMEtone(), expire };
+                    this.getMsgId(msg, false), msg.getSAMEtone(), expire };
         } else {
             activity = MESSAGE_ACTIVITY.TONE;
             logDetails = new Object[] { toneType.toString(),
-                    this.getMsgId(msg), expire };
+                    this.getMsgId(msg, false), expire };
         }
         this.logActivity(activity, logDetails);
     }
@@ -187,7 +211,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logTriggerActivity(BroadcastMsg msg, DacPlaylist playlist) {
         final String expire = this.getExpirationDate(playlist.getExpired());
-        Object[] logDetails = new Object[] { this.getMsgId(msg),
+        Object[] logDetails = new Object[] { this.getMsgId(msg, false),
                 playlist.toString(), msg.getTransmitterGroup().getName(),
                 expire };
         this.logActivity(MESSAGE_ACTIVITY.TRIGGER, logDetails);
@@ -208,6 +232,160 @@ public class DefaultMessageLogger implements IMessageLogger {
         this.logActivity(MESSAGE_ACTIVITY.PLAYLIST, logDetails);
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.msg.InputMessage)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            InputMessage msg) {
+        this.logError(component, activity, msg, null);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.msg.InputMessage,
+     * java.lang.Exception)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            InputMessage msg, Exception e) {
+        this.logError(component, activity, this.getMsgId(msg, true), e);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            ValidatedMessage msg) {
+        this.logError(component, activity, msg, null);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage,
+     * java.lang.Exception)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            ValidatedMessage msg, Exception e) {
+        this.logError(component, activity, this.getMsgId(msg, true), e);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            BroadcastMsg msg) {
+        this.logError(component, activity, msg, null);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg,
+     * java.lang.Exception)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            BroadcastMsg msg, Exception e) {
+        this.logError(component, activity, this.getMsgId(msg, true), e);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.edex.bmh.ldad.LdadMsg)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            LdadMsg msg) {
+        this.logError(component, activity, msg, null);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.edex.bmh.ldad.LdadMsg, java.lang.Exception)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            LdadMsg msg, Exception e) {
+        this.logError(component, activity, this.getMsgId(msg, true), e);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            DacPlaylistMessage msg) {
+        this.logError(component, activity, msg, null);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage,
+     * java.lang.Exception)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            DacPlaylistMessage msg, Exception e) {
+        this.logError(component, activity, this.getMsgId(msg, true), e);
+    }
+
     private void logActivity(final MESSAGE_ACTIVITY activityType,
             final Object[] logDetails) {
         StringBuilder sb = new StringBuilder("[");
@@ -217,6 +395,18 @@ public class DefaultMessageLogger implements IMessageLogger {
                         logDetails));
 
         this.activityLogger.info(sb.toString());
+    }
+
+    private void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            String msgId, Exception e) {
+        final Object[] logDetails = new Object[] { component.prettyPrint(),
+                activity.toString(), msgId, this.host };
+        final String msg = String.format(ErrorActivity.LOG_FORMAT, logDetails);
+        if (e == null) {
+            this.errorLogger.error(msg);
+        } else {
+            this.errorLogger.error(msg, e);
+        }
     }
 
     /**
@@ -241,14 +431,23 @@ public class DefaultMessageLogger implements IMessageLogger {
      * 
      * @param msg
      *            the specified {@link DacPlaylistMessage}
+     * @param identify
+     *            boolean indicating whether or not the identification
+     *            {@link String} should identify the message type.
      * @return an identification {@link String}
      */
-    private String getMsgId(DacPlaylistMessage msg) {
+    private String getMsgId(DacPlaylistMessage msg, boolean identify) {
         if (msg == null) {
             throw new IllegalArgumentException(
                     "Required argument msg can not be NULL.");
         }
-        StringBuilder sb = new StringBuilder("[id=");
+
+        String identification = StringUtils.EMPTY;
+        if (identify) {
+            identification = "DacPlaylistMessage ";
+        }
+
+        StringBuilder sb = new StringBuilder(identification + "[id=");
         sb.append(msg.getBroadcastId());
         sb.append(", afosid=");
         sb.append(msg.getMessageType());
@@ -265,14 +464,23 @@ public class DefaultMessageLogger implements IMessageLogger {
      * 
      * @param msg
      *            the specified {@link BroadcastMsg}
+     * @param identify
+     *            boolean indicating whether or not the identification
+     *            {@link String} should identify the message type.
      * @return an identification {@link String}
      */
-    private String getMsgId(BroadcastMsg msg) {
+    private String getMsgId(BroadcastMsg msg, boolean identify) {
         if (msg == null) {
             throw new IllegalArgumentException(
                     "Required argument msg can not be NULL.");
         }
-        StringBuilder sb = new StringBuilder("[id=");
+
+        String identification = StringUtils.EMPTY;
+        if (identify) {
+            identification = "BroadcastMsg ";
+        }
+
+        StringBuilder sb = new StringBuilder(identification + "[id=");
         sb.append(msg.getId());
         sb.append(", afosid=");
         sb.append(msg.getAfosid());
@@ -283,9 +491,100 @@ public class DefaultMessageLogger implements IMessageLogger {
         return sb.toString();
     }
 
-    @Override
-    public void logError() {
-        // TODO: Implement.
-        this.errorLogger.error("TEST TEST TEST");
+    /**
+     * Creates an identification {@link String} based on the specified
+     * {@link InputMessage}.
+     * 
+     * @param msg
+     *            the specified {@link InputMessage}
+     * @param identify
+     *            boolean indicating whether or not the identification
+     *            {@link String} should identify the message type.
+     * @return an identification {@link String}
+     */
+    private String getMsgId(InputMessage msg, boolean identify) {
+        if (msg == null) {
+            throw new IllegalArgumentException(
+                    "Required argument msg can not be NULL.");
+        }
+
+        String identification = StringUtils.EMPTY;
+        if (identify) {
+            identification = "InputMessage ";
+        }
+
+        StringBuilder sb = new StringBuilder(identification + "[id=");
+        sb.append(msg.getId());
+        sb.append(", afosid=");
+        sb.append(msg.getAfosid());
+        sb.append(", name=");
+        sb.append(msg.getName());
+        sb.append("]");
+
+        return sb.toString();
+    }
+
+    /**
+     * Creates an identification {@link String} based on the specified
+     * {@link ValidatedMessage}.
+     * 
+     * @param msg
+     *            the specified {@link ValidatedMessage}
+     * @param identify
+     *            boolean indicating whether or not the identification
+     *            {@link String} should identify the message type.
+     * @return an identification {@link String}
+     */
+    private String getMsgId(ValidatedMessage msg, boolean identify) {
+        if (msg == null) {
+            throw new IllegalArgumentException(
+                    "Required argument msg can not be NULL.");
+        }
+
+        String identification = StringUtils.EMPTY;
+        if (identify) {
+            identification = "ValidatedMessage ";
+        }
+
+        StringBuilder sb = new StringBuilder(identification + "[id=");
+        sb.append(msg.getId());
+        sb.append(", afosid=");
+        sb.append(msg.getInputMessage().getAfosid());
+        sb.append(", name=");
+        sb.append(msg.getInputMessage().getName());
+        sb.append("]");
+
+        return sb.toString();
+    }
+
+    /**
+     * Creates an identification {@link String} based on the specified
+     * {@link LdadMsg}.
+     * 
+     * @param msg
+     *            the specified {@link LdadMsg}
+     * @param identify
+     *            boolean indicating whether or not the identification
+     *            {@link String} should identify the message type.
+     * @return an identification {@link String}
+     */
+    private String getMsgId(LdadMsg msg, boolean identify) {
+        if (msg == null) {
+            throw new IllegalArgumentException(
+                    "Required argument msg can not be NULL.");
+        }
+
+        String identification = StringUtils.EMPTY;
+        if (identify) {
+            identification = "LdadMsg ";
+        }
+
+        StringBuilder sb = new StringBuilder(identification + "[id=");
+        sb.append(msg.getLdadId());
+        sb.append(", afosid=");
+        sb.append(msg.getAfosid());
+        sb.append("]");
+
+        return sb.toString();
     }
 }

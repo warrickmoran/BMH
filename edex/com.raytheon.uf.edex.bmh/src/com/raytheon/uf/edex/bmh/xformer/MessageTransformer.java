@@ -395,8 +395,8 @@ public class MessageTransformer implements IContextStateProcessor {
              * the standard error handling procedure ...
              */
             statusHandler.error(BMH_CATEGORY.XFORM_MISSING_MSG_TYPE,
-                    "Failed to Transform Message: SENTENCE_PUNCTUATION"
-                            + messageID + "!", exception);
+                    "Failed to Transform Message: " + messageID + "!",
+                    exception);
 
             /*
              * But, at the same time there is nothing to send downstream -

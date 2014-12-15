@@ -28,7 +28,7 @@ package com.raytheon.uf.edex.bmh.msg.logging;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Dec 10, 2014            bkowal     Initial creation
+ * Dec 10, 2014 3651       bkowal      Initial creation
  * 
  * </pre>
  * 
