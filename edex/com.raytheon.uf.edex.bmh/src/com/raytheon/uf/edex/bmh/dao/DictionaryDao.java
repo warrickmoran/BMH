@@ -19,10 +19,12 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 
 /**
  * BMH DAO for {@link Dictionary}.
@@ -36,7 +38,8 @@ import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
  * Jun 24, 2014 3302       bkowal      Initial creation
  * Jul 08, 2014 3355       mpduff      Added getDictionaryNames()
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
- * Dec 11, 2014 3618       bkowal      Added {@link #getNationalDictionary()}.
+ * Dec 11, 2014 3618       bkowal      Added {@link #getNationalDictionaries()}.
+ * Dec 15, 2014 3618       bkowal      Added {@link #getNationalDictionaryForLanguage(Language)}.
  * 
  * </pre>
  * 
@@ -70,21 +73,55 @@ public class DictionaryDao extends AbstractBMHDao<Dictionary, String> {
     }
 
     /**
-     * Retrieves the national {@link Dictionary} if one exists.
+     * Retrieves every national {@link Dictionary} across every {@link Language}
+     * .
      * 
-     * @return the national {@link Dictionary} if it exists or {@code null} if
-     *         one cannot be found.
+     * @return a {@link List} of national {@link Dictionary}(ies)
      */
-    public Dictionary getNationalDictionary() {
+    public List<Dictionary> getNationalDictionaries() {
         List<?> returnedObjects = this
-                .findByNamedQuery(Dictionary.GET_NATIONAL_DICTIONARY);
+                .findByNamedQuery(Dictionary.GET_NATIONAL_DICTIONARIES);
+        if (returnedObjects == null || returnedObjects.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Dictionary> nationalDictionaries = new ArrayList<>(
+                returnedObjects.size());
+        for (Object object : returnedObjects) {
+            if (object instanceof Dictionary == false) {
+                logger.error("The "
+                        + Dictionary.GET_NATIONAL_DICTIONARIES
+                        + " query returned results in the wrong format. Expected a "
+                        + Dictionary.class.getName() + "; received a "
+                        + object.getClass().getName() + ".");
+                return Collections.emptyList();
+            }
+            nationalDictionaries.add((Dictionary) object);
+        }
+
+        return nationalDictionaries;
+    }
+
+    /**
+     * Retrieves the national {@link Dictionary} associated with the specified
+     * {@link Language}.
+     * 
+     * @param language
+     *            the specified {@link Language}.
+     * @return A national {@link Dictionary} associated with the specified
+     *         {@link Language}, if it exists; otherwise, {@code null}.
+     */
+    public Dictionary getNationalDictionaryForLanguage(final Language language) {
+        List<?> returnedObjects = this.findByNamedQueryAndNamedParam(
+                Dictionary.GET_NATIONAL_DICTIONARY_FOR_LANGUAGE, "language",
+                language);
         if (returnedObjects == null || returnedObjects.isEmpty()) {
             return null;
         }
 
         if (returnedObjects.get(0) instanceof Dictionary == false) {
             logger.error("The "
-                    + Dictionary.GET_NATIONAL_DICTIONARY
+                    + Dictionary.GET_NATIONAL_DICTIONARIES
                     + " query returned results in the wrong format. Expected a "
                     + Dictionary.class.getName() + "; received a "
                     + returnedObjects.get(0).getClass().getName() + ".");

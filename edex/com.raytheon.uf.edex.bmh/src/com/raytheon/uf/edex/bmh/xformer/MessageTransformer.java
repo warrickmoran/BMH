@@ -28,11 +28,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.WordUtils;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
@@ -53,9 +57,11 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.Sentence;
+import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
@@ -104,6 +110,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Nov 20, 2014 3385       bkowal      Set afos id, voice number, and encoding on
  *                                     {@link LdadMsg}.
  * Dec 11, 2014 3618       bkowal      Handle tiered {@link Dictionary}(ies).
+ * Dec 15, 2014 3618       bkowal      Improved {@link Dictionary} caching.
  * 
  * </pre>
  * 
@@ -138,10 +145,12 @@ public class MessageTransformer implements IContextStateProcessor {
     /* Used to retrieve directory paths associated with time audio. */
     private final TimeMessagesGenerator tmGenerator;
 
-    /* Cached national dictionary */
-    private Dictionary nationalDictionary;
+    /* Cached national dictionaries */
+    private ConcurrentMap<Language, Dictionary> nationalDictionaryLanguageMap = new ConcurrentHashMap<>(
+            Language.values().length, 1.0f);
 
-    private Object nationalDictLock = new Object();
+    private Table<TransmitterGroup, Language, Dictionary> transmitterLanguageDictionaryTableCache = HashBasedTable
+            .create();
 
     /**
      * Constructor
@@ -210,21 +219,33 @@ public class MessageTransformer implements IContextStateProcessor {
         List<Object> generatedMessages = new LinkedList<>();
         for (TransmitterGroup group : message.getTransmitterGroups()) {
             /* Get the transmitter level dictionary */
-            Dictionary dictionary = this.getDictionary(group, messageType
-                    .getVoice().getLanguage(), message.getId());
+            Dictionary transmitterDictionary = null;
+            synchronized (this.transmitterLanguageDictionaryTableCache) {
+                transmitterDictionary = this.transmitterLanguageDictionaryTableCache
+                        .get(group, messageType.getVoice().getLanguage());
+                if (transmitterDictionary == null) {
+                    transmitterDictionary = this.getTransmitterDictionary(
+                            group, messageType.getVoice().getLanguage(),
+                            message.getId());
+                    this.transmitterLanguageDictionaryTableCache.put(group,
+                            messageType.getVoice().getLanguage(),
+                            transmitterDictionary);
+                }
+            }
             BroadcastMsg msg = null;
             try {
                 msg = this.transformText(message.getInputMessage(),
-                        formattedText, dictionary, group, messageType);
+                        formattedText, transmitterDictionary, group,
+                        messageType);
             } catch (SSMLConversionException e) {
                 StringBuilder errorString = new StringBuilder(
                         "Failed to generate a Broadcast Msg for Input Message: ");
                 errorString.append(message.getId());
-                if (dictionary == null) {
+                if (transmitterDictionary == null) {
                     errorString.append("!");
                 } else {
                     errorString.append(" with dictionary: ");
-                    errorString.append(dictionary.getName());
+                    errorString.append(transmitterDictionary.getName());
                     errorString.append("!");
                 }
                 errorString.append(" Skipping ...");
@@ -400,8 +421,10 @@ public class MessageTransformer implements IContextStateProcessor {
      *            id of the Validated Message for auditing purposes
      * @return
      */
-    private Dictionary getDictionary(TransmitterGroup group, Language language,
-            int messageID) {
+    private Dictionary getTransmitterDictionary(TransmitterGroup group,
+            Language language, int messageID) {
+        ITimer dictionaryTimer = TimeUtil.getTimer();
+        dictionaryTimer.start();
         TransmitterLanguagePK pk = new TransmitterLanguagePK();
         pk.setTransmitterGroup(group);
         pk.setLanguage(language);
@@ -420,9 +443,16 @@ public class MessageTransformer implements IContextStateProcessor {
 
             statusHandler.warn(BMH_CATEGORY.XFORM_MISSING_DICTIONARY,
                     stringBuilder.toString());
+            dictionaryTimer.stop(); // not logging non-retrievals
             return null;
         }
 
+        dictionaryTimer.stop();
+        statusHandler.info("The Dictionary for Transmitter Group: "
+                + group.getName() + " and Language: " + language.toString()
+                + " was successfully retrieved in "
+                + TimeUtil.prettyDuration(dictionaryTimer.getElapsedTime())
+                + ".");
         return lang.getDictionary();
     }
 
@@ -453,7 +483,8 @@ public class MessageTransformer implements IContextStateProcessor {
 
         /* Create Transformation rules based on the dictionary. */
         List<ITextTransformation> textTransformations = this.mergeDictionaries(
-                dictionary, messageType.getVoice().getDictionary());
+                inputMessage.getLanguage(), dictionary, messageType.getVoice()
+                        .getDictionary());
 
         /*
          * Handle the static message type special case.
@@ -605,27 +636,37 @@ public class MessageTransformer implements IContextStateProcessor {
      * @return the merged list of {@link ITextTransformation} rules.
      * @throws SSMLConversionException
      */
-    private List<ITextTransformation> mergeDictionaries(
+    private List<ITextTransformation> mergeDictionaries(Language language,
             final Dictionary transmitterDictionary,
             final Dictionary voiceDictionary) throws SSMLConversionException {
-        synchronized (this.nationalDictLock) {
-            // no dictionaries exist?
-            if (this.nationalDictionary == null
-                    && transmitterDictionary == null && voiceDictionary == null) {
-                return Collections.emptyList();
-            }
-
-            Map<Word, ITextTransformation> mergedDictionaryMap = new LinkedHashMap<>();
-            this.mergeDictionary(this.nationalDictionary, mergedDictionaryMap);
-            this.mergeDictionary(voiceDictionary, mergedDictionaryMap);
-            this.mergeDictionary(transmitterDictionary, mergedDictionaryMap);
-            if (mergedDictionaryMap.isEmpty()) {
-                return Collections.emptyList();
-            }
-
-            return new LinkedList<ITextTransformation>(
-                    mergedDictionaryMap.values());
+        ITimer dictionaryTimer = TimeUtil.getTimer();
+        dictionaryTimer.start();
+        final Dictionary nationalDictionary = this.nationalDictionaryLanguageMap
+                .get(language);
+        // no dictionaries exist?
+        if (nationalDictionary == null && transmitterDictionary == null
+                && voiceDictionary == null) {
+            dictionaryTimer.stop();
+            statusHandler.info("Successfully merged the dictionaries in "
+                    + TimeUtil.prettyDuration(dictionaryTimer.getElapsedTime())
+                    + ".");
+            return Collections.emptyList();
         }
+
+        Map<Word, ITextTransformation> mergedDictionaryMap = new LinkedHashMap<>();
+        this.mergeDictionary(nationalDictionary, mergedDictionaryMap);
+        this.mergeDictionary(voiceDictionary, mergedDictionaryMap);
+        this.mergeDictionary(transmitterDictionary, mergedDictionaryMap);
+        if (mergedDictionaryMap.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        dictionaryTimer.stop();
+        statusHandler.info("Successfully merged the dictionaries in "
+                + TimeUtil.prettyDuration(dictionaryTimer.getElapsedTime())
+                + ".");
+
+        return new LinkedList<ITextTransformation>(mergedDictionaryMap.values());
     }
 
     /**
@@ -821,29 +862,95 @@ public class MessageTransformer implements IContextStateProcessor {
     public void updateNationalDictionary(
             NationalDictionaryConfigNotification notification) {
         if (notification.getType() == ConfigChangeType.Update) {
-            this.retrieveNationalDictionary();
+            this.retrieveNationalDictionaryForLanguage(notification
+                    .getLanguage());
         } else {
             /*
              * The National {@link Dictionary} no longer exists.
              */
-            synchronized (this.nationalDictLock) {
-                this.nationalDictionary = null;
-            }
+            this.nationalDictionaryLanguageMap.remove(notification
+                    .getLanguage());
         }
     }
 
-    private void retrieveNationalDictionary() {
-        synchronized (this.nationalDictLock) {
-            this.nationalDictionary = this.dictionaryDao
-                    .getNationalDictionary();
-            if (this.nationalDictionary == null) {
-                statusHandler
-                        .info("No National Dictionary currently exists in the system.");
-                return;
-            }
-            statusHandler.info("Using National Dictionary: "
-                    + this.nationalDictionary.toString());
+    /**
+     * Removes the existing {@link Dictionary} associated with a
+     * {@link TransmitterGroup} and {@link Language} from the cache to ensure
+     * that the most recent version of the {@link Dictionary} will be retrieved
+     * the next time it is needed.
+     * 
+     * @param notification
+     */
+    public void updateTransmitterDictionary(
+            TransmitterLanguageConfigNotification notification) {
+        synchronized (this.transmitterLanguageDictionaryTableCache) {
+            this.transmitterLanguageDictionaryTableCache.remove(notification
+                    .getKey().getTransmitterGroup(), notification.getKey()
+                    .getLanguage());
         }
+    }
+
+    /**
+     * Retrieves the national {@Dictionary} for every
+     * {@link Language}. Used during Spring bean initialization.
+     */
+    private void retrieveNationalDictionaries() {
+        ITimer dictionaryTimer = TimeUtil.getTimer();
+        dictionaryTimer.start();
+        List<Dictionary> nationalDictionaries = this.dictionaryDao
+                .getNationalDictionaries();
+        if (nationalDictionaries.isEmpty()) {
+            statusHandler
+                    .info("No National Dictionary currently exists in the system.");
+            dictionaryTimer.stop();
+            return;
+        }
+        for (Dictionary dictionary : nationalDictionaries) {
+            this.nationalDictionaryLanguageMap.put(dictionary.getLanguage(),
+                    dictionary);
+            statusHandler.info("Using National Dictionary: "
+                    + dictionary.getName() + " for Language: "
+                    + dictionary.getLanguage().toString() + ".");
+        }
+        dictionaryTimer.stop();
+
+        statusHandler
+                .info("Successfully retrieved all national dictionaries in "
+                        + TimeUtil.prettyDuration(dictionaryTimer
+                                .getElapsedTime()) + ".");
+    }
+
+    /**
+     * Retrieves the national {@link Dictionary} associated with the specified
+     * {@link Language}. Used to retrieve an updated national {@link Dictionary}
+     * for a specific {@link Language} whenever a
+     * {@link NationalDictionaryConfigNotification} is received.
+     * 
+     * @param language
+     *            the specified {@link Language}.
+     */
+    private void retrieveNationalDictionaryForLanguage(Language language) {
+        ITimer dictionaryTimer = TimeUtil.getTimer();
+        dictionaryTimer.start();
+        Dictionary nationalDictionary = this.dictionaryDao
+                .getNationalDictionaryForLanguage(language);
+        if (nationalDictionary == null) {
+            dictionaryTimer.stop();
+            return;
+        }
+
+        this.nationalDictionaryLanguageMap.put(language, nationalDictionary);
+        statusHandler.info("Using National Dictionary: "
+                + nationalDictionary.getName() + " for Language: "
+                + nationalDictionary.getLanguage().toString() + ".");
+        dictionaryTimer.stop();
+
+        statusHandler
+                .info("Successfully retrieved the national dictionary for language: "
+                        + language.toString()
+                        + " in "
+                        + TimeUtil.prettyDuration(dictionaryTimer
+                                .getElapsedTime()) + ".");
     }
 
     /**
@@ -934,7 +1041,7 @@ public class MessageTransformer implements IContextStateProcessor {
         this.validateDaos();
 
         /* Attempt to retrieve the national dictionary. */
-        this.retrieveNationalDictionary();
+        this.retrieveNationalDictionaries();
     }
 
     @Override

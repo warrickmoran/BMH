@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+
 /**
  * Notification that is used when the National {@link Dictionary} is altered.
  * 
@@ -29,19 +33,37 @@ package com.raytheon.uf.common.bmh.notify.config;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 11, 2014 3618       bkowal      Initial creation
+ * Dec 15, 2014 3618       bkowal      Added {@link #language}.
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
-
+@DynamicSerialize
 public class NationalDictionaryConfigNotification extends ConfigNotification {
+
+    @DynamicSerializeElement
+    private Language language;
 
     /**
      * Constructor
      */
     public NationalDictionaryConfigNotification(ConfigChangeType type) {
         super(type);
+    }
+
+    /**
+     * @return the language
+     */
+    public Language getLanguage() {
+        return language;
+    }
+
+    /**
+     * @param language the language to set
+     */
+    public void setLanguage(Language language) {
+        this.language = language;
     }
 }

@@ -32,7 +32,8 @@ package com.raytheon.uf.viz.bmh.ui.dialogs;
  * Nov 11, 2014 3413       rferrel     Initial creation
  * Nov 17, 2014 3808       bkowal      Added an enum for broadcast live.
  * Nov 20, 2014 3413       rferrel     Removed enum BMH_MENU.
- * Dec 05, 2014 3824       rferrel     Added IMPORT_LEGACY_DB,
+ * Dec 05, 2014 3824       rferrel     Added IMPORT_LEGACY_DB.
+ * Dec 15, 2014 3618       bkowal      Added TTS_VOICE_CONFIGURATION.
  * 
  * </pre>
  * 
@@ -83,6 +84,9 @@ public enum DlgInfo {
     DAC_CONFIGURATION("bmh.dialog.dacConfiguration", "DAC Configuration"),
 
     BROADCAST_LIVE("bmh.dialog.broadcastLive", "Broadcast Live"),
+
+    TTS_VOICE_CONFIGURATION("bmh.dialog.voiceConfiguration",
+            "TTS Voice Configuration"),
 
     IMPORT_LEGACY_DB("bmh.dialog.importLegacyDB", "Import Legacy Database");
 

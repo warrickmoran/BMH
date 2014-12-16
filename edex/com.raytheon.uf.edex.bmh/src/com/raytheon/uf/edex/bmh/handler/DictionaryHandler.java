@@ -48,6 +48,8 @@ import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
  * Oct 16, 2014  3636     rferrel     Implement logging.
  * Dec 11, 2014  3618     bkowal      Disseminate a {@link NationalDictionaryConfigNotification}
  *                                    whenever the National {@link Dictionary} is updated.
+ * Dec 15, 2014  3618     bkowal      Include the {@link Language} in the
+ *                                    {@link NationalDictionaryConfigNotification}.                                    
  * 
  * </pre>
  * 
@@ -75,12 +77,14 @@ public class DictionaryHandler extends
             if (request.getDictionary().isNational()) {
                 notification = new NationalDictionaryConfigNotification(
                         ConfigChangeType.Update);
+                notification.setLanguage(request.getDictionary().getLanguage());
             }
             break;
         case Delete:
             if (request.getDictionary().isNational()) {
                 notification = new NationalDictionaryConfigNotification(
                         ConfigChangeType.Delete);
+                notification.setLanguage(request.getDictionary().getLanguage());
             }
             deleteDictionary(request);
             break;
