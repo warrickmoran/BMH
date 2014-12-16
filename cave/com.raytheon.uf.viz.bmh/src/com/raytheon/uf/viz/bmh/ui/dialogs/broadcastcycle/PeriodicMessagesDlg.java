@@ -47,6 +47,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 20, 2014    3432    mpduff      Initial creation
  * Aug 14, 2014    3432    mpduff      Additional capabilities
  * Oct 10, 2014    3646    rferrel     Convert tableComp to GenericTable.
+ * Dec 13, 2014    3843    mpduff      Implement periodic messages.
  * 
  * 
  * </pre>
@@ -95,8 +96,8 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
     @Override
     protected void initializeComponents(Shell shell) {
         createTable();
-        populateTableData();
         createBottomButtons();
+        populateTableData();
     }
 
     private void createTable() {
@@ -141,6 +142,7 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
             public void widgetSelected(SelectionEvent e) {
                 if (detailsDlg == null || detailsDlg.isDisposed()) {
                     // TODO fix this instance of the dialog
+                    // messageType, broadcastMsg
                     detailsDlg = new MessageDetailsDlg(getShell(), null, null);
                     detailsDlg.open();
                 } else {

@@ -22,9 +22,11 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
+import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
@@ -78,6 +80,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Sep 12, 2014    3588    bsteffen    Broadcast msg support audio fragments.
  * Oct 21, 2014    3655    bkowal      Updated to use {@link IPlaylistData}.
  * Dec 08, 2014    3864    bsteffen    Add a PlaylistMsg class.
+ * Dec 13, 2014    3843    mpduff      Implement periodic messages.
  * 
  * </pre>
  * 
@@ -135,7 +138,9 @@ public class BroadcastCycleDataManager {
                 .sendRequest(req);
 
         Playlist playlist = response.getPlaylist();
-
+        PlaylistDataStructure playlistData = (PlaylistDataStructure) response
+                .getPlaylistData();
+        Map<Long, MessageType> msgTypeMap = playlistData.getMessageTypeMap();
         if (playlist == null) {
             return data;
         }
@@ -147,16 +152,18 @@ public class BroadcastCycleDataManager {
                 TableRowData rowData = new TableRowData();
 
                 TableCellData cell = new TableCellData(broadcast
-                        .getUpdateDate()
-                        .getTime().toString());
+                        .getUpdateDate().getTime().toString());
                 rowData.addTableCellData(cell);
-
-                cell = new TableCellData("N/A");
+                String periodicity = msgTypeMap.get(broadcast.getId())
+                        .getPeriodicity();
+                cell = new TableCellData(periodicity);
                 rowData.addTableCellData(cell);
 
                 cell = new TableCellData(broadcast.getAfosid());
                 rowData.addTableCellData(cell);
 
+                cell = new TableCellData(broadcast.getInputMessage()
+                        .getAfosid());
                 data.addDataRow(rowData);
             }
         }
