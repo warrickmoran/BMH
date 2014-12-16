@@ -39,6 +39,7 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistManager;
  * Sep 25, 2014  #3589     dgilling     Initial creation
  * Oct 13, 2014  #3413     rferrel     Implement User roles.
  * Oct 15, 2014, #3636     rferrel     Implement Logging
+ * Dec 16, 2014  #3753     bsteffen    Actually return success or failure.
  * 
  * </pre>
  * 
@@ -67,7 +68,7 @@ public final class ForceSuiteChangeHandler extends
             throws Exception {
         TransmitterGroup group = request.getTransmitterGroup();
         Suite suite = request.getSelectedSuite();
-        playlistMgr.processForceSuiteSwitch(group, suite);
+        boolean result = playlistMgr.processForceSuiteSwitch(group, suite);
 
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         if (logger.isPriorityEnabled(Priority.INFO)) {
@@ -80,6 +81,6 @@ public final class ForceSuiteChangeHandler extends
                     + suite.getId() + "], type [ " + suite.getType() + "]]");
         }
 
-        return Boolean.TRUE;
+        return result;
     }
 }

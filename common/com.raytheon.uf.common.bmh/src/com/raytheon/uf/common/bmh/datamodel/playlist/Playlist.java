@@ -82,6 +82,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Dec 10, 2014  3917     bsteffen    Avoid null end time.
  * Dec 11, 2014  3651     bkowal      Track and propagate messages that are replaced.
  * Dec 13, 2014  3843     mpduff      Add DynamicSerialize and default constructor
+ * Dec 16, 2014  3753     bsteffen    Don't trigger forced suites containing only static messages.
  * 
  * </pre>
  * 
@@ -266,12 +267,18 @@ public class Playlist {
                     triggerAfosids.add(trigger.getAfosid());
                 }
             }
+        } else {
+            for (SuiteMessage message : suite.getSuiteMessages()) {
+                if (!message.getMsgTypeSummary().getDesignation().isStatic()) {
+                    triggerAfosids.add(message.getAfosid());
+                }
+            }
         }
         Calendar startTime = this.startTime;
         List<Calendar> triggerTimes = new LinkedList<>();
         Calendar endTime = this.endTime;
         for (PlaylistMessage message : messages) {
-            if (forced || triggerAfosids.contains(message.getAfosid())) {
+            if (triggerAfosids.contains(message.getAfosid())) {
                 Calendar messageStart = message.getEffectiveTime();
                 Calendar messageEnd = message.getExpirationTime();
                 if ((startTime == null) || startTime.after(messageStart)) {

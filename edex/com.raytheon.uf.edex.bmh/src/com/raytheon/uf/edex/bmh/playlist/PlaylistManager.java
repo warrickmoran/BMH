@@ -131,6 +131,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Dec 08, 2014  3651     bkowal      Message logging preparation
  * Dec 08, 2014  3864     bsteffen    Shift some logic into the playlist.
  * Dec 11, 2014  3651     bkowal      Use {@link IMessageLogger} to log message activity.
+ * Dec 16, 2014  3753     bsteffen    Report failure when suites won't force.
  * 
  * </pre>
  * 
@@ -245,12 +246,12 @@ public class PlaylistManager implements IContextStateProcessor {
 
     }
 
-    public void processForceSuiteSwitch(final TransmitterGroup group,
+    public boolean processForceSuiteSwitch(final TransmitterGroup group,
             final Suite suite) {
         statusHandler.info("User requested transmitter group ["
                 + group.getName() + "] switch to suite [" + suite.getName()
                 + "].");
-        refreshTransmitterGroup(group, null, suite);
+        return refreshTransmitterGroup(group, null, suite);
     }
 
     public void processResetNotification() {
@@ -276,7 +277,7 @@ public class PlaylistManager implements IContextStateProcessor {
      *            the forced suite if any, null is acceptable in which case all
      *            triggered or general suites will be written.
      */
-    protected void refreshTransmitterGroup(TransmitterGroup group,
+    protected boolean refreshTransmitterGroup(TransmitterGroup group,
             Program program, Suite forcedSuite) {
         /*
          * Start with the assumption that all lists should be deleted. Analyze
@@ -292,18 +293,29 @@ public class PlaylistManager implements IContextStateProcessor {
                     statusHandler
                             .info("Skipping playlist refresh: No program assigned to transmitter group ["
                                     + group.getName() + "]");
-                    return;
+                    return false;
                 }
             }
             List<ProgramSuite> programSuites = program.getProgramSuites();
             if (!CollectionUtil.isNullOrEmpty(programSuites)) {
+                if (forcedSuite != null) {
+                    ProgramSuite forcedProgramSuite = program
+                            .getProgramSuite(forcedSuite);
+                    if (forcedProgramSuite != null) {
+                        if (!refreshPlaylist(group, forcedProgramSuite, true)) {
+                            return false;
+                        }
+                    }
+                }
+
                 for (ProgramSuite programSuite : programSuites) {
                     if (isPreemptedByForced(forcedSuite,
                             programSuite.getSuite())) {
                         continue;
                     }
-                    refreshPlaylist(group, programSuite, programSuite
-                            .getSuite().equals(forcedSuite));
+                    if (!programSuite.getSuite().equals(forcedSuite)) {
+                        refreshPlaylist(group, programSuite, false);
+                    }
                     Iterator<Playlist> listIterator = listsToDelete.iterator();
                     while (listIterator.hasNext()) {
                         if (listIterator.next().getSuite()
@@ -319,6 +331,7 @@ public class PlaylistManager implements IContextStateProcessor {
             programSuite.setSuite(playlist.getSuite());
             deletePlaylist(group, programSuite);
         }
+        return true;
     }
 
     protected void deletePlaylist(TransmitterGroup group,
@@ -355,7 +368,7 @@ public class PlaylistManager implements IContextStateProcessor {
      * Check and regenerate the playlist files for a specific group/suite
      * combination.
      */
-    protected void refreshPlaylist(TransmitterGroup group,
+    protected boolean refreshPlaylist(TransmitterGroup group,
             ProgramSuite programSuite, boolean forced) {
         ClusterTask ct = null;
         do {
@@ -377,7 +390,11 @@ public class PlaylistManager implements IContextStateProcessor {
             if (playlist.getId() != 0 || !playlist.getMessages().isEmpty()) {
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
-                persistPlaylist(playlist, programSuite, forced);
+                DacPlaylist dacPlaylist = persistPlaylist(playlist,
+                        programSuite, forced);
+                return !dacPlaylist.isEmpty();
+            } else {
+                return false;
             }
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());

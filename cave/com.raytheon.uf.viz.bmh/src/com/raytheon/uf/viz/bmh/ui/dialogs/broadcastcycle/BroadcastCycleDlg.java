@@ -49,6 +49,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 
 import com.google.common.eventbus.Subscribe;
@@ -122,13 +123,13 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 27, 2014  3712      bkowal      Update labels after live broadcast start/end.
  * Nov 01, 2014  3782      mpduff      Added message name column and made table grow with dialog
  * Nov 01, 2014  3655      bkowal      Prevent NPE.
- * Nov 04, 2014   3792     lvenable    Colored the Emergency Override label blue and fixed a NPE.
+ * Nov 04, 2014  3792      lvenable    Colored the Emergency Override label blue and fixed a NPE.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Nov 12, 2014  3816      lvenable    Fixed transmitter label size.
  * Nov 15, 2014  3818      mpduff      Allow multiple message detail dialogs to be open.
  * Nov 17, 2014  3808      bkowal      Support broadcast live.
  * Nov 18, 2014  3807      bkowal      Use BMHJmsDestinations.
- * Nov 19, 2014 3817       bsteffen    Use status queue for more than just dacs.
+ * Nov 19, 2014  3817      bsteffen    Use status queue for more than just dacs.
  * Nov 21, 2014  3845      bkowal      {@link LiveBroadcastSwitchNotification} now includes the
  *                                     full {@link TransmitterGroup}.
  * Nov 30, 2014  3752      mpduff      Populate Suite name, suite category, and cycle duration on startup.
@@ -136,6 +137,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     is received.
  * Dec 11, 2014  3895      lvenable    Changed time to GMT.
  * Dec 13, 2014  3843      mpduff      Implement periodic messages.
+ * Dec 16, 2014  3753      bsteffen    Add popup when suite change fails.
  * 
  * </pre>
  * 
@@ -1015,7 +1017,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     ForceSuiteChangeRequest request = new ForceSuiteChangeRequest(
                             group, suite);
                     try {
-                        BmhUtils.sendRequest(request);
+                        Boolean result = (Boolean) BmhUtils
+                                .sendRequest(request);
+                        if (result == false) {
+                            handleChangeSuiteFailure(request.getSelectedSuite());
+                        }
                     } catch (Exception e) {
                         statusHandler.error("Unable to change suites to ["
                                 + suite.getName() + "].", e);
@@ -1026,6 +1032,28 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             requestJob.setSystem(true);
             requestJob.schedule();
         }
+    }
+
+    /**
+     * Show a MessageBox indicating that a change suite has failed.
+     * 
+     * @param suite
+     *            The suite that failed to start.
+     */
+    private void handleChangeSuiteFailure(final Suite suite) {
+        VizApp.runSync(new Runnable() {
+
+            @Override
+            public void run() {
+                MessageBox mb = new MessageBox(getShell(), SWT.OK
+                        | SWT.ICON_WARNING);
+                mb.setText("Failed to Change Suite.");
+                mb.setMessage(suite.getName()
+                        + " does not contain any valid messages and will not be played.");
+                mb.open();
+            }
+
+        });
     }
 
     /**

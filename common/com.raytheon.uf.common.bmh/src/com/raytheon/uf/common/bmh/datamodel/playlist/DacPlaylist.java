@@ -48,6 +48,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 22, 2014  3286     dgilling    Added isExpired().
  * Aug 24, 2014  3558     rjpeter     Added path.
  * Sep 18, 2014  3554     bsteffen    Initialize messages to avoid null list.
+ * Dec 16, 2014  3753     bsteffen    Add isEmpty()
  * 
  * </pre>
  * 
@@ -208,5 +209,13 @@ public class DacPlaylist {
 
     public void setPath(Path path) {
         this.path = path;
+    }
+
+    /**
+     * Check if this playlist is empty, meaning either there are no messages or
+     * the expiration time is not after the start time.
+     */
+    public boolean isEmpty() {
+        return !expired.after(start) || messages.isEmpty();
     }
 }
