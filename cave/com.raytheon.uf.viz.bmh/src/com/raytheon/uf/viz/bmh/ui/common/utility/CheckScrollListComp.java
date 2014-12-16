@@ -49,6 +49,7 @@ import org.eclipse.swt.widgets.Label;
  * Oct 15, 2014 #3728      lvenable     Added ability to lock the controls from being edited and
  *                                      allow selection/deselection of all the check boxes via
  *                                      method call.
+ * Dec 15, 2014 #3876      bkowal       Added {@link #reset()} and {@link #enableCheckboxes(List)}.
  * 
  * </pre>
  * 
@@ -307,6 +308,36 @@ public class CheckScrollListComp extends Composite {
     public void selectCheckboxes(boolean selectAll) {
         for (Button btn : checkboxArray) {
             btn.setSelection(selectAll);
+        }
+    }
+
+    /**
+     * Used to reset the controls back to their default state - enabled and
+     * unchecked.
+     */
+    public void reset() {
+        for (Button btn : checkboxArray) {
+            btn.setEnabled(true);
+            btn.setSelection(false);
+        }
+    }
+
+    /**
+     * Selectively enable/disable checkboxes based on whether or not they have
+     * one of the specified identifiers.
+     * 
+     * @param identifiers
+     *            the specified identifiers
+     */
+    public void enableCheckboxes(final List<String> identifiers) {
+        for (Button btn : checkboxArray) {
+            if (identifiers.contains(btn.getText())) {
+                btn.setEnabled(true);
+            } else {
+                btn.setEnabled(false);
+                /* ensure that the checkbox has not been checked. */
+                btn.setSelection(false);
+            }
         }
     }
 }

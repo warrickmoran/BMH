@@ -123,6 +123,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 09, 2014  3893     lvenable    Fixed the area selection call to not repopulate the
  *                                    areas/zones/transmitters if they were previously removed.
  * Dec 09, 2014  3909     bkowal      Use {@link RecordedByUtils}.
+ * Dec 15, 2014  3876     bkowal      Only use the checked SAME Transmitters for
+ *                                    SAME Tones. Use affected Transmitters to
+ *                                    determine where a message should be directed.
  * 
  * </pre>
  * 
@@ -323,6 +326,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
                         if (returnValue instanceof InputAudioMessage) {
                             InputAudioMessage im = (InputAudioMessage) returnValue;
+                            sameTransmitters.reset();
                             populateControlsForEdit(im.getInputMessage(),
                                     im.getAudioDataList());
                         }
@@ -421,7 +425,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                     public void dialogClosed(Object returnValue) {
                         if (returnValue != null) {
                             selectedMessageType = (MessageType) returnValue;
-
+                            sameTransmitters.reset();
                             updateMessageTypeControls();
                         } else {
                             if (selectedMessageType == null) {
@@ -917,10 +921,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
         // TODO: need to handle input message area on message type selection.
         List<Transmitter> selectedTransmitters = new ArrayList<Transmitter>();
-        for (String transmitterMnemonic : this.sameTransmitters
-                .getCheckedItems().getCheckedItems()) {
-            selectedTransmitters.add(this.transmitterMap
-                    .get(transmitterMnemonic));
+        for (Transmitter transmitter : this.areaData.getAffectedTransmitters()) {
+            selectedTransmitters.add(transmitter);
         }
         request.setSelectedTransmitters(selectedTransmitters);
         try {
@@ -991,6 +993,19 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 }
 
                 userInputMessage.setAreaCodes(sb.toString());
+
+                /*
+                 * ensure that the user will only be able to select Transmitters
+                 * for SAME tone playback associated with the area that was
+                 * selected.
+                 */
+                List<String> transmitterIdentifiers = new ArrayList<>(areaData
+                        .getAffectedTransmitters().size());
+                for (Transmitter transmitter : areaData
+                        .getAffectedTransmitters()) {
+                    transmitterIdentifiers.add(transmitter.getMnemonic());
+                }
+                sameTransmitters.enableCheckboxes(transmitterIdentifiers);
             }
         });
         dlg.open();
@@ -1024,6 +1039,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
         this.areaSelectionBtn.setEnabled(true);
         sameTransmitters.selectCheckboxes(cld);
+        /*
+         * Reset the selected area codes.
+         */
+        this.userInputMessage.setAreaCodes(null);
 
         String periodicityDateTimeStr = selectedMessageType.getPeriodicity();
 
@@ -1066,7 +1085,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         languageLbl.setText("");
         designationLbl.setText("");
         emergenyOverrideLbl.setText("");
-        sameTransmitters.selectCheckboxes(false);
+        sameTransmitters.reset();
 
         changeMsgTypeBtn.setEnabled(true);
 
