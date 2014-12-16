@@ -61,6 +61,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * Dec 11, 2014 3618       bkowal      Added {@link #GET_NATIONAL_DICTIONARIES}.
  * Dec 15, 2014 3618       bkowal      Added {@link #GET_NATIONAL_DICTIONARY_FOR_LANGUAGE}.
+ * Dec 16, 2014 3618       bkowal      Added {@link #GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE}.
  * </pre>
  * 
  * @author rjpeter
@@ -69,7 +70,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
 @NamedQueries({
         @NamedQuery(name = Dictionary.GET_DICTIONARY_NAMES_QUERY, query = "select dict.name from Dictionary dict"),
         @NamedQuery(name = Dictionary.GET_NATIONAL_DICTIONARIES, query = Dictionary.GET_NATIONAL_DICTIONARIES_QUERY),
-        @NamedQuery(name = Dictionary.GET_NATIONAL_DICTIONARY_FOR_LANGUAGE, query = Dictionary.GET_NATIONAL_DICTIONARY_FOR_LANGUAGE_QUERY) })
+        @NamedQuery(name = Dictionary.GET_NATIONAL_DICTIONARY_FOR_LANGUAGE, query = Dictionary.GET_NATIONAL_DICTIONARY_FOR_LANGUAGE_QUERY),
+        @NamedQuery(name = Dictionary.GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE, query = Dictionary.GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE_QUERY) })
 @Entity
 @Table(name = "dictionary", schema = "bmh")
 @DynamicSerialize
@@ -85,6 +87,10 @@ public class Dictionary {
     public static final String GET_NATIONAL_DICTIONARY_FOR_LANGUAGE = "getNationalDictionariesForLanguage";
 
     protected static final String GET_NATIONAL_DICTIONARY_FOR_LANGUAGE_QUERY = "FROM Dictionary d WHERE d.language = :language AND d.national = true";
+
+    public static final String GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE = "getNonNationalDictionariesForLanguage";
+
+    protected static final String GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE_QUERY = "FROM Dictionary d WHERE d.language = :language AND d.national = false";
 
     @Id
     @Column(length = 20)

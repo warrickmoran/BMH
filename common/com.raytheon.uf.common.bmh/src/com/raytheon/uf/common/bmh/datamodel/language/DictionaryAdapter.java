@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 5, 2014  3175      rjpeter     Initial creation
+ * Dec 16, 2014 3618      bkowal      serialize/deserialize the national boolean
  * 
  * </pre>
  * 
@@ -85,6 +86,7 @@ public class DictionaryAdapter implements ISerializationTypeAdapter<Dictionary> 
             Dictionary dict) throws SerializationException {
         serializer.writeString(dict.getName());
         serializer.writeObject(dict.getLanguage());
+        serializer.writeBool(dict.isNational());
     }
 
     public static Dictionary deserializeNoWord(
@@ -92,6 +94,7 @@ public class DictionaryAdapter implements ISerializationTypeAdapter<Dictionary> 
         Dictionary dict = new Dictionary();
         dict.setName(deserializer.readString());
         dict.setLanguage((Language) deserializer.readObject());
+        dict.setNational(deserializer.readBool());
         return dict;
     }
 }

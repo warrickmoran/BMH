@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
  * Jul 01, 2014  3302     bkowal      Initial creation
  * Aug 11, 2014  3490     lvenable    Updated to get Voice information.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Dec 16, 2014  3618     bkowal      Added {@link #getVoiceIdentifiers()}.
  * 
  * </pre>
  * 
@@ -65,5 +67,54 @@ public class TtsVoiceDao extends AbstractBMHDao<TtsVoice, Integer> {
         }
 
         return voiceList;
+    }
+
+    /**
+     * Retrieve the minimum set of information required to identify a
+     * {@link TtsVoice}. This information can be used to retrieve full
+     * {@link TtsVoice} records as needed.
+     * 
+     * @return a {@link List} of {@link TtsVoice} ids (voiceNumbers) and names.
+     */
+    public List<TtsVoice> getVoiceIdentifiers() {
+        List<?> returnedObjects = this
+                .findByNamedQuery(TtsVoice.GET_VOICE_IDENTIFIERS);
+        if (returnedObjects == null || returnedObjects.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<TtsVoice> voiceIdentifiers = new ArrayList<TtsVoice>(
+                returnedObjects.size());
+        for (Object object : returnedObjects) {
+            if (object instanceof Object[] == false) {
+                logger.error("The "
+                        + TtsVoice.GET_VOICE_IDENTIFIERS
+                        + " query returned results in the wrong format. Expected an array of Object.");
+                return Collections.emptyList();
+            }
+
+            Object[] objects = (Object[]) object;
+            if (objects.length != 2) {
+                logger.error("The "
+                        + TtsVoice.GET_VOICE_IDENTIFIERS
+                        + " query returned results in the wrong format. Expected an array of Object with 2 elements.");
+                return Collections.emptyList();
+            }
+
+            if (objects[0] instanceof Integer == false
+                    || objects[1] instanceof String == false) {
+                logger.error("The "
+                        + TtsVoice.GET_VOICE_IDENTIFIERS
+                        + " query returned results in the wrong format. Expected the object array to have objects of type: [Integer, String].");
+                return Collections.emptyList();
+            }
+
+            TtsVoice voice = new TtsVoice();
+            voice.setVoiceNumber((Integer) objects[0]);
+            voice.setVoiceName((String) objects[1]);
+            voiceIdentifiers.add(voice);
+        }
+
+        return voiceIdentifiers;
     }
 }

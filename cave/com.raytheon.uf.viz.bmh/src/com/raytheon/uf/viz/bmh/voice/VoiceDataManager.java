@@ -37,6 +37,9 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 12, 2014  3803      bkowal      Initial creation
+ * Dec 16, 2014  3618      bkowal      Added {@link #getIdentifiers()},
+ *                                     {@link #getVoiceById(int)}, and
+ *                                     {@link #saveTtsVoice(TtsVoice)}.
  * 
  * </pre>
  * 
@@ -52,5 +55,37 @@ public class VoiceDataManager {
                 .sendRequest(voiceRequest);
 
         return voiceResponse.getTtsVoiceList();
+    }
+
+    public List<TtsVoice> getIdentifiers() throws Exception {
+        TtsVoiceRequest voiceRequest = new TtsVoiceRequest();
+        voiceRequest.setAction(TtsVoiceAction.VoiceIdentifiers);
+        TtsVoiceResponse voiceResponse = (TtsVoiceResponse) BmhUtils
+                .sendRequest(voiceRequest);
+
+        return voiceResponse.getTtsVoiceList();
+    }
+
+    public TtsVoice getVoiceById(int voiceNumber) throws Exception {
+        TtsVoiceRequest voiceRequest = new TtsVoiceRequest();
+        voiceRequest.setAction(TtsVoiceAction.GetById);
+        voiceRequest.setVoiceNumber(voiceNumber);
+        TtsVoiceResponse voiceResponse = (TtsVoiceResponse) BmhUtils
+                .sendRequest(voiceRequest);
+
+        if (voiceResponse.getTtsVoiceList() == null
+                || voiceResponse.getTtsVoiceList().isEmpty()) {
+            return null;
+        }
+
+        return voiceResponse.getTtsVoiceList().get(0);
+    }
+
+    public void saveTtsVoice(TtsVoice voice) throws Exception {
+        TtsVoiceRequest voiceRequest = new TtsVoiceRequest();
+        voiceRequest.setAction(TtsVoiceAction.UpdateVoice);
+        voiceRequest.setVoice(voice);
+
+        BmhUtils.sendRequest(voiceRequest);
     }
 }

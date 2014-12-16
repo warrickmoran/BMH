@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
@@ -38,6 +39,9 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
  * Aug 11, 2014  3490     lvenable    Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Dec 16, 2014  3618     bkowal      Added {@link #getIdentifiers(TtsVoiceRequest)},
+ *                                    {@link #getVoiceById(TtsVoiceRequest)}, and
+ *                                    {@link #updateVoice(TtsVoiceRequest)}.
  * 
  * </pre>
  * 
@@ -48,13 +52,29 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 public class TtsVoiceHandler extends
         AbstractBMHServerRequestHandler<TtsVoiceRequest> {
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.common.serialization.comm.IRequestHandler#handleRequest
+     * (com.raytheon.uf.common.serialization.comm.IServerRequest)
+     */
     @Override
     public Object handleRequest(TtsVoiceRequest request) throws Exception {
-        TtsVoiceResponse ttsVoiceResponce = new TtsVoiceResponse();
+        TtsVoiceResponse ttsVoiceResponse = new TtsVoiceResponse();
 
         switch (request.getAction()) {
         case AllVoices:
-            ttsVoiceResponce = getVoices(request);
+            ttsVoiceResponse = getVoices(request);
+            break;
+        case VoiceIdentifiers:
+            ttsVoiceResponse = getIdentifiers(request);
+            break;
+        case GetById:
+            ttsVoiceResponse = getVoiceById(request);
+            break;
+        case UpdateVoice:
+            ttsVoiceResponse = updateVoice(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -63,7 +83,7 @@ public class TtsVoiceHandler extends
                     + request.getAction());
         }
 
-        return ttsVoiceResponce;
+        return ttsVoiceResponse;
     }
 
     /**
@@ -77,6 +97,62 @@ public class TtsVoiceHandler extends
 
         List<TtsVoice> voiceList = dao.getVoices();
         response.setTtsVoiceList(voiceList);
+
+        return response;
+    }
+
+    /**
+     * Get a list of {@link TtsVoice} identifiers.
+     * 
+     * @param request
+     *            {@link TtsVoiceRequest} indicating which database to access.
+     * @return a {@link TtsVoiceResponse}.
+     */
+    private TtsVoiceResponse getIdentifiers(TtsVoiceRequest request) {
+        TtsVoiceDao dao = new TtsVoiceDao(request.isOperational());
+        TtsVoiceResponse response = new TtsVoiceResponse();
+
+        List<TtsVoice> voiceList = dao.getVoiceIdentifiers();
+        response.setTtsVoiceList(voiceList);
+
+        return response;
+    }
+
+    /**
+     * Retrieves a {@link TtsVoice} by id.
+     * 
+     * @param request
+     *            {@link TtsVoiceRequest} indicating which database to access
+     *            and includes the id of the {@link TtsVoice} to retrieve.
+     * @return a {@link TtsVoiceResponse}.
+     */
+    private TtsVoiceResponse getVoiceById(TtsVoiceRequest request) {
+        TtsVoiceDao dao = new TtsVoiceDao(request.isOperational());
+        TtsVoiceResponse response = new TtsVoiceResponse();
+
+        TtsVoice voice = dao.getByID(request.getVoiceNumber());
+        if (voice != null) {
+            List<TtsVoice> voices = new ArrayList<>(1);
+            voices.add(voice);
+            response.setTtsVoiceList(voices);
+        }
+
+        return response;
+    }
+
+    /**
+     * Updates the specified {@link TtsVoice}.
+     * 
+     * @param request
+     *            {@link TtsVoiceRequest} indicating which database to access
+     *            and includes the {@link TtsVoice} to update.
+     * @return a {@link TtsVoiceResponse}.
+     */
+    private TtsVoiceResponse updateVoice(TtsVoiceRequest request) {
+        TtsVoiceDao dao = new TtsVoiceDao(request.isOperational());
+        TtsVoiceResponse response = new TtsVoiceResponse();
+
+        dao.saveOrUpdate(request.getVoice());
 
         return response;
     }

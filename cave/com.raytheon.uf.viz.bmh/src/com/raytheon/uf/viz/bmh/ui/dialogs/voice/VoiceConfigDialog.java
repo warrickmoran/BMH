@@ -20,7 +20,9 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.voice;
 
 import java.util.Map;
+import java.util.HashMap;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -34,8 +36,15 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
+import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
+import com.raytheon.uf.viz.bmh.voice.VoiceDataManager;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * TTS Voice Configuration dialog. This dialog allows users to see the voices
@@ -50,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 13, 2014 3618       bkowal      Initial creation
+ * Dec 16, 2014 3618       bkowal      Implemented
  * 
  * </pre>
  * 
@@ -58,6 +68,38 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
  */
 
 public class VoiceConfigDialog extends AbstractBMHDialog {
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(VoiceConfigDialog.class);
+
+    private static final String GENDER_MALE = "MALE";
+
+    private static final String GENDER_FEMALE = "FEMALE";
+
+    private Map<String, Integer> voiceIdentifierMap = new HashMap<>();
+
+    /**
+     * Used to retrieve and store {@link TtsVoice} information.
+     */
+    private final VoiceDataManager vdm = new VoiceDataManager();
+
+    private Label voiceNameLabel;
+
+    private Label voiceLanguageLabel;
+
+    private Label voiceGenderLabel;
+
+    private Label voiceDictionaryLabel;
+
+    private Button changeBtn;
+
+    private Button saveBtn;
+
+    private TtsVoice selectedVoice;
+
+    /**
+     * Used to display the names of each {@link TtsVoice} for selection.
+     */
+    private List voiceList;
 
     public VoiceConfigDialog(Map<AbstractBMHDialog, String> map,
             Shell parentShell) {
@@ -103,6 +145,7 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
      */
     @Override
     protected void initializeComponents(Shell shell) {
+        super.initializeComponents(shell);
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         GridLayout gl = new GridLayout(2, false);
         gl.horizontalSpacing = 0;
@@ -132,6 +175,20 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         this.createCloseButton(mainComp);
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.viz.ui.dialogs.CaveSWTDialogBase#opened()
+     */
+    @Override
+    protected void opened() {
+        this.populateVoiceList();
+        /*
+         * Handle the initial attribute population.
+         */
+        this.populateVoiceAttributes();
+    }
+
     /**
      * Constructs the {@link List} that will display the voices that are
      * registered in the system.
@@ -151,13 +208,13 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.widthHint = 125;
         /* Create the list. */
-        List voiceList = new List(voicesGroup, SWT.V_SCROLL | SWT.H_SCROLL
+        voiceList = new List(voicesGroup, SWT.V_SCROLL | SWT.H_SCROLL
                 | SWT.SINGLE | SWT.BORDER);
         voiceList.setLayoutData(gd);
         voiceList.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO: Implement
+                populateVoiceAttributes();
             }
         });
     }
@@ -196,8 +253,7 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         gd.widthHint = 225;
         gd.horizontalSpan = 2;
         gd.verticalIndent = 5;
-        Label voiceNameLabel = new Label(attributesComp, SWT.NONE);
-        voiceNameLabel.setText("TTS Voice NameWWWWWW");
+        voiceNameLabel = new Label(attributesComp, SWT.NONE);
         voiceNameLabel.setLayoutData(gd);
 
         /* Voice Language */
@@ -209,8 +265,7 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
         gd.horizontalSpan = 2;
         gd.verticalIndent = 5;
-        Label voiceLanguageLabel = new Label(attributesComp, SWT.NONE);
-        voiceLanguageLabel.setText("ENGLISH");
+        voiceLanguageLabel = new Label(attributesComp, SWT.NONE);
         voiceLanguageLabel.setLayoutData(gd);
 
         /* Voice Gender */
@@ -222,8 +277,7 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
         gd.horizontalSpan = 2;
         gd.verticalIndent = 5;
-        Label voiceGenderLabel = new Label(attributesComp, SWT.NONE);
-        voiceGenderLabel.setText("MALE");
+        voiceGenderLabel = new Label(attributesComp, SWT.NONE);
         voiceGenderLabel.setLayoutData(gd);
 
         /* Voice Dictionary */
@@ -235,14 +289,18 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
         gd.widthHint = 200;
         gd.verticalIndent = 5;
-        Label voiceDictionaryLabel = new Label(attributesComp, SWT.BORDER);
-        voiceDictionaryLabel.setText("");
+        voiceDictionaryLabel = new Label(attributesComp, SWT.BORDER);
         voiceDictionaryLabel.setLayoutData(gd);
         gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        Button changeBtn = new Button(attributesComp, SWT.PUSH);
+        changeBtn = new Button(attributesComp, SWT.PUSH);
         changeBtn.setText("Change...");
-        // TODO: implement Change Button
         changeBtn.setLayoutData(gd);
+        changeBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleChangeAction();
+            }
+        });
 
         /*
          * Save Button - will only be enabled if the dictionary has been
@@ -253,11 +311,16 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         gd.widthHint = 75;
         gd.verticalIndent = 8;
 
-        Button saveBtn = new Button(attributesGroup, SWT.PUSH);
+        saveBtn = new Button(attributesGroup, SWT.PUSH);
         saveBtn.setText("Save");
         saveBtn.setEnabled(false);
         saveBtn.setLayoutData(gd);
-        // TODO: implement Save Button
+        saveBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleSaveAction();
+            }
+        });
     }
 
     /**
@@ -281,9 +344,158 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         closeBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                checkForUnsavedChanges();
+
                 close();
             }
         });
+    }
+
+    private void populateVoiceList() {
+        /**
+         * First, retrieve the available {@link TtsVoice}(s).
+         */
+        java.util.List<TtsVoice> availableVoices = null;
+        try {
+            availableVoices = this.vdm.getIdentifiers();
+        } catch (Exception e) {
+            statusHandler.error("Failed to retrieve the available voices.", e);
+            return;
+        }
+
+        if (availableVoices == null || availableVoices.isEmpty()) {
+            statusHandler
+                    .error("No TTS Voices have been defined in the system.");
+            return;
+        }
+
+        for (TtsVoice voice : availableVoices) {
+            this.voiceList.add(voice.getVoiceName());
+            this.voiceIdentifierMap.put(voice.getVoiceName(),
+                    voice.getVoiceNumber());
+        }
+        this.voiceList.select(0);
+    }
+
+    private void populateVoiceAttributes() {
+        this.checkForUnsavedChanges();
+
+        if (this.voiceList.getSelection().length <= 0) {
+            return;
+        }
+        this.resetDisplay();
+
+        /*
+         * determine the id of the selected voice.
+         */
+        final String selectedVoiceName = this.voiceList.getSelection()[0];
+        int voiceId = this.voiceIdentifierMap.get(selectedVoiceName);
+
+        selectedVoice = null;
+        try {
+            selectedVoice = this.vdm.getVoiceById(voiceId);
+        } catch (Exception e) {
+            statusHandler.error("Failed to retreive voice: "
+                    + selectedVoiceName + " (id = " + voiceId + ").", e);
+            return;
+        }
+
+        if (selectedVoice == null) {
+            statusHandler.error("Failed to find voice: " + selectedVoiceName
+                    + " (id = " + voiceId + ").");
+            return;
+        }
+
+        this.voiceNameLabel.setText(selectedVoice.getVoiceName());
+        this.voiceLanguageLabel.setText(selectedVoice.getLanguage().toString());
+        final String voiceGender = selectedVoice.isMale() ? GENDER_MALE
+                : GENDER_FEMALE;
+        this.voiceGenderLabel.setText(voiceGender);
+        if (selectedVoice.getDictionary() != null) {
+            this.voiceDictionaryLabel.setText(selectedVoice.getDictionary()
+                    .getName());
+        }
+
+        this.changeBtn.setEnabled(true);
+    }
+
+    private void resetDisplay() {
+        this.voiceNameLabel.setText(StringUtils.EMPTY);
+        this.voiceLanguageLabel.setText(StringUtils.EMPTY);
+        this.voiceGenderLabel.setText(StringUtils.EMPTY);
+        this.voiceDictionaryLabel.setText(StringUtils.EMPTY);
+
+        this.changeBtn.setEnabled(false);
+        this.saveBtn.setEnabled(false);
+    }
+
+    private void handleChangeAction() {
+        SelectDictionaryDlg selectDictDlg = new SelectDictionaryDlg(this.shell,
+                this.selectedVoice.getLanguage());
+        selectDictDlg.setFilterDictionary(this.selectedVoice.getDictionary());
+        selectDictDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue == null) {
+                    return;
+                }
+
+                if (returnValue instanceof Dictionary == false) {
+                    return;
+                }
+                dictionarySelected((Dictionary) returnValue);
+            }
+        });
+        selectDictDlg.open();
+    }
+
+    private void handleSaveAction() {
+        if (this.selectedVoice == null) {
+            return;
+        }
+
+        try {
+            this.vdm.saveTtsVoice(this.selectedVoice);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to save Voice: "
+                            + this.selectedVoice.getVoiceName() + ".", e);
+            return;
+        }
+
+        this.saveBtn.setEnabled(false);
+    }
+
+    private void checkForUnsavedChanges() {
+        if (this.selectedVoice == null) {
+            return;
+        }
+
+        /**
+         * Determine if the user has unsaved changes.
+         */
+        if (this.saveBtn.isEnabled() == false) {
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder(
+                "You have unsaved changes. Would you like to save the changes you made to Voice: ");
+        sb.append(this.selectedVoice.getVoiceName());
+        sb.append("?");
+
+        int option = DialogUtility.showMessageBox(this.shell, SWT.ICON_WARNING
+                | SWT.YES | SWT.NO, "Voice Configuration", sb.toString());
+        if (option != SWT.YES) {
+            return;
+        }
+
+        this.handleSaveAction();
+    }
+
+    private void dictionarySelected(Dictionary dictionary) {
+        this.selectedVoice.setDictionary(dictionary);
+        this.voiceDictionaryLabel.setText(dictionary.getName());
+        this.saveBtn.setEnabled(true);
     }
 
     /*
@@ -293,6 +505,8 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
      */
     @Override
     public boolean okToClose() {
+        this.checkForUnsavedChanges();
+
         return true;
     }
 }

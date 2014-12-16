@@ -26,6 +26,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest.DictionaryAction;
@@ -52,6 +53,8 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
  * Aug 05, 2014 3175       rjpeter     Added replaceWord.
  * Nov 13, 2014 3803       bkowal      Added default constructor.
+ * Dec 15, 2014    3618    bkowal      Added {@link #getNationalDictionaryForLanguage(Language)} and
+ *                                     {@link #getNonNationalDictionariesForLanguage(Language)}.
  * </pre>
  * 
  * @author mpduff
@@ -105,6 +108,56 @@ public class DictionaryManager {
         }
 
         return Collections.emptyList();
+    }
+
+    /**
+     * Retrieves the national {@link Dictionary} for the specified
+     * {@link Language}. Will return {@code null} if a national
+     * {@link Dictionary} does not exist.
+     * 
+     * @param language
+     *            the specified {@link Language}.
+     * @return
+     */
+    public Dictionary getNationalDictionaryForLanguage(Language language)
+            throws Exception {
+        DictionaryRequest req = new DictionaryRequest();
+        req.setAction(DictionaryAction.GetNationalForLanguage);
+        req.setLanguage(language);
+        DictionaryResponse response = (DictionaryResponse) BmhUtils
+                .sendRequest(req);
+
+        if (response == null) {
+            return null;
+        }
+
+        return response.getDictionary();
+    }
+
+    /**
+     * Retrieves all {@link Dictionary}(ies) that are not national dictionaries
+     * for the specified {@link Language}.
+     * 
+     * @param language
+     *            the specified {@link Language}
+     * @return a {@link List} of {@link Dictionary}(ies) that are not national
+     *         dictionaries.
+     * @throws Exception
+     */
+    public List<Dictionary> getNonNationalDictionariesForLanguage(
+            Language language) throws Exception {
+        DictionaryRequest req = new DictionaryRequest();
+        req.setAction(DictionaryAction.GetNonNationalForLanguage);
+        req.setLanguage(language);
+        DictionaryResponse response = (DictionaryResponse) BmhUtils
+                .sendRequest(req);
+
+        if (response == null || response.getDictionaries() == null
+                || response.getDictionaries().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return response.getDictionaries();
     }
 
     /**

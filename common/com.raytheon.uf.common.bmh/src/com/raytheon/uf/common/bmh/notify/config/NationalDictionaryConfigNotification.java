@@ -34,6 +34,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Dec 11, 2014 3618       bkowal      Initial creation
  * Dec 15, 2014 3618       bkowal      Added {@link #language}.
+ * Dec 16, 2014 3618       bkowal      Added {@link #NationalDictionaryConfigNotification()}.
  * 
  * </pre>
  * 
@@ -45,6 +46,12 @@ public class NationalDictionaryConfigNotification extends ConfigNotification {
 
     @DynamicSerializeElement
     private Language language;
+
+    /*
+     * Default constructor for dynamicserialize.
+     */
+    public NationalDictionaryConfigNotification() {
+    }
 
     /**
      * Constructor
@@ -61,7 +68,8 @@ public class NationalDictionaryConfigNotification extends ConfigNotification {
     }
 
     /**
-     * @param language the language to set
+     * @param language
+     *            the language to set
      */
     public void setLanguage(Language language) {
         this.language = language;

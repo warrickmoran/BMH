@@ -111,6 +111,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     {@link LdadMsg}.
  * Dec 11, 2014 3618       bkowal      Handle tiered {@link Dictionary}(ies).
  * Dec 15, 2014 3618       bkowal      Improved {@link Dictionary} caching.
+ * Dec 16, 2014 3618       bkowal      Check for empty dictionary word lists.
  * 
  * </pre>
  * 
@@ -682,7 +683,7 @@ public class MessageTransformer implements IContextStateProcessor {
     private void mergeDictionary(final Dictionary dictionary,
             Map<Word, ITextTransformation> mergedDictionaryMap)
             throws SSMLConversionException {
-        if (dictionary == null) {
+        if (dictionary == null || dictionary.getWords() == null) {
             return;
         }
 
