@@ -44,6 +44,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * Dec 3, 2014  3880       bkowal      Remove test code. Verify arguments
  *                                     to the convertAudio method.
  * Dec 4, 2014  3880       bkowal      getSupportedFormats now returns a {@link Set}.
+ * Dec 16, 2014 3880       bkowal      Do not register the {@link IAudioConverter}
+ *                                     if it is not compatible.
  * 
  * </pre>
  * 
@@ -112,6 +114,7 @@ public class AudioConvererterManager {
                         "Failed to register an audio converter for the "
                                 + converter.getOutputFormat().toString()
                                 + " format.", e);
+                return;
             }
 
             if (this.registeredAudioConverters.containsKey(converter
