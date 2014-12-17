@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -161,7 +162,13 @@ public class DacMaintenanceSession implements IDacSession {
         List<byte[]> segmentedAudio = new LinkedList<>();
         while (stagingBuffer.hasRemaining()) {
             byte[] segment = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
-            stagingBuffer.get(segment);
+            if (stagingBuffer.remaining() < segment.length) {
+                Arrays.fill(segment, stagingBuffer.remaining(), segment.length,
+                        DacSessionConstants.SILENCE);
+                stagingBuffer.get(segment, 0, stagingBuffer.remaining());
+            } else {
+                stagingBuffer.get(segment);
+            }
             segmentedAudio.add(segment);
         }
 
