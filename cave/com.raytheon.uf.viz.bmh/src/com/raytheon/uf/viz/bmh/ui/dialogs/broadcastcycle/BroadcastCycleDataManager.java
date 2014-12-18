@@ -81,6 +81,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Oct 21, 2014    3655    bkowal      Updated to use {@link IPlaylistData}.
  * Dec 08, 2014    3864    bsteffen    Add a PlaylistMsg class.
  * Dec 13, 2014    3843    mpduff      Implement periodic messages.
+ * Dec 18, 2014    3865    bsteffen    add getBroadcastMessagesForInputMessage.
  * 
  * </pre>
  * 
@@ -235,7 +236,7 @@ public class BroadcastCycleDataManager {
             throws Exception {
         BroadcastMsgRequest req = new BroadcastMsgRequest();
         req.setAction(BroadcastMessageAction.GET_MESSAGE_BY_ID);
-        req.setBroadcastMessageId(broadcastMessageId);
+        req.setMessageId(broadcastMessageId);
 
         BroadcastMsgResponse response = (BroadcastMsgResponse) BmhUtils
                 .sendRequest(req);
@@ -246,6 +247,26 @@ public class BroadcastCycleDataManager {
         }
 
         return null;
+    }
+
+    /**
+     * Get all the {@link BroadcastMsg}s for the associated Input Message Id.
+     * 
+     * @param inputMessageId
+     *            The inputMessageId
+     * @return Some BroadcastMsgs
+     * @throws Exception
+     */
+    public List<BroadcastMsg> getBroadcastMessagesForInputMessage(
+            int inputMessageId) throws Exception {
+        BroadcastMsgRequest req = new BroadcastMsgRequest();
+        req.setAction(BroadcastMessageAction.GET_MESSAGE_BY_INPUT_ID);
+        req.setMessageId((long) inputMessageId);
+
+        BroadcastMsgResponse response = (BroadcastMsgResponse) BmhUtils
+                .sendRequest(req);
+
+        return response.getMessageList();
     }
 
     /**

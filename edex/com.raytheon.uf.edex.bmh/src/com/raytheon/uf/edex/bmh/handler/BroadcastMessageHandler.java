@@ -54,7 +54,10 @@ public class BroadcastMessageHandler extends
 
         switch (request.getAction()) {
         case GET_MESSAGE_BY_ID:
-            response = getMessage(request);
+            response = getMessageById(request);
+            break;
+        case GET_MESSAGE_BY_INPUT_ID:
+            response = getMessagesByInputId(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -66,11 +69,23 @@ public class BroadcastMessageHandler extends
         return response;
     }
 
-    private BroadcastMsgResponse getMessage(BroadcastMsgRequest request) {
+    private BroadcastMsgResponse getMessageById(BroadcastMsgRequest request) {
         BroadcastMsgResponse response = new BroadcastMsgResponse();
         BroadcastMsgDao dao = new BroadcastMsgDao(request.isOperational());
         List<BroadcastMsg> list = dao.getMessageByBroadcastId(request
-                .getBroadcastMessageId());
+                .getMessageId());
+        response.setMessageList(list);
+
+        return response;
+    }
+
+    private BroadcastMsgResponse getMessagesByInputId(
+            BroadcastMsgRequest request) {
+        BroadcastMsgResponse response = new BroadcastMsgResponse();
+        BroadcastMsgDao dao = new BroadcastMsgDao(request.isOperational());
+        List<BroadcastMsg> list = dao.getMessagesByInputMsgId(request
+                .getMessageId()
+                .intValue());
         response.setMessageList(list);
 
         return response;

@@ -33,6 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Aug 15, 2014  3432     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Dec 18, 2014  3865     bsteffen    Add GET_MESSAGE_BY_INPUT_ID Action
  * 
  * </pre>
  * 
@@ -42,28 +43,28 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class BroadcastMsgRequest extends AbstractBMHServerRequest {
     public enum BroadcastMessageAction {
-        GET_MESSAGE_BY_ID
+        GET_MESSAGE_BY_ID, GET_MESSAGE_BY_INPUT_ID
     }
 
     @DynamicSerializeElement
     private BroadcastMessageAction action;
 
     @DynamicSerializeElement
-    private Long broadcastMessageId;
+    private Long messageId;
 
     /**
-     * @return the broadcastMessageId
+     * @return the messageId
      */
-    public Long getBroadcastMessageId() {
-        return broadcastMessageId;
+    public Long getMessageId() {
+        return messageId;
     }
 
     /**
-     * @param broadcastMessageId
-     *            the broadcastMessageId to set
+     * @param messageId
+     *            the messageId to set
      */
-    public void setBroadcastMessageId(Long broadcastMessageId) {
-        this.broadcastMessageId = broadcastMessageId;
+    public void setMessageId(Long messageId) {
+        this.messageId = messageId;
     }
 
     /**

@@ -54,9 +54,11 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
+import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
@@ -84,6 +86,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
@@ -138,6 +142,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 11, 2014  3895      lvenable    Changed time to GMT.
  * Dec 13, 2014  3843      mpduff      Implement periodic messages.
  * Dec 16, 2014  3753      bsteffen    Add popup when suite change fails.
+ * Dec 18, 2014  3865      bsteffen    Implement Expire/Delete
  * 
  * </pre>
  * 
@@ -980,8 +985,95 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     }
 
     private void handleExpireAction() {
-        // TODO
-        DialogUtility.notImplemented(getShell());
+        List<TableRowData> selectionList = tableComp.getSelection();
+        if (selectionList.isEmpty()) {
+            return;
+        }
+        TableRowData selection = selectionList.get(0);
+        BroadcastCycleTableDataEntry dataEntry = (BroadcastCycleTableDataEntry) selection
+                .getData();
+        try {
+            BroadcastMsg broadcastMsg = dataManager
+                    .getBroadcastMessage(dataEntry.getBroadcastId());
+
+            final InputMessage inputMessage = broadcastMsg.getInputMessage();
+            List<BroadcastMsg> messages = dataManager
+                    .getBroadcastMessagesForInputMessage(inputMessage.getId());
+            if (messages.size() == 1) {
+                NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
+                inputMessage.setActive(false);
+                request.setInputMessage(inputMessage);
+                request.setSelectedTransmitters(new ArrayList<>(broadcastMsg
+                        .getTransmitterGroup().getTransmitters()));
+                BmhUtils.sendRequest(request);
+                return;
+            }
+
+            final Map<String, TransmitterGroup> transmitterGroupMap = new HashMap<>();
+
+            CheckListData cld = new CheckListData();
+
+            for (BroadcastMsg message : messages) {
+                TransmitterGroup transmitterGroup = message
+                        .getTransmitterGroup();
+                transmitterGroupMap.put(transmitterGroup.getName(),
+                        transmitterGroup);
+                cld.addDataItem(transmitterGroup.getName(), true);
+            }
+
+            String dialogText = "Expiring " + inputMessage.getName()
+                    + "\n\nSelect Transmitter Groups:";
+
+            CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
+                    "Expire Selection", dialogText, cld, false);
+            checkListDlg.setCloseCallback(new ICloseCallback() {
+                @Override
+                public void dialogClosed(Object returnValue) {
+                    if ((returnValue != null)
+                            && (returnValue instanceof CheckListData)) {
+                        handleExpireDialogCallback(inputMessage,
+                                (CheckListData) returnValue,
+                                transmitterGroupMap);
+                    }
+                }
+
+            });
+            checkListDlg.open();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error expiring message: " + dataEntry.getBroadcastId(), e);
+        }
+    }
+
+    private void handleExpireDialogCallback(InputMessage inputMessage,
+            CheckListData data, Map<String, TransmitterGroup> transmitterGroups) {
+        NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
+        if (data.allChecked()) {
+            inputMessage.setActive(false);
+            request.setInputMessage(inputMessage);
+            List<Transmitter> selectedTransmitters = new ArrayList<>();
+            for (TransmitterGroup transmitterGroup : transmitterGroups.values()) {
+                selectedTransmitters.addAll(transmitterGroup.getTransmitters());
+            }
+            request.setSelectedTransmitters(selectedTransmitters);
+        } else {
+            List<String> names = data.getCheckedItems();
+            if (names.isEmpty()) {
+                return;
+            }
+            request.setInputMessage(inputMessage);
+            List<Transmitter> selectedTransmitters = new ArrayList<>();
+            for (String name : names) {
+                selectedTransmitters.addAll(transmitterGroups.get(name)
+                        .getTransmitters());
+            }
+            request.setSelectedTransmitters(selectedTransmitters);
+        }
+        try {
+            BmhUtils.sendRequest(request);
+        } catch (Exception e) {
+            statusHandler.error("Error expiring message.", e);
+        }
     }
 
     /**
