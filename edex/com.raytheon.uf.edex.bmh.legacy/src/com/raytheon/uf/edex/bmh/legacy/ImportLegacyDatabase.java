@@ -30,6 +30,10 @@ import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
+import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
@@ -114,15 +118,32 @@ public class ImportLegacyDatabase {
             try {
                 // validate data stores and can be retrieved
                 TransmitterGroupDao tgDao = new TransmitterGroupDao(operational);
-                /*
-                 * TODO Also disable if tg's program does not contain a GENERAL
-                 * suite.
-                 */
                 for (TransmitterGroup tg : data.getTransmitters().values()) {
                     for (Transmitter t : tg.getTransmitterList()) {
-                        if ((t.getTxStatus() == TxStatus.ENABLED)
-                                && ((t.getDacPort() == null) || (tg.getDac() == null))) {
-                            t.setTxStatus(TxStatus.DISABLED);
+                        if ((t.getTxStatus() == TxStatus.ENABLED)) {
+                            if ((t.getDacPort() == null)
+                                    || (tg.getDac() == null)) {
+                                t.setTxStatus(TxStatus.DISABLED);
+                            } else {
+                                // Check for GENERAL suite.
+                                ProgramSummary ps = t.getTransmitterGroup()
+                                        .getProgramSummary();
+                                if (ps == null) {
+                                    t.setTxStatus(TxStatus.DISABLED);
+                                } else {
+                                    Program p = data.getPrograms().get(
+                                            ps.getName());
+                                    TxStatus txStatus = TxStatus.DISABLED;
+                                    List<Suite> suites = p.getSuites();
+                                    for (Suite s : suites) {
+                                        if (s.getType() == SuiteType.GENERAL) {
+                                            txStatus = TxStatus.ENABLED;
+                                            break;
+                                        }
+                                    }
+                                    t.setTxStatus(txStatus);
+                                }
+                            }
                         }
                     }
                 }
