@@ -35,6 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 18, 2014   3407     mpduff      Initial creation
+ * Dec 16, 2014   3618     bkowal      Added {@link #dictionaries}.
  * 
  * </pre>
  * 
@@ -55,6 +56,12 @@ public class DictionaryResponse {
      */
     @DynamicSerializeElement
     private Dictionary dictionary;
+
+    /**
+     * Requested dictionaries when more than one dictionary is requested.
+     */
+    @DynamicSerializeElement
+    private List<Dictionary> dictionaries;
 
     /**
      * @return the dictionaryNames
@@ -84,5 +91,20 @@ public class DictionaryResponse {
      */
     public void setDictionary(Dictionary dictionary) {
         this.dictionary = dictionary;
+    }
+
+    /**
+     * @return the dictionaries
+     */
+    public List<Dictionary> getDictionaries() {
+        return dictionaries;
+    }
+
+    /**
+     * @param dictionaries
+     *            the dictionaries to set
+     */
+    public void setDictionaries(List<Dictionary> dictionaries) {
+        this.dictionaries = dictionaries;
     }
 }

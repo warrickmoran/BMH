@@ -35,6 +35,9 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.DictionaryManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -48,6 +51,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jul 1, 2014     3355    mpduff      Initial creation
  * Sep 10, 2014    3355    mpduff      Added SWT.PRIMARY_MODAL
+ * Dec 16, 2014    3618    bkowal      Allow the user to create a national dictionary
+ *                                     if one does not already exist for the selected language.
  * 
  * </pre>
  * 
@@ -56,6 +61,13 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 
 public class NewDictionaryDlg extends CaveSWTDialog {
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(NewDictionaryDlg.class);
+
+    /**
+     * Used to retrieve {@link Dictionary} information.
+     */
+    private final DictionaryManager dm = new DictionaryManager();
 
     /**
      * Dictionary name text field
@@ -66,6 +78,12 @@ public class NewDictionaryDlg extends CaveSWTDialog {
      * Dictionary language combo
      */
     private Combo languageCombo;
+
+    /**
+     * National Dictionary checkbox. Note, this button will only be visible if
+     * there is not already a national dictionary for the selected language.
+     */
+    private Button nationalBtn;
 
     /**
      * Constructor.
@@ -117,6 +135,24 @@ public class NewDictionaryDlg extends CaveSWTDialog {
         }
         languageCombo.setItems(langStr);
         languageCombo.select(0);
+        languageCombo.addSelectionListener(new SelectionAdapter() {
+            /*
+             * (non-Javadoc)
+             * 
+             * @see
+             * org.eclipse.swt.events.SelectionAdapter#widgetSelected(org.eclipse
+             * .swt.events.SelectionEvent)
+             */
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                determineNationalAvailability();
+            }
+        });
+
+        gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
+        this.nationalBtn = new Button(shell, SWT.CHECK);
+        this.nationalBtn.setText("Legacy Dictionary");
+        this.nationalBtn.setLayoutData(gd);
 
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
         GridLayout gl = new GridLayout(2, false);
@@ -135,6 +171,7 @@ public class NewDictionaryDlg extends CaveSWTDialog {
                     Dictionary dict = new Dictionary();
                     dict.setName(nameTxt.getText().trim());
                     dict.setLanguage(Language.valueOf(languageCombo.getText()));
+                    dict.setNational(nationalBtn.getSelection());
                     setReturnValue(dict);
                     close();
                 } else {
@@ -159,5 +196,31 @@ public class NewDictionaryDlg extends CaveSWTDialog {
         });
 
         shell.setDefaultButton(okBtn);
+        this.determineNationalAvailability();
+    }
+
+    private void determineNationalAvailability() {
+        final Language selectedLanguage = Language.valueOf(languageCombo
+                .getText());
+        boolean visible = false;
+        /*
+         * Attempt to retrieve the national dictionary for the selected language
+         * if one exists.
+         */
+        try {
+            /**
+             * If there is not a national {@link Dictionary}, users will have
+             * the option to create a national {@link Dictionary}.
+             */
+            visible = this.dm
+                    .getNationalDictionaryForLanguage(selectedLanguage) == null;
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to determine if a national dictionary exists for language: "
+                            + selectedLanguage.toString() + ".", e);
+        }
+
+        this.nationalBtn.setVisible(visible);
+        this.nationalBtn.setSelection(false);
     }
 }

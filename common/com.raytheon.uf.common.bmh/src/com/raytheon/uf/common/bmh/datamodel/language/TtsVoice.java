@@ -25,6 +25,8 @@ import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.bmh.diff.DiffString;
@@ -46,15 +48,22 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 30, 2014 3175       rjpeter     Initial creation
  * Oct 24, 2014 3636       rferrel     Implement logging.
  * Dec 11, 2014 3618       bkowal      Added {@link #dictionary}.
+ * Dec 16, 2014 3618       bkowal      Added {@link #GET_VOICE_IDENTIFIERS}.
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS, query = TtsVoice.GET_VOICE_IDENTIFIERS_QUERY) })
 @Entity
 @Table(name = "tts_voice", schema = "bmh")
 @DynamicSerialize
 public class TtsVoice {
+
+    public static final String GET_VOICE_IDENTIFIERS = "getVoiceIdentifiers";
+
+    protected static final String GET_VOICE_IDENTIFIERS_QUERY = "SELECT v.voiceNumber, v.voiceName FROM TtsVoice v";
+
     @Id
     @Column
     @DynamicSerializeElement

@@ -49,7 +49,9 @@ import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
  * Dec 11, 2014  3618     bkowal      Disseminate a {@link NationalDictionaryConfigNotification}
  *                                    whenever the National {@link Dictionary} is updated.
  * Dec 15, 2014  3618     bkowal      Include the {@link Language} in the
- *                                    {@link NationalDictionaryConfigNotification}.                                    
+ *                                    {@link NationalDictionaryConfigNotification}.
+ * Dec 16, 2014  3618     bkowal      Added {@link #getNationalDictionaryForLanguage(DictionaryRequest)} and
+ *                                    {@link #getNonNationalDictionariesForLanguage(DictionaryRequest)}.
  * 
  * </pre>
  * 
@@ -87,6 +89,12 @@ public class DictionaryHandler extends
                 notification.setLanguage(request.getDictionary().getLanguage());
             }
             deleteDictionary(request);
+            break;
+        case GetNationalForLanguage:
+            response = this.getNationalDictionaryForLanguage(request);
+            break;
+        case GetNonNationalForLanguage:
+            response = this.getNonNationalDictionariesForLanguage(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -154,5 +162,25 @@ public class DictionaryHandler extends
                 BMHLoggerUtils.logDelete(request, user, dictionary);
             }
         }
+    }
+
+    private DictionaryResponse getNationalDictionaryForLanguage(
+            DictionaryRequest request) {
+        DictionaryDao dao = new DictionaryDao(request.isOperational());
+        DictionaryResponse response = new DictionaryResponse();
+        response.setDictionary(dao.getNationalDictionaryForLanguage(request
+                .getLanguage()));
+
+        return response;
+    }
+
+    private DictionaryResponse getNonNationalDictionariesForLanguage(
+            DictionaryRequest request) {
+        DictionaryDao dao = new DictionaryDao(request.isOperational());
+        DictionaryResponse response = new DictionaryResponse();
+        response.setDictionaries(dao
+                .getNonNationalDictionariesForLanguage(request.getLanguage()));
+
+        return response;
     }
 }

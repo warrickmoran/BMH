@@ -71,6 +71,8 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * Aug 28, 2014    3432    mpduff      Only open one new dictionary dialog
  * Sep 28, 2014   3407     mpduff      Fix button states for certain situations
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Dec 16, 2014  3618      bkowal      Disable delete when a national dictionary
+ *                                     is selected.
  * 
  * </pre>
  * 
@@ -345,7 +347,12 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
                 statusHandler.error("Error getting dictionary " + name, e);
                 return;
             }
-            this.deleteDictionaryBtn.setEnabled(true);
+            if (this.selectedDictionary.isNational()) {
+                /* the user will not be allowed to remove national dictionaries. */
+                this.deleteDictionaryBtn.setEnabled(false);
+            } else {
+                this.deleteDictionaryBtn.setEnabled(true);
+            }
             this.newWordBtn.setEnabled(true);
             populateTable();
         } else {

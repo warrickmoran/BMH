@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.Language;
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Dec 11, 2014 3618       bkowal      Added {@link #getNationalDictionaries()}.
  * Dec 15, 2014 3618       bkowal      Added {@link #getNationalDictionaryForLanguage(Language)}.
+ * Dec 16, 2014 3618       bkowal      Added {@link #getNonNationalDictionariesForLanguage(Language)}.
  * 
  * </pre>
  * 
@@ -129,5 +130,39 @@ public class DictionaryDao extends AbstractBMHDao<Dictionary, String> {
         }
 
         return (Dictionary) returnedObjects.get(0);
+    }
+
+    /**
+     * Retrieves a {@link List} of {@link Dictionary}(ies) that are not national
+     * dictionaries associated with the specified {@link Language}.
+     * 
+     * @param language
+     *            the specified {@link Language}
+     * @return the {@link List} of {@link Dictionary}(ies) that are not national
+     *         dictionaries.
+     */
+    public List<Dictionary> getNonNationalDictionariesForLanguage(
+            final Language language) {
+        List<?> returnedObjects = this.findByNamedQueryAndNamedParam(
+                Dictionary.GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE,
+                "language", language);
+        if (returnedObjects == null || returnedObjects.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Dictionary> dictionaries = new ArrayList<>(returnedObjects.size());
+        for (Object object : returnedObjects) {
+            if (object instanceof Dictionary == false) {
+                logger.error("The "
+                        + Dictionary.GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE
+                        + " query returned results in the wrong format. Expected a "
+                        + Dictionary.class.getName() + "; received a "
+                        + object.getClass().getName() + ".");
+                return Collections.emptyList();
+            }
+            dictionaries.add((Dictionary) object);
+        }
+
+        return dictionaries;
     }
 }

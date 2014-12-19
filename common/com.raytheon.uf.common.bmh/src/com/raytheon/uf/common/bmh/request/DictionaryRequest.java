@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -38,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 02, 2014  3355     mpduff      Initial creation
  * Jul 21, 2014  3407     mpduff      Add delete dictionary action
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Dec 16, 2014  3618     bkowal      Support language in queries.
  * 
  * </pre>
  * 
@@ -48,7 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class DictionaryRequest extends AbstractBMHServerRequest {
 
     public enum DictionaryAction {
-        Save, ListNames, QueryByName, Delete;
+        Save, ListNames, QueryByName, Delete, GetNationalForLanguage, GetNonNationalForLanguage;
     }
 
     @DynamicSerializeElement
@@ -66,6 +68,9 @@ public class DictionaryRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private List<String> dictionaryNames;
+
+    @DynamicSerializeElement
+    private Language language;
 
     /**
      * @return the dictionaryList
@@ -152,5 +157,20 @@ public class DictionaryRequest extends AbstractBMHServerRequest {
      */
     public void setDictionaryNames(List<String> dictionaryNames) {
         this.dictionaryNames = dictionaryNames;
+    }
+
+    /**
+     * @return the language
+     */
+    public Language getLanguage() {
+        return language;
+    }
+
+    /**
+     * @param language
+     *            the language to set
+     */
+    public void setLanguage(Language language) {
+        this.language = language;
     }
 }

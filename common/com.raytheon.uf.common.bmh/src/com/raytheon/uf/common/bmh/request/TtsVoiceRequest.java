@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.request;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 
 /**
  * Request object for Voice queries.
@@ -33,6 +34,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Aug 11, 2014  3490     lvenable    Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Dec 16, 2014  3618     bkowal      Support retrieving voice by id; support
+ *                                    updating voices.
  * 
  * </pre>
  * 
@@ -43,11 +46,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class TtsVoiceRequest extends AbstractBMHServerRequest {
 
     public enum TtsVoiceAction {
-        AllVoices;
+        AllVoices, VoiceIdentifiers, GetById, UpdateVoice;
     }
 
     @DynamicSerializeElement
     private TtsVoiceAction action;
+
+    @DynamicSerializeElement
+    private TtsVoice voice;
+
+    @DynamicSerializeElement
+    private int voiceNumber;
 
     public TtsVoiceAction getAction() {
         return action;
@@ -55,5 +64,33 @@ public class TtsVoiceRequest extends AbstractBMHServerRequest {
 
     public void setAction(TtsVoiceAction action) {
         this.action = action;
+    }
+
+    /**
+     * @return the voice
+     */
+    public TtsVoice getVoice() {
+        return voice;
+    }
+
+    /**
+     * @param voice the voice to set
+     */
+    public void setVoice(TtsVoice voice) {
+        this.voice = voice;
+    }
+
+    /**
+     * @return the voiceNumber
+     */
+    public int getVoiceNumber() {
+        return voiceNumber;
+    }
+
+    /**
+     * @param voiceNumber the voiceNumber to set
+     */
+    public void setVoiceNumber(int voiceNumber) {
+        this.voiceNumber = voiceNumber;
     }
 }
