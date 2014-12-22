@@ -61,7 +61,7 @@ public class TransmitterMaintenanceThread extends
         UNKNOWN, SUCCESS, FAIL
     }
 
-    private static final int MAINTENANCE_TIMEOUT = 45000;
+    private static final int MAINTENANCE_TIMEOUT = 60000;
 
     private MAINTENANCE_STATUS status = MAINTENANCE_STATUS.UNKNOWN;
 
