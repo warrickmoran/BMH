@@ -112,6 +112,9 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Dec 11, 2014 3618       bkowal      Handle tiered {@link Dictionary}(ies).
  * Dec 15, 2014 3618       bkowal      Improved {@link Dictionary} caching.
  * Dec 16, 2014 3618       bkowal      Check for empty dictionary word lists.
+ * Jan 05, 2015 3618       bkowal      Do not attempt to insert {@code null} values
+ *                                     into a Google {@link Table}. Merge {@link Dictionary}(ies}
+ *                                     by {@link Word} regex.
  * 
  * </pre>
  * 
@@ -228,9 +231,16 @@ public class MessageTransformer implements IContextStateProcessor {
                     transmitterDictionary = this.getTransmitterDictionary(
                             group, messageType.getVoice().getLanguage(),
                             message.getId());
-                    this.transmitterLanguageDictionaryTableCache.put(group,
-                            messageType.getVoice().getLanguage(),
-                            transmitterDictionary);
+                    /**
+                     * Only cache the {@link Transmitter} {@link Dictionary} if
+                     * one was actually retrieved. The Google {@link Table} does
+                     * not allow {@code null} values.
+                     */
+                    if (transmitterDictionary != null) {
+                        this.transmitterLanguageDictionaryTableCache.put(group,
+                                messageType.getVoice().getLanguage(),
+                                transmitterDictionary);
+                    }
                 }
             }
             BroadcastMsg msg = null;
@@ -654,7 +664,7 @@ public class MessageTransformer implements IContextStateProcessor {
             return Collections.emptyList();
         }
 
-        Map<Word, ITextTransformation> mergedDictionaryMap = new LinkedHashMap<>();
+        Map<String, ITextTransformation> mergedDictionaryMap = new LinkedHashMap<>();
         this.mergeDictionary(nationalDictionary, mergedDictionaryMap);
         this.mergeDictionary(voiceDictionary, mergedDictionaryMap);
         this.mergeDictionary(transmitterDictionary, mergedDictionaryMap);
@@ -681,14 +691,20 @@ public class MessageTransformer implements IContextStateProcessor {
      * @throws SSMLConversionException
      */
     private void mergeDictionary(final Dictionary dictionary,
-            Map<Word, ITextTransformation> mergedDictionaryMap)
+            Map<String, ITextTransformation> mergedDictionaryMap)
             throws SSMLConversionException {
         if (dictionary == null || dictionary.getWords() == null) {
             return;
         }
 
         for (Word word : dictionary.getWords()) {
-            mergedDictionaryMap.put(word, this.buildTransformationRule(word));
+            /**
+             * Regex pattern is converted to lowercase; therefore, the
+             * {@link Word} will also be converted to lower-case for identifying
+             * overriding rules.
+             */
+            mergedDictionaryMap.put(word.getWord().toLowerCase(),
+                    this.buildTransformationRule(word));
         }
     }
 

@@ -24,10 +24,13 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
+import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.request.WordRequest;
 import com.raytheon.uf.common.bmh.request.WordResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.WordDao;
 import com.raytheon.uf.edex.database.DataAccessLayerException;
 import com.raytheon.uf.edex.database.query.DatabaseQuery;
@@ -48,6 +51,9 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 16, 2014  3636     rferrel     Implement logging.
+ * Jan 05, 2015  3618     bkowal      Notify other components of dictionary
+ *                                    modifications using a 
+ *                                    {@link NationalDictionaryConfigNotification}.
  * 
  * </pre>
  * 
@@ -59,16 +65,43 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
 
     @Override
     public Object handleRequest(WordRequest request) throws Exception {
+        WordResponse response = new WordResponse();
+        NationalDictionaryConfigNotification notification = null;
+
         switch (request.getAction()) {
         case Query:
-            return queryWord(request);
+            response = queryWord(request);
+            break;
         case Save:
-            return saveWord(request);
+            response = saveWord(request);
+            if (request.getWord().getDictionary() != null
+                    && request.getWord().getDictionary().isNational()) {
+                notification = new NationalDictionaryConfigNotification(
+                        ConfigChangeType.Update);
+                notification.setLanguage(request.getWord().getDictionary()
+                        .getLanguage());
+            }
+            break;
         case Delete:
+            if (request.getWord().getDictionary() != null
+                    && request.getWord().getDictionary().isNational()) {
+                notification = new NationalDictionaryConfigNotification(
+                        ConfigChangeType.Delete);
+                notification.setLanguage(request.getWord().getDictionary()
+                        .getLanguage());
+            }
             deleteWord(request);
             break;
         case Replace:
-            return replaceWord(request);
+            response = replaceWord(request);
+            if (request.getWord().getDictionary() != null
+                    && request.getWord().getDictionary().isNational()) {
+                notification = new NationalDictionaryConfigNotification(
+                        ConfigChangeType.Update);
+                notification.setLanguage(request.getWord().getDictionary()
+                        .getLanguage());
+            }
+            break;
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -76,7 +109,9 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
                     + request.getAction());
         }
 
-        WordResponse response = new WordResponse();
+        BmhMessageProducer.sendConfigMessage(notification,
+                request.isOperational());
+
         return response;
     }
 

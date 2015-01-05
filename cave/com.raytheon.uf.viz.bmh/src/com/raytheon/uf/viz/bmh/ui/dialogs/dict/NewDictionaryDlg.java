@@ -53,6 +53,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Sep 10, 2014    3355    mpduff      Added SWT.PRIMARY_MODAL
  * Dec 16, 2014    3618    bkowal      Allow the user to create a national dictionary
  *                                     if one does not already exist for the selected language.
+ * Jan 05, 2015    3618    bkowal      Fix "National Dictionary" checkbox text.
  * 
  * </pre>
  * 
@@ -151,7 +152,7 @@ public class NewDictionaryDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
         this.nationalBtn = new Button(shell, SWT.CHECK);
-        this.nationalBtn.setText("Legacy Dictionary");
+        this.nationalBtn.setText("National Dictionary");
         this.nationalBtn.setLayoutData(gd);
 
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);

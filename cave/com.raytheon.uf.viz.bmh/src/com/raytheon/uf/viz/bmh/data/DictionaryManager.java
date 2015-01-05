@@ -55,6 +55,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Nov 13, 2014 3803       bkowal      Added default constructor.
  * Dec 15, 2014    3618    bkowal      Added {@link #getNationalDictionaryForLanguage(Language)} and
  *                                     {@link #getNonNationalDictionariesForLanguage(Language)}.
+ * Jan 05, 2015    3618    bkowal      Specify the {@link Dictionary} for deletion.
  * </pre>
  * 
  * @author mpduff
@@ -296,10 +297,10 @@ public class DictionaryManager {
      *            Name of the Dictionary to delete
      * @throws VizException
      */
-    public void deleteDictionary(String dictionaryName) throws Exception {
+    public void deleteDictionary(Dictionary dictionary) throws Exception {
         DictionaryRequest req = new DictionaryRequest();
         req.setAction(DictionaryAction.Delete);
-        req.setDictionaryName(dictionaryName);
+        req.setDictionary(dictionary);
         BmhUtils.sendRequest(req);
     }
 }

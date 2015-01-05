@@ -73,6 +73,7 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Dec 16, 2014  3618      bkowal      Disable delete when a national dictionary
  *                                     is selected.
+ * Jan 05, 2014  3618      bkowal      Specify the {@link Dictionary} for deletion.
  * 
  * </pre>
  * 
@@ -323,7 +324,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
         }
 
         try {
-            dictionaryManager.deleteDictionary(name);
+            dictionaryManager.deleteDictionary(this.selectedDictionary);
             dictCombo.remove(name);
             tableData.getTableRows().clear();
             dictionaryTableComp.updateTable(tableData);

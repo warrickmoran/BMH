@@ -52,6 +52,7 @@ import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
  *                                    {@link NationalDictionaryConfigNotification}.
  * Dec 16, 2014  3618     bkowal      Added {@link #getNationalDictionaryForLanguage(DictionaryRequest)} and
  *                                    {@link #getNonNationalDictionariesForLanguage(DictionaryRequest)}.
+ * Jan 05, 2015  3618     bkowal      The {@link Dictionary} is now specified for delete operations.
  * 
  * </pre>
  * 
@@ -150,17 +151,13 @@ public class DictionaryHandler extends
     }
 
     private void deleteDictionary(DictionaryRequest request) {
-        DictionaryResponse response = getDictionaryByName(request);
-        Dictionary dictionary = response.getDictionary();
-        if (dictionary != null) {
-            DictionaryDao dao = new DictionaryDao(request.isOperational());
-            dao.delete(response.getDictionary());
+        DictionaryDao dao = new DictionaryDao(request.isOperational());
+        dao.delete(request.getDictionary());
 
-            IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
-            if (logger.isPriorityEnabled(Priority.INFO)) {
-                String user = BMHLoggerUtils.getUser(request);
-                BMHLoggerUtils.logDelete(request, user, dictionary);
-            }
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            BMHLoggerUtils.logDelete(request, user, request.getDictionary());
         }
     }
 
