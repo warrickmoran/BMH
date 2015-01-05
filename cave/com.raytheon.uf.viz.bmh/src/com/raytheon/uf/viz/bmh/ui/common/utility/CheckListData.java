@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * 
@@ -36,6 +37,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 7, 2014  #3360      lvenable     Initial creation
+ * Dec 18, 2014 #3865      bsteffen     Implement allChecked
  * 
  * </pre>
  * 
@@ -82,6 +84,18 @@ public class CheckListData {
         }
 
         return checkedItems;
+    }
+
+    /**
+     * @return true if all items are checked, false if any items are unchecked.
+     */
+    public boolean allChecked() {
+        for (Entry<String, Boolean> entry : dataMap.entrySet()) {
+            if (entry.getValue() == false) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
