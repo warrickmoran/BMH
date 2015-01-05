@@ -88,6 +88,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Oct 30, 2014  #3617     dgilling     Take tone blackout period into account
  *                                      when calculating playback time.
  * Nov 17, 2014  #3630     bkowal       Added doesMessageFileExist.
+ * Jan 05, 2015  #3913     bsteffen     Handle future replacements.
+ * 
  * 
  * </pre>
  * 
@@ -344,6 +346,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             message.setPath(messagePath);
             cachedMessages.put(id, message);
         }
+        message.setReplaceTime(id.getReplaceTime());
         return message;
     }
 

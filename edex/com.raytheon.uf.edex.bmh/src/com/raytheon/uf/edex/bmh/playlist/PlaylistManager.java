@@ -132,6 +132,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Dec 08, 2014  3864     bsteffen    Shift some logic into the playlist.
  * Dec 11, 2014  3651     bkowal      Use {@link IMessageLogger} to log message activity.
  * Dec 16, 2014  3753     bsteffen    Report failure when suites won't force.
+ * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * 
  * </pre>
  * 
@@ -631,7 +632,9 @@ public class PlaylistManager implements IContextStateProcessor {
         for (PlaylistMessage message : db.getSortedMessages()) {
             BroadcastMsg broadcast = message.getBroadcastMsg();
             if (broadcast.isSuccess()) {
-                dac.addMessage(convertMessageForDAC(broadcast));
+                DacPlaylistMessageId dacMessage = convertMessageForDAC(broadcast);
+                dacMessage.setReplaceTime(message.getReplacementTime());
+                dac.addMessage(dacMessage);
             }
         }
         return dac;

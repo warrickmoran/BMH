@@ -44,12 +44,12 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * <pre>
  * 
- * SOFTWARE HISTORY
  * 
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Dec 08, 2014  3864     bsteffen    Initial creation
  * Dec 13, 2014  3843     mpduff      Add DynamicSerialize and id
+ * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * 
  * </pre>
  * 
@@ -85,6 +85,9 @@ public class PlaylistMessage {
     @Column
     private ReplacementType replacementType;
 
+    @Column
+    private Calendar replacementTime;
+
     public PlaylistMessage() {
 
     }
@@ -116,6 +119,14 @@ public class PlaylistMessage {
 
     public void setReplacementType(ReplacementType replacementType) {
         this.replacementType = replacementType;
+    }
+
+    public Calendar getReplacementTime() {
+        return replacementTime;
+    }
+
+    public void setReplacementTime(Calendar replacementTime) {
+        this.replacementTime = replacementTime;
     }
 
     /**

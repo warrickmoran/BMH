@@ -60,6 +60,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  * Oct 30, 2014  #3617     dgilling     Support tone blackout.
  * Nov 03, 2014  #3781     dgilling     Allow alert tones to be played
  *                                      independently from SAME tones.
+ * Jan 05, 2015  #3913     bsteffen     Handle future replacements.
+ * 
  * 
  * </pre>
  * 
@@ -206,6 +208,7 @@ public final class DacMessagePlaybackData {
                 logger.error("Unable to delete position file.", e);
             }
         }
+        message.setReplaceTime(null);
         /*
          * TODO the notification was sent at the beginning of playing but the
          * state is not persisted until the end.
