@@ -23,10 +23,14 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.camel.Body;
+import org.apache.camel.Headers;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
@@ -50,7 +54,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jun 23, 2014  3283     bsteffen    Initial creation
  * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
  * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
- * 
+ * Jan 05, 2015  3872     rjpeter     Add file name to stack trace.
  * </pre>
  * 
  * @author bsteffen
@@ -85,8 +89,11 @@ public class InputMessageParser {
     private static final Pattern endPattern = Pattern.compile("^(.*)\\eb",
             Pattern.DOTALL);
 
-    public InputMessage parse(CharSequence text) {
+    public InputMessage parse(@Body CharSequence text,
+            @Headers Map<String, Object> headers) {
         InputMessage message = new InputMessage();
+        String fileName = headers.get("CamelFileNameOnly").toString();
+        message.setName(fileName);
         message.setValidHeader(true);
         try {
             int index = findStart(text);
@@ -107,7 +114,7 @@ public class InputMessageParser {
             deriveSameTransmitters(message);
         } catch (ParseException e) {
             statusHandler.error(BMH_CATEGORY.INPUT_MESSAGE_PARSE_ERROR,
-                    "Error Parsing InputMessage", e);
+                    fileName + " failed to parse", e);
             message.setValidHeader(false);
             if (message.getContent() == null) {
                 message.setContent(text.toString());
@@ -330,7 +337,7 @@ public class InputMessageParser {
             MessageType type = messageTypeDao.getByAfosId(message.getAfosid());
             if (type != null) {
                 Set<Transmitter> transmitters = type.getSameTransmitters();
-                if (transmitters != null && !transmitters.isEmpty()) {
+                if ((transmitters != null) && !transmitters.isEmpty()) {
                     StringBuilder transmittersBuilder = new StringBuilder();
                     for (Transmitter transmitter : transmitters) {
                         if (transmittersBuilder.length() > 0) {
