@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
+import java.util.Calendar;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -37,6 +39,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * Jul 01, 2014  3285     bsteffen    Initial creation
  * Jul 14, 2014  3286     dgilling    Implement hashCode()/equals().
  * Aug 18, 2014  3540     dgilling    Implement toString().
+ * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * 
  * </pre>
  * 
@@ -48,6 +51,14 @@ public class DacPlaylistMessageId {
 
     @XmlAttribute
     protected long broadcastId;
+
+    /**
+     * The replace time is persisted as part of the message id in the playlist,
+     * but not as part of the message itself. This is because a message can be
+     * part of multiple playlists and each might have a different replace time.
+     */
+    @XmlAttribute
+    protected Calendar replaceTime;
 
     public DacPlaylistMessageId() {
 
@@ -65,11 +76,23 @@ public class DacPlaylistMessageId {
         this.broadcastId = broadcastId;
     }
 
+    public Calendar getReplaceTime() {
+        return replaceTime;
+    }
+
+    public void setReplaceTime(Calendar replaceTime) {
+        this.replaceTime = replaceTime;
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("DacPlaylistMessageId [broadcastId=");
         builder.append(broadcastId);
+        if(replaceTime != null){
+            builder.append(",replaceTime=");
+            builder.append(replaceTime);
+        }
         builder.append("]");
         return builder.toString();
     }

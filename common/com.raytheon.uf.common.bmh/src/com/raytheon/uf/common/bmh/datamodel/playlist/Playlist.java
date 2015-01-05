@@ -83,6 +83,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Dec 11, 2014  3651     bkowal      Track and propagate messages that are replaced.
  * Dec 13, 2014  3843     mpduff      Add DynamicSerialize and default constructor
  * Dec 16, 2014  3753     bsteffen    Don't trigger forced suites containing only static messages.
+ * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * 
  * </pre>
  * 
@@ -362,7 +363,11 @@ public class Playlist {
                 boolean mrdEqual = mrd == existingMrd;
                 if (areaCodesEqual && mrdEqual) {
                     removedMessages.add(existing.getBroadcastMsg());
-                    it.remove();
+                    if (message.getEffectiveTime().after(modTime)) {
+                        existing.setReplacementTime(message.getEffectiveTime());
+                    } else {
+                        it.remove();
+                    }
                 }
             }
         }
@@ -386,7 +391,11 @@ public class Playlist {
                         || (areaCodes != null && areaCodes
                                 .equals(existingAreaCodes))) {
                     removedMessages.add(existing.getBroadcastMsg());
-                    it.remove();
+                    if (message.getEffectiveTime().after(modTime)) {
+                        existing.setReplacementTime(message.getEffectiveTime());
+                    } else {
+                        it.remove();
+                    }
                     if (message.getReplacementType() == null) {
                         message.setReplacementType(ReplacementType.MAT);
                     }
@@ -416,7 +425,11 @@ public class Playlist {
                         .getInputMessage().getMrdId();
                 if (mrdReplacementSet.contains(existingMrdId)) {
                     removedMessages.add(existing.getBroadcastMsg());
-                    it.remove();
+                    if (message.getEffectiveTime().after(modTime)) {
+                        existing.setReplacementTime(message.getEffectiveTime());
+                    } else {
+                        it.remove();
+                    }
                     message.setReplacementType(ReplacementType.MRD);
                 }
             }

@@ -55,6 +55,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Dec 08, 2014  3878     bkowal      Added isStatic to indicate whether or not
  *                                    the message is associated with a static msg type.
  * Dec 11, 2014  3651     bkowal      Added {@link #name} for logging purposes.
+ * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * 
  * </pre>
  * 
@@ -282,8 +283,11 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      *         {@code false}.
      */
     public boolean isValid(long currentTime) {
-        return ((currentTime >= start.getTimeInMillis()) && (currentTime < expire
-                .getTimeInMillis()));
+        boolean started = currentTime >= start.getTimeInMillis();
+        boolean ended = currentTime >= expire.getTimeInMillis();
+        boolean replaced = replaceTime == null ? false
+                : currentTime >= replaceTime.getTimeInMillis();
+        return started && !ended && !replaced;
     }
 
     /**
