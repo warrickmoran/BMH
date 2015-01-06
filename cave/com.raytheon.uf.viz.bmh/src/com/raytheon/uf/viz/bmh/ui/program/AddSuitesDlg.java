@@ -43,6 +43,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteActionAdapter;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
@@ -75,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      to only allow trigger assignment for {Program, Suite}
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Nov 13, 2014  #3698     rferrel      Added checks to allow only 1 GENERAL type suite in a program.
+ * Jan 05, 2014  #3930     rferrel      Check for duplicate Suite names.
  * 
  * </pre>
  * 
@@ -318,15 +320,24 @@ public class AddSuitesDlg extends CaveSWTDialog {
             }
 
             Set<String> existingNames = new HashSet<>();
-            for (Suite s : existingSuites) {
-                existingNames.add(s.getName());
+
+            SuiteDataManager suiteDataMgr = new SuiteDataManager();
+            try {
+                List<Suite> suites = suiteDataMgr.getAllSuites(null);
+                for (Suite suite : suites) {
+                    existingNames.add(suite.getName());
+                }
+            } catch (Exception e1) {
+                statusHandler.handle(Priority.PROBLEM,
+                        "Unable to obtain all Suite names.", e1);
+                return;
             }
+
             SuiteNameValidator snv = new SuiteNameValidator(existingNames);
             if (!snv.validateInputText(shell, suiteNameTF.getText().trim())) {
                 return;
             }
 
-            SuiteDataManager suiteDataMgr = new SuiteDataManager();
             copySuite.setId(0);
             copySuite.setName(suiteNameTF.getText().trim());
             try {
