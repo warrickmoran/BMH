@@ -43,6 +43,9 @@ import org.eclipse.ui.plugin.AbstractUIPlugin;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
@@ -90,6 +93,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 public class SuiteConfigGroup extends Composite {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
 
     /** Suite group. */
     private Group suiteGroup;
@@ -300,8 +306,11 @@ public class SuiteConfigGroup extends Composite {
                 populateSuiteTable(false);
 
                 if (suiteSelectionCB != null) {
-                    suiteSelectionCB.suiteSelected(filteredSuiteList
-                            .get(suiteTable.getSelectedIndices()[0]));
+                    int[] selIdices = suiteTable.getSelectedIndices();
+                    if (selIdices.length > 0) {
+                        suiteSelectionCB.suiteSelected(filteredSuiteList
+                                .get(selIdices[0]));
+                    }
                 }
             }
         };
@@ -436,8 +445,7 @@ public class SuiteConfigGroup extends Composite {
                         @Override
                         public void dialogClosed(Object returnValue) {
 
-                            if (returnValue != null
-                                    && returnValue instanceof Suite) {
+                            if (returnValue instanceof Suite) {
                                 if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
                                         || suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
                                     List<Suite> array = new ArrayList<Suite>();
@@ -472,29 +480,42 @@ public class SuiteConfigGroup extends Composite {
                      * suite with type GENERAL.
                      */
 
-                    AddSuitesDlg asd = new AddSuitesDlg(getShell(),
-                            selectedProgram);
+                    AddSuitesDlg asd = new AddSuitesDlg(getShell(), suiteList);
                     asd.setCloseCallback(new ICloseCallback() {
-                        @SuppressWarnings("unchecked")
                         @Override
                         public void dialogClosed(Object returnValue) {
-                            if (returnValue != null
-                                    && returnValue instanceof List<?>) {
+                            try {
+                                if ((returnValue != null)
+                                        && ((suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM) || (suiteGroupType == SuiteGroupType.NEW_PROGRAM))) {
+                                    AddSuitesDlg.AddSuitesResults results = (AddSuitesDlg.AddSuitesResults) returnValue;
+                                    List<Suite> suites = results.getSuites();
+                                    Suite oldGeneralSuite = results
+                                            .getOldGeneralSuite();
 
-                                if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
-                                        || suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
-                                    List<Suite> suites = (List<Suite>) returnValue;
+                                    if (oldGeneralSuite != null) {
+                                        // Remove old GENERAL Suite.
+                                        if (selectedProgram != null) {
+                                            selectedProgram
+                                                    .removeSuite(oldGeneralSuite);
+                                        } else {
+                                            suiteSelectionCB
+                                                    .deleteSuite(oldGeneralSuite);
+                                        }
+                                    }
                                     existingSuites.addAll(suites);
                                     suiteSelectionCB.addedSuites(suites);
                                 }
+                            } catch (ClassCastException ex) {
+                                statusHandler
+                                        .handle(Priority.ERROR,
+                                                "Dialog returned results in the wrong format. ",
+                                                ex);
                             }
                         }
-
                     });
                     asd.open();
                 }
             });
-            // suiteControls.add(addExistingBtn);
         } else if (suiteGroupType == SuiteGroupType.SUITE_MGR) {
             gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
             gd.widthHint = minButtonWidth;
