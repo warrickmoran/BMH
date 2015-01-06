@@ -60,6 +60,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Nov 02, 2014   3785     mpduff       Add ValidatedMessage when getting by PkId
  * Nov 03, 2014   3790     lvenable     Updated enum name.
  * Nov 05, 2014   3748     bkowal       Created validated msg dao based on mode.
+ * Jan 02, 2014   3833     lvenable     Added funtionality to get unexpired messages.
  * Jan 06, 2015   3651     bkowal       Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
@@ -90,6 +91,9 @@ public class InputMessageHandler extends
         case GetByPkId:
             inputMessageResponse = getByPkId(request);
             break;
+        case UnexpiredMessages:
+            inputMessageResponse = getNonExpiredMessages(request);
+            break;
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -98,6 +102,19 @@ public class InputMessageHandler extends
         }
 
         return inputMessageResponse;
+    }
+
+    private InputMessageResponse getNonExpiredMessages(
+            InputMessageRequest request) {
+        InputMessageDao dao = new InputMessageDao(request.isOperational(),
+                this.getMessageLogger(request));
+        InputMessageResponse response = new InputMessageResponse();
+
+        List<InputMessage> inputMessageList = dao
+                .getUnexpiredInputMessages(request.getTime());
+        response.setInputMessageList(inputMessageList);
+
+        return response;
     }
 
     /**

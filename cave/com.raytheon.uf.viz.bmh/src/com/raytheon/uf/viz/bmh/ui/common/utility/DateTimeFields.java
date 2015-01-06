@@ -24,13 +24,11 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -38,10 +36,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
-import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.viz.ui.dialogs.AwipsCalendar;
 
 /**
@@ -72,6 +68,8 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  *                                     Listening for modifications handles the case where
  *                                     the time is set programatically in addition to when
  *                                     the user manually alters the time.
+ * Jan 02, 2014   3833     lvenable    Removed the calendar icon since it was never used.  Can be put
+ *                                     back in later if needed.
  * 
  * </pre>
  * 
@@ -108,11 +106,6 @@ public class DateTimeFields extends Composite {
      * Show the Calendar icon
      */
     private final boolean showCalendarIcon;
-
-    /**
-     * The calendar icon
-     */
-    private Image calendarIcon;
 
     /**
      * {@link Calendar} object backing this dialog
@@ -193,10 +186,8 @@ public class DateTimeFields extends Composite {
         }
 
         if (showCalendarIcon) {
-            loadImage();
             Button calBtn = new Button(fieldComp, SWT.PUSH);
             calBtn.setText("Calendar...");
-            // calBtn.setImage(calendarIcon);
             calBtn.setLayoutData(new GridData(55, SWT.DEFAULT));
             calBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -308,24 +299,6 @@ public class DateTimeFields extends Composite {
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Load the calendar icon
-     */
-    private void loadImage() {
-        ImageDescriptor id = AbstractUIPlugin.imageDescriptorFromPlugin(
-                Activator.PLUGIN_ID, "icons/calendar-16.png");
-        calendarIcon = id.createImage();
-
-    }
-
-    @Override
-    public void dispose() {
-        super.dispose();
-        if (calendarIcon != null) {
-            calendarIcon.dispose();
         }
     }
 
@@ -558,6 +531,7 @@ public class DateTimeFields extends Composite {
         Display display = new Display();
         Shell shell = new Shell(display);
         shell.setLayout(new GridLayout());
+
         Map<DateFieldType, Integer> tmpFieldMap = new LinkedHashMap<DateFieldType, Integer>();
         // tmpFieldMap.put(DateFieldType.YEAR, 1969);
         // tmpFieldMap.put(DateFieldType.MONTH, 2);

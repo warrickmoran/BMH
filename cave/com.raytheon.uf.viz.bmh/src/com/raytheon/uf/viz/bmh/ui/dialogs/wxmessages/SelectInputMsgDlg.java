@@ -22,8 +22,10 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -45,6 +47,7 @@ import com.raytheon.uf.common.bmh.request.InputMessageRequest.InputMessageAction
 import com.raytheon.uf.common.bmh.request.InputMessageResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
@@ -53,6 +56,11 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.FilterComp;
+import com.raytheon.uf.viz.bmh.ui.common.utility.FilterComp.DateFilterChoice;
+import com.raytheon.uf.viz.bmh.ui.common.utility.FilterComp.TextFilterChoice;
+import com.raytheon.uf.viz.bmh.ui.common.utility.FilterData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.IFilterAction;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -66,25 +74,26 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 16, 2014  #3728     lvenable     Initial creation
- * Oct 18, 2014  #3728     lvenable     Hooked into database and returns the selected
+ * Oct 16, 2014  #3728      lvenable    Initial creation
+ * Oct 18, 2014  #3728      lvenable    Hooked into database and returns the selected
  *                                      input message.
- * Oct 23, 2014  #3728     lvenable     Updated to not display input messages for time
+ * Oct 23, 2014  #3728      lvenable    Updated to not display input messages for time
  *                                      announcement message types.
- * Oct 24, 2014  #3478     bkowal       Updated to retrieve a InputMessageAudioResponse.
- * Oct 26, 2014   #3728    lvenable     Updated to use new data object.
- * Nov 02, 2014   3785     mpduff       Set the Validated Message on inputAudioMessageData
- * Nov 03, 2014   3790     lvenable     Added Active to the table column and made the dialog
+ * Oct 24, 2014  #3478      bkowal      Updated to retrieve a InputMessageAudioResponse.
+ * Oct 26, 2014   #3728     lvenable    Updated to use new data object.
+ * Nov 02, 2014   3785      mpduff      Set the Validated Message on inputAudioMessageData
+ * Nov 03, 2014   3790      lvenable    Added Active to the table column and made the dialog
  *                                      resizable.
- * Nov 15, 2014   3832     mpduff       Make creation hours on the 24 hr clock
- * Dec 02, 2014   3877     lvenable     Added null checks.
+ * Nov 15, 2014   3832      mpduff      Make creation hours on the 24 hr clock
+ * Dec 02, 2014   3877      lvenable    Added null checks.
+ * Jan 02, 2014   3833      lvenable    Added filtering capability.
  * 
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
-public class SelectInputMsgDlg extends CaveSWTDialog {
+public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
@@ -100,7 +109,14 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
     private TableData inputMsgTableData = null;
 
     /** List of all the input messages. */
-    private List<InputMessage> inputMessageList = null;
+    private List<InputMessage> allInputMessages = null;
+
+    /** List of input messages that have been filtered. */
+    private List<InputMessage> filteredInputMessages = new ArrayList<>();
+
+    /** Date format. */
+    private SimpleDateFormat dateFmt = new SimpleDateFormat(
+            "yyyy-MM-dd HH:mm:ss");
 
     /**
      * Constructor.
@@ -134,12 +150,15 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
+        dateFmt.setTimeZone(TimeUtil.GMT_TIME_ZONE);
+
         setText("Select Input Message");
 
+        createFilterControls();
         createInputMsgTable();
         createOkCancelButtons();
 
-        retrieveInputMessages();
+        retrieveUnexpiredInputMessages();
         populateInputMsgTable();
 
         if (inputMsgTable.getItemCount() > 0) {
@@ -148,9 +167,33 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
     }
 
     /**
+     * Create the filtering controls.
+     */
+    private void createFilterControls() {
+        new FilterComp(shell, true, dateFmt, this);
+    }
+
+    /**
      * Create the input message table.
      */
     private void createInputMsgTable() {
+
+        final Button allInputMsgsChk = new Button(shell, SWT.CHECK);
+        allInputMsgsChk
+                .setText("Display all input messages (including expired)");
+        allInputMsgsChk.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (allInputMsgsChk.getSelection() == true) {
+                    retrieveAllInputMessages();
+                } else {
+                    retrieveUnexpiredInputMessages();
+                }
+                populateInputMsgTable();
+            }
+        });
+
         Group inputTableGroup = new Group(shell, SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         inputTableGroup.setLayout(gl);
@@ -216,7 +259,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         if (index < 0) {
             return;
         }
-        InputMessage im = inputMessageList.get(index);
+        InputMessage im = filteredInputMessages.get(index);
 
         InputAudioMessage fullInputMessage = null;
 
@@ -266,28 +309,40 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
      * Populate the message type table.
      */
     private void populateInputMsgTable() {
-        List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
-        TableColumnData tcd = new TableColumnData("Name", 250);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("AFOS ID", 100);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Active", 90);
-        columnNames.add(tcd);
-        tcd = new TableColumnData("Creation Date");
-        columnNames.add(tcd);
+        if (inputMsgTable.hasSelectedItems() == false) {
+            List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+            TableColumnData tcd = new TableColumnData("Name", 250);
+            columnNames.add(tcd);
+            tcd = new TableColumnData("AFOS ID", 100);
+            columnNames.add(tcd);
+            tcd = new TableColumnData("Active", 90);
+            columnNames.add(tcd);
+            tcd = new TableColumnData("Creation Date");
+            columnNames.add(tcd);
 
-        inputMsgTableData = new TableData(columnNames);
+            inputMsgTableData = new TableData(columnNames);
+        } else {
+            inputMsgTableData.deleteAllRows();
+        }
+
         populateInputMsgTableData();
+
         inputMsgTable.populateTable(inputMsgTableData);
+
+        if (inputMsgTable.getItemCount() > 0) {
+            inputMsgTable.select(0);
+            okBtn.setEnabled(true);
+        } else {
+            okBtn.setEnabled(false);
+        }
     }
 
     /**
      * Populate the message type table data.
      */
     private void populateInputMsgTableData() {
-        SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-        for (InputMessage im : inputMessageList) {
+        for (InputMessage im : filteredInputMessages) {
 
             TableRowData trd = new TableRowData();
 
@@ -325,7 +380,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
      * Retrieve the Input Messages from the database with only the ID, Name,
      * Afos Id, and Creation times populate.
      */
-    private void retrieveInputMessages() {
+    private void retrieveAllInputMessages() {
 
         InputMessageRequest imRequest = new InputMessageRequest();
         imRequest.setAction(InputMessageAction.ListIdNameAfosCreationActive);
@@ -337,25 +392,81 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
             tmpInputMsgList = imResponse.getInputMessageList();
 
             if (tmpInputMsgList == null) {
-                inputMessageList = Collections.emptyList();
+                allInputMessages = Collections.emptyList();
+                filteredInputMessages = Collections.emptyList();
                 return;
             }
 
         } catch (Exception e) {
             statusHandler.error(
-                    "Error retrieving input messages from the database: ", e);
-            inputMessageList = Collections.emptyList();
+                    "Error retrieving all input messages from the database: ",
+                    e);
+            allInputMessages = Collections.emptyList();
+            filteredInputMessages = Collections.emptyList();
             return;
         }
 
-        inputMessageList = new ArrayList<InputMessage>(tmpInputMsgList.size());
+        addMessagesToLists(tmpInputMsgList);
+    }
+
+    /**
+     * Retrieve the unexpired input messages.
+     */
+    private void retrieveUnexpiredInputMessages() {
+
+        InputMessageRequest imRequest = new InputMessageRequest();
+        imRequest.setAction(InputMessageAction.UnexpiredMessages);
+        imRequest.setTime(TimeUtil.newGmtCalendar());
+        InputMessageResponse imResponse = null;
+        List<InputMessage> tmpInputMsgList = null;
+
+        try {
+            imResponse = (InputMessageResponse) BmhUtils.sendRequest(imRequest);
+            tmpInputMsgList = imResponse.getInputMessageList();
+
+            if (tmpInputMsgList == null) {
+                allInputMessages = Collections.emptyList();
+                filteredInputMessages = Collections.emptyList();
+                return;
+            }
+
+        } catch (Exception e) {
+            statusHandler
+                    .error("Error retrieving unexpired input messages from the database: ",
+                            e);
+            allInputMessages = Collections.emptyList();
+            filteredInputMessages = Collections.emptyList();
+            return;
+        }
+
+        addMessagesToLists(tmpInputMsgList);
+    }
+
+    /**
+     * Add the message to the filtered list and all message list that are not
+     * time announcement messages.
+     * 
+     * @param tmpInputMsgList
+     *            Temporary list of input messages.
+     */
+    private void addMessagesToLists(List<InputMessage> tmpInputMsgList) {
+        if (allInputMessages != null) {
+            allInputMessages.clear();
+        } else {
+            allInputMessages = new ArrayList<InputMessage>(
+                    tmpInputMsgList.size());
+        }
+
         Set<String> timeAfosSet = getTimeAnnouncementMessageTypes();
 
         for (InputMessage im : tmpInputMsgList) {
             if (timeAfosSet.contains(im.getAfosid()) == false) {
-                inputMessageList.add(im);
+                allInputMessages.add(im);
             }
         }
+
+        filteredInputMessages.clear();
+        filteredInputMessages.addAll(allInputMessages);
     }
 
     /**
@@ -374,16 +485,16 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
 
         InputMessageAudioResponse imResponse = (InputMessageAudioResponse) BmhUtils
                 .sendRequest(imRequest);
-        inputMessageList = imResponse.getInputMessageList();
+        List<InputMessage> inputMessages = imResponse.getInputMessageList();
 
-        if (inputMessageList == null || inputMessageList.isEmpty()) {
+        if (inputMessages == null || inputMessages.isEmpty()) {
             return inputAudioMessageData;
         }
 
         // Create the input audio message data and populate the object.
         inputAudioMessageData = new InputAudioMessage();
 
-        inputAudioMessageData.setInputMessage(inputMessageList.get(0));
+        inputAudioMessageData.setInputMessage(inputMessages.get(0));
 
         // Check if the the audio is null. If it is then set it up to be an
         // empty list.
@@ -416,9 +527,165 @@ public class SelectInputMsgDlg extends CaveSWTDialog {
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving message types from the database: ", e);
-
         }
 
         return Collections.emptySet();
+    }
+
+    @Override
+    public void clearFilter() {
+        filteredInputMessages.clear();
+        filteredInputMessages.addAll(allInputMessages);
+
+        populateInputMsgTable();
+    }
+
+    @Override
+    public void filterAction(FilterData filterData) {
+
+        /*
+         * If we don't filter on the text or date then repopulate the table with
+         * all of the items. Usually this can't happen but this is more of a
+         * safety check.
+         */
+        if (filterData.filterOnText() == false
+                && filterData.filterOnDate() == false) {
+            filteredInputMessages.clear();
+            filteredInputMessages.addAll(allInputMessages);
+
+            populateInputMsgTable();
+
+            return;
+        }
+
+        Set<Integer> tableIndexes = new TreeSet<>();
+        InputMessage im = null;
+
+        for (int i = 0; i < allInputMessages.size(); i++) {
+            im = allInputMessages.get(i);
+            for (int j = 0; j < inputMsgTable.getColumnCount(); j++) {
+                if (filterData.filterOnText() == true) {
+                    if (matchesTextFilter(filterData, im.getName())) {
+                        tableIndexes.add(i);
+                        break;
+                    } else if (matchesTextFilter(filterData, im.getAfosid())) {
+                        tableIndexes.add(i);
+                        break;
+                    } else if (matchesTextFilter(filterData,
+                            (im.getActive() ? " Yes" : "No"))) {
+                        tableIndexes.add(i);
+                        break;
+                    }
+                }
+
+                if (filterData.filterOnDate() == true) {
+                    if (im.getCreationTime() != null) {
+                        if (matchesDateFilter(filterData, im.getCreationTime()
+                                .getTime())) {
+                            tableIndexes.add(i);
+                            break;
+                        }
+                    }
+                }
+            }
+
+        }
+
+        if (tableIndexes.isEmpty()) {
+            return;
+        }
+
+        filteredInputMessages.clear();
+
+        for (Integer i : tableIndexes) {
+            filteredInputMessages.add(allInputMessages.get(i));
+        }
+
+        populateInputMsgTable();
+
+    }
+
+    /**
+     * Check if the text matches the filter.
+     * 
+     * @param filterData
+     *            Filter data.
+     * @param text
+     *            Text to check against the filter.
+     * @return True if the text matches the filter criteria.
+     */
+    private boolean matchesTextFilter(FilterData filterData, String text) {
+
+        if (text == null) {
+            return false;
+        }
+
+        if (filterData.getTextFilterChoice() == TextFilterChoice.STARTS_WITH) {
+            if (filterData.isCaseSensitive()) {
+                if (text.startsWith(filterData.getFilterText())) {
+                    return true;
+                }
+            } else {
+                if (text.toLowerCase().startsWith(
+                        filterData.getFilterText().toLowerCase())) {
+                    return true;
+                }
+            }
+        } else if (filterData.getTextFilterChoice() == TextFilterChoice.ENDS_WITH) {
+            if (filterData.isCaseSensitive()) {
+                if (text.endsWith(filterData.getFilterText())) {
+                    return true;
+                }
+            } else {
+                if (text.toLowerCase().endsWith(
+                        filterData.getFilterText().toLowerCase())) {
+                    return true;
+                }
+            }
+        } else if (filterData.getTextFilterChoice() == TextFilterChoice.CONTAINS) {
+            if (filterData.isCaseSensitive()) {
+                if (text.contains(filterData.getFilterText())) {
+                    return true;
+                }
+            } else {
+                if (text.toLowerCase().contains(
+                        filterData.getFilterText().toLowerCase())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if the date matches the filter.
+     * 
+     * @param filterData
+     *            Filter data.
+     * @param date
+     *            Date.
+     * @return True if the date matches the filter criteria.
+     */
+    private boolean matchesDateFilter(FilterData filterData, Date date) {
+
+        if (filterData.getDateFilterChoice() == DateFilterChoice.ALL) {
+            return true;
+        } else if (filterData.getDateFilterChoice() == DateFilterChoice.AFTER) {
+            if (date.after(filterData.getStartDate())) {
+                return true;
+            }
+        } else if (filterData.getDateFilterChoice() == DateFilterChoice.BEFORE) {
+            if (date.before(filterData.getStartDate())) {
+                return true;
+            }
+        } else if (filterData.getDateFilterChoice() == DateFilterChoice.RANGE) {
+            if (date.after(filterData.getStartDate())
+                    && date.before(filterData.getEndDate())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
