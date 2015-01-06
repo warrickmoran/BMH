@@ -69,6 +69,9 @@ import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.staticmsg.StaticMessageIdentifierUtil;
 import com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator;
 import com.raytheon.uf.edex.bmh.staticmsg.TimeTextFragment;
@@ -112,6 +115,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Dec 11, 2014 3618       bkowal      Handle tiered {@link Dictionary}(ies).
  * Dec 15, 2014 3618       bkowal      Improved {@link Dictionary} caching.
  * Dec 16, 2014 3618       bkowal      Check for empty dictionary word lists.
+ * Jan 05, 2015 3651       bkowal      Use {@link IMessageLogger} to log message errors.
  * Jan 05, 2015 3618       bkowal      Do not attempt to insert {@code null} values
  *                                     into a Google {@link Table}. Merge {@link Dictionary}(ies}
  *                                     by {@link Word} regex.
@@ -156,11 +160,16 @@ public class MessageTransformer implements IContextStateProcessor {
     private Table<TransmitterGroup, Language, Dictionary> transmitterLanguageDictionaryTableCache = HashBasedTable
             .create();
 
+    /* Used to fullfil the message logging requirement. */
+    private final IMessageLogger messageLogger;
+
     /**
      * Constructor
      */
-    public MessageTransformer(final TimeMessagesGenerator tmGenerator) {
+    public MessageTransformer(final TimeMessagesGenerator tmGenerator,
+            final IMessageLogger messageLogger) {
         this.tmGenerator = tmGenerator;
+        this.messageLogger = messageLogger;
         statusHandler.info("Message Transformer Ready ...");
     }
 
@@ -208,8 +217,7 @@ public class MessageTransformer implements IContextStateProcessor {
                 .getContent().trim());
 
         /* Retrieve the message type based on afos id. */
-        MessageType messageType = this.getMessageType(message.getInputMessage()
-                .getAfosid(), message.getId());
+        MessageType messageType = this.getMessageType(message);
 
         /*
          * Iterate through the destination transmitters; determine which
@@ -263,6 +271,8 @@ public class MessageTransformer implements IContextStateProcessor {
 
                 statusHandler.error(BMH_CATEGORY.XFORM_SSML_GENERATION_FAILED,
                         errorString.toString(), e);
+                this.messageLogger.logError(BMH_COMPONENT.MESSAGE_TRANSFORMER,
+                        BMH_ACTIVITY.SSML_GENERATION, message, e);
                 continue;
             }
 
@@ -303,6 +313,8 @@ public class MessageTransformer implements IContextStateProcessor {
                  */
                 statusHandler.error(BMH_CATEGORY.XFORM_SSML_GENERATION_FAILED,
                         errorString.toString(), e);
+                this.messageLogger.logError(BMH_COMPONENT.MESSAGE_TRANSFORMER,
+                        BMH_ACTIVITY.SSML_GENERATION, message, e);
             }
         }
 
@@ -380,18 +392,18 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     /**
-     * Retrieves the message type associated with the specified afosid
+     * Retrieves the message type associated with the specified
+     * {@link ValidatedMessage} based on the associated afosid.
      * 
-     * @param afosid
-     *            the specified afosid
-     * @param messageID
-     *            id of the Validated Message for auditing purposes
+     * @param message
+     *            the specified {@link ValidatedMessage}
      * @return the {@link MessageType} that was retrieved
      * @throws Exception
      *             when an associated {@link MessageType} cannot be found
      */
-    private MessageType getMessageType(String afosid, int messageID)
+    private MessageType getMessageType(ValidatedMessage message)
             throws Exception {
+        final String afosid = message.getInputMessage().getAfosid();
         MessageType messageType = this.messageTypeDao.getByAfosId(afosid);
         if (messageType == null) {
             StringBuilder exceptionText = new StringBuilder(
@@ -406,8 +418,10 @@ public class MessageTransformer implements IContextStateProcessor {
              * the standard error handling procedure ...
              */
             statusHandler.error(BMH_CATEGORY.XFORM_MISSING_MSG_TYPE,
-                    "Failed to Transform Message: " + messageID + "!",
+                    "Failed to Transform Message: " + message.getId() + "!",
                     exception);
+            this.messageLogger.logError(BMH_COMPONENT.MESSAGE_TRANSFORMER,
+                    BMH_ACTIVITY.DATA_RETRIEVAL, message, exception);
 
             /*
              * But, at the same time there is nothing to send downstream -
@@ -514,10 +528,13 @@ public class MessageTransformer implements IContextStateProcessor {
             key.setTransmitterGroup(group);
             transmitterLanguage = this.transmitterLanguageDao.getByID(key);
             if (transmitterLanguage == null) {
-                throw new BMHConfigurationException(
+                BMHConfigurationException configException = new BMHConfigurationException(
                         "Unable to find a transmitter language associated with transmitter group "
                                 + group.getId() + " and language "
                                 + inputMessage.getLanguage().toString() + "!");
+                this.messageLogger.logError(BMH_COMPONENT.MESSAGE_TRANSFORMER,
+                        BMH_ACTIVITY.DATA_RETRIEVAL, inputMessage);
+                throw configException;
             }
             fragmentVoice = transmitterLanguage.getVoice();
         }

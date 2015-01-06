@@ -4,6 +4,7 @@
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
 	<bean id="practice_ldadDisseminator" class="com.raytheon.uf.edex.bmh.ldad.PracticeLdadDisseminator">
+		<constructor-arg ref="practice_edexMessageLogger" />
 		<property name="ldadConfigDao" ref="practice_ldadConfigDao" />
 	</bean>
 	

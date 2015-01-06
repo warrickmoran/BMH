@@ -32,6 +32,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
@@ -52,6 +53,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  * Dec 8, 2014  3651       bkowal      Initial creation
  * Dec 11, 2014 3651       bkowal      Implemented message activity logging.
  * Dec 15, 2014 3651       bkowal      Implemented message error logging.
+ * Jan 05, 2015 3651       bkowal      Implemented additional {@link IMessageLogger} error
+ *                                     logging methods for playlists.
  * 
  * </pre>
  * 
@@ -259,7 +262,7 @@ public class DefaultMessageLogger implements IMessageLogger {
      */
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            InputMessage msg, Exception e) {
+            InputMessage msg, Throwable e) {
         this.logError(component, activity, this.getMsgId(msg, true), e);
     }
 
@@ -290,7 +293,7 @@ public class DefaultMessageLogger implements IMessageLogger {
      */
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            ValidatedMessage msg, Exception e) {
+            ValidatedMessage msg, Throwable e) {
         this.logError(component, activity, this.getMsgId(msg, true), e);
     }
 
@@ -321,7 +324,7 @@ public class DefaultMessageLogger implements IMessageLogger {
      */
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            BroadcastMsg msg, Exception e) {
+            BroadcastMsg msg, Throwable e) {
         this.logError(component, activity, this.getMsgId(msg, true), e);
     }
 
@@ -351,7 +354,7 @@ public class DefaultMessageLogger implements IMessageLogger {
      */
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            LdadMsg msg, Exception e) {
+            LdadMsg msg, Throwable e) {
         this.logError(component, activity, this.getMsgId(msg, true), e);
     }
 
@@ -382,8 +385,72 @@ public class DefaultMessageLogger implements IMessageLogger {
      */
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            DacPlaylistMessage msg, Exception e) {
+            DacPlaylistMessage msg, Throwable e) {
         this.logError(component, activity, this.getMsgId(msg, true), e);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.Playlist)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            Playlist playlist) {
+        this.logError(component, activity, playlist, null);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.Playlist,
+     * java.lang.Throwable)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            Playlist playlist, Throwable e) {
+        this.logError(component, activity, this.getIdentifier(playlist, true),
+                e);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            DacPlaylist playlist) {
+        this.logError(component, activity, playlist, null);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist,
+     * java.lang.Throwable)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            DacPlaylist playlist, Throwable e) {
+        final String identifier = "DacPlaylist [" + playlist.toString() + "]";
+        this.logError(component, activity, identifier, e);
     }
 
     private void logActivity(final MESSAGE_ACTIVITY activityType,
@@ -398,7 +465,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     }
 
     private void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            String msgId, Exception e) {
+            String msgId, Throwable e) {
         final Object[] logDetails = new Object[] { component.prettyPrint(),
                 activity.toString(), msgId, this.host };
         final String msg = String.format(ErrorActivity.LOG_FORMAT, logDetails);
@@ -583,6 +650,28 @@ public class DefaultMessageLogger implements IMessageLogger {
         sb.append(msg.getLdadId());
         sb.append(", afosid=");
         sb.append(msg.getAfosid());
+        sb.append("]");
+
+        return sb.toString();
+    }
+
+    private String getIdentifier(Playlist playlist, boolean identify) {
+        if (playlist == null) {
+            throw new IllegalArgumentException(
+                    "Required argument playlist can not be NULL.");
+        }
+
+        String identification = StringUtils.EMPTY;
+        if (identify) {
+            identification = "Playlist ";
+        }
+
+        StringBuilder sb = new StringBuilder(identification + "[id=");
+        sb.append(playlist.getId());
+        sb.append(", transmitterGroup=");
+        sb.append(playlist.getTransmitterGroup().getName());
+        sb.append(", suite=");
+        sb.append(playlist.getSuite().getName());
         sb.append("]");
 
         return sb.toString();

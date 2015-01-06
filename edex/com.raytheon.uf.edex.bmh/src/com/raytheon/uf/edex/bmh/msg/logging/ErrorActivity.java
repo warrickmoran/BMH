@@ -38,6 +38,7 @@ import com.raytheon.uf.edex.bmh.ldad.LdadDisseminator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 11, 2014 3651       bkowal      Initial creation
+ * Jan 05, 2015 3651       bkowal      Added {@link BMH_ACTIVITY#AUDIO_BROADCAST}.
  * 
  * </pre>
  * 
@@ -81,7 +82,7 @@ public class ErrorActivity {
         /** The BMH {@link PlaylistManager} **/
         PLAYLIST_MANAGER("Playlist Manager"),
         /** The BMH {@link LdadDisseminator} **/
-        LDAD_DISSEMINATOR(""),
+        LDAD_DISSEMINATOR("Ldad Disseminator"),
         /** The BMH Comms Manager process **/
         COMMS_MANAGER("Comms Manager"),
         /** The BMH Dac Transmit process **/
@@ -141,7 +142,9 @@ public class ErrorActivity {
         /** Retrieval of message type records from the database **/
         DATA_RETRIEVAL,
         /** Storage of message type records to the database **/
-        DATA_STORAGE
+        DATA_STORAGE,
+        /** Broadcast of audio to the dac. **/
+        AUDIO_BROADCAST
     }
 
     /**

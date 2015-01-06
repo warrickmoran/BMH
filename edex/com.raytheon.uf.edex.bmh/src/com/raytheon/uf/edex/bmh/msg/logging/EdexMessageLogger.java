@@ -24,6 +24,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
@@ -43,6 +44,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Dec 8, 2014  3651       bkowal      Initial creation
  * Dec 11, 2014 3651       bkowal      Implemented additional {@link IMessageLogger} methods.
  * Dec 15, 2014 3651       bkowal      Implemented message error logging.
+ * Jan 05, 2015 3651       bkowal      Implemented additional {@link IMessageLogger} error
+ *                                     logging methods for playlists.
  * 
  * </pre>
  * 
@@ -191,7 +194,7 @@ public class EdexMessageLogger implements IMessageLogger {
      */
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            InputMessage msg, Exception e) {
+            InputMessage msg, Throwable e) {
         this.getMessageLogger().logError(component, activity, msg, e);
     }
 
@@ -222,7 +225,7 @@ public class EdexMessageLogger implements IMessageLogger {
      */
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            ValidatedMessage msg, Exception e) {
+            ValidatedMessage msg, Throwable e) {
         this.getMessageLogger().logError(component, activity, msg, e);
     }
 
@@ -253,7 +256,7 @@ public class EdexMessageLogger implements IMessageLogger {
      */
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            BroadcastMsg msg, Exception e) {
+            BroadcastMsg msg, Throwable e) {
         this.getMessageLogger().logError(component, activity, msg, e);
     }
 
@@ -283,7 +286,7 @@ public class EdexMessageLogger implements IMessageLogger {
      */
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            LdadMsg msg, Exception e) {
+            LdadMsg msg, Throwable e) {
         this.getMessageLogger().logError(component, activity, msg, e);
     }
 
@@ -314,8 +317,70 @@ public class EdexMessageLogger implements IMessageLogger {
      */
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            DacPlaylistMessage msg, Exception e) {
+            DacPlaylistMessage msg, Throwable e) {
         this.getMessageLogger().logError(component, activity, msg, e);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.Playlist)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            Playlist playlist) {
+        this.getMessageLogger().logError(component, activity, playlist);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.Playlist,
+     * java.lang.Exception)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            Playlist playlist, Throwable e) {
+        this.getMessageLogger().logError(component, activity, playlist, e);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            DacPlaylist playlist) {
+        this.getMessageLogger().logError(component, activity, playlist);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT,
+     * com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY,
+     * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist,
+     * java.lang.Throwable)
+     */
+    @Override
+    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+            DacPlaylist playlist, Throwable e) {
+        this.getMessageLogger().logError(component, activity, playlist, e);
     }
 
     /**

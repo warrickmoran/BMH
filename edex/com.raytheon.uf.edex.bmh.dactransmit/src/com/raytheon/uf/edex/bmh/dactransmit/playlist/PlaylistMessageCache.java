@@ -54,6 +54,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
+import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 
 /**
  * Cache for {@code PlaylistMessage} objects. Stores the contents of each audio
@@ -89,6 +92,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      when calculating playback time.
  * Nov 17, 2014  #3630     bkowal       Added doesMessageFileExist.
  * Jan 05, 2015  #3913     bsteffen     Handle future replacements.
+ * Jan 05, 2015  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg errors.
  * 
  * 
  * </pre>
@@ -272,6 +276,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                     logger.error(
                             "Exception thrown waiting on cache status for "
                                     + message, e);
+                    DefaultMessageLogger.getInstance().logError(
+                            BMH_COMPONENT.DAC_TRANSMIT,
+                            BMH_ACTIVITY.AUDIO_READ, message, e);
                 } catch (ExecutionException e) {
                     /*
                      * TODO: handle failed data retrieval.
@@ -304,6 +311,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             return dynamicBuffer.finalizeFileBuffer(transmission);
         } catch (NotTimeCachedException e) {
             logger.error("Failed to update dynamic time audio!", e);
+            DefaultMessageLogger.getInstance().logError(
+                    BMH_COMPONENT.DAC_TRANSMIT, BMH_ACTIVITY.AUDIO_READ,
+                    message, e);
             CriticalErrorEvent event = new CriticalErrorEvent(
                     "Failed to update dynamic time audio!", e);
             this.eventBus.post(event);

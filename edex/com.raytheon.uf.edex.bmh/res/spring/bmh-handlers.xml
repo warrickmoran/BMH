@@ -108,8 +108,24 @@
         <constructor-arg ref="forceSuiteHandler" />
     </bean>
     
+    <!-- prepare practice and operational ldad validators -->
+    <bean id="ldadCheck"
+    	class="com.raytheon.uf.edex.bmh.msg.validator.LdadValidator">
+    	<constructor-arg value="true" />
+    	<constructor-arg ref="edexMessageLogger" />
+    </bean>
+    
+    <bean id="practiceLdadCheck"
+    	class="com.raytheon.uf.edex.bmh.msg.validator.LdadValidator">
+    	<constructor-arg value="true" />
+    	<constructor-arg ref="practice_edexMessageLogger" />
+    </bean>
+    
     <bean id="newBroadcastMsgHandler" class="com.raytheon.uf.edex.bmh.handler.NewBroadcastMsgHandler" 
-    	init-method="initialize" />
+    	init-method="initialize">
+    	<constructor-arg ref="ldadCheck" />
+    	<constructor-arg ref="practiceLdadCheck" />
+    </bean>
     <bean factory-bean="handlerRegistry" factory-method="register">
         <constructor-arg
             value="com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest" />

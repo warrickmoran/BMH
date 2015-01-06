@@ -37,6 +37,9 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 
 /**
  * Allows for the asynchronous retrieval of audio data. Will adjust the audio
@@ -59,6 +62,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Nov 03, 2014 3781       dgilling    Allow alert tone without SAME tones.
  * Dec 11, 2014 3651       bkowal      Updates to {@link AbstractAudioFileBuffer}.
  * Dec 12, 2014 3603       bsteffen    Updates to TonesGenerator.
+ * Jan 05, 2015 3651       bkowal      Use {@link DefaultMessageLogger} to log msg errors.
  * 
  * </pre>
  * 
@@ -172,9 +176,17 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                 String msg = "Failed to buffer audio file for message: "
                         + message.getBroadcastId() + ", file: " + filePath;
                 this.notifyAttemptComplete();
-                throw new AudioRetrievalException(msg, e);
+                AudioRetrievalException audioEx = new AudioRetrievalException(
+                        msg, e);
+                DefaultMessageLogger.getInstance().logError(
+                        BMH_COMPONENT.DAC_TRANSMIT, BMH_ACTIVITY.AUDIO_READ,
+                        this.message, audioEx);
+                throw audioEx;
             } catch (AudioRetrievalException e) {
                 this.notifyAttemptComplete();
+                DefaultMessageLogger.getInstance().logError(
+                        BMH_COMPONENT.DAC_TRANSMIT,
+                        BMH_ACTIVITY.AUDIO_ALTERATION, this.message, e);
                 throw e;
             }
         }

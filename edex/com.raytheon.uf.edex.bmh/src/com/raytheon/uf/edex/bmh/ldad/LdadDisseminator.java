@@ -25,6 +25,9 @@ import java.nio.file.Paths;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
@@ -47,6 +50,7 @@ import com.raytheon.uf.common.util.RunProcess;
  * Nov 19, 2014 3385       bkowal      Initial creation
  * Nov 20, 2014 3385       bkowal      Run scp in batch mode. Allow for scp user
  *                                     override. Escape scp spaces correctly.
+ * Jan 05, 2015 3651       bkowal      Use {@link IMessageLogger} to log message errors.
  * 
  * </pre>
  * 
@@ -90,6 +94,12 @@ public class LdadDisseminator implements IContextStateProcessor {
     private String ldadScp;
 
     private String ldadUser;
+
+    private final IMessageLogger messageLogger;
+
+    public LdadDisseminator(final IMessageLogger messageLogger) {
+        this.messageLogger = messageLogger;
+    }
 
     private void initialize() {
         statusHandler.info("Initializing the Ldad Disseminator ...");
@@ -218,6 +228,8 @@ public class LdadDisseminator implements IContextStateProcessor {
 
         // failure notification.
         statusHandler.error(BMH_CATEGORY.LDAD_ERROR, errMsg.toString());
+        this.messageLogger.logError(BMH_COMPONENT.LDAD_DISSEMINATOR,
+                BMH_ACTIVITY.SCP_DISSEMINATION, message);
     }
 
     /**

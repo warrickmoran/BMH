@@ -36,6 +36,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.DacMessagePlaybackData;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 
 /**
  * Thread for sending audio data to the DAC. Runs on a cycle time of 20 ms.
@@ -73,6 +75,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
  * Oct 29, 2014  #3774     bsteffen     Log Packets
  * Nov 11, 2014  #3762     bsteffen     Add delayed shutdown.
  * Dec 11, 2014  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg activity.
+ * Jan 05, 2015  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg errors.
  * 
  * </pre>
  * 
@@ -233,10 +236,18 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                             Thread.sleep(nextCycleTime);
                         } catch (InterruptedException e) {
                             logger.error("Thread sleep interrupted.", e);
+                            DefaultMessageLogger.getInstance().logError(
+                                    BMH_COMPONENT.DAC_TRANSMIT,
+                                    BMH_ACTIVITY.AUDIO_BROADCAST,
+                                    playbackData.getMessage(), e);
                         } catch (Throwable t) {
                             logger.error(
                                     "Uncaught exception thrown from message playback loop.",
                                     t);
+                            DefaultMessageLogger.getInstance().logError(
+                                    BMH_COMPONENT.DAC_TRANSMIT,
+                                    BMH_ACTIVITY.AUDIO_BROADCAST,
+                                    playbackData.getMessage(), t);
                         }
                     }
                     packetLog.close();

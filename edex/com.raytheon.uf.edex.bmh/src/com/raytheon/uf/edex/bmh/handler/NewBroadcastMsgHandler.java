@@ -63,6 +63,7 @@ import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.validator.LdadValidator;
 import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
@@ -87,6 +88,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Nov 20, 2014  #3385     bkowal      Complete ldad validation of messages.
  * Nov 21, 2014  #3385     bkowal      Support ldad dissemination of recorded audio.
  * Dec 02, 2014  #3614     bsteffen    Check for unacceptable words.
+ * Jan 05, 2015  #3651     bkowal      Use {@link IMessageLogger} to log message errors.
  * 
  * </pre>
  * 
@@ -117,6 +119,16 @@ public class NewBroadcastMsgHandler extends
             .getExtension();
 
     private Path wxMessagesPath;
+
+    private final LdadValidator ldadCheck;
+
+    private final LdadValidator practiceLdadCheck;
+
+    public NewBroadcastMsgHandler(final LdadValidator ldadCheck,
+            final LdadValidator practiceLdadCheck) {
+        this.ldadCheck = ldadCheck;
+        this.practiceLdadCheck = practiceLdadCheck;
+    }
 
     public void initialize() {
         wxMessagesPath = Paths.get(BMHConstants.getBmhDataDirectory(),
@@ -208,7 +220,7 @@ public class NewBroadcastMsgHandler extends
             inputMessage.setId(0);
         }
 
-        LdadValidator ldadCheck = new LdadValidator(request.isOperational());
+        LdadValidator ldadCheck = this.getLdadValidator(request);
 
         // Build a validated message.
         ValidatedMessage validMsg = new ValidatedMessage();
@@ -426,6 +438,11 @@ public class NewBroadcastMsgHandler extends
         }
 
         return inputMessage.getId();
+    }
+
+    private LdadValidator getLdadValidator(NewBroadcastMsgRequest request) {
+        return request.isOperational() ? this.ldadCheck
+                : this.practiceLdadCheck;
     }
 
     private List<BroadcastMsg> buildBroadcastRecords(

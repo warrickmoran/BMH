@@ -5,9 +5,13 @@
 
 	<bean id="fileChangedStrategy" class="com.raytheon.uf.edex.esb.camel.FileChangedExclusiveReadLockStrategy"/>
 
-	<bean id="inputMessageParser" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageParser"/>
+	<bean id="inputMessageParser" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageParser">
+		<constructor-arg ref="edexMessageLogger" />
+	</bean>
 
-	<bean id="inputMessageValidator" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageValidator"/>
+	<bean id="inputMessageValidator" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageValidator">
+		<constructor-arg ref="edexMessageLogger" />
+	</bean>
 
 	<camelContext id="clusteredBmhDirectoryScanner"
 		xmlns="http://camel.apache.org/schema/spring"

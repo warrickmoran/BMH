@@ -39,6 +39,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
@@ -55,6 +58,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
  * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
  * Jan 05, 2015  3872     rjpeter     Add file name to stack trace.
+ * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
  * </pre>
  * 
  * @author bsteffen
@@ -89,6 +93,12 @@ public class InputMessageParser {
     private static final Pattern endPattern = Pattern.compile("^(.*)\\eb",
             Pattern.DOTALL);
 
+    private final IMessageLogger messageLogger;
+
+    public InputMessageParser(final IMessageLogger messageLogger) {
+        this.messageLogger = messageLogger;
+    }
+
     public InputMessage parse(@Body CharSequence text,
             @Headers Map<String, Object> headers) {
         InputMessage message = new InputMessage();
@@ -115,6 +125,8 @@ public class InputMessageParser {
         } catch (ParseException e) {
             statusHandler.error(BMH_CATEGORY.INPUT_MESSAGE_PARSE_ERROR,
                     fileName + " failed to parse", e);
+            this.messageLogger.logError(BMH_COMPONENT.INPUT_MESSAGE_PARSER,
+                    BMH_ACTIVITY.MESSAGE_PARSING, message, e);
             message.setValidHeader(false);
             if (message.getContent() == null) {
                 message.setContent(text.toString());

@@ -24,6 +24,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
@@ -40,6 +43,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Nov 19, 2014  3385     bkowal      Implemented.
  * Nov 20, 2014  3385     bkowal      Initialize {@link LdadConfigDao} based on the
  *                                    run mode.
+ * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
  * 
  * </pre>
  * 
@@ -53,8 +57,11 @@ public class LdadValidator {
 
     private final LdadConfigDao ldadConfigDao;
 
-    public LdadValidator(boolean operational) {
+    private final IMessageLogger messageLogger;
+
+    public LdadValidator(boolean operational, final IMessageLogger messageLogger) {
         this.ldadConfigDao = new LdadConfigDao(operational);
+        this.messageLogger = messageLogger;
     }
 
     public void validate(ValidatedMessage message) {
@@ -71,6 +78,8 @@ public class LdadValidator {
                             + message.getId()
                             + " has any applicable ldad configurations.", e);
             status = LdadStatus.ERROR;
+            this.messageLogger.logError(BMH_COMPONENT.LDAD_VALIDATOR,
+                    BMH_ACTIVITY.MESSAGE_VALIDATION, message, e);
         }
 
         message.setLdadStatus(status);

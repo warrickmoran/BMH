@@ -62,6 +62,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotificationHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
+import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 
 /**
  * Manages playback order of playlist and playlist messages for the current
@@ -116,6 +119,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
  *                                      encountered on startup.
  * Dec 08, 2014  #3878     bkowal       Forcefully schedule all non-static periodic messages
  *                                      when there are only periodic messages in the playlist.
+ * Jan 05, 2015  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg errors.
  * 
  * </pre>
  * 
@@ -638,6 +642,11 @@ public final class PlaylistScheduler implements
             } catch (Throwable e) {
                 logger.error("Unable to parse playlistfile: ",
                         notification.getPlaylistPath(), e);
+                if (newPlaylist != null) {
+                    DefaultMessageLogger.getInstance().logError(
+                            BMH_COMPONENT.DAC_TRANSMIT,
+                            BMH_ACTIVITY.PLAYLIST_READ, newPlaylist, e);
+                }
                 return;
             }
             newPlaylist.setPath(playlistPath);

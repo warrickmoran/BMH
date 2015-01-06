@@ -83,6 +83,8 @@ import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
@@ -133,6 +135,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Dec 11, 2014  3651     bkowal      Use {@link IMessageLogger} to log message activity.
  * Dec 16, 2014  3753     bsteffen    Report failure when suites won't force.
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
+ * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
  * 
  * </pre>
  * 
@@ -595,6 +598,8 @@ public class PlaylistManager implements IContextStateProcessor {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to write playlist xml, cannot create directory:"
                             + playlistDir.toAbsolutePath(), e);
+            this.messageLogger.logError(BMH_COMPONENT.PLAYLIST_MANAGER,
+                    BMH_ACTIVITY.PLAYLIST_WRITE, playlist, e);
             return null;
         }
         try (BufferedOutputStream os = new BufferedOutputStream(
@@ -604,6 +609,8 @@ public class PlaylistManager implements IContextStateProcessor {
         } catch (Exception e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to write playlist file.", e);
+            this.messageLogger.logError(BMH_COMPONENT.PLAYLIST_MANAGER,
+                    BMH_ACTIVITY.PLAYLIST_WRITE, playlist, e);
             return null;
         }
         String queue = PlaylistUpdateNotification.getQueueName(playlist
@@ -651,10 +658,10 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private DacPlaylistMessageId convertMessageForDAC(BroadcastMsg broadcast) {
         long id = broadcast.getId();
+        DacPlaylistMessage dac = new DacPlaylistMessage();
         try {
             Path messageFile = this.determineMessageFile(broadcast);
             if (!Files.exists(messageFile)) {
-                DacPlaylistMessage dac = new DacPlaylistMessage();
                 dac.setBroadcastId(id);
                 for (BroadcastFragment fragment : broadcast.getFragments()) {
                     dac.addSoundFile(fragment.getOutputName());
@@ -789,6 +796,8 @@ public class PlaylistManager implements IContextStateProcessor {
         } catch (DataBindingException | IOException e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to write message file.", e);
+            this.messageLogger.logError(BMH_COMPONENT.PLAYLIST_MANAGER,
+                    BMH_ACTIVITY.PLAYLIST_WRITE, dac);
         }
         return new DacPlaylistMessageId(id);
     }

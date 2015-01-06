@@ -15,6 +15,7 @@
 	<!-- tts manager -->
 	<bean id="ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager"
 		destroy-method="dispose">
+		<constructor-arg ref="edexMessageLogger" />
 		<property name="synthesisFactory" ref="ttsSynthesisFactory" />
 		<property name="bmhDataDirectory" value="${BMH_DATA}" />
         <property name="bmhStatusDestination" ref="bmhStatusDestination" />

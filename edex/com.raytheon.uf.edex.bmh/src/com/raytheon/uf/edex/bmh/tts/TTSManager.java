@@ -50,6 +50,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
@@ -89,6 +92,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Nov 19, 2014 3385       bkowal      Initial ldad implementation.
  * Nov 20, 2014 3817       bsteffen    send status messages.
  * Nov 20, 2014 3385       bkowal      Support synthesis for ldad.
+ * Jan 05, 2015 3651       bkowal      Use {@link IMessageLogger} to log message errors.
  * 
  * </pre>
  * 
@@ -148,8 +152,11 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private ScheduledThreadPoolExecutor heartbeatMonitor;
 
-    public TTSManager() {
+    private final IMessageLogger messageLogger;
+
+    public TTSManager(final IMessageLogger messageLogger) {
         this.disabled = Boolean.getBoolean(TTS_DISABLED_PROPERTY);
+        this.messageLogger = messageLogger;
     }
 
     /*
@@ -441,10 +448,16 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 File outputFile = this.determineOutputFile(message.getId(),
                         message.getInputMessage().getAfosid(),
                         fragment.getVoice());
-                boolean writeSuccess = this.writeSynthesizedAudio(
-                        ttsReturn.getVoiceData(),
-                        Paths.get(outputFile.getAbsolutePath()),
-                        logIdentifier.toString());
+                boolean writeSuccess = true;
+                try {
+                    this.writeSynthesizedAudio(ttsReturn.getVoiceData(),
+                            Paths.get(outputFile.getAbsolutePath()),
+                            logIdentifier.toString());
+                } catch (IOException e) {
+                    writeSuccess = false;
+                    this.messageLogger.logError(BMH_COMPONENT.TTS_MANAGER,
+                            BMH_ACTIVITY.AUDIO_WRITE, message, e);
+                }
                 fragment.setSuccess(writeSuccess);
                 if (writeSuccess) {
                     fragment.setOutputName(outputFile.getAbsolutePath());
@@ -452,6 +465,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             } else {
                 /* Synthesis Failed */
                 this.logSynthesisError(ttsReturn, logIdentifier.toString());
+                this.messageLogger.logError(BMH_COMPONENT.TTS_MANAGER,
+                        BMH_ACTIVITY.AUDIO_SYNTHESIS, message);
             }
         }
         message.setUpdateDate(TimeUtil.newGmtCalendar());
@@ -537,8 +552,15 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 }
             }
             /* Write the output file. */
-            boolean writeSuccess = this.writeSynthesizedAudio(audioData,
-                    outputPath, logIdentifier.toString());
+            boolean writeSuccess = true;
+            try {
+                this.writeSynthesizedAudio(ttsReturn.getVoiceData(),
+                        outputPath, logIdentifier.toString());
+            } catch (IOException e) {
+                writeSuccess = false;
+                this.messageLogger.logError(BMH_COMPONENT.TTS_MANAGER,
+                        BMH_ACTIVITY.AUDIO_WRITE, message, e);
+            }
             message.setSuccess(writeSuccess);
             if (writeSuccess) {
                 message.setOutputName(outputPath.toString());
@@ -546,6 +568,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         } else {
             /* Synthesis Failed */
             this.logSynthesisError(ttsReturn, logIdentifier.toString());
+            this.messageLogger.logError(BMH_COMPONENT.TTS_MANAGER,
+                    BMH_ACTIVITY.AUDIO_SYNTHESIS, message);
         }
 
         return message;
@@ -564,7 +588,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      *            logging purposes.
      * @return a {@link TTSReturn} with all applicable synthesis results
      */
-    public TTSReturn attemptAudioSynthesis(final String ssml,
+    private TTSReturn attemptAudioSynthesis(final String ssml,
             final int voiceNumber, final String logIdentifier) {
 
         int attempt = 0;
@@ -689,8 +713,9 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      * 
      * @return true if the file was written successfully; false, otherwise
      */
-    private boolean writeSynthesizedAudio(final byte[] audio,
-            final Path outputPath, final String logIdentifier) {
+    private void writeSynthesizedAudio(final byte[] audio,
+            final Path outputPath, final String logIdentifier)
+            throws IOException {
         /*
          * Ensure that the required directories exist.
          */
@@ -710,7 +735,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
                         stringBuilder.toString(), e);
 
-                return false;
+                throw e;
             }
         }
 
@@ -720,7 +745,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                     + outputPath.toString() + " for "
                     + logIdentifier.toString() + ". " + audio.length
                     + " bytes were written.");
-            return true;
         } catch (IOException e) {
             StringBuilder stringBuilder = new StringBuilder(
                     "Failed to write audio output file: ");
@@ -733,7 +757,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
              * TTS Conversion may have succeeded; however, the file write has
              * failed!
              */
-            return false;
+            throw e;
         }
     }
 

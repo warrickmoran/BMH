@@ -26,6 +26,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
+import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
@@ -40,6 +43,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jun 23, 2014  3283     bsteffen    Initial creation
  * Nov 20, 2014  3385     bkowal      Create an operational {@link LdadValidator}.
  * Dec 02, 2014  3614     bsteffen    Check for unacceptable words.
+ * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
  * 
  * </pre>
  * 
@@ -56,7 +60,14 @@ public class InputMessageValidator {
     /**
      * Currently {@link InputMessageValidator} is only used in operational mode.
      */
-    private final LdadValidator ldadCheck = new LdadValidator(true);
+    private final LdadValidator ldadCheck;
+
+    private final IMessageLogger messageLogger;
+
+    public InputMessageValidator(final IMessageLogger messageLogger) {
+        this.messageLogger = messageLogger;
+        this.ldadCheck = new LdadValidator(true, messageLogger);
+    }
 
     /**
      * Validate an InputMessage.
@@ -79,6 +90,9 @@ public class InputMessageValidator {
                                 input.getName()
                                         + " failed to validate with transmission status: "
                                         + valid.getTransmissionStatus());
+                this.messageLogger.logError(
+                        BMH_COMPONENT.INPUT_MESSAGE_VALIDATOR,
+                        BMH_ACTIVITY.MESSAGE_VALIDATION, valid);
             }
         } else {
             valid.setTransmissionStatus(TransmissionStatus.UNACCEPTABLE);
@@ -89,7 +103,8 @@ public class InputMessageValidator {
                                     + "("
                                     + input.getAfosid()
                                     + ") failed to validate because it contains unacceptable words.");
-
+            this.messageLogger.logError(BMH_COMPONENT.INPUT_MESSAGE_VALIDATOR,
+                    BMH_ACTIVITY.MESSAGE_VALIDATION, valid);
         }
         return valid;
     }

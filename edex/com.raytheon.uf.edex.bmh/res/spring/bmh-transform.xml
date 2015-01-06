@@ -5,6 +5,7 @@
 
 	<bean id="messageTransformer" class="com.raytheon.uf.edex.bmh.xformer.MessageTransformer">
 		<constructor-arg ref="timeMessagesGenerator" />
+		<constructor-arg ref="edexMessageLogger" />
 		<property name="messageTypeDao" ref="messageTypeDao" />
 		<property name="transmitterLanguageDao" ref="transmitterLanguageDao" />
 		<property name="ldadConfigDao" ref="ldadConfigDao" />

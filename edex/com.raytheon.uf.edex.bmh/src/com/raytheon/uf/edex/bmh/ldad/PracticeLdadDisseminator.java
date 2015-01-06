@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
  * Practice version of the ldad disseminator that ensures that all data is only
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 20, 2014 3385       bkowal      Initial creation
+ * Jan 05, 2015 3651       bkowal      Use {@link IMessageLogger} to log message errors.
  * 
  * </pre>
  * 
@@ -59,7 +61,8 @@ public class PracticeLdadDisseminator extends LdadDisseminator {
     /**
      * 
      */
-    public PracticeLdadDisseminator() {
+    public PracticeLdadDisseminator(final IMessageLogger messageLogger) {
+        super(messageLogger);
         if (Files.exists(Paths.get(DEFAULT_CP_BIN))) {
             this.ldadCp = DEFAULT_CP_BIN;
         }
