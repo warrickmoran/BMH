@@ -56,6 +56,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                    the message is associated with a static msg type.
  * Dec 11, 2014  3651     bkowal      Added {@link #name} for logging purposes.
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
+ * Jan 08, 2015  3912     bsteffen    Add isPeriodic
  * 
  * </pre>
  * 
@@ -204,6 +205,10 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         this.periodicity = periodicity;
     }
 
+    public boolean isPeriodic(){
+        return periodicity != null && !periodicity.isEmpty();
+    }
+
     public String getMessageText() {
         return messageText;
     }
@@ -299,7 +304,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      *         not have a valid periodicity setting.
      */
     public long getPlaybackInterval() {
-        if ((periodicity != null) && (!periodicity.isEmpty())) {
+        if (isPeriodic()) {
             int days = Integer.parseInt(this.periodicity.substring(0, 2));
             int hours = Integer.parseInt(this.periodicity.substring(2, 4));
             int minutes = Integer.parseInt(this.periodicity.substring(4, 6));

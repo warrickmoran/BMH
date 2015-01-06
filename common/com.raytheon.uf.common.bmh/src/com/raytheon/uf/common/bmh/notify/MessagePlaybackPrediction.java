@@ -20,10 +20,12 @@
 package com.raytheon.uf.common.bmh.notify;
 
 import java.util.Calendar;
+import java.util.Date;
 
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
  * Encapsulates predicted playback times for a list of
@@ -39,6 +41,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2014  #3286     dgilling     Initial creation
  * Aug 04, 2014  #3286     dgilling     Added additional fields for GUI.
+ * Jan 08, 2015  #3912     bsteffen     Add convenience constructors
  * 
  * </pre>
  * 
@@ -71,14 +74,23 @@ public final class MessagePlaybackPrediction {
         // for serialization use only
     }
 
-    public MessagePlaybackPrediction(long broadcastId, Calendar playbackTime,
-            DacPlaylistMessage message) {
-        this.broadcastId = broadcastId;
-        this.nextTransmitTime = playbackTime;
+    public MessagePlaybackPrediction(DacPlaylistMessage message) {
+        this.broadcastId = message.getBroadcastId();
         this.playCount = message.getPlayCount();
         this.lastTransmitTime = message.getLastTransmitTime();
         this.playedAlertTone = false;
         this.playedSameTone = false;
+    }
+
+    public MessagePlaybackPrediction(Calendar playbackTime,
+            DacPlaylistMessage message) {
+        this(message);
+        this.nextTransmitTime = playbackTime;
+    }
+
+    public MessagePlaybackPrediction(long playbackTime,
+            DacPlaylistMessage message) {
+        this(TimeUtil.newGmtCalendar(new Date(playbackTime)), message);
     }
 
     public long getBroadcastId() {
