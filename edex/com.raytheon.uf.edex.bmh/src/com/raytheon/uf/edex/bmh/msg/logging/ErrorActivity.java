@@ -39,6 +39,7 @@ import com.raytheon.uf.edex.bmh.ldad.LdadDisseminator;
  * ------------ ---------- ----------- --------------------------
  * Dec 11, 2014 3651       bkowal      Initial creation
  * Jan 05, 2015 3651       bkowal      Added {@link BMH_ACTIVITY#AUDIO_BROADCAST}.
+ * Jan 06, 2015 3651       bkowal      Added {@link BMH_COMPONENT#BMH_DAO}.
  * 
  * </pre>
  * 
@@ -86,7 +87,9 @@ public class ErrorActivity {
         /** The BMH Comms Manager process **/
         COMMS_MANAGER("Comms Manager"),
         /** The BMH Dac Transmit process **/
-        DAC_TRANSMIT("Dac Transmit");
+        DAC_TRANSMIT("Dac Transmit"),
+        /** The BMH Data Access Components **/
+        BMH_DAO("BMH Dao");
 
         private final String prettyPrintComponent;
 

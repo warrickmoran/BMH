@@ -23,6 +23,7 @@ import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
  * 
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Oct 08, 2014  3687     bsteffen    Initial creation.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 16, 2014  3636     rferrel     Added logger information.
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
@@ -44,7 +46,12 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * @version 1.0
  */
 public class CopyOperationalDbHandler extends
-        AbstractBMHServerRequestHandler<CopyOperationalDbRequest> {
+        AbstractBMHLoggingServerRequestHandler<CopyOperationalDbRequest> {
+
+    public CopyOperationalDbHandler(IMessageLogger opMessageLogger,
+            IMessageLogger pracMessageLogger) {
+        super(opMessageLogger, pracMessageLogger);
+    }
 
     @Override
     public Boolean handleRequest(CopyOperationalDbRequest request)
@@ -53,7 +60,8 @@ public class CopyOperationalDbHandler extends
             throw new UnsupportedOperationException(
                     "Cannot copy operational db while in operational mode.");
         }
-        new BmhDatabaseCopier().copyAll();
+        new BmhDatabaseCopier(this.opMessageLogger, this.pracMessageLogger)
+                .copyAll();
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);

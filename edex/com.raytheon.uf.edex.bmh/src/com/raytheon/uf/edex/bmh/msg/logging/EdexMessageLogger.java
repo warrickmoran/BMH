@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Dec 15, 2014 3651       bkowal      Implemented message error logging.
  * Jan 05, 2015 3651       bkowal      Implemented additional {@link IMessageLogger} error
  *                                     logging methods for playlists.
+ * Jan 06, 2015 3651       bkowal      Implemented {@link #logDaoError(BMH_ACTIVITY, Object, Throwable)}.
  * 
  * </pre>
  * 
@@ -381,6 +382,19 @@ public class EdexMessageLogger implements IMessageLogger {
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
             DacPlaylist playlist, Throwable e) {
         this.getMessageLogger().logError(component, activity, playlist, e);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logDaoError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY, java.lang.Object,
+     * java.lang.Throwable)
+     */
+    @Override
+    public void logDaoError(BMH_ACTIVITY activity, Object object, Throwable e) {
+        this.getMessageLogger().logDaoError(activity, object, e);
     }
 
     /**

@@ -46,16 +46,19 @@
   <bean id="practice_inputMessageDao" class="com.raytheon.uf.edex.bmh.dao.InputMessageDao"
     depends-on="bmh_practiceTxTemplate">
     <constructor-arg value="false" />
+    <constructor-arg ref="practice_edexMessageLogger" />
   </bean>
 
   <bean id="practice_validatedMessageDao" class="com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao"
     depends-on="bmh_practiceTxTemplate">
     <constructor-arg value="false" />
+    <constructor-arg ref="practice_edexMessageLogger" />
   </bean>
 
   <bean id="practice_broadcastMsgDao" class="com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao"
     depends-on="bmh_practiceTxTemplate">
     <constructor-arg value="false" />
+    <constructor-arg ref="practice_edexMessageLogger" />
   </bean>
 
   <bean id="practice_ttsVoiceDao" class="com.raytheon.uf.edex.bmh.dao.TtsVoiceDao"
@@ -71,6 +74,7 @@
   <bean id="practice_playlistDao" class="com.raytheon.uf.edex.bmh.dao.PlaylistDao"
     depends-on="bmh_practiceTxTemplate">
     <constructor-arg value="false" />
+    <constructor-arg ref="practice_edexMessageLogger" />
   </bean>
 
   <bean id="practice_zoneDao" class="com.raytheon.uf.edex.bmh.dao.ZoneDao"

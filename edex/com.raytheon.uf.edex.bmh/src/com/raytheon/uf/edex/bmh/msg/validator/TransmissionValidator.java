@@ -38,8 +38,8 @@ import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
-import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
@@ -55,6 +55,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jun 23, 2014  3283     bsteffen    Initial creation.
  * Jul 17, 2014  3406     mpduff      Area object changed.
  * Jul 17, 2014  3175     rjpeter     Updated transmitter group lookup.
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * </pre>
  * 
  * @author bsteffen
@@ -65,17 +66,19 @@ public class TransmissionValidator {
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(TransmissionValidator.class);
 
-    private final InputMessageDao inputMessageDao = new InputMessageDao();
+    private final InputMessageDao inputMessageDao;
 
     private final MessageTypeDao messageTypeDao = new MessageTypeDao();
-
-    private final TransmitterGroupDao transmitterGroupDao = new TransmitterGroupDao();
 
     private final AreaDao areaDao = new AreaDao();
 
     private final ZoneDao zoneDao = new ZoneDao();
 
     private final ProgramDao programDao = new ProgramDao();
+
+    public TransmissionValidator(final IMessageLogger messageLogger) {
+        inputMessageDao = new InputMessageDao(messageLogger);
+    }
 
     public void validate(ValidatedMessage message) {
         InputMessage input = message.getInputMessage();

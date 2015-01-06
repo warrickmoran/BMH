@@ -49,6 +49,7 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Nov 26, 2014  3613     bsteffen    Initial creation
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
@@ -63,12 +64,15 @@ public class MessagePurger {
 
     private final int purgeDays;
 
-    private final InputMessageDao inputMessageDao = new InputMessageDao();
+    private final InputMessageDao inputMessageDao;
 
-    private final BroadcastMsgDao broadcastMessageDao = new BroadcastMsgDao();
+    private final BroadcastMsgDao broadcastMessageDao;
 
-    public MessagePurger(int purgeDays) {
+    public MessagePurger(int purgeDays, final InputMessageDao inputMessageDao,
+            final BroadcastMsgDao broadcastMessageDao) {
         this.purgeDays = purgeDays;
+        this.inputMessageDao = inputMessageDao;
+        this.broadcastMessageDao = broadcastMessageDao;
     }
 
     public void purge() {
@@ -107,7 +111,8 @@ public class MessagePurger {
     }
 
     protected void purgeAudioFiles(Calendar purgeTime) {
-        Path dataDir = BMHConstants.getBmhDataDirectory(true).resolve(BMHConstants.AUDIO_DATA_DIRECTORY);
+        Path dataDir = BMHConstants.getBmhDataDirectory(true).resolve(
+                BMHConstants.AUDIO_DATA_DIRECTORY);
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dataDir,
                 DATE_GLOB)) {
             for (Path datedDir : stream) {
@@ -159,6 +164,5 @@ public class MessagePurger {
             }
         }
     }
-
 
 }

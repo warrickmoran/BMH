@@ -68,6 +68,7 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.dao.WordDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.core.EdexException;
 
 /**
@@ -90,6 +91,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Oct 29, 2014  3746     rjpeter     Reorder clearAllPracticeTables.
  *                                    Auto assignment of transmitter to dac.
  * Nov 18, 2014  3746     rjpeter     Refactored MessageTypeReplacement.
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * </pre>
  * 
  * @author bsteffen
@@ -111,6 +113,16 @@ public class BmhDatabaseCopier {
 
     private Map<Integer, InputMessage> inputMessageMap;
 
+    private final IMessageLogger opMessageLogger;
+
+    private final IMessageLogger pracMessageLogger;
+
+    public BmhDatabaseCopier(final IMessageLogger opMessageLogger,
+            final IMessageLogger pracMessageLogger) {
+        this.opMessageLogger = opMessageLogger;
+        this.pracMessageLogger = pracMessageLogger;
+    }
+
     public void copyAll() throws EdexException, SerializationException {
         clearAllPracticeTables();
         copyDictionaries();
@@ -128,10 +140,10 @@ public class BmhDatabaseCopier {
     }
 
     private void clearAllPracticeTables() {
-        clearTable(new PlaylistDao(false));
-        clearTable(new BroadcastMsgDao(false));
-        clearTable(new ValidatedMessageDao(false));
-        clearTable(new InputMessageDao(false));
+        clearTable(new PlaylistDao(false, this.pracMessageLogger));
+        clearTable(new BroadcastMsgDao(false, this.pracMessageLogger));
+        clearTable(new ValidatedMessageDao(false, this.pracMessageLogger));
+        clearTable(new InputMessageDao(false, this.pracMessageLogger));
         clearTable(new ProgramDao(false));
         clearTable(new SuiteDao(false));
         clearTable(new MessageTypeDao(false));
@@ -370,8 +382,9 @@ public class BmhDatabaseCopier {
     }
 
     private void copyInputMessages() {
-        InputMessageDao opDao = new InputMessageDao(true);
-        InputMessageDao prDao = new InputMessageDao(false);
+        InputMessageDao opDao = new InputMessageDao(true, this.opMessageLogger);
+        InputMessageDao prDao = new InputMessageDao(false,
+                this.pracMessageLogger);
         List<InputMessage> inputMessages = opDao.getAll();
         Map<Integer, InputMessage> inputMessageMap = new HashMap<>(
                 inputMessages.size(), 1.0f);
@@ -384,8 +397,9 @@ public class BmhDatabaseCopier {
     }
 
     private void copyBroadcastMsgs() {
-        BroadcastMsgDao opDao = new BroadcastMsgDao(true);
-        BroadcastMsgDao prDao = new BroadcastMsgDao(false);
+        BroadcastMsgDao opDao = new BroadcastMsgDao(true, this.opMessageLogger);
+        BroadcastMsgDao prDao = new BroadcastMsgDao(false,
+                this.pracMessageLogger);
         List<BroadcastMsg> broadcastMsgs = opDao.getAll();
         for (BroadcastMsg broadcastMsg : broadcastMsgs) {
             broadcastMsg.setTransmitterGroup(transmitterGroupMap

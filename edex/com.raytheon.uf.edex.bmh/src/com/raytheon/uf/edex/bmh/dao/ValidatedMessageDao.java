@@ -26,6 +26,7 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
  * 
@@ -48,14 +49,15 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
  * @version 1.0
  */
 public class ValidatedMessageDao extends
-        AbstractBMHDao<ValidatedMessage, Integer> {
+        AbstractBMHPersistenceLoggingDao<ValidatedMessage, Integer> {
 
-    public ValidatedMessageDao() {
-        super(ValidatedMessage.class);
+    public ValidatedMessageDao(final IMessageLogger messageLogger) {
+        super(ValidatedMessage.class, messageLogger);
     }
 
-    public ValidatedMessageDao(boolean operational) {
-        super(operational, ValidatedMessage.class);
+    public ValidatedMessageDao(boolean operational,
+            final IMessageLogger messageLogger) {
+        super(operational, ValidatedMessage.class, messageLogger);
     }
 
     public void persistCascade(final ValidatedMessage msg) {

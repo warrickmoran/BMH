@@ -44,6 +44,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Nov 20, 2014  3385     bkowal      Create an operational {@link LdadValidator}.
  * Dec 02, 2014  3614     bsteffen    Check for unacceptable words.
  * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
@@ -55,7 +56,7 @@ public class InputMessageValidator {
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(InputMessageValidator.class);
 
-    private final TransmissionValidator transmissionCheck = new TransmissionValidator();
+    private final TransmissionValidator transmissionCheck;
 
     /**
      * Currently {@link InputMessageValidator} is only used in operational mode.
@@ -67,6 +68,7 @@ public class InputMessageValidator {
     public InputMessageValidator(final IMessageLogger messageLogger) {
         this.messageLogger = messageLogger;
         this.ldadCheck = new LdadValidator(true, messageLogger);
+        this.transmissionCheck = new TransmissionValidator(messageLogger);
     }
 
     /**

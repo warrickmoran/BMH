@@ -59,13 +59,19 @@
     </bean>
 
   <bean id="inputMessageDao" class="com.raytheon.uf.edex.bmh.dao.InputMessageDao"
-    depends-on="bmhTxTemplate" />
+    depends-on="bmhTxTemplate">
+    <constructor-arg ref="edexMessageLogger" />
+  </bean>
 
   <bean id="validatedMessageDao" class="com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao"
-    depends-on="bmhTxTemplate" />
+    depends-on="bmhTxTemplate">
+    <constructor-arg ref="edexMessageLogger" />
+  </bean>
 
   <bean id="broadcastMsgDao" class="com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao"
-    depends-on="bmhTxTemplate" />
+    depends-on="bmhTxTemplate">
+    <constructor-arg ref="edexMessageLogger" />
+  </bean>
 
   <bean id="ttsVoiceDao" class="com.raytheon.uf.edex.bmh.dao.TtsVoiceDao"
     depends-on="bmhTxTemplate" />
@@ -74,7 +80,9 @@
     depends-on="bmhTxTemplate" />
 
   <bean id="playlistDao" class="com.raytheon.uf.edex.bmh.dao.PlaylistDao"
-    depends-on="bmhTxTemplate" />
+    depends-on="bmhTxTemplate">
+  	<constructor-arg ref="edexMessageLogger" />  
+  </bean>
 
   <bean id="zoneDao" class="com.raytheon.uf.edex.bmh.dao.ZoneDao"
     depends-on="bmhTxTemplate" />

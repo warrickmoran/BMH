@@ -54,6 +54,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 
@@ -68,6 +69,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 10, 2014 3824       rferrel     Initial creation
+ * Jan 06, 2015 3651       bkowal      Support AbstractBMHPersistenceLoggingDao.
  * </pre>
  * 
  * @author rferrel
@@ -84,10 +86,14 @@ public class ImportLegacyDatabase {
 
     private final boolean operational;
 
-    public ImportLegacyDatabase(String input, String source, boolean operational) {
+    private final IMessageLogger messageLogger;
+
+    public ImportLegacyDatabase(String input, String source,
+            boolean operational, final IMessageLogger messageLogger) {
         this.input = input;
         this.source = source;
         this.operational = operational;
+        this.messageLogger = messageLogger;
     }
 
     public void saveImport() throws Exception {
@@ -215,10 +221,10 @@ public class ImportLegacyDatabase {
      * Clear tables except DAC, TtsVoice, Dictionary and Word.
      */
     private void clearTables() {
-        clearTable(new PlaylistDao(operational));
-        clearTable(new BroadcastMsgDao(operational));
-        clearTable(new ValidatedMessageDao(operational));
-        clearTable(new InputMessageDao(operational));
+        clearTable(new PlaylistDao(operational, this.messageLogger));
+        clearTable(new BroadcastMsgDao(operational, this.messageLogger));
+        clearTable(new ValidatedMessageDao(operational, this.messageLogger));
+        clearTable(new InputMessageDao(operational, this.messageLogger));
         clearTable(new ProgramDao(operational));
         clearTable(new SuiteDao(operational));
         clearTable(new MessageTypeDao(operational));

@@ -55,6 +55,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  * Dec 15, 2014 3651       bkowal      Implemented message error logging.
  * Jan 05, 2015 3651       bkowal      Implemented additional {@link IMessageLogger} error
  *                                     logging methods for playlists.
+ * Jan 06, 2015  3651      bkowal      Implemented {@link #logDaoError(BMH_ACTIVITY, Object, Throwable)}.
  * 
  * </pre>
  * 
@@ -451,6 +452,43 @@ public class DefaultMessageLogger implements IMessageLogger {
             DacPlaylist playlist, Throwable e) {
         final String identifier = "DacPlaylist [" + playlist.toString() + "]";
         this.logError(component, activity, identifier, e);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logDaoError(com.raytheon
+     * .uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY, java.lang.Object,
+     * java.lang.Throwable)
+     */
+    @Override
+    public void logDaoError(BMH_ACTIVITY activity, Object object, Throwable e) {
+        if (object == null) {
+            return;
+        }
+
+        /**
+         * The specified {@link Object} must be one of the recognized persistent
+         * data types that the {@link DefaultMessageLogger} can retrieve
+         * identification information for.
+         */
+        if (object instanceof InputMessage) {
+            this.logError(BMH_COMPONENT.BMH_DAO, activity,
+                    (InputMessage) object, e);
+        } else if (object instanceof ValidatedMessage) {
+            this.logError(BMH_COMPONENT.BMH_DAO, activity,
+                    (ValidatedMessage) object, e);
+        } else if (object instanceof BroadcastMsg) {
+            this.logError(BMH_COMPONENT.BMH_DAO, activity,
+                    (BroadcastMsg) object, e);
+        } else if (object instanceof Playlist) {
+            this.logError(BMH_COMPONENT.BMH_DAO, activity, (Playlist) object, e);
+        } else {
+            throw new IllegalArgumentException(
+                    "The current logging implementation does not support or does not recognize the specified persistent object: "
+                            + object.getClass().getName() + "!");
+        }
     }
 
     private void logActivity(final MESSAGE_ACTIVITY activityType,

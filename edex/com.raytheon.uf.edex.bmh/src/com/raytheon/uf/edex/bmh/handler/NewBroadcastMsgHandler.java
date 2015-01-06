@@ -89,6 +89,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Nov 21, 2014  #3385     bkowal      Support ldad dissemination of recorded audio.
  * Dec 02, 2014  #3614     bsteffen    Check for unacceptable words.
  * Jan 05, 2015  #3651     bkowal      Use {@link IMessageLogger} to log message errors.
+ * Jan 06, 2015  #3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
@@ -96,7 +97,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * @version 1.0
  */
 public class NewBroadcastMsgHandler extends
-        AbstractBMHServerRequestHandler<NewBroadcastMsgRequest> {
+        AbstractBMHLoggingServerRequestHandler<NewBroadcastMsgRequest> {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(NewBroadcastMsgHandler.class);
@@ -125,7 +126,10 @@ public class NewBroadcastMsgHandler extends
     private final LdadValidator practiceLdadCheck;
 
     public NewBroadcastMsgHandler(final LdadValidator ldadCheck,
-            final LdadValidator practiceLdadCheck) {
+            final LdadValidator practiceLdadCheck,
+            final IMessageLogger opMessageLogger,
+            final IMessageLogger pracMessageLogger) {
+        super(opMessageLogger, pracMessageLogger);
         this.ldadCheck = ldadCheck;
         this.practiceLdadCheck = practiceLdadCheck;
     }
@@ -164,7 +168,7 @@ public class NewBroadcastMsgHandler extends
              * message as inactive and then process the change as a new message.
              */
             InputMessageDao inputMessageDao = new InputMessageDao(
-                    request.isOperational());
+                    request.isOperational(), this.getMessageLogger(request));
             InputMessage previous = inputMessageDao.getByID(inputMessage
                     .getId());
             boolean activeChanged = false;
@@ -240,7 +244,7 @@ public class NewBroadcastMsgHandler extends
         validMsg.setTransmitterGroups(transmitterGroups);
 
         ValidatedMessageDao validatedMsgDao = new ValidatedMessageDao(
-                request.isOperational());
+                request.isOperational(), this.getMessageLogger(request));
         if (!validMsg.isAccepted()) {
             validatedMsgDao.persistCascade(validMsg);
             throw new IllegalArgumentException(

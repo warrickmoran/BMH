@@ -47,6 +47,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Dec 11, 2014 3651       bkowal      Defined methods for message activity logging
  * Dec 15, 2014 3651       bkowal      Defined methods for message error logging
  * Jan 05, 2015 3651       bkowal      Defined methods for playlist error logging
+ * Jan 06, 2015 3651       bkowal      Defined {@link #logDaoError(BMH_ACTIVITY, Object, Throwable)}.
  * 
  * </pre>
  * 
@@ -404,4 +405,18 @@ public interface IMessageLogger {
      */
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
             DacPlaylist playlist, Throwable e);
+
+    /**
+     * Logs any errors that are encountered by a BMH Dao component.
+     * 
+     * @param activity
+     *            the {@link BMH_ACTIVITY} that the dao was attempting to
+     *            complete when the error was encountered
+     * @param object
+     *            the persistent data type that the dao was attempting to
+     *            persist / update / delete when the error was encountered
+     * @param e
+     *            the error that was encountered by the dao
+     */
+    public void logDaoError(BMH_ACTIVITY activity, Object object, Throwable e);
 }

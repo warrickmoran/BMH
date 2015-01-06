@@ -23,8 +23,9 @@ import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.request.ImportLegacyDbRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.edex.bmh.handler.AbstractBMHServerRequestHandler;
+import com.raytheon.uf.edex.bmh.handler.AbstractBMHLoggingServerRequestHandler;
 import com.raytheon.uf.edex.bmh.legacy.ImportLegacyDatabase;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
  * 
@@ -37,6 +38,7 @@ import com.raytheon.uf.edex.bmh.legacy.ImportLegacyDatabase;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Dec 05, 2014  3824     rferrel     Initial creation.
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
@@ -44,7 +46,12 @@ import com.raytheon.uf.edex.bmh.legacy.ImportLegacyDatabase;
  * @version 1.0
  */
 public class ImportLegacyDbHandler extends
-        AbstractBMHServerRequestHandler<ImportLegacyDbRequest> {
+        AbstractBMHLoggingServerRequestHandler<ImportLegacyDbRequest> {
+
+    public ImportLegacyDbHandler(IMessageLogger opMessageLogger,
+            IMessageLogger pracMessageLogger) {
+        super(opMessageLogger, pracMessageLogger);
+    }
 
     @Override
     public Boolean handleRequest(ImportLegacyDbRequest request)
@@ -55,7 +62,8 @@ public class ImportLegacyDbHandler extends
         boolean operational = request.isOperational();
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
 
-        new ImportLegacyDatabase(input, source, operational).saveImport();
+        new ImportLegacyDatabase(input, source, operational,
+                this.getMessageLogger(request)).saveImport();
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);

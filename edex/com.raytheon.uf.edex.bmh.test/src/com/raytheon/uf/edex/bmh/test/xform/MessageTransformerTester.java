@@ -67,6 +67,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * Jul 8, 2014  3302       bkowal      Initial creation
  * Sep 25, 2014 3620       bsteffen    Add seconds to periodicity and duration.
  * Oct 7, 2014  3642       bkowal      Update for compilation compatibility.
+ * Jan 6, 2015  3651       bkowal      Deprecated
  * 
  * </pre>
  * 
@@ -113,7 +114,7 @@ public class MessageTransformerTester extends AbstractBMHTester {
      */
     public MessageTransformerTester() {
         super(statusHandler, TEST_NAME);
-        this.inputMessageDao = new InputMessageDao();
+        this.inputMessageDao = new InputMessageDao(null);
         this.ttsVoiceDao = new TtsVoiceDao();
         this.messageTypeDao = new MessageTypeDao();
         this.transmitterGroupDao = new TransmitterGroupDao();

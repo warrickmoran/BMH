@@ -7,6 +7,8 @@
 
   <bean id="bmhMessagePurger" class="com.raytheon.uf.edex.bmh.purge.MessagePurger">
     <constructor-arg value="${bmh.purge.days}"/>
+    <constructor-arg ref="inputMessageDao" />
+    <constructor-arg ref="broadcastMsgDao" />
   </bean>
 
   <camelContext id="bmhPurgeRoutes" xmlns="http://camel.apache.org/schema/spring"

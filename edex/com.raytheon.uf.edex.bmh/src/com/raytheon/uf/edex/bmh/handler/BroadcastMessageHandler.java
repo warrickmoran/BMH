@@ -25,6 +25,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgResponse;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
  * Handles any requests to get or modify the state of {@link BroadcastMsg}s
@@ -38,6 +39,7 @@ import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
  * Aug 15, 2014  3432     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
@@ -46,7 +48,12 @@ import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
  */
 
 public class BroadcastMessageHandler extends
-        AbstractBMHServerRequestHandler<BroadcastMsgRequest> {
+        AbstractBMHLoggingServerRequestHandler<BroadcastMsgRequest> {
+
+    public BroadcastMessageHandler(IMessageLogger opMessageLogger,
+            IMessageLogger pracMessageLogger) {
+        super(opMessageLogger, pracMessageLogger);
+    }
 
     @Override
     public Object handleRequest(BroadcastMsgRequest request) throws Exception {
@@ -71,7 +78,8 @@ public class BroadcastMessageHandler extends
 
     private BroadcastMsgResponse getMessageById(BroadcastMsgRequest request) {
         BroadcastMsgResponse response = new BroadcastMsgResponse();
-        BroadcastMsgDao dao = new BroadcastMsgDao(request.isOperational());
+        BroadcastMsgDao dao = new BroadcastMsgDao(request.isOperational(),
+                this.getMessageLogger(request));
         List<BroadcastMsg> list = dao.getMessageByBroadcastId(request
                 .getMessageId());
         response.setMessageList(list);
@@ -82,10 +90,10 @@ public class BroadcastMessageHandler extends
     private BroadcastMsgResponse getMessagesByInputId(
             BroadcastMsgRequest request) {
         BroadcastMsgResponse response = new BroadcastMsgResponse();
-        BroadcastMsgDao dao = new BroadcastMsgDao(request.isOperational());
+        BroadcastMsgDao dao = new BroadcastMsgDao(request.isOperational(),
+                this.getMessageLogger(request));
         List<BroadcastMsg> list = dao.getMessagesByInputMsgId(request
-                .getMessageId()
-                .intValue());
+                .getMessageId().intValue());
         response.setMessageList(list);
 
         return response;

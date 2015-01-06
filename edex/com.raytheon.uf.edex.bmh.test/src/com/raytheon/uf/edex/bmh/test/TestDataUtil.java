@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.database.DataAccessLayerException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 8, 2014  3302       bkowal      Initial creation
+ * Jan 6, 2015  3651       bkowal      Deprecated
  * 
  * </pre>
  * 
@@ -53,11 +54,13 @@ import com.raytheon.uf.edex.database.DataAccessLayerException;
  * @version 1.0
  */
 
+@Deprecated
 public final class TestDataUtil {
 
     private static final TtsVoiceDao ttsVoiceDao = new TtsVoiceDao();
 
-    private static final InputMessageDao inputMessageDao = new InputMessageDao();
+    private static final InputMessageDao inputMessageDao = new InputMessageDao(
+            null);
 
     private static final TransmitterGroupDao transmitterGroupDao = new TransmitterGroupDao();
 

@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.dao;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
  * 
@@ -36,20 +37,22 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
  * Jul 07, 2014  3285     bsteffen    Initial creation
  * Sep 09, 2014  3554     bsteffen    Add getByGroupName
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class PlaylistDao extends AbstractBMHDao<Playlist, Integer> {
+public class PlaylistDao extends
+        AbstractBMHPersistenceLoggingDao<Playlist, Integer> {
 
-    public PlaylistDao() {
-        super(Playlist.class);
+    public PlaylistDao(final IMessageLogger messageLogger) {
+        super(Playlist.class, messageLogger);
     }
 
-    public PlaylistDao(boolean operational) {
-        super(operational, Playlist.class);
+    public PlaylistDao(boolean operational, final IMessageLogger messageLogger) {
+        super(operational, Playlist.class, messageLogger);
     }
 
     @SuppressWarnings("unchecked")

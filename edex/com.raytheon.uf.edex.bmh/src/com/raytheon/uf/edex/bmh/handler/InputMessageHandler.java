@@ -43,6 +43,7 @@ import com.raytheon.uf.common.bmh.request.InputMessageResponse;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
  * Handles any requests to get or modify the state of {@link InputMessage}s.
@@ -59,6 +60,7 @@ import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
  * Nov 02, 2014   3785     mpduff       Add ValidatedMessage when getting by PkId
  * Nov 03, 2014   3790     lvenable     Updated enum name.
  * Nov 05, 2014   3748     bkowal       Created validated msg dao based on mode.
+ * Jan 06, 2015   3651     bkowal       Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
@@ -67,7 +69,12 @@ import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
  */
 
 public class InputMessageHandler extends
-        AbstractBMHServerRequestHandler<InputMessageRequest> {
+        AbstractBMHLoggingServerRequestHandler<InputMessageRequest> {
+
+    public InputMessageHandler(IMessageLogger opMessageLogger,
+            IMessageLogger pracMessageLogger) {
+        super(opMessageLogger, pracMessageLogger);
+    }
 
     @Override
     public Object handleRequest(InputMessageRequest request) throws Exception {
@@ -103,7 +110,8 @@ public class InputMessageHandler extends
      */
     private InputMessageResponse getIdNameAfosCreation(
             InputMessageRequest request) {
-        InputMessageDao dao = new InputMessageDao(request.isOperational());
+        InputMessageDao dao = new InputMessageDao(request.isOperational(),
+                this.getMessageLogger(request));
         InputMessageResponse response = new InputMessageResponse();
 
         List<InputMessage> inputMessageList = dao
@@ -121,7 +129,8 @@ public class InputMessageHandler extends
      * @return Input message response containing the requested information.
      */
     private InputMessageResponse getAllInputMessages(InputMessageRequest request) {
-        InputMessageDao dao = new InputMessageDao(request.isOperational());
+        InputMessageDao dao = new InputMessageDao(request.isOperational(),
+                this.getMessageLogger(request));
         InputMessageResponse response = new InputMessageResponse();
 
         List<InputMessage> inputMessageList = dao.getInputMessages();
@@ -140,7 +149,8 @@ public class InputMessageHandler extends
      */
     private InputMessageResponse getByPkId(InputMessageRequest request)
             throws Exception {
-        InputMessageDao dao = new InputMessageDao(request.isOperational());
+        InputMessageDao dao = new InputMessageDao(request.isOperational(),
+                this.getMessageLogger(request));
         InputMessageAudioResponse response = new InputMessageAudioResponse();
 
         InputMessage im = dao.getByID(request.getPkId());
@@ -149,7 +159,7 @@ public class InputMessageHandler extends
         response.addInputMessage(im);
 
         ValidatedMessageDao validatedMsgDao = new ValidatedMessageDao(
-                request.isOperational());
+                request.isOperational(), this.getMessageLogger(request));
         ValidatedMessage validatedMsg = validatedMsgDao
                 .getValidatedMsgByInputMsg(im);
         if (validatedMsg == null) {
@@ -164,7 +174,7 @@ public class InputMessageHandler extends
     private List<InputMessageAudioData> getAudioContent(
             InputMessageRequest request) throws AudioRetrievalException {
         BroadcastMsgDao broadcastMsgDao = new BroadcastMsgDao(
-                request.isOperational());
+                request.isOperational(), this.getMessageLogger(request));
         List<BroadcastMsg> msgs = broadcastMsgDao
                 .getMessagesByInputMsgId(request.getPkId());
         if (msgs.isEmpty()) {

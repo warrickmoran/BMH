@@ -31,6 +31,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
  * BMH DAO for {@link BroadcastMsg}.
@@ -51,6 +52,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Oct 23, 2014  3748     bkowal      Added getMessagesByInputMsgId
  * Nov 26, 2014  3613     bsteffen    Add getMessageByFragmentPath
  * Dec 08, 2014  3864     bsteffen    Redo some of the playlist manager queries.
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
@@ -58,14 +60,16 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * @version 1.0
  */
 
-public class BroadcastMsgDao extends AbstractBMHDao<BroadcastMsg, Long> {
+public class BroadcastMsgDao extends
+        AbstractBMHPersistenceLoggingDao<BroadcastMsg, Long> {
 
-    public BroadcastMsgDao() {
-        super(BroadcastMsg.class);
+    public BroadcastMsgDao(final IMessageLogger messageLogger) {
+        super(BroadcastMsg.class, messageLogger);
     }
 
-    public BroadcastMsgDao(boolean operational) {
-        super(operational, BroadcastMsg.class);
+    public BroadcastMsgDao(boolean operational,
+            final IMessageLogger messageLogger) {
+        super(operational, BroadcastMsg.class, messageLogger);
     }
 
     @SuppressWarnings("unchecked")

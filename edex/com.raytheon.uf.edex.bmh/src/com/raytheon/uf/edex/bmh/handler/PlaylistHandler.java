@@ -24,6 +24,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.request.PlaylistRequest;
 import com.raytheon.uf.common.bmh.request.PlaylistResponse;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
 
 /**
@@ -39,6 +40,7 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 21, 2014  3655     bkowal      Updated to use {@link IPlaylistData}.
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
@@ -47,11 +49,16 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
  */
 
 public class PlaylistHandler extends
-        AbstractBMHServerRequestHandler<PlaylistRequest> {
+        AbstractBMHLoggingServerRequestHandler<PlaylistRequest> {
 
     private PlaylistStateManager playlistStateManager;
 
     private PlaylistStateManager practicePlaylistStateManager;
+
+    public PlaylistHandler(IMessageLogger opMessageLogger,
+            IMessageLogger pracMessageLogger) {
+        super(opMessageLogger, pracMessageLogger);
+    }
 
     @Override
     public Object handleRequest(PlaylistRequest request) {
@@ -74,7 +81,8 @@ public class PlaylistHandler extends
 
     private PlaylistResponse getPlaylistBySuiteAndGroup(PlaylistRequest request) {
         PlaylistResponse response = new PlaylistResponse();
-        PlaylistDao dao = new PlaylistDao(request.isOperational());
+        PlaylistDao dao = new PlaylistDao(request.isOperational(),
+                this.getMessageLogger(request));
         Playlist playlist = dao.getBySuiteAndGroupName(request.getSuiteName(),
                 request.getGroupName());
         response.setPlaylist(playlist);

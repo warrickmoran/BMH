@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
  * 
@@ -41,20 +42,23 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Nov 03, 2014  3790     lvenable    Added code for the active field.
  * Nov 26, 2014  3613     bsteffen    Add getPurgableMessages
+ * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class InputMessageDao extends AbstractBMHDao<InputMessage, Integer> {
+public class InputMessageDao extends
+        AbstractBMHPersistenceLoggingDao<InputMessage, Integer> {
 
-    public InputMessageDao() {
-        super(InputMessage.class);
+    public InputMessageDao(final IMessageLogger messageLogger) {
+        super(InputMessage.class, messageLogger);
     }
 
-    public InputMessageDao(boolean operational) {
-        super(operational, InputMessage.class);
+    public InputMessageDao(boolean operational,
+            final IMessageLogger messageLogger) {
+        super(operational, InputMessage.class, messageLogger);
     }
 
     /**
