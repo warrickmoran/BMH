@@ -33,6 +33,11 @@ import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
@@ -62,6 +67,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Dec 11, 2014 3618       bkowal      Added {@link #GET_NATIONAL_DICTIONARIES}.
  * Dec 15, 2014 3618       bkowal      Added {@link #GET_NATIONAL_DICTIONARY_FOR_LANGUAGE}.
  * Dec 16, 2014 3618       bkowal      Added {@link #GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE}.
+ * Jan 06, 2015 3931       bkowal      Added XML JAXB Marshaling tags.
  * </pre>
  * 
  * @author rjpeter
@@ -74,6 +80,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
         @NamedQuery(name = Dictionary.GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE, query = Dictionary.GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE_QUERY) })
 @Entity
 @Table(name = "dictionary", schema = "bmh")
+@XmlRootElement(name = "bmhDictionary")
+@XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
 @DynamicSerializeTypeAdapter(factory = DictionaryAdapter.class)
 public class Dictionary {
@@ -96,14 +104,17 @@ public class Dictionary {
     @Column(length = 20)
     @DiffString
     @DiffTitle(position = 1)
+    @XmlAttribute
     private String name = null;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 7, nullable = false)
+    @XmlAttribute
     private Language language = Language.ENGLISH;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "dictionary", fetch = FetchType.EAGER)
     @Fetch(FetchMode.SELECT)
+    @XmlElement(name = "word")
     private Set<Word> words;
 
     /**
@@ -115,6 +126,7 @@ public class Dictionary {
      * transmitters.
      */
     @Column(nullable = false)
+    @XmlAttribute
     private boolean national = false;
 
     public String getName() {

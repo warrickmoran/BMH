@@ -29,6 +29,9 @@ import javax.persistence.ManyToOne;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlAttribute;
 
 import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
@@ -49,6 +52,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Jul 29, 2014  3407      mpduff      Removed HashCode and Equals methods, removed dynamic column
  * Aug 04, 2014 3175       rjpeter     Added serialization adapter to fix circular reference.
  * Oct 16, 2014 3636       rferrel     Added logging.
+ * Jan 06, 2015 3931       bkowal      Added XML JAXB Marshaling tags.
  * </pre>
  * 
  * @author rjpeter
@@ -60,6 +64,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
 @SequenceGenerator(initialValue = 1, name = Word.GEN, sequenceName = "word_seq")
 @DynamicSerialize
 @DynamicSerializeTypeAdapter(factory = WordAdapter.class)
+@XmlAccessorType(XmlAccessType.NONE)
 public class Word {
     static final String GEN = "Word Generator";
 
@@ -74,9 +79,11 @@ public class Word {
     @DiffTitle(position = 2)
     @DiffString
     @Column(length = 150)
+    @XmlAttribute(name = "text")
     private String word;
 
     @Column(columnDefinition = "TEXT", nullable = false)
+    @XmlAttribute
     private String substitute;
 
     /** An identifier used to link this Word to its Dictionary */

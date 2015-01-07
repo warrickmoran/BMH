@@ -19,10 +19,17 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.dict;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import javax.xml.bind.DataBindingException;
+import javax.xml.bind.JAXB;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
@@ -33,6 +40,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
@@ -74,6 +82,7 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * Dec 16, 2014  3618      bkowal      Disable delete when a national dictionary
  *                                     is selected.
  * Jan 05, 2014  3618      bkowal      Specify the {@link Dictionary} for deletion.
+ * Jan 06, 2015  3931      bkowal      Implemented {@link Dictionary} export.
  * 
  * </pre>
  * 
@@ -120,6 +129,9 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
 
     /** The edit word button */
     private Button editWordBtn;
+
+    /** The dictionary export button **/
+    private Button exportDictionaryBtn;
 
     /** The new/edit word dialog */
     private NewEditWordDlg wordDlg;
@@ -282,6 +294,17 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
             }
         });
 
+        gd = new GridData(150, SWT.DEFAULT);
+        exportDictionaryBtn = new Button(comp, SWT.PUSH);
+        exportDictionaryBtn.setText("Export Dictionary...");
+        exportDictionaryBtn.setLayoutData(gd);
+        exportDictionaryBtn.setEnabled(false);
+        exportDictionaryBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleDictionaryExportAction();
+            }
+        });
     }
 
     /**
@@ -348,19 +371,19 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
                 statusHandler.error("Error getting dictionary " + name, e);
                 return;
             }
-            if (this.selectedDictionary.isNational()) {
-                /* the user will not be allowed to remove national dictionaries. */
-                this.deleteDictionaryBtn.setEnabled(false);
-            } else {
-                this.deleteDictionaryBtn.setEnabled(true);
-            }
+            /* users will not be able to delete national dictionaries */
+            this.deleteDictionaryBtn.setEnabled(this.selectedDictionary
+                    .isNational() == false);
             this.newWordBtn.setEnabled(true);
+            this.exportDictionaryBtn.setEnabled(this.selectedDictionary
+                    .getWords().isEmpty() == false);
             populateTable();
         } else {
             deleteDictionaryBtn.setEnabled(false);
             newWordBtn.setEnabled(false);
             editWordBtn.setEnabled(false);
             deleteWordBtn.setEnabled(false);
+            this.exportDictionaryBtn.setEnabled(false);
             selectedDictionary = null;
             populateTable();
         }
@@ -521,6 +544,52 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
             populateTable();
             editWordBtn.setEnabled(false);
             deleteWordBtn.setEnabled(false);
+        }
+    }
+
+    /**
+     * Export the selected {@link Dictionary} to a user specified file.
+     */
+    private void handleDictionaryExportAction() {
+        FileDialog dialog = new FileDialog(this.shell, SWT.SAVE);
+        dialog.setText("Export BMH Dictionary");
+        dialog.setFilterPath(System.getProperty("user.home"));
+        dialog.setFilterExtensions(new String[] { "*.xml" });
+        String fileName = dialog.open();
+        if (fileName == null) {
+            return;
+        }
+        fileName = fileName.trim();
+        if (fileName.endsWith(".xml") == false) {
+            fileName += ".xml";
+        }
+
+        Path dictionaryExportPath = Paths.get(fileName);
+        /**
+         * Verify that all containing directories exist and create them if
+         * needed.
+         */
+        if (Files.exists(dictionaryExportPath.getParent()) == false) {
+            try {
+                Files.createDirectories(dictionaryExportPath.getParent());
+            } catch (IOException e) {
+                statusHandler.error(
+                        "Failed to create the dictionary export, cannot create directory: "
+                                + dictionaryExportPath.getParent().toString(),
+                        e);
+                return;
+            }
+        }
+
+        /**
+         * Create the {@link Dictionary} export XML file.
+         */
+        try {
+            JAXB.marshal(this.selectedDictionary,
+                    Files.newOutputStream(dictionaryExportPath));
+        } catch (DataBindingException | IOException e) {
+            statusHandler.error("Failed to create the dictionary export: "
+                    + dictionaryExportPath.toString(), e);
         }
     }
 
