@@ -77,6 +77,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 13, 2014    3803    bkowal      Implemented dialog.
  * Dec 4, 2014     3880    bkowal      Only allow the user to select a supported
  *                                     conversion format.
+ * Jan 07, 2015    3899    bkowal      Allow a user to enable/disable {@link LdadConfig}s.
  * 
  * </pre>
  * 
@@ -97,6 +98,10 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
     private static final String CREATE_TITLE = "Create New LDAD Configuration";
 
     private static final String EDIT_TITLE = "Edit LDAD Configuration";
+
+    private static final String CONFIG_ENABLED = "Enabled";
+
+    private static final String CONFIG_DISABLED = "Disabled";
 
     /**
      * Data managers
@@ -135,6 +140,11 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
     private Combo dictCbo;
 
     /**
+     * {@link Button} used to enable and disable a ldad configuration.
+     */
+    private Button statusButton;
+
+    /**
      * Encoding selection combo box
      */
     private Combo encodingCbo;
@@ -148,7 +158,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
     private LdadConfig ldadConfig;
 
     /**
-     * Construtor.
+     * Constructor.
      * 
      * @param parentShell
      *            The parent
@@ -158,7 +168,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
     }
 
     /**
-     * Construtor.
+     * Constructor.
      * 
      * @param parentShell
      *            The parent
@@ -233,6 +243,9 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         configComp.setLayout(gl);
         configComp.setLayoutData(gd);
 
+        /**
+         * Ldad Configuration Name.
+         */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label nameLbl = new Label(configComp, SWT.NONE);
         nameLbl.setText("Name:");
@@ -243,6 +256,9 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         nameTxt.setLayoutData(gd);
         nameTxt.setTextLimit(40);
 
+        /**
+         * Ldad Configuration Host.
+         */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label hostLbl = new Label(configComp, SWT.NONE);
         hostLbl.setText("Host:");
@@ -253,6 +269,9 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         hostTxt.setLayoutData(gd);
         hostTxt.setTextLimit(60);
 
+        /**
+         * Ldad Configuration Destination Directory.
+         */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label directoryLbl = new Label(configComp, SWT.NONE);
         directoryLbl.setText("Directory:");
@@ -263,6 +282,9 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         directoryTxt.setLayoutData(gd);
         directoryTxt.setTextLimit(250);
 
+        /**
+         * Ldad Configuration Encoding.
+         */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label encodingLbl = new Label(configComp, SWT.NONE);
         encodingLbl.setText("Encoding:");
@@ -273,6 +295,9 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         encodingCbo.setLayoutData(gd);
         encodingCbo.select(0);
 
+        /**
+         * Ldad Configuration Voice.
+         */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label voiceLbl = new Label(configComp, SWT.NONE);
         voiceLbl.setText("Voice:");
@@ -282,6 +307,9 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         voiceCbo = new Combo(configComp, SWT.SINGLE | SWT.READ_ONLY);
         voiceCbo.setLayoutData(gd);
 
+        /**
+         * Ldad Configuration Dictionary.
+         */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label dictLbl = new Label(configComp, SWT.NONE);
         dictLbl.setText("Dictionary:");
@@ -291,6 +319,28 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         gd.horizontalAlignment = SWT.LEFT;
         dictCbo = new Combo(configComp, SWT.SINGLE);
         dictCbo.setLayoutData(gd);
+
+        /**
+         * Ldad Configuration Status.
+         */
+        gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
+        Label statusLbl = new Label(configComp, SWT.NONE);
+        statusLbl.setText("Status:");
+        statusLbl.setLayoutData(gd);
+
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.horizontalAlignment = SWT.LEFT;
+        gd.widthHint = 120;
+        statusButton = new Button(configComp, SWT.TOGGLE);
+        statusButton.setText(CONFIG_ENABLED);
+        statusButton.setSelection(true);
+        statusButton.setLayoutData(gd);
+        statusButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleStatusToggle();
+            }
+        });
 
         /* selected message types */
         this.createSelectedMsgTypesGroup();
@@ -424,6 +474,10 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         if (this.ldadConfig.getDictionary() != null) {
             this.dictCbo.setText(this.ldadConfig.getDictionary().getName());
         }
+        if (this.ldadConfig.isEnabled() == false) {
+            this.statusButton.setSelection(false);
+            this.statusButton.setText(CONFIG_DISABLED);
+        }
         this.addSelectedMsgType(this.ldadConfig.getMessageTypes());
     }
 
@@ -495,6 +549,18 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         // TODO: need to update if we switch to a numeric dictionary id.
         for (String dictionaryName : dictionaryNames) {
             this.dictCbo.add(dictionaryName);
+        }
+    }
+
+    /**
+     * Updates the text on {@link #statusButton} based to reflect its current
+     * toggled state.
+     */
+    private void handleStatusToggle() {
+        if (this.statusButton.getSelection()) {
+            this.statusButton.setText(CONFIG_ENABLED);
+        } else {
+            this.statusButton.setText(CONFIG_DISABLED);
         }
     }
 
@@ -595,6 +661,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
                 .getText()));
         this.ldadConfig.setEncoding(BMHAudioFormat
                 .lookupByExtension(this.encodingCbo.getText()));
+        this.ldadConfig.setEnabled(this.statusButton.getSelection());
 
         LdadConfig savedLdadConfig = null;
         try {

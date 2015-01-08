@@ -119,6 +119,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jan 05, 2015 3618       bkowal      Do not attempt to insert {@code null} values
  *                                     into a Google {@link Table}. Merge {@link Dictionary}(ies}
  *                                     by {@link Word} regex.
+ * Jan 07, 2015 3899       bkowal      Skip {@link LdadConfig}s that have been disabled.
  * 
  * </pre>
  * 
@@ -352,6 +353,16 @@ public class MessageTransformer implements IContextStateProcessor {
         SSMLDocument defaultSSMLDocument = this.applyTransformations(
                 new LinkedList<>(transformationCandidates), formattedText);
         for (LdadConfig ldadConfig : ldadConfigurations) {
+            if (ldadConfig.isEnabled() == false) {
+                /**
+                 * This {@link LdadConfig} is currently disabled. Skip it.
+                 */
+                statusHandler.info("Skipping disabled ldad configuration: "
+                        + ldadConfig.getName() + " (id = " + ldadConfig.getId()
+                        + ") for message type: " + messageType.getAfosid()
+                        + ".");
+                continue;
+            }
             LdadMsg ldadMsg = new LdadMsg();
             ldadMsg.setLdadId(ldadConfig.getId());
             ldadMsg.setAfosid(messageType.getAfosid());

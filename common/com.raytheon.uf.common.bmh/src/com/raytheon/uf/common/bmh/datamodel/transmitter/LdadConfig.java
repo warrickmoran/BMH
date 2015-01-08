@@ -64,6 +64,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 11, 2014 3803       bkowal      Added fields and methods.
  * Nov 13, 2014 3803       bkowal      Added selectLdadConfigByName
  * Nov 19, 2014 3385       bkowal      Added {@link LdadConfig#SELECT_LDAD_CONFIG_BY_MSG_TYPE_QUERY}
+ * Jan 07, 2015 3899       bkowal      Added {@link #enabled}.
  * 
  * </pre>
  * 
@@ -131,6 +132,15 @@ public class LdadConfig {
     @DynamicSerializeElement
     @Enumerated(EnumType.STRING)
     private BMHAudioFormat encoding;
+
+    /**
+     * boolean flag indicating whether or not this ldad configuration is
+     * enabled. When n ldad configuration is disabled, no product dissemination
+     * will occur on its behalf.
+     */
+    @Column(nullable = false)
+    @DynamicSerializeElement
+    private boolean enabled = true;
 
     /**
      * @return the id
@@ -257,5 +267,20 @@ public class LdadConfig {
      */
     public void setEncoding(BMHAudioFormat encoding) {
         this.encoding = encoding;
+    }
+
+    /**
+     * @return the enabled
+     */
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    /**
+     * @param enabled
+     *            the enabled to set
+     */
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 }
