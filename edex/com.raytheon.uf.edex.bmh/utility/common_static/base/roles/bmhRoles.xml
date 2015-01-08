@@ -6,6 +6,11 @@
          This permission allows the user to access as BMH Transmitter Configuration dialog.
        </description>
    </permission>
+   <permission id="bmh.dialog.transmitterConfiguration.decommission">
+      <description>
+         This permission allows a user to commission/decommission BMH Transmitters.
+       </description>
+   </permission>
    <permission id="bmh.dialog.transmitterAlignment">
       <description>
          This permission allows the user to access BMH Transmitter Alignment dialog.
@@ -106,6 +111,7 @@
           This role is for BMH administrator permissions.
        </roleDescription>
        <rolePermission>bmh.dialog.transmitterConfiguration</rolePermission>
+       <rolePermission>bmh.dialog.transmitterConfiguration.decommission</rolePermission>
        <rolePermission>bmh.dialog.transmitterAlignment</rolePermission>
        <rolePermission>bmh.dialog.listeningAreas</rolePermission>
        <rolePermission>bmh.dialog.listeningZones</rolePermission>
