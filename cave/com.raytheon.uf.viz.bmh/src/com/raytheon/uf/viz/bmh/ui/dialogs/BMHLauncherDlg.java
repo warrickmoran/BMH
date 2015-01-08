@@ -20,6 +20,9 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs;
 
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -124,10 +127,11 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 17, 2014   3808     bkowal      Add the Broadcast Live dialog.
  * Nov 19, 2014   3349     lvenable    Use the new System status dialog.
  * Dec 01, 2014   3698     rferrel     Add warning to copyOperationalDb.
- * Dec 10, 2014   3900     lvenable    Added some spacing and increaced the size of the quick access
+ * Dec 10, 2014   3900     lvenable    Added some spacing and increased the size of the quick access
  * Dec 10, 2014   3824     rferrel     Add importLegacyDB.
  *                                     buttons to make the launcher dialog a bit larger.
  * Dec 15, 2014   3618     bkowal      Added the Voice Configuration dialog.
+ * Jan 07, 2015   3931     bkowal      Added an option to import a BMH dictionary.
  * 
  * </pre>
  * 
@@ -925,6 +929,18 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         });
 
         /*
+         * Import BMH Dictionaries.
+         */
+        MenuItem importDictionaryMI = new MenuItem(maintenanceMenu, SWT.PUSH);
+        importDictionaryMI.setText("Import BMH Dictionary...");
+        importDictionaryMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                launchBMHDictionaryImporter();
+            }
+        });
+
+        /*
          * Convert Legacy Dictionary
          */
         MenuItem convertDictMI = new MenuItem(maintenanceMenu, SWT.PUSH);
@@ -1030,6 +1046,49 @@ public class BMHLauncherDlg extends CaveSWTDialog {
             } else {
                 dictManagerDlg.bringToTop();
             }
+        }
+    }
+
+    /**
+     * Allows the user to import a BMH dictionary using a XML file.
+     */
+    private void launchBMHDictionaryImporter() {
+        /*
+         * If the user can access the dictionary manager, they will be allowed
+         * to import bmh dictionaries.
+         */
+        if (isAuthorized(DlgInfo.MANAGE_DICTIONARIES)) {
+            FileDialog dialog = new FileDialog(this.shell, SWT.OPEN);
+            dialog.setFilterPath(System.getProperty("user.home"));
+            dialog.setFilterExtensions(new String[] { "*.xml" });
+            dialog.setText("Import BMH Dictionary");
+            String fileName = dialog.open();
+            if (fileName == null) {
+                return;
+            }
+
+            /**
+             * Get the {@link Path} associated with the specified file and
+             * verify that it exists.
+             */
+            Path importXMLPath = Paths.get(fileName);
+            if (Files.exists(importXMLPath) == false) {
+                statusHandler
+                        .error("The BMH Dictionary Import has failed. The specified xml import file does not exist: "
+                                + importXMLPath.toString());
+                return;
+            }
+            /**
+             * Open the {@link DictionaryManagerDlg} and start the import.
+             */
+            if (this.dictManagerDlg == null || this.dictManagerDlg.isDisposed()) {
+                dictManagerDlg = new DictionaryManagerDlg(shell,
+                        this.dlgsToValidateCloseMap);
+                dictManagerDlg.open();
+            } else {
+                dictManagerDlg.bringToTop();
+            }
+            dictManagerDlg.initiateDictionaryImport(importXMLPath);
         }
     }
 

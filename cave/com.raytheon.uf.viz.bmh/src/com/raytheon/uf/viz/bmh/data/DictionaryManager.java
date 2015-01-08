@@ -56,6 +56,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Dec 15, 2014    3618    bkowal      Added {@link #getNationalDictionaryForLanguage(Language)} and
  *                                     {@link #getNonNationalDictionariesForLanguage(Language)}.
  * Jan 05, 2015    3618    bkowal      Specify the {@link Dictionary} for deletion.
+ * Jan 07, 2015    3931    bkowal      Added {@link #verifyNameUniqueness(String)}.
  * </pre>
  * 
  * @author mpduff
@@ -258,8 +259,7 @@ public class DictionaryManager {
      * @throws VizException
      */
     public void createDictionary(Dictionary dictionary) throws Exception {
-        List<String> names = getAllBMHDictionaryNames();
-        if (names.contains(dictionary.getName())) {
+        if (this.verifyNameUniqueness(dictionary.getName()) == false) {
             String msg = "A dictionary with that name already exists.\n"
                     + "Loading existing dictionary.";
             DialogUtility.showMessageBox(Display.getCurrent().getActiveShell(),
@@ -271,6 +271,17 @@ public class DictionaryManager {
 
             BmhUtils.sendRequest(req);
         }
+    }
+
+    /**
+     * Determines if the specified {@link Dictionary} name is unique.
+     * 
+     * @param name
+     *            the specified {@link Dictionary} name
+     * @return {@code true} if the name is unique; {@code false}, otherwise
+     */
+    public boolean verifyNameUniqueness(final String name) throws Exception {
+        return getAllBMHDictionaryNames().contains(name) == false;
     }
 
     /**

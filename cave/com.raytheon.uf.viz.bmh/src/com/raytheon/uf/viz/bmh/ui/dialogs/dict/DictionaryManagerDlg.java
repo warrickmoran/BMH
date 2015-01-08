@@ -83,6 +83,7 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  *                                     is selected.
  * Jan 05, 2014  3618      bkowal      Specify the {@link Dictionary} for deletion.
  * Jan 06, 2015  3931      bkowal      Implemented {@link Dictionary} export.
+ * Jan 07, 2014  3931      bkowal      Implemented a {@link Dictionary} import capability.
  * 
  * </pre>
  * 
@@ -115,6 +116,9 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
     /** Dictionary Table data */
     private TableData tableData;
 
+    /** Create a dictionary button **/
+    private Button newDictionaryBtn;
+
     /** Delete the dictionary button */
     private Button deleteDictionaryBtn;
 
@@ -137,6 +141,12 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
     private NewEditWordDlg wordDlg;
 
     private NewDictionaryDlg newDictDlg;
+
+    /**
+     * boolean flag indicating whether or not a dictionary import is ongoing.
+     * Used to ensure that users do not close the dialog during an import.
+     */
+    private volatile boolean importInProcess = false;
 
     /**
      * Constructor.
@@ -216,10 +226,10 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
         });
 
         gd = new GridData(120, SWT.DEFAULT);
-        Button newBtn = new Button(comp, SWT.PUSH);
-        newBtn.setText("New Dictionary...");
-        newBtn.setLayoutData(gd);
-        newBtn.addSelectionListener(new SelectionAdapter() {
+        newDictionaryBtn = new Button(comp, SWT.PUSH);
+        newDictionaryBtn.setText("New Dictionary...");
+        newDictionaryBtn.setLayoutData(gd);
+        newDictionaryBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 newDictionaryAction();
@@ -620,11 +630,123 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
 
     @Override
     public boolean okToClose() {
+        if (this.importInProcess) {
+            return false;
+        }
+
         if ((wordDlg == null) || wordDlg.isDisposed()) {
             return true;
         }
 
         return false;
+    }
+
+    public void initiateDictionaryImport(final Path importXMLPath) {
+        this.importInProcess = true;
+
+        /**
+         * Disable all GUI controls for the duration of the import attempt.
+         */
+        this.dictCombo.setEnabled(false);
+        this.newDictionaryBtn.setEnabled(false);
+        this.deleteDictionaryBtn.setEnabled(false);
+        this.newWordBtn.setEnabled(false);
+        this.editWordBtn.setEnabled(false);
+        this.deleteWordBtn.setEnabled(false);
+        this.exportDictionaryBtn.setEnabled(false);
+
+        Dictionary importedDictionary = null;
+        try {
+            importedDictionary = JAXB.unmarshal(
+                    Files.newInputStream(importXMLPath), Dictionary.class);
+        } catch (DataBindingException | IOException e) {
+            statusHandler.error(
+                    "The BMH Dictionary Import has failed. Failed to read the import xml file: "
+                            + importXMLPath.toString(), e);
+
+            this.importFailed();
+            return;
+        }
+
+        /**
+         * Verify the uniqueness of the {@link Dictionary} name.
+         */
+        boolean unique = false;
+        try {
+            unique = this.dictionaryManager
+                    .verifyNameUniqueness(importedDictionary.getName());
+        } catch (Exception e) {
+            statusHandler
+                    .error("The BMH Dictionary Import has failed. Failed to determine if the imported dictionary has a unique name: "
+                            + importedDictionary.toString(), e);
+            this.importFailed();
+            return;
+        }
+        /**
+         * If the {@link Dictionary} name is not unique, allow the user to
+         * rename the dictionary.
+         */
+        if (unique == false) {
+            RenameDictionaryDlg renameDlg = new RenameDictionaryDlg(this.shell,
+                    importedDictionary);
+            DialogUtility
+                    .showMessageBox(
+                            this.shell,
+                            SWT.ICON_ERROR | SWT.OK,
+                            "Dictionary Manager - Import BMH Dictionary",
+                            "A Dictionary with name: "
+                                    + importedDictionary.getName()
+                                    + " already exists. Please enter a new name for the dictionary import.");
+            /*
+             * currently not using ICloseCallback because we want everything to
+             * remain local to this method.
+             */
+            Object returnValue = renameDlg.open();
+            if (returnValue == null
+                    || returnValue instanceof Dictionary == false) {
+                importedDictionary = null;
+            } else {
+                importedDictionary = (Dictionary) returnValue;
+            }
+            /**
+             * handle potential import cancellation.
+             */
+            if (importedDictionary == null) {
+                statusHandler
+                        .info("The BMH Dictionary Import has been cancelled by the user.");
+                this.importFailed();
+                return;
+            }
+        }
+
+        /**
+         * The {@link Dictionary} name is unique. Create the {@link Dictionary}.
+         */
+        try {
+            this.dictionaryManager.createDictionary(importedDictionary);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "The BMH Dictionary Import has failed. Failed to create dictionary: "
+                            + importedDictionary.toString(), e);
+            this.importFailed();
+            return;
+        }
+
+        /**
+         * The imported {@link Dictionary} was successfully created. Select it.
+         */
+        this.importInProcess = false;
+        // Re-enable controls that are normally always enabled.
+        this.dictCombo.setEnabled(true);
+        this.newDictionaryBtn.setEnabled(true);
+        populateDictionaryCombo(importedDictionary.getName());
+    }
+
+    private void importFailed() {
+        this.importInProcess = false;
+        this.dictCombo.setEnabled(true);
+        this.newDictionaryBtn.setEnabled(true);
+        this.dictionarySelectAction();
     }
 
     /**

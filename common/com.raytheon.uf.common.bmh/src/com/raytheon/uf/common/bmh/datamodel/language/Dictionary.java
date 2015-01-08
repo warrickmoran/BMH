@@ -126,7 +126,6 @@ public class Dictionary {
      * transmitters.
      */
     @Column(nullable = false)
-    @XmlAttribute
     private boolean national = false;
 
     public String getName() {

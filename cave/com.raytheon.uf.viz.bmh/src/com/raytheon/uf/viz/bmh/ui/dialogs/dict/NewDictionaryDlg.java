@@ -54,6 +54,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Dec 16, 2014    3618    bkowal      Allow the user to create a national dictionary
  *                                     if one does not already exist for the selected language.
  * Jan 05, 2015    3618    bkowal      Fix "National Dictionary" checkbox text.
+ * Jan 07, 2015    3931    bkowal      Abstracted to allow for a {@link Dictionary} renaming 
+ *                                     capability.
  * 
  * </pre>
  * 
@@ -62,29 +64,29 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 
 public class NewDictionaryDlg extends CaveSWTDialog {
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(NewDictionaryDlg.class);
+    protected final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
 
     /**
      * Used to retrieve {@link Dictionary} information.
      */
-    private final DictionaryManager dm = new DictionaryManager();
+    protected final DictionaryManager dm = new DictionaryManager();
 
     /**
      * Dictionary name text field
      */
-    private Text nameTxt;
+    protected Text nameTxt;
 
     /**
      * Dictionary language combo
      */
-    private Combo languageCombo;
+    protected Combo languageCombo;
 
     /**
      * National Dictionary checkbox. Note, this button will only be visible if
      * there is not already a national dictionary for the selected language.
      */
-    private Button nationalBtn;
+    protected Button nationalBtn;
 
     /**
      * Constructor.
@@ -119,6 +121,7 @@ public class NewDictionaryDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         nameTxt = new Text(shell, SWT.BORDER);
         nameTxt.setLayoutData(gd);
+        nameTxt.setTextLimit(20);
 
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
         Label languageLbl = new Label(shell, SWT.NONE);
@@ -168,20 +171,7 @@ public class NewDictionaryDlg extends CaveSWTDialog {
         okBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (nameTxt.getText().length() > 0) {
-                    Dictionary dict = new Dictionary();
-                    dict.setName(nameTxt.getText().trim());
-                    dict.setLanguage(Language.valueOf(languageCombo.getText()));
-                    dict.setNational(nationalBtn.getSelection());
-                    setReturnValue(dict);
-                    close();
-                } else {
-                    MessageBox mb = new MessageBox(getShell(), SWT.ICON_WARNING
-                            | SWT.OK);
-                    mb.setText("Enter Name");
-                    mb.setMessage("Enter a new dictionary name");
-                    mb.open();
-                }
+                handleOkAction();
             }
         });
 
@@ -192,12 +182,48 @@ public class NewDictionaryDlg extends CaveSWTDialog {
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                setReturnValue(null);
                 close();
             }
         });
 
         shell.setDefaultButton(okBtn);
         this.determineNationalAvailability();
+    }
+
+    /**
+     * Action invoked when the user clicks on the OK button.
+     */
+    protected void handleOkAction() {
+        if (this.validate() == false) {
+            return;
+        }
+
+        Dictionary dict = new Dictionary();
+        dict.setName(nameTxt.getText().trim());
+        dict.setLanguage(Language.valueOf(languageCombo.getText()));
+        dict.setNational(nationalBtn.getSelection());
+        setReturnValue(dict);
+        close();
+    }
+
+    /**
+     * Validate that all required information has been entered correctly.
+     * 
+     * @return {@code true}, if the form has been filled out correctly;
+     *         {@code false}, otherwise
+     */
+    protected boolean validate() {
+        if (nameTxt.getText().trim().isEmpty()) {
+            MessageBox mb = new MessageBox(getShell(), SWT.ICON_WARNING
+                    | SWT.OK);
+            mb.setText("Enter Name");
+            mb.setMessage("Enter a dictionary name.");
+            mb.open();
+            return false;
+        }
+
+        return true;
     }
 
     private void determineNationalAvailability() {
