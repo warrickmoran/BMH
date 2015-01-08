@@ -68,6 +68,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 17, 2014  3793     bsteffen    Add same transmitters.
  * Nov 26, 2014  3613     bsteffen    Add getPurgableInputMessages
  * Dec 11, 2014  3905     lvenable    Added a method to return a set of area codes.
+ * Jan 02, 2014  3833     lvenable    Added query to get unexpired messages.
  * 
  * </pre>
  * 
@@ -77,7 +78,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({
         @NamedQuery(name = InputMessage.DUP_QUERY_NAME, query = InputMessage.DUP_QUERY),
         @NamedQuery(name = InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION, query = InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY),
-        @NamedQuery(name = InputMessage.PURGE_QUERY_NAME, query = InputMessage.PURGE_QUERY) })
+        @NamedQuery(name = InputMessage.PURGE_QUERY_NAME, query = InputMessage.PURGE_QUERY),
+        @NamedQuery(name = InputMessage.UNEXPIRED_QUERY_NAME, query = InputMessage.UNEXPIRED_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "input_msg", schema = "bmh")
@@ -104,6 +106,13 @@ public class InputMessage {
     public static final String PURGE_QUERY_NAME = "getPurgableInputMessages";
 
     protected static final String PURGE_QUERY = "FROM InputMessage m WHERE m.expirationTime < :purgeTime OR (m.active=false and m.creationTime < :purgeTime))";
+
+    /**
+     * Named query to retrieve message that have not expired.
+     */
+    public static final String UNEXPIRED_QUERY_NAME = "getNonExpiredMessages";
+
+    protected static final String UNEXPIRED_QUERY = "select id, name, afosid, creationTime, active FROM InputMessage m WHERE m.expirationTime >= :currentTime";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)

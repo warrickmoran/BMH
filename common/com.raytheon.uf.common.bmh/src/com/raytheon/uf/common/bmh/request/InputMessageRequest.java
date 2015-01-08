@@ -19,9 +19,12 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import java.util.Calendar;
+
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
  * Request object for {@link InputMessage} queries.
@@ -34,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Oct 16, 2014  3728      lvenable     Initial creation
  * Nov 03, 2014  3790      lvenable     Changed enum name.
+ * Jan 02, 2014  3833      lvenable     Added unexpired action and time variable.
  * 
  * </pre>
  * 
@@ -44,7 +48,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class InputMessageRequest extends AbstractBMHServerRequest {
 
     public enum InputMessageAction {
-        AllInputMessages, ListIdNameAfosCreationActive, GetByPkId;
+        AllInputMessages, ListIdNameAfosCreationActive, UnexpiredMessages, GetByPkId;
     }
 
     @DynamicSerializeElement
@@ -55,6 +59,9 @@ public class InputMessageRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private int pkId;
+
+    @DynamicSerializeElement
+    private Calendar time = TimeUtil.newGmtCalendar();
 
     /**
      * Get the input message action.
@@ -111,5 +118,13 @@ public class InputMessageRequest extends AbstractBMHServerRequest {
      */
     public void setPkId(int pkId) {
         this.pkId = pkId;
+    }
+
+    public Calendar getTime() {
+        return time;
+    }
+
+    public void setTime(Calendar time) {
+        this.time = time;
     }
 }

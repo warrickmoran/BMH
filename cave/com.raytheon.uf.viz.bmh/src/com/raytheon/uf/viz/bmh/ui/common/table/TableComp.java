@@ -45,16 +45,18 @@ import org.eclipse.swt.widgets.TableItem;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 28, 2014   3289      mpduff      Initial creation
- * Jul 14, 2014   #3377     lvenable    Added callback updates.
+ * Jul 14, 2014   3377      lvenable    Added callback updates.
  * Jul 17, 2014   3406      mpduff      Added updateTable method.
  * Jul 22, 2014   3411      mpduff      Added PIXEL_BUFFER.
- * Aug 01, 2014   #3479     lvenable    Added additional capability.
- * Aug 5, 2014    #3490     lvenable    Added convenience methods.
- * Aug 8, 2014    #3490     lvenable    Re-factored populate method.
- * Aug 8, 2014    #3490     lvenable    Added a populate method to allow
+ * Aug 01, 2014   3479      lvenable    Added additional capability.
+ * Aug 5, 2014    3490      lvenable    Added convenience methods.
+ * Aug 8, 2014    3490      lvenable    Re-factored populate method.
+ * Aug 8, 2014    3490      lvenable    Added a populate method to allow
  *                                      the regeneration of table columns.
- * Aug 15, 2014   #3490     lvenable    Added replace table method.
- * Aug 26, 2014   #3490     lvenable    Added method to get table item count.
+ * Aug 15, 2014   3490      lvenable    Added replace table method.
+ * Aug 26, 2014   3490      lvenable    Added method to get table item count.
+ * Jan 02, 2014   3833      lvenable    Added methods to get the table items
+ *                                      and column counts.
  * 
  * </pre>
  * 
@@ -536,6 +538,24 @@ public abstract class TableComp extends Composite {
      */
     public void removeAllTableItems() {
         table.removeAll();
+    }
+
+    /**
+     * Get the table items.
+     * 
+     * @return The table items.
+     */
+    public TableItem[] getTableItems() {
+        return table.getItems();
+    }
+
+    /**
+     * Get the number of columns in the table.
+     * 
+     * @return The number of columns in the table.
+     */
+    public int getColumnCount() {
+        return table.getColumnCount();
     }
 
     /**

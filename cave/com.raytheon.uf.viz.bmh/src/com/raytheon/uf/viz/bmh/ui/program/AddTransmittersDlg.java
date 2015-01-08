@@ -65,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 09, 2014  #3646     rferrel      Convert tableComp to GenericTable.
  * Dec 07, 2014   3846     mpduff       Populate hashmap internally, handle state of add button
+ * 
  * </pre>
  * 
  * @author lvenable
@@ -232,7 +233,7 @@ public class AddTransmittersDlg extends CaveSWTDialog {
             sb.insert(0,
                     "The following transmitters/groups have assigned programs:\n\n");
             sb.append("\nDo you wish to continue assigning the program "
-                    + programName + "to these transmitters/groups?");
+                    + programName + " to these transmitters/groups?");
 
             int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
                     | SWT.OK | SWT.CANCEL, "Replace Program", sb.toString());

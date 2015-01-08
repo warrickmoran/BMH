@@ -42,6 +42,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Nov 03, 2014  3790     lvenable    Added code for the active field.
  * Nov 26, 2014  3613     bsteffen    Add getPurgableMessages
+ * Jan 02, 2014   3833    lvenable    Added method to get unexpired messages.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * 
  * </pre>
@@ -198,4 +199,13 @@ public class InputMessageDao extends
 
     }
 
+    @SuppressWarnings("unchecked")
+    public List<InputMessage> getUnexpiredInputMessages(
+            final Calendar currentTime) {
+
+        List<Object[]> objectList = (List<Object[]>) findByNamedQueryAndNamedParam(
+                InputMessage.UNEXPIRED_QUERY_NAME, "currentTime", currentTime);
+
+        return createInputMessageIdNameAfosCreation(objectList);
+    }
 }
