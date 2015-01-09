@@ -43,7 +43,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * Sep 5, 2014   3532     bkowal      Replaced decibel range with decibel target
  * Oct 2, 2014   3642     bkowal      Added transmitter timezone.
  * Oct 16, 2014  3687     bsteffen    Add playlistDirectory to xml.
- * Nov 26, 2014  3821     bsteffen    Add silenceAlarm
+ * Nov 26, 2014  3821     bsteffen    Add deadAirAlarm
  * 
  * </pre>
  * 
@@ -75,7 +75,7 @@ public class DacChannelConfig {
     private Integer controlPort;
 
     @XmlAttribute
-    private boolean silenceAlarm;
+    private boolean deadAirAlarm;
 
     public Path getInputDirectory() {
         return Paths.get(playlistDirectory);
@@ -148,12 +148,12 @@ public class DacChannelConfig {
         this.controlPort = controlPort;
     }
 
-    public boolean isSilenceAlarm() {
-        return silenceAlarm;
+    public boolean isDeadAirAlarm() {
+        return deadAirAlarm;
     }
 
-    public void setSilenceAlarm(boolean silenceAlarm) {
-        this.silenceAlarm = silenceAlarm;
+    public void setDeadAirAlarm(boolean deadAirAlarm) {
+        this.deadAirAlarm = deadAirAlarm;
     }
 
     @Override
@@ -171,7 +171,7 @@ public class DacChannelConfig {
                 + ((playlistDirectory == null) ? 0 : playlistDirectory
                         .hashCode());
         result = prime * result + Arrays.hashCode(radios);
-        result = prime * result + (silenceAlarm ? 1231 : 1237);
+        result = prime * result + (deadAirAlarm ? 1231 : 1237);
         result = prime * result
                 + ((timezone == null) ? 0 : timezone.hashCode());
         result = prime
@@ -206,7 +206,7 @@ public class DacChannelConfig {
             return false;
         if (!Arrays.equals(radios, other.radios))
             return false;
-        if (silenceAlarm != other.silenceAlarm)
+        if (deadAirAlarm != other.deadAirAlarm)
             return false;
         if (timezone == null) {
             if (other.timezone != null)

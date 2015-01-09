@@ -81,6 +81,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 24, 2014    #3617   dgilling    Cleaner handling of time zone, make DST
  *                                     checkbox match legacy system.
  * Oct 29, 2014    #3617   dgilling    Fix exceptions when creating new groups.
+ * Jan 08, 2015     3821   bsteffen    Rename silenceAlarm to deadAirAlarm
+ * 
  * 
  * </pre>
  * 
@@ -595,9 +597,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
             populateTimeZoneControls();
 
-            if (group.getSilenceAlarm() != null) {
-                disableSilenceChk.setSelection(group.getSilenceAlarm());
-            }
+            disableSilenceChk.setSelection(!group.getDeadAirAlarm());
 
             if ((group != null) && group.isStandalone()) {
                 enabled = true;
@@ -815,9 +815,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                             .getProgramSummary().getName()));
                 }
 
-                if (group.getSilenceAlarm() != null) {
-                    disableSilenceChk.setSelection(group.getSilenceAlarm());
-                }
+                disableSilenceChk.setSelection(!group.getDeadAirAlarm());
 
                 return;
             }
@@ -978,7 +976,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     TimeZone groupTz = BMHTimeZone.getTimeZoneFromUI(
                             timeZoneCbo.getText(), !noDstChk.getSelection());
                     group.setTimeZone(groupTz.getID());
-                    group.setSilenceAlarm(this.disableSilenceChk.getSelection());
+                    group.setDeadAirAlarm(!this.disableSilenceChk
+                            .getSelection());
 
                     if (programCombo.getSelectionIndex() > 0) {
                         @SuppressWarnings("unchecked")
@@ -1043,7 +1042,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if (!tz.getID().equals(group.getTimeZone())) {
             return true;
         }
-        if (disableSilenceChk.getSelection() != group.getSilenceAlarm()) {
+        if (disableSilenceChk.getSelection() != group.getDeadAirAlarm()) {
             return true;
         }
 

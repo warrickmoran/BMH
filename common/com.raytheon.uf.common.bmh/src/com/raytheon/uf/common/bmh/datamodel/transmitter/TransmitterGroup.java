@@ -86,6 +86,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Oct 28, 2014 3617       dgilling    Encapsulate time zone/DST flag into single
  *                                     time zone field using Java TimeZone id string.
  * Nov 21, 2014 3845       bkowal      Added getTransmitterGroupContainsTransmitter
+ * Jan 08, 2015 3821       bsteffen    Rename silenceAlarm to deadAirAlarm
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -141,7 +143,7 @@ public class TransmitterGroup {
     private String timeZone;
 
     @Column
-    private Boolean silenceAlarm = false;
+    private boolean deadAirAlarm = true;
 
     @Column
     private int position;
@@ -215,12 +217,12 @@ public class TransmitterGroup {
         this.timeZone = timeZone;
     }
 
-    public Boolean getSilenceAlarm() {
-        return silenceAlarm;
+    public boolean getDeadAirAlarm() {
+        return deadAirAlarm;
     }
 
-    public void setSilenceAlarm(Boolean silenceAlarm) {
-        this.silenceAlarm = silenceAlarm;
+    public void setDeadAirAlarm(boolean deadAirAlarm) {
+        this.deadAirAlarm = deadAirAlarm;
     }
 
     /**
@@ -445,8 +447,8 @@ public class TransmitterGroup {
         stringBuilder.append(this.dac);
         stringBuilder.append(", timeZone=");
         stringBuilder.append(this.timeZone);
-        stringBuilder.append(", silenceAlarm=");
-        stringBuilder.append(this.silenceAlarm);
+        stringBuilder.append(", deadAirAlarm=");
+        stringBuilder.append(this.deadAirAlarm);
         stringBuilder.append(", position=");
         stringBuilder.append(this.position);
         stringBuilder.append(", audioDBTarget=");

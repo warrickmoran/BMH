@@ -44,6 +44,7 @@ import com.raytheon.uf.common.bmh.notify.status.DacVoiceStatus;
  * Sep 30, 2014  3349      lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Added addition status for reporting.
  * Dec 01, 2014  #3287     lvenable     Added null check.
+ * Jan 08, 2015  3821      bsteffen     Rename silenceAlarm to deadAirAlarm
  * 
  * </pre>
  * 
@@ -152,7 +153,7 @@ public class StatusDataManager {
     private TransmitterGrpInfo createTransGroupInfo(TransmitterGroup tg) {
         TransmitterGrpInfo tgi = new TransmitterGrpInfo();
         tgi.setId(tg.getId());
-        tgi.setDisabledSilenceAlarm(tg.getSilenceAlarm());
+        tgi.setDisabledSilenceAlarm(Boolean.FALSE.equals(tg.getDeadAirAlarm()));
         tgi.setGroupName(tg.getName());
 
         List<Transmitter> transmitters = tg.getTransmitterList();

@@ -39,6 +39,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Aug 08, 2014    3173    mpduff      Initial creation
  * Oct 23, 2014    3687    bsteffen    Display dac name instead of id.
  * Oct 23, 2014    3617    dgilling    Support unified time zone field.
+ * Jan 08, 2015    3821    bsteffen    Rename silenceAlarm to deadAirAlarm
  * 
  * </pre>
  * 
@@ -76,7 +77,7 @@ public class TransmitterUtils {
         sb.append("DAC: ").append(dacName).append(NEWLINE);
         TimeZone timeZone = TimeZone.getTimeZone(tGroup.getTimeZone());
         sb.append("Time Zone: ").append(timeZone.getID()).append(NEWLINE);
-        sb.append("Disable Silence Alarm: ").append(tGroup.getSilenceAlarm())
+        sb.append("Disable Silence Alarm: ").append(!tGroup.getDeadAirAlarm())
                 .append(NEWLINE);
         sb.append("No Daylight Savings Time Observed: ")
                 .append(!timeZone.observesDaylightTime()).append(NEWLINE);
