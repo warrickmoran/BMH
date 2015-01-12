@@ -37,7 +37,6 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
-import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
@@ -77,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Nov 13, 2014  #3698     rferrel      Added checks to allow only 1 GENERAL type suite in a program.
  * Jan 05, 2014  #3930     rferrel      Check for duplicate Suite names.
+ * Jan 06, 2014  #3698     rferrel      More checks on allowing 1 GENERAL type suite in a program.
  * 
  * </pre>
  * 
@@ -113,24 +113,20 @@ public class AddSuitesDlg extends CaveSWTDialog {
     /** List of exiting suites. */
     private final List<Suite> existingSuites;
 
-    /** Program to add suites to. */
-    private final Program selectedProgram;
-
     /**
      * Constructor.
      * 
      * @param parentShell
      *            Parent shell.
      */
-    public AddSuitesDlg(Shell parentShell, Program selectedProgram) {
+    public AddSuitesDlg(Shell parentShell, List<Suite> suiteList) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
-        this.selectedProgram = selectedProgram;
-        if (selectedProgram == null) {
+        if (suiteList == null) {
             this.existingSuites = new ArrayList<>();
         } else {
-            this.existingSuites = new ArrayList<>(selectedProgram.getSuites());
+            this.existingSuites = new ArrayList<>(suiteList);
         }
     }
 
@@ -349,7 +345,9 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
             List<Suite> copySuites = new ArrayList<Suite>(1);
             copySuites.add(copySuite);
-            setReturnValue(copySuites);
+            if (!validateSuites(copySuites)) {
+                return;
+            }
         }
 
         close();
@@ -403,17 +401,13 @@ public class AddSuitesDlg extends CaveSWTDialog {
                     }
                 }
 
-                int result = DialogUtility
-                        .showMessageBox(
-                                shell,
-                                SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
-                                "Replace Suite",
-                                "The \""
-                                        + selectedProgram.getName()
-                                        + "\" program already contains a GENERAL category suite: "
-                                        + oldGeneralSuite.getName()
-                                        + ".\n\nSelect OK to replace with suite: "
-                                        + newGeneralSuite.getName());
+                int result = DialogUtility.showMessageBox(shell,
+                        SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                        "Replace Suite",
+                        "The program already contains a GENERAL category suite: "
+                                + oldGeneralSuite.getName()
+                                + ".\n\nSelect OK to replace with suite: "
+                                + newGeneralSuite.getName());
                 if (result != SWT.OK) {
                     validSuites.remove(newGeneralSuite);
                     oldGeneralSuite = null;
@@ -436,11 +430,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
                     "Existing Suites", sb.toString());
         }
 
-        if (oldGeneralSuite != null) {
-            selectedProgram.removeSuite(oldGeneralSuite);
-        }
-
-        setReturnValue(validSuites);
+        setReturnValue(new AddSuitesResults(validSuites, oldGeneralSuite));
         return true;
     }
 
@@ -481,6 +471,11 @@ public class AddSuitesDlg extends CaveSWTDialog {
         }
     }
 
+    /**
+     * Determine if exiting Suites contain a GENERAL suite.
+     * 
+     * @return containsGeneral
+     */
     private boolean existingContainsGeneral() {
         for (Suite s : existingSuites) {
             if (s.getType() == SuiteType.GENERAL) {
@@ -488,5 +483,34 @@ public class AddSuitesDlg extends CaveSWTDialog {
             }
         }
         return false;
+    }
+
+    /**
+     * Class containing results from the dialog.
+     */
+    public static class AddSuitesResults {
+        /**
+         * List of new suites to add.
+         */
+        private final List<Suite> suites;
+
+        /**
+         * When not null it is a GENERAL suite that needs to be removed because
+         * the list contains a new GENERAL suite.
+         */
+        private final Suite oldGeneralSuite;
+
+        public AddSuitesResults(List<Suite> suites, Suite oldGeneralSuite) {
+            this.suites = suites;
+            this.oldGeneralSuite = oldGeneralSuite;
+        }
+
+        public List<Suite> getSuites() {
+            return suites;
+        }
+
+        public Suite getOldGeneralSuite() {
+            return oldGeneralSuite;
+        }
     }
 }
