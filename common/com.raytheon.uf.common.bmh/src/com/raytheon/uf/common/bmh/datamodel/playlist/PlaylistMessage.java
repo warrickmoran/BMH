@@ -50,6 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 08, 2014  3864     bsteffen    Initial creation
  * Dec 13, 2014  3843     mpduff      Add DynamicSerialize and id
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
+ * Jan 12, 2015  3843     bsteffen    Fix equals.
  * 
  * </pre>
  * 
@@ -225,7 +226,7 @@ public class PlaylistMessage {
             if (other.broadcastMsg != null) {
                 return false;
             }
-        } else if (!broadcastMsg.equals(other.broadcastMsg)) {
+        } else if (broadcastMsg.getId() != other.broadcastMsg.getId()) {
             return false;
         }
         if (playlist == null) {

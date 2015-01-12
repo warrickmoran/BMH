@@ -69,6 +69,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 26, 2014  3613     bsteffen    Add getPurgableInputMessages
  * Dec 11, 2014  3905     lvenable    Added a method to return a set of area codes.
  * Jan 02, 2014  3833     lvenable    Added query to get unexpired messages.
+ * Jan 12, 2015  3843     bsteffen    Return empty list when areas is null.
  * 
  * </pre>
  * 
@@ -487,6 +488,9 @@ public class InputMessage {
     }
 
     public List<String> getAreaCodeList() {
+        if (areaCodes == null || areaCodes.isEmpty()) {
+            return Collections.emptyList();
+        }
         return Arrays.asList(areaCodes.split("-"));
     }
 
@@ -496,16 +500,7 @@ public class InputMessage {
      * @return A set of area codes.
      */
     public Set<String> getAreaCodeSet() {
-        Set<String> areaCodeSet = new TreeSet<>();
-        List<String> parsedAreas = Arrays.asList(areaCodes.split("-"));
-
-        if (parsedAreas == null) {
-            return areaCodeSet;
-        }
-
-        areaCodeSet.addAll(parsedAreas);
-
-        return areaCodeSet;
+        return new TreeSet<>(getAreaCodeList());
     }
 
     public void setAreaCodes(String areaCodes) {

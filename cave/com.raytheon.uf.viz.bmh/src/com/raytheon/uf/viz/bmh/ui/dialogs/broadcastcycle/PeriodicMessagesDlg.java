@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -29,11 +33,16 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
+import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * Periodic Messages dialog. Launched from Broadcast Cycle dialog
@@ -64,7 +73,8 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
 
     private TableData tableData;
 
-    private MessageDetailsDlg detailsDlg;
+    /** Map of BroadcastMessage id to MessageDetailsDlg for that id */
+    private final Map<Long, MessageDetailsDlg> detailsMap = new HashMap<>();
 
     private Button detailsBtn;
 
@@ -72,10 +82,13 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
 
     private final String selectedTransmitterGrp;
 
+    private final BroadcastCycleDataManager dataManager;
+
     public PeriodicMessagesDlg(Shell parent, String selectedSuite,
             String selectedTransmitterGrp) {
         super(parent, CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT);
         setText("Periodic Messages");
+        this.dataManager = new BroadcastCycleDataManager();
         this.selectedSuite = selectedSuite;
         this.selectedTransmitterGrp = selectedTransmitterGrp;
     }
@@ -113,7 +126,7 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
 
     private void populateTableData() {
         try {
-            tableData = new BroadcastCycleDataManager()
+            tableData = dataManager
                     .getPeriodicMessageTableData(selectedSuite,
                             selectedTransmitterGrp);
             tableComp.populateTable(tableData);
@@ -140,14 +153,7 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
         detailsBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (detailsDlg == null || detailsDlg.isDisposed()) {
-                    // TODO fix this instance of the dialog
-                    // messageType, broadcastMsg
-                    detailsDlg = new MessageDetailsDlg(getShell(), null, null);
-                    detailsDlg.open();
-                } else {
-                    detailsDlg.bringToTop();
-                }
+                handleMessageDetails();
             }
         });
 
@@ -161,5 +167,42 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
                 close();
             }
         });
+    }
+
+    /**
+     * Handler for Message Details button
+     */
+    private void handleMessageDetails() {
+        try {
+            List<TableRowData> selectionList = tableComp.getSelection();
+            if (selectionList.isEmpty()) {
+                return;
+            }
+            TableRowData selection = selectionList.get(0);
+            PlaylistMessage playlistMessage = (PlaylistMessage) selection
+                    .getData();
+            String afosId = playlistMessage.getAfosid();
+            MessageType messageType = dataManager.getMessageType(afosId);
+            BroadcastMsg broadcastMsg = playlistMessage.getBroadcastMsg();
+            long key = broadcastMsg.getId();
+            MessageDetailsDlg dlg = detailsMap.get(key);
+            if (dlg != null) {
+                dlg.bringToTop();
+            } else {
+                MessageDetailsDlg detailsDlg = new MessageDetailsDlg(
+                        getShell(), messageType, broadcastMsg);
+                detailsDlg.setCloseCallback(new ICloseCallback() {
+                    @Override
+                    public void dialogClosed(Object returnValue) {
+                        long key = (long) returnValue;
+                        detailsMap.remove(key);
+                    }
+                });
+                detailsDlg.open();
+                detailsMap.put(key, detailsDlg);
+            }
+        } catch (Exception e) {
+            statusHandler.error("ERROR accessing BMH Database", e);
+        }
     }
 }
