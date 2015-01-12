@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
+
 /**
  * 
  * Enum with roles and descriptions for the BMH dialogs.
@@ -34,6 +36,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs;
  * Nov 20, 2014 3413       rferrel     Removed enum BMH_MENU.
  * Dec 05, 2014 3824       rferrel     Added IMPORT_LEGACY_DB.
  * Dec 15, 2014 3618       bkowal      Added TTS_VOICE_CONFIGURATION.
+ * Jan 08, 2015 3963       bkowal      Added {@link #TRANSMITTER_CONFIGURATION_DECOMMISSION}.
  * 
  * </pre>
  * 
@@ -43,6 +46,10 @@ package com.raytheon.uf.viz.bmh.ui.dialogs;
 public enum DlgInfo {
     TRANSMITTER_CONFIGURATION("bmh.dialog.transmitterConfiguration",
             "Transmitter Configuration"),
+
+    TRANSMITTER_CONFIGURATION_DECOMMISSION(
+            "bmh.dialog.transmitterConfiguration.decommission", "Status "
+                    + TxStatus.DECOMM.name()),
 
     TRANSMITTER_ALIGNMENT("bmh.dialog.transmitterAlignment",
             "Transmitter Alignment"),

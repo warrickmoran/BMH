@@ -29,6 +29,7 @@ package com.raytheon.uf.common.bmh.datamodel.transmitter;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 12, 2014   3173     mpduff      Initial creation
+ * Jan 08, 2014   3963     bkowal      Added {@link TxStatus#DECOMM}.
  * 
  * </pre>
  * 
@@ -37,5 +38,5 @@ package com.raytheon.uf.common.bmh.datamodel.transmitter;
  */
 
 public enum TxStatus {
-    ENABLED, DISABLED
+    ENABLED, DISABLED, DECOMM
 }

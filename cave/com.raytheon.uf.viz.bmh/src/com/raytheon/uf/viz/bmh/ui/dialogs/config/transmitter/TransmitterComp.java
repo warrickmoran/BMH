@@ -64,6 +64,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DetailsDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.NewEditTransmitterDlg.TransmitterEditType;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -86,6 +87,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 21, 2014    3838    rferrel     Enable transmitter added check to see if its
  *                                      group's program contains a GENERAL suite.
  * Dec 12, 2014    3603    bsteffen    Implement transfer tone.
+ * Jan 08, 2015    3963    bkowal      Allow a user to complete or undo a transmitter decommission.
  * 
  * </pre>
  * 
@@ -237,6 +239,7 @@ public class TransmitterComp extends Composite implements
         TransmitterGroup standaloneGroup = null;
         Transmitter groupTransmitter = null;
         boolean transmitterEnabled = false;
+        boolean transmitterDecomissioned = false;
         boolean transmitterPrimary = false;
 
         if (tree.getSelectionCount() > 0) {
@@ -284,6 +287,12 @@ public class TransmitterComp extends Composite implements
                         .getTxStatus() == TxStatus.ENABLED))
                         || ((standaloneGroup != null) && standaloneGroup
                                 .getTransmitterList().get(0).getTxStatus() == TxStatus.ENABLED);
+                if (transmitterEnabled == false) {
+                    transmitterDecomissioned = ((groupTransmitter != null) && (groupTransmitter
+                            .getTxStatus() == TxStatus.ENABLED))
+                            || ((standaloneGroup != null) && standaloneGroup
+                                    .getTransmitterList().get(0).getTxStatus() == TxStatus.DECOMM);
+                }
 
                 transmitterPrimary = ((groupTransmitter != null) && (groupTransmitter
                         .getTxMode() == TxMode.PRIMARY))
@@ -291,92 +300,106 @@ public class TransmitterComp extends Composite implements
                                 .getTransmitterList().get(0).getTxMode() == TxMode.PRIMARY);
 
                 new MenuItem(menu, SWT.SEPARATOR);
-                MenuItem statusMenuItem = new MenuItem(menu, SWT.CASCADE);
-                statusMenuItem.setText("Transmitter Status");
-                Menu statusMenu = new Menu(menu);
-                statusMenuItem.setMenu(statusMenu);
-
-                MenuItem enableStatusItem = new MenuItem(statusMenu, SWT.RADIO);
-                enableStatusItem.setText("Enable Transmitter");
-                enableStatusItem.addSelectionListener(new SelectionAdapter() {
-
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        MenuItem item = (MenuItem) e.widget;
-                        if (item.getSelection()) {
-                            changeTxStatus(TxStatus.ENABLED);
-                        }
-                    }
-                });
-                enableStatusItem.setSelection(transmitterEnabled);
-
                 /*
-                 * Enable only when transmitter has a DAC, DAC port, group has a
-                 * program and the program contains a GENERAL suite.
+                 * Ensure that the user will not be able to enable/disable or
+                 * change the mode of a decommissioned transmitter.
                  */
-                enableStatusItem
-                        .setEnabled(((standaloneGroup != null)
-                                && (standaloneGroup.getDac() != null)
-                                && (standaloneGroup.getTransmitterList().get(0)
-                                        .getDacPort() != null) && containsGeneralSuite(standaloneGroup
-                                    .getProgramSummary()))
-                                || ((groupTransmitter != null)
-                                        && (groupTransmitter.getDacPort() != null)
-                                        && (groupTransmitter
-                                                .getTransmitterGroup().getDac() != null) && containsGeneralSuite(groupTransmitter
-                                        .getTransmitterGroup()
-                                        .getProgramSummary())));
+                if (transmitterDecomissioned == false) {
+                    MenuItem statusMenuItem = new MenuItem(menu, SWT.CASCADE);
+                    statusMenuItem.setText("Transmitter Status");
+                    Menu statusMenu = new Menu(menu);
+                    statusMenuItem.setMenu(statusMenu);
 
-                MenuItem disableStatusItem = new MenuItem(statusMenu, SWT.RADIO);
-                disableStatusItem.setText("Disable Transmitter");
-                disableStatusItem.addSelectionListener(new SelectionAdapter() {
+                    MenuItem enableStatusItem = new MenuItem(statusMenu,
+                            SWT.RADIO);
+                    enableStatusItem.setText("Enable Transmitter");
+                    enableStatusItem
+                            .addSelectionListener(new SelectionAdapter() {
 
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        MenuItem item = (MenuItem) e.widget;
-                        if (item.getSelection()) {
-                            changeTxStatus(TxStatus.DISABLED);
-                        }
-                    }
-                });
-                disableStatusItem.setSelection(!transmitterEnabled);
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    MenuItem item = (MenuItem) e.widget;
+                                    if (item.getSelection()) {
+                                        changeTxStatus(TxStatus.ENABLED);
+                                    }
+                                }
+                            });
+                    enableStatusItem.setSelection(transmitterEnabled);
 
-                MenuItem modeMenuItem = new MenuItem(menu, SWT.CASCADE);
-                modeMenuItem.setText("Transmitter Mode");
-                Menu modeMenu = new Menu(menu);
-                modeMenuItem.setMenu(modeMenu);
+                    /*
+                     * Enable only when transmitter has a DAC, DAC port, group
+                     * has a program and the program contains a GENERAL suite.
+                     */
+                    enableStatusItem
+                            .setEnabled(((standaloneGroup != null)
+                                    && (standaloneGroup.getDac() != null)
+                                    && (standaloneGroup.getTransmitterList()
+                                            .get(0).getDacPort() != null) && containsGeneralSuite(standaloneGroup
+                                        .getProgramSummary()))
+                                    || ((groupTransmitter != null)
+                                            && (groupTransmitter.getDacPort() != null)
+                                            && (groupTransmitter
+                                                    .getTransmitterGroup()
+                                                    .getDac() != null) && containsGeneralSuite(groupTransmitter
+                                            .getTransmitterGroup()
+                                            .getProgramSummary())));
 
-                MenuItem primaryModeItem = new MenuItem(modeMenu, SWT.RADIO);
-                primaryModeItem.setText("PRIMARY Mode");
-                primaryModeItem.addSelectionListener(new SelectionAdapter() {
+                    MenuItem disableStatusItem = new MenuItem(statusMenu,
+                            SWT.RADIO);
+                    disableStatusItem.setText("Disable Transmitter");
+                    disableStatusItem
+                            .addSelectionListener(new SelectionAdapter() {
 
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        MenuItem item = (MenuItem) e.widget;
-                        if (item.getSelection()) {
-                            changeTxMode(TxMode.PRIMARY);
-                        }
-                    }
-                });
-                primaryModeItem.setSelection(transmitterPrimary);
-                primaryModeItem.setEnabled(!transmitterEnabled);
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    MenuItem item = (MenuItem) e.widget;
+                                    if (item.getSelection()) {
+                                        changeTxStatus(TxStatus.DISABLED);
+                                    }
+                                }
+                            });
+                    disableStatusItem.setSelection(!transmitterEnabled);
 
-                MenuItem secondaryModeItem = new MenuItem(modeMenu, SWT.RADIO);
-                secondaryModeItem.setText("SECONDARY Mode");
-                secondaryModeItem.addSelectionListener(new SelectionAdapter() {
+                    MenuItem modeMenuItem = new MenuItem(menu, SWT.CASCADE);
+                    modeMenuItem.setText("Transmitter Mode");
+                    Menu modeMenu = new Menu(menu);
+                    modeMenuItem.setMenu(modeMenu);
 
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        MenuItem item = (MenuItem) e.widget;
-                        if (item.getSelection()) {
-                            changeTxMode(TxMode.SECONDARY);
-                        }
-                    }
-                });
-                secondaryModeItem.setSelection(!transmitterPrimary);
-                secondaryModeItem.setEnabled(!transmitterEnabled);
+                    MenuItem primaryModeItem = new MenuItem(modeMenu, SWT.RADIO);
+                    primaryModeItem.setText("PRIMARY Mode");
+                    primaryModeItem
+                            .addSelectionListener(new SelectionAdapter() {
 
-                new MenuItem(menu, SWT.SEPARATOR);
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    MenuItem item = (MenuItem) e.widget;
+                                    if (item.getSelection()) {
+                                        changeTxMode(TxMode.PRIMARY);
+                                    }
+                                }
+                            });
+                    primaryModeItem.setSelection(transmitterPrimary);
+                    primaryModeItem.setEnabled(!transmitterEnabled);
+
+                    MenuItem secondaryModeItem = new MenuItem(modeMenu,
+                            SWT.RADIO);
+                    secondaryModeItem.setText("SECONDARY Mode");
+                    secondaryModeItem
+                            .addSelectionListener(new SelectionAdapter() {
+
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    MenuItem item = (MenuItem) e.widget;
+                                    if (item.getSelection()) {
+                                        changeTxMode(TxMode.SECONDARY);
+                                    }
+                                }
+                            });
+                    secondaryModeItem.setSelection(!transmitterPrimary);
+                    secondaryModeItem.setEnabled(!transmitterEnabled);
+
+                    new MenuItem(menu, SWT.SEPARATOR);
+                }
 
                 MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
                 deleteItem.setText("Delete Transmitter");
@@ -411,13 +434,22 @@ public class TransmitterComp extends Composite implements
 
         if (!transmitterEnabled && (group == null)
                 && (tree.getSelectionCount() > 0)) {
+            /*
+             * Determine if we are decommissioning the transmitter or undoing a
+             * decommission.
+             */
+            final TxStatus newStatus = (transmitterDecomissioned) ? TxStatus.DISABLED
+                    : TxStatus.DECOMM;
+            final String menuItemText = (transmitterDecomissioned) ? "Commission Transmitter"
+                    : "Decommission Transmitter";
+
             MenuItem decommissionTransmitterItem = new MenuItem(menu, SWT.PUSH);
-            decommissionTransmitterItem.setText("Decommission Transmitter");
+            decommissionTransmitterItem.setText(menuItemText);
             decommissionTransmitterItem
                     .addSelectionListener(new SelectionAdapter() {
                         @Override
                         public void widgetSelected(SelectionEvent e) {
-                            decommissionTransmitter();
+                            decommissionTransmitter(newStatus);
                         }
                     });
         }
@@ -705,6 +737,13 @@ public class TransmitterComp extends Composite implements
         Object data = tree.getSelection()[0].getData();
         if (confirmChangeTxStatus(transmitter, status)) {
             transmitter.setTxStatus(status);
+            if (status == TxStatus.DECOMM) {
+                /**
+                 * Return the dac port so that other transmitters will be able
+                 * to use it when when the transmitter is decommissioned.
+                 */
+                transmitter.setDacPort(null);
+            }
             try {
                 dataManager.saveTransmitter(transmitter);
                 populateTree(data);
@@ -792,11 +831,22 @@ public class TransmitterComp extends Composite implements
     }
 
     /**
-     * Decommission menu action
+     * Do or undo a transmitter decommission operation
+     * 
+     * @param newStatus
+     *            the {@link TxStatus} that should be assigned to the
+     *            {@link Transmitter} provided that the change is allowed and
+     *            successful.
      */
-    private void decommissionTransmitter() {
-        // TODO implement when ready
-        statusHandler.warn("Decommission transmitter not yet implemented");
+    private void decommissionTransmitter(final TxStatus newStatus) {
+        /*
+         * Verify that the user has the required permissions to decommission a
+         * transmitter.
+         */
+        if (BmhUtils.isAuthorized(this.getShell(),
+                DlgInfo.TRANSMITTER_CONFIGURATION_DECOMMISSION)) {
+            this.changeTxStatus(newStatus);
+        }
     }
 
     /**
@@ -888,9 +938,16 @@ public class TransmitterComp extends Composite implements
             if (TxStatus.valueOf(text) == TxStatus.ENABLED) {
                 event.gc.setForeground(green);
                 event.gc.setBackground(green);
-            } else {
+            } else if (TxStatus.valueOf(text) == TxStatus.DISABLED) {
                 event.gc.setForeground(red);
                 event.gc.setBackground(red);
+            } else if (TxStatus.valueOf(text) == TxStatus.DECOMM) {
+                Color brown = new Color(getParent().getDisplay(), 139, 69, 19);
+
+                event.gc.setForeground(brown);
+                event.gc.setBackground(brown);
+
+                brown.dispose();
             }
 
             event.gc.fillRectangle(
