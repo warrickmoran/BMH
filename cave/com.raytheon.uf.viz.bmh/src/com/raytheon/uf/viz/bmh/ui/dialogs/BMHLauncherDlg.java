@@ -132,6 +132,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     buttons to make the launcher dialog a bit larger.
  * Dec 15, 2014   3618     bkowal      Added the Voice Configuration dialog.
  * Jan 07, 2015   3931     bkowal      Added an option to import a BMH dictionary.
+ * Jan 08, 2015   3821     bsteffen    Rename silenceAlarm to deadAirAlarm
+ * 
  * 
  * </pre>
  * 
@@ -1238,7 +1240,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         }
 
         for (TransmitterGroup tg : transmitterGrps) {
-            cld.addDataItem(tg.getName(), tg.getSilenceAlarm());
+            cld.addDataItem(tg.getName(), !tg.getDeadAirAlarm());
         }
 
         /*
@@ -1278,8 +1280,7 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
         for (TransmitterGroup tg : transmitterGrps) {
             if (dataMap.containsKey(tg.getName())) {
-                tg.setSilenceAlarm(dataMap.get(tg.getName()));
-
+                tg.setDeadAirAlarm(!dataMap.get(tg.getName()));
                 try {
                     tdm.saveTransmitterGroup(tg);
                 } catch (Exception e) {

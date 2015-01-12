@@ -42,6 +42,8 @@ import com.raytheon.uf.common.serialization.SerializationException;
  * Sep 4, 2014    3532     bkowal      Replace min/max db with a target
  * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
  * Oct 23, 2014 3617       dgilling    Updated for single time zone field.
+ * Jan 08, 2015   3821     bsteffen    Rename silenceAlarm to deadAirAlarm
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -101,7 +103,7 @@ public class TransmitterGroupAdapter implements
         serializer.writeI32(group.getId());
         serializer.writeString(group.getName());
         serializer.writeObject(group.getPosition());
-        serializer.writeObject(group.getSilenceAlarm());
+        serializer.writeBool(group.getDeadAirAlarm());
         serializer.writeObject(group.getTimeZone());
         serializer.writeObject(group.getTone());
         serializer.writeDouble(group.getAudioDBTarget());
@@ -123,7 +125,7 @@ public class TransmitterGroupAdapter implements
         tg.setId(deserializer.readI32());
         tg.setName(deserializer.readString());
         tg.setPosition((int) deserializer.readObject());
-        tg.setSilenceAlarm((Boolean) deserializer.readObject());
+        tg.setDeadAirAlarm(deserializer.readBool());
         tg.setTimeZone((String) deserializer.readObject());
         tg.setTone((Tone) deserializer.readObject());
         tg.setAudioDBTarget(deserializer.readDouble());

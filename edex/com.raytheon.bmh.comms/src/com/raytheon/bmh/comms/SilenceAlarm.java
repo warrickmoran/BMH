@@ -45,7 +45,7 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Nov 26, 2014  3821     bsteffen    Initial Implementation
- * 
+ * Jan 08, 2015  3821     bsteffen    Rename silenceAlarm to deadAirAlarm
  * 
  * </pre>
  * 
@@ -94,7 +94,7 @@ public class SilenceAlarm {
             Set<String> alarmableGroups = new HashSet<>();
             for (DacConfig dac : config.getDacs()) {
                 for (DacChannelConfig channel : dac.getChannels()) {
-                    if (channel.isSilenceAlarm()) {
+                    if (channel.isDeadAirAlarm()) {
                         alarmableGroups.add(channel.getTransmitterGroup());
                     }
                 }

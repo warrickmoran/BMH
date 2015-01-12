@@ -200,7 +200,7 @@ public class CommsConfigurator implements IContextStateProcessor {
             }
             DacChannelConfig channel = new DacChannelConfig();
             channel.setTransmitterGroup(group.getName());
-            channel.setSilenceAlarm(Boolean.TRUE.equals(group.getSilenceAlarm()));
+            channel.setDeadAirAlarm(group.getDeadAirAlarm());
             channel.setPlaylistDirectoryPath(playlistDirectoryPath
                     .resolve(group.getName()));
             channel.setDbTarget(group.getAudioDBTarget());
