@@ -83,6 +83,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 14, 2014 3558      rjpeter     Set length of program name to 40.
  * Nov 20, 2014 3698      rferrel     Updated to add suite/query for getting Programs/Enabled transmitter Groups.
  * Dec 01, 2014 3838      rferrel     Add get program's general suite.
+ * Jan 07, 2015 3958      bkowal      Added {@link #GET_TRANSMITTERS_FOR_MSG_TYPE}.
  * </pre>
  * 
  * @author rjpeter
@@ -91,6 +92,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({
         @NamedQuery(name = Program.GET_PROGRAM_FOR_TRANSMITTER_GROUP, query = Program.GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY),
         @NamedQuery(name = Program.GET_GROUPS_FOR_MSG_TYPE, query = Program.GET_GROUPS_FOR_MSG_TYPE_QUERY),
+        @NamedQuery(name = Program.GET_TRANSMITTERS_FOR_MSG_TYPE, query = Program.GET_TRANSMITTERS_FOR_MSG_TYPE_QUERY),
         @NamedQuery(name = Program.GET_PROGRAM_SUITES, query = Program.GET_PROGRAM_SUITES_QUERY),
         @NamedQuery(name = Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP, query = Program.GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP_QUERY),
         @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_SUITE_AND_MSGTYPE_QUERY),
@@ -116,6 +118,10 @@ public class Program {
     public static final String GET_GROUPS_FOR_MSG_TYPE = "getGroupsForMsgType";
 
     protected static final String GET_GROUPS_FOR_MSG_TYPE_QUERY = "SELECT tg FROM Program p inner join p.transmitterGroups tg inner join p.programSuites ps inner join ps.suite s inner join s.suiteMessages sm inner join sm.msgTypeSummary mt WHERE mt.afosid = :afosid";
+
+    public static final String GET_TRANSMITTERS_FOR_MSG_TYPE = "getTransmittersForMsgType";
+
+    protected static final String GET_TRANSMITTERS_FOR_MSG_TYPE_QUERY = "SELECT t FROM Program p inner join p.transmitterGroups tg inner join tg.transmitters t inner join p.programSuites ps inner join ps.suite s inner join s.suiteMessages sm inner join sm.msgTypeSummary mt WHERE mt.afosid = :afosid";
 
     public static final String GET_PROGRAM_SUITES = "getProgramsAndSuites";
 

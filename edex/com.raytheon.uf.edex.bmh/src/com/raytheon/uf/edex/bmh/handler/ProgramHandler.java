@@ -58,6 +58,7 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * Nov 20, 2014  3698     rferrel     Implement SuitePrograms and SuiteEnabledGroups.
  * Dec 01, 2014  3838     rferrel     Added getProgramGeneralSuite.
  * Dec 07, 2014  3846     mpduff      Added getProgramById
+ * Jan 07, 2015  3958     bkowal      Added {@link #getTransmittersForMsgType(ProgramRequest)}.
  * 
  * </pre>
  * 
@@ -113,6 +114,8 @@ public class ProgramHandler extends
             return getProgramGeneralSuite(request);
         case GetProgramById:
             return getProgramById(request);
+        case GetTransmittersForMsgType:
+            return this.getTransmittersForMsgType(request);
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -304,6 +307,24 @@ public class ProgramHandler extends
         Program program = dao.getByID(request.getProgramId());
 
         response.addProgram(program);
+
+        return response;
+    }
+
+    /**
+     * Uses the {@link ProgramDao} to retrieve all {@link Transmitter}s
+     * associated with the specified {@link MessageType}.
+     * 
+     * @param request
+     *            Identifies the specified {@link MessageType}.
+     * @return a {@link ProgramResponse} with a {@link List} of the
+     *         {@link Transmitter}s that were found.
+     */
+    private ProgramResponse getTransmittersForMsgType(ProgramRequest request) {
+        ProgramDao dao = new ProgramDao(request.isOperational());
+        ProgramResponse response = new ProgramResponse();
+        response.setTransmitters(dao.getTransmittersForMsgType(request
+                .getMessageType()));
 
         return response;
     }

@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
  * Nov 13, 2014 3803       bkowal      Added getLdadConfigByName. Fixed
  *                                     selectConfigReferences.
  * Nov 19, 2014 3385       bkowal      Added {@link LdadConfigDao#getLdadConfigsForMsgType(int)}
+ * Jan 07, 2015 3958       bkowal      Return an empty list when no {@link LdadConfig}s are found.
  * 
  * </pre>
  * 
@@ -124,7 +125,7 @@ public class LdadConfigDao extends AbstractBMHDao<LdadConfig, Long> {
                 LdadConfig.SELECT_LDAD_CONFIG_BY_MSG_TYPE,
                 new String[] { "afosid" }, new Object[] { afosid });
         if (ldadConfigObjects == null || ldadConfigObjects.isEmpty()) {
-            return null;
+            return Collections.emptyList();
         }
 
         List<LdadConfig> ldadConfigs = new ArrayList<>(ldadConfigObjects.size());
@@ -139,7 +140,7 @@ public class LdadConfigDao extends AbstractBMHDao<LdadConfig, Long> {
                 errMsg.append(".");
                 logger.error(errMsg.toString());
 
-                return null;
+                return Collections.emptyList();
             }
             ldadConfigs.add((LdadConfig) object);
         }

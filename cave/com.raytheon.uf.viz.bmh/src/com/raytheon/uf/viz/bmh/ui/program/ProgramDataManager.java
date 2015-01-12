@@ -28,6 +28,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
@@ -51,6 +52,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Nov 20, 2014  3698      rferrel     Methods for getting programs/enabled groups based on suite.
  * Dec 02, 2014  3838      rferrel     Added getProgramGeneralSuite;
  * Dec 07, 2014  3846      mpduff      Added getProgramById.
+ * Jan 07, 2015  3958      bkowal      Added {@link #getTransmittersForMsgType(MessageType)}.
  * </pre>
  * 
  * @author lvenable
@@ -266,5 +268,23 @@ public class ProgramDataManager {
         }
 
         return null;
+    }
+
+    /**
+     * Retrieve the {@link Transmitter}s associated with the specified
+     * {@link MessageType}.
+     * 
+     * @param messageType
+     *            the specified {@link MessageType}
+     * @return a {@link List} of the {@link Transmitter}s that were retrieved.
+     * @throws Exception
+     */
+    public List<Transmitter> getTransmittersForMsgType(
+            final MessageType messageType) throws Exception {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.GetTransmittersForMsgType);
+        pr.setMessageType(messageType);
+
+        return ((ProgramResponse) BmhUtils.sendRequest(pr)).getTransmitters();
     }
 }

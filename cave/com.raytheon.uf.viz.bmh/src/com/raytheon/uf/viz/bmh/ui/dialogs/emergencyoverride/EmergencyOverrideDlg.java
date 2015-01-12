@@ -72,6 +72,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
+import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybackDlg;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -103,6 +104,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 17, 2014  3808      bkowal       Initial support for broadcast live.
  * Nov 21, 2014  3845      bkowal       Use EOBroadcastSettingsBuilder.
  * Dec 09, 2014  3909      bkowal       Use {@link RecordedByUtils}.
+ * Jan 07, 2014  3958      bkowal       Added {@link #verifyMsgRebroadcast(List)}.
  * 
  * </pre>
  * 
@@ -115,6 +117,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(EmergencyOverrideDlg.class);
+
+    private final ProgramDataManager pdm = new ProgramDataManager();
 
     /** Table containing the emergency message types. */
     private GenericTable emerMsgTypeTable;
@@ -572,6 +576,21 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             return;
         }
 
+        final List<Transmitter> rescheduleCandidates;
+        if (this.autoScheduleChk.getSelection()) {
+            /**
+             * Determine if the message can be automatically scheduled.
+             */
+            rescheduleCandidates = this.verifyMsgRebroadcast(transmitters);
+        } else {
+            /**
+             * Will not determine if the message can be scheduled for
+             * rebroadcast on every transmitter until the scheduling dialog is
+             * submitted.
+             */
+            rescheduleCandidates = Collections.emptyList();
+        }
+
         // alert the user that they are about to play same tones.
         int option = DialogUtility
                 .showMessageBox(
@@ -602,10 +621,139 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                  * rebroadcast scheduling.
                  */
                 handleTransmitComplete((ByteBuffer) returnValue,
-                        settingsBuilder);
+                        settingsBuilder, rescheduleCandidates);
             }
         });
         dlg.open();
+    }
+
+    /**
+     * Verifies that the message can be scheduled for rebroadcast on at least
+     * one of the selected SAME transmitters. Will display a warning dialog if
+     * the message cannot be successfully scheduled for rebroadcast on all of
+     * the specified {@link Transmitter}s.
+     * 
+     * A message will only be scheduled for broadcast on a {@link Transmitter}
+     * if the {@link MessageType} associated with the message is associated with
+     * a {@link Suite} that belongs to a {@link Program} that has been assigned
+     * to the desired {@link Transmitter}.
+     * 
+     * @param transmitters
+     *            the specified {@link Transmitter}s
+     * @return a {@link List} of {@link Transmitter}s the message can be
+     *         scheduled for rebroadcast on.
+     */
+    private List<Transmitter> verifyMsgRebroadcast(
+            final List<Transmitter> transmitters) {
+        /**
+         * Retrieve the {@link Transmitter}s that are associated with a
+         * {@link Program} associated with the selected {@link MessageType}.
+         */
+        List<Transmitter> supportedTransmitters = null;
+        try {
+            supportedTransmitters = pdm
+                    .getTransmittersForMsgType(this.selectedMsgType);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to determine which SAME Transmitters a message with type: "
+                            + this.selectedMsgType.getAfosid()
+                            + "can be re-scheduled for rebroadcast to!", e);
+            /**
+             * The system already ensures that the message will not be submitted
+             * for broadcast to {@link Transmitter}s that are not expecting it
+             * based on the {@link MessageType} and associated {@link Suite}s.
+             */
+            return transmitters;
+        }
+
+        /**
+         * The {@link Transmitter}s that the message cannot be scheduled for
+         * re-broadcast on.
+         */
+        List<Transmitter> excludedTransmitters = new ArrayList<>(
+                transmitters.size());
+        /**
+         * The {@link Transmitter}s that message can be scheduled for
+         * rebroadcast on. These are the only {@link Transmitter}s that will be
+         * associated with the message that is generated for re-scheduling.
+         */
+        List<Transmitter> rescheduleCandidates = new ArrayList<>(
+                transmitters.size());
+
+        for (Transmitter transmitter : transmitters) {
+            if (supportedTransmitters.contains(transmitter)) {
+                rescheduleCandidates.add(transmitter);
+            } else {
+                excludedTransmitters.add(transmitter);
+            }
+        }
+
+        if (excludedTransmitters.isEmpty()) {
+            /**
+             * The message can successfully be scheduled for rebroadcast on all
+             * desired {@link Transmitter}s.
+             */
+            return rescheduleCandidates;
+        }
+
+        /**
+         * Notify the user.
+         */
+        StringBuilder sb = new StringBuilder("A message with type: ");
+        sb.append(this.selectedMsgType.getAfosid());
+        sb.append(" cannot be scheduled for re-broadcast on the following ");
+        final String transmitterText = (excludedTransmitters.size() > 1) ? "transmitters"
+                : "transmitter";
+        sb.append(transmitterText).append(": ");
+        boolean first = true;
+        for (Transmitter transmitter : excludedTransmitters) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(", ");
+            }
+            sb.append(transmitter.getMnemonic());
+        }
+        sb.append(" because the message type does not belong to a Suite associated with the ");
+        sb.append(transmitterText).append(".");
+        /**
+         * Are there any {@link Transmitter}s that the message can be scheduled
+         * for rebroadcast on?
+         */
+        if (rescheduleCandidates.isEmpty()) {
+            /**
+             * Notify the user that the message will NOT be scheduled for
+             * rebroadcast.
+             */
+            sb.append(" The message will not be scheduled for rebroadcast.");
+        } else {
+            /**
+             * Identify the {@link Transmitter}s the message will be scheduled
+             * for rebroadcast on.
+             */
+            sb.append(" The message will be scheduled for rebroadcast on transmitter");
+            if (rescheduleCandidates.size() > 1) {
+                sb.append("s");
+            }
+            sb.append(": ");
+            first = true;
+            for (Transmitter transmitter : rescheduleCandidates) {
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(", ");
+                }
+                sb.append(transmitter.getMnemonic());
+            }
+            sb.append(".");
+        }
+        /**
+         * Display an information dialog.
+         */
+        DialogUtility.showMessageBox(this.shell, SWT.ICON_WARNING | SWT.OK,
+                "Emergency Override - Scheduling", sb.toString());
+
+        return rescheduleCandidates;
     }
 
     private boolean validateSelections() {
@@ -633,11 +781,12 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     }
 
     private void handleTransmitComplete(ByteBuffer recordedAudio,
-            final EOBroadcastSettingsBuilder settingsBuilder) {
+            final EOBroadcastSettingsBuilder settingsBuilder,
+            final List<Transmitter> rescheduleCandidates) {
 
         if (this.autoScheduleChk.getSelection()) {
             this.handleMessageScheduling(recordedAudio, settingsBuilder,
-                    this.buildInputMsg(settingsBuilder));
+                    this.buildInputMsg(settingsBuilder), rescheduleCandidates);
         } else {
             this.handleManualMsgScheduling(recordedAudio, settingsBuilder);
         }
@@ -656,7 +805,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                 if (returnValue == null) {
                     // indicates Cancel was clicked.
                     statusHandler
-                            .info("The rebroadcasting process has been cancelled. The live broadcast will not be rebroadcasted.");
+                            .info("The scheduling process has been cancelled. The live broadcast will not be rebroadcasted.");
 
                     return;
                 }
@@ -666,8 +815,10 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                     return;
                 }
 
+                List<Transmitter> rescheduleCandidates = verifyMsgRebroadcast(new ArrayList<>(
+                        settingsBuilder.getTransmitters()));
                 handleMessageScheduling(recordedAudio, settingsBuilder,
-                        (InputMessage) returnValue);
+                        (InputMessage) returnValue, rescheduleCandidates);
             }
         });
         scheduleDlg.open();
@@ -675,12 +826,20 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
     private void handleMessageScheduling(final ByteBuffer recordedAudio,
             final EOBroadcastSettingsBuilder settingsBuilder,
-            final InputMessage inputMessage) {
+            final InputMessage inputMessage,
+            final List<Transmitter> rescheduleCandidates) {
+        if (rescheduleCandidates.isEmpty()) {
+            /**
+             * The message cannot be successfully scheduled for rebroadcast on
+             * any of the selected {@link Transmitter}s.
+             */
+            return;
+        }
+
         NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
         request.setInputMessage(inputMessage);
         request.setMessageAudio(recordedAudio.array());
-        request.setSelectedTransmitters(new ArrayList<>(settingsBuilder
-                .getTransmitters()));
+        request.setSelectedTransmitters(rescheduleCandidates);
         try {
             BmhUtils.sendRequest(request);
         } catch (Exception e) {

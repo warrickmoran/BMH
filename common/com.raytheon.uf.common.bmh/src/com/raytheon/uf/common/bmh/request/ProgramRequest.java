@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -44,6 +45,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 20, 2014  3698     rferrel     Added SuitePrograms and SuiteEnabledGroups.
  * Dec 02, 2014  3838     rferrel     Added ProgramGeneralSuite.
  * Dec 07, 2014  3846     mpduff      Added id and GetProgramById
+ * Jan 07, 2015  3958     bkowal      Added {@link ProgramAction#GetTransmittersForMsgType} and
+ *                                    {@link #messageType}.
  * </pre>
  * 
  * @author lvenable
@@ -57,7 +60,9 @@ public class ProgramRequest extends AbstractBMHServerRequest {
 
         ProgramSuites, Delete, GetProgramForTransmitterGroup,
 
-        GetProgramsWithTrigger, AddGroup, SuitePrograms, SuiteEnabledGroups, ProgramGeneralSuite, GetProgramById;
+        GetProgramsWithTrigger, AddGroup, SuitePrograms, SuiteEnabledGroups, ProgramGeneralSuite, GetProgramById,
+
+        GetTransmittersForMsgType;
     }
 
     @DynamicSerializeElement
@@ -68,6 +73,9 @@ public class ProgramRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
+
+    @DynamicSerializeElement
+    private MessageType messageType;
 
     @DynamicSerializeElement
     private int programId;
@@ -122,6 +130,21 @@ public class ProgramRequest extends AbstractBMHServerRequest {
      */
     public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    /**
+     * @return the messageType
+     */
+    public MessageType getMessageType() {
+        return messageType;
+    }
+
+    /**
+     * @param messageType
+     *            the messageType to set
+     */
+    public void setMessageType(MessageType messageType) {
+        this.messageType = messageType;
     }
 
     /**

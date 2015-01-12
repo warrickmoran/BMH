@@ -44,6 +44,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Nov 20, 2014  3385     bkowal      Initialize {@link LdadConfigDao} based on the
  *                                    run mode.
  * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
+ * Jan 07, 2015  3958     bkowal      The ldad configs returned by the dao will never be {@code null}.
  * 
  * </pre>
  * 
@@ -67,8 +68,8 @@ public class LdadValidator {
     public void validate(ValidatedMessage message) {
         LdadStatus status = LdadStatus.NONE;
         try {
-            if (this.ldadConfigDao.getLdadConfigsForMsgType(message
-                    .getInputMessage().getAfosid()) != null) {
+            if (this.ldadConfigDao.getLdadConfigsForMsgType(
+                    message.getInputMessage().getAfosid()).isEmpty() == false) {
                 status = LdadStatus.ACCEPTED;
             }
         } catch (Exception e) {

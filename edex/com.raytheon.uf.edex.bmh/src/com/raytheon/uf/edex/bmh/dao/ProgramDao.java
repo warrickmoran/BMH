@@ -22,8 +22,10 @@ package com.raytheon.uf.edex.bmh.dao;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import org.hibernate.Query;
@@ -32,11 +34,13 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
@@ -61,6 +65,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Oct 13, 2014  3654     rjpeter     Updated to use ProgramSummary.
  * Nov 20, 2014  3698     rferrel     Added methods getSuitePrograms and getSuiteEnabledGroups.
  * Dec 02, 2014  3838     rferrel     Added getProgramGeneralSuite.
+ * Jan 07, 2015  3958     bkowal      Added {@link #getTransmittersForMsgType(MessageType)}.
  * </pre>
  * 
  * @author bsteffen
@@ -87,6 +92,31 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
     public List<TransmitterGroup> getGroupsForMsgType(final String msgType) {
         return (List<TransmitterGroup>) findByNamedQueryAndNamedParam(
                 Program.GET_GROUPS_FOR_MSG_TYPE, "afosid", msgType);
+    }
+
+    /**
+     * Retrieves the {@link Transmitter}s that are associated with the specified
+     * {@link MessageType} based on {@link Program} and {@link Suite}
+     * associations.
+     * 
+     * @param msgType
+     *            the specified {@link MessageType}
+     * @return the retrieved {@link List} of {@link Transmitter}s.
+     */
+    public List<Transmitter> getTransmittersForMsgType(final MessageType msgType) {
+        List<?> results = this.findByNamedQueryAndNamedParam(
+                Program.GET_TRANSMITTERS_FOR_MSG_TYPE, "afosid",
+                msgType.getAfosid());
+        if (results == null || results.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Transmitter> transmitters = new HashSet<>(results.size(), 1.0f);
+        for (Object object : results) {
+            transmitters.add((Transmitter) object);
+        }
+
+        return new ArrayList<Transmitter>(transmitters);
     }
 
     /**

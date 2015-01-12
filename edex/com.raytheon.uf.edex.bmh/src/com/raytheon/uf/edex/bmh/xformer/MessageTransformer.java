@@ -120,6 +120,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     into a Google {@link Table}. Merge {@link Dictionary}(ies}
  *                                     by {@link Word} regex.
  * Jan 07, 2015 3899       bkowal      Skip {@link LdadConfig}s that have been disabled.
+ * Jan 07, 2015 3958      bkowal       The ldad configs returned by the dao will never be {@code null}.
  * 
  * </pre>
  * 
@@ -330,7 +331,7 @@ public class MessageTransformer implements IContextStateProcessor {
          */
         List<LdadConfig> ldadConfigurations = this.ldadConfigDao
                 .getLdadConfigsForMsgType(messageType.getAfosid());
-        if (ldadConfigurations == null || ldadConfigurations.isEmpty()) {
+        if (ldadConfigurations.isEmpty()) {
             /*
              * in the rare case that an ldad configuration exists during
              * validation; but, it is removed before the message is processed.

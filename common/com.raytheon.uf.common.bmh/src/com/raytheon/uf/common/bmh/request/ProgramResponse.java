@@ -24,6 +24,7 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -39,6 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 5, 2014  #3490      lvenable    Initial creation
  * Aug 17, 2014 #3490      lvenable    Added addProgram method.
  * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
+ * Jan 07, 2015 3958       bkowal      Added {@link #transmitters}.
  * </pre>
  * 
  * @author lvenable
@@ -52,6 +54,9 @@ public class ProgramResponse {
 
     @DynamicSerializeElement
     private List<ProgramSummary> programSummaryList;
+    
+    @DynamicSerializeElement
+    private List<Transmitter> transmitters;
 
     /**
      * Set the list of programs.
@@ -90,6 +95,20 @@ public class ProgramResponse {
 
     public void setProgramSummaryList(List<ProgramSummary> programSummaryList) {
         this.programSummaryList = programSummaryList;
+    }
+
+    /**
+     * @return the transmitters
+     */
+    public List<Transmitter> getTransmitters() {
+        return transmitters;
+    }
+
+    /**
+     * @param transmitters the transmitters to set
+     */
+    public void setTransmitters(List<Transmitter> transmitters) {
+        this.transmitters = transmitters;
     }
 
 }
