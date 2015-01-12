@@ -37,7 +37,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 08, 2014  #3286     dgilling     Add constants for sync regain.
  * Aug 25, 2014  #3286     dgilling     Adjust buffer size alert constants.
  * Oct 01, 2014  #3485     bsteffen     Add STARTUP_RESUME_THRESHOLD
- * 
+ * Jan 09, 2015  #3942     rjpeter      Increased watermark to 25.
  * </pre>
  * 
  * @author dgilling
@@ -54,13 +54,13 @@ public final class DataTransmitConstants {
      * TODO Make these threshold values configurable and use these constants for
      * defaults.
      */
-    public static final int WATERMARK_PACKETS_IN_BUFFER = 20;
+    public static final int WATERMARK_PACKETS_IN_BUFFER = 25;
 
     public static final int ALERT_HIGH_PACKETS_IN_BUFFER = WATERMARK_PACKETS_IN_BUFFER
-            + (WATERMARK_PACKETS_IN_BUFFER / 4);
+            + (WATERMARK_PACKETS_IN_BUFFER / 5);
 
     public static final int ALERT_LOW_PACKETS_IN_BUFFER = WATERMARK_PACKETS_IN_BUFFER
-            - (WATERMARK_PACKETS_IN_BUFFER / 4);
+            - (WATERMARK_PACKETS_IN_BUFFER / 5);
 
     public static final long SYNC_DOWNTIME_RESTART_THRESHOLD = 2 * TimeUtil.MILLIS_PER_SECOND;
 

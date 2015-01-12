@@ -51,7 +51,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 14, 2014 3655       bkowal      Initial creation
- * 
+ * Jan 09, 2015 3942       rjpeter     Made nextCycleTime volatile.
  * </pre>
  * 
  * @author bkowal
@@ -75,7 +75,7 @@ public class AbstractTransmitThread extends Thread implements
 
     protected RtpPacketIn previousPacket;
 
-    protected long nextCycleTime;
+    protected volatile long nextCycleTime;
 
     protected int watermarkPackets;
 

@@ -25,10 +25,10 @@
 		<!-- If any message appears in the last 10 unique messages more than 1 
 			time in 1 sec, it will be suppressed. Events that continue for 5 or more 
 			seconds will log every 5 seconds. -->
-		<cacheSize>10</cacheSize>
-		<duplicateThreshold>1</duplicateThreshold>
-		<timeThreshold>1000</timeThreshold>
-		<suppressionLoggingInterval>5000</suppressionLoggingInterval>
+		<cacheSize>15</cacheSize>
+		<duplicateThreshold>10</duplicateThreshold>
+		<timeThreshold>2000</timeThreshold>
+		<suppressionLoggingInterval>10000</suppressionLoggingInterval>
 		<appender-ref ref="asyncDacTransmitLog" />
 	</appender>
 

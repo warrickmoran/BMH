@@ -61,7 +61,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  * Nov 03, 2014  #3781     dgilling     Allow alert tones to be played
  *                                      independently from SAME tones.
  * Jan 05, 2015  #3913     bsteffen     Handle future replacements.
- * 
+ * Jan 09, 2015  #3942     rjpeter      Added flag to control use of positionStream.
  * 
  * </pre>
  * 
@@ -70,6 +70,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  */
 
 public final class DacMessagePlaybackData {
+
+    private static final boolean USE_POSITION_STREAM = Boolean
+            .getBoolean("usePositionStream");
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -141,7 +144,7 @@ public final class DacMessagePlaybackData {
                 if (audio.isInTones()) {
                     audio.rewind();
                     return false;
-                } else {
+                } else if (USE_POSITION_STREAM) {
                     try {
                         positionStream = Files.newOutputStream(positionFile,
                                 StandardOpenOption.APPEND);
@@ -179,13 +182,16 @@ public final class DacMessagePlaybackData {
                 playedSameTone, playedAlertTone, null);
         firstCallToGet = false;
         if (!resume || !resumePlayback()) {
-            try {
-                positionStream = Files.newOutputStream(
-                        message.getPositionPath(), StandardOpenOption.CREATE);
-            } catch (IOException e) {
-                logger.error(
-                        "Unable to open position file, position tracking will be disabled.",
-                        e);
+            if (USE_POSITION_STREAM) {
+                try {
+                    positionStream = Files.newOutputStream(
+                            message.getPositionPath(),
+                            StandardOpenOption.CREATE);
+                } catch (IOException e) {
+                    logger.error(
+                            "Unable to open position file, position tracking will be disabled.",
+                            e);
+                }
             }
         }
         return playbackStatus;
@@ -232,7 +238,7 @@ public final class DacMessagePlaybackData {
             playbackStatus = firstGet();
         }
         audio.get(dst, 0, dst.length);
-        if (positionStream != null && audio.hasRemaining()) {
+        if ((positionStream != null) && audio.hasRemaining()) {
             try {
                 /*
                  * TODO make this async or timeout. If the nfs write is failing
@@ -271,13 +277,15 @@ public final class DacMessagePlaybackData {
                 logger.error("Unable to close position file.", e);
             }
         }
-        try {
-            positionStream = Files.newOutputStream(message.getPositionPath(),
-                    StandardOpenOption.CREATE);
-        } catch (IOException e) {
-            logger.error(
-                    "Unable to open position file, position tracking will be disabled.",
-                    e);
+        if (USE_POSITION_STREAM) {
+            try {
+                positionStream = Files.newOutputStream(
+                        message.getPositionPath(), StandardOpenOption.CREATE);
+            } catch (IOException e) {
+                logger.error(
+                        "Unable to open position file, position tracking will be disabled.",
+                        e);
+            }
         }
         audio.rewind();
     }

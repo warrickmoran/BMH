@@ -76,7 +76,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Nov 11, 2014  #3762     bsteffen     Add delayed shutdown.
  * Dec 11, 2014  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg activity.
  * Jan 05, 2015  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg errors.
- * 
+ * Jan 09, 2015  #3942     rjpeter      Add tracking of time to get playbackStatus.
  * </pre>
  * 
  * @author dgilling
@@ -113,7 +113,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
      */
     private volatile boolean pausePlayback;
 
-    private Semaphore pauseLock = new Semaphore(1);
+    private final Semaphore pauseLock = new Semaphore(1);
 
     /**
      * Constructor for this thread. Attempts to open a {@code DatagramSocket}
@@ -164,13 +164,13 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                         logger.info("Resuming the playback of the current playlist.");
                     }
 
-                    if (this.delayInterrupts == false
-                            && interruptsAvailable.get() > 0) {
+                    if ((this.delayInterrupts == false)
+                            && (interruptsAvailable.get() > 0)) {
                         interruptsAvailable.decrementAndGet();
                     }
 
                     DacMessagePlaybackData playbackData = playlistMgr.next();
-                    while (playbackData == null && keepRunning) {
+                    while ((playbackData == null) && keepRunning) {
                         if (warnNoData) {
                             logger.error("There are no valid messages available for transmit.");
                             warnNoData = false;
@@ -218,8 +218,17 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
 
                             byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
 
+                            long t0 = System.currentTimeMillis();
                             MessagePlaybackStatusNotification playbackStatus = playbackData
                                     .get(nextPayload);
+                            long t1 = System.currentTimeMillis();
+                            long totalTime = t1 - t0;
+
+                            if (totalTime > 5) {
+                                logger.debug("Time to get playback status: "
+                                        + (totalTime));
+                            }
+
                             if (playbackStatus != null) {
                                 logger.debug("Posting playback status update: "
                                         + playbackStatus.toString());

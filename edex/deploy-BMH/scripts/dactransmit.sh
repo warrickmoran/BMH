@@ -39,7 +39,9 @@
 #    09/01/14        3665          bsteffen       Dont allow multiple instances
 #    10/21/14        3687          bsteffen       Log practice mode to a different file.
 #    11/15/14        3630          bkowal         Allow for greater customization of log file name.
+#    01/09/15        3942          rjpeter        Set memory parameters, added USE_POSITION_STREAM.
 ##############################################################################
+
 
 path_to_script=`readlink -f $0`
 dir=$(dirname $path_to_script)
@@ -47,6 +49,9 @@ dir=$(dirname $path_to_script)
 # As we process args, any that aren't the kill flag are accumulated in this
 # variable and passed to the java process.
 preservedArgs=()
+
+#Disables use of position stream, set to true to enable, enabling may cause issues keeping jitter buffer loaded
+USE_POSITION_STREAM=false
 
 # This loop processes the command line args. We need to extract DAC_ADDRESS(-d)
 # and DAC_PORT(-p). To make it easier to grab the argument to flags $prev will
@@ -110,8 +115,8 @@ for dependency in $DEPENDENCIES; do
   CLASSPATH="${CLASSPATH}:/awips2/edex/lib/dependencies/${dependency}/*"
 done;
 
-JVM_ARGS="-Xms128m -Xmx256m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
-JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml"
+JVM_ARGS="-Xms16m -Xmx48m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode -XX:NewSize=8m -XX:MaxNewSize=8m -XX:SurvivorRatio=6 -XX:MaxPermSize=24m -XX:ReservedCodeCacheSize=8m"
+JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml -DusePositionStream=${USE_POSITION_STREAM}"
 
 
 java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "${preservedArgs[@]}"

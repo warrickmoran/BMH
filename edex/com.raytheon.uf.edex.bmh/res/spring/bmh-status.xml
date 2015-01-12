@@ -8,6 +8,8 @@
   <bean id="statusMonitor"
     class="com.raytheon.uf.edex.bmh.systemstatus.EdexStatusMonitor" />
 
+  <bean id="bmhStatisticBridge" class="com.raytheon.uf.edex.bmh.stats.StatusToStatisticBridge"/>
+
   <bean id="statusRequestHandler"
     class="com.raytheon.uf.edex.bmh.systemstatus.StatusRequestHandler">
     <property name="statusMonitor" ref="statusMonitor" />
@@ -37,7 +39,14 @@
       <from uri="jms-durable:topic:BMH.Status" />
       <doTry>
         <bean ref="serializationUtil" method="transformFromThrift" />
-        <bean ref="statusMonitor" method="handleStatusMessage" />
+        <multicast>
+            <pipeline>
+                <bean ref="statusMonitor" method="handleStatusMessage" />
+            </pipeline>
+            <pipeline>
+                <bean ref="bmhStatisticBridge" method="handleStatusMessage" />
+            </pipeline>
+        </multicast>
         <doCatch>
           <exception>java.lang.Throwable</exception>
           <to uri="log:bmh?level=ERROR" />
