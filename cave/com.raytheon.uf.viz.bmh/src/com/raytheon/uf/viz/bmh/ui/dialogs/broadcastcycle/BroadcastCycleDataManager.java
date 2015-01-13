@@ -30,8 +30,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
-import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
-import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -54,10 +52,7 @@ import com.raytheon.uf.common.bmh.request.ZoneAreaRequest;
 import com.raytheon.uf.common.bmh.request.ZoneAreaRequest.ZoneAreaAction;
 import com.raytheon.uf.common.bmh.request.ZoneAreaResponse;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 
 /**
@@ -80,7 +75,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Dec 08, 2014    3864    bsteffen    Add a PlaylistMsg class.
  * Dec 13, 2014    3843    mpduff      Implement periodic messages.
  * Dec 18, 2014    3865    bsteffen    add getBroadcastMessagesForInputMessage.
- * Jan 12, 2015    3843    bsteffen    Fix NPE loading periodic data.
+ * Jan 12, 2015    3843    bsteffen    Move Periodic message table creation to playlist data.
  * 
  * </pre>
  * 
@@ -117,59 +112,6 @@ public class BroadcastCycleDataManager {
     }
 
     /**
-     * Get the periodic message table data
-     * 
-     * @param transmitterGroupName
-     * @param suiteName
-     * 
-     * @return The TableData
-     * @throws Exception
-     */
-    public TableData getPeriodicMessageTableData(String suiteName,
-            String transmitterGroupName) throws Exception {
-        List<TableColumnData> columns = createPeriodicMessageColumns();
-        TableData data = new TableData(columns);
-
-        PlaylistRequest req = new PlaylistRequest();
-        req.setAction(PlaylistAction.GET_PLAYLIST_BY_SUITE_GROUP);
-        req.setGroupName(transmitterGroupName);
-        req.setSuiteName(suiteName);
-        PlaylistResponse response = (PlaylistResponse) BmhUtils
-                .sendRequest(req);
-
-        Playlist playlist = response.getPlaylist();
-        if (playlist == null) {
-            return data;
-        }
-
-        // TODO fix with simulator data
-        for (PlaylistMessage msg : playlist.getMessages()) {
-            BroadcastMsg broadcast = msg.getBroadcastMsg();
-            if (broadcast.getInputMessage().isPeriodic()) {
-                TableRowData rowData = new TableRowData();
-
-                TableCellData cell = new TableCellData(broadcast
-                        .getUpdateDate().getTime().toString());
-                rowData.addTableCellData(cell);
-                String periodicity = msg.getBroadcastMsg().getInputMessage()
-                        .getPeriodicity();
-                cell = new TableCellData(periodicity);
-                rowData.addTableCellData(cell);
-
-                cell = new TableCellData(broadcast.getAfosid());
-                rowData.addTableCellData(cell);
-
-                cell = new TableCellData(broadcast.getInputMessage()
-                        .getAfosid());
-                rowData.setData(msg);
-                data.addDataRow(rowData);
-            }
-        }
-
-        return data;
-    }
-
-    /**
      * Get the {@link Program} associated with the provided
      * {@link TransmitterGroup}
      * 
@@ -194,12 +136,12 @@ public class BroadcastCycleDataManager {
      * 
      * @return
      */
-    private List<TableColumnData> createPeriodicMessageColumns() {
+    public List<TableColumnData> getPeriodicMessageColumns() {
         List<TableColumnData> columns = new ArrayList<TableColumnData>(4);
         columns.add(new TableColumnData("Last Broadcast Time"));
         columns.add(new TableColumnData("Next Predicted Broadcast"));
-        columns.add(new TableColumnData("Message Type"));
-        columns.add(new TableColumnData("Message ID"));
+        columns.add(new TableColumnData("Message Id"));
+        columns.add(new TableColumnData("Message Name"));
 
         return columns;
     }

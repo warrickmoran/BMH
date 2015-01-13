@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.playlist;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -29,7 +30,6 @@ import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
@@ -61,6 +61,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Nov 21, 2014    3845    bkowal      LiveBroadcastSwitchNotification now references a
  *                                     {@link TransmitterGroup}.
  * Nov 30, 2014    3752    mpduff      Store Suite name and playlist cycle duration time.
+ * Jan 13, 2015    3843    bsteffen    Track periodic predictions
  * 
  * </pre>
  * 
@@ -130,9 +131,11 @@ public class PlaylistStateManager {
                             + tg + ".");
         }
 
-        List<DacPlaylistMessageId> playlist = notification.getPlaylist();
+        Set<Long> broadcastIds = notification.getBroadcastIds();
         List<MessagePlaybackPrediction> messageList = notification
                 .getMessages();
+        List<MessagePlaybackPrediction> periodicMessageList = notification
+                .getPeriodicMessages();
 
         PlaylistDataStructure playlistData = playlistDataMap.get(tg);
         if (playlistData == null) {
@@ -150,16 +153,25 @@ public class PlaylistStateManager {
             predictionMap.put(mpp.getBroadcastId(), mpp);
         }
 
+        Map<Long, MessagePlaybackPrediction> periodicPredictionMap = playlistData
+                .getPeriodicPredictionMap();
+        periodicPredictionMap.clear();
+        if (periodicMessageList != null) {
+            for (MessagePlaybackPrediction mpp : periodicMessageList) {
+                periodicPredictionMap.put(mpp.getBroadcastId(), mpp);
+            }
+        }
+
         Map<Long, BroadcastMsg> playlistMap = playlistData.getPlaylistMap();
         // remove unused messages
-        playlistMap.keySet().retainAll(predictionMap.keySet());
+        playlistMap.clear();
 
         Map<Long, MessageType> messageTypeMap = playlistData
                 .getMessageTypeMap();
 
-        for (DacPlaylistMessageId id : playlist) {
+        for (Long id : broadcastIds) {
             List<BroadcastMsg> broadcastMessageList = broadcastMsgDao
-                    .getMessageByBroadcastId(id.getBroadcastId());
+                    .getMessageByBroadcastId(id);
             if (CollectionUtil.isNullOrEmpty(broadcastMessageList)) {
                 continue;
             }
@@ -167,8 +179,8 @@ public class PlaylistStateManager {
             BroadcastMsg broadcastMessage = broadcastMessageList.get(0);
             MessageType messageType = messageTypeDao
                     .getByAfosId(broadcastMessage.getAfosid());
-            playlistMap.put(id.getBroadcastId(), broadcastMessage);
-            messageTypeMap.put(id.getBroadcastId(), messageType);
+            playlistMap.put(id, broadcastMessage);
+            messageTypeMap.put(id, messageType);
         }
     }
 

@@ -35,6 +35,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
@@ -119,7 +120,9 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Dec 08, 2014  #3878     bkowal       Forcefully schedule all non-static periodic messages
  *                                      when there are only periodic messages in the playlist.
  * Jan 05, 2015  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg errors.
- * Jan 08, 2015  #3912     bsteffen     Change the way playlist refresh works to do periodic better?
+ * Jan 08, 2015  #3912     bsteffen     Change the way playlist refresh works to do periodic better
+ * Jan 13, 2015  #3843     bsteffen     Add periodic predictions to playlist switch notification.
+ * 
  * 
  * </pre>
  * 
@@ -927,8 +930,21 @@ public final class PlaylistScheduler implements
                         forceScheduleNonStaticPeriodic);
             }
         }
-        eventBus.post(new PlaylistSwitchNotification(playlist.getSuite(),
-                playlist.getTransmitterGroup(), predictions, cycleTime));
+        PlaylistSwitchNotification notification = new PlaylistSwitchNotification(playlist.getSuite(),
+                playlist.getTransmitterGroup(), predictions, cycleTime);
+        if(!periodicMessages.isEmpty()){
+            List<MessagePlaybackPrediction> periodicPredictions = new ArrayList<>(
+                    periodicMessages.size());
+            for (Entry<Long, DacPlaylistMessageId> entry : periodicMessages
+                    .entrySet()) {
+                DacPlaylistMessage messageData = cache.getMessage(entry
+                        .getValue());
+                periodicPredictions.add(new MessagePlaybackPrediction(
+                        nextMessageTime, messageData));
+            }
+            notification.setPeriodicMessages(periodicPredictions);
+        }
+        eventBus.post(notification);
         return predictedMessages;
     }
 
