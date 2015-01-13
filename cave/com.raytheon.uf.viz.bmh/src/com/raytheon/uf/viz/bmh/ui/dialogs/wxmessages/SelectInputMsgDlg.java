@@ -558,7 +558,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
             return;
         }
 
-        Set<Integer> tableIndexes = new TreeSet<>();
+        Set<Integer> matchingIndexes = new TreeSet<>();
         InputMessage im = null;
 
         for (int i = 0; i < allInputMessages.size(); i++) {
@@ -566,14 +566,14 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
             for (int j = 0; j < inputMsgTable.getColumnCount(); j++) {
                 if (filterData.filterOnText() == true) {
                     if (matchesTextFilter(filterData, im.getName())) {
-                        tableIndexes.add(i);
+                        matchingIndexes.add(i);
                         break;
                     } else if (matchesTextFilter(filterData, im.getAfosid())) {
-                        tableIndexes.add(i);
+                        matchingIndexes.add(i);
                         break;
                     } else if (matchesTextFilter(filterData,
                             (im.getActive() ? " Yes" : "No"))) {
-                        tableIndexes.add(i);
+                        matchingIndexes.add(i);
                         break;
                     }
                 }
@@ -582,7 +582,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
                     if (im.getCreationTime() != null) {
                         if (matchesDateFilter(filterData, im.getCreationTime()
                                 .getTime())) {
-                            tableIndexes.add(i);
+                            matchingIndexes.add(i);
                             break;
                         }
                     }
@@ -591,13 +591,9 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
 
         }
 
-        if (tableIndexes.isEmpty()) {
-            return;
-        }
-
         filteredInputMessages.clear();
 
-        for (Integer i : tableIndexes) {
+        for (Integer i : matchingIndexes) {
             filteredInputMessages.add(allInputMessages.get(i));
         }
 

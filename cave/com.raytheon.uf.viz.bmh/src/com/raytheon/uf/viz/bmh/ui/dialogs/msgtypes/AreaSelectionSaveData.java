@@ -41,9 +41,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * Oct 14, 2014   #3728    lvenable    Added a set of area codes.
  * Oct 16, 2014    3657    bkowal      Added affectedTransmitters
  * Oct 17, 2014    3655    bkowal      Change affectedTransmitters from {@link String} 
-                                       to {@link Transmitter}
+ *                                        to {@link Transmitter}
  * Oct 21, 2014   #3728    lvenable    Added set of zonecodes and area codes.
- *                                    
+ *  Jan 13, 2014  3876     lvenable    Updated method name and comments to be more correct.
  * 
  * </pre>
  * 
@@ -176,11 +176,11 @@ public class AreaSelectionSaveData {
     }
 
     /**
-     * Get a list of all the areas.
+     * Get a list of all the area and zone codes.
      * 
-     * @return List of areas.
+     * @return Set of area and zone codes.
      */
-    public Set<String> getSelectedAreaCodes() {
+    public Set<String> getSelectedAreaZoneCodes() {
         return allSelectedZonesAreaCodes;
     }
 
