@@ -22,11 +22,9 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
-import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
@@ -82,6 +80,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Dec 08, 2014    3864    bsteffen    Add a PlaylistMsg class.
  * Dec 13, 2014    3843    mpduff      Implement periodic messages.
  * Dec 18, 2014    3865    bsteffen    add getBroadcastMessagesForInputMessage.
+ * Jan 12, 2015    3843    bsteffen    Fix NPE loading periodic data.
  * 
  * </pre>
  * 
@@ -139,9 +138,6 @@ public class BroadcastCycleDataManager {
                 .sendRequest(req);
 
         Playlist playlist = response.getPlaylist();
-        PlaylistDataStructure playlistData = (PlaylistDataStructure) response
-                .getPlaylistData();
-        Map<Long, MessageType> msgTypeMap = playlistData.getMessageTypeMap();
         if (playlist == null) {
             return data;
         }
@@ -155,7 +151,7 @@ public class BroadcastCycleDataManager {
                 TableCellData cell = new TableCellData(broadcast
                         .getUpdateDate().getTime().toString());
                 rowData.addTableCellData(cell);
-                String periodicity = msgTypeMap.get(broadcast.getId())
+                String periodicity = msg.getBroadcastMsg().getInputMessage()
                         .getPeriodicity();
                 cell = new TableCellData(periodicity);
                 rowData.addTableCellData(cell);
@@ -165,6 +161,7 @@ public class BroadcastCycleDataManager {
 
                 cell = new TableCellData(broadcast.getInputMessage()
                         .getAfosid());
+                rowData.setData(msg);
                 data.addDataRow(rowData);
             }
         }
