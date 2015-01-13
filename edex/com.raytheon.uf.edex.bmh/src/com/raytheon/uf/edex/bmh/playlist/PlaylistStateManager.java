@@ -22,7 +22,6 @@ package com.raytheon.uf.edex.bmh.playlist;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -30,15 +29,16 @@ import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
-import com.raytheon.uf.common.util.CollectionUtil;
-import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
+import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
@@ -62,6 +62,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  *                                     {@link TransmitterGroup}.
  * Nov 30, 2014    3752    mpduff      Store Suite name and playlist cycle duration time.
  * Jan 13, 2015    3843    bsteffen    Track periodic predictions
+ * Jan 13, 2015    3844    bsteffen    Include PlaylistMessages in PlaylistDataStructure
  * 
  * </pre>
  * 
@@ -78,7 +79,7 @@ public class PlaylistStateManager {
 
     private final ConcurrentMap<String, LiveBroadcastSwitchNotification> liveBroadcastDataMap = new ConcurrentHashMap<>();
 
-    private BroadcastMsgDao broadcastMsgDao;
+    private PlaylistDao playlistDao;
 
     private MessageTypeDao messageTypeDao;
 
@@ -113,9 +114,9 @@ public class PlaylistStateManager {
                     .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no MessageTypeDao.");
             return;
         }
-        if (broadcastMsgDao == null) {
+        if (playlistDao == null) {
             statusHandler
-                    .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no BroadcastMsgDao.");
+                    .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no PlaylistDao.");
             return;
         }
 
@@ -131,7 +132,6 @@ public class PlaylistStateManager {
                             + tg + ".");
         }
 
-        Set<Long> broadcastIds = notification.getBroadcastIds();
         List<MessagePlaybackPrediction> messageList = notification
                 .getMessages();
         List<MessagePlaybackPrediction> periodicMessageList = notification
@@ -162,25 +162,25 @@ public class PlaylistStateManager {
             }
         }
 
-        Map<Long, BroadcastMsg> playlistMap = playlistData.getPlaylistMap();
+        Map<Long, PlaylistMessage> playlistMap = playlistData.getPlaylistMap();
         // remove unused messages
         playlistMap.clear();
 
         Map<Long, MessageType> messageTypeMap = playlistData
                 .getMessageTypeMap();
 
-        for (Long id : broadcastIds) {
-            List<BroadcastMsg> broadcastMessageList = broadcastMsgDao
-                    .getMessageByBroadcastId(id);
-            if (CollectionUtil.isNullOrEmpty(broadcastMessageList)) {
-                continue;
+        Playlist playlist = playlistDao
+                .getBySuiteAndGroupName(notification.getSuiteName(),
+                        notification.getTransmitterGroup());
+        if (playlist != null) {
+            for (PlaylistMessage message : playlist.getMessages()) {
+                BroadcastMsg broadcastMessage = message.getBroadcastMsg();
+                long id = broadcastMessage.getId();
+                MessageType messageType = messageTypeDao
+                        .getByAfosId(broadcastMessage.getAfosid());
+                playlistMap.put(id, message);
+                messageTypeMap.put(id, messageType);
             }
-
-            BroadcastMsg broadcastMessage = broadcastMessageList.get(0);
-            MessageType messageType = messageTypeDao
-                    .getByAfosId(broadcastMessage.getAfosid());
-            playlistMap.put(id, broadcastMessage);
-            messageTypeMap.put(id, messageType);
         }
     }
 
@@ -242,8 +242,8 @@ public class PlaylistStateManager {
         }
     }
 
-    public void setBroadcastMsgDao(BroadcastMsgDao broadcastMsgDao) {
-        this.broadcastMsgDao = broadcastMsgDao;
+    public void setPlaylistDao(PlaylistDao playlistDao) {
+        this.playlistDao = playlistDao;
     }
 
     public void setMessageTypeDao(MessageTypeDao messageTypeDao) {

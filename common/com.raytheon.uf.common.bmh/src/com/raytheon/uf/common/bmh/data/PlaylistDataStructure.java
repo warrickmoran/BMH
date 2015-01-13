@@ -23,8 +23,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -45,6 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 30, 2014     3752   mpduff      Added Suite name and playlist cycle duration time.
  * Nov 30, 2014     3752   mpduff      Added Suite name and playlist cycle duration time to copy constructor.
  * Jan 13, 2015     3843   bsteffen    Add periodic predictions
+ * Jan 13, 2015   3844     bsteffen    Change included message to be PlaylistMessage
  * 
  * </pre>
  * 
@@ -57,7 +58,7 @@ public class PlaylistDataStructure implements IPlaylistData {
      * DacPlaylistMessageId -> BroadcastMsg
      */
     @DynamicSerializeElement
-    private Map<Long, BroadcastMsg> playlistMap;
+    private Map<Long, PlaylistMessage> playlistMap;
 
     /**
      * Broadcast Message ID -> MessagePlaybackPrediction
@@ -104,7 +105,7 @@ public class PlaylistDataStructure implements IPlaylistData {
         this.playbackCycleTime = that.getPlaybackCycleTime();
     }
 
-    public Map<Long, BroadcastMsg> getPlaylistMap() {
+    public Map<Long, PlaylistMessage> getPlaylistMap() {
         if (playlistMap == null) {
             playlistMap = new HashMap<>();
         }
@@ -112,7 +113,7 @@ public class PlaylistDataStructure implements IPlaylistData {
         return playlistMap;
     }
 
-    public void setPlaylistMap(Map<Long, BroadcastMsg> playlistMap) {
+    public void setPlaylistMap(Map<Long, PlaylistMessage> playlistMap) {
         this.playlistMap = playlistMap;
     }
 

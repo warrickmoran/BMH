@@ -25,14 +25,16 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
+import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
@@ -70,6 +72,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Nov 29, 2014   3844     mpduff      Implement interrupt and periodic message coloring
  * Dec 11, 2014   3895     lvenable    Changed SimpleDateFormat to use GMT.
  * Jan 13, 2015   3843     bsteffen    Add ability to populate periodic table.
+ * Jan 13, 2015   3844     bsteffen    Include PlaylistMessages in PlaylistDataStructure
  * 
  * </pre>
  * 
@@ -125,7 +128,6 @@ public class PlaylistData {
     public void handlePlaylistSwitchNotification(
             PlaylistSwitchNotification notification) {
         String tg = notification.getTransmitterGroup();
-        Set<Long> broadcastIds = notification.getBroadcastIds();
         List<MessagePlaybackPrediction> messageList = notification
                 .getMessages();
         List<MessagePlaybackPrediction> periodicMessageList = notification
@@ -154,23 +156,33 @@ public class PlaylistData {
             }
         }
 
-        Map<Long, BroadcastMsg> playlistMap = playlistData.getPlaylistMap();
+        Map<Long, PlaylistMessage> playlistMap = playlistData.getPlaylistMap();
 
         playlistMap.clear();
 
         Map<Long, MessageType> messageTypeMap = playlistData
                 .getMessageTypeMap();
 
-        for (Long id : broadcastIds) {
-            try {
-                BroadcastMsg broadcastMessage = dataManager
-                        .getBroadcastMessage(id);
-                MessageType messageType = dataManager
-                        .getMessageType(broadcastMessage.getAfosid());
-                playlistMap.put(id, broadcastMessage);
-                messageTypeMap.put(id, messageType);
-            } catch (Exception e) {
-                statusHandler.error("Error accessing BMH database", e);
+        Playlist playlist;
+        try {
+            playlist = dataManager.getPlaylist(notification.getSuiteName(),
+                    notification.getTransmitterGroup());
+        } catch (Exception e) {
+            statusHandler.error("Error accessing BMH database", e);
+            return;
+        }
+        if (playlist != null) {
+            for (PlaylistMessage message : playlist.getMessages()) {
+                try {
+                    BroadcastMsg broadcastMessage = message.getBroadcastMsg();
+                    long id = broadcastMessage.getId();
+                    MessageType messageType = dataManager
+                            .getMessageType(broadcastMessage.getAfosid());
+                    playlistMap.put(id, message);
+                    messageTypeMap.put(id, messageType);
+                } catch (Exception e) {
+                    statusHandler.error("Error accessing BMH database", e);
+                }
             }
         }
     }
@@ -223,7 +235,7 @@ public class PlaylistData {
         Map<Long, MessagePlaybackPrediction> predictionMap = playlistDataStructure
                 .getPredictionMap();
 
-        Map<Long, BroadcastMsg> playlistMap = playlistDataStructure
+        Map<Long, PlaylistMessage> playlistMap = playlistDataStructure
                 .getPlaylistMap();
         Map<Long, MessageType> messageTypeMap = playlistDataStructure
                 .getMessageTypeMap();
@@ -249,13 +261,14 @@ public class PlaylistData {
                         .getPredictedTransmitTimeColor());
             }
 
-            BroadcastMsg message = playlistMap.get(broadcastId);
+            PlaylistMessage message = playlistMap.get(broadcastId);
+            InputMessage inputMsg = null;
 
             if (message != null) {
-                cycleTableData.setExpirationTime(message.getInputMessage()
-                        .getExpirationTime());
+                inputMsg = message.getBroadcastMsg().getInputMessage();
+                cycleTableData.setExpirationTime(message.getExpirationTime());
                 cycleTableData.setMessageId(message.getAfosid());
-                cycleTableData.setInputMsg(message.getInputMessage());
+                cycleTableData.setInputMsg(inputMsg);
             } else {
                 cycleTableData.setExpirationTime(null);
                 cycleTableData.setMessageId("Unknown");
@@ -270,26 +283,27 @@ public class PlaylistData {
             String mrd = null;
 
             if (message != null) {
-                mrd = message.getInputMessage().getMrd();
+                mrd = inputMsg.getMrd();
 
-                if (message.getInputMessage().isPeriodic()) {
+                if (inputMsg.isPeriodic()) {
                     cycleTableData.setMessageIdColor(colorManager
                             .getPeriodicColor());
                 }
 
-                if (message.getInputMessage().getInterrupt()) {
+                if (inputMsg.getInterrupt()) {
                     cycleTableData.setMessageIdColor(colorManager
                             .getInterruptColor());
+                }
+                if (message.getReplacementType() != null) {
+                    cycleTableData.setMessageIdColor(colorManager
+                            .getReplaceColor());
                 }
             }
 
             if (mrd == null) {
                 mrd = EMPTY;
-                // TODO how to determine if MRD color or not
-                // } else {
-                // cycleTableData
-                // .setMessageIdColor(colorManager.getReplaceColor());
             }
+
             cycleTableData.setMrd(mrd);
 
             cycleTableData.setBroadcastId(broadcastId);
@@ -391,15 +405,15 @@ public class PlaylistData {
         Map<Long, MessagePlaybackPrediction> periodicPredictionMap = playlistDataStructure
                 .getPeriodicPredictionMap();
 
-        Map<Long, BroadcastMsg> playlistMap = playlistDataStructure
+        Map<Long, PlaylistMessage> playlistMap = playlistDataStructure
                 .getPlaylistMap();
 
         TableData tableData = new TableData(
                 dataManager.getPeriodicMessageColumns());
 
         for (MessagePlaybackPrediction prediction : predictionMap.values()) {
-            BroadcastMsg broadcast = playlistMap.get(prediction
-                    .getBroadcastId());
+            BroadcastMsg broadcast = playlistMap.get(
+                    prediction.getBroadcastId()).getBroadcastMsg();
             if (broadcast.getInputMessage().isPeriodic()) {
                 tableData.addDataRow(createPeriodicTableRow(prediction,
                         broadcast));
@@ -407,8 +421,8 @@ public class PlaylistData {
         }
         for (MessagePlaybackPrediction prediction : periodicPredictionMap
                 .values()) {
-            BroadcastMsg broadcast = playlistMap.get(prediction
-                    .getBroadcastId());
+            BroadcastMsg broadcast = playlistMap.get(
+                    prediction.getBroadcastId()).getBroadcastMsg();
             tableData.addDataRow(createPeriodicTableRow(prediction, broadcast));
         }
         return tableData;
