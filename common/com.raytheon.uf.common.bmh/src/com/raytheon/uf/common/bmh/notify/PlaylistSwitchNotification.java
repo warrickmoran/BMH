@@ -19,10 +19,10 @@
  **/
 package com.raytheon.uf.common.bmh.notify;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Jul 25, 2014  #3286     dgilling     Initial creation
  * Aug 06, 2014  #3286     dgilling     Rename getMessageIds() to getPlaylist().
+ * Jan 13, 2015  #3843     bsteffen     Add periodic predictions
  * 
  * </pre>
  * 
@@ -56,6 +57,13 @@ public class PlaylistSwitchNotification {
 
     @DynamicSerializeElement
     private List<MessagePlaybackPrediction> messages;
+
+    /**
+     * Prediction times for periodic messages that are not in this cycle because
+     * they need to be scheduled further in the future.
+     */
+    @DynamicSerializeElement
+    private List<MessagePlaybackPrediction> periodicMessages;
 
     /**
      * Total time to play all messages in {@code messages}, measured in ms.
@@ -87,10 +95,15 @@ public class PlaylistSwitchNotification {
         return builder.toString();
     }
 
-    public List<DacPlaylistMessageId> getPlaylist() {
-        List<DacPlaylistMessageId> retVal = new ArrayList<>(messages.size());
+    public Set<Long> getBroadcastIds() {
+        Set<Long> retVal = new HashSet<>(messages.size(), 1.0f);
         for (MessagePlaybackPrediction message : messages) {
-            retVal.add(new DacPlaylistMessageId(message.getBroadcastId()));
+            retVal.add(message.getBroadcastId());
+        }
+        if (periodicMessages != null) {
+            for (MessagePlaybackPrediction message : periodicMessages) {
+                retVal.add(message.getBroadcastId());
+            }
         }
         return retVal;
     }
@@ -117,6 +130,15 @@ public class PlaylistSwitchNotification {
 
     public void setMessages(List<MessagePlaybackPrediction> messages) {
         this.messages = messages;
+    }
+
+    public List<MessagePlaybackPrediction> getPeriodicMessages() {
+        return periodicMessages;
+    }
+
+    public void setPeriodicMessages(
+            List<MessagePlaybackPrediction> periodicMessages) {
+        this.periodicMessages = periodicMessages;
     }
 
     public long getPlaybackCycleTime() {

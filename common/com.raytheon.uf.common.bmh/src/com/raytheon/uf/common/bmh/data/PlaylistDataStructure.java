@@ -44,6 +44,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 04, 2014     3778   bsteffen    Preserve the order of the prediction map.
  * Nov 30, 2014     3752   mpduff      Added Suite name and playlist cycle duration time.
  * Nov 30, 2014     3752   mpduff      Added Suite name and playlist cycle duration time to copy constructor.
+ * Jan 13, 2015     3843   bsteffen    Add periodic predictions
  * 
  * </pre>
  * 
@@ -63,6 +64,13 @@ public class PlaylistDataStructure implements IPlaylistData {
      */
     @DynamicSerializeElement
     private LinkedHashMap<Long, MessagePlaybackPrediction> predictionMap;
+
+    /**
+     * Broadcast Message ID -> MessagePlaybackPrediction Contains predicitions
+     * for periodic messages which are not in the current cycle.
+     */
+    @DynamicSerializeElement
+    private LinkedHashMap<Long, MessagePlaybackPrediction> periodicPredictionMap;
 
     /**
      * Broadcast Message ID -> MessageType
@@ -89,6 +97,8 @@ public class PlaylistDataStructure implements IPlaylistData {
     public PlaylistDataStructure(PlaylistDataStructure that) {
         this.playlistMap = new HashMap<>(that.getPlaylistMap());
         this.predictionMap = new LinkedHashMap<>(that.getPredictionMap());
+        this.periodicPredictionMap = new LinkedHashMap<>(
+                that.getPeriodicPredictionMap());
         this.messageTypeMap = new HashMap<>(that.getMessageTypeMap());
         this.suiteName = that.getSuiteName();
         this.playbackCycleTime = that.getPlaybackCycleTime();
@@ -117,6 +127,18 @@ public class PlaylistDataStructure implements IPlaylistData {
     public void setPredictionMap(
             LinkedHashMap<Long, MessagePlaybackPrediction> predictionMap) {
         this.predictionMap = predictionMap;
+    }
+
+    public LinkedHashMap<Long, MessagePlaybackPrediction> getPeriodicPredictionMap() {
+        if (periodicPredictionMap == null) {
+            periodicPredictionMap = new LinkedHashMap<>();
+        }
+        return periodicPredictionMap;
+    }
+
+    public void setPeriodicPredictionMap(
+            LinkedHashMap<Long, MessagePlaybackPrediction> periodicPredictionMap) {
+        this.periodicPredictionMap = periodicPredictionMap;
     }
 
     public Map<Long, MessageType> getMessageTypeMap() {

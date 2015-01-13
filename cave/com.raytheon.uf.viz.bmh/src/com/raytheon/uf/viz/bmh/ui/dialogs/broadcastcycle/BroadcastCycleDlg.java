@@ -143,6 +143,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 13, 2014  3843      mpduff      Implement periodic messages.
  * Dec 16, 2014  3753      bsteffen    Add popup when suite change fails.
  * Dec 18, 2014  3865      bsteffen    Implement Expire/Delete
+ * Jan 13, 2015    3843    bsteffen    Enhance Periodic Messages Dialog.
  * 
  * </pre>
  * 
@@ -976,8 +977,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      */
     private void handlePeriodicAction() {
         if ((periodicMsgDlg == null) || periodicMsgDlg.isDisposed()) {
-            periodicMsgDlg = new PeriodicMessagesDlg(getShell(), selectedSuite,
-                    selectedTransmitterGrp);
+            periodicMsgDlg = new PeriodicMessagesDlg(getShell(), dataManager,
+                    playlistData, selectedTransmitterGrp);
             periodicMsgDlg.open();
         } else {
             periodicMsgDlg.bringToTop();
@@ -1222,7 +1223,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 Object o = message.getMessagePayload();
                 if (o instanceof PlaylistSwitchNotification) {
                     final PlaylistSwitchNotification notification = (PlaylistSwitchNotification) o;
-                    playlistData.handlePLaylistSwitchNotification(notification);
+                    playlistData.handlePlaylistSwitchNotification(notification);
                     if (notification.getTransmitterGroup().equals(
                             selectedTransmitterGrp)) {
                         tableData = playlistData
@@ -1241,6 +1242,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                         .getName());
                                 suiteValueLbl.setText(selectedSuite);
                                 cycleDurValueLbl.setText(cycleDurationTime);
+                                if (periodicMsgDlg != null
+                                        && !periodicMsgDlg.isDisposed()) {
+                                    periodicMsgDlg.populateTableData();
+                                }
                             }
                         });
                     }
@@ -1258,6 +1263,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                             @Override
                             public void run() {
                                 messageDetailBtn.setEnabled(true);
+                                if (periodicMsgDlg != null
+                                        && !periodicMsgDlg.isDisposed()) {
+                                    periodicMsgDlg.populateTableData();
+                                }
                             }
                         });
                     }

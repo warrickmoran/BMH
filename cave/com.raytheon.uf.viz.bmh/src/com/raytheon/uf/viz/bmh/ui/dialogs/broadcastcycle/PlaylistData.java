@@ -25,6 +25,7 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -32,7 +33,6 @@ import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
@@ -69,6 +69,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  *                                     components could utilize the common playlist date format.
  * Nov 29, 2014   3844     mpduff      Implement interrupt and periodic message coloring
  * Dec 11, 2014   3895     lvenable    Changed SimpleDateFormat to use GMT.
+ * Jan 13, 2015   3843     bsteffen    Add ability to populate periodic table.
  * 
  * </pre>
  * 
@@ -121,12 +122,14 @@ public class PlaylistData {
      * 
      * @param notification
      */
-    public void handlePLaylistSwitchNotification(
+    public void handlePlaylistSwitchNotification(
             PlaylistSwitchNotification notification) {
         String tg = notification.getTransmitterGroup();
-        List<DacPlaylistMessageId> playlist = notification.getPlaylist();
+        Set<Long> broadcastIds = notification.getBroadcastIds();
         List<MessagePlaybackPrediction> messageList = notification
                 .getMessages();
+        List<MessagePlaybackPrediction> periodicMessageList = notification
+                .getPeriodicMessages();
 
         PlaylistDataStructure playlistData = playlistDataMap.get(tg);
         if (playlistData == null) {
@@ -142,21 +145,30 @@ public class PlaylistData {
             predictionMap.put(mpp.getBroadcastId(), mpp);
         }
 
+        Map<Long, MessagePlaybackPrediction> periodicPredictionMap = playlistData
+                .getPeriodicPredictionMap();
+        periodicPredictionMap.clear();
+        if (periodicMessageList != null) {
+            for (MessagePlaybackPrediction mpp : periodicMessageList) {
+                periodicPredictionMap.put(mpp.getBroadcastId(), mpp);
+            }
+        }
+
         Map<Long, BroadcastMsg> playlistMap = playlistData.getPlaylistMap();
-        // remove unused messages
-        playlistMap.keySet().retainAll(predictionMap.keySet());
+
+        playlistMap.clear();
 
         Map<Long, MessageType> messageTypeMap = playlistData
                 .getMessageTypeMap();
 
-        for (DacPlaylistMessageId id : playlist) {
+        for (Long id : broadcastIds) {
             try {
                 BroadcastMsg broadcastMessage = dataManager
-                        .getBroadcastMessage(id.getBroadcastId());
+                        .getBroadcastMessage(id);
                 MessageType messageType = dataManager
                         .getMessageType(broadcastMessage.getAfosid());
-                playlistMap.put(id.getBroadcastId(), broadcastMessage);
-                messageTypeMap.put(id.getBroadcastId(), messageType);
+                playlistMap.put(id, broadcastMessage);
+                messageTypeMap.put(id, messageType);
             } catch (Exception e) {
                 statusHandler.error("Error accessing BMH database", e);
             }
@@ -364,6 +376,76 @@ public class PlaylistData {
         liveTableData.addDataRow(tableRowData);
 
         return liveTableData;
+    }
+
+    public TableData getPeriodicTableData(String transmitterGroupName) {
+        PlaylistDataStructure playlistDataStructure = playlistDataMap
+                .get(transmitterGroupName);
+        if (playlistDataStructure == null) {
+            return new TableData(dataManager.getPeriodicMessageColumns());
+        }
+
+        Map<Long, MessagePlaybackPrediction> predictionMap = playlistDataStructure
+                .getPredictionMap();
+
+        Map<Long, MessagePlaybackPrediction> periodicPredictionMap = playlistDataStructure
+                .getPeriodicPredictionMap();
+
+        Map<Long, BroadcastMsg> playlistMap = playlistDataStructure
+                .getPlaylistMap();
+
+        TableData tableData = new TableData(
+                dataManager.getPeriodicMessageColumns());
+
+        for (MessagePlaybackPrediction prediction : predictionMap.values()) {
+            BroadcastMsg broadcast = playlistMap.get(prediction
+                    .getBroadcastId());
+            if (broadcast.getInputMessage().isPeriodic()) {
+                tableData.addDataRow(createPeriodicTableRow(prediction,
+                        broadcast));
+            }
+        }
+        for (MessagePlaybackPrediction prediction : periodicPredictionMap
+                .values()) {
+            BroadcastMsg broadcast = playlistMap.get(prediction
+                    .getBroadcastId());
+            tableData.addDataRow(createPeriodicTableRow(prediction, broadcast));
+        }
+        return tableData;
+    }
+
+    private TableRowData createPeriodicTableRow(
+            MessagePlaybackPrediction prediction, BroadcastMsg broadcast) {
+        TableRowData rowData = new TableRowData();
+        Calendar lastTransmitTime = prediction.getLastTransmitTime();
+        if (lastTransmitTime == null) {
+            rowData.addTableCellData(new TableCellData(UNKNOWN_TIME_STR));
+        } else {
+            rowData.addTableCellData(new TableCellData(sdf
+                    .format(lastTransmitTime.getTime())));
+        }
+        Calendar nextTransmitTime = prediction.getNextTransmitTime();
+        if (nextTransmitTime == null) {
+            if (lastTransmitTime != null) {
+                int pSecs = broadcast.getInputMessage().getPeriodicitySeconds();
+                nextTransmitTime = (Calendar) lastTransmitTime.clone();
+                nextTransmitTime.add(Calendar.SECOND, pSecs);
+            } else {
+                rowData.addTableCellData(new TableCellData(UNKNOWN_TIME_STR));
+            }
+        }
+        if (nextTransmitTime != null) {
+            rowData.addTableCellData(new TableCellData(sdf
+                    .format(nextTransmitTime.getTime())));
+        }
+
+        TableCellData cell = new TableCellData(broadcast.getAfosid());
+        rowData.addTableCellData(cell);
+
+        cell = new TableCellData(broadcast.getInputMessage().getName());
+        rowData.addTableCellData(cell);
+        rowData.setData(broadcast);
+        return rowData;
     }
 
     /**

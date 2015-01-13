@@ -57,7 +57,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 14, 2014    3432    mpduff      Additional capabilities
  * Oct 10, 2014    3646    rferrel     Convert tableComp to GenericTable.
  * Dec 13, 2014    3843    mpduff      Implement periodic messages.
- * 
+ * Jan 13, 2015    3843    bsteffen    Use playlist data to populate table correctly.
  * 
  * </pre>
  * 
@@ -78,18 +78,19 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
 
     private Button detailsBtn;
 
-    private final String selectedSuite;
-
     private final String selectedTransmitterGrp;
 
     private final BroadcastCycleDataManager dataManager;
 
-    public PeriodicMessagesDlg(Shell parent, String selectedSuite,
+    private final PlaylistData playlistData;
+
+    public PeriodicMessagesDlg(Shell parent,
+            BroadcastCycleDataManager dataManager, PlaylistData playlistData,
             String selectedTransmitterGrp) {
         super(parent, CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT);
         setText("Periodic Messages");
-        this.dataManager = new BroadcastCycleDataManager();
-        this.selectedSuite = selectedSuite;
+        this.dataManager = dataManager;
+        this.playlistData = playlistData;
         this.selectedTransmitterGrp = selectedTransmitterGrp;
     }
 
@@ -124,14 +125,15 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
         tableComp.setLayoutData(gd);
     }
 
-    private void populateTableData() {
+    public void populateTableData() {
         try {
-            tableData = dataManager
-                    .getPeriodicMessageTableData(selectedSuite,
-                            selectedTransmitterGrp);
+            tableData = playlistData
+                    .getPeriodicTableData(selectedTransmitterGrp);
             tableComp.populateTable(tableData);
             if (tableData.getTableRowCount() > 0) {
                 detailsBtn.setEnabled(true);
+            } else {
+                detailsBtn.setEnabled(false);
             }
         } catch (Exception e) {
             statusHandler.error("Error accessing BMH Database.", e);
