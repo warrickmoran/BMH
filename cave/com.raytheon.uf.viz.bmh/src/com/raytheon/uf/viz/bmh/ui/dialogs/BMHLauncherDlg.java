@@ -54,12 +54,19 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
+import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
+import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation.TYPE;
 import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
+import com.raytheon.uf.common.jms.notification.INotificationObserver;
+import com.raytheon.uf.common.jms.notification.NotificationException;
+import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
+import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.practice.PracticeKeepAliveJob;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
@@ -69,6 +76,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcast.BroadcastLiveDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterAlignmentDlg;
@@ -88,6 +96,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.voice.VoiceConfigDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WeatherMessagesDlg;
 import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
 import com.raytheon.uf.viz.bmh.ui.program.ImportLegacyDbDlg;
+import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
@@ -133,18 +142,21 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 15, 2014   3618     bkowal      Added the Voice Configuration dialog.
  * Jan 07, 2015   3931     bkowal      Added an option to import a BMH dictionary.
  * Jan 08, 2015   3821     bsteffen    Rename silenceAlarm to deadAirAlarm
- * 
+ * Jan 13, 2015   3968     bkowal      Handle message confirmations.
  * 
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
-public class BMHLauncherDlg extends CaveSWTDialog {
+public class BMHLauncherDlg extends CaveSWTDialog implements
+        INotificationObserver {
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(BMHLauncherDlg.class);
+
+    private final BroadcastCycleDataManager dataManager = new BroadcastCycleDataManager();
 
     /** Transmitter menu. */
     private Menu transmittersMenu;
@@ -288,6 +300,9 @@ public class BMHLauncherDlg extends CaveSWTDialog {
         weatherMessageImg.dispose();
         emergencyOverrideImg.dispose();
         broadcastCycleImg.dispose();
+
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getStatusDestination(), this);
     }
 
     @Override
@@ -297,6 +312,8 @@ public class BMHLauncherDlg extends CaveSWTDialog {
          * system status dialog doesn't get tied to the Cave dialog.
          */
         launchStatusDialog();
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getStatusDestination(), this);
     }
 
     @Override
@@ -1303,5 +1320,58 @@ public class BMHLauncherDlg extends CaveSWTDialog {
 
     private boolean isAuthorized(DlgInfo dlgInfo) {
         return BmhUtils.isAuthorized(shell, dlgInfo);
+    }
+
+    @Override
+    public void notificationArrived(NotificationMessage[] messages) {
+        for (NotificationMessage message : messages) {
+            Object o;
+            try {
+                o = message.getMessagePayload();
+                if (o instanceof MessageBroadcastNotifcation == false) {
+                    return;
+                }
+
+                MessageBroadcastNotifcation notification = (MessageBroadcastNotifcation) o;
+
+                /*
+                 * Retrieve the broadcast message associated with the
+                 * notification.
+                 */
+                BroadcastMsg msg = null;
+                try {
+                    msg = this.dataManager.getBroadcastMessage(notification
+                            .getBroadcastId());
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "Failed to retrieve the broadcast message associated with notification: "
+                                    + notification.toString() + ".", e);
+                    return;
+                }
+                /*
+                 * Broadcast message has been successfully retrieved. Construct
+                 * the Input Message identifier;
+                 */
+                StringBuilder sb = new StringBuilder("InputMessage [id=");
+                sb.append(msg.getInputMessage().getId());
+                sb.append(", name=").append(msg.getInputMessage().getName());
+                sb.append(", afosid=")
+                        .append(msg.getInputMessage().getAfosid()).append("]");
+                final String identification = sb.toString();
+
+                if (notification.getType() == TYPE.CONFIRM) {
+                    /*
+                     * construct the AlertViz message.
+                     */
+                    sb = new StringBuilder(identification);
+                    sb.append(" has been successfully broadcast on Transmitter ");
+                    sb.append(notification.getTransmitterGroup()).append(".");
+                    statusHandler.info(sb.toString());
+                }
+
+            } catch (NotificationException e) {
+                statusHandler.error("Error processing BMH Notification!", e);
+            }
+        }
     }
 }

@@ -136,6 +136,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Dec 16, 2014  3753     bsteffen    Report failure when suites won't force.
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
+ * Jan 12, 2015  3968     bkowal      Include the confirmation flag in the {@link DacPlaylistMessage}.
  * 
  * </pre>
  * 
@@ -676,6 +677,13 @@ public class PlaylistManager implements IContextStateProcessor {
                      * determine if the {@link MessageType} is static.
                      */
                     dac.setStatic(messageType.getDesignation().isStatic());
+                }
+                if (broadcast.getInputMessage().getConfirm() != null) {
+                    /*
+                     * determine if the initial broadcast of the message should
+                     * be confirmed.
+                     */
+                    dac.setConfirm(broadcast.getInputMessage().getConfirm());
                 }
                 dac.setToneBlackoutEnabled(messageType.isToneBlackoutEnabled());
                 if (dac.isToneBlackoutEnabled()) {

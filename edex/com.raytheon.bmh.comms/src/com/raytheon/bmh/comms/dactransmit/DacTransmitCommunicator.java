@@ -31,6 +31,7 @@ import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
@@ -67,6 +68,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Oct 21, 2014  3655     bkowal      Use the new message types.
  * Oct 21, 2014  3655     bkowal      Support LiveBroadcastSwitchNotification.
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
+ * Jan 12, 2015  3968     bkowal      Handle {@link MessageBroadcastNotifcation}.
  * 
  * </pre>
  * 
@@ -161,6 +163,10 @@ public class DacTransmitCommunicator extends Thread {
             manager.forwardDacBroadcastMsg((ILiveBroadcastMessage) message);
         } else if (message instanceof LiveBroadcastSwitchNotification) {
             LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) message;
+            manager.transmitDacStatus(notification);
+        } else if (message instanceof MessageBroadcastNotifcation) {
+            MessageBroadcastNotifcation notification = (MessageBroadcastNotifcation) message;
+            notification.setTransmitterGroup(this.groupName);
             manager.transmitDacStatus(notification);
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",

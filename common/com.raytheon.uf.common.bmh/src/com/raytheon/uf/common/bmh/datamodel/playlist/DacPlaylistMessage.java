@@ -57,6 +57,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Dec 11, 2014  3651     bkowal      Added {@link #name} for logging purposes.
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * Jan 08, 2015  3912     bsteffen    Add isPeriodic
+ * Jan 12, 2015  3968     bkowal      Added {@link #confirm}.
  * 
  * </pre>
  * 
@@ -69,7 +70,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     @XmlElement
     private String name;
-    
+
     @XmlElement
     private String messageType;
 
@@ -123,6 +124,13 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     @XmlElement
     private boolean isStatic;
 
+    /*
+     * boolean indicating whether or not the confirm flag has been set on the
+     * associated message.
+     */
+    @XmlElement
+    private boolean confirm;
+
     private transient Path path;
 
     public DacPlaylistMessage() {
@@ -152,7 +160,8 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     }
 
     /**
-     * @param name the name to set
+     * @param name
+     *            the name to set
      */
     public void setName(String name) {
         this.name = name;
@@ -440,5 +449,19 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      */
     public void setStatic(boolean isStatic) {
         this.isStatic = isStatic;
+    }
+
+    /**
+     * @return the confirm
+     */
+    public boolean isConfirm() {
+        return confirm;
+    }
+
+    /**
+     * @param confirm the confirm to set
+     */
+    public void setConfirm(boolean confirm) {
+        this.confirm = confirm;
     }
 }

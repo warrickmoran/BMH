@@ -62,6 +62,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  *                                      independently from SAME tones.
  * Jan 05, 2015  #3913     bsteffen     Handle future replacements.
  * Jan 09, 2015  #3942     rjpeter      Added flag to control use of positionStream.
+ * Jan 12, 2015  #3968     bkowal       Added {@link #requiresConfirmation()}.
  * 
  * </pre>
  * 
@@ -312,5 +313,16 @@ public final class DacMessagePlaybackData {
 
     public void setInterrupt(boolean interrupt) {
         this.interrupt = interrupt;
+    }
+
+    /**
+     * Returns a boolean indicating whether or not a message playback
+     * confirmation should be sent to AlertViz.
+     * 
+     * @return true when a playback confirmation should be sent; false,
+     *         otherwise.
+     */
+    public boolean requiresConfirmation() {
+        return this.message.isConfirm() && this.message.getPlayCount() == 0;
     }
 }
