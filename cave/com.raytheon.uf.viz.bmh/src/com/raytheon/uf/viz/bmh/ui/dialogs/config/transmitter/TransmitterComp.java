@@ -88,7 +88,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      group's program contains a GENERAL suite.
  * Dec 12, 2014    3603    bsteffen    Implement transfer tone.
  * Jan 08, 2015    3963    bkowal      Allow a user to complete or undo a transmitter decommission.
- * 
+ * Jan 13, 2015    3995    rjpeter     Do not pass stand alone transmitters to new transmitter dialog.
  * </pre>
  * 
  * @author mpduff
@@ -212,8 +212,8 @@ public class TransmitterComp extends Composite implements
      */
     private void handleMenuShown() {
         MenuItem[] items = menu.getItems();
-        for (int i = 0; i < items.length; i++) {
-            items[i].dispose();
+        for (MenuItem item : items) {
+            item.dispose();
         }
 
         MenuItem newGroupItem = new MenuItem(menu, SWT.PUSH);
@@ -285,19 +285,19 @@ public class TransmitterComp extends Composite implements
 
                 transmitterEnabled = ((groupTransmitter != null) && (groupTransmitter
                         .getTxStatus() == TxStatus.ENABLED))
-                        || ((standaloneGroup != null) && standaloneGroup
-                                .getTransmitterList().get(0).getTxStatus() == TxStatus.ENABLED);
+                        || ((standaloneGroup != null) && (standaloneGroup
+                                .getTransmitterList().get(0).getTxStatus() == TxStatus.ENABLED));
                 if (transmitterEnabled == false) {
                     transmitterDecomissioned = ((groupTransmitter != null) && (groupTransmitter
                             .getTxStatus() == TxStatus.ENABLED))
-                            || ((standaloneGroup != null) && standaloneGroup
-                                    .getTransmitterList().get(0).getTxStatus() == TxStatus.DECOMM);
+                            || ((standaloneGroup != null) && (standaloneGroup
+                                    .getTransmitterList().get(0).getTxStatus() == TxStatus.DECOMM));
                 }
 
                 transmitterPrimary = ((groupTransmitter != null) && (groupTransmitter
                         .getTxMode() == TxMode.PRIMARY))
-                        || ((standaloneGroup != null) && standaloneGroup
-                                .getTransmitterList().get(0).getTxMode() == TxMode.PRIMARY);
+                        || ((standaloneGroup != null) && (standaloneGroup
+                                .getTransmitterList().get(0).getTxMode() == TxMode.PRIMARY));
 
                 new MenuItem(menu, SWT.SEPARATOR);
                 /*
@@ -519,6 +519,9 @@ public class TransmitterComp extends Composite implements
                     o = item.getParentItem().getData();
                 }
                 group = (TransmitterGroup) o;
+                if (group.isStandalone()) {
+                    group = null;
+                }
             }
 
             newEditDlg = new NewEditTransmitterDlg(getShell(), null, group,
@@ -988,8 +991,8 @@ public class TransmitterComp extends Composite implements
         Collections.sort(groups, new TransmitterGroupPositionComparator());
         for (TransmitterGroup group : groups) {
             boolean standAlone = false;
-            if (group.getTransmitters() != null
-                    && group.getTransmitters().size() == 1) {
+            if ((group.getTransmitters() != null)
+                    && (group.getTransmitters().size() == 1)) {
                 // Check to see if group and transmitter have the same name
                 for (Transmitter t : group.getTransmitters()) {
                     if (group.getName().equals(t.getMnemonic())) {
@@ -1094,7 +1097,7 @@ public class TransmitterComp extends Composite implements
      * @return true if ok (new/edit dialog not open)
      */
     public boolean okToClose() {
-        return newEditDlg == null || newEditDlg.isDisposed();
+        return (newEditDlg == null) || newEditDlg.isDisposed();
     }
 
     @Override
