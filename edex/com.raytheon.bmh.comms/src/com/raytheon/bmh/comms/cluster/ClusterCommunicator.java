@@ -22,6 +22,7 @@ package com.raytheon.bmh.comms.cluster;
 import java.io.IOException;
 import java.net.Socket;
 
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +48,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  *                                    types to cluster members.
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * Dec 1, 2014   3797     bkowal      Support broadcast clustering.
+ * Jan 14, 2015  3869     bsteffen    Log a shorter message for disconnect.
  * 
  * </pre>
  * 
@@ -79,8 +81,21 @@ public class ClusterCommunicator extends Thread {
                         Object.class, socket.getInputStream());
                 handleMessage(message);
             } catch (SerializationException | IOException e) {
-                logger.error("Error reading message from cluster member: {}",
-                        getClusterId(), e);
+                boolean lostConnection = false;
+                if (e.getCause() instanceof TTransportException) {
+                    TTransportException te = (TTransportException) e.getCause();
+                    if (te.getType() == TTransportException.END_OF_FILE) {
+                        lostConnection = true;
+                    }
+                }
+                if (lostConnection) {
+                    logger.error("Lost connection to cluster member: {}",
+                            getClusterId());
+                } else {
+                    logger.error(
+                            "Error reading message from cluster member: {}",
+                            getClusterId(), e);
+                }
                 disconnect();
             }
         }
