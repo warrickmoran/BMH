@@ -56,6 +56,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Nov 3, 2014  3773       bkowal      Start with an out-of-order packet if
  *                                     too many packets arrive out-of-order within
  *                                     a set amount of time.
+ * Jan 13, 2016 3976       bkowal      Do not pass subscribers by reference.
  * 
  * </pre>
  * 
@@ -447,7 +448,7 @@ public class DacReceiveThread extends Thread {
             }
 
             SubscriberNotifier subscriberNotifier = new SubscriberNotifier(
-                    this.subscribers, this.payloadBuffers);
+                    new ArrayList<>(this.subscribers), this.payloadBuffers);
             if (this.halt == false) {
                 this.subscriberNotifierService.execute(subscriberNotifier);
             }
