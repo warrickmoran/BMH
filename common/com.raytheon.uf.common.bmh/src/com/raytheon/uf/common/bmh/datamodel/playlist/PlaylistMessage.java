@@ -51,6 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 13, 2014  3843     mpduff      Add DynamicSerialize and id
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * Jan 12, 2015  3843     bsteffen    Fix equals.
+ * Jan 13, 2015  3844     bsteffen    DynamicSerialize replacement type.
  * 
  * </pre>
  * 
@@ -84,6 +85,7 @@ public class PlaylistMessage {
 
     @Enumerated(EnumType.STRING)
     @Column
+    @DynamicSerializeElement
     private ReplacementType replacementType;
 
     @Column

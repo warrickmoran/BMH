@@ -30,6 +30,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -76,6 +77,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Dec 13, 2014    3843    mpduff      Implement periodic messages.
  * Dec 18, 2014    3865    bsteffen    add getBroadcastMessagesForInputMessage.
  * Jan 12, 2015    3843    bsteffen    Move Periodic message table creation to playlist data.
+ * Jan 13, 2015    3844    bsteffen    Add getPlaylist
  * 
  * </pre>
  * 
@@ -349,5 +351,16 @@ public class BroadcastCycleDataManager {
                 .sendRequest(request);
 
         return response.getPlaylistData();
+    }
+
+    public Playlist getPlaylist(String suiteName, String groupName)
+            throws Exception {
+        PlaylistRequest request = new PlaylistRequest();
+        request.setAction(PlaylistAction.GET_PLAYLIST_BY_SUITE_GROUP);
+        request.setSuiteName(suiteName);
+        request.setGroupName(groupName);
+        PlaylistResponse response = (PlaylistResponse) BmhUtils
+                .sendRequest(request);
+        return response.getPlaylist();
     }
 }
