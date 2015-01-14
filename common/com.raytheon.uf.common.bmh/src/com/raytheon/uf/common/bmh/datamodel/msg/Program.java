@@ -84,6 +84,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 20, 2014 3698      rferrel     Updated to add suite/query for getting Programs/Enabled transmitter Groups.
  * Dec 01, 2014 3838      rferrel     Add get program's general suite.
  * Jan 07, 2015 3958      bkowal      Added {@link #GET_TRANSMITTERS_FOR_MSG_TYPE}.
+ * Jan 14, 2015 3994      rjpeter     Added distinct to {@link #GET_PROGRAM_FOR_TRANSMITTER_GROUP}.
  * </pre>
  * 
  * @author rjpeter
@@ -109,7 +110,7 @@ public class Program {
 
     public static final String GET_PROGRAM_FOR_TRANSMITTER_GROUP = "getProgramsForTransmitterGroups";
 
-    protected static final String GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY = "select p FROM Program p inner join p.transmitterGroups tg WHERE tg = :group";
+    protected static final String GET_PROGRAMS_FOR_TRANSMITTER_GROUP_QUERY = "select distinct p FROM Program p inner join p.transmitterGroups tg WHERE tg = :group";
 
     public static final String GET_SUITE_BY_ID_FOR_TRANSMITTER_GROUP = "getSuiteByIDForTransmitterGroup";
 
