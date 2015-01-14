@@ -87,7 +87,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  *                                     time zone field using Java TimeZone id string.
  * Nov 21, 2014 3845       bkowal      Added getTransmitterGroupContainsTransmitter
  * Jan 08, 2015 3821       bsteffen    Rename silenceAlarm to deadAirAlarm
- * 
+ * Jan 14, 2015 3994       rjpeter     Added distinct to {@link #GET_ENABLED_TRANSMITTER_GROUPS}.
  * </pre>
  * 
  * @author rjpeter
@@ -112,7 +112,7 @@ public class TransmitterGroup {
 
     public static final String GET_ENABLED_TRANSMITTER_GROUPS = "getEnabledTransmitterGroups";
 
-    protected static final String GET_ENABLED_TRANSMITTER_GROUPS_QUERY = "select tg FROM TransmitterGroup tg inner join tg.transmitters t WHERE t.txStatus = 'ENABLED'";
+    protected static final String GET_ENABLED_TRANSMITTER_GROUPS_QUERY = "select distinct tg FROM TransmitterGroup tg inner join tg.transmitters t WHERE t.txStatus = 'ENABLED'";
 
     public static final String GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER = "getTransmitterGroupContainsTransmitter";
 
