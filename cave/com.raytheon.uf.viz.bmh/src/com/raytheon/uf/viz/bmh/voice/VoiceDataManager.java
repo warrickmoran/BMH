@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.bmh.voice;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
 import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
@@ -40,6 +41,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Dec 16, 2014  3618      bkowal      Added {@link #getIdentifiers()},
  *                                     {@link #getVoiceById(int)}, and
  *                                     {@link #saveTtsVoice(TtsVoice)}.
+ * Jan 13, 2015  3809      bkowal      Added {@link #getIdentfiersForLanguage(Language)}.
  * 
  * </pre>
  * 
@@ -60,6 +62,17 @@ public class VoiceDataManager {
     public List<TtsVoice> getIdentifiers() throws Exception {
         TtsVoiceRequest voiceRequest = new TtsVoiceRequest();
         voiceRequest.setAction(TtsVoiceAction.VoiceIdentifiers);
+        TtsVoiceResponse voiceResponse = (TtsVoiceResponse) BmhUtils
+                .sendRequest(voiceRequest);
+
+        return voiceResponse.getTtsVoiceList();
+    }
+
+    public List<TtsVoice> getIdentfiersForLanguage(Language language)
+            throws Exception {
+        TtsVoiceRequest voiceRequest = new TtsVoiceRequest();
+        voiceRequest.setAction(TtsVoiceAction.VoiceIdentifiersForLanguage);
+        voiceRequest.setLanguage(language);
         TtsVoiceResponse voiceResponse = (TtsVoiceResponse) BmhUtils
                 .sendRequest(voiceRequest);
 

@@ -42,6 +42,7 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
  * Dec 16, 2014  3618     bkowal      Added {@link #getIdentifiers(TtsVoiceRequest)},
  *                                    {@link #getVoiceById(TtsVoiceRequest)}, and
  *                                    {@link #updateVoice(TtsVoiceRequest)}.
+ * Jan 13, 2015  3809     bkowal      Added {@link #getIdentifiersForLanguage(TtsVoiceRequest)}.
  * 
  * </pre>
  * 
@@ -69,6 +70,9 @@ public class TtsVoiceHandler extends
             break;
         case VoiceIdentifiers:
             ttsVoiceResponse = getIdentifiers(request);
+            break;
+        case VoiceIdentifiersForLanguage:
+            ttsVoiceResponse = getIdentifiersForLanguage(request);
             break;
         case GetById:
             ttsVoiceResponse = getVoiceById(request);
@@ -114,6 +118,15 @@ public class TtsVoiceHandler extends
 
         List<TtsVoice> voiceList = dao.getVoiceIdentifiers();
         response.setTtsVoiceList(voiceList);
+
+        return response;
+    }
+
+    private TtsVoiceResponse getIdentifiersForLanguage(TtsVoiceRequest request) {
+        TtsVoiceDao dao = new TtsVoiceDao(request.isOperational());
+        TtsVoiceResponse response = new TtsVoiceResponse();
+        response.setTtsVoiceList(dao.getVoiceIdentifiersForLanguage(request
+                .getLanguage()));
 
         return response;
     }

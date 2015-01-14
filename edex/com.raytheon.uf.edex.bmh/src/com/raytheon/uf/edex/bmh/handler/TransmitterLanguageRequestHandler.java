@@ -45,6 +45,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 24, 2014  3636     rferrel     Implement logging.
+ * Jan 13, 2015  3809     bkowal      Fixed {@link #updateTransmitterLanguage(TransmitterLanguageRequest)}.
  * 
  * </pre>
  * 
@@ -112,8 +113,6 @@ public class TransmitterLanguageRequestHandler extends
         }
         TransmitterLanguageDao transmitterLanguageDao = new TransmitterLanguageDao(
                 request.isOperational());
-        TransmitterLanguage transmitterLanguage = request
-                .getTransmitterLanguage();
 
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
 
@@ -125,7 +124,7 @@ public class TransmitterLanguageRequestHandler extends
         transmitterLanguageDao.saveOrUpdate(tl);
 
         TransmitterLanguageResponse response = new TransmitterLanguageResponse();
-        response.addTransmitterLanguage(transmitterLanguage);
+        response.addTransmitterLanguage(tl);
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);

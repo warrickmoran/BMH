@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.request;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 
 /**
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Dec 16, 2014  3618     bkowal      Support retrieving voice by id; support
  *                                    updating voices.
+ * Jan 13, 2015  3809     bkowal      Added {@link TtsVoiceAction#VoiceIdentifiersForLanguage}.
  * 
  * </pre>
  * 
@@ -46,7 +48,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 public class TtsVoiceRequest extends AbstractBMHServerRequest {
 
     public enum TtsVoiceAction {
-        AllVoices, VoiceIdentifiers, GetById, UpdateVoice;
+        AllVoices, VoiceIdentifiers, VoiceIdentifiersForLanguage, GetById, UpdateVoice;
     }
 
     @DynamicSerializeElement
@@ -57,6 +59,9 @@ public class TtsVoiceRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private int voiceNumber;
+
+    @DynamicSerializeElement
+    private Language language;
 
     public TtsVoiceAction getAction() {
         return action;
@@ -74,7 +79,8 @@ public class TtsVoiceRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @param voice the voice to set
+     * @param voice
+     *            the voice to set
      */
     public void setVoice(TtsVoice voice) {
         this.voice = voice;
@@ -88,9 +94,25 @@ public class TtsVoiceRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @param voiceNumber the voiceNumber to set
+     * @param voiceNumber
+     *            the voiceNumber to set
      */
     public void setVoiceNumber(int voiceNumber) {
         this.voiceNumber = voiceNumber;
+    }
+
+    /**
+     * @return the language
+     */
+    public Language getLanguage() {
+        return language;
+    }
+
+    /**
+     * @param language
+     *            the language to set
+     */
+    public void setLanguage(Language language) {
+        this.language = language;
     }
 }

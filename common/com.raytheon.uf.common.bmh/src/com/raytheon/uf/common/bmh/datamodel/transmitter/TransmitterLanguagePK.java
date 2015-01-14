@@ -44,6 +44,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
  * Oct 29, 2014 3636       rferrel     Implement logging.
+ * Jan 13, 2015 3809       bkowal      Made {@link #transmitterGroup} a 
+ *                                     {@link DynamicSerializeElement}.
  * 
  * </pre>
  * 
@@ -57,6 +59,7 @@ public class TransmitterLanguagePK implements Serializable {
 
     // FK to transmitterGroup
     @ManyToOne(optional = false)
+    @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
 
     // Language: 0-English, 1-Spanish

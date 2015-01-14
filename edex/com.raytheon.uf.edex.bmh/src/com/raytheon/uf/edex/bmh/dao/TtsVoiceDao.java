@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 
 /**
@@ -38,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
  * Aug 11, 2014  3490     lvenable    Updated to get Voice information.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Dec 16, 2014  3618     bkowal      Added {@link #getVoiceIdentifiers()}.
+ * Jan 15, 2015  3809     bkowal      Added {@link #getVoiceIdentifiersForLanguage(Language)}.
  * 
  * </pre>
  * 
@@ -83,12 +85,52 @@ public class TtsVoiceDao extends AbstractBMHDao<TtsVoice, Integer> {
             return Collections.emptyList();
         }
 
+        return this.buildVoiceIdentifiers(returnedObjects,
+                TtsVoice.GET_VOICE_IDENTIFIERS);
+    }
+
+    /**
+     * Retrieve the minimum set of information required to identify a
+     * {@link TtsVoice} associated with the specified {@link Language}. This
+     * information can be used to retrieve full {@link TtsVoice} records as
+     * needed.
+     * 
+     * @param language
+     *            the specified {@link Language}
+     * @return a {@link List} of {@link TtsVoice} ids (voiceNumbers) and names.
+     */
+    public List<TtsVoice> getVoiceIdentifiersForLanguage(final Language language) {
+        List<?> returnedObjects = this.findByNamedQueryAndNamedParam(
+                TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE, "language",
+                language);
+
+        return this.buildVoiceIdentifiers(returnedObjects,
+                TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE);
+    }
+
+    /**
+     * Constructs a {@link List} of {@link TtsVoice}s consisting of the id and
+     * name based on the specified {@link Object}s retrieved from the database.
+     * 
+     * @param sourceObjects
+     *            the specified {@link Object}s retrieved from the database
+     * @param query
+     *            the name of the query that was used to retrieve the
+     *            information; used for logging purposes
+     * @return a {@link List} of {@link TtsVoice}s consisting of the id and name
+     */
+    private List<TtsVoice> buildVoiceIdentifiers(List<?> sourceObjects,
+            final String query) {
+        if (sourceObjects == null || sourceObjects.isEmpty()) {
+            return Collections.emptyList();
+        }
+
         List<TtsVoice> voiceIdentifiers = new ArrayList<TtsVoice>(
-                returnedObjects.size());
-        for (Object object : returnedObjects) {
+                sourceObjects.size());
+        for (Object object : sourceObjects) {
             if (object instanceof Object[] == false) {
                 logger.error("The "
-                        + TtsVoice.GET_VOICE_IDENTIFIERS
+                        + query
                         + " query returned results in the wrong format. Expected an array of Object.");
                 return Collections.emptyList();
             }
@@ -96,7 +138,7 @@ public class TtsVoiceDao extends AbstractBMHDao<TtsVoice, Integer> {
             Object[] objects = (Object[]) object;
             if (objects.length != 2) {
                 logger.error("The "
-                        + TtsVoice.GET_VOICE_IDENTIFIERS
+                        + query
                         + " query returned results in the wrong format. Expected an array of Object with 2 elements.");
                 return Collections.emptyList();
             }
@@ -104,7 +146,7 @@ public class TtsVoiceDao extends AbstractBMHDao<TtsVoice, Integer> {
             if (objects[0] instanceof Integer == false
                     || objects[1] instanceof String == false) {
                 logger.error("The "
-                        + TtsVoice.GET_VOICE_IDENTIFIERS
+                        + query
                         + " query returned results in the wrong format. Expected the object array to have objects of type: [Integer, String].");
                 return Collections.emptyList();
             }

@@ -176,4 +176,12 @@
             value="com.raytheon.uf.common.bmh.request.TransferToneRequest" />
         <constructor-arg ref="transferToneHandler" />
     </bean>
+    
+    <bean id="transmitterLanguageRequestHandler"
+    	class="com.raytheon.uf.edex.bmh.handler.TransmitterLanguageRequestHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest" />
+        <constructor-arg ref="transmitterLanguageRequestHandler" />
+    </bean>
 </beans>

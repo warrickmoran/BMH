@@ -49,12 +49,15 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 24, 2014 3636       rferrel     Implement logging.
  * Dec 11, 2014 3618       bkowal      Added {@link #dictionary}.
  * Dec 16, 2014 3618       bkowal      Added {@link #GET_VOICE_IDENTIFIERS}.
+ * Jan 13, 2015 3809       bkowal      Added {@link #GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY}.
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
-@NamedQueries({ @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS, query = TtsVoice.GET_VOICE_IDENTIFIERS_QUERY) })
+@NamedQueries({
+        @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS, query = TtsVoice.GET_VOICE_IDENTIFIERS_QUERY),
+        @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE, query = TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY) })
 @Entity
 @Table(name = "tts_voice", schema = "bmh")
 @DynamicSerialize
@@ -63,6 +66,10 @@ public class TtsVoice {
     public static final String GET_VOICE_IDENTIFIERS = "getVoiceIdentifiers";
 
     protected static final String GET_VOICE_IDENTIFIERS_QUERY = "SELECT v.voiceNumber, v.voiceName FROM TtsVoice v";
+
+    public static final String GET_VOICE_IDENTIFIERS_FOR_LANGUAGE = "getVoiceIdentifiersForLanguage";
+
+    protected static final String GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY = "SELECT v.voiceNumber, v.voiceName FROM TtsVoice v WHERE v.language = :language";
 
     @Id
     @Column

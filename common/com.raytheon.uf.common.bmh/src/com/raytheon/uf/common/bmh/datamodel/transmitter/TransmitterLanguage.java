@@ -52,6 +52,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 2, 2014  3642       bkowal      Updated time message field to be: preamble and postamble
  * Oct 28, 2014 3636       rferrel     Implemented logging.
  * Nov 02, 2014 3746       rjpeter     Fix column definition for hibernate upgrade.
+ * Jan 13, 2015 3809       bkowal      Fixed {@link #toString()}.
  * </pre>
  * 
  * @author rjpeter
@@ -256,9 +257,11 @@ public class TransmitterLanguage {
         sb.append("TransmitterLanguage[ id=").append(id)
                 .append(", stationIdMsg=").append(stationIdMsg)
                 .append(", timeMsgPreamble=").append(timeMsgPreamble)
-                .append(", timeMsgPostamble=").append(timeMsgPostamble)
-                .append(", dictionary=").append(dictionary.getName())
-                .append(", voice]").append(voice.getVoiceName());
+                .append(", timeMsgPostamble=").append(timeMsgPostamble);
+        if (this.dictionary != null) {
+            sb.append(", dictionary=").append(dictionary.getName());
+        }
+        sb.append(", voice=").append(voice.getVoiceName()).append("]");
         return sb.toString();
     }
 }

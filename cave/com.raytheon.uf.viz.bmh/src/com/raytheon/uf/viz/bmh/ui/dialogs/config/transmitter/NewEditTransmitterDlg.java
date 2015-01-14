@@ -82,6 +82,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     checkbox match legacy system.
  * Oct 29, 2014    #3617   dgilling    Fix exceptions when creating new groups.
  * Jan 08, 2015     3821   bsteffen    Rename silenceAlarm to deadAirAlarm
+ * Jan 13, 2015     3809   bkowal      Added {@link TransmitterLanguageComp}.
  * Jan 13, 2015     3995   rjpeter     Fix NPEs and issues with adding new transmitters
  *                                      to existing groups.
  * 
@@ -263,6 +264,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
         // createStatusComp(mainComp);
         createAttrComp(mainComp);
+        new TransmitterLanguageComp(shell, this.group);
 
         createBottomButtons();
 
