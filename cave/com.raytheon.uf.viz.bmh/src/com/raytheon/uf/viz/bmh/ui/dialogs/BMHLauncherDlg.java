@@ -58,7 +58,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
-import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation.TYPE;
+import com.raytheon.uf.common.bmh.notify.MessageExpiredNotification;
+import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
@@ -143,6 +144,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 07, 2015   3931     bkowal      Added an option to import a BMH dictionary.
  * Jan 08, 2015   3821     bsteffen    Rename silenceAlarm to deadAirAlarm
  * Jan 13, 2015   3968     bkowal      Handle message confirmations.
+ * Jan 14, 2015   3969     bkowal      Handle watch/warning not broadcast notifications.
  * 
  * </pre>
  * 
@@ -1328,50 +1330,105 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             Object o;
             try {
                 o = message.getMessagePayload();
-                if (o instanceof MessageBroadcastNotifcation == false) {
-                    return;
-                }
+                if (o instanceof MessageBroadcastNotifcation) {
+                    MessageBroadcastNotifcation notification = (MessageBroadcastNotifcation) o;
 
-                MessageBroadcastNotifcation notification = (MessageBroadcastNotifcation) o;
+                    /*
+                     * Retrieve the broadcast message associated with the
+                     * notification.
+                     */
+                    BroadcastMsg msg = null;
+                    try {
+                        msg = this.dataManager.getBroadcastMessage(notification
+                                .getBroadcastId());
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "Failed to retrieve the broadcast message associated with notification: "
+                                        + notification.toString() + ".", e);
+                        return;
+                    }
+                    /*
+                     * Broadcast message has been successfully retrieved.
+                     * Construct the Input Message identifier;
+                     */
+                    final String identification = this
+                            .buildInputMessageIdentifier(msg.getInputMessage()
+                                    .getId(), msg.getInputMessage().getName(),
+                                    msg.getInputMessage().getAfosid());
 
-                /*
-                 * Retrieve the broadcast message associated with the
-                 * notification.
-                 */
-                BroadcastMsg msg = null;
-                try {
-                    msg = this.dataManager.getBroadcastMessage(notification
-                            .getBroadcastId());
-                } catch (Exception e) {
-                    statusHandler.error(
-                            "Failed to retrieve the broadcast message associated with notification: "
-                                    + notification.toString() + ".", e);
-                    return;
-                }
-                /*
-                 * Broadcast message has been successfully retrieved. Construct
-                 * the Input Message identifier;
-                 */
-                StringBuilder sb = new StringBuilder("InputMessage [id=");
-                sb.append(msg.getInputMessage().getId());
-                sb.append(", name=").append(msg.getInputMessage().getName());
-                sb.append(", afosid=")
-                        .append(msg.getInputMessage().getAfosid()).append("]");
-                final String identification = sb.toString();
-
-                if (notification.getType() == TYPE.CONFIRM) {
                     /*
                      * construct the AlertViz message.
                      */
-                    sb = new StringBuilder(identification);
+                    StringBuilder sb = new StringBuilder(identification);
                     sb.append(" has been successfully broadcast on Transmitter ");
                     sb.append(notification.getTransmitterGroup()).append(".");
                     statusHandler.info(sb.toString());
-                }
+                } else if (o instanceof MessageExpiredNotification) {
+                    MessageExpiredNotification notification = (MessageExpiredNotification) o;
 
+                    final String identification = this
+                            .buildInputMessageIdentifier(notification.getId(),
+                                    notification.getName(),
+                                    notification.getAfosid());
+
+                    /*
+                     * construct the AlertViz message.
+                     */
+                    StringBuilder sb = new StringBuilder(
+                            notification.getDesignation());
+                    sb.append(" ").append(identification);
+                    sb.append(" will never be broadcast because it was already expired upon arrival.");
+                    statusHandler.info(sb.toString());
+                } else if (o instanceof MessageNotBroadcastNotification) {
+                    MessageNotBroadcastNotification notification = (MessageNotBroadcastNotification) o;
+
+                    /*
+                     * Retrieve the broadcast message associated with the
+                     * notification.
+                     */
+                    BroadcastMsg msg = null;
+                    try {
+                        msg = this.dataManager.getBroadcastMessage(notification
+                                .getBroadcastId());
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "Failed to retrieve the broadcast message associated with notification: "
+                                        + notification.toString() + ".", e);
+                        return;
+                    }
+                    /*
+                     * Broadcast message has been successfully retrieved.
+                     * Construct the Input Message identifier;
+                     */
+                    final String identification = this
+                            .buildInputMessageIdentifier(msg.getInputMessage()
+                                    .getId(), msg.getInputMessage().getName(),
+                                    msg.getInputMessage().getAfosid());
+
+                    /*
+                     * construct the AlertViz message.
+                     */
+                    StringBuilder sb = new StringBuilder(
+                            notification.getDesignation());
+                    sb.append(" ").append(identification);
+                    sb.append(" expired before it could be broadcast on Transmitter ");
+                    sb.append(notification.getTransmitterGroup()).append(".");
+
+                    statusHandler.info(sb.toString());
+                }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing BMH Notification!", e);
             }
         }
+    }
+
+    private String buildInputMessageIdentifier(final int id, final String name,
+            final String afosid) {
+        StringBuilder sb = new StringBuilder("InputMessage [id=");
+        sb.append(id);
+        sb.append(", name=").append(name);
+        sb.append(", afosid=").append(afosid).append("]");
+
+        return sb.toString();
     }
 }

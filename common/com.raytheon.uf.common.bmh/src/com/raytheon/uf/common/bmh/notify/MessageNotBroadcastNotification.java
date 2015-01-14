@@ -23,8 +23,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Allows non-edex components to send message broadcast notifications to
- * AlertViz.
+ * Currently used to notify a user that a watch or warning that was added to a
+ * playlist expired before it could actually be broadcast for the first time.
  * 
  * <pre>
  * 
@@ -32,40 +32,36 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan 12, 2015 3968       bkowal      Initial creation
- * Jan 14, 2015 3969       bkowal      Removed the type field and enum.
+ * Jan 14, 2015 3969       bkowal      Initial creation
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
-
 @DynamicSerialize
-public class MessageBroadcastNotifcation {
+public class MessageNotBroadcastNotification {
 
     @DynamicSerializeElement
     private long broadcastId;
 
     @DynamicSerializeElement
-    private String transmitterGroup;
+    private String designation;
 
-    /**
-     * Empty constructor for dynamicserialize.
-     */
-    public MessageBroadcastNotifcation() {
-    }
+    @DynamicSerializeElement
+    private String transmitterGroup;
 
     /**
      * Constructor
      * 
-     * @param type
-     *            the type of broadcast notification
-     * @param broadcastId
-     *            id of the broadcast this notification is associated with
+     * Empty constructor for {@link DynamicSerialize}.
      */
-    public MessageBroadcastNotifcation(long broadcastId) {
+    public MessageNotBroadcastNotification() {
+    }
+
+    public MessageNotBroadcastNotification(long broadcastId, String designation) {
         this.broadcastId = broadcastId;
+        this.designation = designation;
     }
 
     /**
@@ -81,6 +77,21 @@ public class MessageBroadcastNotifcation {
      */
     public void setBroadcastId(long broadcastId) {
         this.broadcastId = broadcastId;
+    }
+
+    /**
+     * @return the designation
+     */
+    public String getDesignation() {
+        return designation;
+    }
+
+    /**
+     * @param designation
+     *            the designation to set
+     */
+    public void setDesignation(String designation) {
+        this.designation = designation;
     }
 
     /**
@@ -100,8 +111,10 @@ public class MessageBroadcastNotifcation {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder("MessageBroadcastNotifcation [");
-        sb.append(", broadcastId=").append(this.broadcastId);
+        StringBuilder sb = new StringBuilder(
+                "MessageNotBroadcastNotification [");
+        sb.append("broadcastId=").append(this.broadcastId);
+        sb.append(", designation=").append(this.designation);
         sb.append(", transmitterGroup=").append(this.transmitterGroup)
                 .append("]");
 

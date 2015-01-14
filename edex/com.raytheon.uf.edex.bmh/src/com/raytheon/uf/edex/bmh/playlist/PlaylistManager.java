@@ -46,6 +46,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
@@ -137,6 +138,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
  * Jan 12, 2015  3968     bkowal      Include the confirmation flag in the {@link DacPlaylistMessage}.
+ * Jan 14, 2015  3969     bkowal      Indicate whether a message is a watch or a warning
+ *                                    in the {@link DacPlaylistMessage}.
  * 
  * </pre>
  * 
@@ -677,6 +680,12 @@ public class PlaylistManager implements IContextStateProcessor {
                      * determine if the {@link MessageType} is static.
                      */
                     dac.setStatic(messageType.getDesignation().isStatic());
+                    /*
+                     * determine if we need to notify the user when the message
+                     * expires before it is broadcast at least once.
+                     */
+                    dac.setWatch(messageType.getDesignation() == Designation.Watch);
+                    dac.setWarning(messageType.getDesignation() == Designation.Warning);
                 }
                 if (broadcast.getInputMessage().getConfirm() != null) {
                     /*

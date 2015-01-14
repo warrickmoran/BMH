@@ -32,6 +32,7 @@ import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
+import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
@@ -69,6 +70,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Oct 21, 2014  3655     bkowal      Support LiveBroadcastSwitchNotification.
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * Jan 12, 2015  3968     bkowal      Handle {@link MessageBroadcastNotifcation}.
+ * Jan 14, 2015  3969     bkowal      Handle {@link MessageNotBroadcastNotification}.
  * 
  * </pre>
  * 
@@ -166,6 +168,10 @@ public class DacTransmitCommunicator extends Thread {
             manager.transmitDacStatus(notification);
         } else if (message instanceof MessageBroadcastNotifcation) {
             MessageBroadcastNotifcation notification = (MessageBroadcastNotifcation) message;
+            notification.setTransmitterGroup(this.groupName);
+            manager.transmitDacStatus(notification);
+        } else if (message instanceof MessageNotBroadcastNotification) {
+            MessageNotBroadcastNotification notification = (MessageNotBroadcastNotification) message;
             notification.setTransmitterGroup(this.groupName);
             manager.transmitDacStatus(notification);
         } else {

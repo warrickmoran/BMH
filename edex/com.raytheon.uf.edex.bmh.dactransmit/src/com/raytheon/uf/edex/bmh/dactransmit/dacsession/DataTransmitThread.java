@@ -30,7 +30,6 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
-import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation.TYPE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IInterruptMessageReceivedHandler;
@@ -81,6 +80,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 09, 2015  #3942     rjpeter      Add tracking of time to get playbackStatus.
  * Jan 12, 2015  #3968     bkowal       Publish {@link MessageBroadcastNotifcation} for messages
  *                                      that require broadcast confirmation.
+ * Jan 14, 2015  #3969     bkowal       Use updated {@link MessageBroadcastNotifcation}.
  * </pre>
  * 
  * @author dgilling
@@ -211,8 +211,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                          * Message confirmation notification.
                          */
                         this.eventBus.post(new MessageBroadcastNotifcation(
-                                TYPE.CONFIRM, playbackData.getMessage()
-                                        .getBroadcastId()));
+                                playbackData.getMessage().getBroadcastId()));
                     }
                     while ((playbackData.hasRemaining())
                             && (playingInterrupt || (interruptsAvailable.get() == 0))) {

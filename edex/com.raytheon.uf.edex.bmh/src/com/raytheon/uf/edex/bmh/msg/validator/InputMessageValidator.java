@@ -23,13 +23,20 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
+import com.raytheon.uf.common.bmh.notify.MessageExpiredNotification;
+import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
+import com.raytheon.uf.edex.core.EdexException;
 
 /**
  * Validate {@link InputMessage}, generating a {@link ValidatedMessage}.
@@ -45,6 +52,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Dec 02, 2014  3614     bsteffen    Check for unacceptable words.
  * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * Jan 14, 2015  3969     bkowal      Post a {@link MessageExpiredNotification} when a
+ *                                    watch/warning fails validation because it expired.
  * 
  * </pre>
  * 
@@ -57,6 +66,8 @@ public class InputMessageValidator {
             .getInstance(InputMessageValidator.class);
 
     private final TransmissionValidator transmissionCheck;
+
+    private final MessageTypeDao messageTypeDao = new MessageTypeDao(true);
 
     /**
      * Currently {@link InputMessageValidator} is only used in operational mode.
@@ -95,6 +106,45 @@ public class InputMessageValidator {
                 this.messageLogger.logError(
                         BMH_COMPONENT.INPUT_MESSAGE_VALIDATOR,
                         BMH_ACTIVITY.MESSAGE_VALIDATION, valid);
+                /*
+                 * did validation fail because the message expired?
+                 */
+                if (valid.getTransmissionStatus() == TransmissionStatus.EXPIRED) {
+                    /*
+                     * is the message a watch or warning?
+                     */
+                    MessageType mt = this.messageTypeDao.getByAfosId(input
+                            .getAfosid());
+                    if (mt != null
+                            && (mt.getDesignation() == Designation.Watch || mt
+                                    .getDesignation() == Designation.Warning)) {
+                        /*
+                         * notify the user that the watch/warning will not be
+                         * broadcast.
+                         */
+                        StringBuilder sb = new StringBuilder(mt
+                                .getDesignation().toString());
+                        /* identify the message */
+                        sb.append("InputMessage [id=").append(input.getId());
+                        sb.append(", name=").append(input.getName());
+                        sb.append(", afosid=").append(input.getAfosid());
+                        sb.append("] has expired and will never be broadcast on any transmitters.");
+                        /*
+                         * Currently Input Message Validator is only
+                         * operational.
+                         */
+                        MessageExpiredNotification notification = new MessageExpiredNotification(
+                                input, mt.getDesignation().toString());
+                        try {
+                            BmhMessageProducer.sendStatusMessage(notification,
+                                    true);
+                        } catch (EdexException | SerializationException e) {
+                            statusHandler.error(BMH_CATEGORY.UNKNOWN,
+                                    "Failed to send notification: "
+                                            + notification.toString() + ".", e);
+                        }
+                    }
+                }
             }
         } else {
             valid.setTransmissionStatus(TransmissionStatus.UNACCEPTABLE);

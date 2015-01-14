@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
+import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
@@ -83,6 +84,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Oct 22, 2014  3687     bsteffen    Send hostname instead of address back to comms manager.
  * Nov 11, 2014  3762     bsteffen    Add delayed shutdown.
  * Jan 12, 2015  3968     bkowal      Handle {@link MessageBroadcastNotifcation}.
+ * Jan 14, 2015  3969     bkowal      Handle {@link MessageNotBroadcastNotification}.
  * 
  * </pre>
  * 
@@ -280,6 +282,12 @@ public final class CommsManagerCommunicator extends Thread {
     @Subscribe
     public void handleMsgBroadcastNotification(
             MessageBroadcastNotifcation notification) {
+        sendMessageToCommsManager(notification);
+    }
+
+    @Subscribe
+    public void handleMsgNotBroadcastNotification(
+            MessageNotBroadcastNotification notification) {
         sendMessageToCommsManager(notification);
     }
 

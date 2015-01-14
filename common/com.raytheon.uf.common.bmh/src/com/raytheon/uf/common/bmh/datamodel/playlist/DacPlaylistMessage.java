@@ -58,6 +58,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * Jan 08, 2015  3912     bsteffen    Add isPeriodic
  * Jan 12, 2015  3968     bkowal      Added {@link #confirm}.
+ * Jan 14, 2014  3969     bkowal      Added {@link #warning}, {@link #watch},
+ *                                    {@link #messageBroadcastNotificationSent},
+ *                                    and {@link #requiresExpirationNoPlaybackNotification()}.
  * 
  * </pre>
  * 
@@ -130,6 +133,35 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      */
     @XmlElement
     private boolean confirm;
+
+    /*
+     * boolean indicating that this message is a watch. Requirements state that
+     * BMH users must be notified when a watch/warning is not broadcast due to
+     * expiration even though it had been scheduled for broadcast. Set based on
+     * the message type designation.
+     */
+    @XmlElement
+    private boolean watch;
+
+    /*
+     * boolean indicating that this message is a warning. Requirements state
+     * that BMH users must be notified when a watch/warning is not broadcast due
+     * to expiration even though it had been scheduled for broadcast. Set based
+     * on the message type designation.
+     */
+    @XmlElement
+    private boolean warning;
+
+    /**
+     * boolean flag used to mark when a {@link MessageBroadcastNotifcation} is
+     * sent for this message to ensure that multiple notifications are never
+     * sent. This field is theoretically transient and will only hold its state
+     * for as long as this object is in memory. This flag is necessary because
+     * an expired {@link DacPlaylistMessage} will only be eliminated (the
+     * playlist scheduler will keep iterating over it until then) when a newer
+     * version of the containing playlist is read.
+     */
+    private boolean messageBroadcastNotificationSent;
 
     private transient Path path;
 
@@ -214,7 +246,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         this.periodicity = periodicity;
     }
 
-    public boolean isPeriodic(){
+    public boolean isPeriodic() {
         return periodicity != null && !periodicity.isEmpty();
     }
 
@@ -459,9 +491,60 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     }
 
     /**
-     * @param confirm the confirm to set
+     * @param confirm
+     *            the confirm to set
      */
     public void setConfirm(boolean confirm) {
         this.confirm = confirm;
+    }
+
+    /**
+     * @return the watch
+     */
+    public boolean isWatch() {
+        return watch;
+    }
+
+    /**
+     * @param watch
+     *            the watch to set
+     */
+    public void setWatch(boolean watch) {
+        this.watch = watch;
+    }
+
+    /**
+     * @return the warning
+     */
+    public boolean isWarning() {
+        return warning;
+    }
+
+    /**
+     * @param warning
+     *            the warning to set
+     */
+    public void setWarning(boolean warning) {
+        this.warning = warning;
+    }
+
+    public boolean requiresExpirationNoPlaybackNotification() {
+        boolean expired = TimeUtil.currentTimeMillis() >= this.expire
+                .getTimeInMillis();
+
+        boolean result = expired
+                && (this.messageBroadcastNotificationSent == false)
+                && (this.warning || this.watch) && (this.playCount == 0);
+        if (result) {
+            /*
+             * ensure that a notification is not continuously sent until a new
+             * playlist is generated without this message. there are still a few
+             * rare edge cases that would cause duplicate notifications to be
+             * sent. however, all of them involve the dac transmit process
+             * crashing and restarting.
+             */
+            this.messageBroadcastNotificationSent = true;
+        }
+        return result;
     }
 }

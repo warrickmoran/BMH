@@ -51,10 +51,12 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.time.util.ITimer;
@@ -122,6 +124,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 05, 2015  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg errors.
  * Jan 08, 2015  #3912     bsteffen     Change the way playlist refresh works to do periodic better
  * Jan 13, 2015  #3843     bsteffen     Add periodic predictions to playlist switch notification.
+ * Jan 14, 2015  #3969     bkowal       Publish {@link MessageNotBroadcastNotification}s when
+ *                                      certain watching/warnings expire before they can be played.
  * 
  * 
  * </pre>
@@ -484,6 +488,8 @@ public final class PlaylistScheduler implements
                             .getMessage(currentMessages.get(messageIndex));
                     if (possibleNext.isValid()) {
                         nextMessage = possibleNext;
+                    } else {
+                        this.sendNotBroadcastNotification(possibleNext);
                     }
                     messageIndex++;
                 }
@@ -907,6 +913,8 @@ public final class PlaylistScheduler implements
                     logger.error("Message " + messageId
                             + " has no soundFile attribute. Skipping.");
                 }
+            } else {
+                this.sendNotBroadcastNotification(messageData);
             }
 
         }
@@ -930,9 +938,10 @@ public final class PlaylistScheduler implements
                         forceScheduleNonStaticPeriodic);
             }
         }
-        PlaylistSwitchNotification notification = new PlaylistSwitchNotification(playlist.getSuite(),
-                playlist.getTransmitterGroup(), predictions, cycleTime);
-        if(!periodicMessages.isEmpty()){
+        PlaylistSwitchNotification notification = new PlaylistSwitchNotification(
+                playlist.getSuite(), playlist.getTransmitterGroup(),
+                predictions, cycleTime);
+        if (!periodicMessages.isEmpty()) {
             List<MessagePlaybackPrediction> periodicPredictions = new ArrayList<>(
                     periodicMessages.size());
             for (Entry<Long, DacPlaylistMessageId> entry : periodicMessages
@@ -974,5 +983,30 @@ public final class PlaylistScheduler implements
     public void resumeInterrupts() {
         logger.info("Resuming interrupt playback.");
         this.delayInterrupts = false;
+    }
+
+    /**
+     * Determines if we need to notify BMH users via a
+     * {@link MessageNotBroadcastNotification} that the specified
+     * {@link DacPlaylistMessage} expired before it could be broadcast even
+     * though it had been added to the playlist.
+     * 
+     * @param message
+     *            the specified {@link DacPlaylistMessage}
+     */
+    private void sendNotBroadcastNotification(DacPlaylistMessage message) {
+        if (message.requiresExpirationNoPlaybackNotification() == false) {
+            // no notification is required.
+            return;
+        }
+
+        /*
+         * Determine the message designation.
+         */
+        final String designation = message.isWarning() ? MessageType.Designation.Warning
+                .toString() : MessageType.Designation.Watch.toString();
+
+        this.eventBus.post(new MessageNotBroadcastNotification(message
+                .getBroadcastId(), designation));
     }
 }
