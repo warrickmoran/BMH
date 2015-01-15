@@ -80,6 +80,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 23, 2014  #3287     lvenable     Added listeners and process status code.
  * Dec 04, 2014  #3287     lvenable     Added fix for practice code color & layout of status
  *                                      messages on change.
+ * Jan 13, 2015  #3844     bsteffen     Fix dialog disposed error after closing.
+ * 
  * 
  * </pre>
  * 
@@ -313,6 +315,9 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
      * Repopulate the DAC/Transmitter controls.
      */
     private void repopulateDacTransmitterStatus() {
+        if (dacTransmittersComp.isDisposed()) {
+            return;
+        }
         /*
          * Repopulate the DAC/Transmitter controls
          */

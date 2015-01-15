@@ -412,11 +412,18 @@ public class PlaylistData {
                 dataManager.getPeriodicMessageColumns());
 
         for (MessagePlaybackPrediction prediction : predictionMap.values()) {
-            BroadcastMsg broadcast = playlistMap.get(
-                    prediction.getBroadcastId()).getBroadcastMsg();
-            if (broadcast.getInputMessage().isPeriodic()) {
-                tableData.addDataRow(createPeriodicTableRow(prediction,
-                        broadcast));
+            PlaylistMessage playlistMessage = playlistMap.get(prediction
+                    .getBroadcastId());
+            if (playlistMessage != null) {
+                /*
+                 * This is bad but the user was already informed when the
+                 * broadcast cycle table was populated.
+                 */
+                BroadcastMsg broadcast = playlistMessage.getBroadcastMsg();
+                if (broadcast.getInputMessage().isPeriodic()) {
+                    tableData.addDataRow(createPeriodicTableRow(prediction,
+                            broadcast));
+                }
             }
         }
         for (MessagePlaybackPrediction prediction : periodicPredictionMap

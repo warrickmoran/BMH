@@ -143,7 +143,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 13, 2014  3843      mpduff      Implement periodic messages.
  * Dec 16, 2014  3753      bsteffen    Add popup when suite change fails.
  * Dec 18, 2014  3865      bsteffen    Implement Expire/Delete
- * Jan 13, 2015    3843    bsteffen    Enhance Periodic Messages Dialog.
+ * Jan 13, 2015  3843      bsteffen    Enhance Periodic Messages Dialog.
+ * Jan 15, 2015  3844      bsteffen    Handle unusuals states with less NPE.
+ * 
  * 
  * </pre>
  * 
@@ -932,6 +934,17 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             MessageType messageType = dataManager.getMessageType(afosId);
             BroadcastMsg broadcastMsg = dataManager
                     .getBroadcastMessage(dataEntry.getBroadcastId());
+            if (broadcastMsg == null) {
+                String message = "ERROR accessing BMH Database, unable to load any details for message "
+                        + dataEntry.getBroadcastId();
+                statusHandler.debug(message);
+                MessageBox mb = new MessageBox(getShell(), SWT.OK
+                        | SWT.ICON_ERROR);
+                mb.setText("Failed to Load Message Details.");
+                mb.setMessage(message);
+                mb.open();
+                return;
+            }
             long key = broadcastMsg.getId();
             MessageDetailsDlg dlg = detailsMap.get(key);
             if (dlg != null) {
@@ -996,7 +1009,18 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         try {
             BroadcastMsg broadcastMsg = dataManager
                     .getBroadcastMessage(dataEntry.getBroadcastId());
-
+            if (broadcastMsg == null) {
+                String message = "Error expiring message "
+                        + dataEntry.getBroadcastId()
+                        + ": No broadcast message found.";
+                statusHandler.debug(message);
+                MessageBox mb = new MessageBox(getShell(), SWT.OK
+                        | SWT.ICON_ERROR);
+                mb.setText("Failed to Expire Message.");
+                mb.setMessage(message);
+                mb.open();
+                return;
+            }
             final InputMessage inputMessage = broadcastMsg.getInputMessage();
             List<BroadcastMsg> messages = dataManager
                     .getBroadcastMessagesForInputMessage(inputMessage.getId());
@@ -1162,9 +1186,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
             // If the entry is null then don't update the text as there will be
             // other text displayed.
-            if (entry != null) {
+            if (entry != null && entry.getInputMsg() != null) {
                 String content = entry.getInputMsg().getContent();
                 this.messageTextArea.setText(content);
+            } else {
+                this.messageTextArea
+                        .setText("*** Unable to load message text. ***");
             }
         }
     }
