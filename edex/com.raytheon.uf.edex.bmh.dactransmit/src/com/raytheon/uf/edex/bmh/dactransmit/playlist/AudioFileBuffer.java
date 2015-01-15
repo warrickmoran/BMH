@@ -52,6 +52,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  *                                      each complete audio file.
  * Dec 11, 2014  3651      bkowal       Use {@link DefaultMessageLogger} to log tone
  *                                      msg activity.
+ * Jan 15, 2015  3999      bkowal       Adjust offsets as data is added to the destination
+ *                                      array in {@link #get(byte[], int, int)}.
  * 
  * </pre>
  * 
@@ -163,6 +165,7 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
             int bytesToRead = Math.min(bytesRemaining, tonesBuffer.remaining());
             tonesBuffer.get(dst, offset, bytesToRead);
             bytesRemaining -= bytesToRead;
+            offset += bytesToRead;
             if (this.tonesBuffer.hasRemaining() == false) {
                 // have we reached the end of the tones?
 
@@ -183,6 +186,7 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
                     messageBuffer.remaining());
             messageBuffer.get(dst, offset, bytesToRead);
             bytesRemaining -= bytesToRead;
+            offset += bytesToRead;
         }
 
         if ((bytesRemaining > 0) && (returnTones)
@@ -191,6 +195,7 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
                     endOfMessageTones.remaining());
             endOfMessageTones.get(dst, offset, bytesToRead);
             bytesRemaining -= bytesToRead;
+            offset += bytesToRead;
             if (this.endOfMessageTones.hasRemaining() == false) {
                 // end tones have been broadcast, log it.
                 DefaultMessageLogger.getInstance().logTonesActivity(
@@ -203,11 +208,15 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
                     endOfMessageSilence.remaining());
             endOfMessageSilence.get(dst, offset, bytesToRead);
             bytesRemaining -= bytesToRead;
+            offset += bytesToRead;
         }
 
         if (bytesRemaining > 0) {
-            Arrays.fill(dst, offset + (length - bytesRemaining), offset
-                    + length, DacSessionConstants.SILENCE);
+            /*
+             * fill starting from the current offset to the length of the array.
+             * fromIndex is inclusive and the endIndex is exclusive.
+             */
+            Arrays.fill(dst, offset, length, DacSessionConstants.SILENCE);
         }
     }
 
