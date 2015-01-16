@@ -46,9 +46,16 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 
 public final class DataTransmitConstants {
 
+    // interval to maintain current queue depth
     public static final long DEFAULT_CYCLE_TIME = 20; // in MS
 
-    public static final long INITIAL_CYCLE_TIME = 5; // in MS
+    // interval to reduce queue depth by 1 message per 100ms
+    public static final long SLOW_CYCLE_TIME = 25; // in MS
+
+    // max send interval to avoid dropped packets
+    public static final long FAST_CYCLE_TIME = 10; // in MS
+
+    public static final long INITIAL_CYCLE_TIME = 10; // in MS
 
     /*
      * TODO Make these threshold values configurable and use these constants for
