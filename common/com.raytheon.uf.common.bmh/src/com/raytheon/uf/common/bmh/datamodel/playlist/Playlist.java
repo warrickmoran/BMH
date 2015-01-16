@@ -137,7 +137,7 @@ public class Playlist {
     @Column
     private Calendar endTime;
 
-    @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private List<PlaylistMessage> messages = new ArrayList<>();
