@@ -35,7 +35,6 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
@@ -181,11 +180,10 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
                 return;
             }
             TableRowData selection = selectionList.get(0);
-            PlaylistMessage playlistMessage = (PlaylistMessage) selection
+            BroadcastMsg broadcastMsg = (BroadcastMsg) selection
                     .getData();
-            String afosId = playlistMessage.getAfosid();
+            String afosId = broadcastMsg.getInputMessage().getAfosid();
             MessageType messageType = dataManager.getMessageType(afosId);
-            BroadcastMsg broadcastMsg = playlistMessage.getBroadcastMsg();
             long key = broadcastMsg.getId();
             MessageDetailsDlg dlg = detailsMap.get(key);
             if (dlg != null) {

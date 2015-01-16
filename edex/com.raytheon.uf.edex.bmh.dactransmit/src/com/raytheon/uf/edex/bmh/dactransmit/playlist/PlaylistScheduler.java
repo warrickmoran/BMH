@@ -948,8 +948,8 @@ public final class PlaylistScheduler implements
                     .entrySet()) {
                 DacPlaylistMessage messageData = cache.getMessage(entry
                         .getValue());
-                periodicPredictions.add(new MessagePlaybackPrediction(
-                        nextMessageTime, messageData));
+                periodicPredictions.add(new MessagePlaybackPrediction(entry
+                        .getKey(), messageData));
             }
             notification.setPeriodicMessages(periodicPredictions);
         }
