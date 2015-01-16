@@ -51,7 +51,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 14, 2014 3655       bkowal      Initial creation
- * Jan 09, 2015 3942       rjpeter     Made nextCycleTime volatile.
+ * Jan 09, 2015 3942       rjpeter     Made nextCycleTime volatile, updated to set limits on cycle intervals.
  * </pre>
  * 
  * @author bkowal
@@ -142,15 +142,21 @@ public class AbstractTransmitThread extends Thread implements
     public void receivedDacStatus(DacStatusUpdateEvent e) {
         int differenceFromWatermark = this.watermarkPackets
                 - e.getStatus().getBufferSize();
+        long newSleepCycle = DataTransmitConstants.DEFAULT_CYCLE_TIME;
 
-        if (differenceFromWatermark <= 0) {
-            nextCycleTime = DataTransmitConstants.DEFAULT_CYCLE_TIME;
+        if (differenceFromWatermark < 0) {
+            newSleepCycle = DataTransmitConstants.SLOW_CYCLE_TIME;
         } else {
             int packetsToSendUntilNextStatus = Math
                     .abs(differenceFromWatermark) + 5;
-            nextCycleTime = 100L / packetsToSendUntilNextStatus;
+
+            // make sure we don't speed it up too fast
+            newSleepCycle = Math.max(100L / packetsToSendUntilNextStatus,
+                    DataTransmitConstants.FAST_CYCLE_TIME);
             // logger.debug("Speeding up cycle time to: " + nextCycleTime);
         }
+
+        nextCycleTime = newSleepCycle;
     }
 
     @Subscribe
