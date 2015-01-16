@@ -93,6 +93,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Nov 17, 2014  #3630     bkowal       Added doesMessageFileExist.
  * Jan 05, 2015  #3913     bsteffen     Handle future replacements.
  * Jan 05, 2015  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg errors.
+ * Jan 16, 2015  #3928     bsteffen     Fix purging of old playlists on dac startup.
  * 
  * 
  * </pre>
@@ -393,16 +394,15 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      */
     public long getPlaybackTime(DacPlaylistMessageId messageId,
             Calendar startTime) throws NoSoundFileException {
-        DacPlaylistMessage message = cachedMessages.get(messageId);
-        boolean includeTones = (startTime != null) ? getMessage(messageId)
+        DacPlaylistMessage message = getMessage(messageId);
+        boolean includeTones = (startTime != null) ? message
                 .shouldPlayTones(startTime) : false;
 
         long fileSize = 0;
         if (cachedFiles.containsKey(message)) {
             fileSize = cachedFiles.get(message).capacity(includeTones);
         } else {
-            List<String> soundFiles = cachedMessages.get(messageId)
-                    .getSoundFiles();
+            List<String> soundFiles = message.getSoundFiles();
             if (soundFiles == null || soundFiles.isEmpty()) {
                 throw new NoSoundFileException("Message " + messageId
                         + " contains no soundFile attributes.");
@@ -546,16 +546,17 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
             @Override
             public void run() {
-                for (DacPlaylistMessageId messageId : playlist.getMessages()) {
-                    if (isExpired(messageId)) {
-                        purgeAudio(messageId);
-                    }
-                }
-
                 try {
+                    for (DacPlaylistMessageId messageId : playlist
+                            .getMessages()) {
+                        if (isExpired(messageId)) {
+                            purgeAudio(messageId);
+                        }
+                    }
+
                     Files.delete(playlist.getPath());
                     logger.info("Deleted " + playlist.getPath());
-                } catch (IOException e) {
+                } catch (Throwable e) {
                     logger.error(
                             "Error deleting playlist " + playlist.getPath()
                                     + " from disk.", e);
