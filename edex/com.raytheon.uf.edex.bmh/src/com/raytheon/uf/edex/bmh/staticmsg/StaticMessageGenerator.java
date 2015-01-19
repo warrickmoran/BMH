@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
@@ -44,13 +45,16 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.BMHTimeZone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
+import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
@@ -81,6 +85,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 28, 2014 3750       bkowal      Fix time messages. Support practice mode.
  * Nov 3, 2014  3759       bkowal      Generate both dst and non-dst timezones.
  * Nov 5, 2014  3630       bkowal      Support maintenance audio generation.
+ * Jan 19, 2015 4011       bkowal      Support transmitter language removal.
  * 
  * </pre>
  * 
@@ -92,6 +97,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(StaticMessageGenerator.class);
+
+    private final boolean operational;
 
     private final TimeMessagesGenerator tmGenerator;
 
@@ -115,6 +122,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
     private MessageTypeDao messageTypeDao;
 
+    private InputMessageDao inputMessageDao;
+
     private Map<Integer, MessageType> staticMessageTypesMap;
 
     private Object configurationLock = new Object();
@@ -123,11 +132,13 @@ public class StaticMessageGenerator implements IContextStateProcessor {
      * 
      */
     public StaticMessageGenerator(final TimeMessagesGenerator tmGenerator,
-            final AlignmentTestGenerator alignmentTestGenerator) {
+            final AlignmentTestGenerator alignmentTestGenerator,
+            final boolean operational) {
         this.tmGenerator = tmGenerator;
         this.alignmentTestGenerator = alignmentTestGenerator;
         this.expire = Calendar.getInstance();
         this.expire.set(Calendar.YEAR, MAX_YEAR);
+        this.operational = operational;
     }
 
     public void initializeInternal() {
@@ -187,9 +198,23 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                     + TransmitterLanguageConfigNotification.class
                     + " for key: " + notification.getKey());
             if (notification.getType() == ConfigChangeType.Delete) {
-                /*
-                 * Do Nothing.
-                 */
+                synchronized (this.configurationLock) {
+                    try {
+                        this.purgeTransmitterLanguageStaticMsgs(
+                                notification.getTransmitterGroup(),
+                                notification.getKey().getLanguage());
+                    } catch (Exception e) {
+                        StringBuilder sb = new StringBuilder(
+                                "Failed to purge the static message(s) for the deleted Language: ");
+                        sb.append(notification.getKey().getLanguage()
+                                .toString());
+                        sb.append(" originally associated with Transmitter: ");
+                        sb.append(notification.getTransmitterGroup().getName())
+                                .append(".");
+                        statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
+                                sb.toString(), e);
+                    }
+                }
                 return Collections.emptyList();
             }
             TransmitterLanguage language = this.transmitterLanguageDao
@@ -243,6 +268,53 @@ public class StaticMessageGenerator implements IContextStateProcessor {
          * Should never encounter this case.
          */
         return null;
+    }
+
+    private void purgeTransmitterLanguageStaticMsgs(
+            TransmitterGroup transmitterGroup, Language language)
+            throws Exception {
+        List<InputMessage> disabledStaticMessages = new ArrayList<>();
+        for (MessageType mt : this.staticMessageTypesMap.values()) {
+            /**
+             * Iterate through all static {@link MessageType}s and retrieve any
+             * {@link BroadcastMsg}s associated with the
+             * {@link TransmitterGroup} and {@link Language}.
+             */
+            BroadcastMsg msg = this.broadcastMsgDao.getMessageExistence(
+                    transmitterGroup, mt.getAfosid(), language);
+            if (msg == null) {
+                continue;
+            }
+            InputMessage im = msg.getInputMessage();
+            if (Boolean.FALSE.equals(im.getActive())) {
+                /**
+                 * The message is already inactive.
+                 */
+                continue;
+            }
+            StringBuilder sb = new StringBuilder(
+                    "Disabling static message [id=");
+            sb.append(im.getId());
+            sb.append(", name=").append(im.getName());
+            sb.append(", afosid=").append(im.getAfosid())
+                    .append("] for Language: ");
+            sb.append(language.toString()).append(" and Transmitter: ");
+            sb.append(transmitterGroup.getName()).append(".");
+            statusHandler.info(sb.toString());
+            disabledStaticMessages.add(im);
+            im.setActive(false);
+        }
+
+        /**
+         * Attempt to persist all {@link InputMessage} changes at once.
+         */
+        this.inputMessageDao.persistAll(disabledStaticMessages);
+        /**
+         * Attempt to trigger a playlist re-generation without the
+         * {@link InputMessage}s that have just been disabled.
+         */
+        BmhMessageProducer.sendConfigMessage(new MessageActivationNotification(
+                disabledStaticMessages, false), this.operational);
     }
 
     public boolean checkSkipMessage(Object notificationObject) {
@@ -467,9 +539,11 @@ public class StaticMessageGenerator implements IContextStateProcessor {
          * Does an associated broadcast message exist. And, if one does exist,
          * is it complete?
          */
+        boolean active = (existingMsg.getInputMessage().getActive() == null) ? false
+                : existingMsg.getInputMessage().getActive();
         boolean complete = existingMsg != null && existingMsg.isSuccess()
                 && existingMsg.getFragments() != null
-                && !existingMsg.getFragments().isEmpty();
+                && !existingMsg.getFragments().isEmpty() && active;
         if (complete) {
             for (BroadcastFragment fragment : existingMsg.getFragments()) {
                 String output = fragment.getOutputName();
@@ -621,6 +695,21 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         this.messageTypeDao = messageTypeDao;
     }
 
+    /**
+     * @return the inputMessageDao
+     */
+    public InputMessageDao getInputMessageDao() {
+        return inputMessageDao;
+    }
+
+    /**
+     * @param inputMessageDao
+     *            the inputMessageDao to set
+     */
+    public void setInputMessageDao(InputMessageDao inputMessageDao) {
+        this.inputMessageDao = inputMessageDao;
+    }
+
     private void validateDaos() throws IllegalStateException {
         if (this.messageTypeDao == null) {
             throw new IllegalStateException(
@@ -634,6 +723,9 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         } else if (this.transmitterGroupDao == null) {
             throw new IllegalStateException(
                     "TransmitterGroupDao has not been set on the StaticMessageGenerator");
+        } else if (this.inputMessageDao == null) {
+            throw new IllegalStateException(
+                    "InputMessageDao has not been set on the StaticMessageGenerator");
         }
     }
 

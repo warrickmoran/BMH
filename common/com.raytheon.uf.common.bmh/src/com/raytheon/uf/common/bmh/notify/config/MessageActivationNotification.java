@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import java.util.List;
+import java.util.ArrayList;
+
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -34,6 +37,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket   Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Oct 31, 2014  3778     bsteffen    Initial creation
+ * Jan 19, 2015  4011     bkowal      Support de-activating/activating
+ *                                    multiple messages at once.
  * 
  * </pre>
  * 
@@ -44,7 +49,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class MessageActivationNotification extends ConfigNotification {
 
     @DynamicSerializeElement
-    private int inputMessageId;
+    private List<Integer> inputMessageIds;
 
     public MessageActivationNotification() {
 
@@ -52,15 +57,22 @@ public class MessageActivationNotification extends ConfigNotification {
 
     public MessageActivationNotification(InputMessage inputMessage) {
         super(getType(inputMessage.getActive()));
-        this.inputMessageId = inputMessage.getId();
+        this.addInputMessageId(inputMessage.getId());
     }
 
-    public int getInputMessageId() {
-        return inputMessageId;
+    public MessageActivationNotification(List<InputMessage> inputMessages,
+            boolean active) {
+        super(getType(active));
+        for (InputMessage im : inputMessages) {
+            this.addInputMessageId(im.getId());
+        }
     }
 
-    public void setInputMessageId(int inputMessageId) {
-        this.inputMessageId = inputMessageId;
+    public void addInputMessageId(int id) {
+        if (this.inputMessageIds == null) {
+            this.inputMessageIds = new ArrayList<>();
+        }
+        this.inputMessageIds.add(id);
     }
 
     private static ConfigChangeType getType(Boolean active) {
@@ -69,6 +81,21 @@ public class MessageActivationNotification extends ConfigNotification {
         } else {
             return ConfigChangeType.Update;
         }
+    }
+
+    /**
+     * @return the inputMessageIds
+     */
+    public List<Integer> getInputMessageIds() {
+        return inputMessageIds;
+    }
+
+    /**
+     * @param inputMessageIds
+     *            the inputMessageIds to set
+     */
+    public void setInputMessageIds(List<Integer> inputMessageIds) {
+        this.inputMessageIds = inputMessageIds;
     }
 
 }

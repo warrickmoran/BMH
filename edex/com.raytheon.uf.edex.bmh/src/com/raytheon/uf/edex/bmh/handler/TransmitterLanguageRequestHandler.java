@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 24, 2014  3636     rferrel     Implement logging.
  * Jan 13, 2015  3809     bkowal      Fixed {@link #updateTransmitterLanguage(TransmitterLanguageRequest)}.
+ * Jan 19, 2015  4011     bkowal      Added {@link #deleteTransmitterLanguage(TransmitterLanguageRequest)}.
  * 
  * </pre>
  * 
@@ -73,6 +74,12 @@ public class TransmitterLanguageRequestHandler extends
             response = this.updateTransmitterLanguage(request);
             notification = new TransmitterLanguageConfigNotification(
                     ConfigChangeType.Update, request.getTransmitterLanguage());
+            break;
+        case DeleteTransmitterLanguage:
+            response = new TransmitterLanguageResponse();
+            notification = new TransmitterLanguageConfigNotification(
+                    ConfigChangeType.Delete, request.getTransmitterLanguage());
+            this.deleteTransmitterLanguage(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -132,5 +139,29 @@ public class TransmitterLanguageRequestHandler extends
         }
 
         return response;
+    }
+
+    private void deleteTransmitterLanguage(TransmitterLanguageRequest request) {
+        if (request.getTransmitterLanguage() == null) {
+            throw new IllegalArgumentException(
+                    "Transmitter language cannot be NULL when the requested action is: "
+                            + request.getAction().toString() + "!");
+        }
+        TransmitterLanguageDao transmitterLanguageDao = new TransmitterLanguageDao(
+                request.isOperational());
+
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+
+        TransmitterLanguage tl = request.getTransmitterLanguage();
+        TransmitterLanguage oldTl = null;
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            oldTl = transmitterLanguageDao.getByID(tl.getId());
+        }
+        transmitterLanguageDao.delete(tl);
+
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            BMHLoggerUtils.logDelete(request, user, oldTl);
+        }
     }
 }

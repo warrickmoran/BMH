@@ -20,10 +20,12 @@
 		class="com.raytheon.uf.edex.bmh.staticmsg.StaticMessageGenerator">
 		<constructor-arg ref="timeMessagesGenerator" />
 		<constructor-arg ref="alignmentTestGenerator" />
+		<constructor-arg value="true" />
 		<property name="broadcastMsgDao" ref="broadcastMsgDao" />
 		<property name="transmitterGroupDao" ref="transmitterGroupDao" />
 		<property name="transmitterLanguageDao" ref="transmitterLanguageDao" />
 		<property name="messageTypeDao" ref="messageTypeDao" />
+		<property name="inputMessageDao" ref="inputMessageDao" />
 	</bean>
 
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">

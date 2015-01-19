@@ -35,6 +35,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Aug 29, 2014  3568     bkowal      Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Jan 19, 2015  4011     bkowal      Added 
+ *                                    {@link TransmitterLanguageRequestAction#DeleteTransmitterLanguage}.
  * 
  * </pre>
  * 
@@ -48,7 +50,7 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
      * yet-to-be-implemented dialog
      */
     public enum TransmitterLanguageRequestAction {
-        GetTransmitterLanguagesForTransmitterGrp, UpdateTransmitterLanguage
+        GetTransmitterLanguagesForTransmitterGrp, UpdateTransmitterLanguage, DeleteTransmitterLanguage
     }
 
     @DynamicSerializeElement
@@ -74,7 +76,8 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @param action the action to set
+     * @param action
+     *            the action to set
      */
     public void setAction(TransmitterLanguageRequestAction action) {
         this.action = action;
@@ -88,7 +91,8 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @param transmitterGroup the transmitterGroup to set
+     * @param transmitterGroup
+     *            the transmitterGroup to set
      */
     public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
@@ -102,7 +106,8 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @param transmitterLanguage the transmitterLanguage to set
+     * @param transmitterLanguage
+     *            the transmitterLanguage to set
      */
     public void setTransmitterLanguage(TransmitterLanguage transmitterLanguage) {
         this.transmitterLanguage = transmitterLanguage;

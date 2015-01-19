@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -35,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 8, 2014  3568       bkowal      Initial creation
+ * Jan 19, 2015 4011       bkowal      Added {@link #transmitterGroup}.
  * 
  * </pre>
  * 
@@ -46,6 +48,9 @@ public class TransmitterLanguageConfigNotification extends ConfigNotification {
 
     @DynamicSerializeElement
     private TransmitterLanguagePK key;
+
+    @DynamicSerializeElement
+    private TransmitterGroup transmitterGroup;
 
     /**
      * 
@@ -61,6 +66,7 @@ public class TransmitterLanguageConfigNotification extends ConfigNotification {
             TransmitterLanguage tl) {
         super(type);
         this.setKey(tl);
+        this.transmitterGroup = tl.getTransmitterGroup();
     }
 
     /**
@@ -80,5 +86,20 @@ public class TransmitterLanguageConfigNotification extends ConfigNotification {
 
     public void setKey(TransmitterLanguage tl) {
         this.key = tl.getId();
+    }
+
+    /**
+     * @return the transmitterGroup
+     */
+    public TransmitterGroup getTransmitterGroup() {
+        return transmitterGroup;
+    }
+
+    /**
+     * @param transmitterGroup
+     *            the transmitterGroup to set
+     */
+    public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
+        this.transmitterGroup = transmitterGroup;
     }
 }

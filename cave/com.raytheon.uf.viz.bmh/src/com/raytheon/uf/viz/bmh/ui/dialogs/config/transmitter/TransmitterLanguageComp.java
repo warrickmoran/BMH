@@ -46,6 +46,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -59,6 +60,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 12, 2015 3809       bkowal      Initial creation
+ * Jan 19, 2015 4011       bkowal      Implemented a delete option.
  * 
  * </pre>
  * 
@@ -80,6 +82,8 @@ public class TransmitterLanguageComp {
     private Button addButton;
 
     private Button editButton;
+
+    private Button deleteButton;
 
     private GenericTable languagesTable;
 
@@ -108,7 +112,7 @@ public class TransmitterLanguageComp {
 
         /* Prepare buttons to add/edit languages */
         Composite languagesComp = new Composite(languagesGroup, SWT.NONE);
-        gl = new GridLayout(2, false);
+        gl = new GridLayout(3, false);
         languagesComp.setLayout(gl);
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         languagesComp.setLayoutData(gd);
@@ -149,6 +153,24 @@ public class TransmitterLanguageComp {
             }
         });
 
+        /* Delete Button */
+        deleteButton = new Button(languagesComp, SWT.PUSH);
+        deleteButton.setText("Delete");
+        gd = new GridData();
+        gd.widthHint = buttonWidth;
+        deleteButton.setLayoutData(gd);
+        /*
+         * the delete button will only be enabled when a language has been
+         * selected in the table and there is more than one language.
+         */
+        this.deleteButton.setEnabled(false);
+        this.deleteButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleDeleteAction();
+            }
+        });
+
         /* Create the languages table. */
         this.languagesTable = new GenericTable(languagesGroup, SWT.BORDER
                 | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE, 450, 100);
@@ -163,6 +185,8 @@ public class TransmitterLanguageComp {
             @Override
             public void tableSelectionChange(int selectionCount) {
                 editButton.setEnabled(selectionCount == 1);
+                deleteButton.setEnabled(selectionCount == 1
+                        && languagesTable.getItemCount() > 1);
             }
         });
     }
@@ -228,6 +252,7 @@ public class TransmitterLanguageComp {
         }
         this.languagesTable.populateTable(tableData);
         this.editButton.setEnabled(false);
+        this.deleteButton.setEnabled(false);
     }
 
     private void handleAddAction() {
@@ -267,14 +292,8 @@ public class TransmitterLanguageComp {
     }
 
     private void handleEditAction() {
-        /*
-         * Determine what the selected transmitter language is. There should
-         * only be one selected row.
-         */
-        TableRowData trd = this.languagesTable.getSelection().get(0);
-        Language language = (Language) trd.getData();
         CreateEditTransmitterLangDialog dialog = new CreateEditTransmitterLangDialog(
-                this.shell, this.existingLanguagesMap.get(language), this.group);
+                this.shell, this.getSelectedLanguage(), this.group);
         dialog.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -289,6 +308,37 @@ public class TransmitterLanguageComp {
         dialog.open();
     }
 
+    private void handleDeleteAction() {
+        /*
+         * Verify that the user wants to remove the Transmitter Language.
+         */
+        TransmitterLanguage tl = this.getSelectedLanguage();
+        StringBuilder sb = new StringBuilder(
+                "Are you sure you want to delete language: ");
+        sb.append(tl.getLanguage().toString());
+        sb.append(" for Transmitter ");
+        sb.append(tl.getTransmitterGroup().getName()).append("?");
+
+        int option = DialogUtility.showMessageBox(this.shell, SWT.ICON_QUESTION
+                | SWT.YES | SWT.NO, "Transmitter Language - Delete",
+                sb.toString());
+        if (option != SWT.YES) {
+            return;
+        }
+
+        try {
+            this.tldm.deleteLanguage(tl);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to delete transmitter language: " + tl.toString()
+                            + ".", e);
+            return;
+        }
+        this.existingLanguagesMap.remove(tl.getLanguage());
+
+        this.buildLanguagesTable();
+    }
+
     private void handleUpdatedLanguage(TransmitterLanguage transmitterLanguage) {
         try {
             transmitterLanguage = this.tldm.saveLanguage(transmitterLanguage);
@@ -301,5 +351,16 @@ public class TransmitterLanguageComp {
                 transmitterLanguage);
 
         this.buildLanguagesTable();
+    }
+
+    private TransmitterLanguage getSelectedLanguage() {
+        /*
+         * Determine what the selected transmitter language is. There should
+         * only be one selected row.
+         */
+        TableRowData trd = this.languagesTable.getSelection().get(0);
+        Language language = (Language) trd.getData();
+
+        return this.existingLanguagesMap.get(language);
     }
 }

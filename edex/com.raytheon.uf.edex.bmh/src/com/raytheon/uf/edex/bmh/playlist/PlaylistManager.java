@@ -140,6 +140,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jan 12, 2015  3968     bkowal      Include the confirmation flag in the {@link DacPlaylistMessage}.
  * Jan 14, 2015  3969     bkowal      Indicate whether a message is a watch or a warning
  *                                    in the {@link DacPlaylistMessage}.
+ * Jan 19, 2015  4011     bkowal      Use the updated version of
+ *                                    {@link MessageActivationNotification}.
  * 
  * </pre>
  * 
@@ -226,32 +228,34 @@ public class PlaylistManager implements IContextStateProcessor {
 
     public void processMessageActivationChange(
             MessageActivationNotification notification) {
-        List<BroadcastMsg> messages = broadcastMsgDao
-                .getMessagesByInputMsgId(notification.getInputMessageId());
-        for (BroadcastMsg message : messages) {
-            TransmitterGroup group = message.getTransmitterGroup();
-            if (!group.isEnabled()) {
-                continue;
-            }
-            Program program = programDao.getProgramForTransmitterGroup(group);
-            if (program == null) {
-                statusHandler
-                        .info("Skipping playlist refresh: No program assigned to transmitter group ["
-                                + group.getName() + "]");
-                continue;
-            }
-            if (Boolean.TRUE.equals(message.getInputMessage().getActive())) {
-                this.messageLogger.logActivationActivity(message);
-            }
-            for (ProgramSuite programSuite : program.getProgramSuites()) {
-                if (programSuite.getSuite().containsSuiteMessage(
-                        message.getAfosid())) {
-                    refreshPlaylist(group, programSuite, false);
-                    break;
+        for (int id : notification.getInputMessageIds()) {
+            List<BroadcastMsg> messages = broadcastMsgDao
+                    .getMessagesByInputMsgId(id);
+            for (BroadcastMsg message : messages) {
+                TransmitterGroup group = message.getTransmitterGroup();
+                if (!group.isEnabled()) {
+                    continue;
+                }
+                Program program = programDao
+                        .getProgramForTransmitterGroup(group);
+                if (program == null) {
+                    statusHandler
+                            .info("Skipping playlist refresh: No program assigned to transmitter group ["
+                                    + group.getName() + "]");
+                    continue;
+                }
+                if (Boolean.TRUE.equals(message.getInputMessage().getActive())) {
+                    this.messageLogger.logActivationActivity(message);
+                }
+                for (ProgramSuite programSuite : program.getProgramSuites()) {
+                    if (programSuite.getSuite().containsSuiteMessage(
+                            message.getAfosid())) {
+                        refreshPlaylist(group, programSuite, false);
+                        break;
+                    }
                 }
             }
         }
-
     }
 
     public boolean processForceSuiteSwitch(final TransmitterGroup group,

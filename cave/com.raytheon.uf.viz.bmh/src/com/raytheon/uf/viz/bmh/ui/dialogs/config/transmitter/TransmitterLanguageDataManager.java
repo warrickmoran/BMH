@@ -39,6 +39,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 13, 2015 3809       bkowal      Initial creation
+ * Jan 19, 2015 4011       bkowal      Added {@link #deleteLanguage(TransmitterLanguage)}.
  * 
  * </pre>
  * 
@@ -89,5 +90,13 @@ public class TransmitterLanguageDataManager {
         TransmitterLanguageResponse response = (TransmitterLanguageResponse) BmhUtils
                 .sendRequest(request);
         return response.getTransmitterLanguages().get(0);
+    }
+
+    public void deleteLanguage(TransmitterLanguage language) throws Exception {
+        TransmitterLanguageRequest request = new TransmitterLanguageRequest();
+        request.setAction(TransmitterLanguageRequestAction.DeleteTransmitterLanguage);
+        request.setTransmitterLanguage(language);
+
+        BmhUtils.sendRequest(request);
     }
 }
