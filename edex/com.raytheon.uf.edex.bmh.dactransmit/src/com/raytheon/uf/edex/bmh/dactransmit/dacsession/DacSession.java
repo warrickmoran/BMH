@@ -96,6 +96,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      transmitter group.
  * Nov 11, 2014  #3817     bsteffen     Periodically resend status.
  * Nov 21, 2014  #3845     bkowal       Transition to transmitter group is complete.
+ * Jan 19, 2014  #3912     bsteffen     Handle events from control thread directly.
  * 
  * </pre>
  * 
@@ -153,7 +154,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         this.playlistMgr = new PlaylistScheduler(
                 this.config.getInputDirectory(), this.eventBus,
                 this.config.getDbTarget(), this.config.getTimezone());
-        this.controlThread = new ControlStatusThread(this.eventBus,
+        this.controlThread = new ControlStatusThread(this,
                 this.config.getDacAddress(), this.config.getControlPort());
         this.dataThread = new DataTransmitThread(this.eventBus, playlistMgr,
                 this.config.getDacAddress(), this.config.getDataPort(),
@@ -261,9 +262,14 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     }
 
     @Override
-    @Subscribe
     public void receivedDacStatus(DacStatusUpdateEvent e) {
+        LiveBroadcastTransmitThread liveThread = this.broadcastThread;
+        if (liveThread != null) {
+            liveThread.receivedDacStatus(e);
+        }
+        dataThread.receivedDacStatus(e);
         DacStatusMessage newStatus = e.getStatus();
+        newStatus.setSequenceNumber(dataThread.getLastSequenceNumber());
         DacHardwareStatusNotification notify = newStatus.validateStatus(config,
                 previousStatus);
         previousStatus = newStatus;
@@ -277,13 +283,23 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         }
     }
 
-    @Subscribe
+    @Override
     public void lostDacSync(LostSyncEvent e) {
+        LiveBroadcastTransmitThread liveThread = this.broadcastThread;
+        if (liveThread != null) {
+            liveThread.lostDacSync(e);
+        }
+        dataThread.lostDacSync(e);
         commsManager.sendConnectionStatus(false);
     }
 
-    @Subscribe
+    @Override
     public void regainDacSync(RegainSyncEvent e) {
+        LiveBroadcastTransmitThread liveThread = this.broadcastThread;
+        if (liveThread != null) {
+            liveThread.regainDacSync(e);
+        }
+        dataThread.regainDacSync(e);
         commsManager.sendConnectionStatus(true);
     }
 
