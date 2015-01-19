@@ -145,6 +145,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 18, 2014  3865      bsteffen    Implement Expire/Delete
  * Jan 13, 2015  3843      bsteffen    Enhance Periodic Messages Dialog.
  * Jan 15, 2015  3844      bsteffen    Handle unusuals states with less NPE.
+ * Jan 19, 2015  3929      lvenable    Added safety checks if the program object is null.
  * 
  * 
  * </pre>
@@ -1265,8 +1266,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                             @Override
                             public void run() {
                                 messageDetailBtn.setEnabled(true);
-                                setProgramLabelTextFontAndColor(programObj
-                                        .getName());
+                                if (programObj == null) {
+                                    setProgramLabelTextFontAndColor("Unknown");
+                                } else {
+                                    setProgramLabelTextFontAndColor(programObj
+                                            .getName());
+                                }
                                 suiteValueLbl.setText(selectedSuite);
                                 cycleDurValueLbl.setText(cycleDurationTime);
                                 if (periodicMsgDlg != null
@@ -1302,8 +1307,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     /*
                      * does this apply to the program we have selected?
                      */
-                    if (this.programObj.getId() != pgmConfigNotification
-                            .getId()) {
+                    if (this.programObj == null
+                            || (this.programObj.getId() != pgmConfigNotification
+                                    .getId())) {
                         return;
                     }
                     /*
