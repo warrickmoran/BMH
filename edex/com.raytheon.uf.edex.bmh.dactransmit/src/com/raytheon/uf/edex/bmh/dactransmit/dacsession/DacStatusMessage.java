@@ -53,6 +53,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
  * Aug 25, 2014  #3286     bsteffen     Fix buffer size alerting logic.
  * Nov 11, 2014  #3817     bsteffen     Make buildNotification public
+ * Jan 19, 2014  #3912     bsteffen     Always log when jitter buffer is outside threshold.
+ * 
  * 
  * </pre>
  * 
@@ -63,7 +65,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
 public final class DacStatusMessage {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    
+
     private final static char STATUS_MSG_INDICATOR = '0';
 
     private final static String SEPARATOR = ",";
@@ -109,6 +111,12 @@ public final class DacStatusMessage {
     /* TODO: REMOVE when random broadcasting silence messages fixed. */
     private final String rawMessage;
 
+    /* This is useful for debugging */
+    private final long receiveTime;
+
+    /* Not part of the original status, but can be added in for better logging. */
+    private Integer sequenceNumber;
+
     /**
      * Parses a DAC heartbeat message into its component parts. Splits the DAC's
      * message by the token character {@code ','} into the individual fields.
@@ -120,6 +128,7 @@ public final class DacStatusMessage {
      */
     public DacStatusMessage(final String rawMessage)
             throws MalformedDacStatusException {
+        this.receiveTime = System.currentTimeMillis();
         this.rawMessage = rawMessage;
 
         if (rawMessage.charAt(0) != STATUS_MSG_INDICATOR) {
@@ -219,6 +228,19 @@ public final class DacStatusMessage {
         }
     }
 
+    /**
+     * Add a sequence number to this status which will be used to generate more
+     * useful logs during
+     * {@link #validateStatus(DacSessionConfig, DacStatusMessage)}.
+     * 
+     * @param sequenceNumber
+     *            the sequence number of the last packet sent from this process
+     *            to the dac.
+     */
+    public void setSequenceNumber(Integer sequenceNumber) {
+        this.sequenceNumber = sequenceNumber;
+    }
+
     /*
      * (non-Javadoc)
      * 
@@ -299,12 +321,22 @@ public final class DacStatusMessage {
                     || (previous.bufferSize >= DataTransmitConstants.ALERT_HIGH_PACKETS_IN_BUFFER);
             boolean alertCurrentBuffer = (bufferSize <= DataTransmitConstants.ALERT_LOW_PACKETS_IN_BUFFER)
                     || (bufferSize >= DataTransmitConstants.ALERT_HIGH_PACKETS_IN_BUFFER);
-            if (alertCurrentBuffer != alertPrevBuffer) {
+            if (alertCurrentBuffer || alertPrevBuffer) {
                 if (alertCurrentBuffer) {
-                    logger.error("DAC's jitter buffer size is outside acceptable thresholds. Current reading is: "
-                            + bufferSize);
+                    Object packetsSent;
+                    if(sequenceNumber != null && previous.sequenceNumber != null){
+                        packetsSent = sequenceNumber - previous.sequenceNumber;
+                    }else{
+                        packetsSent = "an unknown number";
+                    }
+                    logger.error(
+                            "DAC's jitter buffer size is outside acceptable thresholds. Current reading is {} packets.\n"
+                                    + "Previous Reading was {} packets {}ms ago and {} packets have been sent since then.",
+                            bufferSize, previous.bufferSize,
+                            (receiveTime - previous.receiveTime), packetsSent);
                 } else {
-                    logger.info("DAC's jitter buffer size back within acceptable thresholds.");
+                    logger.info("DAC's jitter buffer size back within acceptable thresholds. Current reading is: "
+                            + bufferSize);
                 }
                 reportStatus = true;
             }

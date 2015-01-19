@@ -29,12 +29,12 @@ import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusException;
 
 /**
@@ -62,7 +62,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Oct 17, 2014  #3688     dgilling     Use PORT_OFFSET to allow DacTransmit and
  *                                      DacSimulator to run on same host.
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
- * 
+ * Jan 19, 2015  #3912     bsteffen     Send events directly to a listener.
  * 
  * </pre>
  * 
@@ -91,7 +91,7 @@ public class ControlStatusThread extends Thread {
      */
     private static final int PORT_OFFSET = 100;
 
-    private final EventBus eventBus;
+    private final IDacStatusUpdateEventHandler eventHandler;
 
     private final DatagramSocket socket;
 
@@ -113,8 +113,8 @@ public class ControlStatusThread extends Thread {
      * Constructor. Attempts to make a connection to the DAC at the specified
      * address and port.
      * 
-     * @param eventBus
-     *            Reference back to the application-wide {@code EventBus}
+     * @param eventHandler
+     *            Reference back to ab {@link IDacStatusUpdateEventHandler}
      *            instance for posting necessary status events.
      * @param dacAdress
      *            IP endpoint for the DAC.
@@ -123,10 +123,11 @@ public class ControlStatusThread extends Thread {
      * @throws SocketException
      *             If the socket could not be opened.
      */
-    public ControlStatusThread(EventBus eventBus, InetAddress dacAdress,
+    public ControlStatusThread(IDacStatusUpdateEventHandler eventHandler,
+            InetAddress dacAdress,
             int controlPort) throws SocketException {
         super("ControlStatusThread");
-        this.eventBus = eventBus;
+        this.eventHandler = eventHandler;
         this.dacAddress = dacAdress;
         this.port = controlPort;
         this.keepRunning = true;
@@ -147,7 +148,7 @@ public class ControlStatusThread extends Thread {
                     if (!hasSync) {
                         RegainSyncEvent notify = performInitialSync();
                         if (notify != null) {
-                            eventBus.post(notify);
+                            eventHandler.regainDacSync(notify);
                         }
                     }
 
@@ -161,7 +162,8 @@ public class ControlStatusThread extends Thread {
                             DacStatusMessage currentStatus = receiveHeartbeat(DacSessionConstants.DEFAULT_SYNC_TIMEOUT_PERIOD);
                             // logger.debug("Current DAC status: " +
                             // currentStatus);
-                            eventBus.post(new DacStatusUpdateEvent(
+                            eventHandler
+                                    .receivedDacStatus(new DacStatusUpdateEvent(
                                     currentStatus));
                         } catch (MalformedDacStatusException e) {
                             /*
@@ -177,7 +179,7 @@ public class ControlStatusThread extends Thread {
                                     "Malformed status message received from DAC. Invalidating sync.",
                                     e);
                             hasSync = false;
-                            eventBus.post(new LostSyncEvent());
+                            eventHandler.lostDacSync(new LostSyncEvent());
                         } catch (Exception e) {
                             logger.warn(
                                     "Did not receive heartbeat message from DAC.",
@@ -188,7 +190,7 @@ public class ControlStatusThread extends Thread {
                                         + DacSessionConstants.MISSED_HEARTBEATS_THRESHOLD
                                         + " consecutive heartbeat messages from DAC. Invalidating sync.");
                                 hasSync = false;
-                                eventBus.post(new LostSyncEvent());
+                                eventHandler.lostDacSync(new LostSyncEvent());
                             }
                         }
 
@@ -203,7 +205,7 @@ public class ControlStatusThread extends Thread {
                                         + DacSessionConstants.COMPLETE_SYNC_LOST_TIME
                                         + " ms. Invalidating sync.");
                                 hasSync = false;
-                                eventBus.post(new LostSyncEvent());
+                                eventHandler.lostDacSync(new LostSyncEvent());
                             }
                         }
                     }

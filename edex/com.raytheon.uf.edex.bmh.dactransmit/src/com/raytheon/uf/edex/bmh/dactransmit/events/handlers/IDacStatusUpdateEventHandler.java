@@ -20,6 +20,8 @@
 package com.raytheon.uf.edex.bmh.dactransmit.events.handlers;
 
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
 
 /**
  * Event handler for {@code DacStatusUpdateEvent}.
@@ -31,6 +33,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2014  #3286     dgilling     Initial creation
+ * Jan 19, 2014  #3912     bsteffen     Add methods to handle sync events.
  * 
  * </pre>
  * 
@@ -47,4 +50,20 @@ public interface IDacStatusUpdateEventHandler {
      *            {@code DacStatusUpdateEvent} event object
      */
     void receivedDacStatus(DacStatusUpdateEvent e);
+
+    /**
+     * Event handler method for {@link LostSyncEvent}.
+     * 
+     * @param e
+     *            {@link LostSyncEvent} event object
+     */
+    public void lostDacSync(LostSyncEvent e);
+
+    /**
+     * Event handler method for {@link RegainSyncEvent}.
+     * 
+     * @param e
+     *            {@link RegainSyncEvent} event object
+     */
+    public void regainDacSync(RegainSyncEvent e);
 }

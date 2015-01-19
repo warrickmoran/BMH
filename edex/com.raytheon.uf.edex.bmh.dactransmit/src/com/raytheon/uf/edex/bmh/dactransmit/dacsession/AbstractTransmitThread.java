@@ -52,6 +52,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * ------------ ---------- ----------- --------------------------
  * Oct 14, 2014 3655       bkowal      Initial creation
  * Jan 09, 2015 3942       rjpeter     Made nextCycleTime volatile, updated to set limits on cycle intervals.
+ * Jan 19, 2015 3912       bsteffen    Receive sync, status directly instead of subscribing.
+ * 
  * </pre>
  * 
  * @author bkowal
@@ -102,6 +104,14 @@ public class AbstractTransmitThread extends Thread implements
         this.onSyncRestartMessage = false;
     }
 
+    public Integer getLastSequenceNumber() {
+        if (previousPacket != null) {
+            return previousPacket.getSequenceNumber();
+        } else {
+            return null;
+        }
+    }
+
     protected RtpPacketIn buildRtpPacket(final RtpPacketIn previousPacket,
             final byte[] nextPayload) {
         RtpPacketInFactory factory = RtpPacketInFactory.getInstance();
@@ -138,7 +148,6 @@ public class AbstractTransmitThread extends Thread implements
     }
 
     @Override
-    @Subscribe
     public void receivedDacStatus(DacStatusUpdateEvent e) {
         int differenceFromWatermark = this.watermarkPackets
                 - e.getStatus().getBufferSize();
@@ -159,13 +168,13 @@ public class AbstractTransmitThread extends Thread implements
         nextCycleTime = newSleepCycle;
     }
 
-    @Subscribe
+    @Override
     public void lostDacSync(LostSyncEvent e) {
         logger.error("Application has lost sync with the DAC. Terminating data transmission.");
         hasSync = false;
     }
 
-    @Subscribe
+    @Override
     public void regainDacSync(RegainSyncEvent e) {
         if (e.getDownTime() >= DataTransmitConstants.SYNC_DOWNTIME_RESTART_THRESHOLD) {
             logger.info("Application has re-gained sync with the DAC. Restarting transmission from beginning of current message.");
