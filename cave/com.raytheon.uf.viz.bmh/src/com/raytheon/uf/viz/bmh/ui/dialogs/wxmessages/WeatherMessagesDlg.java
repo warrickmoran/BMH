@@ -50,6 +50,7 @@ import org.eclipse.swt.widgets.Text;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -130,8 +131,10 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 15, 2014  3876     bkowal      Only use the checked SAME Transmitters for
  *                                    SAME Tones. Use affected Transmitters to
  *                                    determine where a message should be directed.
- * Jan 13, 2014  3876     lvenable    Update input message to use the area/zone codes from the selected
+ * Jan 13, 2015  3876     lvenable    Update input message to use the area/zone codes from the selected
  *                                    message type if the user didn't change the area selection.
+ * Jan 16, 2015  4005     bkowal      Determine area/zone codes at the time of the message type
+ *                                    selection or existing input message selection.
  * 
  * </pre>
  * 
@@ -333,8 +336,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                         if (returnValue instanceof InputAudioMessage) {
                             InputAudioMessage im = (InputAudioMessage) returnValue;
                             sameTransmitters.reset();
-                            populateControlsForEdit(im.getInputMessage(),
-                                    im.getAudioDataList());
+                            populateControlsForEdit(im.getInputMessage(), im);
                         }
                     }
                 });
@@ -432,7 +434,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                         if (returnValue != null) {
                             selectedMessageType = (MessageType) returnValue;
                             sameTransmitters.reset();
-                            updateMessageTypeControls();
+                            updateMessageTypeControls(null);
                         } else {
                             if (selectedMessageType == null) {
                                 areaSelectionBtn.setEnabled(false);
@@ -834,22 +836,13 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
          */
         if (userInputMessage.getAreaCodes() == null
                 || userInputMessage.getAreaCodes().isEmpty()) {
-
-            String areaZoneCodesStr = createAreaCodeStringFromMessageType();
-
-            if (areaZoneCodesStr == null || areaZoneCodesStr.isEmpty()) {
-
-                DialogUtility
-                        .showMessageBox(
-                                this.shell,
-                                SWT.ICON_ERROR | SWT.OK,
-                                "Weather Messages - Area Selection",
-                                "Area/Zone/Transmitter codes must be selected. Please add them by clicking the Area Selection button.");
-                return false;
-            }
-
-            userInputMessage
-                    .setAreaCodes(createAreaCodeStringFromMessageType());
+            DialogUtility
+                    .showMessageBox(
+                            this.shell,
+                            SWT.ICON_ERROR | SWT.OK,
+                            "Weather Messages - Area Selection",
+                            "Area/Zone/Transmitter codes must be selected. Please add them by clicking the Area Selection button.");
+            return false;
         }
 
         /*
@@ -992,37 +985,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 }
 
                 areaData = (AreaSelectionSaveData) returnValue;
-                Set<String> areaCodes = areaData.getSelectedAreaZoneCodes();
-
-                if (areaCodes == null || areaCodes.isEmpty()) {
-                    userInputMessage.setAreaCodes("");
-                    return;
-                }
-
-                StringBuilder sb = new StringBuilder();
-                Iterator<String> iter = areaCodes.iterator();
-                while (iter.hasNext()) {
-                    sb.append(iter.next());
-
-                    if (iter.hasNext()) {
-                        sb.append("-");
-                    }
-                }
-
-                userInputMessage.setAreaCodes(sb.toString());
-
-                /*
-                 * ensure that the user will only be able to select Transmitters
-                 * for SAME tone playback associated with the area that was
-                 * selected.
-                 */
-                List<String> transmitterIdentifiers = new ArrayList<>(areaData
-                        .getAffectedTransmitters().size());
-                for (Transmitter transmitter : areaData
-                        .getAffectedTransmitters()) {
-                    transmitterIdentifiers.add(transmitter.getMnemonic());
-                }
-                sameTransmitters.enableCheckboxes(transmitterIdentifiers);
+                updateInputMsgAreas();
+                updateSAMETransmitterOptions();
             }
         });
         dlg.open();
@@ -1031,7 +995,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     /**
      * Set the message type controls using the selected message type.
      */
-    private void updateMessageTypeControls() {
+    private void updateMessageTypeControls(final ValidatedMessage validatedMsg) {
         if (selectedMessageType == null) {
             return;
         }
@@ -1056,10 +1020,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
         this.areaSelectionBtn.setEnabled(true);
         sameTransmitters.selectCheckboxes(cld);
-        /*
-         * Reset the selected area codes.
-         */
-        this.userInputMessage.setAreaCodes(null);
 
         String periodicityDateTimeStr = selectedMessageType.getPeriodicity();
 
@@ -1081,6 +1041,75 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 (int) (durationMillis / TimeUtil.MILLIS_PER_SECOND));
 
         expirationDTF.setDateTimeSpinners(cal);
+
+        Set<Transmitter> listOfAffectedTransmitters = new HashSet<Transmitter>();
+        this.areaData = new AreaSelectionSaveData();
+
+        if (validatedMsg == null) {
+            // eliminate any existing area codes.
+            this.userInputMessage.setAreaCodes(null);
+
+            AreaSelectionData areaSelectionData = new AreaSelectionData();
+            try {
+                areaSelectionData.populate();
+            } catch (Exception e) {
+                statusHandler.error("Error accessing BMH area/zone data", e);
+                return;
+            }
+
+            /**
+             * New Input Message: Retrieve any areas associated with the
+             * selected message type and pre-populate the information for the
+             * dialog.
+             */
+            for (Area area : selectedMessageType.getDefaultAreas()) {
+                areaData.addArea(area);
+                listOfAffectedTransmitters.addAll(area.getTransmitters());
+            }
+
+            for (Zone zone : selectedMessageType.getDefaultZones()) {
+                areaData.addZone(zone);
+                if (zone.getAreas() != null) {
+                    for (Area area : zone.getAreas()) {
+                        listOfAffectedTransmitters.addAll(area
+                                .getTransmitters());
+                    }
+                }
+            }
+
+            for (TransmitterGroup group : selectedMessageType
+                    .getDefaultTransmitterGroups()) {
+                for (Transmitter t : group.getTransmitters()) {
+                    java.util.List<Area> areaList = areaSelectionData
+                            .getTransmitterToAreaMap().get(t);
+                    areaData.addTransmitter(t, areaList);
+                    listOfAffectedTransmitters.add(t);
+                }
+            }
+            this.updateInputMsgAreas();
+        } else {
+            /**
+             * Existing Input Message: Extract the area information from the
+             * existing input message. If we were to just use the areas
+             * associated with the message type, we risk violating the integrity
+             * of the input message because the user may have added other areas
+             * to the input message instead of just using the default.
+             * 
+             * The area information is not enough to determine the transmitters
+             * that have actually been affected.
+             */
+
+            /**
+             * Determine the affected transmitters based on the destination
+             * transmitters in the validated message.
+             */
+            for (TransmitterGroup tg : validatedMsg.getTransmitterGroups()) {
+                listOfAffectedTransmitters.addAll(tg.getTransmitters());
+            }
+        }
+
+        this.areaData.setAffectedTransmitters(listOfAffectedTransmitters);
+        this.updateSAMETransmitterOptions();
     }
 
     /**
@@ -1123,46 +1152,20 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     }
 
     /**
-     * This will create a string of area/zone codes from the
-     * Areas/Zones/Transmitters in the message type.
-     * 
-     * Example: "NEC024-NEZ005-NEZ023-NEZ025-NEC036-NEZ094"
-     * 
-     * @return A string of area/zone codes.
+     * Builds a {@link String} of area codes based on the
+     * {@link AreaSelectionSaveData} and adds the area code {@link String} to
+     * the {@link InputMessage}.
      */
-    private String createAreaCodeStringFromMessageType() {
-
-        if (this.selectedMessageType == null) {
-            return "";
+    private void updateInputMsgAreas() {
+        if (this.areaData == null) {
+            return;
         }
 
-        AreaSelectionSaveData saveData = new AreaSelectionSaveData();
-
-        AreaSelectionData areaSelectionData = new AreaSelectionData();
-        try {
-            areaSelectionData.populate();
-        } catch (Exception e) {
-            statusHandler.error("Error accessing BMH database", e);
+        Set<String> areaZoneCodes = areaData.getSelectedAreaZoneCodes();
+        if (areaZoneCodes == null || areaZoneCodes.isEmpty()) {
+            userInputMessage.setAreaCodes("");
+            return;
         }
-
-        for (Area area : selectedMessageType.getDefaultAreas()) {
-            saveData.addArea(area);
-        }
-
-        for (Zone zone : selectedMessageType.getDefaultZones()) {
-            saveData.addZone(zone);
-        }
-
-        for (TransmitterGroup group : selectedMessageType
-                .getDefaultTransmitterGroups()) {
-            for (Transmitter t : group.getTransmitters()) {
-                java.util.List<Area> areaList = areaSelectionData
-                        .getTransmitterToAreaMap().get(t);
-                saveData.addTransmitter(t, areaList);
-            }
-        }
-
-        Set<String> areaZoneCodes = saveData.getSelectedAreaZoneCodes();
 
         StringBuilder sb = new StringBuilder();
         Iterator<String> iter = areaZoneCodes.iterator();
@@ -1173,8 +1176,20 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 sb.append("-");
             }
         }
+        this.userInputMessage.setAreaCodes(sb.toString());
+    }
 
-        return sb.toString();
+    private void updateSAMETransmitterOptions() {
+        /*
+         * ensure that the user will only be able to select Transmitters for
+         * SAME tone playback associated with the area that was selected.
+         */
+        List<String> transmitterIdentifiers = new ArrayList<>(areaData
+                .getAffectedTransmitters().size());
+        for (Transmitter transmitter : areaData.getAffectedTransmitters()) {
+            transmitterIdentifiers.add(transmitter.getMnemonic());
+        }
+        sameTransmitters.enableCheckboxes(transmitterIdentifiers);
     }
 
     /**
@@ -1189,8 +1204,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      * @param validatedMessage
      *            The ValidatedMessage
      */
-    private void populateControlsForEdit(InputMessage im,
-            List<InputMessageAudioData> audioList) {
+    private void populateControlsForEdit(InputMessage im, InputAudioMessage iam) {
+        final ValidatedMessage vm = (iam == null) ? null : iam
+                .getValidatedMsg();
+        final List<InputMessageAudioData> audioDataList = (iam == null) ? null
+                : iam.getAudioDataList();
+
         userInputMessage = im;
         selectedMessageType = null;
 
@@ -1212,7 +1231,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             areaSelectionBtn.setEnabled(true);
         }
 
-        updateMessageTypeControls();
+        updateMessageTypeControls(vm);
 
         /*
          * Input Message controls.
@@ -1283,7 +1302,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 this.determineContentType(this.userInputMessage.getContent()));
         // there will always be text no matter what the content type is like
         msgContent.setText(this.userInputMessage.getContent());
-        msgContent.setAudioDataList(audioList);
+        msgContent.setAudioDataList(audioDataList);
 
         this.content = msgContent;
     }
