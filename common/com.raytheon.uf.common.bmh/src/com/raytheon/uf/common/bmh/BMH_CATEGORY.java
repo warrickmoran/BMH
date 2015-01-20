@@ -42,6 +42,7 @@ import java.util.Map;
  * Oct 2, 2014  3642       bkowal      Added STATIC_MSG_ERROR.
  * Nov 19, 2014 3385       bkowal      Added {@link BMH_CATEGORY#LDAD_ERROR}
  * Nov 26, 2014 3821       bsteffen    Add some dac and comms categories
+ * Jan 19, 2015 4002       bkowal      Added {@link #DAC_TRANSMIT_BROADCAST_DELAY}.
  * 
  * </pre>
  * 
@@ -141,6 +142,11 @@ public enum BMH_CATEGORY {
      * An error has occurred during ldad processing.
      */
     LDAD_ERROR(20),
+    /*
+     * indicates that a warning or interrupt cannot be broadcast on a
+     * transmitter due to an active broadcast live session.
+     */
+    DAC_TRANSMIT_BROADCAST_DELAY(21),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.

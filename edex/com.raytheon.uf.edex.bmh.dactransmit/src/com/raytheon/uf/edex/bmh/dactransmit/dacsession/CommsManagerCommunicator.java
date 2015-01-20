@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
+import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
@@ -85,6 +86,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Nov 11, 2014  3762     bsteffen    Add delayed shutdown.
  * Jan 12, 2015  3968     bkowal      Handle {@link MessageBroadcastNotifcation}.
  * Jan 14, 2015  3969     bkowal      Handle {@link MessageNotBroadcastNotification}.
+ * Jan 19, 2015  4002     bkowal      Handle {@link MessageDelayedBroadcastNotification}.
  * 
  * </pre>
  * 
@@ -288,6 +290,12 @@ public final class CommsManagerCommunicator extends Thread {
     @Subscribe
     public void handleMsgNotBroadcastNotification(
             MessageNotBroadcastNotification notification) {
+        sendMessageToCommsManager(notification);
+    }
+
+    @Subscribe
+    public void handleBroadcastDelayedNotification(
+            MessageDelayedBroadcastNotification notification) {
         sendMessageToCommsManager(notification);
     }
 

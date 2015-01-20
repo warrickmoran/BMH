@@ -28,10 +28,12 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
+import com.raytheon.bmh.comms.broadcast.BroadcastDelayAlarm;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
+import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
@@ -71,6 +73,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * Jan 12, 2015  3968     bkowal      Handle {@link MessageBroadcastNotifcation}.
  * Jan 14, 2015  3969     bkowal      Handle {@link MessageNotBroadcastNotification}.
+ * Jan 19, 2015  4002     bkowal      Handle {@link MessageDelayedBroadcastNotification}.
  * 
  * </pre>
  * 
@@ -96,6 +99,8 @@ public class DacTransmitCommunicator extends Thread {
     private double dbTarget;
 
     private DacTransmitStatus lastStatus;
+
+    private static final BroadcastDelayAlarm broadcastDelayAlarm = new BroadcastDelayAlarm();
 
     public DacTransmitCommunicator(CommsManager manager, DacTransmitKey key,
             String groupName, int[] radios, Socket socket, double dbTarget) {
@@ -174,6 +179,10 @@ public class DacTransmitCommunicator extends Thread {
             MessageNotBroadcastNotification notification = (MessageNotBroadcastNotification) message;
             notification.setTransmitterGroup(this.groupName);
             manager.transmitDacStatus(notification);
+        } else if (message instanceof MessageDelayedBroadcastNotification) {
+            MessageDelayedBroadcastNotification notification = (MessageDelayedBroadcastNotification) message;
+            notification.setTransmitterGroup(this.groupName);
+            broadcastDelayAlarm.notifyDelay(notification);
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",
                     message.getClass().getSimpleName());
