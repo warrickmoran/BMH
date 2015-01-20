@@ -86,6 +86,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Nov 3, 2014  3759       bkowal      Generate both dst and non-dst timezones.
  * Nov 5, 2014  3630       bkowal      Support maintenance audio generation.
  * Jan 19, 2015 4011       bkowal      Support transmitter language removal.
+ * Jan 20, 2015 4011       bkowal      Static msg deactivation fixes.
  * 
  * </pre>
  * 
@@ -303,6 +304,14 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             statusHandler.info(sb.toString());
             disabledStaticMessages.add(im);
             im.setActive(false);
+        }
+
+        if (disabledStaticMessages.isEmpty()) {
+            /*
+             * There is nothing to disable. So, playlists do not need to be
+             * re-generated.
+             */
+            return;
         }
 
         /**
@@ -539,11 +548,12 @@ public class StaticMessageGenerator implements IContextStateProcessor {
          * Does an associated broadcast message exist. And, if one does exist,
          * is it complete?
          */
-        boolean active = (existingMsg.getInputMessage().getActive() == null) ? false
-                : existingMsg.getInputMessage().getActive();
-        boolean complete = existingMsg != null && existingMsg.isSuccess()
+        boolean complete = existingMsg != null
+                && existingMsg.isSuccess()
                 && existingMsg.getFragments() != null
-                && !existingMsg.getFragments().isEmpty() && active;
+                && !existingMsg.getFragments().isEmpty()
+                && (existingMsg.getInputMessage().getActive() != null && existingMsg
+                        .getInputMessage().getActive());
         if (complete) {
             for (BroadcastFragment fragment : existingMsg.getFragments()) {
                 String output = fragment.getOutputName();

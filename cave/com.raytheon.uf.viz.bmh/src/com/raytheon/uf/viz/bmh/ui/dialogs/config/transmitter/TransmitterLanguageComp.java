@@ -61,6 +61,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Jan 12, 2015 3809       bkowal      Initial creation
  * Jan 19, 2015 4011       bkowal      Implemented a delete option.
+ * Jan 20, 2015 4011       bkowal      All languages can now be deleted.
  * 
  * </pre>
  * 
@@ -156,8 +157,7 @@ public class TransmitterLanguageComp {
         /* Delete Button */
         deleteButton = new Button(languagesComp, SWT.PUSH);
         deleteButton.setText("Delete");
-        gd = new GridData();
-        gd.widthHint = buttonWidth;
+        gd = new GridData(buttonWidth, SWT.DEFAULT);
         deleteButton.setLayoutData(gd);
         /*
          * the delete button will only be enabled when a language has been
@@ -185,8 +185,7 @@ public class TransmitterLanguageComp {
             @Override
             public void tableSelectionChange(int selectionCount) {
                 editButton.setEnabled(selectionCount == 1);
-                deleteButton.setEnabled(selectionCount == 1
-                        && languagesTable.getItemCount() > 1);
+                deleteButton.setEnabled(selectionCount == 1);
             }
         });
     }
@@ -209,13 +208,13 @@ public class TransmitterLanguageComp {
         /*
          * Determine if the user will be allowed to create new languages.
          */
+        unassignedLanguages = new ArrayList<>(languages.size());
         if (languages.size() < Language.values().length) {
             this.addButton.setEnabled(true);
             /*
              * determine which languages still have not been assigned to the
              * transmitter.
              */
-            unassignedLanguages = new ArrayList<>(languages.size());
             for (Language language : Language.values()) {
                 unassignedLanguages.add(language);
             }
@@ -251,6 +250,7 @@ public class TransmitterLanguageComp {
             tableData.addDataRow(trd);
         }
         this.languagesTable.populateTable(tableData);
+        this.addButton.setEnabled(this.unassignedLanguages.isEmpty() == false);
         this.editButton.setEnabled(false);
         this.deleteButton.setEnabled(false);
     }
@@ -281,10 +281,7 @@ public class TransmitterLanguageComp {
             return;
         }
 
-        this.unassignedLanguages.add(transmitterLanguage.getLanguage());
-        if (this.unassignedLanguages.isEmpty()) {
-            this.addButton.setEnabled(false);
-        }
+        this.unassignedLanguages.remove(transmitterLanguage.getLanguage());
         this.existingLanguagesMap.put(transmitterLanguage.getLanguage(),
                 transmitterLanguage);
 
@@ -335,6 +332,7 @@ public class TransmitterLanguageComp {
             return;
         }
         this.existingLanguagesMap.remove(tl.getLanguage());
+        this.unassignedLanguages.add(tl.getLanguage());
 
         this.buildLanguagesTable();
     }
