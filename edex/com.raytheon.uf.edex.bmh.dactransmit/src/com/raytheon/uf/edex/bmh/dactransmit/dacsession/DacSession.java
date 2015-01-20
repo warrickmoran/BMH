@@ -97,6 +97,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Nov 11, 2014  #3817     bsteffen     Periodically resend status.
  * Nov 21, 2014  #3845     bkowal       Transition to transmitter group is complete.
  * Jan 19, 2014  #3912     bsteffen     Handle events from control thread directly.
+ * Jan 19, 2015  #4002     bkowal       Specify the type of live broadcast when delaying
+ *                                      interrupts.
  * 
  * </pre>
  * 
@@ -274,12 +276,14 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                 previousStatus);
         previousStatus = newStatus;
         commsManager.sendConnectionStatus(true);
-        if (notify == null && System.currentTimeMillis() > nextSendHardwareStatusTime) {
+        if (notify == null
+                && System.currentTimeMillis() > nextSendHardwareStatusTime) {
             notify = newStatus.buildNotification(config);
         }
         if (notify != null) {
             commsManager.sendDacHardwareStatus(notify);
-            nextSendHardwareStatusTime = System.currentTimeMillis() + RESEND_HARDWARE_STATUS_MS;
+            nextSendHardwareStatusTime = System.currentTimeMillis()
+                    + RESEND_HARDWARE_STATUS_MS;
         }
     }
 
@@ -373,7 +377,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         /*
          * Delay any further interrupts ...
          */
-        this.playlistMgr.lockInterrupts();
+        this.playlistMgr.lockInterrupts(startCommand.getType());
         this.dataThread.lockInterrupts();
 
         /*

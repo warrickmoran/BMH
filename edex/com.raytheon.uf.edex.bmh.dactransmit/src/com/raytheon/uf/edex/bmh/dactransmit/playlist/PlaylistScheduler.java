@@ -46,16 +46,19 @@ import java.util.TreeSet;
 
 import javax.xml.bind.JAXB;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
@@ -126,6 +129,9 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 13, 2015  #3843     bsteffen     Add periodic predictions to playlist switch notification.
  * Jan 14, 2015  #3969     bkowal       Publish {@link MessageNotBroadcastNotification}s when
  *                                      certain watching/warnings expire before they can be played.
+ * Jan 19, 2015  #4002     bkowal       Publish {@link MessageDelayedBroadcastNotification}s when
+ *                                      an active Broadcast Live is delaying the broadcast of
+ *                                      a warning or interrupt.
  * 
  * 
  * </pre>
@@ -219,6 +225,8 @@ public final class PlaylistScheduler implements
      * with the initialization of a live broadcast.
      */
     private volatile boolean delayInterrupts;
+
+    private volatile BROADCASTTYPE type;
 
     /**
      * Reads the specified directory for valid playlist files (ones that have
@@ -895,6 +903,21 @@ public final class PlaylistScheduler implements
 
             DacPlaylistMessage messageData = cache.getMessage(messageId);
 
+            /**
+             * Rqmt BMH0094: a user needs to be notified when an active live
+             * broadcast is preventing the broadcast of another interrupt or a
+             * warning.
+             */
+            if ((playlist.isInterrupt() || messageData.isWarning())
+                    && this.delayInterrupts && this.type == BROADCASTTYPE.BL) {
+                final String expire = (messageData.getExpire() == null) ? StringUtils.EMPTY
+                        : messageData.getExpire().getTime().toString();
+                this.eventBus.post(new MessageDelayedBroadcastNotification(
+                        messageData.getBroadcastId(), playlist.isInterrupt(),
+                        messageData.getName(), messageData.getMessageType(),
+                        expire));
+            }
+
             /*
              * ignore start/expire times for interrupt playlists, we just want
              * to play the message.
@@ -916,7 +939,6 @@ public final class PlaylistScheduler implements
             } else {
                 this.sendNotBroadcastNotification(messageData);
             }
-
         }
 
         if (predictions.size() == recyclable.size()) {
@@ -975,14 +997,16 @@ public final class PlaylistScheduler implements
         return playlists;
     }
 
-    public void lockInterrupts() {
+    public void lockInterrupts(final BROADCASTTYPE type) {
         logger.info("Delaying interrupt playback. No interrupts will be played until further notice.");
         this.delayInterrupts = true;
+        this.type = type;
     }
 
     public void resumeInterrupts() {
         logger.info("Resuming interrupt playback.");
         this.delayInterrupts = false;
+        this.type = null;
     }
 
     /**

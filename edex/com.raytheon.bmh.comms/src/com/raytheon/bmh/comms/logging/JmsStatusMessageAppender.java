@@ -32,6 +32,7 @@ import ch.qos.logback.core.Layout;
 
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.SilenceAlarm;
+import com.raytheon.bmh.comms.broadcast.BroadcastDelayAlarm;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.message.StatusMessage;
@@ -54,6 +55,7 @@ import com.raytheon.uf.edex.bmh.status.BMH_ACTION;
  * ------------- -------- ----------- --------------------------
  * Nov 03, 2014  3525     bsteffen    Initial Implementation
  * Nov 26, 2014  3821     bsteffen    Utilize the BMHNotificationManager
+ * Jan 19, 2015  4002     bkowal      Added support for {@link MessageDelayedBroadcastNotification}.
  * 
  * 
  * </pre>
@@ -86,6 +88,10 @@ public class JmsStatusMessageAppender extends AppenderBase<ILoggingEvent> {
         if (event.getLoggerName().equals(SilenceAlarm.class.getName())) {
             sm.setCategory("DAC_TRANSMIT");
             bmhCategory = BMH_CATEGORY.DAC_TRANSMIT_SILENCE;
+        } else if (event.getLoggerName().equals(
+                BroadcastDelayAlarm.class.getName())) {
+            sm.setCategory("DAC_TRANSMIT");
+            bmhCategory = BMH_CATEGORY.DAC_TRANSMIT_BROADCAST_DELAY;
         } else if (marker != null && marker.contains("Dac Transmit")) {
             sm.setCategory("DAC_TRANSMIT");
             bmhCategory = BMH_CATEGORY.DAC_TRANSMIT_ERROR;
@@ -119,7 +125,6 @@ public class JmsStatusMessageAppender extends AppenderBase<ILoggingEvent> {
                 // Logging is handled by other appenders, do not handle here.
             }
         }
-
 
     }
 
