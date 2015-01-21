@@ -56,6 +56,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage.ReplacementType;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -84,6 +85,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Dec 13, 2014  3843     mpduff      Add DynamicSerialize and default constructor
  * Dec 16, 2014  3753     bsteffen    Don't trigger forced suites containing only static messages.
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
+ * Jan 20, 2015  4010     bkowal      Compare selected transmitters when analyzing
+ *                                    replacements.
  * 
  * </pre>
  * 
@@ -355,13 +358,21 @@ public class Playlist {
             if (afosid.equals(existing.getAfosid())) {
                 String areaCodes = message.getAreaCodes();
                 String existingAreaCodes = existing.getAreaCodes();
+                Set<Transmitter> selectedTransmitters = message
+                        .getSelectedTransmitters();
+                Set<Transmitter> existingSelectedTransmitters = existing
+                        .getSelectedTransmitters();
+
                 int mrd = message.getMrdId();
                 int existingMrd = existing.getMrdId();
                 boolean areaCodesEqual = areaCodes == existingAreaCodes
                         || (areaCodes != null && areaCodes
                                 .equals(existingAreaCodes));
+                boolean selectedTransmittersEqual = areaCodesEqual
+                        && ((selectedTransmitters == null && existingSelectedTransmitters == null) || (selectedTransmitters
+                                .containsAll(existingSelectedTransmitters)));
                 boolean mrdEqual = mrd == existingMrd;
-                if (areaCodesEqual && mrdEqual) {
+                if (areaCodesEqual && selectedTransmittersEqual && mrdEqual) {
                     removedMessages.add(existing.getBroadcastMsg());
                     if (message.getEffectiveTime().after(modTime)) {
                         existing.setReplacementTime(message.getEffectiveTime());
@@ -387,9 +398,15 @@ public class Playlist {
             if (matReplacements.contains(existing.getAfosid())) {
                 String areaCodes = message.getAreaCodes();
                 String existingAreaCodes = existing.getAreaCodes();
-                if (areaCodes == existingAreaCodes
-                        || (areaCodes != null && areaCodes
-                                .equals(existingAreaCodes))) {
+                Set<Transmitter> selectedTransmitters = message
+                        .getSelectedTransmitters();
+                Set<Transmitter> existingSelectedTransmitters = existing
+                        .getSelectedTransmitters();
+                boolean selectedTransmittersEqual = ((selectedTransmitters == null && existingSelectedTransmitters == null) || (selectedTransmitters
+                        .containsAll(existingSelectedTransmitters)));
+                if ((areaCodes == existingAreaCodes || (areaCodes != null && areaCodes
+                        .equals(existingAreaCodes)))
+                        && selectedTransmittersEqual) {
                     removedMessages.add(existing.getBroadcastMsg());
                     if (message.getEffectiveTime().after(modTime)) {
                         existing.setReplacementTime(message.getEffectiveTime());

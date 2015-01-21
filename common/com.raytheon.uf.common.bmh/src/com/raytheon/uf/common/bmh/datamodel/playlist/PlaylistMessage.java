@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
 import java.util.Calendar;
+import java.util.Set;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -34,6 +35,7 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -52,6 +54,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * Jan 12, 2015  3843     bsteffen    Fix equals.
  * Jan 13, 2015  3844     bsteffen    DynamicSerialize replacement type.
+ * Jan 20, 2015  4010     bkowal      Added {@link #getSelectedTransmitters()}.
  * 
  * </pre>
  * 
@@ -145,6 +148,14 @@ public class PlaylistMessage {
      */
     public String getAreaCodes() {
         return broadcastMsg.getInputMessage().getAreaCodes();
+    }
+
+    /**
+     * convenience method, equivalent to
+     * getBroadcastMsg().getInputMessage().getSelectedTransmitters()
+     */
+    public Set<Transmitter> getSelectedTransmitters() {
+        return broadcastMsg.getInputMessage().getSelectedTransmitters();
     }
 
     /**

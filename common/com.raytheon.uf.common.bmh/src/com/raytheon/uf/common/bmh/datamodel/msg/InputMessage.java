@@ -31,15 +31,24 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
+
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -70,6 +79,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 11, 2014  3905     lvenable    Added a method to return a set of area codes.
  * Jan 02, 2014  3833     lvenable    Added query to get unexpired messages.
  * Jan 12, 2015  3843     bsteffen    Return empty list when areas is null.
+ * Jan 20, 2015  4010     bkowal      Added {@link #selectedTransmitters}.
  * 
  * </pre>
  * 
@@ -226,6 +236,19 @@ public class InputMessage {
     @Column
     @DynamicSerializeElement
     private String areaCodes;
+
+    /**
+     * Individual {@link Transmitter}s that have been selected as a broadcast
+     * destination. The message will be broadcast to all {@link Area}s
+     * associated with the {@link Transmitter}s. This field will primarily be
+     * used for user-generated Weather Messages.
+     */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "input_msg_selected_transmitters", schema = "bmh", joinColumns = @JoinColumn(name = "input_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
+    @ForeignKey(name = "msg_def_tx_to_input_msg", inverseName = "msg_def_tx_to_tx")
+    @Fetch(FetchMode.SUBSELECT)
+    @DynamicSerializeElement
+    private Set<Transmitter> selectedTransmitters;
 
     /**
      * The Date/Time after which the message is ignored for transmission and may
@@ -505,6 +528,21 @@ public class InputMessage {
 
     public void setAreaCodes(String areaCodes) {
         this.areaCodes = areaCodes;
+    }
+
+    /**
+     * @return the selectedTransmitters
+     */
+    public Set<Transmitter> getSelectedTransmitters() {
+        return selectedTransmitters;
+    }
+
+    /**
+     * @param selectedTransmitters
+     *            the selectedTransmitters to set
+     */
+    public void setSelectedTransmitters(Set<Transmitter> selectedTransmitters) {
+        this.selectedTransmitters = selectedTransmitters;
     }
 
     public Calendar getExpirationTime() {

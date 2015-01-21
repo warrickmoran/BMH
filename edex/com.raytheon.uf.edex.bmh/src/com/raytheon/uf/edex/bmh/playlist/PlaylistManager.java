@@ -142,6 +142,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    in the {@link DacPlaylistMessage}.
  * Jan 19, 2015  4011     bkowal      Use the updated version of
  *                                    {@link MessageActivationNotification}.
+ * Jan 20, 2015  4010     bkowal      Use areas associated with selected transmitters
+ *                                    when building SAME tones.
  * 
  * </pre>
  * 
@@ -746,7 +748,8 @@ public class PlaylistManager implements IContextStateProcessor {
                 dac.setPeriodicity(input.getPeriodicity());
                 dac.setMessageText(input.getContent());
                 dac.setAlertTone(input.getAlertTone());
-                if ((input.getAreaCodes() != null)
+                if (((input.getAreaCodes() != null) || input
+                        .getSelectedTransmitters() != null)
                         && Boolean.TRUE.equals(input.getNwrsameTone())) {
                     Set<String> sameTransmittersNames = input
                             .getSameTransmitterSet();
@@ -765,7 +768,34 @@ public class PlaylistManager implements IContextStateProcessor {
                         builder.setOriginatorMapper(originatorMapping);
                         builder.setStateCodes(stateCodes);
                         builder.setEventFromAfosid(broadcast.getAfosid());
-                        for (String ugc : input.getAreaCodeList()) {
+                        Set<String> areaCodeSet = new HashSet<>();
+                        if (input.getAreaCodes() != null) {
+                            areaCodeSet.addAll(input.getAreaCodeList());
+                        }
+                        if (input.getSelectedTransmitters() != null) {
+                            for (Transmitter t : input
+                                    .getSelectedTransmitters()) {
+                                /*
+                                 * in this case, we only actually care about the
+                                 * area(s) if the selected Transmitter is a SAME
+                                 * Transmitter.
+                                 */
+                                if (sameTransmitters.contains(t) == false) {
+                                    /*
+                                     * not a SAME transmitter, will not need the
+                                     * areas.
+                                     */
+                                    continue;
+                                }
+                                List<Area> transmitterAreas = this.areaDao
+                                        .getAreasForTransmitter(t.getId());
+                                for (Area a : transmitterAreas) {
+                                    areaCodeSet.add(a.getAreaCode());
+                                }
+                            }
+                        }
+
+                        for (String ugc : areaCodeSet) {
                             try {
                                 if (ugc.charAt(2) == 'Z') {
                                     Zone z = zoneDao.getByZoneCode(ugc);

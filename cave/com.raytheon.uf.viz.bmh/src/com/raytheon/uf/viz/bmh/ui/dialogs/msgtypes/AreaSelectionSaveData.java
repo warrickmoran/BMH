@@ -20,7 +20,6 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
@@ -44,6 +43,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  *                                        to {@link Transmitter}
  * Oct 21, 2014   #3728    lvenable    Added set of zonecodes and area codes.
  *  Jan 13, 2014  3876     lvenable    Updated method name and comments to be more correct.
+ * Jan 15, 2015    4010    bkowal      Areas associated with transmitters are no longer
+ *                                     included in the area/zone list.
  * 
  * </pre>
  * 
@@ -83,6 +84,9 @@ public class AreaSelectionSaveData {
      * @return the areaList
      */
     public Set<Area> getAreas() {
+        if (areas == null) {
+            return new HashSet<>();
+        }
         return areas;
     }
 
@@ -105,6 +109,9 @@ public class AreaSelectionSaveData {
      * @return the zoneList
      */
     public Set<Zone> getZones() {
+        if (zones == null) {
+            return new HashSet<>();
+        }
         return zones;
     }
 
@@ -141,30 +148,12 @@ public class AreaSelectionSaveData {
      * 
      * @param t
      *            Transmitter.
-     * @param transmitterAreaList
-     *            Areas associated with the transmitter.
      */
-    public void addTransmitter(Transmitter t, List<Area> transmitterAreaList) {
+    public void addTransmitter(Transmitter t) {
         if (transmitters == null) {
             transmitters = new HashSet<>();
         }
         transmitters.add(t);
-
-        if (transmitterAreaList != null && !transmitterAreaList.isEmpty()) {
-            addTransmitterAreas(transmitterAreaList);
-        }
-    }
-
-    /**
-     * Add the area codes from the selected transmitter to the set of area
-     * codes.
-     * 
-     * @param transmitterAreaList
-     */
-    private void addTransmitterAreas(List<Area> transmitterAreaList) {
-        for (Area a : transmitterAreaList) {
-            allSelectedZonesAreaCodes.add(a.getAreaCode());
-        }
     }
 
     public Set<Transmitter> getAffectedTransmitters() {
@@ -176,12 +165,14 @@ public class AreaSelectionSaveData {
     }
 
     /**
-     * Get a list of all the area and zone codes.
+     * Get a list of all the area and zone codes. This list is only based on
+     * {@link #areas} and {@link #zones}. If the {@link Area}s included in the
+     * {@link #transmitters} are ever required, this method should be updated so
+     * that it could optionally include the additional information.
      * 
      * @return Set of area and zone codes.
      */
     public Set<String> getSelectedAreaZoneCodes() {
         return allSelectedZonesAreaCodes;
     }
-
 }

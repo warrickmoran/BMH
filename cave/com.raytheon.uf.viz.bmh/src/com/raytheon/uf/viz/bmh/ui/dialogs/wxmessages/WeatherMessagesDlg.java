@@ -135,6 +135,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    message type if the user didn't change the area selection.
  * Jan 16, 2015  4005     bkowal      Determine area/zone codes at the time of the message type
  *                                    selection or existing input message selection.
+ * Jan 20, 2015  4010     bkowal      Updated to pass accurate information to the
+ *                                    Area Selection Dialog.
  * 
  * </pre>
  * 
@@ -834,8 +836,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
          * Check if the input message has selected area/zone codes. If not then
          * create the area/zone codes string and set it in the input message.
          */
-        if (userInputMessage.getAreaCodes() == null
-                || userInputMessage.getAreaCodes().isEmpty()) {
+        if ((userInputMessage.getAreaCodes() == null || userInputMessage
+                .getAreaCodes().isEmpty())
+                && (this.userInputMessage.getSelectedTransmitters() == null || this.userInputMessage
+                        .getSelectedTransmitters().isEmpty())) {
             DialogUtility
                     .showMessageBox(
                             this.shell,
@@ -963,20 +967,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      * Handle the area selection action.
      */
     private void handleAreaSelectionAction() {
-        AreaSelectionDlg dlg = null;
-
-        // if input message id is not null and not a new input message object
-        if (userInputMessage != null && userInputMessage.getId() != 0) {
-            dlg = new AreaSelectionDlg(getShell(),
-                    userInputMessage.getAreaCodes());
-        } else if (userInputMessage != null && userInputMessage.getId() == 0
-                && userInputMessage.getAreaCodes() != null) {
-            dlg = new AreaSelectionDlg(getShell(),
-                    userInputMessage.getAreaCodes());
-        } else {
-            dlg = new AreaSelectionDlg(getShell(), selectedMessageType);
-        }
-
+        AreaSelectionDlg dlg = new AreaSelectionDlg(getShell(), this.areaData);
         dlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -1045,17 +1036,17 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         Set<Transmitter> listOfAffectedTransmitters = new HashSet<Transmitter>();
         this.areaData = new AreaSelectionSaveData();
 
+        AreaSelectionData areaSelectionData = new AreaSelectionData();
+        try {
+            areaSelectionData.populate();
+        } catch (Exception e) {
+            statusHandler.error("Error accessing BMH area/zone data", e);
+            return;
+        }
+
         if (validatedMsg == null) {
             // eliminate any existing area codes.
             this.userInputMessage.setAreaCodes(null);
-
-            AreaSelectionData areaSelectionData = new AreaSelectionData();
-            try {
-                areaSelectionData.populate();
-            } catch (Exception e) {
-                statusHandler.error("Error accessing BMH area/zone data", e);
-                return;
-            }
 
             /**
              * New Input Message: Retrieve any areas associated with the
@@ -1080,9 +1071,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             for (TransmitterGroup group : selectedMessageType
                     .getDefaultTransmitterGroups()) {
                 for (Transmitter t : group.getTransmitters()) {
-                    java.util.List<Area> areaList = areaSelectionData
-                            .getTransmitterToAreaMap().get(t);
-                    areaData.addTransmitter(t, areaList);
+                    areaData.addTransmitter(t);
                     listOfAffectedTransmitters.add(t);
                 }
             }
@@ -1094,10 +1083,26 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
              * associated with the message type, we risk violating the integrity
              * of the input message because the user may have added other areas
              * to the input message instead of just using the default.
-             * 
-             * The area information is not enough to determine the transmitters
-             * that have actually been affected.
              */
+
+            for (String code : this.userInputMessage.getAreaCodeSet()) {
+                if (code.charAt(2) == 'Z') {
+                    this.areaData.addZone(areaSelectionData.getZonesMap().get(
+                            code));
+                } else {
+                    this.areaData.addArea(areaSelectionData.getAllAreaCodes()
+                            .get(code));
+                }
+            }
+
+            if (this.userInputMessage.getSelectedTransmitters() != null
+                    && this.userInputMessage.getSelectedTransmitters()
+                            .isEmpty() == false) {
+                for (Transmitter t : this.userInputMessage
+                        .getSelectedTransmitters()) {
+                    this.areaData.addTransmitter(t);
+                }
+            }
 
             /**
              * Determine the affected transmitters based on the destination
@@ -1154,7 +1159,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     /**
      * Builds a {@link String} of area codes based on the
      * {@link AreaSelectionSaveData} and adds the area code {@link String} to
-     * the {@link InputMessage}.
+     * the {@link InputMessage}. Will also add any {@link Transmitter}s that
+     * have been individually selected to the {@link InputMessage}.
      */
     private void updateInputMsgAreas() {
         if (this.areaData == null) {
@@ -1164,19 +1170,28 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         Set<String> areaZoneCodes = areaData.getSelectedAreaZoneCodes();
         if (areaZoneCodes == null || areaZoneCodes.isEmpty()) {
             userInputMessage.setAreaCodes("");
-            return;
-        }
+        } else {
+            StringBuilder sb = new StringBuilder();
+            Iterator<String> iter = areaZoneCodes.iterator();
+            while (iter.hasNext()) {
+                sb.append(iter.next());
 
-        StringBuilder sb = new StringBuilder();
-        Iterator<String> iter = areaZoneCodes.iterator();
-        while (iter.hasNext()) {
-            sb.append(iter.next());
-
-            if (iter.hasNext()) {
-                sb.append("-");
+                if (iter.hasNext()) {
+                    sb.append("-");
+                }
             }
+            this.userInputMessage.setAreaCodes(sb.toString());
         }
-        this.userInputMessage.setAreaCodes(sb.toString());
+        if (this.areaData.getTransmitters() != null
+                && this.areaData.getTransmitters().isEmpty() == false) {
+            this.userInputMessage.setSelectedTransmitters(this.areaData
+                    .getTransmitters());
+        } else {
+            /*
+             * default to NULL when there are not any selected transmitters.
+             */
+            this.userInputMessage.setSelectedTransmitters(null);
+        }
     }
 
     private void updateSAMETransmitterOptions() {

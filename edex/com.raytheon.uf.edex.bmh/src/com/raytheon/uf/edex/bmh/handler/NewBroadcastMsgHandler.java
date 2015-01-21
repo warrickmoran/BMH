@@ -90,6 +90,8 @@ import com.raytheon.uf.edex.core.EdexException;
  * Dec 02, 2014  #3614     bsteffen    Check for unacceptable words.
  * Jan 05, 2015  #3651     bkowal      Use {@link IMessageLogger} to log message errors.
  * Jan 06, 2015  #3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * Jan 20, 2015  #4010     bkowal      Include the selected transmitters in the
+ *                                     input message equals comparison.
  * 
  * </pre>
  * 
@@ -201,6 +203,8 @@ public class NewBroadcastMsgHandler extends
                         inputMessage.getNwrsameTone());
                 builder.append(previous.getAreaCodes(),
                         inputMessage.getAreaCodes());
+                builder.append(previous.getSelectedTransmitters(),
+                        inputMessage.getSelectedTransmitters());
                 builder.append(previous.getExpirationTime(),
                         inputMessage.getExpirationTime());
                 builder.append(previous.getContent(), inputMessage.getContent());

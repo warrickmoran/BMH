@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -80,6 +81,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 15, 2014    3818     mpduff     Set return value.
  * Dec 11, 2014    3895     lvenable   Changed SimpleDateFormat to use GMT.
  * Dec 11, 2014    3905     lvenable   Updated to show area codes for the selected message.
+ * Jan 20, 2015    4010     bkowal     Include the areas associated with the selected 
+ *                                     transmitters (when applicable). 
  * 
  * </pre>
  * 
@@ -399,7 +402,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         }
 
         Set<String> areaZoneCodesInMessage = inputMsg.getAreaCodeSet();
-        List<Area> areaList = new ArrayList<>();
+        Set<Area> areas = new HashSet<>();
 
         try {
             /*
@@ -409,7 +412,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
             List<Area> allAreas = dataManager.getAreas();
             for (Area area : allAreas) {
                 if (areaZoneCodesInMessage.contains(area.getAreaCode())) {
-                    areaList.add(area);
+                    areas.add(area);
                 }
             }
 
@@ -422,8 +425,19 @@ public class MessageDetailsDlg extends CaveSWTDialog {
                 if (areaZoneCodesInMessage.contains(zone.getZoneCode())) {
                     Set<Area> areaSet = zone.getAreas();
                     for (Area area : areaSet) {
-                        areaList.add(area);
+                        areas.add(area);
                     }
+                }
+            }
+
+            /*
+             * Determine all areas associated with any specified transmitters
+             * that were specified as destinations for this message.
+             */
+            if (inputMsg.getSelectedTransmitters() != null
+                    && inputMsg.getSelectedTransmitters().isEmpty() == false) {
+                for (Transmitter t : inputMsg.getSelectedTransmitters()) {
+                    areas.addAll(dataManager.getAreasForTransmitter(t));
                 }
             }
 
@@ -439,7 +453,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
          */
         TableData broadcastAreaTableData = getBroadcastAreaTableData();
 
-        for (Area a : areaList) {
+        for (Area a : areas) {
             TableRowData row = new TableRowData();
             TableCellData cell = new TableCellData(a.getAreaCode());
             row.addTableCellData(cell);

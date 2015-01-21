@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
@@ -79,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 21, 2014   3728     lvenable    Updated to handle a string of area codes and zone codes.
  * Oct 21, 2014   3896     lvenable    Fixed the affected transmitters list to be updated when
  *                                     the dialog is opened and there are area codes.
+ * Jan 20, 2015   4010     bkowal      Fixed the area selection dialog.
  * 
  * </pre>
  * 
@@ -172,12 +172,10 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     private MessageType messageType = null;
 
     /**
-     * String of areas codes and/or zone codes.
-     * 
-     * Example: "NEZ024-NEZ005-NEZ023-NEZ025-NEZ036-NEZ094"
-     * 
+     * {@link AreaSelectionSaveData} from a previous session or based on an
+     * existing input message.
      */
-    private String areasZoneCodesStr = null;
+    private AreaSelectionSaveData data = null;
 
     /**
      * Constructor.
@@ -188,6 +186,10 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     public AreaSelectionDlg(Shell parentShell, MessageType messageType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
+        if (messageType == null) {
+            throw new IllegalArgumentException(
+                    "Required argument messageType can not be NULL.");
+        }
 
         this.messageType = messageType;
     }
@@ -203,11 +205,14 @@ public class AreaSelectionDlg extends CaveSWTDialog {
      * @param areaCodes
      *            String of areas codes.
      */
-    public AreaSelectionDlg(Shell parentShell, String areaCodes) {
+    public AreaSelectionDlg(Shell parentShell, AreaSelectionSaveData data) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
-
-        this.areasZoneCodesStr = areaCodes;
+        if (data == null) {
+            throw new IllegalArgumentException(
+                    "Required argument data can not be NULL.");
+        }
+        this.data = data;
     }
 
     @Override
@@ -740,28 +745,20 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                     tableData.addDataRow(row);
                 }
             }
-        } else if (areasZoneCodesStr != null && areasZoneCodesStr.length() > 0) {
+        } else if (this.data != null) {
+            for (Area area : this.data.getAreas()) {
+                TableRowData row = createAreaRow(area);
+                tableData.addDataRow(row);
+            }
 
-            // Split the area codes.
-            String[] areaCodes = areasZoneCodesStr.split("-");
+            for (Zone zone : this.data.getZones()) {
+                TableRowData row = createZoneRow(zone);
+                tableData.addDataRow(row);
+            }
 
-            Map<String, Area> areaCodesMap = areaSelectionData
-                    .getAllAreaCodes();
-
-            Map<String, Zone> zoneCodesMap = areaSelectionData.getZonesMap();
-
-            // Populate the table with the areas that match the area codes or
-            // zone codes.
-            for (String areaZoneCode : areaCodes) {
-                if (areaCodesMap.containsKey(areaZoneCode)) {
-                    TableRowData row = createAreaRow(areaCodesMap
-                            .get(areaZoneCode));
-                    tableData.addDataRow(row);
-                } else if (zoneCodesMap.containsKey(areaZoneCode)) {
-                    TableRowData row = createZoneRow(zoneCodesMap
-                            .get(areaZoneCode));
-                    tableData.addDataRow(row);
-                }
+            for (Transmitter transmitter : this.data.getTransmitters()) {
+                TableRowData row = createTransmitterRow(transmitter);
+                tableData.addDataRow(row);
             }
         }
 
@@ -773,7 +770,6 @@ public class AreaSelectionDlg extends CaveSWTDialog {
      */
     private void populateTable() {
         this.tableComp.populateTable(tableData);
-
     }
 
     /**
@@ -1103,9 +1099,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 saveData.addZone((Zone) rowData);
             } else if (rowData instanceof Transmitter) {
                 Transmitter t = (Transmitter) rowData;
-                java.util.List<Area> areaList = areaSelectionData
-                        .getTransmitterToAreaMap().get(t);
-                saveData.addTransmitter(t, areaList);
+                saveData.addTransmitter(t);
             } else {
                 throw new IllegalArgumentException("Invalid data type: "
                         + rowData.getClass());
