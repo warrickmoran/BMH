@@ -54,6 +54,9 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 15, 2014  3636     rferrel     Implement logging of changes.
  * Nov 21, 2014  3845     bkowal      Added getTransmitterGroupWithTransmitter
+ * Jan 21, 2015  4017     bkowal      Only create the 
+ *                                    {@link TransmitterGroupConfigNotification} when
+ *                                    all required information is available.
  * 
  * </pre>
  * 
@@ -88,20 +91,20 @@ public class TransmitterHandler extends
                             .getTransmitterGroup());
             break;
         case SaveGroup:
+            response = saveTransmitterGroup(request);
             notification = new TransmitterGroupConfigNotification(
                     ConfigChangeType.Update, request.getTransmitterGroup());
-            response = saveTransmitterGroup(request);
             break;
         case DeleteTransmitter:
-            deleteTransmitter(request);
             notification = new TransmitterGroupConfigNotification(
-                    ConfigChangeType.Update, request.getTransmitter()
+                    ConfigChangeType.Delete, request.getTransmitter()
                             .getTransmitterGroup());
+            deleteTransmitter(request);
             break;
         case DeleteTransmitterGroup:
-            deleteTransmitterGroup(request);
             notification = new TransmitterGroupConfigNotification(
-                    ConfigChangeType.Update, request.getTransmitterGroup());
+                    ConfigChangeType.Delete, request.getTransmitterGroup());
+            deleteTransmitterGroup(request);
             break;
         case SaveGroupList:
             response = saveTransmitterGroups(request);

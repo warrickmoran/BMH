@@ -49,6 +49,7 @@ import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
@@ -87,6 +88,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Nov 5, 2014  3630       bkowal      Support maintenance audio generation.
  * Jan 19, 2015 4011       bkowal      Support transmitter language removal.
  * Jan 20, 2015 4011       bkowal      Static msg deactivation fixes.
+ * Jan 22, 2015 4017       bkowal      Use {@link TransmitterGroupIdentifier}.
  * 
  * </pre>
  * 
@@ -227,8 +229,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         } else if (notificationObject instanceof TransmitterGroupConfigNotification) {
             TransmitterGroupConfigNotification notification = (TransmitterGroupConfigNotification) notificationObject;
             statusHandler.info("Processing "
-                    + TransmitterGroupConfigNotification.class + " for ids: "
-                    + notification.getIds());
+                    + TransmitterGroupConfigNotification.class
+                    + " for identifiers: " + notification.toString());
             if (notification.getType() == ConfigChangeType.Delete) {
                 /*
                  * Do Nothing.
@@ -236,8 +238,10 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 return Collections.emptyList();
             }
             List<ValidatedMessage> generatedMsgs = new ArrayList<>();
-            for (int id : notification.getIds()) {
-                TransmitterGroup group = this.transmitterGroupDao.getByID(id);
+            for (TransmitterGroupIdentifier identifier : notification
+                    .getIdentifiers()) {
+                TransmitterGroup group = this.transmitterGroupDao
+                        .getByID(identifier.getId());
                 if (group == null) {
                     continue;
                 }

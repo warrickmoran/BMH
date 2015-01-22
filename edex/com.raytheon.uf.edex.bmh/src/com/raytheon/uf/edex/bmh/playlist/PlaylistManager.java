@@ -40,6 +40,8 @@ import java.util.TimeZone;
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
 
+import org.apache.commons.io.FileUtils;
+
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
@@ -67,6 +69,7 @@ import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.same.SAMEOriginatorMapper;
 import com.raytheon.uf.common.bmh.same.SAMEStateCodes;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
@@ -144,6 +147,9 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    {@link MessageActivationNotification}.
  * Jan 20, 2015  4010     bkowal      Use areas associated with selected transmitters
  *                                    when building SAME tones.
+ * Jan 21, 2015  4017     bkowal      Do not attempt to retrieve {@link TransmitterGroup}s
+ *                                    that have just been deleted. Purge playlist directories
+ *                                    associated with delete groups if the directories exist.
  * 
  * </pre>
  * 
@@ -222,9 +228,54 @@ public class PlaylistManager implements IContextStateProcessor {
 
     public void processTransmitterGroupChange(
             TransmitterGroupConfigNotification notification) {
-        for (int groupId : notification.getIds()) {
-            TransmitterGroup group = transmitterGroupDao.getByID(groupId);
-            refreshTransmitterGroup(group, null, null);
+        for (TransmitterGroupIdentifier identifier : notification
+                .getIdentifiers()) {
+            TransmitterGroup group = transmitterGroupDao.getByID(identifier
+                    .getId());
+            if (group == null) {
+                /**
+                 * The group no longer exists. Forcefully purge the playlist
+                 * filesystem associated with the Transmitter Group.
+                 */
+                if (identifier.getName() == null
+                        || identifier.getName().isEmpty()) {
+                    statusHandler
+                            .warn(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                                    "No name is associated with the non-existent or recently deleted Transmitter Group with id: "
+                                            + identifier.getId()
+                                            + ". Skipping playlist purge.");
+                    continue;
+                }
+                Path groupPlaylistPath = playlistDir.resolve(identifier
+                        .getName());
+                if (Files.exists(groupPlaylistPath) == false) {
+                    statusHandler
+                            .info("No playlist file(s) exist for recently deleted Transmitter Group: "
+                                    + identifier.toString() + ".");
+                    continue;
+                }
+
+                try {
+                    FileUtils.deleteDirectory(groupPlaylistPath.toFile());
+
+                    StringBuilder sb = new StringBuilder(
+                            "Successfully removed the playlist file(s): ");
+                    sb.append(groupPlaylistPath.toString());
+                    sb.append(" for recently deleted Transmitter Group: ");
+                    sb.append(identifier.toString()).append(".");
+                    statusHandler.info(sb.toString());
+                } catch (IOException e) {
+                    StringBuilder sb = new StringBuilder(
+                            "Failed to remove playlist file(s): ");
+                    sb.append(groupPlaylistPath.toString());
+                    sb.append(" for recently deleted Transmitter Group: ");
+                    sb.append(identifier.toString()).append(".");
+                    statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                            sb.toString(), e);
+                }
+            } else {
+                refreshTransmitterGroup(group, null, null);
+            }
         }
     }
 
@@ -428,6 +479,15 @@ public class PlaylistManager implements IContextStateProcessor {
             return;
         }
         Program program = programDao.getProgramForTransmitterGroup(group);
+        if (program == null) {
+            statusHandler
+                    .info("No program is currently assigned to Transmitter Group: "
+                            + group.getName()
+                            + ". Broadcast Message: "
+                            + msg.getId()
+                            + " will not be scheduled for broadcast.");
+            return;
+        }
 
         if (msg.getInputMessage().getInterrupt()) {
             Suite suite = new Suite();

@@ -19,7 +19,9 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.ArrayList;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -40,6 +42,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 04, 2014  3486     bsteffen    Initial creation
  * Sep 08, 2014  3568     bkowal      Updated the getIds method for
  *                                    dynamicserialize.
+ * Jan 22, 2015  4017     bkowal      Replaced the numerical ids with
+ *                                    {@link TransmitterGroupIdentifier}s.
  * 
  * </pre>
  * 
@@ -50,39 +54,66 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class TransmitterGroupConfigNotification extends ConfigNotification {
 
     @DynamicSerializeElement
-    private int[] ids;
+    private List<TransmitterGroupIdentifier> identifiers;
 
     public TransmitterGroupConfigNotification() {
         super();
+        this.identifiers = Collections.emptyList();
     }
 
     public TransmitterGroupConfigNotification(ConfigChangeType type,
             TransmitterGroup tg) {
         super(type);
-        this.ids = new int[] { tg.getId() };
+        this.identifiers = new ArrayList<>(1);
+        this.identifiers.add(new TransmitterGroupIdentifier(tg.getId(), tg
+                .getName()));
     }
 
     public TransmitterGroupConfigNotification(ConfigChangeType type,
             List<TransmitterGroup> groups) {
         super(type);
-        this.ids = new int[groups.size()];
-        for (int i = 0; i < ids.length; i += 1) {
-            ids[i] = groups.get(i).getId();
+        this.identifiers = new ArrayList<>(groups.size());
+        for (TransmitterGroup tg : groups) {
+            this.identifiers.add(new TransmitterGroupIdentifier(tg.getId(), tg
+                    .getName()));
         }
     }
 
     /**
-     * @return the ids
+     * @return the identifiers
      */
-    public int[] getIds() {
-        return ids;
+    public List<TransmitterGroupIdentifier> getIdentifiers() {
+        return identifiers;
     }
 
     /**
-     * @param ids
-     *            the ids to set
+     * @param identifiers
+     *            the identifiers to set
      */
-    public void setIds(int[] ids) {
-        this.ids = ids;
+    public void setIdentifiers(List<TransmitterGroupIdentifier> identifiers) {
+        this.identifiers = identifiers;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder(
+                "TransmitterGroupConfigNotification [identifiers={");
+        boolean first = true;
+        for (TransmitterGroupIdentifier identifier : this.identifiers) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(", ");
+            }
+            sb.append(identifier.toString());
+        }
+        sb.append("}]");
+
+        return sb.toString();
     }
 }
