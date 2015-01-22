@@ -95,7 +95,6 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 05, 2015  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg errors.
  * Jan 16, 2015  #3928     bsteffen     Fix purging of old playlists on dac startup.
  * 
- * 
  * </pre>
  * 
  * @author dgilling
@@ -549,7 +548,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 try {
                     for (DacPlaylistMessageId messageId : playlist
                             .getMessages()) {
-                        if (isExpired(messageId)) {
+                        if (!doesMessageFileExist(messageId)
+                                || isExpired(messageId)) {
                             purgeAudio(messageId);
                         }
                     }
