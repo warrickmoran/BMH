@@ -32,6 +32,7 @@
  * Nov 26, 2014 3613       bkowal      Added cascade for broadcast_fragment
  * Dec 09, 2014 3603       bsteffen    Add cascade for transmitter language
  * Dec 08, 2014 3864       bsteffen    Add a PlaylistMsg class.
+ * Jan 21, 2015 3960       bkowal      Added on delete cascade for foreign key fk_1xd877wghwn3fnawv8d7u6xrx.
  **/
 
 /**
@@ -41,6 +42,10 @@
 alter table bmh.validated_msg drop constraint fk_jvvhk5vu0m3kcq59vuekvi745;
 alter table bmh.validated_msg add constraint fk_jvvhk5vu0m3kcq59vuekvi745
     foreign key (input_msg_id) references bmh.input_msg (id) on delete cascade;
+
+alter table bmh.validated_msg_transmitter_groups drop constraint fk_1xd877wghwn3fnawv8d7u6xrx;
+alter table bmh.validated_msg_transmitter_groups add constraint fk_1xd877wghwn3fnawv8d7u6xrx
+    foreign key (transmitter_group_id) references bmh.transmitter_group (id) on delete cascade;
 
 alter table bmh.validated_msg_transmitter_groups drop constraint fk_2owgxs947t60l18wt6fpgrjgc;
 alter table bmh.validated_msg_transmitter_groups add constraint fk_2owgxs947t60l18wt6fpgrjgc
