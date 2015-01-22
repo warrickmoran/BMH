@@ -63,6 +63,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Oct 21, 2014  3655     bkowal      Use the new message types.
  * Nov 03, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
+ * Jan 22, 2015  3912     bsteffen    Shutdown dac transmit when it connects after a remote dac transmit
+ *                                    has already established a connection with the dac.
  * 
  * </pre>
  * 
@@ -310,6 +312,9 @@ public class DacTransmitServer extends AbstractServerThread {
                     keep = false;
                 }
             }
+        }
+        if (keep && manager.isConnectedRemote(key)) {
+            keep = false;
         }
         communicators.add(comms);
         comms.start();

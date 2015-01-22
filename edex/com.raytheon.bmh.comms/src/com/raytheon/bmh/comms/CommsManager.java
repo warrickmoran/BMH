@@ -105,7 +105,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  *                                    dynamic log naming.
  * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
  * Nov 26, 2014  3821     bsteffen    Add SilenceAlarm
- * Dec 1, 2014   3797     bkowal      Support broadcast clustering.
+ * Dec 01, 2014  3797     bkowal      Support broadcast clustering.
+ * Jan 22, 2015  3912     bsteffen    Add isConnectedRemote.
  * 
  * </pre>
  * 
@@ -561,6 +562,13 @@ public class CommsManager {
         if (mainThread != null) {
             mainThread.interrupt();
         }
+    }
+
+    /**
+     * Checks if a given key has an active connection on a remote comms maanger.
+     */
+    public boolean isConnectedRemote(DacTransmitKey key) {
+        return clusterServer.isConnected(key);
     }
 
     /**
