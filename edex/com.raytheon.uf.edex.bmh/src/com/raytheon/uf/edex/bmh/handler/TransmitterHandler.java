@@ -57,7 +57,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  * Jan 21, 2015  4017     bkowal      Only create the 
  *                                    {@link TransmitterGroupConfigNotification} when
  *                                    all required information is available.
- * 
+ * Jan 22, 2015  3995     rjpeter     Added setting position of a new TransmitterGroup.
  * </pre>
  * 
  * @author mpduff
@@ -148,7 +148,7 @@ public class TransmitterHandler extends
         Transmitter newTrans = request.getTransmitter();
         TransmitterDao dao = new TransmitterDao(request.isOperational());
         Transmitter oldTrans = null;
-        if (logger.isPriorityEnabled(Priority.INFO)) {
+        if (logger.isPriorityEnabled(Priority.INFO) && (newTrans.getId() != 0)) {
             oldTrans = dao.getByID(newTrans.getId());
         }
 
@@ -167,18 +167,24 @@ public class TransmitterHandler extends
     private TransmitterResponse saveTransmitterGroup(TransmitterRequest request) {
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         TransmitterResponse response = new TransmitterResponse();
-        TransmitterDao dao = new TransmitterDao(request.isOperational());
         TransmitterGroup group = request.getTransmitterGroup();
 
         TransmitterGroup oldGroup = null;
-        TransmitterGroupDao tgDao = null;
-        if (logger.isPriorityEnabled(Priority.INFO)) {
-            tgDao = new TransmitterGroupDao(request.isOperational());
+        TransmitterGroupDao tgDao = new TransmitterGroupDao(
+                request.isOperational());
+
+        if (logger.isPriorityEnabled(Priority.INFO) && (group.getId() != 0)) {
             oldGroup = tgDao.getByID(group.getId());
         }
 
-        dao.saveOrUpdate(group);
-        List<TransmitterGroup> list = new ArrayList<TransmitterGroup>();
+        if ((group.getId() == 0) && (group.getPosition() == 0)) {
+            // position the new group at the end of the lists if position is not
+            // set
+            group.setPosition(tgDao.getNextPosition());
+        }
+
+        tgDao.saveOrUpdate(group);
+        List<TransmitterGroup> list = new ArrayList<TransmitterGroup>(1);
         list.add(group);
         response.setTransmitterGroupList(list);
 

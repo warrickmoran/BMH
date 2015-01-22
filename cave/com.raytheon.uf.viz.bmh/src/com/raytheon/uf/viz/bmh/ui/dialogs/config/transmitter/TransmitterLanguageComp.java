@@ -62,7 +62,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 12, 2015 3809       bkowal      Initial creation
  * Jan 19, 2015 4011       bkowal      Implemented a delete option.
  * Jan 20, 2015 4011       bkowal      All languages can now be deleted.
- * 
+ * Jan 22, 2015 3995       rjpeter     Update new TransmitterGroup check.
+
  * </pre>
  * 
  * @author bkowal
@@ -90,7 +91,7 @@ public class TransmitterLanguageComp {
 
     private List<Language> unassignedLanguages = Collections.emptyList();
 
-    private Map<Language, TransmitterLanguage> existingLanguagesMap = new HashMap<>(
+    private final Map<Language, TransmitterLanguage> existingLanguagesMap = new HashMap<>(
             Language.values().length, 1.0f);
 
     public TransmitterLanguageComp(final Shell shell, TransmitterGroup group) {
@@ -191,7 +192,7 @@ public class TransmitterLanguageComp {
     }
 
     private void retrieveLanguages() {
-        if (this.group == null) {
+        if ((this.group == null) || (group.getName() == null)) {
             return;
         }
 
@@ -261,8 +262,8 @@ public class TransmitterLanguageComp {
         dialog.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if (returnValue == null
-                        || returnValue instanceof TransmitterLanguage == false) {
+                if ((returnValue == null)
+                        || ((returnValue instanceof TransmitterLanguage) == false)) {
                     return;
                 }
 
@@ -294,8 +295,8 @@ public class TransmitterLanguageComp {
         dialog.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if (returnValue == null
-                        || returnValue instanceof TransmitterLanguage == false) {
+                if ((returnValue == null)
+                        || ((returnValue instanceof TransmitterLanguage) == false)) {
                     return;
                 }
 
