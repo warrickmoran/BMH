@@ -81,6 +81,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 12, 2015  #3968     bkowal       Publish {@link MessageBroadcastNotifcation} for messages
  *                                      that require broadcast confirmation.
  * Jan 14, 2015  #3969     bkowal       Use updated {@link MessageBroadcastNotifcation}.
+ * Jan 22, 2015  #3912     bsteffen     Add more frequent packet logging and include intermessage intervals.
+ * 
  * </pre>
  * 
  * @author dgilling
@@ -156,9 +158,10 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
      */
     @Override
     public void run() {
+        AudioPacketLogger allPacketLog = new AudioPacketLogger(getName(),
+                logger, 10);
         try {
             eventBus.register(this);
-
             OUTER_LOOP: while (keepRunning) {
                 try {
                     while (this.pausePlayback) {
@@ -201,7 +204,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                      * to start.
                      */
                     playingInterrupt = playbackData.isInterrupt();
-                    AudioPacketLogger packetLog = new AudioPacketLogger(
+                    AudioPacketLogger messagePacketLog = new AudioPacketLogger(
                             "Transmit "
                                     + playbackData.getMessage()
                                             .getMessageType(), logger, 600);
@@ -251,7 +254,8 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                                     previousPacket, nextPayload);
 
                             sendPacket(rtpPacket);
-                            packetLog.packetProcessed();
+                            messagePacketLog.packetProcessed();
+                            allPacketLog.packetProcessed();
                             previousPacket = rtpPacket;
 
                             Thread.sleep(nextCycleTime);
@@ -271,7 +275,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                                     playbackData.getMessage(), t);
                         }
                     }
-                    packetLog.close();
+                    messagePacketLog.close();
                     playbackData.endPlayback();
                     // broadcast of the message has finished, log it.
                     DefaultMessageLogger.getInstance().logBroadcastActivity(
@@ -284,6 +288,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
         } finally {
             socket.disconnect();
             socket.close();
+            allPacketLog.close();
         }
     }
 
