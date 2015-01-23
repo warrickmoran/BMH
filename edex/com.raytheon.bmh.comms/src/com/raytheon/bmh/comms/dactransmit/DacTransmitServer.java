@@ -31,6 +31,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
@@ -65,6 +68,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
  * Jan 22, 2015  3912     bsteffen    Shutdown dac transmit when it connects after a remote dac transmit
  *                                    has already established a connection with the dac.
+ * Jan 23, 2015  3912     bsteffen    More logging and detection of disconnected dac transmits.
  * 
  * </pre>
  * 
@@ -72,6 +76,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * @version 1.0
  */
 public class DacTransmitServer extends AbstractServerThread {
+
+    private static final Logger logger = LoggerFactory
+            .getLogger(DacTransmitServer.class);
 
     private final CommsManager manager;
 
@@ -138,6 +145,9 @@ public class DacTransmitServer extends AbstractServerThread {
             DacChannelConfig channel = channels.get(entry.getKey());
             if (channel == null) {
                 for (DacTransmitCommunicator communicator : entry.getValue()) {
+                    logger.info(
+                            "Reconfigure has triggered dac transmit shutdown for {}.",
+                            entry.getKey());
                     communicator.shutdown(true);
                 }
             } else {
@@ -157,10 +167,15 @@ public class DacTransmitServer extends AbstractServerThread {
     public boolean isConnectedToDacTransmit(DacTransmitKey key) {
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(key);
-        if (communicators == null || communicators.isEmpty()) {
-            return false;
+        if (communicators != null) {
+            for (DacTransmitCommunicator communicator : communicators) {
+                if (communicator.isConnectedToDacTransmit()) {
+                    return true;
+                }
+            }
         }
-        return true;
+
+        return false;
     }
 
     /**
@@ -229,6 +244,9 @@ public class DacTransmitServer extends AbstractServerThread {
             while (it.hasNext()) {
                 DacTransmitCommunicator communicator = it.next();
                 if (!communicator.isConnectedToDac()) {
+                    logger.info(
+                            "Shutting down dac transmit for {} because another dac transmit has connected.",
+                            key);
                     communicator.shutdown(true);
                 }
             }
@@ -294,6 +312,9 @@ public class DacTransmitServer extends AbstractServerThread {
         boolean keep = true;
         String group = null;
         if (channel == null) {
+            logger.info(
+                    "Shutting down newly connected dac transmit for {} because it was not found in the configuration.",
+                    key);
             keep = false;
         } else {
             group = channel.getTransmitterGroup();
@@ -309,11 +330,17 @@ public class DacTransmitServer extends AbstractServerThread {
         } else {
             for (DacTransmitCommunicator communicator : communicators) {
                 if (communicator.isConnectedToDac()) {
+                    logger.info(
+                            "Shutting down newly connected dac transmit for {} because another dac transmit is already connected.",
+                            group);
                     keep = false;
                 }
             }
         }
         if (keep && manager.isConnectedRemote(key)) {
+            logger.info(
+                    "Shutting down newly connected dac transmit for {} because another cluster member is already connected.",
+                    group);
             keep = false;
         }
         communicators.add(comms);

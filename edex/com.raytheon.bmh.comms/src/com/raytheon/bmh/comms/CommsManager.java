@@ -107,6 +107,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Nov 26, 2014  3821     bsteffen    Add SilenceAlarm
  * Dec 01, 2014  3797     bkowal      Support broadcast clustering.
  * Jan 22, 2015  3912     bsteffen    Add isConnectedRemote.
+ * Jan 23, 2015  3912     bsteffen    Sleep more when starting many dac transmits.
  * 
  * </pre>
  * 
@@ -336,7 +337,7 @@ public class CommsManager {
         while (transmitServer.isAlive() && lineTapServer.isAlive()
                 && clusterServer.isAlive() && broadcastStreamServer.isAlive()) {
             sendStatus();
-            int sleeptime = NORMAL_SLEEP_TIME;
+            int sleeptime = 0;
             clusterServer.attempClusterConnections(config);
             try {
                 if (config.getDacs() != null) {
@@ -349,7 +350,7 @@ public class CommsManager {
                                     && !clusterServer.isConnected(key)
                                     && !clusterServer.isRequested(key)) {
                                 launchDacTransmit(key, channel);
-                                sleeptime = DAC_START_SLEEP_TIME;
+                                sleeptime += DAC_START_SLEEP_TIME;
                                 allDacsRunning = false;
                             }
                         }
@@ -358,6 +359,9 @@ public class CommsManager {
                 }
             } catch (Throwable e) {
                 logger.error("Error checking connection status.", e);
+            }
+            if (sleeptime == 0) {
+                sleeptime = NORMAL_SLEEP_TIME;
             }
             WatchKey wkey = null;
             try {

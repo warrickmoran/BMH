@@ -74,6 +74,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Jan 12, 2015  3968     bkowal      Handle {@link MessageBroadcastNotifcation}.
  * Jan 14, 2015  3969     bkowal      Handle {@link MessageNotBroadcastNotification}.
  * Jan 19, 2015  4002     bkowal      Handle {@link MessageDelayedBroadcastNotification}.
+ * Jan 23, 2015  3912     bsteffen    Handle all Throwables in run.
  * 
  * </pre>
  * 
@@ -127,7 +128,7 @@ public class DacTransmitCommunicator extends Thread {
                     Object message = SerializationUtil.transformFromThrift(
                             Object.class, socket.getInputStream());
                     handleMessage(message);
-                } catch (SerializationException | IOException e) {
+                } catch (Throwable e) {
                     logger.error("Error reading message from DacTransmit: {}",
                             groupName, e);
                     disconnect();
