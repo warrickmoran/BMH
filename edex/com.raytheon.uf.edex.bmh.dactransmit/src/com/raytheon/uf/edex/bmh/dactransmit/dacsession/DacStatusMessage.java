@@ -53,9 +53,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Aug 12, 2014  #3486     bsteffen     Remove tranmistter group name
  * Aug 25, 2014  #3286     bsteffen     Fix buffer size alerting logic.
  * Nov 11, 2014  #3817     bsteffen     Make buildNotification public
- * Jan 19, 2014  #3912     bsteffen     Always log when jitter buffer is outside threshold.
- * 
- * 
+ * Jan 19, 2015  #3912     bsteffen     Always log when jitter buffer is outside threshold.
+ * Jan 23, 2015  #3995     rjpeter      Correct bufferSize to always be within valid range.
  * </pre>
  * 
  * @author dgilling
@@ -65,6 +64,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
 public final class DacStatusMessage {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private final static int JITTER_BUFFER_SIZE = 256;
 
     private final static char STATUS_MSG_INDICATOR = '0';
 
@@ -178,6 +179,27 @@ public final class DacStatusMessage {
          */
         try {
             bufferSize = Integer.parseInt(tokens[BUFFER_STATE_TOKEN]);
+
+            /*
+             * buffer can only be from 0-255, dacs have been known to give
+             * values outside of the valid range
+             */
+            if ((bufferSize < 0) || (bufferSize >= JITTER_BUFFER_SIZE)) {
+                int oldBufferSize = bufferSize;
+
+                while (bufferSize < 0) {
+                    bufferSize += JITTER_BUFFER_SIZE;
+                }
+
+                while (bufferSize >= JITTER_BUFFER_SIZE) {
+                    bufferSize -= JITTER_BUFFER_SIZE;
+                }
+
+                logger.warn("Received bufferSize [" + oldBufferSize
+                        + "] outside of valid range (0-"
+                        + (JITTER_BUFFER_SIZE - 1) + ").  Corrected to ["
+                        + bufferSize + "]");
+            }
         } catch (NumberFormatException e) {
             throw new MalformedDacStatusException(
                     "Malformed value for jitter buffer size.", e);
@@ -324,9 +346,10 @@ public final class DacStatusMessage {
             if (alertCurrentBuffer || alertPrevBuffer) {
                 if (alertCurrentBuffer) {
                     Object packetsSent;
-                    if(sequenceNumber != null && previous.sequenceNumber != null){
+                    if ((sequenceNumber != null)
+                            && (previous.sequenceNumber != null)) {
                         packetsSent = sequenceNumber - previous.sequenceNumber;
-                    }else{
+                    } else {
                         packetsSent = "an unknown number";
                     }
                     logger.error(
