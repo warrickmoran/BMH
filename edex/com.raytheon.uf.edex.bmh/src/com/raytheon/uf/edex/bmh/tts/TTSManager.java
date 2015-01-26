@@ -93,6 +93,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Nov 20, 2014 3817       bsteffen    send status messages.
  * Nov 20, 2014 3385       bkowal      Support synthesis for ldad.
  * Jan 05, 2015 3651       bkowal      Use {@link IMessageLogger} to log message errors.
+ * Jan 26, 2015 4020       bkowal      Determine the actual TTS Host when publishing
+ *                                     a TTS Status.
  * 
  * </pre>
  * 
@@ -311,7 +313,9 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             if ((connected || attempt == 1) && bmhStatusDestination != null) {
                 try {
                     TTSStatus status = new TTSStatus(InetAddress.getLocalHost()
-                            .getHostName(), connected);
+                            .getHostName(), InetAddress.getByName(
+                            this.synthesisFactory.getTtsServer())
+                            .getCanonicalHostName(), connected);
                     EDEXUtil.getMessageProducer().sendAsyncUri(
                             bmhStatusDestination,
                             SerializationUtil.transformToThrift(status));
