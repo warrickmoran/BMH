@@ -25,9 +25,9 @@ import java.util.Set;
 
 /**
  * 
- * Determine the default originator from an eventCode. Currently there is a
- * hardcoded set of civil event codes and all other codes originate from the
- * NWS. This may be moved to a config file in the future.
+ * Determine the default originator from an eventCode. The default
+ * implementation uses a hardcoded set of civil event codes and all other codes
+ * originate from the NWS.
  * 
  * <pre>
  * 
@@ -36,25 +36,32 @@ import java.util.Set;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Jul 07, 2014  3285     bsteffen    Initial creation
+ * Jan 26, 2015  3359     bsteffen    Switch to interface with default implementation.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class SAMEOriginatorMapper {
+public interface SAMEOriginatorMapper {
+    
+    public String getOriginator(String eventCode);
 
-    private final Set<String> civilianEvents = new HashSet<>(Arrays.asList(
-            "ADR", "CAE", "CEM", "EVI", "NIC", "AVA", "AVW", "CDW", "EQW",
-            "FRW", "HMW", "LEW", "LAE", "TOE", "NUW", "RHW", "SPW", "VOW",
-            "NPT", "NMN"));
+    public static final SAMEOriginatorMapper DEFAULT = new SAMEOriginatorMapper() {
 
-    public String getOriginator(String eventCode) {
-        if (civilianEvents.contains(eventCode)) {
-            return SAMEToneTextBuilder.CIVIL_ORIGINATOR;
-        } else {
-            return SAMEToneTextBuilder.NWS_ORIGINATOR;
+        private final Set<String> civilianEvents = new HashSet<>(Arrays.asList(
+                "ADR", "CAE", "CEM", "EVI", "NIC", "AVA", "AVW", "CDW", "EQW",
+                "FRW", "HMW", "LEW", "LAE", "TOE", "NUW", "RHW", "SPW", "VOW",
+                "NPT", "NMN"));
+
+        @Override
+        public String getOriginator(String eventCode) {
+            if (civilianEvents.contains(eventCode)) {
+                return SAMEToneTextBuilder.CIVIL_ORIGINATOR;
+            } else {
+                return SAMEToneTextBuilder.NWS_ORIGINATOR;
+            }
         }
-    }
+    };
 
 }

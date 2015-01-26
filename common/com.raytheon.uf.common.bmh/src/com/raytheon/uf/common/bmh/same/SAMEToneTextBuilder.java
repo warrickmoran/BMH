@@ -28,11 +28,13 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
  * 
+ * <p>
  * Build the text for a SAME(Specific Area Message Encoding) tone. This builder
  * should be populated with various data values and then {@link #build()} should
  * be called to construct the SAME text. This is a list of the fields required
  * for {@link #build()} to succeed along with the methods that can be used to
  * set each field.
+ * </p>
  * 
  * <ol>
  * <li>originator or originator mapper({@link #setOriginator(String)}
@@ -44,13 +46,15 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * <li>effective time({@link #setEffectiveTime(Calendar)}).
  * <li>purge time or expire time({@link #setPurgeTime(int, int)}
  * {@link #setExpireTime(Calendar)}).
- * <li>originator office({@link #setOriginatorOffice(CharSequence)} {
- * {@link #setNwsIcao(String)}).
+ * <li>originator office({@link #setOriginatorOffice(CharSequence)}
+ * {@link #setNwsIcao(CharSequence)} {@link #setNwsSiteId(String)}).
  * </ol>
  * 
+ * <p>
  * More information about the SAME format can be found on the <a
  * href="http://www.nws.noaa.gov/directives/sym/pd01017012curr.pdf">NWS
  * documentation page</a>.
+ * </p>
  * 
  * <pre>
  * 
@@ -62,6 +66,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 04, 2014  3286     dgilling    Remove automatic addition of EOM
  *                                    to SAME string.
  * Nov 26, 2014  3616     bsteffen    Handle demo messages specially.
+ * Jan 26, 2015  3359     bsteffen    Add Icao Mapper.
  * 
  * </pre>
  * 
@@ -84,11 +89,11 @@ public class SAMEToneTextBuilder {
 
     private String originator;
 
-    private SAMEOriginatorMapper originatorMapper;
+    private SAMEOriginatorMapper originatorMapper = SAMEOriginatorMapper.DEFAULT;
 
     private String event;
 
-    private SAMEStateCodes stateCodes;
+    private SAMEStateCodes stateCodes = SAMEStateCodes.DEFAULT;
 
     private List<CharSequence> area = new ArrayList<>(31);
 
@@ -102,6 +107,8 @@ public class SAMEToneTextBuilder {
 
     private CharSequence originatorOffice;
 
+    private SAMEIcaoMapper icaoMapper = SAMEIcaoMapper.DEFAULT;
+
     /**
      * The Originator header code block indicates who initiated the message. The
      * only originator codes are:
@@ -114,8 +121,8 @@ public class SAMEToneTextBuilder {
      * Primary Entry Point System         PEP
      * </pre>
      * 
-     * The originator is not needed if an originator mapper is provided instead
-     * using {@link #setOriginatorMapper(SAMEOriginatorMapper)} .
+     * The originator is optional, if none is provided then a
+     * {@link SAMEOriginatorMapper} is used.
      * 
      * @param originator
      *            the originator
@@ -127,8 +134,10 @@ public class SAMEToneTextBuilder {
 
     /**
      * Set the lookup object for determining originator based off event codes.
-     * This field is only necessary if originator is never set, if originator is
-     * set then this is ignored.
+     * This field is optional, if it is unset the the
+     * {@link SAMEOriginatorMapper#DEFAULT} will be used when necessary. No
+     * mapping is performed if {@link #setOriginator(String)} was used to
+     * populate the originator.
      * 
      * @param mapper
      * @see #setOriginator(String)
@@ -187,7 +196,9 @@ public class SAMEToneTextBuilder {
     /**
      * When using {@link #addAreaFromUGC(String)} a {@link SAMEStateCodes}
      * object must be provided to look up the appropriate state codes. If
-     * addAreaFromUGC is not used then this is not necessary.
+     * addAreaFromUGC is not used then this is not necessary. If no
+     * SAMEStateCodes are provided then {@link SAMEStateCodes#DEFAULT} will be
+     * used.
      * 
      * @param stateCodes
      *            lookup object for state codes.
@@ -199,9 +210,9 @@ public class SAMEToneTextBuilder {
 
     /**
      * Add a new area by parsing the UGC value and converting it to the correct
-     * format. {@link #setStateCodes(SAMEStateCodes)} must be called before this
-     * method is used. Any UGC value provided must be for an area and not for a
-     * zone.
+     * format. {@link #setStateCodes(SAMEStateCodes)} may be called before this
+     * method is used if a custom mapping is needed. Any UGC value provided must
+     * be for an area and not for a zone.
      * 
      * @param ugc
      *            Universal Generic Code
@@ -308,7 +319,8 @@ public class SAMEToneTextBuilder {
      * call sign such as KFAB/AM or WDAF/FM.
      * 
      * @param originatorOffice
-     * @see #setNwsIcao(String)
+     * @see #setNwsIcao(CharSequence)
+     * @see #setNwsSiteId(String)
      */
     public void setOriginatorOffice(CharSequence originatorOffice) {
         this.originatorOffice = originatorOffice;
@@ -321,11 +333,34 @@ public class SAMEToneTextBuilder {
      * @param icao
      * @see #setOriginatorOffice(CharSequence)
      */
-    public void setNwsIcao(String icao) {
+    public void setNwsIcao(CharSequence icao) {
         StringBuilder originatorOffice = new StringBuilder(8);
         originatorOffice.append(icao);
         originatorOffice.append("/NWS");
         setOriginatorOffice(originatorOffice);
+    }
+
+    /**
+     * A short form of {@link #setNwsIcao(CharSequence)} that takes only the 3
+     * letter nws site id and figures out the icao for that site.
+     * 
+     * @param siteId
+     * @see #setNwsIcao(CharSequence)
+     * @see #setOriginatorOffice(CharSequence)
+     */
+    public void setNwsSiteId(String siteId) {
+        setNwsIcao(icaoMapper.getIcao(siteId));
+    }
+
+    /**
+     * Set the mapper that will be used to transform a siteIds to icaos for use
+     * in the originating office. If no mapper is provided then
+     * {@link SAMEIcaoMapper#DEFAULT} will be used.
+     * 
+     * @see #setNwsSiteId(String)
+     */
+    public void setIcaoMapper(SAMEIcaoMapper icaoMapper) {
+        this.icaoMapper = icaoMapper;
     }
 
     /**

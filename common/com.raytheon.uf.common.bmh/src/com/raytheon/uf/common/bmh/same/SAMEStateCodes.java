@@ -48,8 +48,8 @@ import java.util.Map;
  * retrieve the most recent data set.
  * </pre>
  * 
- * The current implementation contains a hard coded mapping, depending on the
- * level of configurability this may be moved to a config file in the future.
+ * The default implementation contains a hard coded mapping so it can be loaded
+ * without any access to specific config files.
  * 
  * <pre>
  * 
@@ -58,92 +58,98 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 07, 2014  3285     bsteffen    Initial creation
+ * Jan 26, 2015  3359     bsteffen    Switch to interface with default implementation.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class SAMEStateCodes {
+public interface SAMEStateCodes {
 
-    private final Map<String, Integer> stateCodes = getStateCodes();
+    public Integer getStateCode(String state);
 
-    private static Map<String, Integer> getStateCodes() {
-        Map<String, Integer> result = new HashMap<String, Integer>(128);
-        result.put("AL", 1);
-        result.put("AK", 2);
-        result.put("AZ", 4);
-        result.put("AR", 5);
-        result.put("CA", 6);
-        result.put("CO", 8);
-        result.put("CT", 9);
-        result.put("DE", 10);
-        result.put("DC", 11);
-        result.put("FL", 12);
-        result.put("GA", 13);
-        result.put("HI", 15);
-        result.put("ID", 16);
-        result.put("IL", 17);
-        result.put("IN", 18);
-        result.put("IA", 19);
-        result.put("KS", 20);
-        result.put("KY", 21);
-        result.put("LA", 22);
-        result.put("ME", 23);
-        result.put("MD", 24);
-        result.put("MA", 25);
-        result.put("MI", 26);
-        result.put("MN", 27);
-        result.put("MS", 28);
-        result.put("MO", 29);
-        result.put("MT", 30);
-        result.put("NE", 31);
-        result.put("NV", 32);
-        result.put("NH", 33);
-        result.put("NJ", 34);
-        result.put("NM", 35);
-        result.put("NY", 36);
-        result.put("NC", 37);
-        result.put("ND", 38);
-        result.put("OH", 39);
-        result.put("OK", 40);
-        result.put("OR", 41);
-        result.put("PA", 42);
-        result.put("RI", 44);
-        result.put("SC", 45);
-        result.put("SD", 46);
-        result.put("TN", 47);
-        result.put("TX", 48);
-        result.put("UT", 49);
-        result.put("VT", 50);
-        result.put("VA", 51);
-        result.put("WA", 53);
-        result.put("WV", 54);
-        result.put("WI", 55);
-        result.put("WY", 56);
-        result.put("PZ", 57);
-        result.put("PK", 58);
-        result.put("PH", 59);
-        result.put("PS", 61);
-        result.put("PM", 65);
-        result.put("GU", 66);
-        result.put("MP", 69);
-        result.put("PR", 72);
-        result.put("AN", 73);
-        result.put("AM", 75);
-        result.put("GM", 77);
-        result.put("VI", 78);
-        result.put("LS", 91);
-        result.put("LM", 92);
-        result.put("LH", 93);
-        result.put("LC", 94);
-        result.put("LE", 96);
-        result.put("LO", 97);
-        result.put("SL", 98);
-        return result;
+    public static final SAMEStateCodes DEFAULT = new SAMEStateCodes() {
+
+        private final Map<String, Integer> stateCodes = new HashMap<String, Integer>(
+                128);
+        {
+            stateCodes.put("AL", 1);
+            stateCodes.put("AK", 2);
+            stateCodes.put("AZ", 4);
+            stateCodes.put("AR", 5);
+            stateCodes.put("CA", 6);
+            stateCodes.put("CO", 8);
+            stateCodes.put("CT", 9);
+            stateCodes.put("DE", 10);
+            stateCodes.put("DC", 11);
+            stateCodes.put("FL", 12);
+            stateCodes.put("GA", 13);
+            stateCodes.put("HI", 15);
+            stateCodes.put("ID", 16);
+            stateCodes.put("IL", 17);
+            stateCodes.put("IN", 18);
+            stateCodes.put("IA", 19);
+            stateCodes.put("KS", 20);
+            stateCodes.put("KY", 21);
+            stateCodes.put("LA", 22);
+            stateCodes.put("ME", 23);
+            stateCodes.put("MD", 24);
+            stateCodes.put("MA", 25);
+            stateCodes.put("MI", 26);
+            stateCodes.put("MN", 27);
+            stateCodes.put("MS", 28);
+            stateCodes.put("MO", 29);
+            stateCodes.put("MT", 30);
+            stateCodes.put("NE", 31);
+            stateCodes.put("NV", 32);
+            stateCodes.put("NH", 33);
+            stateCodes.put("NJ", 34);
+            stateCodes.put("NM", 35);
+            stateCodes.put("NY", 36);
+            stateCodes.put("NC", 37);
+            stateCodes.put("ND", 38);
+            stateCodes.put("OH", 39);
+            stateCodes.put("OK", 40);
+            stateCodes.put("OR", 41);
+            stateCodes.put("PA", 42);
+            stateCodes.put("RI", 44);
+            stateCodes.put("SC", 45);
+            stateCodes.put("SD", 46);
+            stateCodes.put("TN", 47);
+            stateCodes.put("TX", 48);
+            stateCodes.put("UT", 49);
+            stateCodes.put("VT", 50);
+            stateCodes.put("VA", 51);
+            stateCodes.put("WA", 53);
+            stateCodes.put("WV", 54);
+            stateCodes.put("WI", 55);
+            stateCodes.put("WY", 56);
+            stateCodes.put("PZ", 57);
+            stateCodes.put("PK", 58);
+            stateCodes.put("PH", 59);
+            stateCodes.put("PS", 61);
+            stateCodes.put("PM", 65);
+            stateCodes.put("GU", 66);
+            stateCodes.put("MP", 69);
+            stateCodes.put("PR", 72);
+            stateCodes.put("AN", 73);
+            stateCodes.put("AM", 75);
+            stateCodes.put("GM", 77);
+            stateCodes.put("VI", 78);
+            stateCodes.put("LS", 91);
+            stateCodes.put("LM", 92);
+            stateCodes.put("LH", 93);
+            stateCodes.put("LC", 94);
+            stateCodes.put("LE", 96);
+            stateCodes.put("LO", 97);
+            stateCodes.put("SL", 98);
     }
 
+        @Override
     public Integer getStateCode(String state) {
         return stateCodes.get(state);
     }
+
+    };
 }

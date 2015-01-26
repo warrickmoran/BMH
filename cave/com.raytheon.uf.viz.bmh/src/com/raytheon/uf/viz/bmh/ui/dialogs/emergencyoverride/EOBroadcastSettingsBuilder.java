@@ -36,8 +36,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.same.SAMEOriginatorMapper;
-import com.raytheon.uf.common.bmh.same.SAMEStateCodes;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -58,6 +56,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Nov 19, 2014 3845       bkowal      Initial creation
  * Dec 1, 2014  3797       bkowal      Implemented getTonesDuration.
  * Dec 12, 2014 3603       bsteffen    Updates to TonesGenerator.
+ * Jan 26, 2015 3359       bsteffen    Use site id for same tones.
  * 
  * 
  * </pre>
@@ -68,11 +67,6 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
 
 public class EOBroadcastSettingsBuilder extends
         AbstractBroadcastSettingsBuilder {
-
-    /* Used to build SAME tones */
-    private final SAMEOriginatorMapper originatorMapping = new SAMEOriginatorMapper();
-
-    private final SAMEStateCodes stateCodes = new SAMEStateCodes();
 
     /*
      * Data Managers
@@ -228,17 +222,13 @@ public class EOBroadcastSettingsBuilder extends
     private byte[] constructSAMEAlertTones(Collection<Area> areas)
             throws ToneGenerationException {
         SAMEToneTextBuilder toneBuilder = new SAMEToneTextBuilder();
-        toneBuilder.setOriginatorMapper(originatorMapping);
-        toneBuilder.setStateCodes(stateCodes);
         toneBuilder.setEventFromAfosid(this.messageType.getAfosid());
         for (Area area : areas) {
             toneBuilder.addAreaFromUGC(area.getAreaCode());
         }
         toneBuilder.setEffectiveTime(this.effectiveTime);
         toneBuilder.setExpireTime(this.expireTime);
-        // TODO this needs to be read from configuration.
-        toneBuilder.setNwsIcao("K"
-                + LocalizationManager.getInstance().getSite());
+        toneBuilder.setNwsSiteId(LocalizationManager.getInstance().getSite());
         final String sameTone = toneBuilder.build().toString();
 
         // build the SAME tone
