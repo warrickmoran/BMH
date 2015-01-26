@@ -33,6 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Nov 20, 2014  3817     bsteffen    Initial creation
+ * Jan 26, 2015  4020     bkowal      Added {@link #edexHost}.
  * 
  * </pre>
  * 
@@ -41,6 +42,12 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @DynamicSerialize
 public class TTSStatus {
+
+    /**
+     * The EDEX host that is connected to and interacting with the TTS Server.
+     */
+    @DynamicSerializeElement
+    private String edexHost;
 
     @DynamicSerializeElement
     private String host;
@@ -52,9 +59,25 @@ public class TTSStatus {
 
     }
 
-    public TTSStatus(String host, boolean connected) {
+    public TTSStatus(String edexHost, String host, boolean connected) {
+        this.edexHost = edexHost;
         this.host = host;
         this.connected = connected;
+    }
+
+    /**
+     * @return the edexHost
+     */
+    public String getEdexHost() {
+        return edexHost;
+    }
+
+    /**
+     * @param edexHost
+     *            the edexHost to set
+     */
+    public void setEdexHost(String edexHost) {
+        this.edexHost = edexHost;
     }
 
     public String getHost() {
@@ -72,5 +95,4 @@ public class TTSStatus {
     public void setConnected(boolean connected) {
         this.connected = connected;
     }
-
 }

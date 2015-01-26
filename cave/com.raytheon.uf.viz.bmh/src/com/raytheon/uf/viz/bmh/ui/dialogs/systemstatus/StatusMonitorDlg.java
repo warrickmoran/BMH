@@ -81,6 +81,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Dec 04, 2014  #3287     lvenable     Added fix for practice code color & layout of status
  *                                      messages on change.
  * Jan 13, 2015  #3844     bsteffen     Fix dialog disposed error after closing.
+ * Jan 26, 2015  #4020     bkowal       Updated {@link #printVizStatusMonitorVariables()}.
  * 
  * 
  * </pre>
@@ -509,8 +510,8 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
                 System.out.println("--- DAC connected: "
                         + tg.getName()
                         + " - "
-                        + vizStatusMonitor.isTransmitterGroupConnected(tg
-                                .getName()));
+                        + vizStatusMonitor.isTransmitterGroupConnected(s,
+                                tg.getName()));
             }
         }
 

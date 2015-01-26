@@ -45,6 +45,8 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
  * ------------ ---------- ----------- --------------------------
  * Nov 22, 2014            lvenable    Initial creation
  * Dec 03, 2014  3876      lvenable    Added null check.
+ * Jan 26, 2015  4020      bkowal      Specify the comms host when looking up
+ *                                     active transmitter groups.
  * 
  * </pre>
  * 
@@ -140,7 +142,8 @@ public class ProcessStatusComp extends Composite {
              * Transmitters/Group associated with the Comms manager.
              */
             for (String transGrpName : transmitterGroups) {
-                if (vizStatusMonitor.isTransmitterGroupConnected(transGrpName)) {
+                if (vizStatusMonitor.isTransmitterGroupConnected(s,
+                        transGrpName)) {
                     gd = new GridData();
                     gd.horizontalIndent = 35;
                     Label transGrpLbl = new Label(this, SWT.NONE);

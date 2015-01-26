@@ -48,6 +48,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Nov 18, 2014  3817     bsteffen    Initial creation
+ * Jan 26, 2015  4020     bkowal      Fix TTS Status and Dac Transmitter
+ *                                    Group status retrieval.
  * 
  * </pre>
  * 
@@ -221,7 +223,7 @@ public class SystemStatusMonitor {
     protected void updateTtsStatus(TTSStatus ttsStatus) {
         TTSStatus prev = null;
         synchronized (this.ttsStatus) {
-            prev = this.ttsStatus.put(ttsStatus.getHost(), ttsStatus);
+            prev = this.ttsStatus.put(ttsStatus.getEdexHost(), ttsStatus);
         }
         if (prev == null || !prev.equals(ttsStatus)) {
             notifyListeners(BmhComponent.TTS, ttsStatus.getHost());
@@ -246,11 +248,6 @@ public class SystemStatusMonitor {
         return connectedGroups;
     }
 
-    public DacHardwareStatusNotification getDacHardwareStatus(
-            String transmitterGroupName) {
-        return getDacStatus().get(transmitterGroupName);
-    }
-
     public Collection<CommsManagerStatus> getConnectedCommsManagers() {
         return getCommsStatus().values();
     }
@@ -263,8 +260,13 @@ public class SystemStatusMonitor {
         return getTtsStatus().values();
     }
 
-    public boolean isTransmitterGroupConnected(String transmitterGroupName) {
-        return getDacStatus().containsKey(transmitterGroupName);
+    public boolean isTransmitterGroupConnected(final String dacHost,
+            String transmitterGroupName) {
+        if (this.isCommsManagerConnected(dacHost) == false) {
+            return false;
+        }
+        return this.getCommsStatus().get(dacHost)
+                .containsConnectedTransmitterGroup(transmitterGroupName);
     }
 
     public boolean isCommsManagerConnected(String host) {
