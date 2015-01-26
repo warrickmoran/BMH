@@ -19,6 +19,14 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -51,6 +59,7 @@ import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.Pair;
+import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
@@ -92,6 +101,8 @@ import com.raytheon.uf.edex.core.EdexException;
  *                                    Auto assignment of transmitter to dac.
  * Nov 18, 2014  3746     rjpeter     Refactored MessageTypeReplacement.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * Jan 26, 2015  3928     bsteffen    Copy audio files.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -123,7 +134,8 @@ public class BmhDatabaseCopier {
         this.pracMessageLogger = pracMessageLogger;
     }
 
-    public void copyAll() throws EdexException, SerializationException {
+    public void copyAll() throws EdexException, SerializationException,
+            IOException {
         clearAllPracticeTables();
         copyDictionaries();
         copyTtsVoices();
@@ -396,10 +408,16 @@ public class BmhDatabaseCopier {
         this.inputMessageMap = inputMessageMap;
     }
 
-    private void copyBroadcastMsgs() {
+    private void copyBroadcastMsgs() throws IOException {
         BroadcastMsgDao opDao = new BroadcastMsgDao(true, this.opMessageLogger);
         BroadcastMsgDao prDao = new BroadcastMsgDao(false,
                 this.pracMessageLogger);
+
+        Path opAudioDir = BMHConstants.getBmhDataDirectory(true).resolve(
+                BMHConstants.AUDIO_DATA_DIRECTORY);
+        Path prAudioDir = BMHConstants.getBmhDataDirectory(false).resolve(
+                BMHConstants.AUDIO_DATA_DIRECTORY);
+
         List<BroadcastMsg> broadcastMsgs = opDao.getAll();
         for (BroadcastMsg broadcastMsg : broadcastMsgs) {
             broadcastMsg.setTransmitterGroup(transmitterGroupMap
@@ -408,11 +426,64 @@ public class BmhDatabaseCopier {
                     .getInputMessage().getId()));
             for (BroadcastFragment broadcastFragment : broadcastMsg
                     .getFragments()) {
+                Path output = Paths
+                        .get(broadcastFragment.getOutputName());
+                if (output.startsWith(opAudioDir)) {
+                    Path newOutput = prAudioDir.resolve(opAudioDir
+                            .relativize(output));
+                    if (Files.isDirectory(newOutput)) {
+                        Files.walkFileTree(output, new DirectoryCopier(output,
+                                newOutput));
+                    } else {
+                        Files.createDirectories(newOutput.getParent());
+                        Files.copy(output, newOutput,
+                                StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    broadcastFragment.setOutputName(newOutput.toString());
+                }
                 broadcastFragment.setId(0);
             }
             broadcastMsg.setId(0);
         }
         prDao.persistAll(broadcastMsgs);
+    }
+    
+    /**
+     * Utility visitor for recursive directory copying.
+     */
+    private static final class DirectoryCopier extends SimpleFileVisitor<Path>{
+        
+        private final Path oldRoot;
+        
+        private final Path newRoot;
+        
+        public DirectoryCopier(Path oldRoot, Path newRoot) {
+            this.oldRoot = oldRoot;
+            this.newRoot = newRoot;
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(
+                Path dir, BasicFileAttributes attrs)
+                throws IOException {
+            Path newDir = newRoot.resolve(oldRoot
+                    .relativize(dir));
+            Files.createDirectories(newDir);
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file,
+                BasicFileAttributes attrs)
+                throws IOException {
+            Path newFile = newRoot.resolve(oldRoot
+                    .relativize(file));
+            Files.copy(
+                    file,
+                    newFile,
+                    StandardCopyOption.REPLACE_EXISTING);
+            return FileVisitResult.CONTINUE;
+        }
     }
 
 }

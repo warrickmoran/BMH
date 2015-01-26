@@ -50,6 +50,7 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  * ------------- -------- ----------- --------------------------
  * Nov 26, 2014  3613     bsteffen    Initial creation
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * Jan 26, 2015  3928     bsteffen    Allow creation of a practice purger.
  * 
  * </pre>
  * 
@@ -68,11 +69,15 @@ public class MessagePurger {
 
     private final BroadcastMsgDao broadcastMessageDao;
 
+    private final Path audioPath;
+
     public MessagePurger(int purgeDays, final InputMessageDao inputMessageDao,
-            final BroadcastMsgDao broadcastMessageDao) {
+            final BroadcastMsgDao broadcastMessageDao, boolean operational) {
         this.purgeDays = purgeDays;
         this.inputMessageDao = inputMessageDao;
         this.broadcastMessageDao = broadcastMessageDao;
+        audioPath = BMHConstants.getBmhDataDirectory(operational).resolve(
+                BMHConstants.AUDIO_DATA_DIRECTORY);
     }
 
     public void purge() {
@@ -111,24 +116,26 @@ public class MessagePurger {
     }
 
     protected void purgeAudioFiles(Calendar purgeTime) {
-        Path dataDir = BMHConstants.getBmhDataDirectory(true).resolve(
-                BMHConstants.AUDIO_DATA_DIRECTORY);
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dataDir,
-                DATE_GLOB)) {
-            for (Path datedDir : stream) {
-                purgeAudioFilesInDatedDirectory(datedDir, purgeTime);
+        if (Files.isDirectory(audioPath)) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(
+                    audioPath, DATE_GLOB)) {
+                for (Path datedDir : stream) {
+                    purgeAudioFilesInDatedDirectory(datedDir, purgeTime);
+                }
+            } catch (IOException e) {
+                logger.error("Cannot clear old orphaned audio files.", e);
             }
-        } catch (IOException e) {
-            logger.error("Cannot clear old orphaned audio files.", e);
         }
-        Path wxDir = dataDir.resolve("WXMessages");
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(wxDir,
-                DATE_GLOB)) {
-            for (Path datedDir : stream) {
-                purgeAudioFilesInDatedDirectory(datedDir, purgeTime);
+        Path wxDir = audioPath.resolve("WXMessages");
+        if (Files.isDirectory(wxDir)) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(wxDir,
+                    DATE_GLOB)) {
+                for (Path datedDir : stream) {
+                    purgeAudioFilesInDatedDirectory(datedDir, purgeTime);
+                }
+            } catch (IOException e) {
+                logger.error("Cannot clear old orphaned audio files.", e);
             }
-        } catch (IOException e) {
-            logger.error("Cannot clear old orphaned audio files.", e);
         }
     }
 

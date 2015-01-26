@@ -9,6 +9,14 @@
     <constructor-arg value="${bmh.purge.days}"/>
     <constructor-arg ref="inputMessageDao" />
     <constructor-arg ref="broadcastMsgDao" />
+    <constructor-arg value="true" />
+  </bean>
+
+  <bean id="practice_bmhMessagePurger" class="com.raytheon.uf.edex.bmh.purge.MessagePurger">
+    <constructor-arg value="${bmh.purge.days}"/>
+    <constructor-arg ref="practice_inputMessageDao" />
+    <constructor-arg ref="practice_broadcastMsgDao" />
+    <constructor-arg value="false" />
   </bean>
 
   <camelContext id="bmhPurgeRoutes" xmlns="http://camel.apache.org/schema/spring"
@@ -17,6 +25,7 @@
     <route id="bmhTimesPurge">
       <from uri="timer://purgeInterval?fixedRate=true&amp;period=24h" />
       <bean ref="bmhMessagePurger" method="purge"/>
+      <bean ref="practice_bmhMessagePurger" method="purge"/>
     </route>
 
   </camelContext>
