@@ -63,7 +63,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  *                                      DacSimulator to run on same host.
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * Jan 19, 2015  #3912     bsteffen     Send events directly to a listener.
- * 
+ * Jan 26, 2015  #3995     rjpeter      Fix heartbeat time out.
  * </pre>
  * 
  * @author dgilling
@@ -124,8 +124,7 @@ public class ControlStatusThread extends Thread {
      *             If the socket could not be opened.
      */
     public ControlStatusThread(IDacStatusUpdateEventHandler eventHandler,
-            InetAddress dacAdress,
-            int controlPort) throws SocketException {
+            InetAddress dacAdress, int controlPort) throws SocketException {
         super("ControlStatusThread");
         this.eventHandler = eventHandler;
         this.dacAddress = dacAdress;
@@ -160,11 +159,12 @@ public class ControlStatusThread extends Thread {
                     if (hasSync) {
                         try {
                             DacStatusMessage currentStatus = receiveHeartbeat(DacSessionConstants.DEFAULT_SYNC_TIMEOUT_PERIOD);
+                            heartbeatsMissed = 0;
                             // logger.debug("Current DAC status: " +
                             // currentStatus);
                             eventHandler
                                     .receivedDacStatus(new DacStatusUpdateEvent(
-                                    currentStatus));
+                                            currentStatus));
                         } catch (MalformedDacStatusException e) {
                             /*
                              * To this point every status message that comes
