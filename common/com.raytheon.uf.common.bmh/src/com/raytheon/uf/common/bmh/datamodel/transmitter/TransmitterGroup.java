@@ -28,7 +28,6 @@ import java.util.Set;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
-import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
@@ -88,6 +87,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Nov 21, 2014 3845       bkowal      Added getTransmitterGroupContainsTransmitter
  * Jan 08, 2015 3821       bsteffen    Rename silenceAlarm to deadAirAlarm
  * Jan 14, 2015 3994       rjpeter     Added distinct to {@link #GET_ENABLED_TRANSMITTER_GROUPS}.
+ * Jan 22, 2015 3995       rjpeter     Added {@link #GET_TRANSMITTER_GROUP_MAX_POSITION}, removed Tone.
  * </pre>
  * 
  * @author rjpeter
@@ -96,7 +96,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
 @NamedQueries({
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME, query = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS_QUERY),
-        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER, query = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER_QUERY) })
+        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER, query = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER_QUERY),
+        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION, query = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY) })
 @Entity
 @Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }) })
 @SequenceGenerator(initialValue = 1, name = TransmitterGroup.GEN, sequenceName = "zone_seq")
@@ -118,6 +119,10 @@ public class TransmitterGroup {
 
     protected static final String GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER_QUERY = "SELECT tg FROM TransmitterGroup tg INNER JOIN tg.transmitters t WHERE t.id = :transmitterId";
 
+    public static final String GET_TRANSMITTER_GROUP_MAX_POSITION = "getTransmitterGroupMaxPosition";
+
+    protected static final String GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY = "SELECT MAX(position) FROM TransmitterGroup";
+
     public static final int NAME_LENGTH = 40;
 
     @Id
@@ -128,24 +133,21 @@ public class TransmitterGroup {
     /**
      * Alternate key, id only used to allow for ease of rename function.
      */
-    @Column(length = NAME_LENGTH)
+    @Column(length = NAME_LENGTH, nullable = false)
     @DiffTitle(position = 1)
     @DiffString
     private String name;
 
-    @Embedded
-    private Tone tone;
-
     @Column
     private Integer dac;
 
-    @Column(length = 25)
+    @Column(length = 25, nullable = false)
     private String timeZone;
 
-    @Column
+    @Column(nullable = false)
     private boolean deadAirAlarm = true;
 
-    @Column
+    @Column(nullable = false)
     private int position;
 
     /*
@@ -170,6 +172,23 @@ public class TransmitterGroup {
     @Transient
     private final Set<Integer> prevEnabledTransmitters = new HashSet<>();
 
+    public TransmitterGroup() {
+    }
+
+    public TransmitterGroup(TransmitterGroup tg) {
+        id = tg.id;
+        name = tg.name;
+        dac = tg.dac;
+        timeZone = tg.timeZone;
+        deadAirAlarm = tg.deadAirAlarm;
+        position = tg.position;
+        audioDBTarget = tg.audioDBTarget;
+        if (tg.transmitters != null) {
+            transmitters = new HashSet<>(tg.transmitters);
+        }
+        programSummary = tg.programSummary;
+    }
+
     /**
      * @return the id
      */
@@ -191,14 +210,6 @@ public class TransmitterGroup {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public Tone getTone() {
-        return tone;
-    }
-
-    public void setTone(Tone tone) {
-        this.tone = tone;
     }
 
     public Integer getDac() {
@@ -441,8 +452,6 @@ public class TransmitterGroup {
         stringBuilder.append(this.id);
         stringBuilder.append(", name=");
         stringBuilder.append(this.name);
-        stringBuilder.append(", tone=");
-        stringBuilder.append(this.tone);
         stringBuilder.append(", dac=");
         stringBuilder.append(this.dac);
         stringBuilder.append(", timeZone=");

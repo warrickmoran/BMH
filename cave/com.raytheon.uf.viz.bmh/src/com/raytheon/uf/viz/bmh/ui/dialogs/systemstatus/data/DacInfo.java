@@ -24,9 +24,6 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-
 /**
  * 
  * Class containing the information for the DAC and the associated transmitter
@@ -41,17 +38,13 @@ import com.raytheon.uf.common.status.UFStatus;
  * Sep 30, 2014  3349      lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Added addition DAC information.
  * Dec 09, 2014  #3910     lvenable     Added null check for DAC port number.
- * 
+ * Jan 22, 2015  3995      rjpeter      Remove repeat message when DAC has no transmitters.
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
 public class DacInfo {
-
-    /** Status handler for reporting errors. */
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(DacInfo.class);
 
     /** DAC Id. */
     private Integer dacId;
@@ -72,7 +65,7 @@ public class DacInfo {
     private Integer bufferSize = 0;
 
     /** List of transmitter group information. */
-    private SortedMap<Integer, TransmitterGrpInfo> transmitterGrpInfoMap = new TreeMap<Integer, TransmitterGrpInfo>();
+    private final SortedMap<Integer, TransmitterGrpInfo> transmitterGrpInfoMap = new TreeMap<Integer, TransmitterGrpInfo>();
 
     /**
      * Constructor.
@@ -128,11 +121,6 @@ public class DacInfo {
 
         if (portNumber != null) {
             transmitterGrpInfoMap.put(portNumber, transmitterGrpInfo);
-        } else {
-            statusHandler
-                    .warn("The lowest DAC port number for a transmitter for Transmitter Goup "
-                            + transmitterGrpInfo.getGroupName()
-                            + " was null.  There are no transmitters for this transmitter group.");
         }
     }
 

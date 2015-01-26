@@ -56,12 +56,6 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * @author rjpeter
  * @version 1.0
  */
-// @NamedQueries({
-// @NamedQuery(name = "getTransmitters", query = "SELECT t FROM Transmitter"),
-// @NamedQuery(name = "getTransmitterByName", query =
-// "SELECT t from Transmitter t where t.mnemonic = :mnemonic"),
-// @NamedQuery(name = "getTransmitterNames", query =
-// "SELECT t.mnemonic FROM Transmitter") })
 @Entity
 @Table(name = "transmitter", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "mnemonic" }) })
 @SequenceGenerator(initialValue = 1, name = Transmitter.GEN, sequenceName = "transmitter_seq")
@@ -79,7 +73,7 @@ public class Transmitter {
     @DiffTitle(position = 2)
     protected int id;
 
-    @Column(length = 5)
+    @Column(length = 5, nullable = false)
     @DiffTitle(position = 1)
     private String mnemonic;
 
@@ -107,7 +101,7 @@ public class Transmitter {
     @ManyToOne(optional = false)
     private TransmitterGroup transmitterGroup;
 
-    @Column
+    @Column(nullable = false)
     private int position;
 
     @Enumerated(EnumType.STRING)
@@ -291,9 +285,9 @@ public class Transmitter {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + id;
+        result = (prime * result) + id;
         if (id == 0) {
-            result = prime * result
+            result = (prime * result)
                     + ((mnemonic == null) ? 0 : mnemonic.hashCode());
         }
         return result;

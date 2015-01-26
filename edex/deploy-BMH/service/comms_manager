@@ -17,6 +17,7 @@
 #    09/09/14        3456          bkowal         Initial Creation.
 #    10/21/14        3687          bsteffen       Enable comms manager to run in both
 #                                                 operational and practice mode simultaneously
+#    01/23/15        2995          rjpeter        nice comms_manager and all child processes to -10
 ##############################################################################
 
 # Source function library.
@@ -120,6 +121,8 @@ start() {
 		sleep 2
 		getCommsMgrPid
 	done
+
+    renice -10 -g ${comms_pid}
 	
 	success
 	echo

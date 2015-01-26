@@ -38,7 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Aug 25, 2014  3558     rjpeter     Added getEnabledTransmitterGroups()
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Nov 21, 2014  3845     bkowal      Added getTransmitterGroupWithTransmitter
- * 
+ * Jan 22, 2015  3995     rjpeter     Added getNextPosition()
  * </pre>
  * 
  * @author bkowal
@@ -93,7 +93,7 @@ public class TransmitterGroupDao extends
         List<?> results = this.findByNamedQueryAndNamedParam(
                 TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER,
                 "transmitterId", transmitterId);
-        if (results == null || results.isEmpty()) {
+        if ((results == null) || results.isEmpty()) {
             return null;
         }
 
@@ -102,5 +102,27 @@ public class TransmitterGroupDao extends
         }
 
         return null;
+    }
+
+    /**
+     * Returns position number of next new group.
+     * 
+     * @return
+     */
+    public int getNextPosition() {
+        List<?> result = findByNamedQuery(TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION);
+
+        if ((result != null) && !result.isEmpty()) {
+            Object row = result.get(0);
+            if (row instanceof Number) {
+                return ((Number) row).intValue() + 1;
+            } else {
+                logger.error("The "
+                        + TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION
+                        + " query returned results in the wrong format. Expected a Number.");
+            }
+        }
+
+        return 1;
     }
 }

@@ -51,7 +51,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.BMHTimeZone;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Tone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
@@ -78,12 +77,12 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Sep 25, 2014 3620       bsteffen    Add seconds to periodicity and duration.
  * Oct 07, 2014 3642       bkowal      Set a default time message preamble for {@link TransmitterLanguage}
  * Oct 08, 2014 3687       bsteffen    Remove ProgramTrigger.
- * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
- * Oct 24, 2014  3617      dgilling    Support unified time zone field for transmitter groups.
- * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
- * Dec 10, 2013  3824      rferrel     Remove warning on missing voices exclude Spanish when no Spanish voices.
+ * Oct 13, 2014 3654       rjpeter     Updated to use MessageTypeSummary.
+ * Oct 24, 2014 3617       dgilling    Support unified time zone field for transmitter groups.
+ * Nov 18, 2014 3746       rjpeter     Refactored MessageTypeReplacement.
+ * Dec 10, 2014 3824       rferrel     Remove warning on missing voices exclude Spanish when no Spanish voices.
  *                                       Added reader/source constructor.
- * 
+ * Jan 22, 2015 3995       rjpeter     Removed importing of amplitudes.
  * </pre>
  * 
  * @author rjpeter
@@ -486,14 +485,12 @@ public class AsciiFileTranslator {
                     : TxStatus.DISABLED);
             TimeZone baseTZ = parseTimeZone(reader);
 
-            Tone tone = new Tone();
-            group.setTone(tone);
-            tone.setAlertToneAmplitude(parseInt(reader));
-            tone.setTransferToneAmplitude(parseInt(reader));
-            reader.nextField();// skip SAME Validation
-            tone.setSameToneAmplitude(parseInt(reader));
-            tone.setVoiceAmplitude(parseInt(reader));
-            reader.nextField();// skip long pause setting
+            reader.nextField(); // skip alert tone amplitude
+            reader.nextField(); // skip transfer tone amplitude
+            reader.nextField(); // skip SAME Validation
+            reader.nextField(); // skip same tone amplitude
+            reader.nextField(); // skip voice amplitude
+            reader.nextField(); // skip long pause setting
 
             boolean observesDST = !parseBool(reader);
             TimeZone transmitterTZ = BMHTimeZone.getTimeZone(baseTZ,
@@ -560,7 +557,7 @@ public class AsciiFileTranslator {
             reader.nextField();// skip baseline fall
             reader.nextField();// skip hat rise
             reader.nextField();// skip stress rise
-            tone.setAmplitude(parseInt(reader));
+            reader.nextField();// skip amplitude
 
             if (isTransmitter) {
                 group.setPosition(position++);

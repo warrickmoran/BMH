@@ -85,7 +85,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 13, 2015     3809   bkowal      Added {@link TransmitterLanguageComp}.
  * Jan 13, 2015     3995   rjpeter     Fix NPEs and issues with adding new transmitters
  *                                      to existing groups.
- * 
+ * Jan 22, 2014     3995   rjpeter     Update to not corrupt internal state if save failed,
+ *                                      fix position on new transmitter/group and group change.
  * </pre>
  * 
  * @author mpduff
@@ -108,16 +109,14 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         NEW_TRANSMITTER, NEW_TRANSMITTER_GROUP, EDIT_TRANSMITTER, EDIT_TRANSMITTER_GROUP;
     }
 
-    private final ITransmitterStatusChange statusChange;
-
     /** Status Group */
     private Group statusGrp;
 
-    /** The transmitter being created/edited */
-    private Transmitter transmitter;
+    /** The transmitter being edited, will be new entry for create */
+    private final Transmitter transmitter;
 
-    /** The transmitter group being created/edited */
-    private TransmitterGroup group;
+    /** The transmitter group being edited, will be new entry for create */
+    private final TransmitterGroup group;
 
     /** The action type */
     private final TransmitterEditType type;
@@ -162,20 +161,11 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     /** List of transmitter controls */
     private final List<Control> transmitterControlList = new ArrayList<Control>();
 
-    /** Save group flag, save the TransmitterGroup if true */
-    private boolean saveGroup = false;
-
     private final ICloseCallback callback;
-
-    private Transmitter previousTransmitter;
 
     private Combo programCombo;
 
     private DacDataManager dacDataManager;
-
-    private final boolean prevIsStandalone;
-
-    private final TransmitterGroup prevGroup;
 
     /**
      * Edit Transmitter constructor.
@@ -197,29 +187,20 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.type = type;
-        this.transmitter = transmitter;
-        this.group = group;
+        this.transmitter = (transmitter != null ? transmitter
+                : new Transmitter());
+        this.group = (this.transmitter.getTransmitterGroup() != null ? this.transmitter
+                .getTransmitterGroup() : (group != null ? group
+                : new TransmitterGroup()));
         this.callback = callback;
-        this.statusChange = statusChange;
         dataManager = new TransmitterDataManager();
-
-        if (group != null) {
-            prevIsStandalone = group.isStandalone();
-            prevGroup = group;
-        } else if (transmitter != null) {
-            prevGroup = transmitter.getTransmitterGroup();
-            prevIsStandalone = prevGroup.isStandalone();
-        } else {
-            prevIsStandalone = false;
-            prevGroup = null;
-        }
 
         switch (type) {
         case EDIT_TRANSMITTER:
-            setText("Edit Transmitter - " + transmitter.getName());
+            setText("Edit Transmitter - " + this.transmitter.getName());
             break;
         case EDIT_TRANSMITTER_GROUP:
-            setText("Edit Transmitter Group - " + group.getName());
+            setText("Edit Transmitter Group - " + this.group.getName());
             break;
         case NEW_TRANSMITTER:
             setText("New Transmitter");
@@ -530,18 +511,14 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             grpNameCbo.setItems(getGroupNames());
             grpNameCbo.add(STANDALONE, 0);
 
-            if (group == null) {
-                grpNameCbo.select(0);
+            int idx = -1;
+            if (group.getName() != null) {
+                idx = grpNameCbo.indexOf(group.getName());
+            }
+            if (idx >= 0) {
+                grpNameCbo.select(idx);
             } else {
-                int idx = -1;
-                if (group.getName() != null) {
-                    idx = grpNameCbo.indexOf(group.getName());
-                }
-                if (idx >= 0) {
-                    grpNameCbo.select(idx);
-                } else {
-                    grpNameCbo.select(0);
-                }
+                grpNameCbo.select(0);
             }
         }
 
@@ -565,7 +542,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             statusHandler.error("Error gettign Dac information", e);
             dacCombo.add(NONE, 0);
             dacCombo.select(0);
-            if (group != null) {
+            if (group.getDac() != null) {
                 dacCombo.add(String.valueOf(group.getDac()), 1);
             }
         }
@@ -573,86 +550,73 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         populateProgramCombo();
 
         // Populate the fields
-        enabled = ((TransmitterEditType.EDIT_TRANSMITTER_GROUP == type) || (TransmitterEditType.NEW_TRANSMITTER_GROUP == type));
-        if ((group != null) || enabled) {
-            if (group == null) {
-                group = new TransmitterGroup();
-            }
-            if (group.getDac() != null) {
-                // TODO - When getting dac numbers from DB need to change this
-                // logic
-                try {
-                    setCboSelect(dacCombo,
-                            dacDataManager.getDacNameById(group.getDac()));
-                    handleDacSelection();
-                    Integer dacPort = null;
-                    if (transmitter != null) {
-                        dacPort = transmitter.getDacPort();
-                    }
-                    setCboSelect(dacPortCbo, dacPort);
-                } catch (Exception e) {
-                    statusHandler.error("Error retrieving Dac data", e);
-                    dacCombo.select(0);
-                    dacPortCbo.setItems(new String[0]);
-                    dacPortCbo.select(0);
+        if (group.getDac() != null) {
+            // TODO - When getting dac numbers from DB need to change this logic
+            try {
+                setCboSelect(dacCombo,
+                        dacDataManager.getDacNameById(group.getDac()));
+                handleDacSelection();
+                Integer dacPort = null;
+                if (transmitter != null) {
+                    dacPort = transmitter.getDacPort();
                 }
+                setCboSelect(dacPortCbo, dacPort);
+            } catch (Exception e) {
+                statusHandler.error("Error retrieving Dac data", e);
+                dacCombo.select(0);
+                dacPortCbo.setItems(new String[0]);
+                dacPortCbo.select(0);
             }
-
-            populateTimeZoneControls();
-
-            disableSilenceChk.setSelection(!group.getDeadAirAlarm());
-
-            if ((group != null) && group.isStandalone()) {
-                enabled = true;
-            }
-
-            // Enable/Disable controls
-            enableGroupControls(enabled);
         }
 
-        enabled = ((TransmitterEditType.EDIT_TRANSMITTER == type) || (TransmitterEditType.NEW_TRANSMITTER == type));
+        populateTimeZoneControls(group);
 
-        if ((transmitter != null) || enabled) {
-            if (transmitter == null) {
-                transmitter = new Transmitter();
-            }
+        disableSilenceChk.setSelection(!group.getDeadAirAlarm());
+
+        enabled = (group.isStandalone()
+                || (TransmitterEditType.EDIT_TRANSMITTER_GROUP == type)
+                || (TransmitterEditType.NEW_TRANSMITTER_GROUP == type) || (TransmitterEditType.NEW_TRANSMITTER == type));
+
+        // Enable/Disable controls
+        enableGroupControls(enabled);
+
+        if (transmitter.getDacPort() != null) {
             setCboSelect(dacPortCbo, transmitter.getDacPort());
-
-            if (transmitter.getName() != null) {
-                transmitterNameTxt.setText(transmitter.getName());
-            }
-            if (transmitter.getMnemonic() != null) {
-                mnemonicTxt.setText(transmitter.getMnemonic());
-            }
-
-            frequencyTxt.setText(String.valueOf(transmitter.getFrequency()));
-            if (transmitter.getCallSign() != null) {
-                callSignTxt.setText(transmitter.getCallSign());
-            }
-            if (transmitter.getLocation() != null) {
-                locationTxt.setText(transmitter.getLocation());
-            }
-            if (transmitter.getServiceArea() != null) {
-                serviceAreaTxt.setText(transmitter.getServiceArea());
-            }
-            if (transmitter.getFipsCode() != null) {
-                fipsTxt.setText(transmitter.getFipsCode());
-            }
-
-            // Enable/Disable controls
-            enableTransmitterControls(enabled);
-            if (TransmitterEditType.NEW_TRANSMITTER == type) {
-                enableGroupControls(enabled);
-            }
         }
+
+        if (transmitter.getName() != null) {
+            transmitterNameTxt.setText(transmitter.getName());
+        }
+
+        if (transmitter.getMnemonic() != null) {
+            mnemonicTxt.setText(transmitter.getMnemonic());
+        }
+
+        frequencyTxt.setText(String.valueOf(transmitter.getFrequency()));
+        if (transmitter.getCallSign() != null) {
+            callSignTxt.setText(transmitter.getCallSign());
+        }
+        if (transmitter.getLocation() != null) {
+            locationTxt.setText(transmitter.getLocation());
+        }
+        if (transmitter.getServiceArea() != null) {
+            serviceAreaTxt.setText(transmitter.getServiceArea());
+        }
+        if (transmitter.getFipsCode() != null) {
+            fipsTxt.setText(transmitter.getFipsCode());
+        }
+
+        // Enable/Disable controls
+        enabled = ((TransmitterEditType.EDIT_TRANSMITTER == type) || (TransmitterEditType.NEW_TRANSMITTER == type));
+        enableTransmitterControls(enabled);
 
         if (TransmitterEditType.NEW_TRANSMITTER == type) {
-            setTransmitterStatus(TxStatus.DISABLED);
+            transmitter.setTxStatus(TxStatus.DISABLED);
         }
 
         if (TransmitterEditType.NEW_TRANSMITTER_GROUP != type) {
             if (grpNameCbo != null) {
-                if ((group == null) || group.isStandalone()) {
+                if (group.isStandalone()) {
                     grpNameCbo.select(0);
                 } else {
                     int selIndex = -1;
@@ -730,10 +694,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     .getProgramSummaries();
             Collections.sort(programList, new ProgramSummaryNameComparator());
 
-            ProgramSummary origProgram = null;
-            if (group != null) {
-                origProgram = group.getProgramSummary();
-            }
+            ProgramSummary origProgram = group.getProgramSummary();
+
             int groupProgramId = -1;
             if (origProgram != null) {
                 groupProgramId = origProgram.getId();
@@ -766,9 +728,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         String groupName = grpNameCbo.getText();
         if (groupName.equals(STANDALONE)) {
             enableGroupControls(true);
-            if (prevGroup != null) {
-                groupName = prevGroup.getName();
-            }
+            groupName = group.getName();
         } else {
             enableGroupControls(false);
         }
@@ -802,38 +762,33 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     private void populateGroupControls(String groupName) {
         for (TransmitterGroup tg : groupList) {
             if (tg.getName().equals(groupName)) {
-                group = tg;
                 try {
                     setCboSelect(dacCombo,
-                            dacDataManager.getDacNameById(group.getDac()));
+                            dacDataManager.getDacNameById(tg.getDac()));
                     handleDacSelection();
                 } catch (Exception e) {
                     statusHandler.error("Error retreiving DAC information", e);
                 }
 
-                populateTimeZoneControls();
+                populateTimeZoneControls(tg);
 
-                if (group.getProgramSummary() == null) {
+                if (tg.getProgramSummary() == null) {
                     programCombo.select(0);
                 } else {
-                    programCombo.select(programCombo.indexOf(group
+                    programCombo.select(programCombo.indexOf(tg
                             .getProgramSummary().getName()));
                 }
 
-                disableSilenceChk.setSelection(!group.getDeadAirAlarm());
-
+                disableSilenceChk.setSelection(!tg.getDeadAirAlarm());
                 return;
             }
         }
 
         // Assume stand alone
-        if ((transmitter != null)
-                && (transmitter.getTransmitterGroup() != null)
-                && transmitter.getTransmitterGroup().isStandalone()) {
+        if (group.isStandalone() && (group.getDac() != null)) {
             try {
                 setCboSelect(dacCombo,
-                        dacDataManager.getDacNameById(transmitter
-                                .getTransmitterGroup().getDac()));
+                        dacDataManager.getDacNameById(group.getDac()));
                 handleDacSelection();
             } catch (Exception e) {
                 statusHandler.error("Error retreiving DAC information", e);
@@ -850,99 +805,35 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      * 
      * @return true if saved successfully
      */
+
     private boolean save() {
-        saveGroup = false;
+        boolean saveGroup = false;
 
         shell.setCursor(shell.getDisplay().getSystemCursor(SWT.CURSOR_WAIT));
         try {
+            TransmitterGroup tg = null;
             if ((type == TransmitterEditType.NEW_TRANSMITTER)
                     || (type == TransmitterEditType.EDIT_TRANSMITTER)) {
-                this.previousTransmitter = new Transmitter(transmitter);
+                Transmitter transToBeSaved = getSelectedTransmitter();
+                tg = transToBeSaved.getTransmitterGroup();
 
-                if (validateTransmitter()) {
-                    if (!prevIsStandalone
-                            && STANDALONE.equals(grpNameCbo.getText())) {
-                        saveGroup = true;
-                        group = new TransmitterGroup();
-                    }
-
-                    if (type == TransmitterEditType.NEW_TRANSMITTER) {
-                        transmitter = new Transmitter();
-                    }
-                    transmitter.setCallSign(this.callSignTxt.getText().trim());
-                    Integer dac = null;
-                    if (this.dacCombo.getSelectionIndex() > 0) {
-                        dac = dacDataManager.getDacIdByName(this.dacCombo
-                                .getText());
-                    }
-
-                    if (((dac == null) && (group.getDac() != null))
-                            || ((dac != null) && !dac.equals(group.getDac()))) {
-                        group.setDac(dac);
-                        saveGroup = true;
-                    }
-
-                    if (programCombo.getSelectionIndex() > 0) {
-                        @SuppressWarnings("unchecked")
-                        List<ProgramSummary> progList = (List<ProgramSummary>) programCombo
-                                .getData();
-                        ProgramSummary p = progList.get(programCombo
-                                .getSelectionIndex() - 1);
-                        ProgramSummary origProgram = group.getProgramSummary();
-
-                        if ((origProgram == null)
-                                || (p.getId() != origProgram.getId())) {
-                            group.setProgramSummary(p);
-                            saveGroup = true;
-                        }
-                    } else if (group.getProgramSummary() != null) {
-                        /*
-                         * None selected and a program used to assigned
-                         */
-                        group.setProgramSummary(null);
-                        saveGroup = true;
-                    }
-
-                    Integer selectedPort = null;
-                    if (this.dacPortCbo.getSelectionIndex() > 0) {
-                        selectedPort = Integer.parseInt(this.dacPortCbo
-                                .getText());
-                    }
-
-                    transmitter.setDacPort(selectedPort);
-                    transmitter.setFipsCode(this.fipsTxt.getText().trim());
-                    transmitter.setFrequency(Float.parseFloat(this.frequencyTxt
-                            .getText().trim()));
-                    transmitter.setLocation(locationTxt.getText().trim());
-                    transmitter.setMnemonic(this.mnemonicTxt.getText().trim());
-                    transmitter.setName(this.transmitterNameTxt.getText()
-                            .trim());
-                    transmitter.setServiceArea(this.serviceAreaTxt.getText()
-                            .trim());
-                    transmitter.setTransmitterGroup(group);
-                    transmitter.setTxMode(this.previousTransmitter.getTxMode());
-                    transmitter.setTxStatus(this.previousTransmitter
-                            .getTxStatus());
+                if (validateTransmitter(transToBeSaved)) {
+                    saveGroup = checkGroupUpdate(tg);
 
                     if (!saveGroup) {
                         // Save the transmitter
                         try {
-                            if (prevIsStandalone && !group.isStandalone()) {
-                                TransmitterGroup saGroup = previousTransmitter
-                                        .getTransmitterGroup();
-                                transmitter = dataManager
+                            if (group.isStandalone() && !tg.isStandalone()) {
+                                transToBeSaved = dataManager
                                         .saveTransmitterDeleteGroup(
-                                                transmitter, saGroup);
-                                setReturnValue(transmitter);
+                                                transToBeSaved, group);
+                                setReturnValue(transToBeSaved);
                                 return true;
                             } else {
-                                saveGroup = checkGroupUpdate();
-                                if (!saveGroup) {
-                                    transmitter = dataManager
-                                            .saveTransmitter(transmitter);
-                                    setReturnValue(transmitter);
-                                    return true;
-                                }
+                                transToBeSaved = dataManager
+                                        .saveTransmitter(transToBeSaved);
+                                setReturnValue(transToBeSaved);
+                                return true;
                             }
                         } catch (Exception e) {
                             statusHandler.error("Error saving transmitter "
@@ -955,70 +846,22 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 }
             }
 
-            // TODO Fix validation on transmitter group program change
-            // This causes validation failure because a group with that
-            // name already exists
             if ((TransmitterEditType.NEW_TRANSMITTER_GROUP == type)
                     || (TransmitterEditType.EDIT_TRANSMITTER_GROUP == type)
                     || saveGroup) {
-                if (validateGroup()) {
-                    if ((type == TransmitterEditType.NEW_TRANSMITTER_GROUP)
-                            || (type == TransmitterEditType.NEW_TRANSMITTER)) {
-                        group = new TransmitterGroup();
-                    }
+                if (tg == null) {
+                    tg = getSelectedTransmitterGroup();
+                }
 
-                    if ((type == TransmitterEditType.NEW_TRANSMITTER)
-                            || (type == TransmitterEditType.EDIT_TRANSMITTER)) {
-                        group.setName(mnemonicTxt.getText().trim());
-                    } else {
-                        group.setName(grpNameValueTxt.getText().trim());
-                    }
-                    Integer dac = null;
-                    if (dacCombo.getSelectionIndex() > 0) {
-                        dac = dacDataManager.getDacIdByName(dacCombo.getText());
-                    }
-                    group.setDac(dac);
-                    TimeZone groupTz = BMHTimeZone.getTimeZoneFromUI(
-                            timeZoneCbo.getText(), !noDstChk.getSelection());
-                    group.setTimeZone(groupTz.getID());
-                    group.setDeadAirAlarm(!this.disableSilenceChk
-                            .getSelection());
-
-                    if (programCombo.getSelectionIndex() > 0) {
-                        @SuppressWarnings("unchecked")
-                        List<ProgramSummary> progList = (List<ProgramSummary>) programCombo
-                                .getData();
-                        ProgramSummary p = progList.get(programCombo
-                                .getSelectionIndex() - 1);
-                        ProgramSummary origProgram = group.getProgramSummary();
-
-                        if ((origProgram == null)
-                                || (p.getId() != origProgram.getId())) {
-                            group.setProgramSummary(p);
-                            saveGroup = true;
-                        }
-                    } else if (group.getProgramSummary() != null) {
-                        /*
-                         * None selected and a program used to assigned
-                         */
-                        group.setProgramSummary(null);
-                        saveGroup = true;
-                    }
-
+                if (validateGroup(tg)) {
                     try {
-                        if (transmitter != null) {
-                            group.addTransmitter(transmitter);
-                            if (saveGroup) {
-                                transmitter.setTransmitterGroup(group);
-                            }
-                        }
                         List<TransmitterGroup> savedGroup = dataManager
-                                .saveTransmitterGroup(group);
+                                .saveTransmitterGroup(tg);
                         if ((savedGroup != null) && !savedGroup.isEmpty()) {
-                            group = savedGroup.get(0);
+                            tg = savedGroup.get(0);
                         }
 
-                        setReturnValue(group);
+                        setReturnValue(tg);
                         return true;
                     } catch (Exception e) {
                         statusHandler.error("Error saving transmitter.", e);
@@ -1041,23 +884,38 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      * @return true if changes to group values
      * @throws Exception
      */
-    private boolean checkGroupUpdate() {
-        TimeZone tz = BMHTimeZone.getTimeZoneFromUI(timeZoneCbo.getText(),
-                !noDstChk.getSelection());
-        if (!tz.getID().equals(group.getTimeZone())) {
-            return true;
-        }
-        if (disableSilenceChk.getSelection() != !group.getDeadAirAlarm()) {
-            return true;
-        }
-
-        ProgramSummary groupProgram = group.getProgramSummary();
-        if (groupProgram == null) {
-            if (programCombo.getSelectionIndex() > 0) {
+    private boolean checkGroupUpdate(TransmitterGroup tg) {
+        if (tg.isStandalone()) {
+            if (!tg.getName().equals(group.getName())) {
                 return true;
             }
-        } else if (!programCombo.getText().equals(groupProgram.getName())) {
-            return true;
+
+            if (!tg.getTimeZone().equals(group.getTimeZone())) {
+                return true;
+            }
+
+            if (tg.getDeadAirAlarm() != (group.getDeadAirAlarm())) {
+                return true;
+            }
+
+            ProgramSummary groupProgram = group.getProgramSummary();
+            if (groupProgram == null) {
+                if (programCombo.getSelectionIndex() > 0) {
+                    return true;
+                }
+            } else if (!programCombo.getText().equals(groupProgram.getName())) {
+                return true;
+            }
+
+            Integer dac = group.getDac();
+            if (dac == null) {
+                if (tg.getDac() != null) {
+                    return true;
+                }
+            } else if (!dac.equals(tg.getDac())) {
+                return true;
+            }
+
         }
         return false;
     }
@@ -1068,12 +926,12 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      * @return true if all valid
      * @throws Exception
      */
-    private boolean validateGroup() throws Exception {
+    private boolean validateGroup(TransmitterGroup tg) throws Exception {
         boolean valid = true;
         StringBuilder sb = new StringBuilder(
                 "The following fields are incorrect:\n\n");
         if (type == TransmitterEditType.NEW_TRANSMITTER_GROUP) {
-            if (grpNameValueTxt.getText().trim().length() == 0) {
+            if (tg.getName().trim().length() == 0) {
                 valid = false;
                 sb.append("\tGroup Name\n");
             }
@@ -1092,38 +950,26 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         // Reset the message buffer
         sb.setLength(0);
 
-        String grpName = null;
-        if ((type == TransmitterEditType.NEW_TRANSMITTER)
-                || (type == TransmitterEditType.EDIT_TRANSMITTER)) {
-            grpName = grpNameCbo.getText();
-        } else if ((type == TransmitterEditType.NEW_TRANSMITTER_GROUP)
-                || (type == TransmitterEditType.EDIT_TRANSMITTER_GROUP)) {
-            grpName = grpNameValueTxt.getText().trim();
-        }
+        String grpName = tg.getName();
 
-        if (group != null) {
-            if (!grpName.equals(group.getName())) {
-                if (type != TransmitterEditType.EDIT_TRANSMITTER) {
-                    for (String name : getGroupNames()) {
-                        if (name.equals(grpName)) {
-                            valid = false;
-                            sb.append("The Transmitter Group name must be unique\n");
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (!grpName.equals(group.getName())) {
-                List<Transmitter> transmitterList = dataManager
-                        .getTransmitters();
-                transmitterList.remove(previousTransmitter);
-                for (Transmitter t : transmitterList) {
-                    if (t.getMnemonic().equals(grpName)) {
+        if (!grpName.equals(group.getName())) {
+            if (type != TransmitterEditType.EDIT_TRANSMITTER) {
+                for (String name : getGroupNames()) {
+                    if (name.equals(grpName)) {
                         valid = false;
                         sb.append("The Transmitter Group name must be unique\n");
                         break;
                     }
+                }
+            }
+
+            List<Transmitter> transmitterList = dataManager.getTransmitters();
+            transmitterList.remove(transmitter);
+            for (Transmitter t : transmitterList) {
+                if (t.getMnemonic().equals(grpName)) {
+                    valid = false;
+                    sb.append("The Transmitter Group name must be unique\n");
+                    break;
                 }
             }
         }
@@ -1143,7 +989,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      * @return true if all valid
      * @throws Exception
      */
-    private boolean validateTransmitter() throws Exception {
+    private boolean validateTransmitter(Transmitter transToBeSaved)
+            throws Exception {
         boolean valid = true;
         StringBuilder sb = new StringBuilder(
                 "The following fields are incorrect:\n\n");
@@ -1218,49 +1065,36 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         sb.setLength(0);
 
         // Check for valid DAC and port.
-        if (dacPortCbo.getSelectionIndex() > 0) {
-            Integer dac = dacDataManager
-                    .getDacIdByName(this.dacCombo.getText());
-            Integer dacPort = new Integer(dacPortCbo.getText());
+        if (transToBeSaved.getDacPort() != null) {
+            TransmitterGroup selGroup = transToBeSaved.getTransmitterGroup();
+            Integer dac = transToBeSaved.getTransmitterGroup().getDac();
+            Integer dacPort = transToBeSaved.getDacPort();
             List<TransmitterGroup> groups = dataManager.getTransmitterGroups();
 
-            TransmitterGroup selGroup = null;
-            String grpName = null;
-            if (grpNameCbo.getSelectionIndex() == 0) {
-                grpName = mnemonicTxt.getText().trim();
-            } else {
-                grpName = grpNameCbo.getText();
-            }
-
-            for (TransmitterGroup grp : groups) {
-                if (grpName.equals(grp.getName())) {
-                    selGroup = grp;
-                    break;
-                }
-            }
-
-            // Check that DAC port not in use in some other group.
-            for (TransmitterGroup grp : groups) {
-                if ((selGroup == null) || !grp.equals(selGroup)) {
-                    if (dac.equals(grp.getDac())) {
-                        for (Transmitter trans : grp.getTransmitterList()) {
-                            if (!trans.equals(previousTransmitter)
-                                    && dacPort.equals(trans.getDacPort())) {
-                                valid = false;
-                                if (grp.isStandalone()) {
-                                    sb.append(
-                                            "DAC's Port already in use by stand alone transmitter ")
-                                            .append(trans.getMnemonic())
-                                            .append(".\n");
-                                } else {
-                                    sb.append(
-                                            "DAC's Port already in use by transmitter ")
-                                            .append(trans.getMnemonic())
-                                            .append(" in group ")
-                                            .append(grp.getName())
-                                            .append(".\n");
+            if (dac != null) {
+                // Check that DAC port not in use in some other group.
+                for (TransmitterGroup grp : groups) {
+                    if (!grp.equals(selGroup)) {
+                        if (dac.equals(grp.getDac())) {
+                            for (Transmitter trans : grp.getTransmitterList()) {
+                                if (!trans.equals(transmitter)
+                                        && dacPort.equals(trans.getDacPort())) {
+                                    valid = false;
+                                    if (grp.isStandalone()) {
+                                        sb.append(
+                                                "DAC's Port already in use by stand alone transmitter ")
+                                                .append(trans.getMnemonic())
+                                                .append(".\n");
+                                    } else {
+                                        sb.append(
+                                                "DAC's Port already in use by transmitter ")
+                                                .append(trans.getMnemonic())
+                                                .append(" in group ")
+                                                .append(grp.getName())
+                                                .append(".\n");
+                                    }
+                                    break;
                                 }
-                                break;
                             }
                         }
                     }
@@ -1268,9 +1102,9 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             }
 
             // Check for valid FIPS code
-            if (valid && (selGroup != null)) {
+            if (valid) {
                 for (Transmitter trans : selGroup.getTransmitterList()) {
-                    if (!trans.equals(previousTransmitter)
+                    if (!trans.equals(transToBeSaved)
                             && dacPort.equals(trans.getDacPort())) {
                         String fips = this.fipsTxt.getText().trim();
                         if (fips.length() == 0) {
@@ -1304,35 +1138,31 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     }
                 }
             }
-        }
 
-        /*
-         * Check for port reuse, cannot have more than one transmitter on a port
-         * unless they're daisy chained
-         */
-        if (group != null) {
+            /*
+             * Check for port reuse, cannot have more than one transmitter on a
+             * port unless they're daisy chained
+             */
             List<Integer> portList = new ArrayList<Integer>();
-            for (Transmitter t : group.getTransmitters()) {
-                portList.add(t.getDacPort());
+            for (Transmitter t : transToBeSaved.getTransmitterGroup()
+                    .getTransmitters()) {
+                if (!t.equals(transToBeSaved)) {
+                    portList.add(t.getDacPort());
+                }
             }
-            // Remove this transmitters port
-            portList.remove(transmitter.getDacPort());
 
-            if (dacPortCbo.getSelectionIndex() > 0) {
-                Integer selectedPort = Integer.parseInt(dacPortCbo.getText());
-                if (portList.contains(selectedPort)) {
-                    String msg = "The selected port is already in use by "
-                            + "another transmitter.  Are these transmitters daisy chained?";
+            if (portList.contains(dacPort)) {
+                String msg = "The selected port is already in use by "
+                        + "another transmitter.  Are these transmitters daisy chained?";
 
-                    int answer = DialogUtility.showMessageBox(getShell(),
-                            SWT.ICON_QUESTION | SWT.YES | SWT.NO,
-                            "Daisy Chained", msg);
-                    if (answer == SWT.NO) {
-                        msg = "The transmitters must be daisy chained in order to be on "
-                                + "the same port.\n\nPlease select another port.\n";
-                        valid = false;
-                        sb.append(msg + "\n");
-                    }
+                int answer = DialogUtility.showMessageBox(getShell(),
+                        SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Daisy Chained",
+                        msg);
+                if (answer == SWT.NO) {
+                    msg = "The transmitters must be daisy chained in order to be on "
+                            + "the same port.\n\nPlease select another port.\n";
+                    valid = false;
+                    sb.append(msg + "\n");
                 }
             }
         }
@@ -1340,7 +1170,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         // Check for duplicate mnemonic
         List<Transmitter> transmitterList = dataManager.getTransmitters();
 
-        // Remove the current transmitter
+        // Remove the previous transmitter
         transmitterList.remove(transmitter);
         for (Transmitter t : transmitterList) {
             if (t.getMnemonic().equals(mnemonic)) {
@@ -1351,41 +1181,16 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         }
 
         if (grpNameCbo.getSelectionIndex() > 0) {
-            String grpName = group.getName();
+            String grpName = grpNameCbo.getText();
 
             if (grpName.equals(mnemonicTxt.getText().trim())) {
-                if (group.getTransmitters().size() > 1) {
+                if (transToBeSaved.getTransmitterGroup().getTransmitters()
+                        .size() > 1) {
                     valid = false;
                     String msg = "Transmitter cannot have same mnemonic as the "
                             + "group unless there is only one transmitter in the group\n";
                     sb.append(msg);
                 }
-            }
-        }
-
-        /*
-         * If only one transmitter in a group then a rename of the transmitter
-         * also renames the group.
-         */
-        if (type == TransmitterEditType.EDIT_TRANSMITTER) {
-            if (!mnemonicTxt.getText().trim()
-                    .equals(this.transmitter.getMnemonic())) {
-                if (prevIsStandalone && (grpNameCbo.getSelectionIndex() == 0)) {
-                    // Rename group too
-                    group.setName(mnemonicTxt.getText().trim());
-                    saveGroup = true;
-                }
-            }
-        }
-
-        else if (type == TransmitterEditType.NEW_TRANSMITTER) {
-            String grpName = grpNameCbo.getText().trim();
-            if (grpName.equals(STANDALONE)) {
-                saveGroup = true;
-            }
-        } else {
-            if (transmitter.getMnemonic().equals(group.getName())) {
-                saveGroup = true;
             }
         }
 
@@ -1461,18 +1266,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         return true;
     }
 
-    private void setTransmitterStatus(TxStatus status) {
-        transmitter.setTxStatus(status);
-        try {
-            if (type != TransmitterEditType.NEW_TRANSMITTER) {
-                transmitter = dataManager.saveTransmitter(transmitter);
-                statusChange.statusChanged();
-            }
-        } catch (Exception e) {
-            statusHandler.error("Error saving Transmitter status change", e);
-        }
-    }
-
     /**
      * Enable the group controls
      * 
@@ -1505,8 +1298,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     /**
      * Set the selection on the Time Zone Combo based on zone value in group.
      */
-    private void populateTimeZoneControls() {
-        String timeZoneID = group.getTimeZone();
+    private void populateTimeZoneControls(TransmitterGroup tg) {
+        String timeZoneID = tg.getTimeZone();
         TimeZone tz = (timeZoneID != null) ? TimeZone.getTimeZone(timeZoneID)
                 : TimeZone.getDefault();
 
@@ -1522,4 +1315,102 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         }
     }
 
+    /**
+     * Returns TransmitterGroup object populated from current selections.
+     * 
+     * @return
+     */
+    @SuppressWarnings("unchecked")
+    private TransmitterGroup getSelectedTransmitterGroup() throws Exception {
+        TransmitterGroup rval = new TransmitterGroup();
+        String groupName = null;
+        boolean populateFromComboBoxes = true;
+
+        if (TransmitterEditType.EDIT_TRANSMITTER_GROUP.equals(type)) {
+            // populate initially from previous group
+            rval = new TransmitterGroup(group);
+            groupName = grpNameValueTxt.getText().trim();
+        } else if (TransmitterEditType.NEW_TRANSMITTER_GROUP.equals(type)) {
+            groupName = grpNameValueTxt.getText().trim();
+        } else if (TransmitterEditType.NEW_TRANSMITTER.equals(type)
+                || TransmitterEditType.EDIT_TRANSMITTER.equals(type)) {
+            groupName = grpNameCbo.getText();
+            if (groupName.equals(STANDALONE)) {
+                groupName = this.mnemonicTxt.getText().trim();
+
+                if (TransmitterEditType.EDIT_TRANSMITTER.equals(type)
+                        && group.isStandalone()) {
+                    // still standalone, populate from previous group
+                    rval = new TransmitterGroup(group);
+                }
+            } else {
+                // pull data from DB
+                populateFromComboBoxes = false;
+                List<TransmitterGroup> groups = dataManager
+                        .getTransmitterGroups();
+                for (TransmitterGroup tg : groups) {
+                    if (tg.getName().equals(groupName)) {
+                        rval = tg;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (populateFromComboBoxes) {
+            rval.setName(groupName);
+            Integer dac = null;
+            if (this.dacCombo.getSelectionIndex() > 0) {
+                dac = dacDataManager.getDacIdByName(this.dacCombo.getText());
+            }
+            rval.setDac(dac);
+            ProgramSummary p = null;
+            if (programCombo.getSelectionIndex() > 0) {
+                List<ProgramSummary> progList = (List<ProgramSummary>) programCombo
+                        .getData();
+                p = progList.get(programCombo.getSelectionIndex() - 1);
+            }
+            rval.setProgramSummary(p);
+            TimeZone groupTz = BMHTimeZone.getTimeZoneFromUI(
+                    timeZoneCbo.getText(), !noDstChk.getSelection());
+            rval.setTimeZone(groupTz.getID());
+            rval.setDeadAirAlarm(!this.disableSilenceChk.getSelection());
+        }
+
+        return rval;
+    }
+
+    /**
+     * Returns Transmitter object populated from current selections.
+     * 
+     * @return
+     */
+    private Transmitter getSelectedTransmitter() throws Exception {
+        Transmitter rval = new Transmitter(transmitter);
+        rval.setCallSign(this.callSignTxt.getText().trim());
+        Integer selectedPort = null;
+        if (this.dacPortCbo.getSelectionIndex() > 0) {
+            selectedPort = Integer.parseInt(this.dacPortCbo.getText());
+        }
+        rval.setDacPort(selectedPort);
+        rval.setFipsCode(this.fipsTxt.getText().trim());
+        rval.setFrequency(Float.parseFloat(this.frequencyTxt.getText().trim()));
+        rval.setLocation(locationTxt.getText().trim());
+        rval.setMnemonic(this.mnemonicTxt.getText().trim());
+        rval.setName(this.transmitterNameTxt.getText().trim());
+        rval.setServiceArea(this.serviceAreaTxt.getText().trim());
+        TransmitterGroup tg = getSelectedTransmitterGroup();
+
+        if (!tg.equals(rval.getTransmitterGroup())) {
+            // set transmitter position within group
+            int maxPosition = 0;
+            for (Transmitter t : tg.getTransmitters()) {
+                maxPosition = Math.max(maxPosition, t.getPosition());
+            }
+
+            rval.setPosition(maxPosition + 1);
+        }
+        tg.addTransmitter(rval);
+        return rval;
+    }
 }

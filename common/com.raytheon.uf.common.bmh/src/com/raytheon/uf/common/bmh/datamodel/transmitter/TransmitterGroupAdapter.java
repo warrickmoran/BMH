@@ -105,7 +105,6 @@ public class TransmitterGroupAdapter implements
         serializer.writeObject(group.getPosition());
         serializer.writeBool(group.getDeadAirAlarm());
         serializer.writeObject(group.getTimeZone());
-        serializer.writeObject(group.getTone());
         serializer.writeDouble(group.getAudioDBTarget());
         serializer.writeObject(group.getProgramSummary());
     }
@@ -127,7 +126,6 @@ public class TransmitterGroupAdapter implements
         tg.setPosition((int) deserializer.readObject());
         tg.setDeadAirAlarm(deserializer.readBool());
         tg.setTimeZone((String) deserializer.readObject());
-        tg.setTone((Tone) deserializer.readObject());
         tg.setAudioDBTarget(deserializer.readDouble());
         tg.setProgramSummary((ProgramSummary) deserializer.readObject());
 
