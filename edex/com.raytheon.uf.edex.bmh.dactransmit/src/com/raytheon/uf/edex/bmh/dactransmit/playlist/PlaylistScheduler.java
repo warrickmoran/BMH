@@ -182,7 +182,8 @@ public final class PlaylistScheduler implements
 
     private final SortedSet<DacPlaylist> activePlaylists;
 
-    private List<DacPlaylistMessageId> currentMessages;
+    private List<DacPlaylistMessageId> currentMessages = Collections
+            .emptyList();;
 
     /**
      * Unplayed interrupt messages. We use a Queue because the playlist
@@ -438,7 +439,7 @@ public final class PlaylistScheduler implements
                 nextMessage = cache.getMessage(messageId);
                 messageIndex = 0;
 
-                getValidPlaylist(nextPlaylist, false);
+                setCurrentPlaylist(nextPlaylist, false);
                 currentMessages = Collections.emptyList();
             } else {
                 mergeFutureToActivePlaylists(expiredPlaylists);
@@ -457,7 +458,7 @@ public final class PlaylistScheduler implements
                                 + " has been updated by future queued playlist "
                                 + nextPlaylist);
 
-                        currentMessages = getValidPlaylist(nextPlaylist, true);
+                        setCurrentPlaylist(nextPlaylist, true);
                     } else {
                         /*
                          * We're going to be swapping playlists, so let's just
@@ -468,8 +469,7 @@ public final class PlaylistScheduler implements
                     }
                 } else if (!activePlaylists.isEmpty()) {
                     nextPlaylist = activePlaylists.first();
-                    currentMessages = getValidPlaylist(nextPlaylist, false);
-                    messageIndex = 0;
+                    setCurrentPlaylist(nextPlaylist, false);
                 } else {
                     return null;
                 }
@@ -504,7 +504,7 @@ public final class PlaylistScheduler implements
 
                 while ((nextMessage == null) && (!activePlaylists.isEmpty())) {
                     nextPlaylist = activePlaylists.first();
-                    currentMessages = getValidPlaylist(nextPlaylist, false);
+                    setCurrentPlaylist(nextPlaylist, false);
                     if (!currentMessages.isEmpty()) {
                         logger.debug("Switching to playlist: "
                                 + nextPlaylist.toString());
@@ -519,7 +519,7 @@ public final class PlaylistScheduler implements
                          * PlaylistSwitchNotification.
                          */
                         nextMessage = cache.getMessage(currentMessages.get(0));
-                        messageIndex = 1;
+                        messageIndex += 1;
                     }
 
                     if (nextMessage == null) {
@@ -687,7 +687,7 @@ public final class PlaylistScheduler implements
 
                     logger.debug("New playlist is an update to current playlist.");
 
-                    currentMessages = getValidPlaylist(newPlaylist, true);
+                    setCurrentPlaylist(newPlaylist, true);
                     activePlaylists.remove(currentPlaylist);
                     activePlaylists.add(newPlaylist);
                     Path old = currentPlaylist.getPath();
@@ -755,86 +755,108 @@ public final class PlaylistScheduler implements
     }
 
     /**
-     * Get a list of messages to play from a new or update {@link DacPlaylist}.
-     * This also sends out a {@link PlaylistSwitchNotification} if any new
-     * messages are scheduled. This method uses
-     * {@link #getValidPlaylist(DacPlaylist, boolean, boolean)}, it first
-     * attempts to get a playlist without forcing and if that fails it tries
-     * again, forcing the scheduling of periodic messages.
+     * Set currentMessages based off a playlist. Handles things like periodic
+     * scheduling, expiration, and merging. This method differs from
+     * {@link #setCurrentPlaylist(DacPlaylist, boolean, boolean)} because it
+     * will attempt to schedule without forcing periodic messages and if that
+     * fails it will force.
      * 
-     * @see PlaylistScheduler#getValidPlaylist(DacPlaylist, boolean, boolean).
-     * 
+     * @param playlist
+     *            The playlsit that should be set.
+     * @param update
+     *            When true the new playlist will be merged with the existing
+     *            playlist to maintain the position in the list.
      */
-    private List<DacPlaylistMessageId> getValidPlaylist(DacPlaylist playlist,
-            boolean update) {
-        List<DacPlaylistMessageId> result = getValidPlaylist(playlist, update,
-                false);
-        if (result.isEmpty()) {
+    private void setCurrentPlaylist(DacPlaylist playlist, boolean update) {
+        boolean result = setCurrentPlaylist(playlist, update, false);
+        if (result == false) {
             /*
-             * If there are only periodic messages. All non-static period
-             * messages will be forcefully scheduled regardless of their
-             * periodicity.
+             * If there are only periodic messages. All periodic messages will
+             * be forcefully scheduled regardless of their periodicity.
              */
-            result = getValidPlaylist(playlist, update, true);
+            setCurrentPlaylist(playlist, update, true);
         }
-        return result;
     }
 
     /**
-     * 
+     * Set currentMessages based off a playlist. Handles things like periodic
+     * scheduling, expiration, and merging.
      * 
      * @param playlist
-     *            the new or updated list of messages that can potnetially be
-     *            played
+     *            The playlsit that should be set.
      * @param update
-     *            When true playlist is treated as an update and merge with
-     *            {@link #currentMessages}
-     * @param forceScheduleNonStaticPeriodic
-     *            set to true as a last resort when a list contains no valid
-     *            nonperiodic messages.
-     * @return a list of messages from the playlist that should be played.
+     *            When true the new playlist will be merged with the existing
+     *            playlist to maintain the position in the list. If an update
+     *            fails to produce new messages then a full refresh will be
+     *            attempted.
+     * @param forceSchedulePeriodic
+     * @return true if this method was able to determine a valid playlist,
+     *         otherwise false. If false is returned the existing playlist will
+     *         continue to play.
      */
-    private List<DacPlaylistMessageId> getValidPlaylist(DacPlaylist playlist,
-            boolean update, boolean forceScheduleNonStaticPeriodic) {
+    private boolean setCurrentPlaylist(DacPlaylist playlist, boolean update,
+            boolean forceSchedulePeriodic) {
         if (!playlist.isValid() && !playlist.isInterrupt()) {
-            return Collections.emptyList();
+            return false;
         }
-        List<DacPlaylistMessageId> recyclable;
-        if (update) {
-            recyclable = currentMessages.subList(0, messageIndex);
-        } else {
-            recyclable = Collections.emptyList();
-        }
+        List<DacPlaylistMessageId> playlistMessages = playlist.getMessages();
 
         /*
-         * Seperate any periodic messages in the playlist from the rest because
-         * they need to be scheduled outside of the typical playlist order.
+         * When doing an update then the past will contain messages that played
+         * already in the current list and also any new messages whose position
+         * is before the currently playing message.
          */
-        SortedMap<Long, DacPlaylistMessageId> periodicMessages = new TreeMap<>();
-        List<DacPlaylistMessageId> unperiodicMessages = new ArrayList<>();
-        for (DacPlaylistMessageId messageId : playlist.getMessages()) {
-            DacPlaylistMessage messageData = cache.getMessage(messageId);
-            if (recyclable.contains(messageId)) {
-                if (!messageData.isPeriodic()
-                        || messageData.getPlayCount() == 1
-                        || (forceScheduleNonStaticPeriodic && !messageData
-                                .isStatic())) {
-                    unperiodicMessages.clear();
+        List<DacPlaylistMessageId> past = Collections.emptyList();
+        if (update && !currentMessages.isEmpty()) {
+            past = new ArrayList<>(messageIndex);
+            List<DacPlaylistMessageId> oldPast = currentMessages.subList(0,
+                    messageIndex);
+            for (DacPlaylistMessageId id : oldPast) {
+                if (playlistMessages.contains(id)) {
+                    past.add(id);
                 }
-            } else {
+            }
+
+            List<DacPlaylistMessageId> newUnperiodicMessages = new ArrayList<>();
+            for (DacPlaylistMessageId messageId : playlistMessages) {
+                int index = past.indexOf(messageId);
+                if (index >= 0) {
+                    past.addAll(index, newUnperiodicMessages);
+                    newUnperiodicMessages.clear();
+                } else {
+                    DacPlaylistMessage messageData = cache
+                            .getMessage(messageId);
+                    if (!messageData.isPeriodic()
+                            || messageData.getPlayCount() == 0
+                            || forceSchedulePeriodic) {
+                        newUnperiodicMessages.add(messageId);
+                    }
+                }
+            }
+        }
+        /* Contains messages that should be scheduled periodically. */
+        SortedMap<Long, DacPlaylistMessageId> periodicMessages = new TreeMap<>();
+        /*
+         * Contains messages that should be scheduled in order(including
+         * periodic messages playing for the first time or forced periodic
+         * message).
+         */
+        List<DacPlaylistMessageId> unperiodicMessages = new ArrayList<>();
+        for (DacPlaylistMessageId id : playlistMessages) {
+            if (!past.contains(id)) {
+                DacPlaylistMessage messageData = cache.getMessage(id);
                 if (messageData.isPeriodic()
-                        && messageData.getPlayCount() >= 1
-                        && (!forceScheduleNonStaticPeriodic || messageData
-                                .isStatic())) {
+                        && messageData.getPlayCount() > 0
+                        && !forceSchedulePeriodic) {
                     long nextPlayTime = messageData.getLastTransmitTime()
                             .getTimeInMillis()
                             + messageData.getPlaybackInterval();
                     while (periodicMessages.containsKey(nextPlayTime)) {
                         nextPlayTime += 1;
                     }
-                    periodicMessages.put(nextPlayTime, messageId);
+                    periodicMessages.put(nextPlayTime, id);
                 } else {
-                    unperiodicMessages.add(messageId);
+                    unperiodicMessages.add(id);
                 }
             }
         }
@@ -843,11 +865,8 @@ public final class PlaylistScheduler implements
         List<MessagePlaybackPrediction> predictions = new ArrayList<>();
         long cycleTime = 0;
         long nextMessageTime = TimeUtil.currentTimeMillis();
-        /*
-         * Anything that happened previously in the playlist will be reported
-         * just as it occurred.
-         */
-        for (DacPlaylistMessageId messageId : recyclable) {
+        /* Any messages in past are included in the current list. */
+        for (DacPlaylistMessageId messageId : past) {
             predictedMessages.add(messageId);
             DacPlaylistMessage messageData = cache.getMessage(messageId);
             predictions.add(new MessagePlaybackPrediction(messageData));
@@ -856,22 +875,21 @@ public final class PlaylistScheduler implements
             try {
                 playbackTime = cache.getPlaybackTime(messageId);
             } catch (NoSoundFileException e) {
-                /*
-                 * I don't this case should ever occur--how would we have played
-                 * a message with no soundFile attribute? Nonetheless, let's
-                 * catch and assume 0ms playback time, for now...
-                 */
                 playbackTime = 0;
                 logger.warn("Message " + messageId
                         + " has no soundFile attribute.");
             }
 
             cycleTime += playbackTime;
-
-            long lastTransmitTime = messageData.getLastTransmitTime()
-                    .getTimeInMillis();
-            if (lastTransmitTime + playbackTime > nextMessageTime) {
-                nextMessageTime = lastTransmitTime + playbackTime;
+            Calendar lastTransmitTime = messageData.getLastTransmitTime();
+            /*
+             * If a message is playing now move the nextMessageTime to after
+             * that message.
+             */
+            if (lastTransmitTime != null
+                    && lastTransmitTime.getTimeInMillis() + playbackTime > nextMessageTime) {
+                nextMessageTime = lastTransmitTime.getTimeInMillis()
+                        + playbackTime;
             }
         }
         for (DacPlaylistMessageId messageId : unperiodicMessages) {
@@ -941,25 +959,21 @@ public final class PlaylistScheduler implements
             }
         }
 
-        if (predictions.size() == recyclable.size()) {
-            if (recyclable.isEmpty()) {
-                return Collections.emptyList();
-            } else if (messageIndex == recyclable.size()) {
+        if (predictions.size() == past.size()) {
+            if (predictions.isEmpty()) {
+                return false;
+            } else if (currentMessages.size() != messageIndex
+                    && messageIndex != predictions.size()) {
                 /*
-                 * At the end of a cycle, just return the existing list and
-                 * don't notify, a new list will be generated at the end of the
-                 * cycle.
+                 * If there are no new messages and the last message isn't
+                 * playing right now then attempt to generate a fresh list
+                 * without recycling.
                  */
-                return recyclable;
-            } else {
-                /*
-                 * If there are no new messages then attempt to generate a fresh
-                 * list without recycling.
-                 */
-                return getValidPlaylist(playlist, false,
-                        forceScheduleNonStaticPeriodic);
+                return setCurrentPlaylist(playlist, false,
+                        forceSchedulePeriodic);
             }
         }
+
         PlaylistSwitchNotification notification = new PlaylistSwitchNotification(
                 playlist.getSuite(), playlist.getTransmitterGroup(),
                 predictions, cycleTime);
@@ -976,7 +990,9 @@ public final class PlaylistScheduler implements
             notification.setPeriodicMessages(periodicPredictions);
         }
         eventBus.post(notification);
-        return predictedMessages;
+        currentMessages = predictedMessages;
+        messageIndex = past.size();
+        return true;
     }
 
     private void expirePlaylists(Collection<DacPlaylist> expiredPlaylists) {
