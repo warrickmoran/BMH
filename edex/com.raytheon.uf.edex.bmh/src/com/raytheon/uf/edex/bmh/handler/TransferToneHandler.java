@@ -51,6 +51,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Dec 10, 2014  3603     bsteffen     Initial creation
+ * Jan 26, 2015  3359     bsteffen     Use site id for same tones.
  * 
  * </pre>
  * 
@@ -105,8 +106,7 @@ public class TransferToneHandler extends
             sameBuilder.addArea(transmitter.getFipsCode());
             sameBuilder.setPurgeTime(0, 30);
             sameBuilder.setEffectiveTime(TimeUtil.newGmtCalendar());
-            // TODO this needs to be read from configuration.
-            sameBuilder.setNwsIcao("K" + SiteUtil.getSite());
+            sameBuilder.setNwsSiteId(SiteUtil.getSite());
 
             try (OutputStream os = Files.newOutputStream(output)) {
                 String onEvent = TRANSMITTER_PRIMARY_ON;

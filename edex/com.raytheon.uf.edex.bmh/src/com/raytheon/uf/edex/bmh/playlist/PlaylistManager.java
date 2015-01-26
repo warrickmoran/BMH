@@ -70,8 +70,6 @@ import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
-import com.raytheon.uf.common.bmh.same.SAMEOriginatorMapper;
-import com.raytheon.uf.common.bmh.same.SAMEStateCodes;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -150,6 +148,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jan 21, 2015  4017     bkowal      Do not attempt to retrieve {@link TransmitterGroup}s
  *                                    that have just been deleted. Purge playlist directories
  *                                    associated with delete groups if the directories exist.
+ * Jan 26, 2015  3359     bsteffen    Use site id for same tones.
+ * 
  * 
  * </pre>
  * 
@@ -180,10 +180,6 @@ public class PlaylistManager implements IContextStateProcessor {
     private TransmitterGroupDao transmitterGroupDao;
 
     private MessageTypeDao messageTypeDao;
-
-    private final SAMEStateCodes stateCodes = new SAMEStateCodes();
-
-    private final SAMEOriginatorMapper originatorMapping = new SAMEOriginatorMapper();
 
     private final IMessageLogger messageLogger;
 
@@ -825,8 +821,6 @@ public class PlaylistManager implements IContextStateProcessor {
 
                     if (!sameTransmitters.isEmpty()) {
                         SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
-                        builder.setOriginatorMapper(originatorMapping);
-                        builder.setStateCodes(stateCodes);
                         builder.setEventFromAfosid(broadcast.getAfosid());
                         Set<String> areaCodeSet = new HashSet<>();
                         if (input.getAreaCodes() != null) {
@@ -892,8 +886,7 @@ public class PlaylistManager implements IContextStateProcessor {
                         }
                         builder.setEffectiveTime(input.getEffectiveTime());
                         builder.setExpireTime(input.getExpirationTime());
-                        // TODO this needs to be read from configuration.
-                        builder.setNwsIcao("K" + SiteUtil.getSite());
+                        builder.setNwsSiteId(SiteUtil.getSite());
                         dac.setSAMEtone(builder.build().toString());
                     }
                 }
