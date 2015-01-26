@@ -87,6 +87,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      to existing groups.
  * Jan 22, 2014     3995   rjpeter     Update to not corrupt internal state if save failed,
  *                                      fix position on new transmitter/group and group change.
+ * Jan 26, 2015     4035   bkowal      Fix Transmitter form validation.
  * </pre>
  * 
  * @author mpduff
@@ -814,6 +815,9 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             TransmitterGroup tg = null;
             if ((type == TransmitterEditType.NEW_TRANSMITTER)
                     || (type == TransmitterEditType.EDIT_TRANSMITTER)) {
+                if (this.validateTransmitterForm() == false) {
+                    return false;
+                }
                 Transmitter transToBeSaved = getSelectedTransmitter();
                 tg = transToBeSaved.getTransmitterGroup();
 
@@ -983,14 +987,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         return valid;
     }
 
-    /**
-     * Validate the Transmitter values
-     * 
-     * @return true if all valid
-     * @throws Exception
-     */
-    private boolean validateTransmitter(Transmitter transToBeSaved)
-            throws Exception {
+    private boolean validateTransmitterForm() {
         boolean valid = true;
         StringBuilder sb = new StringBuilder(
                 "The following fields are incorrect:\n\n");
@@ -1007,6 +1004,12 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 valid = false;
                 sb.append("\tFrequency\n");
             }
+        } else {
+            /*
+             * frequency is still invalid if it has not been specified.
+             */
+            valid = false;
+            sb.append("\tFrequency\n");
         }
 
         if (locationTxt.getText().trim().length() == 0) {
@@ -1054,15 +1057,27 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if (!valid) {
             DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR, "Invalid",
                     sb.toString());
-            return valid;
+            return false;
         }
 
+        return valid;
+    }
+
+    /**
+     * Validate the Transmitter values
+     * 
+     * @return true if all valid
+     * @throws Exception
+     */
+    private boolean validateTransmitter(Transmitter transToBeSaved)
+            throws Exception {
+        boolean valid = true;
+
         /*
-         * Now validate the validity of the settings themselves
+         * Validate the validity of the settings themselves
          */
 
-        // Reset the message buffer
-        sb.setLength(0);
+        StringBuilder sb = new StringBuilder();
 
         // Check for valid DAC and port.
         if (transToBeSaved.getDacPort() != null) {
@@ -1169,6 +1184,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
         // Check for duplicate mnemonic
         List<Transmitter> transmitterList = dataManager.getTransmitters();
+
+        final String mnemonic = this.mnemonicTxt.getText().trim();
 
         // Remove the previous transmitter
         transmitterList.remove(transmitter);
