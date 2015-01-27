@@ -23,7 +23,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Calendar;
 
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +55,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  * Jan 05, 2015 3651       bkowal      Implemented additional {@link IMessageLogger} error
  *                                     logging methods for playlists.
  * Jan 06, 2015  3651      bkowal      Implemented {@link #logDaoError(BMH_ACTIVITY, Object, Throwable)}.
+ * Jan 27, 2015  4037      bkowal      Message identifiers are no longer optional.
  * 
  * </pre>
  * 
@@ -124,7 +124,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logBroadcastActivity(DacPlaylistMessage msg) {
         final String expire = this.getExpirationDate(msg.getExpire());
-        Object[] logDetails = new Object[] { this.getMsgId(msg, false), expire };
+        Object[] logDetails = new Object[] { this.getMsgId(msg), expire };
         this.logActivity(MESSAGE_ACTIVITY.BROADCAST, logDetails);
     }
 
@@ -141,8 +141,8 @@ public class DefaultMessageLogger implements IMessageLogger {
             BroadcastMsg replacedMsg) {
         final String expire = this.getExpirationDate(newMsg.getInputMessage()
                 .getExpirationTime());
-        Object[] logDetails = new Object[] { this.getMsgId(newMsg, false),
-                this.getMsgId(replacedMsg, false),
+        Object[] logDetails = new Object[] { this.getMsgId(newMsg),
+                this.getMsgId(replacedMsg),
                 newMsg.getTransmitterGroup().getName(), expire };
         this.logActivity(MESSAGE_ACTIVITY.REPLACEMENT, logDetails);
     }
@@ -158,8 +158,8 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logCreationActivity(DacPlaylistMessage msg, TransmitterGroup tg) {
         final String expire = this.getExpirationDate(msg.getExpire());
-        Object[] logDetails = new Object[] { this.getMsgId(msg, false),
-                tg.getName(), expire };
+        Object[] logDetails = new Object[] { this.getMsgId(msg), tg.getName(),
+                expire };
         this.logActivity(MESSAGE_ACTIVITY.CREATION, logDetails);
     }
 
@@ -174,7 +174,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     public void logActivationActivity(BroadcastMsg msg) {
         final String expire = this.getExpirationDate(msg.getInputMessage()
                 .getExpirationTime());
-        Object[] logDetails = new Object[] { this.getMsgId(msg, false),
+        Object[] logDetails = new Object[] { this.getMsgId(msg),
                 msg.getTransmitterGroup().getName(), expire };
         this.logActivity(MESSAGE_ACTIVITY.ACTIVATION, logDetails);
     }
@@ -195,11 +195,11 @@ public class DefaultMessageLogger implements IMessageLogger {
         if (toneType == TONE_TYPE.SAME) {
             activity = MESSAGE_ACTIVITY.SAME_TONE;
             logDetails = new Object[] { toneType.toString(),
-                    this.getMsgId(msg, false), msg.getSAMEtone(), expire };
+                    this.getMsgId(msg), msg.getSAMEtone(), expire };
         } else {
             activity = MESSAGE_ACTIVITY.TONE;
             logDetails = new Object[] { toneType.toString(),
-                    this.getMsgId(msg, false), expire };
+                    this.getMsgId(msg), expire };
         }
         this.logActivity(activity, logDetails);
     }
@@ -215,7 +215,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logTriggerActivity(BroadcastMsg msg, DacPlaylist playlist) {
         final String expire = this.getExpirationDate(playlist.getExpired());
-        Object[] logDetails = new Object[] { this.getMsgId(msg, false),
+        Object[] logDetails = new Object[] { this.getMsgId(msg),
                 playlist.toString(), msg.getTransmitterGroup().getName(),
                 expire };
         this.logActivity(MESSAGE_ACTIVITY.TRIGGER, logDetails);
@@ -264,7 +264,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
             InputMessage msg, Throwable e) {
-        this.logError(component, activity, this.getMsgId(msg, true), e);
+        this.logError(component, activity, this.getMsgId(msg), e);
     }
 
     /*
@@ -295,7 +295,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
             ValidatedMessage msg, Throwable e) {
-        this.logError(component, activity, this.getMsgId(msg, true), e);
+        this.logError(component, activity, this.getMsgId(msg), e);
     }
 
     /*
@@ -326,7 +326,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
             BroadcastMsg msg, Throwable e) {
-        this.logError(component, activity, this.getMsgId(msg, true), e);
+        this.logError(component, activity, this.getMsgId(msg), e);
     }
 
     /*
@@ -356,7 +356,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
             LdadMsg msg, Throwable e) {
-        this.logError(component, activity, this.getMsgId(msg, true), e);
+        this.logError(component, activity, this.getMsgId(msg), e);
     }
 
     /*
@@ -387,7 +387,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
             DacPlaylistMessage msg, Throwable e) {
-        this.logError(component, activity, this.getMsgId(msg, true), e);
+        this.logError(component, activity, this.getMsgId(msg), e);
     }
 
     /*
@@ -418,8 +418,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     @Override
     public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
             Playlist playlist, Throwable e) {
-        this.logError(component, activity, this.getIdentifier(playlist, true),
-                e);
+        this.logError(component, activity, this.getIdentifier(playlist), e);
     }
 
     /*
@@ -536,23 +535,15 @@ public class DefaultMessageLogger implements IMessageLogger {
      * 
      * @param msg
      *            the specified {@link DacPlaylistMessage}
-     * @param identify
-     *            boolean indicating whether or not the identification
-     *            {@link String} should identify the message type.
      * @return an identification {@link String}
      */
-    private String getMsgId(DacPlaylistMessage msg, boolean identify) {
+    private String getMsgId(DacPlaylistMessage msg) {
         if (msg == null) {
             throw new IllegalArgumentException(
                     "Required argument msg can not be NULL.");
         }
 
-        String identification = StringUtils.EMPTY;
-        if (identify) {
-            identification = "DacPlaylistMessage ";
-        }
-
-        StringBuilder sb = new StringBuilder(identification + "[id=");
+        StringBuilder sb = new StringBuilder("DacPlaylistMessage [id=");
         sb.append(msg.getBroadcastId());
         sb.append(", afosid=");
         sb.append(msg.getMessageType());
@@ -569,23 +560,15 @@ public class DefaultMessageLogger implements IMessageLogger {
      * 
      * @param msg
      *            the specified {@link BroadcastMsg}
-     * @param identify
-     *            boolean indicating whether or not the identification
-     *            {@link String} should identify the message type.
      * @return an identification {@link String}
      */
-    private String getMsgId(BroadcastMsg msg, boolean identify) {
+    private String getMsgId(BroadcastMsg msg) {
         if (msg == null) {
             throw new IllegalArgumentException(
                     "Required argument msg can not be NULL.");
         }
 
-        String identification = StringUtils.EMPTY;
-        if (identify) {
-            identification = "BroadcastMsg ";
-        }
-
-        StringBuilder sb = new StringBuilder(identification + "[id=");
+        StringBuilder sb = new StringBuilder("BroadcastMsg [id=");
         sb.append(msg.getId());
         sb.append(", afosid=");
         sb.append(msg.getAfosid());
@@ -602,23 +585,15 @@ public class DefaultMessageLogger implements IMessageLogger {
      * 
      * @param msg
      *            the specified {@link InputMessage}
-     * @param identify
-     *            boolean indicating whether or not the identification
-     *            {@link String} should identify the message type.
      * @return an identification {@link String}
      */
-    private String getMsgId(InputMessage msg, boolean identify) {
+    private String getMsgId(InputMessage msg) {
         if (msg == null) {
             throw new IllegalArgumentException(
                     "Required argument msg can not be NULL.");
         }
 
-        String identification = StringUtils.EMPTY;
-        if (identify) {
-            identification = "InputMessage ";
-        }
-
-        StringBuilder sb = new StringBuilder(identification + "[id=");
+        StringBuilder sb = new StringBuilder("InputMessage [id=");
         sb.append(msg.getId());
         sb.append(", afosid=");
         sb.append(msg.getAfosid());
@@ -635,23 +610,15 @@ public class DefaultMessageLogger implements IMessageLogger {
      * 
      * @param msg
      *            the specified {@link ValidatedMessage}
-     * @param identify
-     *            boolean indicating whether or not the identification
-     *            {@link String} should identify the message type.
      * @return an identification {@link String}
      */
-    private String getMsgId(ValidatedMessage msg, boolean identify) {
+    private String getMsgId(ValidatedMessage msg) {
         if (msg == null) {
             throw new IllegalArgumentException(
                     "Required argument msg can not be NULL.");
         }
 
-        String identification = StringUtils.EMPTY;
-        if (identify) {
-            identification = "ValidatedMessage ";
-        }
-
-        StringBuilder sb = new StringBuilder(identification + "[id=");
+        StringBuilder sb = new StringBuilder("ValidatedMessage [id=");
         sb.append(msg.getId());
         sb.append(", afosid=");
         sb.append(msg.getInputMessage().getAfosid());
@@ -668,23 +635,15 @@ public class DefaultMessageLogger implements IMessageLogger {
      * 
      * @param msg
      *            the specified {@link LdadMsg}
-     * @param identify
-     *            boolean indicating whether or not the identification
-     *            {@link String} should identify the message type.
      * @return an identification {@link String}
      */
-    private String getMsgId(LdadMsg msg, boolean identify) {
+    private String getMsgId(LdadMsg msg) {
         if (msg == null) {
             throw new IllegalArgumentException(
                     "Required argument msg can not be NULL.");
         }
 
-        String identification = StringUtils.EMPTY;
-        if (identify) {
-            identification = "LdadMsg ";
-        }
-
-        StringBuilder sb = new StringBuilder(identification + "[id=");
+        StringBuilder sb = new StringBuilder("LdadMsg [id=");
         sb.append(msg.getLdadId());
         sb.append(", afosid=");
         sb.append(msg.getAfosid());
@@ -693,18 +652,13 @@ public class DefaultMessageLogger implements IMessageLogger {
         return sb.toString();
     }
 
-    private String getIdentifier(Playlist playlist, boolean identify) {
+    private String getIdentifier(Playlist playlist) {
         if (playlist == null) {
             throw new IllegalArgumentException(
                     "Required argument playlist can not be NULL.");
         }
 
-        String identification = StringUtils.EMPTY;
-        if (identify) {
-            identification = "Playlist ";
-        }
-
-        StringBuilder sb = new StringBuilder(identification + "[id=");
+        StringBuilder sb = new StringBuilder("Playlist [id=");
         sb.append(playlist.getId());
         sb.append(", transmitterGroup=");
         sb.append(playlist.getTransmitterGroup().getName());
