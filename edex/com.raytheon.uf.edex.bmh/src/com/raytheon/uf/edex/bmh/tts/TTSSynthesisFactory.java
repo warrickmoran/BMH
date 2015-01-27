@@ -19,20 +19,16 @@
  **/
 package com.raytheon.uf.edex.bmh.tts;
 
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import voiceware.libttsapi;
-
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.raytheon.uf.common.bmh.TTSSynthesisException;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
-import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 
@@ -51,6 +47,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  *                                     set bmh tts nfs directory.
  * Oct 2, 2014  3642       bkowal      Made NO_TIMEOUT public.
  * Oct 28, 2014 3759       bkowal      Removed extended TTS Synthesis lockout.
+ * Jan 27, 2015 4026       bkowal      Removed validateServerAvailability.
  * 
  * </pre>
  * 
@@ -68,8 +65,6 @@ public class TTSSynthesisFactory {
     private final String ttsServer;
 
     private final int ttsSynthesisPort;
-
-    private final int ttsStatusPort;
 
     private final int ttsConnectionTimeout;
 
@@ -99,45 +94,15 @@ public class TTSSynthesisFactory {
      *            the total number of synthesizers that are available
      */
     public TTSSynthesisFactory(final String ttsServer,
-            final int ttsSynthesisPort, final int ttsStatusPort,
-            final int ttsConnectionTimeout, final String ttsNfsDir,
-            final int maxConnections) {
+            final int ttsSynthesisPort, final int ttsConnectionTimeout,
+            final String ttsNfsDir, final int maxConnections) {
         this.ttsServer = ttsServer;
         this.ttsSynthesisPort = ttsSynthesisPort;
-        this.ttsStatusPort = ttsStatusPort;
         this.ttsConnectionTimeout = ttsConnectionTimeout;
         this.ttsNfsDir = ttsNfsDir;
         this.executorService = MoreExecutors.listeningDecorator(Executors
                 .newFixedThreadPool(maxConnections * 2));
         this.resourceCounter = new Semaphore(maxConnections, true);
-    }
-
-    /**
-     * Verifies that the TTS Server is running.
-     * 
-     * @return a status indicating whether or not the TTS Server is running.
-     * @throws IOException
-     */
-    public TTS_RETURN_VALUE validateServerAvailability() throws IOException {
-        final libttsapi ttsapi = new libttsapi();
-        int returnCode = ttsapi.ttsRequestStatus(this.ttsServer,
-                this.ttsStatusPort);
-        /*
-         * The return codes associated with the tts status request are slightly
-         * different than the return codes associated with other types of tts
-         * requests. So, the return codes need to be translated to what is used
-         * throughout the TTS Management Capability.
-         */
-        switch (returnCode) {
-        case libttsapi.TTS_SERVICE_OFF:
-        case libttsapi.TTS_SERVICE_PAUSED:
-            return TTS_RETURN_VALUE.TTS_RESULT_ERROR;
-        case libttsapi.TTS_SERVICE_ON:
-            return TTS_RETURN_VALUE.TTS_RESULT_SUCCESS;
-        default:
-            // indicates < 0; one of the standard TTS error codes
-            return TTS_RETURN_VALUE.lookup(returnCode);
-        }
     }
 
     /**
@@ -230,12 +195,5 @@ public class TTSSynthesisFactory {
      */
     public int getTtsSynthesisPort() {
         return ttsSynthesisPort;
-    }
-
-    /**
-     * @return the ttsStatusPort
-     */
-    public int getTtsStatusPort() {
-        return ttsStatusPort;
     }
 }

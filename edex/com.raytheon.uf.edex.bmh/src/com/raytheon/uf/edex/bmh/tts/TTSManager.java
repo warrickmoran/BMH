@@ -95,6 +95,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jan 05, 2015 3651       bkowal      Use {@link IMessageLogger} to log message errors.
  * Jan 26, 2015 4020       bkowal      Determine the actual TTS Host when publishing
  *                                     a TTS Status.
+ * Jan 27, 2015 4026       bkowal      Updated bmh availability verification.
  * 
  * </pre>
  * 
@@ -279,7 +280,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         /*
          * Perform both checks during the initialization validation.
          */
-        this.validateAvailability();
         this.validateSynthesis();
 
         statusHandler.info("TTS Heartbeat Interval is " + this.ttsHeartbeat);
@@ -299,37 +299,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             statusHandler.info("Stopping TTS Server Monitor ...");
             this.heartbeatMonitor.shutdownNow();
         }
-    }
-
-    private void validateAvailability() throws BMHConfigurationException,
-            IOException {
-        int attempt = 0;
-        boolean retry = true;
-        while (retry) {
-            ++attempt;
-            TTS_RETURN_VALUE returnValue = this.synthesisFactory
-                    .validateServerAvailability();
-            boolean connected = returnValue == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS;
-            if ((connected || attempt == 1) && bmhStatusDestination != null) {
-                try {
-                    TTSStatus status = new TTSStatus(InetAddress.getLocalHost()
-                            .getHostName(), InetAddress.getByName(
-                            this.synthesisFactory.getTtsServer())
-                            .getCanonicalHostName(), connected);
-                    EDEXUtil.getMessageProducer().sendAsyncUri(
-                            bmhStatusDestination,
-                            SerializationUtil.transformToThrift(status));
-                } catch (Throwable e) {
-                    statusHandler.error(BMH_CATEGORY.TTS_SOFTWARE_ERROR,
-                            "Unable to send status of TTS", e);
-                }
-            }
-            retry = this.checkRetry(attempt, returnValue);
-        }
-
-        statusHandler.info("Verified the availability of the TTS Server at "
-                + this.synthesisFactory.getTtsServer() + " (Status Port = "
-                + this.synthesisFactory.getTtsStatusPort() + ").");
     }
 
     /**
@@ -361,16 +330,35 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             } catch (TTSSynthesisException e) {
                 statusHandler.error(BMH_CATEGORY.UNKNOWN,
                         "TTS Synthesis validation has failed!", e);
+                this.notifyTTSStatus(false);
                 continue;
             }
 
+            this.notifyTTSStatus((ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS));
             retry = this.checkRetry(attempt, ttsReturn.getReturnValue());
         }
 
         statusHandler.info("Verified the TTS Server at "
                 + this.synthesisFactory.getTtsServer() + " running on Port "
                 + this.synthesisFactory.getTtsSynthesisPort()
-                + " is capable of synthesis.");
+                + " is available.");
+    }
+
+    private void notifyTTSStatus(final boolean connected) {
+        if (this.bmhStatusDestination != null) {
+            try {
+                TTSStatus status = new TTSStatus(InetAddress.getLocalHost()
+                        .getHostName(), InetAddress.getByName(
+                        this.synthesisFactory.getTtsServer())
+                        .getCanonicalHostName(), connected);
+                EDEXUtil.getMessageProducer().sendAsyncUri(
+                        bmhStatusDestination,
+                        SerializationUtil.transformToThrift(status));
+            } catch (Throwable e) {
+                statusHandler.error(BMH_CATEGORY.TTS_SOFTWARE_ERROR,
+                        "Unable to send status of TTS", e);
+            }
+        }
     }
 
     private boolean checkRetry(int attempt, TTS_RETURN_VALUE returnValue) {
@@ -939,7 +927,19 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     @Override
     public void run() {
         try {
-            this.validateAvailability();
+            /**
+             * Port scanning would have been another option. However, we would
+             * just be sending a blank request to the TTS Server that it would
+             * not understand and log as an error. So, it is just better to send
+             * an extremely simple request to the TTS Server that it can handle
+             * correctly without tying up any of the processing threads for a
+             * significant period of time.
+             * 
+             * Checking the running processes for the TTS Server process would
+             * be another option. However, we would be assuming that the TTS
+             * Server was running locally.
+             */
+            this.validateSynthesis();
         } catch (BMHConfigurationException | IOException e) {
             statusHandler
                     .error(BMH_CATEGORY.TTS_SYSTEM_ERROR,

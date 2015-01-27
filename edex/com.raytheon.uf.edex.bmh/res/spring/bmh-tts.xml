@@ -6,7 +6,6 @@
 	<bean id="ttsSynthesisFactory" class="com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory">
 		<constructor-arg value="${bmh.tts.server}" />
 		<constructor-arg value="${bmh.tts.port}" />
-		<constructor-arg value="${bmh.tts.status.port}" />
 		<constructor-arg value="${bmh.tts.connect-timeout}" />
 		<constructor-arg value="${bmh.tts.nfs.dir}" />
 		<constructor-arg value="${bmh.tts.threads}" />
