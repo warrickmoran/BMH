@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.bmh.notify.status;
 
+import org.apache.commons.lang.builder.EqualsBuilder;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -34,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Nov 20, 2014  3817     bsteffen    Initial creation
  * Jan 26, 2015  4020     bkowal      Added {@link #edexHost}.
+ * Jan 27, 2015  4029     bkowal      Added {@link #equals(Object)}.
  * 
  * </pre>
  * 
@@ -94,5 +97,32 @@ public class TTSStatus {
 
     public void setConnected(boolean connected) {
         this.connected = connected;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (obj == this) {
+            return true;
+        }
+        if (obj.getClass() != getClass()) {
+            return false;
+        }
+
+        TTSStatus other = (TTSStatus) obj;
+
+        EqualsBuilder eq = new EqualsBuilder();
+        eq.append(this.edexHost, other.edexHost);
+        eq.append(this.host, other.host);
+        eq.append(this.connected, other.connected);
+
+        return eq.isEquals();
     }
 }

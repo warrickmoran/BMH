@@ -55,6 +55,7 @@ import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
@@ -64,7 +65,6 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.StatusDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterGrpInfo;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
-import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -82,6 +82,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      messages on change.
  * Jan 13, 2015  #3844     bsteffen     Fix dialog disposed error after closing.
  * Jan 26, 2015  #4020     bkowal       Updated {@link #printVizStatusMonitorVariables()}.
+ * Jan 27, 2015  #4029     bkowal       Use {@link BMHJmsDestinations}.
  * 
  * 
  * </pre>
@@ -104,18 +105,6 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
 
     /** The status images for the DAC and transmitters. */
     private StatusImages statusImages;
-
-    /** BMH DAC Status */
-    private final String BMH_DAC_STATUS = "BMH.DAC.Status";
-
-    /** BMH config */
-    private final String BMH_CONFIG = "BMH.Config";
-
-    /** BMH Practice DAC Status */
-    private final String BMH_PRACTICE_DAC_STATUS = "BMH.Practice.DAC.Status";
-
-    /** BMH practice config */
-    private final String BMH_PRACTICE_CONFIG = "BMH.Practice.Config";
 
     /** DAC/Transmitter composite. */
     private Composite dacTransmittersComp = null;
@@ -162,14 +151,10 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
 
     @Override
     protected void disposed() {
-        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
-            NotificationManagerJob.removeObserver(BMH_DAC_STATUS, this);
-            NotificationManagerJob.removeObserver(BMH_CONFIG, this);
-        } else {
-            NotificationManagerJob
-                    .removeObserver(BMH_PRACTICE_DAC_STATUS, this);
-            NotificationManagerJob.removeObserver(BMH_PRACTICE_CONFIG, this);
-        }
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getStatusDestination(), this);
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
 
         // Remove the listener and dispose of the VizStatusMonitor.
         vizStatusMonitor.removeListener(this);
@@ -180,13 +165,10 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
     protected void opened() {
         shell.setMinimumSize(shell.getSize());
 
-        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
-            NotificationManagerJob.addObserver(BMH_DAC_STATUS, this);
-            NotificationManagerJob.addObserver(BMH_CONFIG, this);
-        } else {
-            NotificationManagerJob.addObserver(BMH_PRACTICE_DAC_STATUS, this);
-            NotificationManagerJob.addObserver(BMH_PRACTICE_CONFIG, this);
-        }
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getStatusDestination(), this);
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
     }
 
     @Override
@@ -319,6 +301,7 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
         if (dacTransmittersComp.isDisposed()) {
             return;
         }
+
         /*
          * Repopulate the DAC/Transmitter controls
          */
@@ -338,6 +321,10 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
     }
 
     private void repopulateProcessStatus() {
+        if (this.processStatusGrp.isDisposed()) {
+            return;
+        }
+
         /*
          * Repopulate the Process Status controls
          */
@@ -409,7 +396,6 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
         for (NotificationMessage message : messages) {
             try {
                 Object o = message.getMessagePayload();
-                System.out.println(o.getClass().getName());
                 if ((o instanceof TransmitterGroupConfigNotification)
                         || (o instanceof DacConfigNotification)) {
 
@@ -432,14 +418,6 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
      */
     @Override
     public void systemStatusChanged(BmhComponent component, String key) {
-        // TODO : remove when testing is complete.
-        // System.out.println("System status changed...");
-        // System.out.println(component + " -- " + key + "  "
-        // + new Date().toString());
-
-        // TODO: Need to talk with Ben on how to make sure we are not constantly
-        // updating the display if we don't need to.
-
         if (component == BmhComponent.DAC) {
             VizApp.runAsync(new Runnable() {
                 @Override

@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.bmh.notify.status;
 
+import org.apache.commons.lang.builder.EqualsBuilder;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -32,6 +34,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 31, 2014  #3286     dgilling     Initial creation
+ * Jan 27, 2015  #4029     bkowal       Added {@link #equals(Object)} and {@link #toString()}.
  * 
  * </pre>
  * 
@@ -183,5 +186,99 @@ public final class DacHardwareStatusNotification {
 
     public void setUnrecoverablePacketErrors(int unrecoverablePacketErrors) {
         this.unrecoverablePacketErrors = unrecoverablePacketErrors;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (obj == this) {
+            return true;
+        }
+        if (obj.getClass() != getClass()) {
+            return false;
+        }
+
+        DacHardwareStatusNotification other = (DacHardwareStatusNotification) obj;
+
+        EqualsBuilder eq = new EqualsBuilder();
+        eq.append(this.transmitterGroup, other.transmitterGroup);
+        eq.append(this.psu1Voltage, other.psu1Voltage);
+        eq.append(this.psu2Voltage, other.psu2Voltage);
+        eq.append(this.bufferSize, other.bufferSize);
+        eq.append(this.validChannels, other.validChannels);
+        eq.append(this.outputGain, other.outputGain);
+        eq.append(this.voiceStatus, other.voiceStatus);
+        eq.append(this.recoverablePacketErrors, other.recoverablePacketErrors);
+        eq.append(this.unrecoverablePacketErrors,
+                other.unrecoverablePacketErrors);
+
+        return eq.isEquals();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("DacHardwareStatusNotification [");
+        sb.append("transmitterGroup=").append(this.transmitterGroup);
+        sb.append(", psu1Voltage=").append(this.psu1Voltage);
+        sb.append(", psu2Voltage=").append(this.psu2Voltage);
+        sb.append(", bufferSize=").append(this.bufferSize);
+        if (this.validChannels.length > 0) {
+            sb.append(", validChannels={");
+            boolean first = true;
+            for (int channel : this.validChannels) {
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(", ");
+                }
+                sb.append(channel);
+            }
+            sb.append("}");
+        }
+        if (this.outputGain.length > 0) {
+            sb.append(", outputGain={");
+            boolean first = true;
+            for (double gain : this.outputGain) {
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(", ");
+                }
+                sb.append(gain);
+            }
+            sb.append("}");
+        }
+        if (this.voiceStatus.length > 0) {
+            sb.append(", voiceStatus={");
+            boolean first = true;
+            for (DacVoiceStatus status : this.voiceStatus) {
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(", ");
+                }
+                sb.append(status.toString());
+            }
+            sb.append("}");
+        }
+        sb.append(", recoverablePacketErrors=").append(
+                this.recoverablePacketErrors);
+        sb.append(", unrecoverablePacketErrors=").append(
+                this.unrecoverablePacketErrors);
+        sb.append("]");
+
+        return sb.toString();
     }
 }

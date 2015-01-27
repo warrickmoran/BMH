@@ -95,7 +95,7 @@ public class StatusDataManager {
          * objects. Add each transmitter group info object to the associated DAC
          * or put them in a separate list if they are not associated with a DAC.
          */
-        Set<Integer> updatedDac = new HashSet<>();
+        Set<Integer> updatedDac = new HashSet<>(dacs.size(), 1.0f);
 
         for (TransmitterGroup tg : transmitterGroups) {
             TransmitterGrpInfo tgi = createTransGroupInfo(tg);
@@ -108,27 +108,25 @@ public class StatusDataManager {
 
                     // If the DAC info hasn't been updated then add the DAC
                     // status information.
-                    if (updatedDac.contains(tgDac) == false) {
-                        DacHardwareStatusNotification dhsn = dacStatus.get(tg
-                                .getName());
+                    DacHardwareStatusNotification dhsn = dacStatus.get(tg
+                            .getName());
+                    if (dhsn != null) {
+                        // Check for a silence alarm and flag it so the
+                        // transmitter group and be set
+                        boolean silence = false;
+                        DacVoiceStatus[] dvsArray = dhsn.getVoiceStatus();
 
-                        if (dhsn != null) {
-                            // Check for a silence alarm and flag it so the
-                            // transmitter group and be set
-                            boolean silence = false;
-                            DacVoiceStatus[] dvsArray = dhsn.getVoiceStatus();
-
-                            for (DacVoiceStatus dvs : dvsArray) {
-                                if (dvs != DacVoiceStatus.IP_AUDIO) {
-                                    silence = true;
-                                    break;
-                                }
+                        for (DacVoiceStatus dvs : dvsArray) {
+                            if (dvs != DacVoiceStatus.IP_AUDIO) {
+                                silence = true;
+                                break;
                             }
-                            tgi.setSilenceAlarm(silence);
+                        }
+                        tgi.setSilenceAlarm(silence);
 
+                        if (updatedDac.contains(tgDac) == false) {
                             di.setPsu1Voltage(dhsn.getPsu1Voltage());
                             di.setPsu2Voltage(dhsn.getPsu2Voltage());
-                            di.setBufferSize(dhsn.getBufferSize());
                             updatedDac.add(tgDac);
                         }
                     }

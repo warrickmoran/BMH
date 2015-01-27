@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus;
 
+import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.systemstatus.SystemStatusMonitor;
 import com.raytheon.uf.common.bmh.systemstatus.SystemStatusRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
@@ -32,8 +33,8 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 
 /**
  * 
- * {@link SystemStatusMonitor} implementation which automatically requests current
- * status from edex on construction and monitors jms for status updates.
+ * {@link SystemStatusMonitor} implementation which automatically requests
+ * current status from edex on construction and monitors jms for status updates.
  * 
  * <pre>
  * 
@@ -42,6 +43,8 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Nov 18, 2014  3817     bsteffen    Initial creation
+ * Jan 27, 2015  4029     bkowal      Added {@link #updateDacHardwareStatus(DacHardwareStatusNotification)}
+ *                                    to override the buffer size.
  * 
  * </pre>
  * 
@@ -73,6 +76,24 @@ public class VizStatusMonitor extends SystemStatusMonitor implements
         }
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.bmh.systemstatus.SystemStatusMonitor#
+     * updateDacHardwareStatus
+     * (com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification)
+     */
+    @Override
+    protected void updateDacHardwareStatus(
+            DacHardwareStatusNotification dacStatus) {
+        /*
+         * Viz status does not utilize the buffer field. So, we do not want to
+         * trigger status updates whenever the buffer size changes.
+         */
+        dacStatus.setBufferSize(0);
+        super.updateDacHardwareStatus(dacStatus);
+    }
+
     public void dispose() {
         NotificationManagerJob.removeObserver(
                 BMHJmsDestinations.getStatusDestination(), this);
@@ -81,7 +102,8 @@ public class VizStatusMonitor extends SystemStatusMonitor implements
 
     private static SystemStatusMonitor requestStatus() {
         try {
-            return (SystemStatusMonitor) BmhUtils.sendRequest(new SystemStatusRequest());
+            return (SystemStatusMonitor) BmhUtils
+                    .sendRequest(new SystemStatusRequest());
         } catch (Exception e) {
             statusHandler
                     .error("An error has occured getting bmh system status, status will be unknown until updates are received.",

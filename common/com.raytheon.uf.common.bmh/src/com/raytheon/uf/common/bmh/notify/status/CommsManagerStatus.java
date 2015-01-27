@@ -22,6 +22,8 @@ package com.raytheon.uf.common.bmh.notify.status;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.commons.lang.builder.EqualsBuilder;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -37,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Nov 18, 2014  3817     bsteffen    Initial creation
  * Dec 05, 2014  3287     lvenable    Check for null when retrieving connectedTransmitterGroups.
+ * Jan 27, 2015  4029     bkowal      Added {@link #equals(Object)}.
  * 
  * </pre>
  * 
@@ -90,4 +93,25 @@ public class CommsManagerStatus extends PeriodicStatusMessage {
         return connectedTransmitterGroups.contains(connectedTransmitterGroup);
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.common.bmh.notify.status.PeriodicStatusMessage#equals
+     * (java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (super.equals(obj) == false) {
+            return false;
+        }
+
+        CommsManagerStatus other = (CommsManagerStatus) obj;
+
+        EqualsBuilder eq = new EqualsBuilder();
+        eq.append(this.connectedTransmitterGroups,
+                other.connectedTransmitterGroups);
+
+        return eq.isEquals();
+    }
 }

@@ -53,6 +53,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  * ------------ ---------- ----------- --------------------------
  * Nov 17, 2014  3349      lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Additional status updates.
+ * Jan 27, 2015  4029      bkowal       Buffer size is now included in
+ *                                      the tooltip.
  * 
  * </pre>
  * 
@@ -226,10 +228,9 @@ public class DacStatusComp extends Composite {
         sb.append("PSU1 Voltage : ")
                 .append(getVoltageDisplay(dacInfo.getPsu1Voltage()))
                 .append("\n");
-        sb.append("PSU1 Voltage : ")
+        sb.append("PSU2 Voltage : ")
                 .append(getVoltageDisplay(dacInfo.getPsu2Voltage()))
                 .append("\n");
-        sb.append("Buffer Size  : ").append(dacInfo.getBufferSize());
 
         new CustomToolTip(lbl, sb.toString());
     }

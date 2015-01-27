@@ -39,6 +39,7 @@ import java.util.TreeMap;
  * Nov 23, 2014  #3287     lvenable     Added addition DAC information.
  * Dec 09, 2014  #3910     lvenable     Added null check for DAC port number.
  * Jan 22, 2015  3995      rjpeter      Remove repeat message when DAC has no transmitters.
+ * Jan 27, 2015  4029      bkowal       Removed buffer size.
  * </pre>
  * 
  * @author lvenable
@@ -60,9 +61,6 @@ public class DacInfo {
 
     /** Power supply unit two voltage. */
     private Double psu2Voltage = 0.0;
-
-    /** DAC buffer size. */
-    private Integer bufferSize = 0;
 
     /** List of transmitter group information. */
     private final SortedMap<Integer, TransmitterGrpInfo> transmitterGrpInfoMap = new TreeMap<Integer, TransmitterGrpInfo>();
@@ -154,13 +152,5 @@ public class DacInfo {
             return;
         }
         this.psu2Voltage = psu2Voltage;
-    }
-
-    public Integer getBufferSize() {
-        return bufferSize;
-    }
-
-    public void setBufferSize(Integer bufferSize) {
-        this.bufferSize = bufferSize;
     }
 }
