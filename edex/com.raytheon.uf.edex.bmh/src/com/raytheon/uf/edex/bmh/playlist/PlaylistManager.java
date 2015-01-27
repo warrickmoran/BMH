@@ -149,6 +149,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    that have just been deleted. Purge playlist directories
  *                                    associated with delete groups if the directories exist.
  * Jan 26, 2015  3359     bsteffen    Use site id for same tones.
+ * Jan 27, 2015  4036     bsteffen    Fix creation of general playlists.
  * 
  * 
  * </pre>
@@ -538,6 +539,9 @@ public class PlaylistManager implements IContextStateProcessor {
                     } else {
                         return;
                     }
+                } else {
+                    mergeMessage(playlist, msg,
+                            new HashMap<String, Set<String>>());
                 }
             } else {
                 playlist.refresh();
