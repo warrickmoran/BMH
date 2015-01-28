@@ -42,7 +42,6 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.data.DictionaryManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter.WordType;
 import com.raytheon.uf.viz.bmh.ui.dialogs.phonemes.PhonemesEditorDlg;
-import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
 
 /**
  * Composite for building phonemes.
@@ -55,6 +54,7 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * ------------ ---------- ----------- --------------------------
  * Jun 25, 2014    3355    mpduff      Initial creation
  * Sep 10, 2014    3355    mpduff      Make Combo boxes readonly
+ * Jan 28, 2015    4045    bkowal      Use the new {@link DictionaryManager} constructor.
  * 
  * </pre>
  * 
@@ -304,7 +304,7 @@ public class BuilderComposite extends Composite {
             public void widgetSelected(SelectionEvent e) {
                 PhonemesEditorDlg dlg = new PhonemesEditorDlg(getShell(), "",
                         "Pronunciation", phonemeTextFld.getText(),
-                        new DictionaryManager(new NeoSpeechPhonemeMapping()));
+                        new DictionaryManager());
                 String phonemeText = (String) dlg.open();
                 if (phonemeText != null) {
                     phonemeTextFld.setText(phonemeText);
@@ -373,7 +373,7 @@ public class BuilderComposite extends Composite {
             BmhUtils.playText(toPlay);
         } else if (bt == BuilderType.Phoneme) {
             text = phonemeTextFld.getText();
-            BmhUtils.playAsPhoneme(text);
+            BmhUtils.playAsPhoneme(this.getShell(), text);
         }
     }
 

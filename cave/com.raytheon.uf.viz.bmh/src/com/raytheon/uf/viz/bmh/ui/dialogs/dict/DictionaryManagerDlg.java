@@ -61,7 +61,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
-import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
 
 /**
  * Main dialog for managing BMH dictionaries.
@@ -84,6 +83,7 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * Jan 05, 2014  3618      bkowal      Specify the {@link Dictionary} for deletion.
  * Jan 06, 2015  3931      bkowal      Implemented {@link Dictionary} export.
  * Jan 07, 2014  3931      bkowal      Implemented a {@link Dictionary} import capability.
+ * Jan 28, 2015  4045      bkowal      Use the new {@link DictionaryManager} constructor.
  * 
  * </pre>
  * 
@@ -162,8 +162,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
                 SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
                         | CAVE.DO_NOT_BLOCK);
         setText(DlgInfo.MANAGE_DICTIONARIES.getTitle());
-        NeoSpeechPhonemeMapping phonemeMapping = new NeoSpeechPhonemeMapping();
-        dictionaryManager = new DictionaryManager(phonemeMapping);
+        dictionaryManager = new DictionaryManager();
     }
 
     @Override

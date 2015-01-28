@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * NeoSpeech Phoneme data object.
@@ -36,6 +37,8 @@ import java.util.Set;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2014   3355     mpduff      Initial creation
+ * Jan 28, 2015   4045     bkowal      Made {@link NeoSpeechPhonemeMapping} an instance
+ *                                     and added phoneme validation methods.
  * 
  * </pre>
  * 
@@ -44,6 +47,8 @@ import java.util.Set;
  */
 
 public class NeoSpeechPhonemeMapping {
+
+    private static final NeoSpeechPhonemeMapping instance = new NeoSpeechPhonemeMapping();
 
     /**
      * Consonant map
@@ -65,10 +70,16 @@ public class NeoSpeechPhonemeMapping {
      */
     private List<String> consonantList;
 
+    private Pattern cmuPhonemePattern;
+
+    public static NeoSpeechPhonemeMapping getInstance() {
+        return instance;
+    }
+
     /**
      * Constructor
      */
-    public NeoSpeechPhonemeMapping() {
+    protected NeoSpeechPhonemeMapping() {
         bmhConsonantMap = new HashMap<Character, String>();
         bmhVowelMap = new HashMap<Character, String>();
         populatePhonemes();
@@ -139,6 +150,85 @@ public class NeoSpeechPhonemeMapping {
         }
 
         this.consonantList = new ArrayList<String>(set);
+
+        /*
+         * Build a regex for the cmu phonemes.
+         */
+        final String spaceRegex = "[\\s]+";
+        final String stressNumericRegex = "[0-2]";
+        final String separatorRegex = "|";
+        final String lParensRegex = "(";
+        final String rParensRegex = ")";
+
+        StringBuilder sb = new StringBuilder("^");
+
+        /*
+         * build the vowel regex.
+         */
+        StringBuilder vowelRegex = new StringBuilder(lParensRegex);
+        boolean first = true;
+        for (String vowel : this.vowelList) {
+            if (first) {
+                first = false;
+            } else {
+                vowelRegex.append(separatorRegex);
+            }
+            vowelRegex.append(vowel);
+        }
+        vowelRegex.append(rParensRegex);
+
+        /*
+         * build the consonant regex.
+         */
+        StringBuilder consonantRegex = new StringBuilder(lParensRegex);
+        first = true;
+        for (String consonant : this.consonantList) {
+            if (first) {
+                first = false;
+            } else {
+                consonantRegex.append(separatorRegex);
+            }
+            consonantRegex.append(consonant);
+        }
+        consonantRegex.append(rParensRegex);
+
+        /*
+         * build the final regex {@link String}.
+         */
+        sb.append(lParensRegex).append(lParensRegex);
+        /*
+         * there can be zero or many phonemes at the beginning of the regex that
+         * must be separated by a space (each phoneme would end with a space).
+         */
+        sb.append(vowelRegex.toString()).append(stressNumericRegex);
+        sb.append(separatorRegex).append(consonantRegex.toString())
+                .append(rParensRegex);
+        sb.append(spaceRegex).append(rParensRegex).append("*");
+        /*
+         * the phoneme at the end of the regex will not be delimited by a space.
+         */
+        sb.append(lParensRegex).append(lParensRegex);
+        sb.append(vowelRegex.toString()).append(stressNumericRegex);
+        sb.append(rParensRegex).append(separatorRegex);
+        sb.append(consonantRegex.toString());
+        sb.append(rParensRegex).append("$");
+
+        this.cmuPhonemePattern = Pattern.compile(sb.toString());
+    }
+
+    /**
+     * Verifies that the specified phoneme is a valid phoneme.
+     * 
+     * @param text
+     *            the specific phoneme
+     * @return true, if the specified phoneme is valid; false, otherwise.
+     */
+    public boolean isValidPhoneme(String text) {
+        /*
+         * Do we want to determine which portion of the phoneme text is invalid
+         * and include it in the invalid phoneme message?
+         */
+        return this.cmuPhonemePattern.matcher(text.trim()).matches();
     }
 
     public Map<Character, String> getVowelMap() {

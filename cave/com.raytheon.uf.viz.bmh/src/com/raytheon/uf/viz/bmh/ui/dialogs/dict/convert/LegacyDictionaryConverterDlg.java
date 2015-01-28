@@ -61,7 +61,6 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.NewDictionaryDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.PronunciationBuilderDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter.WordType;
-import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -81,6 +80,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Sep 10, 2014     3355   mpduff      Made Dictionary combo readonly, post demo cleanup
  * Oct 11, 2014     3704   mpduff      Set neoPhoneme field when selecting a word in the table.
  * Oct 27, 2014     3765   mpduff      Generated phoneme persists through selected dictionary changes.
+ * Jan 28, 2015     4045   bkowal      Use the new {@link DictionaryManager} and
+ *                                     {@link LegacyDictionaryConverter} constructors.
  * 
  * </pre>
  * 
@@ -189,9 +190,8 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
         setText("Legacy Dictionary Converter");
 
         dictionaryFile = new File(dictionaryPath);
-        NeoSpeechPhonemeMapping voice = new NeoSpeechPhonemeMapping();
-        dictionaryManager = new DictionaryManager(voice);
-        converter = new LegacyDictionaryConverter(voice);
+        dictionaryManager = new DictionaryManager();
+        converter = new LegacyDictionaryConverter();
     }
 
     @Override
@@ -411,7 +411,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (neoPhoneme != null) {
-                    BmhUtils.playBriefPhoneme(neoPhoneme);
+                    BmhUtils.playBriefPhoneme(getShell(), neoPhoneme);
                 }
             }
         });

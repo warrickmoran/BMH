@@ -33,6 +33,7 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 27, 2014    3355    mpduff      Initial creation
+ * Jan 28, 2015    4045    bkowal      Use the {@link NeoSpeechPhonemeMapping} instance.
  * 
  * </pre>
  * 
@@ -83,7 +84,8 @@ public class LegacyDictionaryConverter {
     /**
      * PhonemeMapping to use for conversion
      */
-    private final NeoSpeechPhonemeMapping phonemeMapping;
+    private final NeoSpeechPhonemeMapping phonemeMapping = NeoSpeechPhonemeMapping
+            .getInstance();
 
     /**
      * Brief phoneme prefix
@@ -94,16 +96,6 @@ public class LegacyDictionaryConverter {
      * Brief phoneme suffix
      */
     private final String suffix = "]";
-
-    /**
-     * Constructor
-     * 
-     * @param phonemeMapping
-     *            The phonemeMapping object
-     */
-    public LegacyDictionaryConverter(NeoSpeechPhonemeMapping phonemeMapping) {
-        this.phonemeMapping = phonemeMapping;
-    }
 
     /**
      * Convert word or phoneme to NeoSpeech format

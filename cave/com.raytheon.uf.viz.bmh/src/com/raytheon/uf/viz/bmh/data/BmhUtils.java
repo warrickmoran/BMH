@@ -33,7 +33,9 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.auth.exception.AuthorizationException;
@@ -50,9 +52,11 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
+import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
 import com.raytheon.uf.viz.core.auth.UserController;
 import com.raytheon.viz.core.mode.CAVEMode;
 
@@ -79,6 +83,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Nov 13, 2014   3698      rferrel     Added containsGeneralSuite.
  * Dec 01, 2014   3838      rferrel     containsGeneralSuite updated to use query.
  * Dec 10, 2014   3883      bkowal      Added {@link #textToAudio(String)}.
+ * Jan 28, 2015   4054      bkowal      Validate phonemes before submitting them for
+ *                                      synthesis.
  * </pre>
  * 
  * @author mpduff
@@ -186,7 +192,10 @@ public class BmhUtils {
      * @param text
      *            The phoneme text
      */
-    public static void playBriefPhoneme(String text) {
+    public static void playBriefPhoneme(Shell shell, String text) {
+        if (validatePhoneme(shell, text) == false) {
+            return;
+        }
         text = text.replaceAll("\\[", PHONEME_OPEN);
         text = text.replaceAll("\\]", PHONEME_CLOSE);
         playText(text);
@@ -199,9 +208,52 @@ public class BmhUtils {
      * @param text
      *            The bare phoneme text
      */
-    public static void playAsPhoneme(String text) {
+    public static void playAsPhoneme(Shell shell, String text) {
+        if (validatePhoneme(shell, text) == false) {
+            return;
+        }
         String textToPlay = PHONEME_OPEN + text + PHONEME_CLOSE;
         playText(textToPlay);
+    }
+
+    /**
+     * Used to validate the specified phoneme. If the phoneme is invalid, an
+     * error dialog will be displayed. This method should be used before
+     * requesting the synthesis of a phoneme.
+     * 
+     * @param text
+     *            the specified phoneme
+     * @return true, if the phoneme is valid; false, otherwise.
+     */
+    private static boolean validatePhoneme(final Shell shell, String text) {
+        text = text.trim();
+        /*
+         * phonemes passed to this method may have three (3) different
+         * beginnings.
+         */
+        if (text.startsWith("\\[")) {
+            text = text.replaceAll("\\[", StringUtils.EMPTY);
+        } else if (text.startsWith(PHONEME_OPEN.trim())) {
+            text = text.replaceAll(PHONEME_OPEN.trim(), StringUtils.EMPTY);
+        }
+
+        /*
+         * phonemes passed to this method may have three (3) different endings.
+         */
+        if (text.endsWith("\\]")) {
+            text = text.replaceAll("\\]", StringUtils.EMPTY);
+        } else if (text.endsWith(PHONEME_CLOSE.trim())) {
+            text = text.replaceAll(PHONEME_CLOSE.trim(), StringUtils.EMPTY);
+        }
+
+        if (NeoSpeechPhonemeMapping.getInstance().isValidPhoneme(text)) {
+            return true;
+        }
+
+        DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK, "Phoneme",
+                "Invalid phoneme: " + text + ". Please enter a valid phoneme.");
+
+        return false;
     }
 
     /**

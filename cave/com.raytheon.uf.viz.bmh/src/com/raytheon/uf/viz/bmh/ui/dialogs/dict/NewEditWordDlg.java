@@ -38,7 +38,6 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.data.DictionaryManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
-import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -57,6 +56,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 23, 2014    3432    mpduff      Changed to Primary_modal
  * Aug 27, 2014    3432    mpduff      Set the phoneme
  * Nov 22, 2014    3740    mpduff      Clear phoneme var when phoneme text field is cleared
+ * Jan 28, 2015    4045    bkowal      Provide the current {@link Shell} to the phoneme
+ *                                     audio playback method.
  * </pre>
  * 
  * @author mpduff
@@ -187,7 +188,7 @@ public class NewEditWordDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (phoneme != null) {
-                    BmhUtils.playBriefPhoneme(phoneme);
+                    BmhUtils.playBriefPhoneme(getShell(), phoneme);
                 }
             }
         });
@@ -348,8 +349,7 @@ public class NewEditWordDlg extends CaveSWTDialog {
         word.setDictionary(dictionary);
 
         try {
-            DictionaryManager dictionaryManager = new DictionaryManager(
-                    new NeoSpeechPhonemeMapping());
+            DictionaryManager dictionaryManager = new DictionaryManager();
             if (isReplace) {
                 word = dictionaryManager.replaceWord(word);
             } else {

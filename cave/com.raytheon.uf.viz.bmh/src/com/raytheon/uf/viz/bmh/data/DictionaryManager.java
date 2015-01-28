@@ -57,6 +57,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  *                                     {@link #getNonNationalDictionariesForLanguage(Language)}.
  * Jan 05, 2015    3618    bkowal      Specify the {@link Dictionary} for deletion.
  * Jan 07, 2015    3931    bkowal      Added {@link #verifyNameUniqueness(String)}.
+ * Jan 28, 2015    4045    bkowal      Use a {@link NeoSpeechPhonemeMapping} instance.
  * </pre>
  * 
  * @author mpduff
@@ -73,24 +74,8 @@ public class DictionaryManager {
     /**
      * The voice object
      */
-    private final NeoSpeechPhonemeMapping phonemeMapping;
-
-    /**
-     * Constructor
-     */
-    public DictionaryManager() {
-        this(new NeoSpeechPhonemeMapping());
-    }
-
-    /**
-     * Constructor.
-     * 
-     * @param neoVoice
-     *            The voice object
-     */
-    public DictionaryManager(NeoSpeechPhonemeMapping phonemeMapping) {
-        this.phonemeMapping = phonemeMapping;
-    }
+    private final NeoSpeechPhonemeMapping phonemeMapping = NeoSpeechPhonemeMapping
+            .getInstance();
 
     /**
      * Get all the available dictionaries.

@@ -40,13 +40,10 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.data.DictionaryManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter.WordType;
-import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -62,13 +59,12 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 10, 2014    3355    mpduff      Initial creation.
+ * Jan 28, 2015    4045    bkowal      Provide the current {@link Shell} to the
+ *                                     phoneme playback methods.
  * 
  * </pre>
  */
 public class PhonemesEditorDlg extends CaveSWTDialog {
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(PhonemesEditorDlg.class);
-
     // Constants
     private final String VOWEL = "vowel";
 
@@ -130,8 +126,7 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
     /**
      * The legacy dictionary converter
      */
-    private final LegacyDictionaryConverter converter = new LegacyDictionaryConverter(
-            new NeoSpeechPhonemeMapping());
+    private final LegacyDictionaryConverter converter = new LegacyDictionaryConverter();
 
     /**
      * Constructor
@@ -266,7 +261,7 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
         phonemePlayBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                BmhUtils.playBriefPhoneme("[" + phonemeTxt.getText() + "]");
+                BmhUtils.playAsPhoneme(getShell(), phonemeTxt.getText());
             }
         });
 
@@ -419,7 +414,7 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
                     phonemeTxt.setText(phonemeTxt.getText() + " " + text);
                 }
 
-                BmhUtils.playAsPhoneme(text);
+                BmhUtils.playAsPhoneme(this.shell, text);
             } else if (e.stateMask == SWT.BUTTON3) {
                 MenuItem speakPhoneme = new MenuItem(popupMenu, SWT.NONE);
                 speakPhoneme.setText("Say Phoneme without stressed accent");
@@ -427,7 +422,7 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
                     @Override
                     public void widgetSelected(SelectionEvent se) {
                         String text = srcBtn.getText();
-                        BmhUtils.playAsPhoneme(text + "0");
+                        BmhUtils.playAsPhoneme(getShell(), text + "0");
                     }
                 });
 
@@ -437,7 +432,7 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
                     @Override
                     public void widgetSelected(SelectionEvent se) {
                         String text = srcBtn.getText();
-                        BmhUtils.playAsPhoneme(text + "1");
+                        BmhUtils.playAsPhoneme(getShell(), text + "1");
                     }
                 });
 
@@ -447,7 +442,7 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
                     @Override
                     public void widgetSelected(SelectionEvent se) {
                         String text = srcBtn.getText();
-                        BmhUtils.playAsPhoneme(text + "2");
+                        BmhUtils.playAsPhoneme(getShell(), text + "2");
                     }
                 });
             }
@@ -455,7 +450,7 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
             if (e.stateMask == SWT.BUTTON1) {
                 text = srcBtn.getText();
                 phonemeTxt.setText(phonemeTxt.getText() + " " + text);
-                BmhUtils.playAsPhoneme(text);
+                BmhUtils.playAsPhoneme(this.shell, text);
             } else if (e.stateMask == SWT.BUTTON3) {
                 MenuItem speakPhoneme = new MenuItem(popupMenu, SWT.NONE);
                 speakPhoneme.setText("Say Phoneme");
@@ -463,7 +458,7 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
                     @Override
                     public void widgetSelected(SelectionEvent se) {
                         String text = srcBtn.getText();
-                        BmhUtils.playAsPhoneme(text);
+                        BmhUtils.playAsPhoneme(getShell(), text);
                     }
                 });
             }
