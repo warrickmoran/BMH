@@ -132,7 +132,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 19, 2015  #4002     bkowal       Publish {@link MessageDelayedBroadcastNotification}s when
  *                                      an active Broadcast Live is delaying the broadcast of
  *                                      a warning or interrupt.
- * 
+ * Jan 28, 2015  #4036     bsteffen     Actually expire playlists with no playable messages.
  * 
  * </pre>
  * 
@@ -523,8 +523,10 @@ public final class PlaylistScheduler implements
                     }
 
                     if (nextMessage == null) {
+                        expiredPlaylists.add(nextPlaylist);
                         activePlaylists.remove(nextPlaylist);
-                        logger.info("Purging expired playlist: " + nextPlaylist);
+                        logger.info("Purging playlist because no messages are playable: "
+                                + nextPlaylist);
                     }
                 }
             }
