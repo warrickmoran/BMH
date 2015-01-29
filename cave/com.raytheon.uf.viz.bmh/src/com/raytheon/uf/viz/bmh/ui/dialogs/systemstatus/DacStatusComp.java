@@ -38,6 +38,7 @@ import org.eclipse.swt.widgets.Label;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.StatusImages.StatusImage;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.DacInfo;
+import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.DacInfo.DAC_VOLTAGE;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterGrpInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
 
@@ -55,6 +56,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  * Nov 23, 2014  #3287     lvenable     Additional status updates.
  * Jan 27, 2015  4029      bkowal       Buffer size is now included in
  *                                      the tooltip.
+ * Jan 29, 2015  4029      bkowal       Simplified Dac Voltage reporting.
  * 
  * </pre>
  * 
@@ -207,8 +209,8 @@ public class DacStatusComp extends Composite {
     private boolean validateDacStatus() {
         // TODO : add more validation
 
-        if (dacInfo.getPsu1Voltage().isNaN()
-                || dacInfo.getPsu2Voltage().isNaN()) {
+        if (dacInfo.getPsu1Voltage() != DAC_VOLTAGE.OK
+                || dacInfo.getPsu2Voltage() != DAC_VOLTAGE.OK) {
             return false;
         }
 
@@ -226,20 +228,10 @@ public class DacStatusComp extends Composite {
         sb.append("Name    : ").append(dacInfo.getDacName()).append("\n");
         sb.append("Address : ").append(dacInfo.getDacAddress()).append("\n");
         sb.append("PSU1 Voltage : ")
-                .append(getVoltageDisplay(dacInfo.getPsu1Voltage()))
-                .append("\n");
+                .append(dacInfo.getPsu1Voltage().toString()).append("\n");
         sb.append("PSU2 Voltage : ")
-                .append(getVoltageDisplay(dacInfo.getPsu2Voltage()))
-                .append("\n");
+                .append(dacInfo.getPsu2Voltage().toString()).append("\n");
 
         new CustomToolTip(lbl, sb.toString());
-    }
-
-    private String getVoltageDisplay(Double voltage) {
-        if (voltage.isNaN()) {
-            return "NO READING";
-        }
-
-        return voltage.toString();
     }
 }

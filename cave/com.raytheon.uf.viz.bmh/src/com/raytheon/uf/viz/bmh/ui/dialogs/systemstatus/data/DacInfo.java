@@ -40,12 +40,29 @@ import java.util.TreeMap;
  * Dec 09, 2014  #3910     lvenable     Added null check for DAC port number.
  * Jan 22, 2015  3995      rjpeter      Remove repeat message when DAC has no transmitters.
  * Jan 27, 2015  4029      bkowal       Removed buffer size.
+ * Jan 29, 2015  4029      bkowal       Added {@link DAC_VOLTAGE}.
+ * 
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
 public class DacInfo {
+
+    public static enum DAC_VOLTAGE {
+        OK("OK"), LOW_VOLTAGE("Low Voltage"), NO_READING("No Reading");
+
+        private final String text;
+
+        private DAC_VOLTAGE(String text) {
+            this.text = text;
+        }
+
+        @Override
+        public String toString() {
+            return this.text;
+        }
+    }
 
     /** DAC Id. */
     private Integer dacId;
@@ -57,10 +74,10 @@ public class DacInfo {
     private String dacAddress;
 
     /** Power supply unit one voltage. */
-    private Double psu1Voltage = 0.0;
+    private DAC_VOLTAGE psu1Voltage = DAC_VOLTAGE.NO_READING;
 
     /** Power supply unit two voltage. */
-    private Double psu2Voltage = 0.0;
+    private DAC_VOLTAGE psu2Voltage = DAC_VOLTAGE.NO_READING;
 
     /** List of transmitter group information. */
     private final SortedMap<Integer, TransmitterGrpInfo> transmitterGrpInfoMap = new TreeMap<Integer, TransmitterGrpInfo>();
@@ -130,27 +147,31 @@ public class DacInfo {
         this.dacAddress = dacAddress;
     }
 
-    public Double getPsu1Voltage() {
+    public DAC_VOLTAGE getPsu1Voltage() {
         return psu1Voltage;
     }
 
     public void setPsu1Voltage(Double psu1Voltage) {
-        if (psu1Voltage == null) {
-            this.psu1Voltage = Double.NaN;
-            return;
-        }
-        this.psu1Voltage = psu1Voltage;
+        this.psu1Voltage = this.determineVoltageStatus(psu1Voltage);
     }
 
-    public Double getPsu2Voltage() {
+    public DAC_VOLTAGE getPsu2Voltage() {
         return psu2Voltage;
     }
 
     public void setPsu2Voltage(Double psu2Voltage) {
-        if (psu2Voltage == null) {
-            this.psu2Voltage = Double.NaN;
-            return;
+        this.psu2Voltage = this.determineVoltageStatus(psu2Voltage);
+    }
+
+    private DAC_VOLTAGE determineVoltageStatus(Double voltage) {
+        if (voltage == null || voltage.isNaN()) {
+            return DAC_VOLTAGE.NO_READING;
         }
-        this.psu2Voltage = psu2Voltage;
+
+        if (voltage < 8.) {
+            return DAC_VOLTAGE.LOW_VOLTAGE;
+        }
+
+        return DAC_VOLTAGE.OK;
     }
 }
