@@ -96,6 +96,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jan 26, 2015 4020       bkowal      Determine the actual TTS Host when publishing
  *                                     a TTS Status.
  * Jan 27, 2015 4026       bkowal      Updated bmh availability verification.
+ * Jan 29, 2015 4060       bkowal      Include fragment id in the name of the generated
+ *                                     audio files.
  * 
  * </pre>
  * 
@@ -438,6 +440,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                                 + " seconds");
                 /* Write the output file. */
                 File outputFile = this.determineOutputFile(message.getId(),
+                        fragment.getId(),
                         message.getInputMessage().getAfosid(),
                         fragment.getVoice());
                 boolean writeSuccess = true;
@@ -784,6 +787,9 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      * 
      * @param bmhID
      *            the id associated with the broadcast message in the database
+     * @param fragmentId
+     *            the id of the broadcast fragment that the file will be
+     *            generated for
      * @param afosID
      *            the afos id
      * @param voice
@@ -791,8 +797,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      *            process
      * @return the output file
      */
-    private File determineOutputFile(final long bmhID, final String afosID,
-            TtsVoice voice) {
+    private File determineOutputFile(final long bmhID, final long fragmentId,
+            final String afosID, TtsVoice voice) {
 
         final String fileNamePartsSeparator = "_";
 
@@ -826,6 +832,12 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
         /* BMH ID */
         fileName.append(bmhID);
+
+        /* "separator" */
+        fileName.append(fileNamePartsSeparator);
+
+        /* Fragment ID */
+        fileName.append(fragmentId);
 
         /* "separator" */
         fileName.append(fileNamePartsSeparator);
