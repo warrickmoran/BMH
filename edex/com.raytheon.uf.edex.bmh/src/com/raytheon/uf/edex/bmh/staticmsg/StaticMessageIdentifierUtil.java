@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.staticmsg;
 
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -104,13 +105,24 @@ public class StaticMessageIdentifierUtil {
     public static List<TimeTextFragment> getTimeMsgFragments(
             TransmitterLanguage tl) {
         List<TimeTextFragment> timeMsgFragments = new LinkedList<>();
-        timeMsgFragments.add(new TimeTextFragment(tl.getTimeMsgPreamble()
-                .trim()));
+        if (tl.getTimeMsgPreamble() != null
+                && tl.getTimeMsgPreamble().trim().isEmpty() == false) {
+            timeMsgFragments.add(new TimeTextFragment(tl.getTimeMsgPreamble()
+                    .trim()));
+        }
         timeMsgFragments.add(TimeTextFragment.constructPlaceHolderFragment());
         if (tl.getTimeMsgPostamble() != null
                 && tl.getTimeMsgPostamble().isEmpty() == false) {
             timeMsgFragments.add(new TimeTextFragment(tl.getTimeMsgPostamble()
                     .trim()));
+        }
+
+        /*
+         * there must be at least two fragments; otherwise, we are only left
+         * with a fragment consisting of just the time, itself.
+         */
+        if (timeMsgFragments.size() < 2) {
+            return Collections.emptyList();
         }
 
         return timeMsgFragments;
