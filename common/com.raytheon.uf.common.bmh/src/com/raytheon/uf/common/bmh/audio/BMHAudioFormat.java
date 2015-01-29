@@ -34,6 +34,7 @@ package com.raytheon.uf.common.bmh.audio;
  * Jul 16, 2014 3383       bkowal      Initial creation
  * Oct 2, 2014  3642       bkowal      Fix file extension specifiers
  * Dec 3, 2014  3880       bkowal      Added MP3.
+ * Jan 29, 2015 4057       bkowal      Added {@link #isValidExtension(String)}.
  * 
  * </pre>
  * 
@@ -87,5 +88,23 @@ public enum BMHAudioFormat {
         throw new IllegalArgumentException("The specified file extension: "
                 + extension
                 + " is not associated with a recognizable bmh audio format!");
+    }
+
+    /**
+     * Determines if the specified extension is associated with a recognized
+     * {@link BMHAudioFormat}.
+     * 
+     * @param extension
+     *            the specified extension
+     * @return true, if the extension is recognized; false, othwerwise
+     */
+    public static boolean isValidExtension(final String extension) {
+        for (BMHAudioFormat format : BMHAudioFormat.values()) {
+            if (extension.equals(format.extension)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -26,6 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -78,6 +81,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 4, 2014     3880    bkowal      Only allow the user to select a supported
  *                                     conversion format.
  * Jan 07, 2015    3899    bkowal      Allow a user to enable/disable {@link LdadConfig}s.
+ * Jan 29, 2015    4057    bkowal      Display default values for new configurations.
  * 
  * </pre>
  * 
@@ -94,6 +98,22 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
      * localhost will be the only valid host in practice mode.
      */
     private static final String PRACTICE_HOST = "localhost";
+
+    /*
+     * ls1 will be the default host in operational mode.
+     */
+    private static final String OPERATIONAL_HOST = "ls1";
+
+    // begin ldad defaults
+    private static final int DEFAULT_VOICE = 101;
+
+    private static final BMHAudioFormat DEFAULT_FORMAT = BMHAudioFormat.WAV;
+
+    // note: the default destination, as it is currently written, is not
+    // cross-platform compatible.
+    private static final String DEFAULT_DESTINATION = "/data/ldad/localapps/bmh/wav";
+
+    // end ldad defaults
 
     private static final String CREATE_TITLE = "Create New LDAD Configuration";
 
@@ -294,6 +314,12 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         encodingCbo = new Combo(configComp, SWT.SINGLE | SWT.READ_ONLY);
         encodingCbo.setLayoutData(gd);
         encodingCbo.select(0);
+        this.encodingCbo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleEncodingSelection();
+            }
+        });
 
         /**
          * Ldad Configuration Voice.
@@ -458,7 +484,11 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
              */
             this.hostTxt.setText(PRACTICE_HOST);
             this.hostTxt.setEnabled(false);
+        } else {
+            this.hostTxt.setText(OPERATIONAL_HOST);
         }
+
+        this.directoryTxt.setText(DEFAULT_DESTINATION);
 
         if (this.ldadConfig == null) {
             return;
@@ -492,8 +522,13 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         }
 
         if (voices != null) {
+            String defaultVoiceName = null;
             List<String> voiceList = new ArrayList<String>(voices.size());
             for (TtsVoice voice : voices) {
+                if (voice.getVoiceNumber() == DEFAULT_VOICE) {
+                    defaultVoiceName = voice.getVoiceName();
+                }
+
                 voiceList.add(voice.getVoiceName());
                 voiceCbo.setData(voice.getVoiceName(), voice);
             }
@@ -501,7 +536,12 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
             Collections.sort(voiceList);
 
             voiceCbo.setItems(voiceList.toArray(new String[voiceList.size()]));
-            voiceCbo.select(0);
+            if (defaultVoiceName != null) {
+                // note: defaultVoiceName should never be NULL at this point.
+                voiceCbo.setText(defaultVoiceName);
+            } else {
+                voiceCbo.select(0);
+            }
         }
     }
 
@@ -522,8 +562,19 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
             return;
         }
 
+        boolean defaultEncodingExists = false;
         for (BMHAudioFormat bmhAudioFormat : supportedEncodings) {
+            if (bmhAudioFormat == DEFAULT_FORMAT) {
+                defaultEncodingExists = true;
+            }
             this.encodingCbo.add(bmhAudioFormat.getExtension());
+        }
+
+        if (defaultEncodingExists) {
+            /*
+             * the default decoding was found, pre-select it in the Combo.
+             */
+            this.encodingCbo.setText(DEFAULT_FORMAT.getExtension());
         }
     }
 
@@ -549,6 +600,39 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         // TODO: need to update if we switch to a numeric dictionary id.
         for (String dictionaryName : dictionaryNames) {
             this.dictCbo.add(dictionaryName);
+        }
+    }
+
+    /**
+     * Updates the destination directory to match the encoding whenever the name
+     * of the final destination sub-directory matches the encoding extension.
+     */
+    private void handleEncodingSelection() {
+        final String destinationDirectory = this.directoryTxt.getText();
+        if (destinationDirectory == null || destinationDirectory.isEmpty()) {
+            /*
+             * no destination has been specified yet. nothing to do.
+             */
+            return;
+        }
+
+        final Path destinationPath = Paths.get(destinationDirectory);
+        final BMHAudioFormat selectedFormat = BMHAudioFormat
+                .lookupByExtension(this.encodingCbo.getText());
+        /*
+         * Is the current destination directory associated with a known encoding
+         * format?
+         */
+        if (BMHAudioFormat.isValidExtension("."
+                + destinationPath.getFileName().toString())) {
+            /*
+             * update the destination directory to reflect the selected
+             * extension.
+             */
+            Path updatedDestinationPath = destinationPath.getParent().resolve(
+                    selectedFormat.getExtension().replace(".",
+                            StringUtils.EMPTY));
+            this.directoryTxt.setText(updatedDestinationPath.toString());
         }
     }
 
