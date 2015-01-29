@@ -45,6 +45,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Nov 18, 2014  3817     bsteffen    Initial creation
  * Jan 27, 2015  4029     bkowal      Added {@link #updateDacHardwareStatus(DacHardwareStatusNotification)}
  *                                    to override the buffer size.
+ * Jan 29, 2015  4029     bkowal      Limit dac voltage variation during status comparison.
  * 
  * </pre>
  * 
@@ -91,7 +92,49 @@ public class VizStatusMonitor extends SystemStatusMonitor implements
          * trigger status updates whenever the buffer size changes.
          */
         dacStatus.setBufferSize(0);
+        /*
+         * Viz status does not care about the true voltage of each dac power
+         * supply, it is only interested in indicating when their is no voltage,
+         * low voltage, or sufficient voltage - so, the voltage numbers will be
+         * adjusted to be at a fixed value within that range.
+         */
+        dacStatus
+                .setPsu1Voltage(this.adjustVoltage(dacStatus.getPsu1Voltage()));
+        dacStatus
+                .setPsu2Voltage(this.adjustVoltage(dacStatus.getPsu2Voltage()));
+
         super.updateDacHardwareStatus(dacStatus);
+    }
+
+    /**
+     * Converts the specified voltage to one of three defined values within each
+     * of the possible ranges. This conversion will ensure that minor voltage
+     * fluctuations do not trigger a complete refresh of the dac portion of the
+     * status dialog.
+     * 
+     * @param voltage
+     *            the specified voltage
+     * @return the adjusted voltage
+     */
+    private double adjustVoltage(double voltage) {
+        /*
+         * if voltage is NaN, leave it as it is indicating no voltage reading.
+         */
+        if (Double.isNaN(voltage)) {
+            return voltage;
+        }
+
+        /*
+         * if voltage is less than 8, return 7.0 indicating low voltage.
+         */
+        if (voltage < 8) {
+            return 7.0;
+        }
+
+        /*
+         * voltage reading is within the desired range, return 12.0.
+         */
+        return 12.0;
     }
 
     public void dispose() {
