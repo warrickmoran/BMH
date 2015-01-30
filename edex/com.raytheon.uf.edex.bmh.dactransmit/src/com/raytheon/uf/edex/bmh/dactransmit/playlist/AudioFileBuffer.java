@@ -54,6 +54,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  *                                      msg activity.
  * Jan 15, 2015  3999      bkowal       Adjust offsets as data is added to the destination
  *                                      array in {@link #get(byte[], int, int)}.
+ * Feb 02, 2015  4093      bsteffen     Add position()
  * 
  * </pre>
  * 
@@ -218,6 +219,19 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
              */
             Arrays.fill(dst, offset, length, DacSessionConstants.SILENCE);
         }
+    }
+
+    public int position() {
+        int position = 0;
+        if (returnTones) {
+            position += tonesBuffer.position();
+        }
+        position += messageBuffer.position();
+        if (returnTones) {
+            position += endOfMessageTones.position();
+        }
+        position += endOfMessageSilence.position();
+        return position;
     }
 
     public void skip(int length) {

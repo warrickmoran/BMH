@@ -18,6 +18,7 @@
 #    10/21/14        3687          bsteffen       Enable comms manager to run in both
 #                                                 operational and practice mode simultaneously
 #    01/23/15        2995          rjpeter        nice comms_manager and all child processes to -10
+#    01/30/15        4039          bsteffen       Stop dac transmits
 ##############################################################################
 
 # Source function library.
@@ -60,6 +61,35 @@ getWrapperPid() {
 getCommsMgrPid() {
 	comms_pid=`pgrep -f "java.*-Dwrapper.config=${CONF_FILE}"`
 	comms_pid_found=$?
+}
+
+getDacTransmitPids() {
+	dac_transmit_pid=`pgrep -f "java.*com.raytheon.uf.edex.bmh.dactransmit.DacTransmitMain"`
+	dac_transmit_pid_found=$?
+}
+
+stopDacTransmits() {
+	getDacTransmitPids
+	local attempt_count=0
+	local dac_transmit_signal=TERM
+	while [ ${dac_transmit_pid_found} -eq 0 ]; do
+		let attempt_count+=1
+		if [ ${attempt_count} -eq ${attempt_max} ]; then
+			if [ ${dac_transmit_signal} = TERM ]; then
+				dac_transmit_signal=KILL
+				attempt_count=0
+			else
+				echo "Failed to stop dactransmits (pids ${dac_transmit_pid})"
+				echo "Failed to stop dactransmits (pids ${dac_transmit_pid})" >> ${COMMS_LOG}
+				return
+			fi
+		fi
+		for pid in ${dac_transmit_pid}; do 
+			kill -${dac_transmit_signal} ${pid} > /dev/null 2>&1
+		done
+		sleep 2
+		getDacTransmitPids
+	done
 }
 
 handleStatus() {
@@ -172,6 +202,7 @@ stop() {
 	getCommsMgrPid
 	# did stopping the wrapper also stop the comms manager?
 	if [ ${comms_pid_found} -ne 0 ]; then
+		stopDacTransmits
 		success
 		echo
 		if [ ${force_kill_wrapper} -eq 1 ]; then
@@ -199,6 +230,8 @@ stop() {
 			return
 		fi
 	done
+	
+	stopDacTransmits
 	
 	success
 	echo

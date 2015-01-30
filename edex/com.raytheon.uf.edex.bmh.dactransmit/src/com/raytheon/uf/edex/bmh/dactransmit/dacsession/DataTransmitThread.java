@@ -82,6 +82,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      that require broadcast confirmation.
  * Jan 14, 2015  #3969     bkowal       Use updated {@link MessageBroadcastNotifcation}.
  * Jan 22, 2015  #3912     bsteffen     Add more frequent packet logging and include intermessage intervals.
+ * Feb 02, 2015  #4093     bsteffen     Add shutdown hook.
+ * 
  * 
  * </pre>
  * 
@@ -149,6 +151,26 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
         this.interruptsAvailable = new AtomicInteger(0);
         this.playingInterrupt = false;
         this.warnNoData = true;
+        Runtime.getRuntime().addShutdownHook(
+                new Thread("ShuttingDownDataTransmit") {
+
+                    @Override
+                    public void run() {
+                        DataTransmitThread dtt = DataTransmitThread.this;
+                        if (dtt.isAlive()) {
+                            logger.info("Stopping data transmit thread due to process shutdown.");
+                            shutdown(true);
+                            try {
+                                dtt.join();
+                            } catch (InterruptedException e) {
+                                logger.error(
+                                        "Failed to wait for data transmit thread shutdown.",
+                                        e);
+                            }
+                        }
+                    }
+
+                });
     }
 
     /*
@@ -228,7 +250,12 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                             }
 
                             if (pausePlayback) {
-                                continue OUTER_LOOP;
+                                if (keepRunning) {
+                                    continue OUTER_LOOP;
+                                } else {
+                                    playbackData.writePosition();
+                                    return;
+                                }
                             }
 
                             byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
