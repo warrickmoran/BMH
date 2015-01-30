@@ -93,6 +93,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 01, 2014   3784     mpduff      Added nullCheck
  * Nov 02, 2014   3783     lvenable    Replaced message type list with a set of AFOS Ids.
  * Nov 13, 2014   3803     bkowal      Use the new Voice Data Manager.
+ * Jan 30, 2015   4067     bkowal      Construct a {@link AreaSelectionSaveData} in
+ *                                     the constructor that will be used for area selection
+ *                                     for new and existing message types.
  * 
  * </pre>
  * 
@@ -220,6 +223,26 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         this.dialogType = dialogType;
         this.selectedMsgType = selectedMsgType;
         this.existingAfosIds = existingAfosId;
+        this.areaData = new AreaSelectionSaveData();
+        if (this.selectedMsgType != null) {
+            /*
+             * populate the area selection save data.
+             */
+            for (Area area : this.selectedMsgType.getDefaultAreas()) {
+                this.areaData.addArea(area);
+            }
+
+            for (Zone zone : this.selectedMsgType.getDefaultZones()) {
+                this.areaData.addZone(zone);
+            }
+
+            for (TransmitterGroup tg : this.selectedMsgType
+                    .getDefaultTransmitterGroups()) {
+                for (Transmitter t : tg.getTransmitters()) {
+                    this.areaData.addTransmitter(t);
+                }
+            }
+        }
     }
 
     @Override
@@ -617,7 +640,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 AreaSelectionDlg dlg = new AreaSelectionDlg(getShell(),
-                        selectedMsgType);
+                        areaData);
                 dlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
