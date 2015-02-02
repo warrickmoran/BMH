@@ -128,5 +128,8 @@ rm -rf ${RPM_BUILD_ROOT}
 %dir /awips2
 %dir /awips2/edex
 /awips2/edex/*
+%config(noreplace) /awips2/edex/conf/resources/bmh.properties
+%config(noreplace) /awips2/edex/conf/resources/bmh-request.properties
+%config(noreplace) /awips2/edex/etc/bmh.sh
 
 %attr(744,root,root) /etc/init.d/*
