@@ -145,6 +145,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 08, 2015   3821     bsteffen    Rename silenceAlarm to deadAirAlarm
  * Jan 13, 2015   3968     bkowal      Handle message confirmations.
  * Jan 14, 2015   3969     bkowal      Handle watch/warning not broadcast notifications.
+ * Jan 30, 2015   4069     bkowal      Move Broadcast Live to the Messages menu.
  * 
  * </pre>
  * 
@@ -852,6 +853,28 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                 launchEmergencyOverride();
             }
         });
+        
+        /*
+         * Broadcast Live
+         */
+        new MenuItem(this.messagesMenu, SWT.SEPARATOR);
+        MenuItem broadcastLiveMI = new MenuItem(this.messagesMenu, SWT.PUSH);
+        broadcastLiveMI.setText("Broadcast Live...");
+        broadcastLiveMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                if (isAuthorized(DlgInfo.BROADCAST_LIVE)) {
+                    if (broadcastLiveDlg == null
+                            || broadcastLiveDlg.isDisposed() == true) {
+                        broadcastLiveDlg = new BroadcastLiveDlg(
+                                dlgsToValidateCloseMap, shell);
+                        broadcastLiveDlg.open();
+                    } else {
+                        broadcastLiveDlg.bringToTop();
+                    }
+                }
+            }
+        });
     }
 
     /**
@@ -1009,28 +1032,6 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                         voiceDlg.open();
                     } else {
                         voiceDlg.bringToTop();
-                    }
-                }
-            }
-        });
-
-        /*
-         * Broadcast Live
-         */
-        new MenuItem(this.maintenanceMenu, SWT.SEPARATOR);
-        MenuItem broadcastLiveMI = new MenuItem(this.maintenanceMenu, SWT.PUSH);
-        broadcastLiveMI.setText("Broadcast Live...");
-        broadcastLiveMI.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent event) {
-                if (isAuthorized(DlgInfo.BROADCAST_LIVE)) {
-                    if (broadcastLiveDlg == null
-                            || broadcastLiveDlg.isDisposed() == true) {
-                        broadcastLiveDlg = new BroadcastLiveDlg(
-                                dlgsToValidateCloseMap, shell);
-                        broadcastLiveDlg.open();
-                    } else {
-                        broadcastLiveDlg.bringToTop();
                     }
                 }
             }
