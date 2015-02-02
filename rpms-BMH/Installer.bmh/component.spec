@@ -77,6 +77,10 @@ rm -rf ${RPM_BUILD_ROOT}
 /awips2/bmh/*
 %dir /awips2/bmh/conf
 /awips2/bmh/conf/*
+%config(noreplace) /awips2/bmh/conf/comms.xml
+%config(noreplace) /awips2/bmh/conf/notification.properties
+%config(noreplace) /awips2/bmh/conf/unacceptableWords.eng.txt
+%config(noreplace) /awips2/bmh/conf/unacceptableWords.spn.txt
 %dir /awips2/bmh/logs
 
 %defattr(755,awips,fxalpha,755)
