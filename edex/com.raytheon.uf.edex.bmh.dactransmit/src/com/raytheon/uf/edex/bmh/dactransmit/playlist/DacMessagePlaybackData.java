@@ -63,6 +63,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  * Jan 05, 2015  #3913     bsteffen     Handle future replacements.
  * Jan 09, 2015  #3942     rjpeter      Added flag to control use of positionStream.
  * Jan 12, 2015  #3968     bkowal       Added {@link #requiresConfirmation()}.
+ * Feb 02, 2015  #4093     bsteffen     Add writePosition.
  * 
  * </pre>
  * 
@@ -231,6 +232,30 @@ public final class DacMessagePlaybackData {
             logger.error("Unable to persist message state.", e);
         }
 
+    }
+
+    /**
+     * Write the current position to a position file. This will allow smooth
+     * transition if another dactransmit is started. This should only be used if
+     * no more packets will be sent from this stream.
+     * 
+     */
+    public void writePosition() {
+        if (positionStream != null) {
+            try {
+                positionStream.close();
+            } catch (IOException e) {
+                logger.error("Unable to close position file.", e);
+            }
+            positionStream = null;
+        } else {
+            try {
+                Files.write(message.getPositionPath(),
+                        new byte[audio.position()]);
+            } catch (IOException e) {
+                logger.error("Unable to open position file.", e);
+            }
+        }
     }
 
     public MessagePlaybackStatusNotification get(byte[] dst) {
