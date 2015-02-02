@@ -50,6 +50,8 @@ import org.eclipse.swt.widgets.Label;
  *                                      allow selection/deselection of all the check boxes via
  *                                      method call.
  * Dec 15, 2014 #3876      bkowal       Added {@link #reset()} and {@link #enableCheckboxes(List)}.
+ * Feb 02, 2015 #4073      bkowal       Do not select/deselect disabled checkboxes during a mass
+ *                                      selection or de-selection.
  * 
  * </pre>
  * 
@@ -257,6 +259,12 @@ public class CheckScrollListComp extends Composite {
      */
     private void selectAll(boolean selected) {
         for (Button btn : checkboxArray) {
+            if (btn.isEnabled() == false) {
+                /*
+                 * do not change the state of disabled checkboxes.
+                 */
+                continue;
+            }
             btn.setSelection(selected);
         }
     }
