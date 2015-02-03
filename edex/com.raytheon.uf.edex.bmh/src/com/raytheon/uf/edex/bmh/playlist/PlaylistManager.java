@@ -150,6 +150,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    associated with delete groups if the directories exist.
  * Jan 26, 2015  3359     bsteffen    Use site id for same tones.
  * Jan 27, 2015  4036     bsteffen    Fix creation of general playlists.
+ * Feb 03, 2015  4081     bkowal      Eliminate unused isStatic dac playlist message setting.
  * 
  * 
  * </pre>
@@ -742,10 +743,6 @@ public class PlaylistManager implements IContextStateProcessor {
                 dac.setMessageType(afosid);
                 MessageType messageType = messageTypeDao.getByAfosId(afosid);
                 if (messageType != null) {
-                    /*
-                     * determine if the {@link MessageType} is static.
-                     */
-                    dac.setStatic(messageType.getDesignation().isStatic());
                     /*
                      * determine if we need to notify the user when the message
                      * expires before it is broadcast at least once.
