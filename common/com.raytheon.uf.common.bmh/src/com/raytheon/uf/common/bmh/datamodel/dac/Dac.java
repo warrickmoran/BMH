@@ -54,6 +54,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 22, 2014  #3652    lvenable    Added name column and a sequence generator for the ID.
  * Sep 25, 2014  3485     bsteffen    Add receiveAddress
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
+ * Feb 03, 2015  4056     bsteffen    Add DEFAULT_RECEIVE_ADDRESS
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -69,6 +71,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class Dac {
     static final String GEN = "DAC Generator";
+
+    public static final String DEFAULT_RECEIVE_ADDRESS = System.getProperty(
+            "DefaultDacReceiveAddress", "239.255.86.75");
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)

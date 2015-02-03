@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.dac;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -40,6 +42,7 @@ import org.eclipse.swt.widgets.Text;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
@@ -56,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Sep 24, 2014  #3660     lvenable     Initial creation
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 19, 2014  #3699     mpduff       Implement dialog
+ * Feb 03, 2015  4056      bsteffen     Auto populate new dac and validate all fields for duplicates.
  * 
  * </pre>
  * 
@@ -98,13 +102,16 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
     /** The new/edited dac */
     private Dac dac;
 
+    /** Data access manager */
+    private final DacDataManager dataManager;
+
     /** List of the port text fields */
     private final List<Text> dacPortTxtFldList = new ArrayList<>(4);
 
     /** Enumeration of dialog types. */
     public enum DialogType {
         CREATE, EDIT;
-    };
+    }
 
     /** Type of dialog (Create or Edit). */
     private DialogType dialogType = DialogType.CREATE;
@@ -117,11 +124,12 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
      * @param dialogType
      *            Dialog type.
      */
-    public CreateEditDacConfigDlg(Shell parentShell, DialogType dialogType) {
+    public CreateEditDacConfigDlg(Shell parentShell, DialogType dialogType,
+            DacDataManager dataManager) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
-
         this.dialogType = dialogType;
+        this.dataManager = dataManager;
     }
 
     @Override
@@ -139,10 +147,6 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
     }
 
     @Override
-    protected void disposed() {
-    }
-
-    @Override
     protected void initializeComponents(Shell shell) {
         if (dialogType == DialogType.CREATE) {
             setText("Create DAC Configuration");
@@ -157,7 +161,9 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
 
     @Override
     protected void opened() {
-        if (dac != null) {
+        if (dac == null) {
+            populateNew();
+        } else {
             populate();
         }
     }
@@ -191,15 +197,6 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         dacIpTF = new Text(controlComp, SWT.BORDER);
         dacIpTF.setLayoutData(gd);
 
-        // Receive Port
-        Label receivePortDescLbl = new Label(controlComp, SWT.NONE);
-        receivePortDescLbl.setText("Receive Port:");
-
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = textFieldMinWidth;
-        receivePortTF = new Text(controlComp, SWT.BORDER);
-        receivePortTF.setLayoutData(gd);
-
         // Receive Address
         Label receiveAddressDescLbl = new Label(controlComp, SWT.NONE);
         receiveAddressDescLbl.setText("Receive Address:");
@@ -208,6 +205,15 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         gd.minimumWidth = textFieldMinWidth;
         receiveAddressTF = new Text(controlComp, SWT.BORDER);
         receiveAddressTF.setLayoutData(gd);
+
+        // Receive Port
+        Label receivePortDescLbl = new Label(controlComp, SWT.NONE);
+        receivePortDescLbl.setText("Receive Port:");
+
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = textFieldMinWidth;
+        receivePortTF = new Text(controlComp, SWT.BORDER);
+        receivePortTF.setLayoutData(gd);
 
         // Channels
         Label channel1DescLbl = new Label(controlComp, SWT.NONE);
@@ -322,6 +328,85 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         }
     }
 
+    private void populateNew() {
+        List<Dac> dacs = null;
+        try {
+            dacs = dataManager.getDacs();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error accessing database, cannot prepopulate dacs.", e);
+            return;
+        }
+        Set<String> names = new HashSet<>(dacs.size(), 1.0f);
+        Set<String> addresses = new HashSet<>(dacs.size(), 1.0f);
+        Set<Integer> recievePorts = new HashSet<>(dacs.size(), 1.0f);
+        Set<Integer> ports = new HashSet<>(4 * dacs.size(), 1.0f);
+        for (Dac dac : dacs) {
+            names.add(dac.getName());
+            addresses.add(dac.getAddress());
+            if (dac.getReceiveAddress().equals(Dac.DEFAULT_RECEIVE_ADDRESS)) {
+                recievePorts.add(dac.getReceivePort());
+            }
+
+            ports.addAll(dac.getDataPorts());
+        }
+        InetAddress baseAddress = getBaseDacInetAddress();
+
+        for (int i = 1; i < 100; i += 1) {
+            String name = "dac" + i;
+
+            byte[] bytes = baseAddress.getAddress();
+            bytes[bytes.length - 1] += i;
+
+            String address = null;
+            try {
+                address = InetAddress.getByAddress(bytes).getHostAddress();
+            } catch (UnknownHostException e) {
+                statusHandler.handle(Priority.PROBLEM,
+                        "Error determining new address.", e);
+            }
+            if (!names.contains(name) && !addresses.contains(address)) {
+                this.dacNameTF.setText(name);
+                this.dacIpTF.setText(address);
+                int basePort = 20000 + 1000 * i;
+                if (!recievePorts.contains(basePort)) {
+                    this.receiveAddressTF.setText(Dac.DEFAULT_RECEIVE_ADDRESS);
+                    this.receivePortTF.setText(String.valueOf(basePort));
+                }
+                int portIndex = 0;
+                for (int p = 2; p <= 8; p += 2) {
+                    int port = basePort + p;
+                    if (!ports.contains(port)) {
+                        Text tf = dacPortTxtFldList.get(portIndex);
+                        tf.setText(String.valueOf(port));
+                    }
+                    portIndex += 1;
+                }
+                break;
+            }
+        }
+    }
+
+    private InetAddress getBaseDacInetAddress() {
+        String baseDacAddress = System.getProperty("DacBaseAddress",
+                "10.2.69.100");
+        try {
+            return InetAddress.getByName(baseDacAddress);
+        } catch (UnknownHostException e) {
+            statusHandler.handle(Priority.DEBUG,
+                    "Error parsing System Property DacBaseAddress", e);
+        }
+
+        try {
+            return InetAddress.getByName("10.2.69.100");
+        } catch (UnknownHostException e) {
+            statusHandler.handle(Priority.DEBUG,
+                    "Error parsing Default DacBaseAddress", e);
+        }
+        return null;
+
+    }
+
     /**
      * Create a new dac and save it.
      * 
@@ -346,28 +431,34 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             isValid = false;
             errMsg.append("DAC name is required\n");
         }
+        List<Dac> dacs = Collections.emptyList();
+        try {
+            dacs = dataManager.getDacs();
+        } catch (Exception e) {
+            errMsg.append("Unable to load existing dacs for validation\n");
+            isValid = false;
+        }
 
-        DacDataManager dm = new DacDataManager();
-        if (this.dialogType == DialogType.CREATE) {
-            try {
-                // TODO create a getDacNames query
-                List<Dac> dacs = dm.getDacs();
-                for (Dac d : dacs) {
-                    if (name.equals(d.getName())) {
-                        isValid = false;
-                        errMsg.append("Dac name must be unique. Use a different name\n");
-                        break;
-                    }
-                }
-            } catch (Exception e1) {
-                statusHandler.error("Error connecting to database.", e1);
-                return false;
+        for (Dac d : dacs) {
+            if (name.equals(d.getName()) && dac.getId() != d.getId()) {
+                isValid = false;
+                errMsg.append("Dac name must be unique. Use a different name\n");
+                break;
             }
         }
 
         String address = this.dacIpTF.getText().trim();
-        String receiveAddress = this.receiveAddressTF.getText().trim();
+        for (Dac d : dacs) {
+            if (address.equals(d.getAddress()) && dac.getId() != d.getId()) {
+                isValid = false;
+                errMsg.append("Dac address ").append(address)
+                        .append(" is already in use by ").append(d.getName())
+                        .append(".\n");
+                break;
+            }
+        }
 
+        String receiveAddress = this.receiveAddressTF.getText().trim();
         String receivePort = this.receivePortTF.getText().trim();
         int receivePortInt = 0;
         if (receivePort.length() > 0) {
@@ -376,6 +467,18 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             } catch (NumberFormatException e) {
                 isValid = false;
                 errMsg.append("Receive port must be an integer value\n");
+            }
+        }
+        for (Dac d : dacs) {
+            if (receiveAddress.equals(d.getReceiveAddress())
+                    && d.getReceivePort() == receivePortInt
+                    && dac.getId() != d.getId()) {
+                isValid = false;
+                errMsg.append("Dac receive address/port ")
+                        .append(receiveAddress).append(":").append(receivePort)
+                        .append(" is already in use by ").append(d.getName())
+                        .append(".\n");
+                break;
             }
         }
 
@@ -395,6 +498,18 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             errMsg.append("Channel " + portNum + " must be an integer value");
         }
 
+        for (Integer port : ports) {
+            for (Dac d : dacs) {
+                if (d.getDataPorts().contains(port) && dac.getId() != d.getId()) {
+                    isValid = false;
+                    errMsg.append("Channel base Port ").append(port)
+                            .append(" is already in use by ")
+                            .append(d.getName()).append(".\n");
+                    break;
+                }
+            }
+        }
+
         if (isValid) {
             dac.setAddress(address);
             dac.setName(name);
@@ -403,7 +518,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             dac.setDataPorts(ports);
 
             try {
-                dac = dm.saveDac(dac);
+                dac = dataManager.saveDac(dac);
                 setReturnValue(dac);
             } catch (Exception e) {
                 statusHandler.error("Error saving DAC configuation.", e);

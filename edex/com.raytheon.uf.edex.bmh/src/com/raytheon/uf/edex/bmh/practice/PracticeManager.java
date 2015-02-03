@@ -67,6 +67,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Oct 21, 2014  3687     bsteffen    Initial creation
  * Nov 19, 2014  3817     bsteffen    Return boolean from checkTimeout to indicate if practice mode is running
  * Jan 14, 2014  3926     bsteffen    When creating a dac, pick the ports differently
+ * Feb 03, 2015  4056     bsteffen    Extract DEFAULT_RECEIVE_ADDRESS to Dac.
  * 
  * </pre>
  * 
@@ -190,7 +191,7 @@ public class PracticeManager {
             if (address != null) {
                 Dac dac = new Dac();
                 dac.setAddress(address.getHostAddress());
-                dac.setReceiveAddress("239.255.86.75");
+                dac.setReceiveAddress(Dac.DEFAULT_RECEIVE_ADDRESS);
                 int basePort = 30000 + ((Math.abs(address.hashCode()) % 1000) * 10);
 
                 dac.setReceivePort(basePort);

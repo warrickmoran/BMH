@@ -63,6 +63,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 19, 2014  #3699     mpduff       Implement dialog
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Feb 03, 2015  4056      bsteffen     Pass the data manager to the create/edit dialog.
  * 
  * </pre>
  * 
@@ -182,7 +183,7 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 CreateEditDacConfigDlg createDacConfigDlg = new CreateEditDacConfigDlg(
-                        shell, DialogType.CREATE);
+                        shell, DialogType.CREATE, dataManager);
                 createDacConfigDlg.setCloseCallback(new ICloseCallback() {
 
                     @Override
@@ -206,7 +207,7 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 CreateEditDacConfigDlg createDacConfigDlg = new CreateEditDacConfigDlg(
-                        shell, DialogType.EDIT);
+                        shell, DialogType.EDIT, dataManager);
                 createDacConfigDlg.setCloseCallback(new ICloseCallback() {
 
                     @Override
