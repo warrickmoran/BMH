@@ -61,6 +61,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jan 14, 2014  3969     bkowal      Added {@link #warning}, {@link #watch},
  *                                    {@link #messageBroadcastNotificationSent},
  *                                    and {@link #requiresExpirationNoPlaybackNotification()}.
+ * Feb 03, 2015  4081     bkowal      Fix {@link #isPeriodic()}. Removed unused isStatic field.
  * 
  * </pre>
  * 
@@ -70,6 +71,11 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 @XmlRootElement(name = "bmhMessage")
 @XmlAccessorType(XmlAccessType.NONE)
 public class DacPlaylistMessage extends DacPlaylistMessageId {
+
+    /*
+     * indicates a message does not have a set periodicity.
+     */
+    private static final String NO_PERIODICTY = "00000000";
 
     @XmlElement
     private String name;
@@ -119,13 +125,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     @XmlElement
     private boolean playedAlertTone;
-
-    /*
-     * boolean indicating whether or not the message is associated with a static
-     * message type.
-     */
-    @XmlElement
-    private boolean isStatic;
 
     /*
      * boolean indicating whether or not the confirm flag has been set on the
@@ -247,7 +246,8 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     }
 
     public boolean isPeriodic() {
-        return periodicity != null && !periodicity.isEmpty();
+        return periodicity != null && !periodicity.isEmpty()
+                && NO_PERIODICTY.equals(this.periodicity) == false;
     }
 
     public String getMessageText() {
@@ -466,21 +466,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      */
     public boolean isSAMETones() {
         return ((SAMEtone != null) && (!SAMEtone.isEmpty()));
-    }
-
-    /**
-     * @return the isStatic
-     */
-    public boolean isStatic() {
-        return isStatic;
-    }
-
-    /**
-     * @param isStatic
-     *            the isStatic to set
-     */
-    public void setStatic(boolean isStatic) {
-        this.isStatic = isStatic;
     }
 
     /**
