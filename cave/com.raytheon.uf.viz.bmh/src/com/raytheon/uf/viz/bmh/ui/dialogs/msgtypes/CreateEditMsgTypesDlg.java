@@ -96,6 +96,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 30, 2015   4067     bkowal      Construct a {@link AreaSelectionSaveData} in
  *                                     the constructor that will be used for area selection
  *                                     for new and existing message types.
+ * Feb 04, 2015   4087     bkowal      Default to designation for new messages to Forecast.
  * 
  * </pre>
  * 
@@ -103,6 +104,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 public class CreateEditMsgTypesDlg extends CaveSWTDialog {
+
+    private static final Designation DEFAULT_DESIGNATION = Designation.Forecast;
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
@@ -964,7 +967,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         // If the selected message is null or the dialog is a create dialog then
         // set the selection to 0.
         if (selectedMsgType == null || dialogType == DialogType.CREATE) {
-            designationCbo.select(0);
+            this.designationCbo.setText(DEFAULT_DESIGNATION.name());
             return;
         }
 
