@@ -32,6 +32,8 @@ import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.ShellAdapter;
+import org.eclipse.swt.events.ShellEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -82,6 +84,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 27, 2014     3765   mpduff      Generated phoneme persists through selected dictionary changes.
  * Jan 28, 2015     4045   bkowal      Use the new {@link DictionaryManager} and
  *                                     {@link LegacyDictionaryConverter} constructors.
+ * Jan 30, 2015     4046   bkowal      Notify the user when they have unsaved changes before
+ *                                     allowing them to select another word or close the dialog.
  * 
  * </pre>
  * 
@@ -178,6 +182,11 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
     private Dictionary selectedDictionary;
 
     /**
+     * 
+     */
+    private boolean unsavedWord = false;
+
+    /**
      * Constructor
      * 
      * @param parentShell
@@ -224,6 +233,17 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
         if (dictCombo.getItemCount() > 0) {
             chooseDictionary();
         }
+
+        shell.addShellListener(new ShellAdapter() {
+            @Override
+            public void shellClosed(ShellEvent e) {
+                /*
+                 * determine if the user has unsaved changes before allowing
+                 * them to close the dialog.
+                 */
+                e.doit = checkForUnsavedChanges();
+            }
+        });
     }
 
     /**
@@ -466,6 +486,11 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
                 pronunciationBuilderDlg.setSsmlSnippet(neoValueTxt.getText());
                 neoPhoneme = (String) pronunciationBuilderDlg.open();
                 if (neoPhoneme != null) {
+                    final String currentTxt = neoValueTxt.getText();
+                    if (currentTxt == null || currentTxt.isEmpty()
+                            || currentTxt.equals(neoPhoneme) == false) {
+                        unsavedWord = true;
+                    }
                     neoValueTxt.setText(neoPhoneme);
                 } else {
                     if (neoValueTxt.getText().trim().length() > 0) {
@@ -586,6 +611,31 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
      *            The selected table item
      */
     private void tableSelectionAction(TableItem tableItem) {
+        if (this.selectedWord != null) {
+            /*
+             * keep track of the newly selected word, saving a word currently
+             * causes a rebuild of the entire table.
+             */
+            final String newWord = tableItem.getText(1);
+            if (this.checkForUnsavedChanges() == false) {
+                return;
+            }
+
+            if (tableItem.isDisposed()) {
+                /*
+                 * determine the new TableItem that now includes the word.
+                 */
+                for (int i = 0; i < this.tableComp.getTableItemCount(); i++) {
+                    TableItem ti = this.tableComp.getTableItems()[i];
+                    if (newWord.equals(ti.getText(1))) {
+                        tableItem = ti;
+                        this.tableComp.select(i, true);
+                        break;
+                    }
+                }
+            }
+        }
+
         this.neoValueTxt.setText("");
         selectedWord = tableItem.getText(1);
         if (tableItem.getText(0).equalsIgnoreCase(YES)) {
@@ -633,6 +683,12 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
                 wordValueLbl.getText(), phoneme);
         neoPhoneme = (String) pronunciationBuilderDlg.open();
         if (neoPhoneme != null) {
+            final String currentTxt = this.neoValueTxt.getText();
+            if (currentTxt == null || currentTxt.isEmpty()
+                    || currentTxt.equals(neoPhoneme) == false) {
+                this.unsavedWord = true;
+            }
+
             neoValueTxt.setText(neoPhoneme);
             saveWordBtn.setEnabled(true);
         }
@@ -650,15 +706,17 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
 
     /**
      * Save the converted word.
+     * 
+     * @return true, if the word was successfully saved; false, otherwise
      */
-    private void saveWord() {
+    private boolean saveWord() {
         if (dictCombo.getText().length() == 0) {
             String message = "A destination dictionary must be selected via the\n"
                     + "\"Saving to Dictionary\" selection.  If no dictionaries exist "
                     + "then click the \"New Dictionary...\" button.";
             DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
                     "Choose Dictionary", message);
-            return;
+            return false;
         }
         Word word = new Word();
         word.setWord(selectedWord);
@@ -675,12 +733,15 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
                         .getCellText())) {
                     row.getTableCellData().get(0).setCellText(YES);
                     updateConvertStatus();
-                    return;
                 }
             }
         } catch (Exception e) {
             statusHandler.error("Error saving word: " + selectedWord, e);
+            return false;
         }
+
+        this.unsavedWord = false;
+        return true;
     }
 
     /**
@@ -696,6 +757,62 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
         }
 
         selectedDictionary.getWords().add(word);
+    }
+
+    /**
+     * Prompts the user to save any unsaved changes. Returns a boolean flag
+     * indicating whether or not any subsequent actions should proceed based on
+     * the result of the save operation.
+     * 
+     * @return true, when further action can be taken; false, when no other
+     *         actions should be taken - generally indicates that the word was
+     *         not successfully saved.
+     */
+    private boolean checkForUnsavedChanges() {
+        if (this.unsavedWord == false) {
+            /*
+             * no unsaved changes, continue with the new word selection.
+             */
+            return true;
+        }
+
+        /*
+         * There are unsaved changes.
+         */
+        StringBuilder sb = new StringBuilder(
+                "You have unsaved changes. Would you like to save the changes you made to Word: ");
+        sb.append(this.selectedWord).append("?");
+        int option = DialogUtility.showMessageBox(this.shell, SWT.ICON_WARNING
+                | SWT.YES | SWT.NO, "Unsaved Dictionary Word", sb.toString());
+        if (option != SWT.YES) {
+            /*
+             * The user does not want to save the word.
+             */
+            return true;
+        }
+
+        // attempt to save the word.
+        if (this.saveWord()) {
+            return true;
+        }
+
+        /*
+         * the save failed, do not allow the user to switch to a different word.
+         */
+        TableItem[] tableItems = this.tableComp.getTableItems();
+        int previousIndex = -1;
+        for (int i = 0; i < tableItems.length; i++) {
+            TableItem ti = tableItems[i];
+
+            if (ti.getText(1).trim().toLowerCase()
+                    .equals(this.selectedWord.trim().toLowerCase())) {
+                previousIndex = i;
+                break;
+            }
+        }
+        this.tableComp.select(previousIndex, true);
+
+        return false;
     }
 
     /**
@@ -727,9 +844,16 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
 
         @Override
         public void select(int selectedIndex) {
+            this.select(selectedIndex, false);
+        }
+
+        public void select(int selectedIndex, boolean disableSelectAction) {
             table.select(selectedIndex);
             table.showSelection();
             table.layout();
+            if (disableSelectAction) {
+                return;
+            }
             tableSelectionAction(table.getSelection()[0]);
         }
 
