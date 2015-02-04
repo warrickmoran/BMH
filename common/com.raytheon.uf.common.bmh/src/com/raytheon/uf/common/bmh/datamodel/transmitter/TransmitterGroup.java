@@ -88,6 +88,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Jan 08, 2015 3821       bsteffen    Rename silenceAlarm to deadAirAlarm
  * Jan 14, 2015 3994       rjpeter     Added distinct to {@link #GET_ENABLED_TRANSMITTER_GROUPS}.
  * Jan 22, 2015 3995       rjpeter     Added {@link #GET_TRANSMITTER_GROUP_MAX_POSITION}, removed Tone.
+ * Feb 02, 2015 4080       bkowal      Only include transmitters with a TxStatus of enabled in the
+ *                                     {@link Set} produced by {@link #getEnabledTransmitters()}.
  * </pre>
  * 
  * @author rjpeter
@@ -278,7 +280,7 @@ public class TransmitterGroup {
         transmitters = new HashSet<>(transmitters);
         Iterator<Transmitter> it = transmitters.iterator();
         while (it.hasNext()) {
-            if (it.next().getTxStatus() == TxStatus.DISABLED) {
+            if (it.next().getTxStatus() != TxStatus.ENABLED) {
                 it.remove();
             }
         }
