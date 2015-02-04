@@ -146,7 +146,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 13, 2015  3843      bsteffen    Enhance Periodic Messages Dialog.
  * Jan 15, 2015  3844      bsteffen    Handle unusuals states with less NPE.
  * Jan 19, 2015  3929      lvenable    Added safety checks if the program object is null.
- * 
+ * Feb 02, 2015  4044      bsteffen    Confirm expire/delete.
  * 
  * </pre>
  * 
@@ -1026,12 +1026,22 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             List<BroadcastMsg> messages = dataManager
                     .getBroadcastMessagesForInputMessage(inputMessage.getId());
             if (messages.size() == 1) {
-                NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
-                inputMessage.setActive(false);
-                request.setInputMessage(inputMessage);
-                request.setSelectedTransmitters(new ArrayList<>(broadcastMsg
-                        .getTransmitterGroup().getTransmitters()));
-                BmhUtils.sendRequest(request);
+                String message = "Are you sure you want to Expire/Delete "
+                        + inputMessage.getName();
+                statusHandler.debug(message);
+                MessageBox mb = new MessageBox(getShell(), SWT.OK | SWT.CANCEL
+                        | SWT.ICON_QUESTION);
+                mb.setText("Confirm Expire/Delete");
+                mb.setMessage(message);
+                if (mb.open() == SWT.OK) {
+                    NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
+                    inputMessage.setActive(false);
+                    request.setInputMessage(inputMessage);
+                    request.setSelectedTransmitters(new ArrayList<>(
+                            broadcastMsg.getTransmitterGroup()
+                                    .getTransmitters()));
+                    BmhUtils.sendRequest(request);
+                }
                 return;
             }
 
