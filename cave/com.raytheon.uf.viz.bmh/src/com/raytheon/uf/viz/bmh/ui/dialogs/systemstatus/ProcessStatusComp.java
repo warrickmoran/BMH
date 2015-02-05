@@ -47,6 +47,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
  * Dec 03, 2014  3876      lvenable    Added null check.
  * Jan 26, 2015  4020      bkowal      Specify the comms host when looking up
  *                                     active transmitter groups.
+ * Feb 06, 2015  4019      lvenable    Changed layout.
  * 
  * </pre>
  * 
@@ -90,7 +91,7 @@ public class ProcessStatusComp extends Composite {
         GridLayout gl = new GridLayout(1, false);
         gl.marginHeight = 1;
         gl.verticalSpacing = 7;
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         this.setLayout(gl);
         this.setLayoutData(gd);
 

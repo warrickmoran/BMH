@@ -93,7 +93,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.listening.zones.ListeningZoneDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeAssocDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypesDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteManagerDlg;
-import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.StatusMonitorDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.StatusMonitorComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.voice.VoiceConfigDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WeatherMessagesDlg;
 import com.raytheon.uf.viz.bmh.ui.program.BroadcastProgramDlg;
@@ -149,6 +149,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 30, 2015   4069     bkowal      Move Broadcast Live to the Messages menu.
  * Feb 05, 2015   3743     bsteffen    Save the BMH Servers whenever dialog is created.
  * 
+ * Feb 06, 2015   4019     lvenable    Updated code to have the status monitor as a part of this dialog
+ *                                     and removed the menu items for the status monitor and alert monitor.
  * 
  * </pre>
  * 
@@ -187,9 +189,6 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
     /** Broadcast cycle image. */
     private Image broadcastCycleImg;
-
-    /** Status dialog. */
-    private StatusMonitorDlg statusDlg;
 
     /** Message type association dialog. */
     private MessageTypeAssocDlg msgTypeAssocDlg;
@@ -277,7 +276,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
      *            Parent shell.
      */
     public BMHLauncherDlg(Shell parentShell) {
-        super(parentShell, SWT.DIALOG_TRIM, CAVE.DO_NOT_BLOCK
+        super(parentShell, SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.DO_NOT_BLOCK
                 | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.INDEPENDENT_SHELL);
         if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
             practiceJob = new PracticeKeepAliveJob();
@@ -290,9 +289,9 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
     protected Layout constructShellLayout() {
         // Create the main layout for the shell.
         GridLayout mainLayout = new GridLayout(2, false);
-        mainLayout.marginHeight = 5;
-        mainLayout.marginWidth = 5;
-        mainLayout.horizontalSpacing = 10;
+        mainLayout.marginHeight = 3;
+        mainLayout.marginWidth = 3;
+        mainLayout.horizontalSpacing = 5;
         return mainLayout;
     }
 
@@ -314,11 +313,8 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
     @Override
     protected void opened() {
-        /*
-         * Launch the System status monitor after the BMH Launcher opens so the
-         * system status dialog doesn't get tied to the Cave dialog.
-         */
-        launchStatusDialog();
+        shell.setMinimumSize(shell.getSize());
+
         NotificationManagerJob.addObserver(
                 BMHJmsDestinations.getStatusDestination(), this);
     }
@@ -356,6 +352,10 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
         createMenuComp(shell);
         createQuickAccessButtons(shell);
+
+        DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
+
+        new StatusMonitorComp(shell);
     }
 
     /**
@@ -462,10 +462,10 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
         final Composite buttonComp = new Composite(mainComp, SWT.NONE);
         GridLayout gl = new GridLayout(5, false);
-        gl.horizontalSpacing = 10;
+        gl.horizontalSpacing = 5;
         buttonComp.setLayout(gl);
         buttonComp
-                .setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true));
+                .setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         /*
          * Transmitters menu
@@ -548,9 +548,9 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
         Composite buttonComp = new Composite(mainComp, SWT.NONE);
         GridLayout gl = new GridLayout(3, false);
-        gl.horizontalSpacing = 10;
+        gl.horizontalSpacing = 5;
         buttonComp.setLayout(gl);
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
+        buttonComp.setLayoutData(new GridData(SWT.RIGHT, SWT.DEFAULT, true,
                 false));
 
         /*
@@ -857,7 +857,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                 launchEmergencyOverride();
             }
         });
-        
+
         /*
          * Broadcast Live
          */
@@ -887,32 +887,6 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
      */
     private void createSystemMenu() {
         systemMenu = new Menu(shell, SWT.POP_UP);
-
-        /*
-         * System Status
-         */
-        MenuItem systemStatusMI = new MenuItem(systemMenu, SWT.PUSH);
-        systemStatusMI.setText("System Status...");
-        systemStatusMI.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent event) {
-                launchStatusDialog();
-            }
-        });
-
-        /*
-         * Alert Monitor
-         */
-        MenuItem alertMonitorMI = new MenuItem(systemMenu, SWT.PUSH);
-        alertMonitorMI.setText("Alert Monitor...");
-        alertMonitorMI.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent event) {
-                if (isAuthorized(DlgInfo.ALERT_MONITOR)) {
-                    DialogUtility.notImplemented(shell);
-                }
-            }
-        });
 
         if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
             MenuItem copyOperationalDbMI = new MenuItem(systemMenu, SWT.PUSH);
@@ -1178,24 +1152,6 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             } else {
                 emergecyOverrideDlg.bringToTop();
             }
-        }
-    }
-
-    /**
-     * Launch the system status dialog.
-     */
-    private void launchStatusDialog() {
-        if (statusDlg == null || statusDlg.isDisposed()) {
-            statusDlg = new StatusMonitorDlg(getShell());
-            statusDlg.setCloseCallback(new ICloseCallback() {
-
-                @Override
-                public void dialogClosed(Object returnValue) {
-                    dialogsSet.remove(statusDlg);
-                }
-            });
-            statusDlg.open();
-            dialogsSet.add(statusDlg);
         }
     }
 

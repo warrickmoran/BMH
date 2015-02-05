@@ -32,13 +32,14 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
@@ -65,10 +66,9 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.StatusDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterGrpInfo;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
-import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
- * Dialog that displays all of the data.
+ * Composite that displays the status of the BMH system.
  * 
  * <pre>
  * 
@@ -83,19 +83,20 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jan 13, 2015  #3844     bsteffen     Fix dialog disposed error after closing.
  * Jan 26, 2015  #4020     bkowal       Updated {@link #printVizStatusMonitorVariables()}.
  * Jan 27, 2015  #4029     bkowal       Use {@link BMHJmsDestinations}.
- * 
+ * Feb 06, 2015  #4019     lvenable     Changed class to be a composite and made other changes
+ *                                      so it can be embedded into a dialog.
  * 
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
-public class StatusMonitorDlg extends CaveSWTDialog implements
+public class StatusMonitorComp extends Composite implements
         INotificationObserver, ISystemStatusListener {
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(StatusMonitorDlg.class);
+            .getHandler(StatusMonitorComp.class);
 
     /**
      * Status data manager that manages all of the data for displaying the
@@ -130,27 +131,13 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
      * @param parentShell
      *            Parent shell.
      */
-    public StatusMonitorDlg(Shell parentShell) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
-                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
-        setText("System Status");
+    public StatusMonitorComp(Shell parentShell) {
+        super(parentShell, SWT.NONE);
+
+        init();
     }
 
-    @Override
-    protected Layout constructShellLayout() {
-        GridLayout mainLayout = new GridLayout(2, false);
-        mainLayout.verticalSpacing = 3;
-        return mainLayout;
-    }
-
-    @Override
-    protected Object constructShellLayoutData() {
-        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        return gd;
-    }
-
-    @Override
-    protected void disposed() {
+    protected void disposedAction() {
         NotificationManagerJob.removeObserver(
                 BMHJmsDestinations.getStatusDestination(), this);
         NotificationManagerJob.removeObserver(
@@ -161,21 +148,31 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
         vizStatusMonitor.dispose();
     }
 
-    @Override
-    protected void opened() {
-        shell.setMinimumSize(shell.getSize());
+    private void init() {
+
+        this.addDisposeListener(new DisposeListener() {
+
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                disposedAction();
+            }
+        });
 
         NotificationManagerJob.addObserver(
                 BMHJmsDestinations.getStatusDestination(), this);
         NotificationManagerJob.addObserver(
                 BMHJmsDestinations.getBMHConfigDestination(), this);
-    }
 
-    @Override
-    protected void initializeComponents(Shell shell) {
+        GridLayout gl = new GridLayout(2, false);
+        gl.horizontalSpacing = 10;
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
+        gd.horizontalSpan = 2;
+        this.setLayout(gl);
+        this.setLayoutData(gd);
 
         createDacTransmitterStatusControls();
         createProcessStatusControlGroup();
+
     }
 
     /**
@@ -191,11 +188,11 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
         // TODO : remove when testing is done.
         // printVizStatusMonitorVariables();
 
-        statusImages = new StatusImages(shell);
+        statusImages = new StatusImages(this);
 
         sdm = new StatusDataManager();
 
-        Group dacXmitGrp = new Group(shell, SWT.SHADOW_OUT);
+        Group dacXmitGrp = new Group(this, SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         dacXmitGrp.setLayout(gl);
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -208,7 +205,6 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
         gl.verticalSpacing = 1;
         scrolledComp.setLayout(gl);
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.widthHint = 210;
         gd.heightHint = 400;
         scrolledComp.setLayoutData(gd);
 
@@ -235,7 +231,7 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
      * Create the Group that will contain the Process Status controls.
      */
     private void createProcessStatusControlGroup() {
-        processStatusGrp = new Group(shell, SWT.SHADOW_OUT);
+        processStatusGrp = new Group(this, SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         processStatusGrp.setLayout(gl);
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -317,7 +313,7 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
 
         dacTransmittersComp.layout();
         scrolledComp.layout();
-        shell.redraw();
+        getShell().redraw();
     }
 
     private void repopulateProcessStatus() {
@@ -335,8 +331,8 @@ public class StatusMonitorDlg extends CaveSWTDialog implements
 
         populateProcessStatusControls();
         processStatusGrp.layout();
-        shell.layout();
-        shell.redraw();
+        getShell().layout();
+        getShell().redraw();
     }
 
     /**
