@@ -36,6 +36,8 @@ import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.IOnDemandBroadcastMsg;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastGroupsMessage;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastListGroupsCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
@@ -62,6 +64,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Nov 15, 2014 3630       bkowal      Support alignment tests.
  * Dec 1, 2014  3797       bkowal      Support broadcast clustering.
  * Dec 12, 2014 3603       bsteffen    Reuse alignment task for transfer tones.
+ * Feb 05, 2015 3743       bsteffen    Ability to return groups.
  * 
  * </pre>
  * 
@@ -117,16 +120,26 @@ public class BroadcastStreamServer extends AbstractServerThread {
      */
     @Override
     protected void handleConnection(Socket socket) throws Exception {
-        IOnDemandBroadcastMsg command = SerializationUtil.transformFromThrift(
-                IOnDemandBroadcastMsg.class, socket.getInputStream());
+        Object obj = SerializationUtil.transformFromThrift(Object.class,
+                socket.getInputStream());
+        logger.info("Handling {} request.", obj.getClass().getName());
 
-        logger.info("Handling {} request.", command.getClass().getName());
+        if (obj instanceof LiveBroadcastListGroupsCommand) {
+            SerializationUtil.transformToThriftUsingStream(
+                    new LiveBroadcastGroupsMessage(availableDacConnectionsMap
+                            .keySet()), socket.getOutputStream());
+            socket.close();
+            return;
+        }
+
+        IOnDemandBroadcastMsg command = (IOnDemandBroadcastMsg) obj;
 
         if (this.areTransmitterGroupsAvailable(command, socket) == false) {
             /*
              * An existing {@link AbstractBroadcastingTask} is already using one
              * of the requested {@link TransmitterGroup}.
              */
+            socket.close();
             return;
         }
 
@@ -141,6 +154,7 @@ public class BroadcastStreamServer extends AbstractServerThread {
             logger.error(
                     "On Demand Broadcast Command {} is not currently supported!",
                     command.getClass().getName());
+            socket.close();
             return;
         }
 
