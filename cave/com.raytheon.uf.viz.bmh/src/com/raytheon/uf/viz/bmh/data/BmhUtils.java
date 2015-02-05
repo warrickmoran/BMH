@@ -52,8 +52,9 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
@@ -284,7 +285,7 @@ public class BmhUtils {
     public static Object sendRequest(AbstractBMHServerRequest request)
             throws Exception {
         request.setOperational(CAVEMode.getMode() == CAVEMode.OPERATIONAL);
-        Object obj = RequestRouter.route(request, "bmh.server");
+        Object obj = RequestRouter.route(request, BMHServers.BMH_SERVER);
         if (obj instanceof SuccessfulExecution) {
             SuccessfulExecution se = (SuccessfulExecution) obj;
             obj = se.getResponse();

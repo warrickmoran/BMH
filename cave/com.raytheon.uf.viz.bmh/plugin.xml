@@ -55,4 +55,11 @@
             commandId="com.raytheon.uf.viz.bmh.main">
       </handler>
    </extension>
+   <extension
+         point="com.raytheon.uf.viz.core.component">
+      <component
+            class="com.raytheon.uf.viz.bmh.standalone.BMHComponent"
+            key="bmh">
+      </component>
+   </extension>
 </plugin>

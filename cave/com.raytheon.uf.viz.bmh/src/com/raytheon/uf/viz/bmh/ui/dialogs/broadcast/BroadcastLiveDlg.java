@@ -61,6 +61,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * ------------ ---------- ----------- --------------------------
  * Nov 15, 2014 3808       bkowal      Initial creation
  * Nov 21, 2014 3845       bkowal      Use BLBroadcastSettingsBuilder
+ * Feb 05, 2015 3743       bsteffen    Allow subclasses to override loading of available groups.
  * 
  * </pre>
  * 
@@ -79,7 +80,7 @@ public class BroadcastLiveDlg extends AbstractBMHDialog {
 
     private Button transmitBtn;
 
-    private Map<String, TransmitterGroup> transmitterGroupLookupMap;
+    protected Map<String, TransmitterGroup> transmitterGroupLookupMap;
 
     public BroadcastLiveDlg(Map<AbstractBMHDialog, String> map,
             Shell parentShell) {
@@ -142,7 +143,7 @@ public class BroadcastLiveDlg extends AbstractBMHDialog {
         });
     }
 
-    private CheckListData buildTransmitterChecklist() {
+    protected CheckListData buildTransmitterChecklist() {
         CheckListData cld = new CheckListData();
 
         List<TransmitterGroup> transmitterGroups = null;

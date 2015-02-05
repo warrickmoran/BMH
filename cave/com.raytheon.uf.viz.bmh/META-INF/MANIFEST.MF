@@ -24,5 +24,6 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.draw2d;bundle-version="3.7.2",
  org.csstudio.swt.xygraph;bundle-version="2.1.0",
  com.google.guava;bundle-version="11.0.2",
- com.raytheon.uf.common.util;bundle-version="1.14.1"
+ com.raytheon.uf.common.util;bundle-version="1.14.1",
+ com.raytheon.uf.viz.application;bundle-version="1.14.0"
 Import-Package: com.raytheon.viz.core.mode

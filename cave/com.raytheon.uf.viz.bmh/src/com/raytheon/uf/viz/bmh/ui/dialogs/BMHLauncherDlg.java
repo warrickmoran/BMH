@@ -68,6 +68,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
+import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.practice.PracticeKeepAliveJob;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
@@ -146,6 +147,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 13, 2015   3968     bkowal      Handle message confirmations.
  * Jan 14, 2015   3969     bkowal      Handle watch/warning not broadcast notifications.
  * Jan 30, 2015   4069     bkowal      Move Broadcast Live to the Messages menu.
+ * Feb 05, 2015   3743     bsteffen    Save the BMH Servers whenever dialog is created.
+ * 
  * 
  * </pre>
  * 
@@ -280,6 +283,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             practiceJob = new PracticeKeepAliveJob();
             practiceJob.schedule();
         }
+        BMHServers.saveServers();
     }
 
     @Override
