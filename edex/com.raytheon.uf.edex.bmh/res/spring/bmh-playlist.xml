@@ -17,6 +17,7 @@
 	<bean id="playlistStateManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager">
 		<property name="playlistDao" ref="playlistDao" />
 		<property name="messageTypeDao" ref="messageTypeDao" />
+		<property name="broadcastMsgDao" ref="broadcastMsgDao" />
 	</bean>
 
 	<camelContext id="bmh-playlist" xmlns="http://camel.apache.org/schema/spring"
