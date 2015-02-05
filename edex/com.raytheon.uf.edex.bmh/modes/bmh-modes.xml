@@ -30,7 +30,6 @@
 	 	<include>^bmh-</include>
 	 	<include>request-service-common.xml</include>
         <include>nwsauth-request.xml</include>
-        <exclude>^bmh-request.xml</exclude>
         <includeMode>statsTemplate</includeMode>
 	</mode>
 	<mode name="request">
