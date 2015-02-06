@@ -64,6 +64,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  * Jan 09, 2015  #3942     rjpeter      Added flag to control use of positionStream.
  * Jan 12, 2015  #3968     bkowal       Added {@link #requiresConfirmation()}.
  * Feb 02, 2015  #4093     bsteffen     Add writePosition.
+ * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * 
  * </pre>
  * 
@@ -217,10 +218,6 @@ public final class DacMessagePlaybackData {
             }
         }
         message.setReplaceTime(null);
-        /*
-         * TODO the notification was sent at the beginning of playing but the
-         * state is not persisted until the end.
-         */
         Path msgPath = message.getPath();
         Path tmpPath = msgPath.resolveSibling(msgPath.getFileName().toString()
                 .replace(".xml", ".tmp.xml"));
@@ -231,7 +228,17 @@ public final class DacMessagePlaybackData {
         } catch (Throwable e) {
             logger.error("Unable to persist message state.", e);
         }
+    }
 
+    public Runnable getEndPlayBackTask() {
+        return new Runnable() {
+
+            @Override
+            public void run() {
+                endPlayback();
+            }
+
+        };
     }
 
     /**

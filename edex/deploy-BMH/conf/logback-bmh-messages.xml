@@ -12,6 +12,10 @@
 		</encoder>
 	</appender>
 
+    <appender name="async${logger.prefix:-Message}ActivityLog" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="${logger.prefix:-Message}ActivityLog" />
+    </appender>
+
 	<appender name="${logger.prefix:-Message}ErrorLog"
 		class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -24,14 +28,19 @@
 			<pattern>%d: %m%n</pattern>
 		</encoder>
 	</appender>
+  
+    <appender name="async${logger.prefix:-Message}ErrorLog" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="${logger.prefix:-Message}ErrorLog" />
+    </appender>
+  
 
 	<logger name="${logger.prefix:-Message}ActivityLogger">
 		<level value="INFO" />
-		<appender-ref ref="${logger.prefix:-Message}ActivityLog" />
+		<appender-ref ref="async${logger.prefix:-Message}ActivityLog" />
 	</logger>
 
 	<logger name="${logger.prefix:-Message}ErrorLogger">
 		<level value="ERROR" />
-		<appender-ref ref="${logger.prefix:-Message}ErrorLog" />
+		<appender-ref ref="async${logger.prefix:-Message}ErrorLog" />
 	</logger>
 </included>

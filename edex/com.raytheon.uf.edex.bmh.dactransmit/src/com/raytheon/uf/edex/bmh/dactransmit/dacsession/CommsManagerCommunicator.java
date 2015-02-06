@@ -25,8 +25,6 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +51,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
-import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
+import com.raytheon.uf.edex.bmh.dactransmit.playlist.PrioritizableCallable;
+import com.raytheon.uf.edex.bmh.dactransmit.playlist.PriorityBasedExecutorService;
 
 /**
  * 
@@ -87,6 +86,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jan 12, 2015  3968     bkowal      Handle {@link MessageBroadcastNotifcation}.
  * Jan 14, 2015  3969     bkowal      Handle {@link MessageNotBroadcastNotification}.
  * Jan 19, 2015  4002     bkowal      Handle {@link MessageDelayedBroadcastNotification}.
+ * Feb 06, 2015  4071     bsteffen    Consolidate threading.
  * 
  * </pre>
  * 
@@ -103,23 +103,21 @@ public final class CommsManagerCommunicator extends Thread {
 
     private final Object sendLock = new Object();
 
+    private final EventBus eventBus;
+
+    private final ExecutorService executorService;
+
     private Socket socket;
 
     private DacTransmitStatus statusToSend = new DacTransmitStatus(false);
 
-    private final EventBus eventBus;
-
-    private final ExecutorService writerThread;
-
     private transient boolean running = true;
 
-    public CommsManagerCommunicator(DacSessionConfig config, EventBus eventBus) {
+    public CommsManagerCommunicator(DacSession dacSession) {
         super("CommsManagerReaderThread");
-        this.config = config;
-        this.eventBus = eventBus;
-        this.writerThread = Executors
-                .newSingleThreadExecutor(new NamedThreadFactory(
-                        "CommsManagerWriterThread"));
+        this.config = dacSession.getConfig();
+        this.eventBus = dacSession.getEventBus();
+        this.executorService = dacSession.getAsyncExecutor();
     }
 
     @Override
@@ -132,7 +130,6 @@ public final class CommsManagerCommunicator extends Thread {
                 OutputStream outputStream = null;
                 synchronized (sendLock) {
                     try {
-                        // TODO is it ALWAYS localhost.
                         socket = new Socket(commsHost, config.getManagerPort());
                         socket.setTcpNoDelay(true);
                         inputStream = socket.getInputStream();
@@ -166,7 +163,6 @@ public final class CommsManagerCommunicator extends Thread {
                 }
             }
             if (socket == null) {
-                // TODO make sleep configurable
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e1) {
@@ -209,19 +205,6 @@ public final class CommsManagerCommunicator extends Thread {
 
     private void handleMessage(Object message) {
         if (message instanceof DacTransmitShutdown) {
-            // TODO graceful shutdown.
-            // Maybe make this a direct call or something to the DacSession
-            // shutdown method?
-            /*
-             * The problem with doing this here is you won't have proper control
-             * of shutdown. Shutdown should be an ordered sequence. Here you are
-             * disconnecting form CommsManager, even though on a shutdown you
-             * are going to wait for the message to finish playing. Shutdown
-             * doesn't fit well with the event bus paradigm--shutdown is
-             * specifically dependent on killing the event bus's thread. What
-             * happens when killing the event bus thread happens on that same
-             * thread??
-             */
             eventBus.post(new ShutdownRequestedEvent(
                     ((DacTransmitShutdown) message).isNow()));
         } else if (message instanceof PlaylistUpdateNotification) {
@@ -243,7 +226,6 @@ public final class CommsManagerCommunicator extends Thread {
     public void shutdown() {
         running = false;
         disconnect();
-        writerThread.shutdown();
     }
 
     public void sendConnectionStatus(boolean connected) {
@@ -262,70 +244,80 @@ public final class CommsManagerCommunicator extends Thread {
     @Subscribe
     public void sendPlaybackStatus(
             MessagePlaybackStatusNotification notification) {
-        sendMessageToCommsManager(notification);
+        executorService.submit(new SendToCommsManagerTask(notification));
     }
 
     @Subscribe
     public void sendPlaylistSwitch(PlaylistSwitchNotification notification) {
-        sendMessageToCommsManager(notification);
+        executorService.submit(new SendToCommsManagerTask(notification));
     }
 
     @Subscribe
     public void sendPlaylistSwitch(LiveBroadcastSwitchNotification notification) {
-        sendMessageToCommsManager(notification);
+        executorService.submit(new SendToCommsManagerTask(notification));
     }
 
     @Subscribe
     public void handleCriticalError(CriticalErrorEvent e) {
-        sendMessageToCommsManager(new DacTransmitCriticalError(
-                e.getErrorMessage(), e.getThrowable()));
+        executorService.submit(new SendToCommsManagerTask(
+                new DacTransmitCriticalError(e.getErrorMessage(), e
+                        .getThrowable())));
     }
 
     @Subscribe
     public void handleMsgBroadcastNotification(
             MessageBroadcastNotifcation notification) {
-        sendMessageToCommsManager(notification);
+        executorService.submit(new SendToCommsManagerTask(notification));
     }
 
     @Subscribe
     public void handleMsgNotBroadcastNotification(
             MessageNotBroadcastNotification notification) {
-        sendMessageToCommsManager(notification);
+        executorService.submit(new SendToCommsManagerTask(notification));
     }
 
     @Subscribe
     public void handleBroadcastDelayedNotification(
             MessageDelayedBroadcastNotification notification) {
-        sendMessageToCommsManager(notification);
+        executorService.submit(new SendToCommsManagerTask(notification));
     }
 
     private void sendMessageToCommsManager(final Object message) {
-        if (socket != null) {
-            Runnable notifyTask = new Runnable() {
-
-                @Override
-                public void run() {
-                    synchronized (sendLock) {
-                        try {
-                            SerializationUtil.transformToThriftUsingStream(
-                                    message, socket.getOutputStream());
-                        } catch (SerializationException | IOException e) {
-                            logger.error(
-                                    "Error communicating with comms manager", e);
-                        }
-                    }
+        synchronized (sendLock) {
+            if (socket != null) {
+                try {
+                    SerializationUtil.transformToThriftUsingStream(message,
+                            socket.getOutputStream());
+                } catch (SerializationException | IOException e) {
+                    logger.error("Error communicating with comms manager", e);
                 }
-            };
-
-            try {
-                writerThread.submit(notifyTask);
-            } catch (RejectedExecutionException e) {
-                logger.error("Could not submit notification task to executor.",
-                        e);
+            } else {
+                logger.warn("Received notification that could not be sent to CommsManager: "
+                        + message.toString());
             }
-        } else {
-            logger.warn("Received notification that could not be sent to CommsManager: "
-                    + message.toString());
         }
+    }
+
+    private class SendToCommsManagerTask implements
+            PrioritizableCallable<Object> {
+
+        private final Object message;
+
+        public SendToCommsManagerTask(Object message) {
+            super();
+            this.message = message;
+        }
+
+        @Override
+        public Object call() {
+            sendMessageToCommsManager(message);
+            return null;
+        }
+
+        @Override
+        public Integer getPriority() {
+            return PriorityBasedExecutorService.PRIORITY_LOW;
+        }
+
     }
 }

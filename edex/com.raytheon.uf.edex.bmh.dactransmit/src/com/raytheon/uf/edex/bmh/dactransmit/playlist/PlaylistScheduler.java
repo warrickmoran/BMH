@@ -40,9 +40,9 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
-import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
 
 import javax.xml.bind.JAXB;
 
@@ -64,7 +64,7 @@ import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotificationHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
@@ -133,6 +133,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      an active Broadcast Live is delaying the broadcast of
  *                                      a warning or interrupt.
  * Jan 28, 2015  #4036     bsteffen     Actually expire playlists with no playable messages.
+ * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * 
  * </pre>
  * 
@@ -183,7 +184,7 @@ public final class PlaylistScheduler implements
     private final SortedSet<DacPlaylist> activePlaylists;
 
     private List<DacPlaylistMessageId> currentMessages = Collections
-            .emptyList();;
+            .emptyList();
 
     /**
      * Unplayed interrupt messages. We use a Queue because the playlist
@@ -211,6 +212,8 @@ public final class PlaylistScheduler implements
     private final Object playlistMessgeLock;
 
     private final EventBus eventBus;
+
+    private final ExecutorService executorService;
 
     private volatile boolean warnNoMessages;
 
@@ -247,10 +250,11 @@ public final class PlaylistScheduler implements
      *             If any I/O errors occur attempting to get the list of
      *             playlist files from the specified directory.
      */
-    public PlaylistScheduler(Path inputDirectory, EventBus eventBus,
-            double dbTarget, TimeZone timezone) {
-        this.playlistDirectory = inputDirectory;
-        this.eventBus = eventBus;
+
+    public PlaylistScheduler(DacSession dacSession) {
+        this.playlistDirectory = dacSession.getConfig().getInputDirectory();
+        this.eventBus = dacSession.getEventBus();
+        this.executorService = dacSession.getAsyncExecutor();
 
         this.futurePlaylists = new LinkedList<>();
         this.messageIndex = 0;
@@ -302,9 +306,7 @@ public final class PlaylistScheduler implements
 
         Collections.sort(this.futurePlaylists, QUEUE_ORDER);
 
-        this.cache = new PlaylistMessageCache(
-                inputDirectory.resolve("messages"), this, this.eventBus,
-                dbTarget, timezone);
+        this.cache = new PlaylistMessageCache(dacSession, this);
         for (DacPlaylist playlist : this.activePlaylists) {
             /*
              * Verify that all messages in the playlist exist before caching
@@ -322,10 +324,7 @@ public final class PlaylistScheduler implements
                 }
             }
 
-            /*
-             * Cache the playlist messages.
-             */
-            this.cache.retrieveAudio(playlist.getMessages());
+            this.cache.retrieveAudio(playlist);
         }
 
         expirePlaylists(expiredPlaylists);
@@ -348,13 +347,6 @@ public final class PlaylistScheduler implements
         this.playlistMessgeLock = new Object();
 
         this.warnNoMessages = true;
-    }
-
-    /**
-     * Shuts down any background threads this class uses for processing.
-     */
-    public void shutdown() {
-        cache.shutdown();
     }
 
     /**
@@ -595,7 +587,19 @@ public final class PlaylistScheduler implements
 
     @Override
     @Subscribe
-    public void newPlaylistReceived(PlaylistUpdateNotification notification) {
+    public void newPlaylistReceived(
+            final PlaylistUpdateNotification notification) {
+        executorService.submit(new Runnable() {
+
+            @Override
+            public void run() {
+                processNewPlaylist(notification);
+            }
+        });
+    }
+
+    private void processNewPlaylist(PlaylistUpdateNotification notification) {
+
         Path playlistPath = playlistDirectory.resolveSibling(notification
                 .getPlaylistPath());
         if (!Files.exists(playlistPath)) {
@@ -620,7 +624,7 @@ public final class PlaylistScheduler implements
                 return;
             }
             newPlaylist.setPath(playlistPath);
-            cache.retrieveAudio(newPlaylist.getMessages());
+            cache.retrieveAudio(newPlaylist);
             logger.debug("Received new playlist: " + newPlaylist.toString());
 
             ITimer timer = TimeUtil.getTimer();
@@ -635,7 +639,6 @@ public final class PlaylistScheduler implements
 
                 if (newPlaylist.isInterrupt()) {
                     interrupts.add(newPlaylist);
-                    eventBus.post(new InterruptMessageReceivedEvent(newPlaylist));
                     return;
                 }
 
@@ -847,8 +850,7 @@ public final class PlaylistScheduler implements
         for (DacPlaylistMessageId id : playlistMessages) {
             if (!past.contains(id)) {
                 DacPlaylistMessage messageData = cache.getMessage(id);
-                if (messageData.isPeriodic()
-                        && messageData.getPlayCount() > 0
+                if (messageData.isPeriodic() && messageData.getPlayCount() > 0
                         && !forceSchedulePeriodic) {
                     long nextPlayTime = messageData.getLastTransmitTime()
                             .getTimeInMillis()

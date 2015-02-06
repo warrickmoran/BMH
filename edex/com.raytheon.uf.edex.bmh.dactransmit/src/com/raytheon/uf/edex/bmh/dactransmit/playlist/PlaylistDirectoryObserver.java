@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
@@ -56,6 +57,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jul 29, 2014  #3286     dgilling     Use NamedThreadFactory.
  * Aug 26, 2014  #3286     dgilling     Revert previous change to start().
  * Sep 08, 2014  #3286     dgilling     Make compatible with playlist changes.
+ * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * 
  * </pre>
  * 
@@ -88,13 +90,13 @@ public class PlaylistDirectoryObserver {
      *             If {@code WatchService} used to monitor directory cannot be
      *             instantiated.
      */
-    public PlaylistDirectoryObserver(Path playlistDirectory, EventBus eventBus)
+    public PlaylistDirectoryObserver(DacSession dacSession)
             throws IOException {
-        this.eventBus = eventBus;
+        this.eventBus = dacSession.getEventBus();
         this.threadPool = Executors
                 .newSingleThreadExecutor(new NamedThreadFactory(
                         "PlaylistDirectoryObserver"));
-        this.playlistDirectory = playlistDirectory;
+        this.playlistDirectory = dacSession.getConfig().getInputDirectory();
         this.watchService = FileSystems.getDefault().newWatchService();
         this.playlistDirectory.register(this.watchService,
                 StandardWatchEventKinds.ENTRY_CREATE);
