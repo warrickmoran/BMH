@@ -21,6 +21,7 @@ package com.raytheon.uf.edex.bmh.playlist;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -151,6 +152,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jan 26, 2015  3359     bsteffen    Use site id for same tones.
  * Jan 27, 2015  4036     bsteffen    Fix creation of general playlists.
  * Feb 03, 2015  4081     bkowal      Eliminate unused isStatic dac playlist message setting.
+ * Feb 06, 2015  4036     bsteffen    Ensure message writer is closed.
  * 
  * 
  * </pre>
@@ -891,10 +893,10 @@ public class PlaylistManager implements IContextStateProcessor {
                         dac.setSAMEtone(builder.build().toString());
                     }
                 }
-                JAXB.marshal(
-                        dac,
-                        Files.newBufferedWriter(messageFile,
-                                Charset.defaultCharset()));
+                try (Writer writer = Files.newBufferedWriter(messageFile,
+                        Charset.defaultCharset())) {
+                    JAXB.marshal(dac, writer);
+                }
                 this.messageLogger.logCreationActivity(dac,
                         broadcast.getTransmitterGroup());
             }
