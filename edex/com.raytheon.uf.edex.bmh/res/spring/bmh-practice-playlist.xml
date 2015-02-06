@@ -18,6 +18,7 @@
   <bean id="practice_playlistStateManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager">
     <property name="playlistDao" ref="practice_playlistDao" />
     <property name="messageTypeDao" ref="practice_messageTypeDao" />
+    <property name="broadcastMsgDao" ref="practice_broadcastMsgDao" />
   </bean>
   
   <bean factory-bean="playlistHandler" factory-method="setPracticePlaylistStateManager">

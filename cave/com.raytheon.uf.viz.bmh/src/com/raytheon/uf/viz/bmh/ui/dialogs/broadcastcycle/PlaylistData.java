@@ -73,6 +73,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Dec 11, 2014   3895     lvenable    Changed SimpleDateFormat to use GMT.
  * Jan 13, 2015   3843     bsteffen    Add ability to populate periodic table.
  * Jan 13, 2015   3844     bsteffen    Include PlaylistMessages in PlaylistDataStructure
+ * Feb 05, 2015   4088     bkowal      Handle interrupt playlists that are not saved to the
+ *                                     database.
  * 
  * </pre>
  * 
@@ -184,6 +186,36 @@ public class PlaylistData {
                     statusHandler.error("Error accessing BMH database", e);
                 }
             }
+        } else {
+            if (notification.getMessages().size() == 1) {
+                /*
+                 * A single message without a saved playlist would indicate that
+                 * the notification may be for an interrupt.
+                 */
+                try {
+                    // retrieve the associated broadcast message.
+                    long id = notification.getMessages().get(0)
+                            .getBroadcastId();
+                    BroadcastMsg broadcastMsg = this.dataManager
+                            .getBroadcastMessage(id);
+                    if (broadcastMsg == null) {
+                        statusHandler
+                                .error("Failed to find the broadcast msg for id: "
+                                        + id
+                                        + " associated with notification: "
+                                        + notification.toString() + ".");
+                        return;
+                    }
+                    MessageType messageType = dataManager
+                            .getMessageType(broadcastMsg.getAfosid());
+                    PlaylistMessage playlistMessage = new PlaylistMessage();
+                    playlistMessage.setBroadcastMsg(broadcastMsg);
+                    playlistMap.put(id, playlistMessage);
+                    messageTypeMap.put(id, messageType);
+                } catch (Exception e) {
+                    statusHandler.error("Error accessing BMH database", e);
+                }
+            }
         }
     }
 
@@ -277,7 +309,13 @@ public class PlaylistData {
                         .error("Broadcast message is null.  Setting data to unknown.");
             }
 
-            String title = messageTypeMap.get(broadcastId).getTitle();
+            String title = "Unknown";
+            if (messageTypeMap.get(broadcastId) != null) {
+                /*
+                 * handle potential NPE.
+                 */
+                title = messageTypeMap.get(broadcastId).getTitle();
+            }
             cycleTableData.setMessageTitle(title);
 
             String mrd = null;

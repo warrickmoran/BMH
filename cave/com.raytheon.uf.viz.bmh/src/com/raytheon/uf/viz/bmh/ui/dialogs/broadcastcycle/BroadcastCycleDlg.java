@@ -147,6 +147,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 15, 2015  3844      bsteffen    Handle unusuals states with less NPE.
  * Jan 19, 2015  3929      lvenable    Added safety checks if the program object is null.
  * Feb 02, 2015  4044      bsteffen    Confirm expire/delete.
+ * Feb 05, 2015  4090      bkowal      Update the suite category whenever the playlist
+ *                                     changes.
  * 
  * </pre>
  * 
@@ -732,6 +734,14 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     Suite suite = sdm.getSuiteByName(suiteName);
                     if (suite != null) {
                         suiteCatValueLbl.setText(suite.getType().name());
+                    } else {
+                        /*
+                         * is this an interrupt?
+                         */
+                        if (suiteName.startsWith("Interrupt")) {
+                            suiteCatValueLbl.setText(Suite.SuiteType.INTERRUPT
+                                    .name());
+                        }
                     }
                     playlistData.setData(selectedTransmitterGrp, dataStruct);
                     tableData = playlistData
@@ -1271,6 +1281,34 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                 notification.getPlaybackCycleTime()));
                         updateTable(tableData);
                         this.selectedSuite = notification.getSuiteName();
+                        String suiteCategory = NA;
+                        SuiteDataManager sdm = new SuiteDataManager();
+                        try {
+                            Suite suite = sdm.getSuiteByName(selectedSuite);
+                            if (suite != null) {
+                                suiteCategory = suite.getType().name();
+                            } else {
+                                /*
+                                 * is this an interrupt?
+                                 */
+                                if (notification.getSuiteName().startsWith(
+                                        "Interrupt")) {
+                                    /*
+                                     * set the category to interrupt.
+                                     */
+                                    suiteCategory = Suite.SuiteType.INTERRUPT
+                                            .name();
+                                }
+                            }
+                        } catch (Exception e) {
+                            statusHandler.error("Failed to retrieve suite: "
+                                    + this.selectedSuite + ".", e);
+                            /*
+                             * the suite category will show up as N/A, continue.
+                             */
+                        }
+
+                        final String currentSuiteCategory = suiteCategory;
                         VizApp.runAsync(new Runnable() {
 
                             @Override
@@ -1283,7 +1321,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                             .getName());
                                 }
                                 suiteValueLbl.setText(selectedSuite);
+                                /*
+                                 * Update the suite category.
+                                 */
+                                suiteCatValueLbl.setText(currentSuiteCategory);
                                 cycleDurValueLbl.setText(cycleDurationTime);
+
                                 if (periodicMsgDlg != null
                                         && !periodicMsgDlg.isDisposed()) {
                                     periodicMsgDlg.populateTableData();

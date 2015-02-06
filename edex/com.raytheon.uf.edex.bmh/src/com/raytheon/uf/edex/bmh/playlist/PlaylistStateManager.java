@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
@@ -63,7 +65,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Nov 30, 2014    3752    mpduff      Store Suite name and playlist cycle duration time.
  * Jan 13, 2015    3843    bsteffen    Track periodic predictions
  * Jan 13, 2015    3844    bsteffen    Include PlaylistMessages in PlaylistDataStructure
- * 
+ * Feb 05, 2015   4088     bkowal      Handle interrupt playlists that are not saved to the
+ *                                     database.
  * </pre>
  * 
  * @author mpduff
@@ -82,6 +85,8 @@ public class PlaylistStateManager {
     private PlaylistDao playlistDao;
 
     private MessageTypeDao messageTypeDao;
+
+    private BroadcastMsgDao broadcastMsgDao;
 
     public PlaylistStateManager() {
 
@@ -117,6 +122,11 @@ public class PlaylistStateManager {
         if (playlistDao == null) {
             statusHandler
                     .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no PlaylistDao.");
+            return;
+        }
+        if (broadcastMsgDao == null) {
+            statusHandler
+                    .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no BroadcastMsgDao.");
             return;
         }
 
@@ -172,6 +182,11 @@ public class PlaylistStateManager {
         Playlist playlist = playlistDao
                 .getBySuiteAndGroupName(notification.getSuiteName(),
                         notification.getTransmitterGroup());
+        /**
+         * Warning: the following if statement is almost an exact replication of
+         * the if statement in the handlePlaylistSwitchNotification method of
+         * PlaylistData.
+         */
         if (playlist != null) {
             for (PlaylistMessage message : playlist.getMessages()) {
                 BroadcastMsg broadcastMessage = message.getBroadcastMsg();
@@ -180,6 +195,38 @@ public class PlaylistStateManager {
                         .getByAfosId(broadcastMessage.getAfosid());
                 playlistMap.put(id, message);
                 messageTypeMap.put(id, messageType);
+            }
+        } else {
+            if (notification.getMessages().size() == 1) {
+                /*
+                 * A single message without a saved playlist would indicate that
+                 * the notification may be for an interrupt.
+                 */
+                try {
+                    // retrieve the associated broadcast message.
+                    long id = notification.getMessages().get(0)
+                            .getBroadcastId();
+                    BroadcastMsg broadcastMsg = this.broadcastMsgDao
+                            .getByID(id);
+                    if (broadcastMsg == null) {
+                        statusHandler.error(
+                                BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                                "Failed to find the broadcast msg for id: "
+                                        + id
+                                        + " associated with notification: "
+                                        + notification.toString() + ".");
+                        return;
+                    }
+                    MessageType messageType = messageTypeDao
+                            .getByAfosId(broadcastMsg.getAfosid());
+                    PlaylistMessage playlistMessage = new PlaylistMessage();
+                    playlistMessage.setBroadcastMsg(broadcastMsg);
+                    playlistMap.put(id, playlistMessage);
+                    messageTypeMap.put(id, messageType);
+                } catch (Exception e) {
+                    statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                            "Error accessing BMH database", e);
+                }
             }
         }
     }
@@ -248,6 +295,21 @@ public class PlaylistStateManager {
 
     public void setMessageTypeDao(MessageTypeDao messageTypeDao) {
         this.messageTypeDao = messageTypeDao;
+    }
+
+    /**
+     * @return the broadcastMsgDao
+     */
+    public BroadcastMsgDao getBroadcastMsgDao() {
+        return broadcastMsgDao;
+    }
+
+    /**
+     * @param broadcastMsgDao
+     *            the broadcastMsgDao to set
+     */
+    public void setBroadcastMsgDao(BroadcastMsgDao broadcastMsgDao) {
+        this.broadcastMsgDao = broadcastMsgDao;
     }
 
 }
