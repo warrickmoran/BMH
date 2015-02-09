@@ -200,4 +200,18 @@ alter table bmh.transmitter_language add constraint fk_ag6l0d2oqq951ku6rebv3k2he
  */
 alter table bmh.tts_voice drop constraint fk_nsj4b6uq3lxg3xlhfktiqgxk4;
 alter table bmh.tts_voice add constraint fk_nsj4b6uq3lxg3xlhfktiqgxk4
-    foreign key (dictionary_name) references bmh.dictionary (name) on delete set null;    
+    foreign key (dictionary_name) references bmh.dictionary (name) on delete set null;
+
+/**
+ * Input Msg Selected Transmitter to Input Msg
+ */
+alter table bmh.input_msg_selected_transmitters drop constraint msg_def_tx_to_input_msg;
+alter table bmh.input_msg_selected_transmitters add constraint msg_def_tx_to_input_msg
+    foreign key (input_msg_id) references bmh.input_msg (id) on delete cascade;
+
+/**
+ * Input Msg Selected Transmitter To Transmitter
+ */
+alter table bmh.input_msg_selected_transmitters drop constraint msg_def_tx_to_tx;
+alter table bmh.input_msg_selected_transmitters add constraint msg_def_tx_to_tx
+    foreign key (transmitter_id) references bmh.transmitter (id) on delete cascade;
