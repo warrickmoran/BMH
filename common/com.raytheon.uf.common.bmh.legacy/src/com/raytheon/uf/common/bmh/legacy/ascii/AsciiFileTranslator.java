@@ -83,6 +83,8 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Dec 10, 2014 3824       rferrel     Remove warning on missing voices exclude Spanish when no Spanish voices.
  *                                       Added reader/source constructor.
  * Jan 22, 2015 3995       rjpeter     Removed importing of amplitudes.
+ * Feb 09, 2015 4095       bsteffen    Remove Transmitter Name.
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -546,7 +548,6 @@ public class AsciiFileTranslator {
             }
 
             trans.setLocation(reader.nextField());
-            trans.setName(trans.getLocation());
             trans.setServiceArea(reader.nextField());
             reader.nextField();// skip voice type
             reader.nextField();// skip rate flag

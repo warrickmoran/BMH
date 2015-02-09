@@ -44,7 +44,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.AreaNameComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterNameComparator;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLocationComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.ZoneNameComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -79,6 +79,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 21, 2014   3896     lvenable    Fixed the affected transmitters list to be updated when
  *                                     the dialog is opened and there are area codes.
  * Jan 20, 2015   4010     bkowal      Fixed the area selection dialog.
+ * Feb 09, 2015   4095     bsteffen    Remove Transmitter Name.
  * 
  * </pre>
  * 
@@ -679,12 +680,12 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         }
 
         this.transmitterObjectList = areaSelectionData.getTransmitterList();
-        Collections
-                .sort(transmitterObjectList, new TransmitterNameComparator());
+        Collections.sort(transmitterObjectList,
+                new TransmitterLocationComparator());
         java.util.List<String> transmitterNameList = new ArrayList<>(
                 transmitterObjectList.size());
         for (Transmitter t : transmitterObjectList) {
-            transmitterNameList.add(t.getName());
+            transmitterNameList.add(t.getLocation());
         }
 
         xmitList.setItems(transmitterNameList.toArray(new String[0]));
@@ -1173,7 +1174,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         TableRowData row = new TableRowData();
         TableCellData cell = new TableCellData(t.getMnemonic());
         row.addTableCellData(cell);
-        cell = new TableCellData(t.getName());
+        cell = new TableCellData(t.getLocation());
         row.addTableCellData(cell);
         cell = new TableCellData(TRANSMITTER);
         row.addTableCellData(cell);

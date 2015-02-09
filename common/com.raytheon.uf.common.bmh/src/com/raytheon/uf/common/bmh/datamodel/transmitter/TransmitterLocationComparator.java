@@ -22,7 +22,7 @@ package com.raytheon.uf.common.bmh.datamodel.transmitter;
 import java.util.Comparator;
 
 /**
- * Transmitter name comparator.
+ * Transmitter location comparator.
  * 
  * <pre>
  * 
@@ -31,6 +31,7 @@ import java.util.Comparator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 13, 2014   3411     mpduff      Initial creation
+ * Feb 09, 2015   4095     bsteffen    Remove Transmitter Name.
  * 
  * </pre>
  * 
@@ -38,10 +39,10 @@ import java.util.Comparator;
  * @version 1.0
  */
 
-public class TransmitterNameComparator implements Comparator<Transmitter> {
+public class TransmitterLocationComparator implements Comparator<Transmitter> {
 
     @Override
     public int compare(Transmitter t1, Transmitter t2) {
-        return t1.getName().compareTo(t2.getName());
+        return t1.getLocation().compareTo(t2.getLocation());
     }
 }

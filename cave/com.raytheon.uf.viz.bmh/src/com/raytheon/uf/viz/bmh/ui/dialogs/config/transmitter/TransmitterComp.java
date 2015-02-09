@@ -89,6 +89,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 12, 2014    3603    bsteffen    Implement transfer tone.
  * Jan 08, 2015    3963    bkowal      Allow a user to complete or undo a transmitter decommission.
  * Jan 13, 2015    3995    rjpeter     Do not pass stand alone transmitters to new transmitter dialog.
+ * Feb 09, 2015    4095    bsteffen    Remove Transmitter Name.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -104,11 +106,11 @@ public class TransmitterComp extends Composite implements
     private final String GROUP = "Group";
 
     private enum TreeTableColumn {
-        GROUP_TRANSMITTER("Group/Transmitter", 125, SWT.LEFT), NAME("Name",
-                125, SWT.LEFT), MNEMONIC("Mnemonic", 125, SWT.CENTER), SERVICE_AREA(
-                "Service Area", 125, SWT.LEFT), DAC_PORT("DAC/Port", 125,
-                SWT.CENTER), STATUS("Status", 85, SWT.LEFT), MODE("Mode", 85,
-                SWT.LEFT);
+        GROUP_TRANSMITTER("Group/Transmitter", 125, SWT.LEFT), NAME(
+                "Name/Location", 125, SWT.LEFT), MNEMONIC("Mnemonic", 125,
+                SWT.CENTER), SERVICE_AREA("Service Area", 125, SWT.LEFT), DAC_PORT(
+                "DAC/Port", 125, SWT.CENTER), STATUS("Status", 85, SWT.LEFT), MODE(
+                "Mode", 85, SWT.LEFT);
 
         private String text;
 
@@ -598,7 +600,7 @@ public class TransmitterComp extends Composite implements
 
         for (TransmitterGroup g : groups) {
             if (g.isStandalone()) {
-                String item = g.getTransmitterList().get(0).getName();
+                String item = g.getTransmitterList().get(0).getLocation();
                 displayStrings.add(item);
                 groupMap.put(item, g);
             } else {
@@ -646,7 +648,7 @@ public class TransmitterComp extends Composite implements
             List<String> itemList = new ArrayList<String>();
             for (TreeItem item : parent.getItems()) {
                 Transmitter t = (Transmitter) item.getData();
-                String s = t.getMnemonic() + " - " + t.getName();
+                String s = t.getMnemonic() + " - " + t.getLocation();
                 itemList.add(s);
                 transmitterMap.put(s, t);
             }
@@ -729,7 +731,7 @@ public class TransmitterComp extends Composite implements
         return SWT.YES == DialogUtility.showMessageBox(this.getShell(),
                 SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Delete",
                 "Are you sure you want to permenantly delete Transmitter "
-                        + toDelete.getName() + "?");
+                        + toDelete.getLocation() + "?");
     }
 
     /**
@@ -762,7 +764,7 @@ public class TransmitterComp extends Composite implements
         return SWT.YES == DialogUtility.showMessageBox(this.getShell(),
                 SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm " + statusName,
                 "Are you sure you want " + statusName + " Transmitter "
-                        + toChange.getName() + "?");
+                        + toChange.getLocation() + "?");
     }
 
     /**
@@ -1039,7 +1041,7 @@ public class TransmitterComp extends Composite implements
                     }
                     if (standAlone) {
                         groupItem.setText(new String[] { TRANSMITTER,
-                                t.getName(), t.getMnemonic(),
+                                t.getLocation(), t.getMnemonic(),
                                 t.getServiceArea(),
                                 dacStr + " / " + dacPortStr,
                                 t.getTxStatus().name(), t.getTxMode().name() });
@@ -1050,7 +1052,7 @@ public class TransmitterComp extends Composite implements
                     } else {
                         TreeItem transItem = new TreeItem(groupItem, SWT.NONE);
                         transItem.setText(new String[] { TRANSMITTER,
-                                t.getName(), t.getMnemonic(),
+                                t.getLocation(), t.getMnemonic(),
                                 t.getServiceArea(), "Port #" + dacPortStr,
                                 t.getTxStatus().name(), t.getTxMode().name() });
                         transItem.setData(t);

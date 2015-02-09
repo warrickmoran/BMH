@@ -45,6 +45,7 @@ import com.raytheon.uf.common.bmh.notify.status.DacVoiceStatus;
  * Nov 23, 2014  #3287     lvenable     Added addition status for reporting.
  * Dec 01, 2014  #3287     lvenable     Added null check.
  * Jan 08, 2015  3821      bsteffen     Rename silenceAlarm to deadAirAlarm
+ * Feb 09, 2015  4095      bsteffen     Remove Transmitter Name.
  * 
  * </pre>
  * 
@@ -159,7 +160,7 @@ public class StatusDataManager {
         for (Transmitter t : transmitters) {
             TransmitterInfo ti = new TransmitterInfo();
             ti.setId(t.getId());
-            ti.setName(t.getName());
+            ti.setName(t.getLocation());
             ti.setMnemonic(t.getMnemonic());
             ti.setCallSign(t.getCallSign());
             ti.setDacPort(t.getDacPort());

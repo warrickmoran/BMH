@@ -35,6 +35,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 6, 2014    3173     mpduff      Initial creation
+ * Feb 09, 2015   4095     bsteffen    Remove Transmitter Name.
  * 
  * </pre>
  * 
@@ -80,7 +81,6 @@ public class TransmitterAdapter implements
         serializer.writeObject(transmitter.getFipsCode());
         serializer.writeString(transmitter.getLocation());
         serializer.writeString(transmitter.getMnemonic());
-        serializer.writeString(transmitter.getName());
         serializer.writeString(transmitter.getServiceArea());
         serializer.writeObject(transmitter.getDacPort());
         serializer.writeFloat(transmitter.getFrequency());
@@ -105,7 +105,6 @@ public class TransmitterAdapter implements
         t.setFipsCode((String) deserializer.readObject());
         t.setLocation(deserializer.readString());
         t.setMnemonic(deserializer.readString());
-        t.setName(deserializer.readString());
         t.setServiceArea(deserializer.readString());
         t.setDacPort((Integer) deserializer.readObject());
         t.setFrequency(deserializer.readFloat());

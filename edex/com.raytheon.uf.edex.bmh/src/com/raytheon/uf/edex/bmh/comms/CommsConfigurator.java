@@ -68,6 +68,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 13, 2014  3656     bkowal      Copy broadcast live port from old config to new.
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * Nov 26, 2014  3821     bsteffen    Write silence alarm
+ * Feb 09, 2015  4095     bsteffen    Remove Transmitter Name.
  * 
  * </pre>
  * 
@@ -213,7 +214,7 @@ public class CommsConfigurator implements IContextStateProcessor {
                 if (dacPort == null) {
                     statusHandler
                             .error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
-                                    transmitter.getName()
+                                    transmitter.getLocation()
                                             + " is enabled but has no port, it be omitted from the comms configuration.");
                 } else {
                     radios[rindex] = transmitter.getDacPort();

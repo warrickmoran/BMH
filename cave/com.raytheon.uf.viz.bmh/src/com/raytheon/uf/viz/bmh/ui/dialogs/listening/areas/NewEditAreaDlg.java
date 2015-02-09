@@ -38,8 +38,6 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -57,6 +55,7 @@ import com.raytheon.viz.ui.widgets.duallist.IUpdate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014    3406    mpduff      Initial creation
+ * Feb 09, 2015    4095    bsteffen    Remove Transmitter Name.
  * 
  * </pre>
  * 
@@ -65,8 +64,6 @@ import com.raytheon.viz.ui.widgets.duallist.IUpdate;
  */
 
 public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(NewEditAreaDlg.class);
 
     /** Area Code text field */
     private Text areaCodeTxt;
@@ -172,7 +169,8 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
             List<String> selectedTranmitters = new ArrayList<String>(
                     transmitters.size());
             for (Transmitter t : transmitters) {
-                selectedTranmitters.add(t.getMnemonic() + " - " + t.getName());
+                selectedTranmitters.add(t.getMnemonic() + " - "
+                        + t.getLocation());
             }
             dlc.setSelectedList(selectedTranmitters);
         }
@@ -231,7 +229,8 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
         DualListConfig dlc = new DualListConfig();
         List<String> fullList = new ArrayList<String>(transmitterList.size());
         for (Transmitter t : transmitterList) {
-            fullList.add(t.getMnemonic().trim() + " - " + t.getName().trim());
+            fullList.add(t.getMnemonic().trim() + " - "
+                    + t.getLocation().trim());
         }
 
         dlc.setAvailableListLabel("Available Transmitters:");

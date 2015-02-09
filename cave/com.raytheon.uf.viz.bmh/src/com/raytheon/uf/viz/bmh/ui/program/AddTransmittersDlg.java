@@ -65,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 09, 2014  #3646     rferrel      Convert tableComp to GenericTable.
  * Dec 07, 2014   3846     mpduff       Populate hashmap internally, handle state of add button
+ * Feb 09, 2015   4095     bsteffen     Remove Transmitter Name.
  * 
  * </pre>
  * 
@@ -309,7 +310,7 @@ public class AddTransmittersDlg extends CaveSWTDialog {
                 if (sb.length() > 0) {
                     sb.append(", ");
                 }
-                sb.append(t.getName());
+                sb.append(t.getLocation());
             }
 
             trd.addTableCellData(new TableCellData(sb.toString()));
