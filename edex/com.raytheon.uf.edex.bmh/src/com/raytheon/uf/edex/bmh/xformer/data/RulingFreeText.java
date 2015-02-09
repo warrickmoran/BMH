@@ -36,6 +36,8 @@ import org.apache.commons.lang.math.IntRange;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 26, 2014 3302       bkowal      Initial creation
+ * Feb 09, 2015 4102       bkowal      Set the lastEndIndex to the endIndex instead of
+ *                                     accumulating the indices.
  * 
  * </pre>
  * 
@@ -113,7 +115,7 @@ public class RulingFreeText extends AbstractTextRuling implements IFreeText {
             freeText = new RulingFreeText(afterTarget);
             transformedCandidates.add(freeText);
 
-            lastEndIndex += endIndex;
+            lastEndIndex = endIndex;
         }
 
         return transformedCandidates;
