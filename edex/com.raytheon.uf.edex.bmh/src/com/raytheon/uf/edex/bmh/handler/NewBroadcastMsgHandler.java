@@ -39,7 +39,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.EqualsBuilder;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
-import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
@@ -58,6 +57,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BMHJmsDestinations;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.audio.EdexAudioConverterManager;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
@@ -92,6 +92,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Jan 06, 2015  #3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Jan 20, 2015  #4010     bkowal      Include the selected transmitters in the
  *                                     input message equals comparison.
+ * Feb 09, 2015  #4091     bkowal      Use {@link EdexAudioConverterManager}.
  * 
  * </pre>
  * 
@@ -374,7 +375,7 @@ public class NewBroadcastMsgHandler extends
              */
             byte[] convertedAudio = null;
             try {
-                convertedAudio = AudioConvererterManager.getInstance()
+                convertedAudio = EdexAudioConverterManager.getInstance()
                         .convertAudio(request.getMessageAudio(),
                                 DEFAULT_TTS_FORMAT, ldadConfig.getEncoding());
             } catch (Exception e) {

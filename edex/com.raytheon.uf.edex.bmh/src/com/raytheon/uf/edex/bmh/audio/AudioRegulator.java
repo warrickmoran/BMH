@@ -24,7 +24,6 @@ import java.nio.ByteBuffer;
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang.math.Range;
 
-import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.BMHAudioConstants;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
@@ -47,6 +46,7 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  * Sep 3, 2014  3532       bkowal      Updated the algorithm to use a target instead of
  *                                     a range.
  * Nov 24, 2014 3863       bkowal      Use {@link BMHAudioConstants}.
+ * Feb 09, 2015 4091       bkowal      Use {@link EdexAudioConverterManager}.
  * 
  * 
  * </pre>
@@ -102,7 +102,7 @@ public class AudioRegulator {
             throws AudioOverflowException, UnsupportedAudioFormatException,
             AudioConversionException {
         long start = System.currentTimeMillis();
-        final byte[] pcmData = AudioConvererterManager
+        final byte[] pcmData = EdexAudioConverterManager
                 .getInstance()
                 .convertAudio(ulawData, BMHAudioFormat.ULAW, BMHAudioFormat.PCM);
         final int scaledSampleSize = sampleSize * 2;
@@ -128,7 +128,7 @@ public class AudioRegulator {
             buffer.put(adjustedSample);
         }
 
-        byte[] convertedAudio = AudioConvererterManager.getInstance()
+        byte[] convertedAudio = EdexAudioConverterManager.getInstance()
                 .convertAudio(buffer.array(), BMHAudioFormat.PCM,
                         BMHAudioFormat.ULAW);
         this.duration = System.currentTimeMillis() - start;

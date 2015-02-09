@@ -23,10 +23,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 
-import com.raytheon.uf.common.bmh.audio.impl.Mp3AudioConverter;
 import com.raytheon.uf.common.bmh.audio.impl.PcmAudioConverter;
 import com.raytheon.uf.common.bmh.audio.impl.UlawAudioConverter;
-import com.raytheon.uf.common.bmh.audio.impl.WavAudioConverter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -46,6 +44,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Dec 4, 2014  3880       bkowal      getSupportedFormats now returns a {@link Set}.
  * Dec 16, 2014 3880       bkowal      Do not register the {@link IAudioConverter}
  *                                     if it is not compatible.
+ * Feb 09, 2015 4091       bkowal      Made {@link #initialize()} protected.
  * 
  * </pre>
  * 
@@ -71,9 +70,9 @@ public class AudioConvererterManager {
     }
 
     /**
-     * Returns an instance of the Audio Converter Manager
+     * Returns the general instance of the {@link AudioConvererterManager}.
      * 
-     * @return an instance of the Audio Converter Manager
+     * @return the general instance of the {@link AudioConvererterManager}.
      */
     public static AudioConvererterManager getInstance() {
         return instance;
@@ -82,7 +81,7 @@ public class AudioConvererterManager {
     /**
      * Initializes the Audio Converter Manager
      */
-    private void initialize() {
+    protected void initialize() {
         statusHandler.info("Initializing the Audio Converter Manager ...");
         /* Register the audio conversions that are natively supported by Java. */
 
@@ -90,10 +89,8 @@ public class AudioConvererterManager {
         // spring-based registration process. If other plugins and/or projects
         // that would be dependent on BMH want to contribute audio converters,
         // then a spring-based registration process would be beneficial.
-        this.registerConverter(new WavAudioConverter());
         this.registerConverter(new UlawAudioConverter());
         this.registerConverter(new PcmAudioConverter());
-        this.registerConverter(new Mp3AudioConverter());
     }
 
     /**

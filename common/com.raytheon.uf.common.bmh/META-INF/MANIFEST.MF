@@ -23,6 +23,7 @@ Require-Bundle: com.raytheon.uf.common.time,
  com.raytheon.uf.common.localization;bundle-version="1.14.1"
 Export-Package: com.raytheon.uf.common.bmh,
  com.raytheon.uf.common.bmh.audio,
+ com.raytheon.uf.common.bmh.audio.impl,
  com.raytheon.uf.common.bmh.broadcast,
  com.raytheon.uf.common.bmh.comms,
  com.raytheon.uf.common.bmh.data,

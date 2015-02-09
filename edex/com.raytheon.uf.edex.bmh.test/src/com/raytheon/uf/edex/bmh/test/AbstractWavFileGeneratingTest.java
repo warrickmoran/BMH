@@ -26,10 +26,10 @@ import java.nio.file.FileSystems;
 import org.apache.commons.io.FileUtils;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
-import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.edex.bmh.audio.EdexAudioConverterManager;
 
 /**
  * Abstract representation of a test capability that is capable of producing a
@@ -47,6 +47,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
  *                                     into a new parent class.
  * Jul 17, 2014 3383       bkowal      Updated to use the Audio Conversion API.
  * Dec 3, 2014  3880       bkowal      Deprecated.
+ * Feb 09, 2015 4091       bkowal      Use {@link EdexAudioConverterManager}.
  * 
  * </pre>
  * 
@@ -116,7 +117,7 @@ public abstract class AbstractWavFileGeneratingTest extends AbstractBMHTester {
         File outputWavFile = new File(this.buildOutputFilePath(outputFileName));
 
         try {
-            byte[] destination = AudioConvererterManager.getInstance()
+            byte[] destination = EdexAudioConverterManager.getInstance()
                     .convertAudio(audioData, format, BMHAudioFormat.WAV);
 
             FileUtils.writeByteArrayToFile(outputWavFile, destination);

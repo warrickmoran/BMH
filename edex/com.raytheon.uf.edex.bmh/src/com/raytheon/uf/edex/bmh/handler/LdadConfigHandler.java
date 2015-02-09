@@ -23,13 +23,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 
-import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.LdadConfigNotification;
 import com.raytheon.uf.common.bmh.request.LdadConfigRequest;
 import com.raytheon.uf.common.bmh.request.LdadConfigResponse;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.audio.EdexAudioConverterManager;
 import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 
 /**
@@ -45,6 +45,7 @@ import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
  * Nov 11, 2014 3803       bkowal      Initial creation
  * Nov 13, 2014 3803       bkowal      Transmit LdadConfigNotification
  * Dec 4, 2014  3880       bkowal      Added handleRetrieveSupportedEncodings.
+ * Feb 09, 2015 4091       bkowal      Use {@link EdexAudioConverterManager}.
  * 
  * </pre>
  * 
@@ -127,7 +128,7 @@ public class LdadConfigHandler extends
     }
 
     private void handleRetrieveSupportedEncodings(LdadConfigResponse response) {
-        response.setEncodings(AudioConvererterManager.getInstance()
+        response.setEncodings(EdexAudioConverterManager.getInstance()
                 .getSupportedFormats());
     }
 
