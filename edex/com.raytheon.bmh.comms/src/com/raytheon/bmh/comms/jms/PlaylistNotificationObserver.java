@@ -19,6 +19,9 @@
  **/
 package com.raytheon.bmh.comms.jms;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +46,7 @@ import com.raytheon.uf.common.jms.notification.NotificationMessage;
  * Jul 24, 2014  3399     bsteffen    Initial creation
  * Sep 23, 2014  3485     bsteffen    Send notification to the DacTransmitServer
  * Oct 17, 2014  3687     bsteffen    Add info log statement for normal playlist updates.
+ * Feb 09, 2015  4071     bsteffen    Consolidate Queues.
  * 
  * </pre>
  * 
@@ -72,16 +76,20 @@ public class PlaylistNotificationObserver implements INotificationObserver {
                 Object payload = message.getMessagePayload();
                 if (payload instanceof PlaylistUpdateNotification) {
                     PlaylistUpdateNotification update = (PlaylistUpdateNotification) payload;
-                    logger.info("A new playlist is at {}",
-                            update.getPlaylistPath());
-                    server.playlistNotificationArrived(key, update);
+                    Path keyPath = Paths.get(key.getInputDirectory());
+                    Path playlistPath = Paths.get(update.getPlaylistPath());
+                    String keyGroup = keyPath.getFileName().toString();
+                    String playlistGroup = playlistPath.getName(0).toString();
+                    if (keyGroup.equals(playlistGroup)) {
+                        logger.info("A new playlist is at {}",
+                                update.getPlaylistPath());
+                        server.playlistNotificationArrived(key, update);
+                    }
                 } else if (payload != null) {
                     logger.error("Unexpected notification of type: "
                             + payload.getClass().getSimpleName());
                 }
             } catch (NotificationException e) {
-                // TODO it might be good to tell the dac transmit to rescan the
-                // directory at this point.
                 logger.error("Error processing notification.", e);
             }
 
