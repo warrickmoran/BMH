@@ -31,6 +31,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
+import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
 
 /**
  * Thrift handler for {@link TransmitterLanguage} objects.
@@ -47,6 +48,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
  * Oct 24, 2014  3636     rferrel     Implement logging.
  * Jan 13, 2015  3809     bkowal      Fixed {@link #updateTransmitterLanguage(TransmitterLanguageRequest)}.
  * Jan 19, 2015  4011     bkowal      Added {@link #deleteTransmitterLanguage(TransmitterLanguageRequest)}.
+ * Feb 09, 2015  4096     bsteffen    Filter Unacceptable Words.
  * 
  * </pre>
  * 
@@ -124,6 +126,27 @@ public class TransmitterLanguageRequestHandler extends
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
 
         TransmitterLanguage tl = request.getTransmitterLanguage();
+        UnacceptableWordFilter uwf = UnacceptableWordFilter.getFilter(tl
+                .getLanguage());
+        List<String> uw = uwf.check(tl.getStationIdMsg());
+        if (!uw.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Station Id failed to validate because it contains the following unacceptable words: "
+                            + uw.toString());
+        }
+        uw = uwf.check(tl.getTimeMsgPreamble());
+        if (!uw.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Time Preamble failed to validate because it contains the following unacceptable words: "
+                            + uw.toString());
+        }
+        uw = uwf.check(tl.getTimeMsgPostamble());
+        if (!uw.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Time Postamble failed to validate because it contains the following unacceptable words: "
+                            + uw.toString());
+        }
+
         TransmitterLanguage oldTl = null;
         if (logger.isPriorityEnabled(Priority.INFO)) {
             oldTl = transmitterLanguageDao.getByID(tl.getId());
