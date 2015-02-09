@@ -37,7 +37,6 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.TTSSynthesisException;
-import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
@@ -49,6 +48,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.bmh.audio.EdexAudioConverterManager;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -98,6 +98,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jan 27, 2015 4026       bkowal      Updated bmh availability verification.
  * Jan 29, 2015 4060       bkowal      Include fragment id in the name of the generated
  *                                     audio files.
+ * Feb 09, 2015 4091       bkowal      Use {@link EdexAudioConverterManager}.
  * 
  * </pre>
  * 
@@ -524,7 +525,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                  * need the audio to be in a format other than the default.
                  */
                 try {
-                    audioData = AudioConvererterManager.getInstance()
+                    audioData = EdexAudioConverterManager.getInstance()
                             .convertAudio(audioData, DEFAULT_OUTPUT_FORMAT,
                                     message.getEncoding());
                 } catch (UnsupportedAudioFormatException
