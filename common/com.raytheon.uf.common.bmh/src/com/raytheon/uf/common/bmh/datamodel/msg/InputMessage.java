@@ -80,6 +80,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 02, 2014  3833     lvenable    Added query to get unexpired messages.
  * Jan 12, 2015  3843     bsteffen    Return empty list when areas is null.
  * Jan 20, 2015  4010     bkowal      Added {@link #selectedTransmitters}.
+ * Feb 09, 2015  4094     bsteffen    Update areaCodes to be length of 4096.
  * 
  * </pre>
  * 
@@ -233,7 +234,7 @@ public class InputMessage {
      * geographical areas to be served by the message's transmission. This field
      * consists of one or more UGCs separated by a dash.
      */
-    @Column
+    @Column(length = 4096)
     @DynamicSerializeElement
     private String areaCodes;
 
