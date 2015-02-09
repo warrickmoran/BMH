@@ -59,14 +59,15 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 11, 2014   3406     mpduff      Initial creation
- * Aug 05, 2014 3414       rjpeter     Added BMH Thrift interface.
- * Aug 8, 2014    #3490     lvenable    Updated populate table method call.
- * Oct 09, 2014   #3646    rferrel     Convert transmitterTableComp to GenericTable.
- *                                     Convert areaTableComp to GenericTable.
- * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Jul 11, 2014  3406     mpduff      Initial creation
+ * Aug 05, 2014  3414     rjpeter     Added BMH Thrift interface.
+ * Aug 08, 2014  3490     lvenable    Updated populate table method call.
+ * Oct 09, 2014  3646     rferrel     Convert transmitterTableComp to GenericTable.
+ *                                    Convert areaTableComp to GenericTable.
+ * Nov 11, 2014  3413     rferrel     Use DlgInfo to get title.
+ * Feb 09, 2015  4095     bsteffen    Remove Transmitter Name.
  * 
  * </pre>
  * 
@@ -343,7 +344,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
         TableCellData tcd = new TableCellData(t.getMnemonic());
         row.addTableCellData(tcd);
 
-        tcd = new TableCellData(t.getName());
+        tcd = new TableCellData(t.getLocation());
         row.addTableCellData(tcd);
 
         transmitterTableData.addDataRow(row);

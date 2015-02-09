@@ -50,6 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Aug 04, 2014  3173     mpduff      Added DAC and Fips, changed to use serialization adapter
  * Oct 06, 2014  3649     rferrel     Methods hashCode and equals now use id.
  * Oct 16, 2014  3636     rferrel     Added logging.
+ * Feb 09, 2015  4095     bsteffen    Remove Name.
  * 
  * </pre>
  * 
@@ -66,7 +67,7 @@ public class Transmitter {
 
     public enum TxMode {
         PRIMARY, SECONDARY
-    };
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
@@ -76,9 +77,6 @@ public class Transmitter {
     @Column(length = 5, nullable = false)
     @DiffTitle(position = 1)
     private String mnemonic;
-
-    @Column(length = 40, nullable = false)
-    private String name;
 
     @Column(precision = 3, nullable = false)
     private float frequency;
@@ -132,7 +130,6 @@ public class Transmitter {
         this.setId(t.getId());
         this.setLocation(t.getLocation());
         this.setMnemonic(t.getMnemonic());
-        this.setName(t.getName());
         this.setPosition(t.getPosition());
         this.setServiceArea(t.getServiceArea());
         this.setTransmitterGroup(t.getTransmitterGroup());
@@ -146,18 +143,6 @@ public class Transmitter {
 
     public void setMnemonic(String mnemonic) {
         this.mnemonic = mnemonic;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        if (name != null) {
-            this.name = name;
-        } else {
-            this.name = "";
-        }
     }
 
     /**
@@ -328,12 +313,11 @@ public class Transmitter {
      */
     @Override
     public String toString() {
-        return "Transmitter [mnemonic=" + mnemonic + ", name=" + name
-                + ", frequency=" + frequency + ", callSign=" + callSign
-                + ", location=" + location + ", serviceArea=" + serviceArea
-                + ", fipsCode=" + fipsCode + ", transmitterGroup=\""
-                + transmitterGroup.getName() + "\", position=" + position
-                + ", txStatus=" + txStatus + ", txMode=" + txMode
-                + ", dacPort=" + dacPort + "]";
+        return "Transmitter [mnemonic=" + mnemonic + ", frequency=" + frequency
+                + ", callSign=" + callSign + ", location=" + location
+                + ", serviceArea=" + serviceArea + ", fipsCode=" + fipsCode
+                + ", transmitterGroup=\"" + transmitterGroup.getName()
+                + "\", position=" + position + ", txStatus=" + txStatus
+                + ", txMode=" + txMode + ", dacPort=" + dacPort + "]";
     }
 }

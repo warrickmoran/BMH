@@ -485,7 +485,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         for (Transmitter t : transmitterList) {
             TableRowData row = new TableRowData();
-            TableCellData cell = new TableCellData(t.getName());
+            TableCellData cell = new TableCellData(t.getLocation());
             row.addTableCellData(cell);
             cell = new TableCellData(t.getMnemonic());
             row.addTableCellData(cell);

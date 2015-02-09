@@ -40,6 +40,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Oct 23, 2014    3687    bsteffen    Display dac name instead of id.
  * Oct 23, 2014    3617    dgilling    Support unified time zone field.
  * Jan 08, 2015    3821    bsteffen    Rename silenceAlarm to deadAirAlarm
+ * Feb 09, 2015    4095    bsteffen    Remove Transmitter Name.
  * 
  * </pre>
  * 
@@ -114,9 +115,6 @@ public class TransmitterUtils {
      */
     public String getTransmitterDetails(Transmitter t, boolean indent) {
         StringBuilder sb = new StringBuilder();
-        indent(sb, indent);
-
-        sb.append("Transmitter Name: ").append(t.getName()).append(NEWLINE);
         indent(sb, indent);
 
         sb.append("Transmitter is ").append(t.getTxStatus().name())

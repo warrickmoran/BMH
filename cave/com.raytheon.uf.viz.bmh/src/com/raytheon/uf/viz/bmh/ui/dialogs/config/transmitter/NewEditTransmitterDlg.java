@@ -88,6 +88,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 22, 2014     3995   rjpeter     Update to not corrupt internal state if save failed,
  *                                      fix position on new transmitter/group and group change.
  * Jan 26, 2015     4035   bkowal      Fix Transmitter form validation.
+ * Feb 09, 2015     4095   bsteffen    Remove Transmitter Name.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -137,8 +139,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     private Button disableSilenceChk;
 
     private Button noDstChk;
-
-    private Text transmitterNameTxt;
 
     private Text mnemonicTxt;
 
@@ -198,7 +198,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
         switch (type) {
         case EDIT_TRANSMITTER:
-            setText("Edit Transmitter - " + this.transmitter.getName());
+            setText("Edit Transmitter - " + this.transmitter.getLocation());
             break;
         case EDIT_TRANSMITTER_GROUP:
             setText("Edit Transmitter Group - " + this.group.getName());
@@ -391,15 +391,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         noDstChk.setLayoutData(gd);
         groupControlList.add(noDstChk); // Individual transmitter settings
 
-        Label nameLbl = new Label(leftComp, SWT.NONE);
-        nameLbl.setText("Name: ");
-        nameLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
-
-        transmitterNameTxt = new Text(leftComp, SWT.BORDER);
-        transmitterNameTxt.setLayoutData(new GridData(SWT.FILL, SWT.CENTER,
-                true, false));
-        transmitterControlList.add(transmitterNameTxt);
-
         Label mnemonicLbl = new Label(leftComp, SWT.NONE);
         mnemonicLbl.setText("Mnemonic: ");
         mnemonicLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false,
@@ -583,10 +574,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
         if (transmitter.getDacPort() != null) {
             setCboSelect(dacPortCbo, transmitter.getDacPort());
-        }
-
-        if (transmitter.getName() != null) {
-            transmitterNameTxt.setText(transmitter.getName());
         }
 
         if (transmitter.getMnemonic() != null) {
@@ -841,7 +828,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                             }
                         } catch (Exception e) {
                             statusHandler.error("Error saving transmitter "
-                                    + transmitter.getName(), e);
+                                    + transmitter.getLocation(), e);
                             return false;
                         }
                     }
@@ -1021,12 +1008,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if ((mnemonic.length() == 0) || (mnemonic.length() > 5)) {
             valid = false;
             sb.append("\tMnemonic must be btween 1 and 5 characters in length.\n");
-        }
-
-        String transmitterName = this.transmitterNameTxt.getText().trim();
-        if ((transmitterName.length() == 0) || (transmitterName.length() > 40)) {
-            valid = false;
-            sb.append("\tName must be 1 to 40 characters in length.\n");
         }
 
         String callSign = this.callSignTxt.getText().trim();
@@ -1414,7 +1395,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         rval.setFrequency(Float.parseFloat(this.frequencyTxt.getText().trim()));
         rval.setLocation(locationTxt.getText().trim());
         rval.setMnemonic(this.mnemonicTxt.getText().trim());
-        rval.setName(this.transmitterNameTxt.getText().trim());
         rval.setServiceArea(this.serviceAreaTxt.getText().trim());
         TransmitterGroup tg = getSelectedTransmitterGroup();
 

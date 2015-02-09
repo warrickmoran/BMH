@@ -101,6 +101,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 07, 2014  3846      mpduff      Only load the selected Program rather than all programs.
  *                                      Changing program selection now updates program's transmitters.
  * Dec 09, 2014  3906      lvenable    Changed the grid data for the suite and message type tables.
+ * Feb 09, 2015  4095      bsteffen    Remove Transmitter Name.
  * 
  * </pre>
  * 
@@ -597,7 +598,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                     transmitterMsg = new StringBuilder(
                             "The following transmitters are enabled:\n\n");
                 }
-                transmitterMsg.append(t.getName()).append("\n");
+                transmitterMsg.append(t.getLocation()).append("\n");
             }
         }
 
@@ -926,7 +927,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                 Set<Transmitter> transmitters = tg.getTransmitters();
                 for (Transmitter t : transmitters) {
                     transmitterList.add(t);
-                    sbToolTip.append(t.getName()).append(", ");
+                    sbToolTip.append(t.getLocation()).append(", ");
                 }
                 if (sb.length() > 0) {
                     sb.append(", ");
