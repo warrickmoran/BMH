@@ -21,11 +21,16 @@ package com.raytheon.uf.edex.bmh.legacy;
 
 import java.io.BufferedReader;
 import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -40,15 +45,19 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
+import com.raytheon.uf.common.util.CollectionUtil;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
+import com.raytheon.uf.edex.bmh.dao.DacDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.SuiteDao;
+import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
@@ -70,6 +79,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * ------------ ---------- ----------- --------------------------
  * Dec 10, 2014 3824       rferrel     Initial creation
  * Jan 06, 2015 3651       bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * Feb 10, 2015 4058       rjpeter     Added auto assigning of DACs.
  * </pre>
  * 
  * @author rferrel
@@ -122,37 +132,26 @@ public class ImportLegacyDatabase {
 
         if (data != null) {
             try {
-                // validate data stores and can be retrieved
-                TransmitterGroupDao tgDao = new TransmitterGroupDao(operational);
-                for (TransmitterGroup tg : data.getTransmitters().values()) {
-                    for (Transmitter t : tg.getTransmitterList()) {
-                        if ((t.getTxStatus() == TxStatus.ENABLED)) {
-                            if ((t.getDacPort() == null)
-                                    || (tg.getDac() == null)) {
-                                t.setTxStatus(TxStatus.DISABLED);
-                            } else {
-                                // Check for GENERAL suite.
-                                ProgramSummary ps = t.getTransmitterGroup()
-                                        .getProgramSummary();
-                                if (ps == null) {
-                                    t.setTxStatus(TxStatus.DISABLED);
-                                } else {
-                                    Program p = data.getPrograms().get(
-                                            ps.getName());
-                                    TxStatus txStatus = TxStatus.DISABLED;
-                                    List<Suite> suites = p.getSuites();
-                                    for (Suite s : suites) {
-                                        if (s.getType() == SuiteType.GENERAL) {
-                                            txStatus = TxStatus.ENABLED;
-                                            break;
-                                        }
-                                    }
-                                    t.setTxStatus(txStatus);
-                                }
-                            }
-                        }
+                List<Pair<Integer, Integer>> availableDacPorts = getAvailableDacs();
+                Iterator<Pair<Integer, Integer>> portIter = availableDacPorts
+                        .iterator();
+                Iterator<TransmitterGroup> tgIter = data.getTransmitters()
+                        .values().iterator();
+                while (tgIter.hasNext()) {
+                    TransmitterGroup tg = tgIter.next();
+                    if (portIter.hasNext()) {
+                        Pair<Integer, Integer> dacPort = portIter.next();
+                        tg.setDac(dacPort.getFirst());
+                        tg.getTransmitterList().get(0)
+                                .setDacPort(dacPort.getSecond());
+                    } else {
+                        tg.getTransmitterList().get(0)
+                                .setTxStatus(TxStatus.DISABLED);
                     }
                 }
+
+                // validate data stores and can be retrieved
+                TransmitterGroupDao tgDao = new TransmitterGroupDao(operational);
                 tgDao.persistAll(data.getTransmitters().values());
                 statusHandler.info("Saved "
                         + data.getTransmitters().values().size()
@@ -206,6 +205,45 @@ public class ImportLegacyDatabase {
                         + data.getPrograms().values().size() + " programs");
                 programDao.loadAll();
 
+                /*
+                 * update transmitter status based on program now that program
+                 * link has been added
+                 */
+                TransmitterDao tDao = new TransmitterDao(operational);
+                for (TransmitterGroup tg : tgDao.loadAll()) {
+                    for (Transmitter t : tg.getTransmitterList()) {
+                        TxStatus newStatus = t.getTxStatus();
+                        if ((newStatus == TxStatus.ENABLED)) {
+                            if ((t.getDacPort() == null)
+                                    || (tg.getDac() == null)) {
+                                newStatus = TxStatus.DISABLED;
+                            } else {
+                                // Check for GENERAL suite.
+                                ProgramSummary ps = t.getTransmitterGroup()
+                                        .getProgramSummary();
+                                if (ps == null) {
+                                    newStatus = TxStatus.DISABLED;
+                                } else {
+                                    Program p = data.getPrograms().get(
+                                            ps.getName());
+                                    newStatus = TxStatus.DISABLED;
+                                    List<Suite> suites = p.getSuites();
+                                    for (Suite s : suites) {
+                                        if (s.getType() == SuiteType.GENERAL) {
+                                            newStatus = TxStatus.ENABLED;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (newStatus != t.getTxStatus()) {
+                            t.setTxStatus(newStatus);
+                            tDao.saveOrUpdate(t);
+                        }
+                    }
+                }
+
                 BmhMessageProducer.sendConfigMessage(new ResetNotification(),
                         true);
             } catch (Throwable e) {
@@ -240,4 +278,36 @@ public class ImportLegacyDatabase {
             dao.deleteAll(all);
         }
     }
+
+    /**
+     * Returns the available DAC ports.
+     * 
+     * @return
+     */
+    protected List<Pair<Integer, Integer>> getAvailableDacs() {
+        List<Pair<Integer, Integer>> availableDacPorts = null;
+        DacDao dacDao = new DacDao(operational);
+
+        List<Dac> rows = dacDao.loadAll();
+        if ((rows == null) || rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Collections.sort(rows, new DacComparator());
+        availableDacPorts = new ArrayList<>(rows.size() * 4);
+
+        for (Dac dac : rows) {
+            Set<Integer> ports = dac.getDataPorts();
+            if (CollectionUtil.isNullOrEmpty(ports) == false) {
+                int portVal = 1;
+                for (@SuppressWarnings("unused")
+                Integer port : ports) {
+                    availableDacPorts.add(new Pair<>(dac.getId(), portVal++));
+                }
+            }
+        }
+
+        return availableDacPorts;
+    }
+
 }
