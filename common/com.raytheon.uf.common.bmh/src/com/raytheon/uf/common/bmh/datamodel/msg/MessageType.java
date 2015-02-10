@@ -79,6 +79,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 23, 2014  #3728     lvenable    Added query for getting AFOS IDs by designation.
  * Nov 13, 2014  3717      bsteffen    Add staticDesignation field to Designation
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
+ * Feb 05, 2015  4085      bkowal      Designations are no longer static.
  * </pre>
  * 
  * @author rjpeter
@@ -99,22 +100,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class MessageType {
     public enum Designation {
 
-        StationID(true), Forecast, Observation, Outlook, Watch, Warning, Advisory, TimeAnnouncement(
-                true), Other;
-
-        private final boolean staticDesignation;
-
-        public boolean isStatic() {
-            return staticDesignation;
-        }
-
-        private Designation() {
-            this(false);
-        }
-
-        private Designation(boolean staticDesignation) {
-            this.staticDesignation = staticDesignation;
-        }
+        StationID, Forecast, Observation, Outlook, Watch, Warning, Advisory, TimeAnnouncement, Other;
 
     }
 

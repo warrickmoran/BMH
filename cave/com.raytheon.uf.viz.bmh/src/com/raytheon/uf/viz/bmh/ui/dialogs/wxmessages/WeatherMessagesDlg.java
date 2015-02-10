@@ -137,6 +137,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    selection or existing input message selection.
  * Jan 20, 2015  4010     bkowal      Updated to pass accurate information to the
  *                                    Area Selection Dialog.
+ * Feb 10, 2015  4085     bkowal      Prevent users from creating weather messages associated
+ *                                    with static message types.
  * 
  * </pre>
  * 
@@ -428,8 +430,25 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         changeMsgTypeBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                /*
+                 * Identify all static message type(s) and ensure that they are
+                 * filtered out.
+                 */
+                final MessageTypeDataManager mtdm = new MessageTypeDataManager();
+                final Set<String> staticAfosIds;
+                try {
+                    staticAfosIds = mtdm.getStaticMessageAfosIds();
+                } catch (Exception e1) {
+                    statusHandler
+                            .error("Failed to retrieve the afos ids associated with static message types.",
+                                    e1);
+                    return;
+                }
+
                 SelectMessageTypeDlg selectMsgTypeDlg = new SelectMessageTypeDlg(
                         shell);
+                selectMsgTypeDlg.setFilteredMessageTypes(new ArrayList<>(
+                        staticAfosIds));
                 selectMsgTypeDlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {

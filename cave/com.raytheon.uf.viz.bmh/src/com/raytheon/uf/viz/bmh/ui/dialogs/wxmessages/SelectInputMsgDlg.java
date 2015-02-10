@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -39,7 +40,6 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioResponse;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
@@ -87,6 +87,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 15, 2014   3832      mpduff      Make creation hours on the 24 hr clock
  * Dec 02, 2014   3877      lvenable    Added null checks.
  * Jan 02, 2014   3833      lvenable    Added filtering capability.
+ * Feb 10, 2015   4085      bkowal      Filter out input messages associated with
+ *                                      static message types.
  * 
  * </pre>
  * 
@@ -450,20 +452,25 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
      *            Temporary list of input messages.
      */
     private void addMessagesToLists(List<InputMessage> tmpInputMsgList) {
-        if (allInputMessages != null) {
-            allInputMessages.clear();
-        } else {
-            allInputMessages = new ArrayList<InputMessage>(
-                    tmpInputMsgList.size());
+        final MessageTypeDataManager mtdm = new MessageTypeDataManager();
+        final Set<String> staticAfosIds;
+        try {
+            staticAfosIds = mtdm.getStaticMessageAfosIds();
+        } catch (Exception e) {
+            statusHandler
+                    .error("Failed to retrieve the afos ids associated with static message types.",
+                            e);
+            return;
         }
 
-        Set<String> timeAfosSet = getTimeAnnouncementMessageTypes();
-
-        for (InputMessage im : tmpInputMsgList) {
-            if (timeAfosSet.contains(im.getAfosid()) == false) {
-                allInputMessages.add(im);
+        Iterator<InputMessage> it = tmpInputMsgList.iterator();
+        while (it.hasNext()) {
+            if (staticAfosIds.contains(it.next().getAfosid())) {
+                it.remove();
             }
         }
+
+        allInputMessages = new ArrayList<InputMessage>(tmpInputMsgList);
 
         filteredInputMessages.clear();
         filteredInputMessages.addAll(allInputMessages);
@@ -508,28 +515,6 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
         inputAudioMessageData.setValidatedMsg(imResponse.getValidatedMessage());
 
         return inputAudioMessageData;
-    }
-
-    /**
-     * Get the AFOS IDs of the message types that are time announcement.
-     * 
-     * @return Set of AFOS IDs.
-     */
-    private Set<String> getTimeAnnouncementMessageTypes() {
-        Set<String> timeAnnouncementSet = null;
-
-        MessageTypeDataManager mtdm = new MessageTypeDataManager();
-
-        try {
-            timeAnnouncementSet = mtdm
-                    .getAfosIdsByDesignation(Designation.TimeAnnouncement);
-            return timeAnnouncementSet;
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving message types from the database: ", e);
-        }
-
-        return Collections.emptySet();
     }
 
     @Override

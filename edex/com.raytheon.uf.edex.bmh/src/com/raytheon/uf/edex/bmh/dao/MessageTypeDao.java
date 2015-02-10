@@ -47,6 +47,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * Oct 23, 2014  3728     lvenable    Added method to get AFOS IDs by designation.
+ * Feb 10, 2015  4085     bkowal      Fix cast in {@link #getAfosIdDesignation(Designation)}.
  * 
  * </pre>
  * 
@@ -236,7 +237,7 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         for (Object[] objArray : objectList) {
             MessageType mt = new MessageType();
             mt.setAfosid((String) objArray[0]);
-            mt.setDesignation(Designation.valueOf((String) objArray[1]));
+            mt.setDesignation((Designation) objArray[1]);
             messageTypeList.add(mt);
         }
 
