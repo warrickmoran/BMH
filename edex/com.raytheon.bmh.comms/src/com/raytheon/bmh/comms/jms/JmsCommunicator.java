@@ -126,16 +126,16 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     public void listenForPlaylistChanges(DacTransmitKey key, String group,
             DacTransmitServer server) {
-        addQueueObserver(
-                PlaylistUpdateNotification.getQueueName(group, operational),
+        addObserver(
+                PlaylistUpdateNotification.getTopicName(group, operational),
                 new PlaylistNotificationObserver(server, key));
     }
 
     public void unlistenForPlaylistChanges(DacTransmitKey key, String group,
             DacTransmitServer server) {
-        removeQueueObserver(
-                PlaylistUpdateNotification.getQueueName(group, operational),
-                null, new PlaylistNotificationObserver(server, key));
+        removeObserver(
+                PlaylistUpdateNotification.getTopicName(group, operational),
+                new PlaylistNotificationObserver(server, key), null);
     }
 
     protected synchronized void disconnectProducers() {

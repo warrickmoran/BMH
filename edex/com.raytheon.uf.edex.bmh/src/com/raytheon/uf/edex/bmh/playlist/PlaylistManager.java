@@ -686,11 +686,11 @@ public class PlaylistManager implements IContextStateProcessor {
                     BMH_ACTIVITY.PLAYLIST_WRITE, playlist, e);
             return null;
         }
-        String queue = PlaylistUpdateNotification.getQueueName(playlist
+        String topic = PlaylistUpdateNotification.getTopicName(playlist
                 .getTransmitterGroup().getName(), operational);
         try {
             EDEXUtil.getMessageProducer().sendAsyncUri(
-                    "jms-durable:queue:" + queue,
+                    "jms-generic:topic:" + topic,
                     SerializationUtil.transformToThrift(notif));
         } catch (EdexException | SerializationException e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
