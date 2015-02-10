@@ -258,7 +258,8 @@ public final class DacMessagePlaybackData {
         } else {
             try {
                 Files.write(message.getPositionPath(),
-                        new byte[audio.position()]);
+                        new byte[audio.position()
+                                / DacSessionConstants.SINGLE_PAYLOAD_SIZE]);
             } catch (IOException e) {
                 logger.error("Unable to open position file.", e);
             }
