@@ -156,7 +156,7 @@ public class PlaylistUpdateNotification {
         return playlist;
     }
 
-    public static String getQueueName(String group, boolean operational) {
+    public static String getTopicName(String group, boolean operational) {
         if (operational) {
             return "BMH.Playlist";
         } else {
