@@ -149,6 +149,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 02, 2015  4044      bsteffen    Confirm expire/delete.
  * Feb 05, 2015  4090      bkowal      Update the suite category whenever the playlist
  *                                     changes.
+ * Feb 10, 2015  4106      bkowal      Support caching live broadcast information.
  * 
  * </pre>
  * 
@@ -720,40 +721,41 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         try {
             IPlaylistData playlistDataRecord = this.dataManager
                     .getPlaylistDataForTransmitter(selectedTransmitterGrp);
+            PlaylistDataStructure dataStruct = null;
+            LiveBroadcastSwitchNotification notification = null;
             if (playlistDataRecord instanceof PlaylistDataStructure) {
-                PlaylistDataStructure dataStruct = (PlaylistDataStructure) playlistDataRecord;
-                if (dataStruct != null) {
-                    String suiteName = dataStruct.getSuiteName();
-                    if (suiteName != null) {
-                        suiteValueLbl.setText(suiteName);
-                        this.selectedSuite = suiteName;
-                    }
-                    cycleDurValueLbl.setText(timeFormatter.format(new Date(
-                            dataStruct.getPlaybackCycleTime())));
-                    SuiteDataManager sdm = new SuiteDataManager();
-                    Suite suite = sdm.getSuiteByName(suiteName);
-                    if (suite != null) {
-                        suiteCatValueLbl.setText(suite.getType().name());
-                    } else {
-                        /*
-                         * is this an interrupt?
-                         */
-                        if (suiteName.startsWith("Interrupt")) {
-                            suiteCatValueLbl.setText(Suite.SuiteType.INTERRUPT
-                                    .name());
-                        }
-                    }
-                    playlistData.setData(selectedTransmitterGrp, dataStruct);
-                    tableData = playlistData
-                            .getUpdatedTableData(selectedTransmitterGrp);
-                    tableComp.populateTable(tableData);
-                    if (tableData.getTableRowCount() > 0) {
-                        tableComp.select(0);
-                    }
-                    handleTableSelection();
+                dataStruct = (PlaylistDataStructure) playlistDataRecord;
+            } else {
+                notification = (LiveBroadcastSwitchNotification) playlistDataRecord;
+                dataStruct = notification.getActualPlaylist();
+            }
+
+            if (dataStruct != null) {
+                playlistData.setData(selectedTransmitterGrp, dataStruct);
+                String suiteName = dataStruct.getSuiteName();
+                if (suiteName != null) {
+                    this.selectedSuite = suiteName;
                 }
-            } else if (playlistDataRecord instanceof LiveBroadcastSwitchNotification) {
-                LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) playlistDataRecord;
+            }
+
+            if (notification == null && dataStruct != null) {
+                if (this.selectedSuite != null) {
+                    suiteValueLbl.setText(this.selectedSuite);
+                }
+                cycleDurValueLbl.setText(timeFormatter.format(new Date(
+                        dataStruct.getPlaybackCycleTime())));
+                suiteCatValueLbl.setText(this.getCategoryForCurrentSuite());
+
+                tableData = playlistData
+                        .getUpdatedTableData(selectedTransmitterGrp);
+                tableComp.populateTable(tableData);
+                if (tableData.getTableRowCount() > 0) {
+                    tableComp.select(0);
+                }
+                handleTableSelection();
+            } else {
+                playlistData
+                        .handleLiveBroadcastSwitchNotification(notification);
                 TableData tableData = playlistData
                         .getLiveTableData(notification);
                 this.updateDisplayForLiveBroadcast(tableData,
@@ -910,10 +912,19 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         this.retrieveProgram();
 
         messageTextArea.setText("");
-        initialTablePopulation();
-        tableData = playlistData.getUpdatedTableData(selectedTransmitterGrp);
-        tableComp.populateTable(tableData);
-        handleTableSelection();
+        LiveBroadcastSwitchNotification notification = playlistData
+                .getLiveBroadcastNotification(selectedTransmitterGrp);
+        if (notification == null) {
+            initialTablePopulation();
+            tableData = playlistData
+                    .getUpdatedTableData(selectedTransmitterGrp);
+            tableComp.populateTable(tableData);
+            handleTableSelection();
+        } else {
+            tableData = playlistData.getLiveTableData(notification);
+            this.updateDisplayForLiveBroadcast(tableData,
+                    notification.getType());
+        }
         handleMonitorInlineEvent();
     }
 
@@ -1281,34 +1292,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                 notification.getPlaybackCycleTime()));
                         updateTable(tableData);
                         this.selectedSuite = notification.getSuiteName();
-                        String suiteCategory = NA;
-                        SuiteDataManager sdm = new SuiteDataManager();
-                        try {
-                            Suite suite = sdm.getSuiteByName(selectedSuite);
-                            if (suite != null) {
-                                suiteCategory = suite.getType().name();
-                            } else {
-                                /*
-                                 * is this an interrupt?
-                                 */
-                                if (notification.getSuiteName().startsWith(
-                                        "Interrupt")) {
-                                    /*
-                                     * set the category to interrupt.
-                                     */
-                                    suiteCategory = Suite.SuiteType.INTERRUPT
-                                            .name();
-                                }
-                            }
-                        } catch (Exception e) {
-                            statusHandler.error("Failed to retrieve suite: "
-                                    + this.selectedSuite + ".", e);
-                            /*
-                             * the suite category will show up as N/A, continue.
-                             */
-                        }
 
-                        final String currentSuiteCategory = suiteCategory;
+                        final String currentSuiteCategory = this
+                                .getCategoryForCurrentSuite();
                         VizApp.runAsync(new Runnable() {
 
                             @Override
@@ -1382,6 +1368,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     });
                 } else if (o instanceof LiveBroadcastSwitchNotification) {
                     final LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) o;
+                    playlistData
+                            .handleLiveBroadcastSwitchNotification(notification);
                     if (notification.getTransmitterGroup().getName()
                             .equals(this.selectedTransmitterGrp) == false) {
                         return;
@@ -1400,6 +1388,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         });
                     } else {
                         updateTable(tableData);
+                        final String currentSuiteCategory = this
+                                .getCategoryForCurrentSuite();
                         VizApp.runAsync(new Runnable() {
 
                             @Override
@@ -1412,6 +1402,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                 } else {
                                     suiteValueLbl.setText("");
                                 }
+                                suiteCatValueLbl.setText(currentSuiteCategory);
                                 if (cycleDurationTime != null) {
                                     cycleDurValueLbl.setText(cycleDurationTime);
                                 } else {
@@ -1427,11 +1418,50 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         }
     }
 
+    /**
+     * Determines and returns the category associated with the currently
+     * selected suite.
+     * 
+     * @return the category associated with the currently selected suite.
+     */
+    private String getCategoryForCurrentSuite() {
+        String suiteCategory = NA;
+        if (this.selectedSuite == null || this.selectedSuite.isEmpty()) {
+            return "NA";
+        }
+        SuiteDataManager sdm = new SuiteDataManager();
+        try {
+            Suite suite = sdm.getSuiteByName(selectedSuite);
+            if (suite != null) {
+                suiteCategory = suite.getType().name();
+            } else {
+                /*
+                 * is this an interrupt?
+                 */
+                if (this.selectedSuite.startsWith("Interrupt")) {
+                    /*
+                     * set the category to interrupt.
+                     */
+                    suiteCategory = Suite.SuiteType.INTERRUPT.name();
+                }
+            }
+        } catch (Exception e) {
+            statusHandler.error("Failed to retrieve suite: "
+                    + this.selectedSuite + ".", e);
+            /*
+             * the suite category will show up as N/A, continue.
+             */
+        }
+
+        return suiteCategory;
+    }
+
     private void updateDisplayForLiveBroadcast(final TableData liveTableData,
             final BROADCASTTYPE type) {
         this.messageDetailBtn.setEnabled(false);
         suiteValueLbl.setText("N/A");
         cycleDurValueLbl.setText("N/A");
+        suiteCatValueLbl.setText("");
         if (type == BROADCASTTYPE.EO) {
             setProgramLabelTextFontAndColor(eoText);
         } else if (type == BROADCASTTYPE.BL) {
