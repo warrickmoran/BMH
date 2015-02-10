@@ -55,6 +55,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Oct 10, 2014  3656     bkowal      Updates to allow sending other message
  *                                    types to cluster members.
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
+ * Feb 10, 2015  4071     bsteffen    Synchronize State.
  * 
  * </pre>
  * 
@@ -138,7 +139,9 @@ public class ClusterServer extends AbstractServerThread {
                 ClusterCommunicator communicator = new ClusterCommunicator(
                         manager, socket);
                 communicator.start();
-                communicator.sendState(state);
+                synchronized (state) {
+                    communicator.sendState(state);
+                }
                 ClusterCommunicator prev = communicators.put(address,
                         communicator);
                 if (prev != null) {
@@ -204,28 +207,36 @@ public class ClusterServer extends AbstractServerThread {
                     socket);
             communicators.put(address, communicator);
             communicator.start();
-            communicator.sendState(state);
+            synchronized (state) {
+                communicator.sendState(state);
+            }
         }
     }
 
     public void dacConnectedLocal(DacTransmitKey key) {
-        state.add(key);
-        if (state.isRequestedKey(key)) {
-            state.setRequestedKey(null);
-            requestTimeout = Long.MAX_VALUE;
+        synchronized (state) {
+            state.add(key);
+            if (state.isRequestedKey(key)) {
+                state.setRequestedKey(null);
+                requestTimeout = Long.MAX_VALUE;
+            }
+            sendStateToAll();
         }
-        sendStateToAll();
     }
 
     public void dacDisconnectedLocal(DacTransmitKey key) {
-        state.remove(key);
-        sendStateToAll();
+        synchronized (state) {
+            state.remove(key);
+            sendStateToAll();
+        }
     }
 
     public void dacDisconnectedRemote(DacTransmitKey key) {
-        if (state.isRequestedKey(key)) {
-            requestTimeout = System.currentTimeMillis()
-                    + REQUEST_TIMEOUT_INTERVAL;
+        synchronized (state) {
+            if (state.isRequestedKey(key)) {
+                requestTimeout = System.currentTimeMillis()
+                        + REQUEST_TIMEOUT_INTERVAL;
+            }
         }
     }
 
@@ -271,41 +282,44 @@ public class ClusterServer extends AbstractServerThread {
     }
 
     public void balanceDacTransmits(boolean allDacsRunning) {
-        boolean pendingRequest = state.hasRequestedKey();
-        boolean requestFailed = System.currentTimeMillis() > requestTimeout;
-        if (allDacsRunning && pendingRequest == false && requestFailed == false) {
-            String overloadId = null;
-            ClusterStateMessage overloaded = state;
-            for (ClusterCommunicator communicator : communicators.values()) {
-                ClusterStateMessage other = communicator.getClusterState();
-                if (other == null || other.hasRequestedKey()) {
-                    return;
+        synchronized (state) {
+            boolean pendingRequest = state.hasRequestedKey();
+            boolean requestFailed = System.currentTimeMillis() > requestTimeout;
+            if (allDacsRunning && pendingRequest == false
+                    && requestFailed == false) {
+                String overloadId = null;
+                ClusterStateMessage overloaded = state;
+                for (ClusterCommunicator communicator : communicators.values()) {
+                    ClusterStateMessage other = communicator.getClusterState();
+                    if (other == null || other.hasRequestedKey()) {
+                        return;
+                    }
+                    if (other.getKeys().size() > overloaded.getKeys().size()) {
+                        overloaded = other;
+                        overloadId = communicator.getClusterId();
+                    }
                 }
-                if (other.getKeys().size() > overloaded.getKeys().size()) {
-                    overloaded = other;
-                    overloadId = communicator.getClusterId();
+                if (overloaded.getKeys().size() - 1 > state.getKeys().size()) {
+                    logger.info(
+                            "To balance the load 1 dac transmit has been requested from {}",
+                            overloadId);
+                    /*
+                     * TODO its entirely possible for 2 cluster members to be
+                     * here at the same time and both request the same key, to
+                     * minimize conflict it would be better if each requested a
+                     * different key using a better key selection mechanism.
+                     */
+                    ClusterDacTransmitKey request = overloaded.getKeys().get(0);
+                    state.setRequestedKey(request);
+                    sendStateToAll();
                 }
-            }
-            if (overloaded.getKeys().size() - 1 > state.getKeys().size()) {
-                logger.info(
-                        "To balance the load 1 dac transmit has been requested from {}",
-                        overloadId);
-                /*
-                 * TODO its entirely possible for 2 cluster members to be here
-                 * at the same time and both request the same key, to minimize
-                 * conflict it would be better if each requested a different key
-                 * using a better key selection mechanism.
-                 */
-                ClusterDacTransmitKey request = overloaded.getKeys().get(0);
-                state.setRequestedKey(request);
+            } else if (pendingRequest && requestFailed) {
+                logger.error(
+                        "Load balancing has been disabled due to failure to start a requested dac: {}.",
+                        state.getRequestedKey());
+                state.setRequestedKey(null);
                 sendStateToAll();
             }
-        } else if (pendingRequest && requestFailed) {
-            logger.error(
-                    "Load balancing has been disabled due to failure to start a requested dac: {}.",
-                    state.getRequestedKey());
-            state.setRequestedKey(null);
-            sendStateToAll();
         }
     }
 }
