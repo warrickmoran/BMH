@@ -1,3 +1,38 @@
 # This file contains words and phrases which should not be transmitted in english.
 # Any message containing these words will be marked unacceptable.
-dirty words
+fuck
+shit
+piss
+cunt
+blowjob
+beatoff
+butthead
+dickhead
+buttmunch
+whackoff
+dickface
+pussywhipped
+twat
+lackanookie
+jackoff
+goddamn
+peckerhead
+peckerface
+dork
+dookie
+ballbuster
+getlaid
+peckerwood
+tit
+fart
+bazongas
+schmuck
+prickhead
+prickface
+pussyface
+asshole
+asswipe
+asslick
+cockhead
+cockface
+cocksucker

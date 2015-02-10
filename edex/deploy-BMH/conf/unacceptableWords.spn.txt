@@ -1,3 +1,11 @@
 # This file contains words and phrases which should not be transmitted in spanish.
 # Any message containing these words will be marked unacceptable.
-palabras sucias
+cabron
+pinchi
+puto
+puta
+hoto
+panochas
+sexo
+stupido
+bastardo
