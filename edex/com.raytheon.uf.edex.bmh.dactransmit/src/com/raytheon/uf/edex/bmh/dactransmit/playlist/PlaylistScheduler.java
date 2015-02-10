@@ -65,6 +65,7 @@ import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
+import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotificationHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
@@ -639,6 +640,7 @@ public final class PlaylistScheduler implements
 
                 if (newPlaylist.isInterrupt()) {
                     interrupts.add(newPlaylist);
+                    eventBus.post(new InterruptMessageReceivedEvent(newPlaylist));
                     return;
                 }
 
