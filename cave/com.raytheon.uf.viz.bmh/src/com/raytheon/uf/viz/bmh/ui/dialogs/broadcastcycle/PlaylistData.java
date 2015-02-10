@@ -75,6 +75,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Jan 13, 2015   3844     bsteffen    Include PlaylistMessages in PlaylistDataStructure
  * Feb 05, 2015   4088     bkowal      Handle interrupt playlists that are not saved to the
  *                                     database.
+ * Feb 09, 2015   3844     bsteffen    Color interrupts only the first time they play.
  * 
  * </pre>
  * 
@@ -328,7 +329,7 @@ public class PlaylistData {
                             .getPeriodicColor());
                 }
 
-                if (inputMsg.getInterrupt()) {
+                if (inputMsg.getInterrupt() && pred.getPlayCount() <= 1) {
                     cycleTableData.setMessageIdColor(colorManager
                             .getInterruptColor());
                 }
