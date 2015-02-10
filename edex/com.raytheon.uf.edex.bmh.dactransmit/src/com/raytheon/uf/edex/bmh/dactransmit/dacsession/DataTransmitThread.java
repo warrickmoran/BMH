@@ -19,13 +19,11 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
-import java.net.InetAddress;
 import java.net.SocketException;
-import java.util.Collection;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
@@ -83,7 +81,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 14, 2015  #3969     bkowal       Use updated {@link MessageBroadcastNotifcation}.
  * Jan 22, 2015  #3912     bsteffen     Add more frequent packet logging and include intermessage intervals.
  * Feb 02, 2015  #4093     bsteffen     Add shutdown hook.
- * 
+ * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * 
  * </pre>
  * 
@@ -95,6 +93,8 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
         IInterruptMessageReceivedHandler {
 
     private final PlaylistScheduler playlistMgr;
+
+    private final ExecutorService executorService;
 
     /*
      * Flag used to indicate if the process is shutting down, shutdown should
@@ -142,11 +142,13 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
      * @throws SocketException
      *             If the socket could not be opened.
      */
-    public DataTransmitThread(final EventBus eventBus,
-            final PlaylistScheduler playlistMgr, InetAddress address, int port,
-            Collection<Integer> transmitters) throws SocketException {
-        super("DataTransmitThread", eventBus, address, port, transmitters);
+    public DataTransmitThread(DacSession dacSession,
+            final PlaylistScheduler playlistMgr) throws SocketException {
+        super("DataTransmitThread", dacSession.getEventBus(), dacSession
+                .getConfig().getDacAddress(), dacSession.getConfig()
+                .getDataPort(), dacSession.getConfig().getTransmitters());
         this.playlistMgr = playlistMgr;
+        this.executorService = dacSession.getAsyncExecutor();
         this.keepRunning = true;
         this.interruptsAvailable = new AtomicInteger(0);
         this.playingInterrupt = false;
@@ -183,6 +185,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
         AudioPacketLogger allPacketLog = new AudioPacketLogger(getName(),
                 logger, 10);
         try {
+            long nextPacketTime = System.currentTimeMillis();
             eventBus.register(this);
             OUTER_LOOP: while (keepRunning) {
                 try {
@@ -279,19 +282,39 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
 
                             RtpPacketIn rtpPacket = buildRtpPacket(
                                     previousPacket, nextPayload);
-
+                            long sleepTime = nextPacketTime
+                                    - System.currentTimeMillis();
+                            if (sleepTime > 0) {
+                                try {
+                                    Thread.sleep(sleepTime);
+                                } catch (InterruptedException e) {
+                                    logger.error("Thread sleep interrupted.", e);
+                                    DefaultMessageLogger
+                                            .getInstance()
+                                            .logError(
+                                                    BMH_COMPONENT.DAC_TRANSMIT,
+                                                    BMH_ACTIVITY.AUDIO_BROADCAST,
+                                                    playbackData.getMessage(),
+                                                    e);
+                                }
+                            }
                             sendPacket(rtpPacket);
+                            nextPacketTime = nextPacketTime + packetInterval;
+                            /*
+                             * Never send before FAST_CYCLE_TIME because it
+                             * increases the risk that packets will arrive out
+                             * of order. Do not try to catch up if more than one
+                             * packet behind, the control status thread will
+                             * eventually adjust the rate more accurately based
+                             * off the actual buffer levels.
+                             */
+                            nextPacketTime = Math
+                                    .max(System.currentTimeMillis()
+                                            + DataTransmitConstants.FAST_CYCLE_TIME,
+                                            nextPacketTime);
                             messagePacketLog.packetProcessed();
                             allPacketLog.packetProcessed();
                             previousPacket = rtpPacket;
-
-                            Thread.sleep(nextCycleTime);
-                        } catch (InterruptedException e) {
-                            logger.error("Thread sleep interrupted.", e);
-                            DefaultMessageLogger.getInstance().logError(
-                                    BMH_COMPONENT.DAC_TRANSMIT,
-                                    BMH_ACTIVITY.AUDIO_BROADCAST,
-                                    playbackData.getMessage(), e);
                         } catch (Throwable t) {
                             logger.error(
                                     "Uncaught exception thrown from message playback loop.",
@@ -303,7 +326,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                         }
                     }
                     messagePacketLog.close();
-                    playbackData.endPlayback();
+                    executorService.submit(playbackData.getEndPlayBackTask());
                     // broadcast of the message has finished, log it.
                     DefaultMessageLogger.getInstance().logBroadcastActivity(
                             playbackData.getMessage());

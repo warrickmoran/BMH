@@ -22,13 +22,11 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
@@ -47,6 +45,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEven
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IShutdownRequestEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistDirectoryObserver;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
+import com.raytheon.uf.edex.bmh.dactransmit.playlist.PriorityBasedExecutorService;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 
 /**
@@ -99,6 +98,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jan 19, 2014  #3912     bsteffen     Handle events from control thread directly.
  * Jan 19, 2015  #4002     bkowal       Specify the type of live broadcast when delaying
  *                                      interrupts.
+ * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
+ * 
  * 
  * </pre>
  * 
@@ -111,13 +112,16 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
 
     private static final int RESEND_HARDWARE_STATUS_MS = 30 * 1000;
 
+    private static final int ASYNC_THREADS = Integer.getInteger(
+            "DacSessionAsyncThreads", 2);
+
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final DacSessionConfig config;
 
     private final PlaylistScheduler playlistMgr;
 
-    private final ExecutorService notificationExecutor;
+    private final ExecutorService asyncExecutor;
 
     private final EventBus eventBus;
 
@@ -128,8 +132,6 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     private final ControlStatusThread controlThread;
 
     private final PlaylistDirectoryObserver newPlaylistObserver;
-
-    private volatile boolean isRunning;
 
     private CommsManagerCommunicator commsManager;
 
@@ -150,27 +152,43 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
      */
     public DacSession(final DacSessionConfig config) throws IOException {
         this.config = config;
-        this.notificationExecutor = Executors
-                .newSingleThreadExecutor(new NamedThreadFactory("EventBus"));
-        this.eventBus = new AsyncEventBus("DAC-Transmit", notificationExecutor);
-        this.playlistMgr = new PlaylistScheduler(
-                this.config.getInputDirectory(), this.eventBus,
-                this.config.getDbTarget(), this.config.getTimezone());
+        this.asyncExecutor = new PriorityBasedExecutorService(ASYNC_THREADS,
+                new NamedThreadFactory("DacSession-AsyncTasks"));
+        this.eventBus = new EventBus("DAC-Transmit");
+        this.playlistMgr = new PlaylistScheduler(this);
         this.controlThread = new ControlStatusThread(this,
                 this.config.getDacAddress(), this.config.getControlPort());
-        this.dataThread = new DataTransmitThread(this.eventBus, playlistMgr,
-                this.config.getDacAddress(), this.config.getDataPort(),
-                this.config.getTransmitters());
-        this.commsManager = new CommsManagerCommunicator(this.config,
-                this.eventBus);
+        this.dataThread = new DataTransmitThread(this, playlistMgr);
+        this.commsManager = new CommsManagerCommunicator(this);
         if (Boolean.getBoolean("enableDirectoryObserver")) {
-            this.newPlaylistObserver = new PlaylistDirectoryObserver(
-                    this.config.getInputDirectory(), this.eventBus);
+            this.newPlaylistObserver = new PlaylistDirectoryObserver(this);
         } else {
             this.newPlaylistObserver = null;
         }
         this.shutdownSignal = new Semaphore(1);
         this.previousStatus = null;
+    }
+
+    /**
+     * Returns the sessions event bus. This bus is synchronous and some events
+     * are fired from threads with strict time constraints so anything
+     * subscribing to the events should be able to respond quickly or
+     * Asynchronously.
+     */
+    public EventBus getEventBus() {
+        return this.eventBus;
+    }
+
+    /**
+     * Common executor service for handling background events that need to be
+     * processed during a dac session.
+     */
+    public ExecutorService getAsyncExecutor() {
+        return this.asyncExecutor;
+    }
+
+    public DacSessionConfig getConfig() {
+        return this.config;
     }
 
     /**
@@ -206,40 +224,6 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         }
         eventBus.register(playlistMgr);
 
-        isRunning = true;
-    }
-
-    /**
-     * Performs orderly shutdown of this {@code DacSession} instance. Will wait
-     * for the current message being transmitted to finish before completing.
-     * After calling this method, the instance cannot be restarted; a new one
-     * must be created.
-     * 
-     * @throws InterruptedException
-     *             If any thread interrupts the current thread while waiting for
-     *             all the child threads to die.
-     */
-    public void shutdown(boolean now) throws InterruptedException {
-        logger.info("Initiating shutdown...");
-
-        dataThread.shutdown(now);
-        playlistMgr.shutdown();
-        dataThread.join();
-
-        controlThread.shutdown();
-        controlThread.join();
-
-        commsManager.shutdown();
-
-        if (newPlaylistObserver != null) {
-            newPlaylistObserver.shutdown();
-        }
-
-        notificationExecutor.shutdown();
-
-        isRunning = false;
-
-        shutdownSignal.release();
     }
 
     /**
@@ -248,17 +232,39 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
      */
     @Override
     public SHUTDOWN_STATUS waitForShutdown() {
-        if (isRunning) {
-            try {
-                shutdownSignal.acquire();
-            } catch (InterruptedException e) {
-                logger.error(
-                        "DacSession.waitForShutdown() interrupted by another thread.",
-                        e);
-            } finally {
-                shutdownSignal.release();
-            }
+        try {
+            shutdownSignal.acquire();
+        } catch (InterruptedException e) {
+            logger.error(
+                    "DacSession was interrupted while waiting to shutdown.",
+                    e);
         }
+        
+        logger.info("Initiating shutdown...");
+
+        try {
+            dataThread.join();
+        } catch (InterruptedException e) {
+            logger.error(
+                    "DacSession was interrupted while waiting for the data thread.",
+                    e);
+        }
+
+        controlThread.shutdown();
+        try {
+            controlThread.join();
+        } catch (InterruptedException e) {
+            logger.error(
+                    "DacSession was interrupted while waiting for the control thread.",
+                    e);
+        }
+        commsManager.shutdown();
+
+        if (newPlaylistObserver != null) {
+            newPlaylistObserver.shutdown();
+        }
+
+        asyncExecutor.shutdown();
 
         return SHUTDOWN_STATUS.SUCCESS;
     }
@@ -318,11 +324,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     @Override
     @Subscribe
     public void handleShutdownRequest(ShutdownRequestedEvent e) {
-        try {
-            shutdown(e.isNow());
-        } catch (InterruptedException e1) {
-            logger.error("Shutdown interrupted.", e1);
-        }
+        dataThread.shutdown(e.isNow());
+        shutdownSignal.release();
     }
 
     /*

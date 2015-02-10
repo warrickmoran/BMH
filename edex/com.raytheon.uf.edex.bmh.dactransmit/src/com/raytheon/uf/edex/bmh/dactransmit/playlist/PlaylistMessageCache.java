@@ -34,10 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXB;
 
@@ -50,10 +47,11 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
+import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
-import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -94,6 +92,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 05, 2015  #3913     bsteffen     Handle future replacements.
  * Jan 05, 2015  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg errors.
  * Jan 16, 2015  #3928     bsteffen     Fix purging of old playlists on dac startup.
+ * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * 
  * </pre>
  * 
@@ -105,17 +104,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private static final int PURGE_JOB_INTERVAL = 15;
-
-    private static final int THREAD_POOL_MAX_SIZE = 3;
-
-    private static final int PURGE_THREADS = 1;
-
-    /*
-     * Note: the current implementation does not allow a task with a higher
-     * priority to preempt a task that has already started with a lower priority
-     * when all of the available threads are in use.
-     */
+    private static final long PURGE_JOB_INTERVAL = 15 * TimeUtil.MILLIS_PER_MINUTE;
 
     private static final long SECONDS_TO_BYTES_CONV_FACTOR = 8000L;
 
@@ -134,9 +123,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private final Path messageDirectory;
 
-    private final ExecutorService cacheThreadPool;
-
-    private final ScheduledExecutorService purgeThreadPool;
+    private final ExecutorService executorService;
 
     private final ConcurrentMap<DacPlaylistMessageId, DacPlaylistMessage> cachedMessages;
 
@@ -154,36 +141,21 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private final PlaylistScheduler scheduler;
 
-    public PlaylistMessageCache(Path messageDirectory,
-            PlaylistScheduler playlistScheduler, EventBus eventBus,
-            double dbTarget, TimeZone timezone) {
-        this.messageDirectory = messageDirectory;
-        this.cacheThreadPool = new PriorityBasedExecutorService(
-                THREAD_POOL_MAX_SIZE, new NamedThreadFactory(
-                        "PlaylistMessageCache"));
+    private long lastPurgeTime;
+
+    public PlaylistMessageCache(DacSession dacSession,
+            PlaylistScheduler playlistScheduler) {
+        DacSessionConfig config = dacSession.getConfig();
+        this.messageDirectory = config.getInputDirectory().resolve("messages");
         this.cachedMessages = new ConcurrentHashMap<>();
         this.cachedFiles = new ConcurrentHashMap<>();
         this.cacheStatus = new ConcurrentHashMap<>();
         this.cachedRetrievalTasks = new ConcurrentHashMap<>();
-        this.eventBus = eventBus;
-        this.dbTarget = dbTarget;
-        this.timezone = timezone;
+        this.eventBus = dacSession.getEventBus();
+        this.dbTarget = config.getDbTarget();
+        this.timezone = config.getTimezone();
         this.scheduler = playlistScheduler;
-
-        this.purgeThreadPool = Executors.newScheduledThreadPool(PURGE_THREADS,
-                new NamedThreadFactory("MessageCachePurge"));
-        Runnable purgeJob = createPurgeJob();
-        this.purgeThreadPool.scheduleWithFixedDelay(purgeJob,
-                PURGE_JOB_INTERVAL, PURGE_JOB_INTERVAL, TimeUnit.MINUTES);
-    }
-
-    /**
-     * Stops all background threads this class was using. After this method is
-     * called, this instance cannot be restarted.
-     */
-    public void shutdown() {
-        cacheThreadPool.shutdown();
-        purgeThreadPool.shutdown();
+        this.executorService = dacSession.getAsyncExecutor();
     }
 
     /**
@@ -192,9 +164,19 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * @param playlist
      *            List of messages to cache.
      */
-    public void retrieveAudio(final List<DacPlaylistMessageId> playlist) {
-        for (DacPlaylistMessageId message : playlist) {
-            retrieveAudio(message);
+    public void retrieveAudio(DacPlaylist playlist) {
+        int index = 0;
+        for (DacPlaylistMessageId message : playlist.getMessages()) {
+            /*
+             * This is intended to cause higher priority lists to get scheduled
+             * before lower priority lists and also to get messages at the
+             * beginning of the list scheduled before messages at the end of the
+             * list.
+             */
+            int priority = PriorityBasedExecutorService.PRIORITY_NORMAL
+                    + playlist.getPriority() * 100 + index;
+            retrieveAudio(message, priority);
+            index += 1;
         }
     }
 
@@ -204,10 +186,10 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * @param message
      *            Message to cache.
      */
-    public void retrieveAudio(final DacPlaylistMessageId id) {
+    private void retrieveAudio(final DacPlaylistMessageId id, int priority) {
         if (!cacheStatus.containsKey(id)) {
             Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
-                    PriorityBasedExecutorService.PRIORITY_NORMAL, id);
+                    priority, id);
             cacheStatus.put(id, jobStatus);
         }
     }
@@ -244,8 +226,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             final DacPlaylistMessageId id, final String taskId) {
         Callable<IAudioFileBuffer> retrieveAudioJob = new RetrieveAudioJob(
                 priority, this.dbTarget, this.getMessage(id), this, taskId);
-
-        return cacheThreadPool.submit(retrieveAudioJob);
+        return executorService.submit(retrieveAudioJob);
     }
 
     /**
@@ -260,17 +241,21 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      *         cache.
      */
     public IAudioFileBuffer getAudio(final DacPlaylistMessage message) {
+        schedulePurge();
         Future<IAudioFileBuffer> fileStatus = cacheStatus
                 .get(new DacPlaylistMessageId(message.getBroadcastId()));
         if (fileStatus != null) {
             IAudioFileBuffer buffer = cachedFiles.get(message);
             if (buffer == null) {
                 try {
-                    /*
-                     * TODO: slightly increase the priority of the task that we
-                     * are waiting for?
-                     */
+                    long startTime = System.currentTimeMillis();
                     buffer = fileStatus.get();
+                    long time = System.currentTimeMillis() - startTime;
+                    if(time > 1){
+                        logger.info(
+                                "Spent {}ms waiting for audio for message with id={}.",
+                                time, message.getBroadcastId());
+                    }
                     cachedFiles.put(message, buffer);
                 } catch (InterruptedException e) {
                     logger.error(
@@ -280,9 +265,6 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                             BMH_COMPONENT.DAC_TRANSMIT,
                             BMH_ACTIVITY.AUDIO_READ, message, e);
                 } catch (ExecutionException e) {
-                    /*
-                     * TODO: handle failed data retrieval.
-                     */
                     logger.error(e.getMessage(), e.getCause());
                     CriticalErrorEvent event = new CriticalErrorEvent(
                             e.getMessage(), e.getCause());
@@ -397,9 +379,24 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         boolean includeTones = (startTime != null) ? message
                 .shouldPlayTones(startTime) : false;
 
+        IAudioFileBuffer buffer = cachedFiles.get(message);
+        if (buffer == null) {
+            Future<IAudioFileBuffer> status = cacheStatus.get(messageId);
+            if (status != null && status.isDone()) {
+                try {
+                    buffer = status.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    /*
+                     * Ignore for now, when the message is played the same
+                     * exception will be thrown and logged in getAudio
+                     */
+                }
+            }
+        }
+
         long fileSize = 0;
-        if (cachedFiles.containsKey(message)) {
-            fileSize = cachedFiles.get(message).capacity(includeTones);
+        if (buffer != null) {
+            fileSize = buffer.capacity(includeTones);
         } else {
             List<String> soundFiles = message.getSoundFiles();
             if (soundFiles == null || soundFiles.isEmpty()) {
@@ -491,79 +488,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      *            Expired playlist.
      */
     public void removeExpiredMessages(final DacPlaylist playlist) {
-        try {
-            Runnable removeFromCacheJob = createUncacheExpiredPlaylistJob(playlist);
-            purgeThreadPool.submit(removeFromCacheJob);
-        } catch (Exception e) {
-            logger.error("Cannot schedule playlist " + playlist
-                    + " for removal.", e);
-        }
-    }
-
-    private Runnable createPurgeJob() {
-        Runnable job = new Runnable() {
-
-            @Override
-            public void run() {
-                Collection<DacPlaylist> playlists = scheduler
-                        .getActivePlaylists();
-                Set<DacPlaylistMessageId> activeMessageIds = new HashSet<>();
-                for (DacPlaylist playlist : playlists) {
-                    activeMessageIds.addAll(playlist.getMessages());
-                }
-
-                for (DacPlaylistMessageId messageId : cachedMessages.keySet()) {
-                    /*
-                     * we remove the cached audio buffer separate from the
-                     * cached message data because we need the message data to
-                     * remain cached so that any playlists that reference the
-                     * expired message can know that the message has expired.
-                     * But once expiration hits, we no longer need the audio
-                     * data.
-                     */
-                    if (isExpired(messageId)) {
-                        purgeAudio(messageId);
-                    }
-
-                    if (!activeMessageIds.contains(messageId)) {
-                        try {
-                            purgeAudio(messageId);
-                            purgeMessage(messageId);
-                        } catch (IOException e) {
-                            logger.error("Error removing message " + messageId
-                                    + " from cache.", e);
-                        }
-                    }
-                }
-            }
-        };
-        return job;
-    }
-
-    private Runnable createUncacheExpiredPlaylistJob(final DacPlaylist playlist) {
-        Runnable job = new Runnable() {
-
-            @Override
-            public void run() {
-                try {
-                    for (DacPlaylistMessageId messageId : playlist
-                            .getMessages()) {
-                        if (!doesMessageFileExist(messageId)
-                                || isExpired(messageId)) {
-                            purgeAudio(messageId);
-                        }
-                    }
-
-                    Files.delete(playlist.getPath());
-                    logger.info("Deleted " + playlist.getPath());
-                } catch (Throwable e) {
-                    logger.error(
-                            "Error deleting playlist " + playlist.getPath()
-                                    + " from disk.", e);
-                }
-            }
-        };
-        return job;
+        executorService.submit(new PurgePlaylistTask(playlist));
     }
 
     private boolean isExpired(final DacPlaylistMessageId messageId) {
@@ -581,6 +506,13 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         long currentTime = TimeUtil.currentTimeMillis();
 
         return (currentTime >= purgeTime);
+    }
+
+    private void schedulePurge() {
+        if (lastPurgeTime + PURGE_JOB_INTERVAL > System.currentTimeMillis()) {
+            lastPurgeTime = System.currentTimeMillis();
+            executorService.submit(new PurgeTask());
+        }
     }
 
     private void purgeMessage(final DacPlaylistMessageId messageId)
@@ -610,4 +542,80 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             cachedFiles.remove(message);
         }
     }
+
+    private class PurgeTask implements PrioritizableCallable<Object> {
+
+        @Override
+        public Object call() {
+            Collection<DacPlaylist> playlists = scheduler.getActivePlaylists();
+            Set<DacPlaylistMessageId> activeMessageIds = new HashSet<>();
+            for (DacPlaylist playlist : playlists) {
+                activeMessageIds.addAll(playlist.getMessages());
+            }
+
+            for (DacPlaylistMessageId messageId : cachedMessages.keySet()) {
+                if (!activeMessageIds.contains(messageId)) {
+                    try {
+                        purgeAudio(messageId);
+                        purgeMessage(messageId);
+                    } catch (IOException e) {
+                        logger.error("Error removing message " + messageId
+                                + " from cache.", e);
+                    }
+                } else if (isExpired(messageId)) {
+                    /*
+                     * we remove the cached audio buffer separate from the
+                     * cached message data because we need the message data to
+                     * remain cached so that any playlists that reference the
+                     * expired message can know that the message has expired.
+                     * But once expiration hits, we no longer need the audio
+                     * data.
+                     */
+                    purgeAudio(messageId);
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public Integer getPriority() {
+            return PriorityBasedExecutorService.PRIORITY_LOW;
+        }
+    }
+    
+    private class PurgePlaylistTask implements PrioritizableCallable<Object> {
+
+        private final DacPlaylist playlist;
+
+        public PurgePlaylistTask(DacPlaylist playlist) {
+            this.playlist = playlist;
+        }
+
+        @Override
+        public Object call() {
+            try {
+                for (DacPlaylistMessageId messageId : playlist
+                        .getMessages()) {
+                    if (!doesMessageFileExist(messageId)
+                            || isExpired(messageId)) {
+                        purgeAudio(messageId);
+                    }
+                }
+
+                Files.delete(playlist.getPath());
+                logger.info("Deleted " + playlist.getPath());
+            } catch (Throwable e) {
+                logger.error(
+                        "Error deleting playlist " + playlist.getPath()
+                                + " from disk.", e);
+            }
+            return null;
+        }
+
+        @Override
+        public Integer getPriority() {
+            return PriorityBasedExecutorService.PRIORITY_LOW;
+        }
+    }
+
 }

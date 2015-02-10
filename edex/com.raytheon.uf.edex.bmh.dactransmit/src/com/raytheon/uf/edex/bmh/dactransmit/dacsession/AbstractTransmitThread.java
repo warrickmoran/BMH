@@ -53,6 +53,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Oct 14, 2014 3655       bkowal      Initial creation
  * Jan 09, 2015 3942       rjpeter     Made nextCycleTime volatile, updated to set limits on cycle intervals.
  * Jan 19, 2015 3912       bsteffen    Receive sync, status directly instead of subscribing.
+ * Feb 06, 2015 4071       bsteffen     Consolidate threading.
  * 
  * </pre>
  * 
@@ -77,7 +78,7 @@ public class AbstractTransmitThread extends Thread implements
 
     protected RtpPacketIn previousPacket;
 
-    protected volatile long nextCycleTime;
+    protected volatile long packetInterval;
 
     protected int watermarkPackets;
 
@@ -98,7 +99,7 @@ public class AbstractTransmitThread extends Thread implements
         this.transmitters = transmitters;
         this.socket = new DatagramSocket();
         this.previousPacket = null;
-        this.nextCycleTime = DataTransmitConstants.INITIAL_CYCLE_TIME;
+        this.packetInterval = DataTransmitConstants.INITIAL_CYCLE_TIME;
         this.watermarkPackets = DataTransmitConstants.WATERMARK_PACKETS_IN_BUFFER;
         this.hasSync = true;
         this.onSyncRestartMessage = false;
@@ -165,7 +166,7 @@ public class AbstractTransmitThread extends Thread implements
             // logger.debug("Speeding up cycle time to: " + nextCycleTime);
         }
 
-        nextCycleTime = newSleepCycle;
+        packetInterval = newSleepCycle;
     }
 
     @Override
