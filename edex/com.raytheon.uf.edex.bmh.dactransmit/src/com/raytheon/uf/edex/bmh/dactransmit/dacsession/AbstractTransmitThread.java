@@ -53,7 +53,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Oct 14, 2014 3655       bkowal      Initial creation
  * Jan 09, 2015 3942       rjpeter     Made nextCycleTime volatile, updated to set limits on cycle intervals.
  * Jan 19, 2015 3912       bsteffen    Receive sync, status directly instead of subscribing.
- * Feb 06, 2015 4071       bsteffen     Consolidate threading.
+ * Feb 06, 2015 4071       bsteffen    Consolidate threading.
  * 
  * </pre>
  * 
@@ -65,6 +65,9 @@ public class AbstractTransmitThread extends Thread implements
         IDacStatusUpdateEventHandler {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+
+    protected final boolean aggressivePacketInterval = Boolean
+            .getBoolean("DacAggressivePacketInterval");
 
     protected final EventBus eventBus;
 
@@ -152,6 +155,25 @@ public class AbstractTransmitThread extends Thread implements
     public void receivedDacStatus(DacStatusUpdateEvent e) {
         int differenceFromWatermark = this.watermarkPackets
                 - e.getStatus().getBufferSize();
+        if (aggressivePacketInterval) {
+            calculatePacketIntervalAggressive(differenceFromWatermark);
+        } else {
+            calculatePacketIntervalStable(differenceFromWatermark);
+        }
+    }
+
+    /**
+     * An algorithm for setting the packet interval. Of the two algorithms this
+     * one is more aggressive, it attempts to correct the buffer level before
+     * the next status message arrives(in 100ms). The problem with this is that
+     * if the next status message is late or skipped then it tends to
+     * overcorrect very quickly.
+     * 
+     * @param differenceFromWatermark
+     *            the number of packets that need to be added to the buffer to
+     *            reach the {@link #watermarkPackets}.
+     */
+    private void calculatePacketIntervalAggressive(int differenceFromWatermark) {
         long newSleepCycle = DataTransmitConstants.DEFAULT_CYCLE_TIME;
 
         if (differenceFromWatermark < 0) {
@@ -166,6 +188,28 @@ public class AbstractTransmitThread extends Thread implements
             // logger.debug("Speeding up cycle time to: " + nextCycleTime);
         }
 
+        packetInterval = newSleepCycle;
+    }
+
+    /**
+     * An algorithm for setting the packet interval. Of the two algorithms this
+     * one is more stable. Corrections take longer to take affect. The slowest
+     * correction is when the buffer is only off by a single packet can take up
+     * to 400ms to correct. Larger corrections take affect faster. Since most
+     * corrections are small the interval over long time periods(minutes) is
+     * much more stable and missed or late status packets are not a problem.
+     * 
+     * @param differenceFromWatermark
+     *            the number of packets that need to be added to the buffer to
+     *            reach the {@link #watermarkPackets}.
+     */
+    private void calculatePacketIntervalStable(int differenceFromWatermark) {
+        long newSleepCycle = DataTransmitConstants.DEFAULT_CYCLE_TIME
+                - differenceFromWatermark;
+        newSleepCycle = Math.max(newSleepCycle,
+                DataTransmitConstants.FAST_CYCLE_TIME);
+        newSleepCycle = Math.min(newSleepCycle,
+                DataTransmitConstants.SLOW_CYCLE_TIME);
         packetInterval = newSleepCycle;
     }
 
