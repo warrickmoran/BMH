@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
@@ -71,7 +72,7 @@ import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
  * Nov 17, 2014 3808       bkowal      Support broadcast live. Initial transition to
  *                                     transmitter group.
  * Nov 21, 2014 3845       bkowal      Transition to transmitter group complete.
- * 
+ * Feb 11, 2015 4098       bsteffen    Maintain jitter buffer during broadcast.
  * 
  * </pre>
  * 
@@ -120,7 +121,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             }
         }
 
-        this.dataThread.pausePlayback();
+        this.previousPacket = this.dataThread.pausePlayback();
         // Build playlist switch notification
         this.notifyBroadcastSwitch(STATE.STARTED);
         if (this.type == BROADCASTTYPE.EO) {
@@ -135,9 +136,11 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         this.commsManager.sendDacLiveBroadcastMsg(status);
 
         this.streaming = true;
+
+        waitForAudio();
+
         AudioPacketLogger packetLog = new AudioPacketLogger(
                 "Live Broadcast Audio", getClass(), 30);
-        this.transmitTimer = null;
         /*
          * end the broadcast only after all buffered audio has been streamed.
          */
@@ -161,18 +164,10 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
         if (this.type == BROADCASTTYPE.EO) {
             this.playTones(this.config.getEndToneAudio(), "End of Message");
-            // give the tones enough time to finish.
-            long duration = ((this.config.getEndToneAudio().length / 160) * 20) + 1;
-            try {
-                Thread.sleep(duration);
-            } catch (InterruptedException e) {
-                logger.warn(
-                        "LiveBroadcastTransmitThread sleep was interrupted.", e);
-            }
         }
         this.notifyBroadcastSwitch(STATE.FINISHED);
 
-        this.dataThread.resumePlayback();
+        this.dataThread.resumePlayback(previousPacket);
     }
 
     private void playTones(byte[] toneAudio, final String toneType) {
@@ -193,6 +188,29 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             this.notifyDacError("Failed to stream the " + toneType + " Tones!",
                     e);
         }
+        packetLog.close();
+    }
+
+    private void waitForAudio(){
+        /*
+         * Stream silence until the first audio packet arrives to keep the
+         * jitter buffer full to the watermark level.
+         */
+        AudioPacketLogger packetLog = new AudioPacketLogger(
+                "Live Broadcast Buffering", getClass(), 10);
+        byte[] silence = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
+        Arrays.fill(silence, DacSessionConstants.SILENCE);
+        while (streaming && this.audioBuffer.isEmpty()) {
+            try {
+                this.streamAudio(silence);
+                packetLog.packetProcessed();
+            } catch (AudioOverflowException | UnsupportedAudioFormatException
+                    | AudioConversionException | InterruptedException e) {
+                this.notifyDacError(
+                        "Failed to stream the buffered live audio.", e);
+            }
+        }
+        packetLog.close();
     }
 
     private void notifyDacError(final String detail, final Exception e) {

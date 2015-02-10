@@ -99,7 +99,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jan 19, 2015  #4002     bkowal       Specify the type of live broadcast when delaying
  *                                      interrupts.
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
- * 
+ * Feb 11, 2015  #4098     bsteffen     Track packet sequence when switching to live.
  * 
  * </pre>
  * 
@@ -277,7 +277,12 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         }
         dataThread.receivedDacStatus(e);
         DacStatusMessage newStatus = e.getStatus();
-        newStatus.setSequenceNumber(dataThread.getLastSequenceNumber());
+        AbstractTransmitThread currentPlayingThread = broadcastThread;
+        if (currentPlayingThread == null) {
+            currentPlayingThread = dataThread;
+        }
+        newStatus.setSequenceNumber(currentPlayingThread
+                .getLastSequenceNumber());
         DacHardwareStatusNotification notify = newStatus.validateStatus(config,
                 previousStatus);
         previousStatus = newStatus;
