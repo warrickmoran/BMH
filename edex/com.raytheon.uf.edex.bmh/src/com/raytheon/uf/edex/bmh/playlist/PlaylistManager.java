@@ -25,8 +25,6 @@ import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -36,7 +34,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
@@ -153,6 +150,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jan 27, 2015  4036     bsteffen    Fix creation of general playlists.
  * Feb 03, 2015  4081     bkowal      Eliminate unused isStatic dac playlist message setting.
  * Feb 06, 2015  4036     bsteffen    Ensure message writer is closed.
+ * Feb 10, 2015  4093     bsteffen    Leave tones in UTC
  * 
  * 
  * </pre>
@@ -761,45 +759,8 @@ public class PlaylistManager implements IContextStateProcessor {
                 }
                 dac.setToneBlackoutEnabled(messageType.isToneBlackoutEnabled());
                 if (dac.isToneBlackoutEnabled()) {
-                    TimeZone sourceTZ = TimeZone.getTimeZone(broadcast
-                            .getTransmitterGroup().getTimeZone());
-                    try {
-                        String blackoutStart = convertToUTCTime(
-                                messageType.getToneBlackOutStart(), sourceTZ);
-                        dac.setToneBlackoutStart(blackoutStart);
-                    } catch (NumberFormatException e) {
-                        String errorMsg = String
-                                .format("Invalid value for tone blackout start time: %s. This message will ignore the configured tone blackout period.",
-                                        messageType.getToneBlackOutStart());
-                        statusHandler.error(
-                                BMH_CATEGORY.PLAYLIST_MANAGER_ERROR, errorMsg,
-                                e);
-                        dac.setToneBlackoutEnabled(false);
-                        dac.setToneBlackoutStart(null);
-                        dac.setToneBlackoutEnd(null);
-                    }
-
-                    try {
-                        /*
-                         * only try to parse blackout end time, if parsing start
-                         * time was successful.
-                         */
-                        if (dac.isToneBlackoutEnabled()) {
-                            String blackoutEnd = convertToUTCTime(
-                                    messageType.getToneBlackOutEnd(), sourceTZ);
-                            dac.setToneBlackoutEnd(blackoutEnd);
-                        }
-                    } catch (NumberFormatException e) {
-                        String errorMsg = String
-                                .format("Invalid value for tone blackout end time: %s. This message will ignore the configured tone blackout period.",
-                                        messageType.getToneBlackOutStart());
-                        statusHandler.error(
-                                BMH_CATEGORY.PLAYLIST_MANAGER_ERROR, errorMsg,
-                                e);
-                        dac.setToneBlackoutEnabled(false);
-                        dac.setToneBlackoutStart(null);
-                        dac.setToneBlackoutEnd(null);
-                    }
+                    dac.setToneBlackoutStart(messageType.getToneBlackOutStart());
+                    dac.setToneBlackoutEnd(messageType.getToneBlackOutEnd());
                 }
 
                 dac.setStart(input.getEffectiveTime());
@@ -907,20 +868,6 @@ public class PlaylistManager implements IContextStateProcessor {
                     BMH_ACTIVITY.PLAYLIST_WRITE, dac);
         }
         return new DacPlaylistMessageId(id);
-    }
-
-    private static String convertToUTCTime(String localTime, TimeZone sourceTZ)
-            throws NumberFormatException {
-        int hours = Integer.valueOf(localTime.substring(0, 2));
-        int minutes = Integer.valueOf(localTime.substring(2));
-
-        Calendar localTimeCal = Calendar.getInstance(sourceTZ);
-        localTimeCal.set(Calendar.HOUR_OF_DAY, hours);
-        localTimeCal.set(Calendar.MINUTE, minutes);
-
-        DateFormat outputFormat = new SimpleDateFormat("HHmm");
-        outputFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        return outputFormat.format(localTimeCal.getTime());
     }
 
     public void setPlaylistDao(PlaylistDao playlistDao) {
