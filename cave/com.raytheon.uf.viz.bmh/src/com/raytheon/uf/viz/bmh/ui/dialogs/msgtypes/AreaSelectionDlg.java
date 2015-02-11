@@ -80,6 +80,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     the dialog is opened and there are area codes.
  * Jan 20, 2015   4010     bkowal      Fixed the area selection dialog.
  * Feb 09, 2015   4095     bsteffen    Remove Transmitter Name.
+ * Feb 10, 2015   4104     bkowal      Specify the table height so that it does not extend past the
+ *                                     edge of the dialog when loaded with a large number of items.
  * 
  * </pre>
  * 
@@ -584,6 +586,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.widthHint = 450;
+        gd.heightHint = 350;
         gl = new GridLayout(1, false);
         gl.marginHeight = 0;
         gl.marginWidth = 0;
