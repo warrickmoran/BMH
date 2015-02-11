@@ -70,6 +70,8 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
@@ -150,6 +152,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 05, 2015  4090      bkowal      Update the suite category whenever the playlist
  *                                     changes.
  * Feb 10, 2015  4106      bkowal      Support caching live broadcast information.
+ * Feb 11, 2015  4088      bkowal      Update the listed transmitters to reflect the
+ *                                     active transmitters as they are changed.
  * 
  * </pre>
  * 
@@ -297,7 +301,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
          * setting the text. Otherwise the control will stretch to try and fit
          * the message if it is really long.
          */
-        populateTransmitters();
+        populateTransmitters(true);
 
         NotificationManagerJob.addObserver(
                 BMHJmsDestinations.getStatusDestination(), this);
@@ -769,7 +773,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     /**
      * Populate the transmitter list box
      */
-    private void populateTransmitters() {
+    private void populateTransmitters(boolean select0thTransmitter) {
         try {
             List<TransmitterGroup> transmitterGroupObjectList = dataManager
                     .getEnabledTransmitterGroupList();
@@ -787,9 +791,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         } catch (Exception e) {
             statusHandler.error("Error accessing BMH database.", e);
         }
-        if (transmitterList.getItemCount() > 0) {
-            transmitterList.select(0);
-            updateOnTransmitterChange();
+        if (select0thTransmitter) {
+            if (transmitterList.getItemCount() > 0) {
+                transmitterList.select(0);
+                updateOnTransmitterChange();
+            }
         }
     }
 
@@ -1411,6 +1417,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                             }
                         });
                     }
+                } else if (o instanceof TransmitterGroupConfigNotification) {
+                    TransmitterGroupConfigNotification notification = (TransmitterGroupConfigNotification) o;
+                    this.updateDisplayForTransmitterGrpConfigChange(notification);
                 }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing update notification", e);
@@ -1475,6 +1484,64 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         // Do NOT invoke handleTableSelection.
 
         messageTextArea.setText("*** LIVE BROADCAST MESSAGE - NO TEXT ***");
+    }
+
+    private void updateDisplayForTransmitterGrpConfigChange(
+            final TransmitterGroupConfigNotification notification) {
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                boolean zeroSelection = false;
+                populateTransmitters(zeroSelection);
+                /*
+                 * does it affect the transmitter that we are currently
+                 * listening to?
+                 */
+                for (TransmitterGroupIdentifier identifier : notification
+                        .getIdentifiers()) {
+                    final String grp = identifier.getName();
+                    int indx = transmitterList.indexOf(grp);
+                    if (indx != -1) {
+                        /*
+                         * the group was added.
+                         */
+                        continue;
+                    }
+
+                    /*
+                     * is the group that was removed, the currently selected
+                     * group?
+                     */
+                    if (selectedTransmitterGrp != null
+                            && selectedTransmitterGrp.equals(grp)) {
+                        zeroSelection = true;
+                    }
+
+                    /*
+                     * the group was removed, eliminate any references to it.
+                     */
+                    playlistData.purgeData(grp);
+                }
+
+                /*
+                 * determine which transmitter in the list should be selected
+                 * provided that there are transmitters available to select.
+                 */
+                if (transmitterList.getItemCount() > 0) {
+                    if (zeroSelection) {
+                        transmitterList.select(0);
+                        updateOnTransmitterChange();
+                    } else {
+                        /*
+                         * select the transmitter that is "currently" selected
+                         * at its "new" location.
+                         */
+                        transmitterList.select(transmitterList
+                                .indexOf(selectedTransmitterGrp));
+                    }
+                }
+            }
+        });
     }
 
     /**

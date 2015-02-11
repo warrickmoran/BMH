@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -80,6 +79,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  *                                     database.
  * Feb 09, 2015   3844     bsteffen    Color interrupts only the first time they play.
  * Feb 10, 2015   4106     bkowal      Support caching live broadcast information.
+ * Feb 11, 2015   4088     bkowal      Provide identifying information about the broadcast
+ *                                     msg when it is not found.
  * 
  * </pre>
  * 
@@ -104,7 +105,7 @@ public class PlaylistData {
     private final BroadcastCycleColorManager colorManager;
 
     /** Map of Transmitter -> PlaylistData for that transmitter */
-    private final Map<String, PlaylistDataStructure> playlistDataMap = new HashMap<>();
+    private final ConcurrentMap<String, PlaylistDataStructure> playlistDataMap = new ConcurrentHashMap<>();
 
     /**
      * Map of Transmitter(s) that have an active live broadcast used to override
@@ -351,8 +352,8 @@ public class PlaylistData {
                 cycleTableData.setExpirationTime(null);
                 cycleTableData.setMessageId("Unknown");
                 cycleTableData.setInputMsg(null);
-                statusHandler
-                        .error("Broadcast message is null.  Setting data to unknown.");
+                statusHandler.error("Broadcast message is null for id: "
+                        + broadcastId + ".  Setting data to unknown.");
             }
 
             String title = "Unknown";
@@ -562,5 +563,15 @@ public class PlaylistData {
     public void setData(String transmitterGrpName,
             PlaylistDataStructure dataStruct) {
         playlistDataMap.put(transmitterGrpName, dataStruct);
+    }
+
+    /**
+     * Used to remove cached playlist data when a Transmitter has been disabled.
+     * 
+     * @param transmitterGrpName
+     *            the Transmitter that has been disabled.
+     */
+    public void purgeData(String transmitterGrpName) {
+        playlistDataMap.remove(transmitterGrpName);
     }
 }
