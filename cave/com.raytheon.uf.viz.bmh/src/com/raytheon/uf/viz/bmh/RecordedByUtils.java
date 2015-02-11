@@ -34,6 +34,8 @@ import com.raytheon.uf.viz.core.VizApp;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 09, 2014  #3909      bkowal      Initial creation
+ * Feb 11, 2015  #3908      bkowal      Added '#' to the beginning
+ *                                      of the standard Recording message.
  * 
  * </pre>
  * 
@@ -42,7 +44,7 @@ import com.raytheon.uf.viz.core.VizApp;
  */
 public class RecordedByUtils {
 
-    private static final String RECORDED_BY_PREFIX = "Recorded by ";
+    private static final String RECORDED_BY_PREFIX = "#Recorded by ";
 
     private static final String MSG_ON = " on ";
 
