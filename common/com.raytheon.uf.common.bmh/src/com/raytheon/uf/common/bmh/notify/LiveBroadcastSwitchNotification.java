@@ -23,6 +23,7 @@ import java.util.Calendar;
 
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
+import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -41,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 27, 2014 3712       bkowal      Added broadcastState.
  * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
+ * Feb 10, 2015 4106       bkowal      Added {@link #actualPlaylist}.
  * 
  * </pre>
  * 
@@ -64,22 +66,21 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
 
-
     @DynamicSerializeElement
     private Calendar transitTime;
-    
+
     @DynamicSerializeElement
     private String messageId;
-    
+
     @DynamicSerializeElement
     private String messageTitle;
-    
+
     @DynamicSerializeElement
     private String messageName;
-    
+
     @DynamicSerializeElement
     private String mrd = "-";
-    
+
     @DynamicSerializeElement
     private String expirationTime;
 
@@ -88,14 +89,43 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
 
     @DynamicSerializeElement
     private String alertTone;
-    
+
     @DynamicSerializeElement
     private String playCount = "1";
 
+    @DynamicSerializeElement
+    private PlaylistDataStructure actualPlaylist;
+
     /**
-     * 
+     * Default Constructor for {@link DynamicSerialize}.
      */
     public LiveBroadcastSwitchNotification() {
+    }
+
+    /**
+     * Copy Constructor.
+     * 
+     * @param notification
+     *            the {@link LiveBroadcastSwitchNotification} to copy.
+     * @param actualPlaylist
+     *            the {@link PlaylistDataStructure} to copy.
+     */
+    public LiveBroadcastSwitchNotification(
+            final LiveBroadcastSwitchNotification notification,
+            final PlaylistDataStructure actualPlaylist) {
+        this.type = notification.type;
+        this.broadcastState = notification.broadcastState;
+        this.transmitterGroup = notification.transmitterGroup;
+        this.transitTime = notification.transitTime;
+        this.messageId = notification.messageId;
+        this.messageTitle = notification.messageTitle;
+        this.messageName = notification.messageName;
+        this.mrd = notification.mrd;
+        this.expirationTime = notification.expirationTime;
+        this.sameTone = notification.sameTone;
+        this.alertTone = notification.alertTone;
+        this.playCount = notification.playCount;
+        this.actualPlaylist = actualPlaylist;
     }
 
     /**
@@ -106,7 +136,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param type the type to set
+     * @param type
+     *            the type to set
      */
     public void setType(BROADCASTTYPE type) {
         this.type = type;
@@ -120,7 +151,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param broadcastState the broadcastState to set
+     * @param broadcastState
+     *            the broadcastState to set
      */
     public void setBroadcastState(STATE broadcastState) {
         this.broadcastState = broadcastState;
@@ -134,7 +166,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param transmitterGroup the transmitterGroup to set
+     * @param transmitterGroup
+     *            the transmitterGroup to set
      */
     public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
@@ -148,7 +181,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param transitTime the transitTime to set
+     * @param transitTime
+     *            the transitTime to set
      */
     public void setTransitTime(Calendar transitTime) {
         this.transitTime = transitTime;
@@ -162,7 +196,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param messageId the messageId to set
+     * @param messageId
+     *            the messageId to set
      */
     public void setMessageId(String messageId) {
         this.messageId = messageId;
@@ -176,7 +211,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param messageTitle the messageTitle to set
+     * @param messageTitle
+     *            the messageTitle to set
      */
     public void setMessageTitle(String messageTitle) {
         this.messageTitle = messageTitle;
@@ -190,7 +226,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param messageName the messageName to set
+     * @param messageName
+     *            the messageName to set
      */
     public void setMessageName(String messageName) {
         this.messageName = messageName;
@@ -204,7 +241,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param mrd the mrd to set
+     * @param mrd
+     *            the mrd to set
      */
     public void setMrd(String mrd) {
         this.mrd = mrd;
@@ -218,7 +256,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param expirationTime the expirationTime to set
+     * @param expirationTime
+     *            the expirationTime to set
      */
     public void setExpirationTime(String expirationTime) {
         this.expirationTime = expirationTime;
@@ -232,7 +271,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param sameTone the sameTone to set
+     * @param sameTone
+     *            the sameTone to set
      */
     public void setSameTone(String sameTone) {
         this.sameTone = sameTone;
@@ -246,7 +286,8 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param alertTone the alertTone to set
+     * @param alertTone
+     *            the alertTone to set
      */
     public void setAlertTone(String alertTone) {
         this.alertTone = alertTone;
@@ -260,9 +301,25 @@ public class LiveBroadcastSwitchNotification implements IPlaylistData {
     }
 
     /**
-     * @param playCount the playCount to set
+     * @param playCount
+     *            the playCount to set
      */
     public void setPlayCount(String playCount) {
         this.playCount = playCount;
+    }
+
+    /**
+     * @return the actualPlaylist
+     */
+    public PlaylistDataStructure getActualPlaylist() {
+        return actualPlaylist;
+    }
+
+    /**
+     * @param actualPlaylist
+     *            the actualPlaylist to set
+     */
+    public void setActualPlaylist(PlaylistDataStructure actualPlaylist) {
+        this.actualPlaylist = actualPlaylist;
     }
 }

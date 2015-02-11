@@ -25,6 +25,8 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -36,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
@@ -76,6 +79,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Feb 05, 2015   4088     bkowal      Handle interrupt playlists that are not saved to the
  *                                     database.
  * Feb 09, 2015   3844     bsteffen    Color interrupts only the first time they play.
+ * Feb 10, 2015   4106     bkowal      Support caching live broadcast information.
  * 
  * </pre>
  * 
@@ -101,6 +105,12 @@ public class PlaylistData {
 
     /** Map of Transmitter -> PlaylistData for that transmitter */
     private final Map<String, PlaylistDataStructure> playlistDataMap = new HashMap<>();
+
+    /**
+     * Map of Transmitter(s) that have an active live broadcast used to override
+     * the state of the {@link #playlistDataMap}.
+     */
+    private final ConcurrentMap<String, LiveBroadcastSwitchNotification> broadcastOverrideMap = new ConcurrentHashMap<>();
 
     /** The data manager */
     private final BroadcastCycleDataManager dataManager = new BroadcastCycleDataManager();
@@ -227,6 +237,11 @@ public class PlaylistData {
      */
     public void handlePlaybackStatusNotification(
             MessagePlaybackStatusNotification notification) {
+        if (this.broadcastOverrideMap.containsKey(notification
+                .getTransmitterGroup())) {
+            this.broadcastOverrideMap
+                    .remove(notification.getTransmitterGroup());
+        }
         PlaylistDataStructure playlistData = playlistDataMap.get(notification
                 .getTransmitterGroup());
         if (playlistData == null) {
@@ -252,6 +267,31 @@ public class PlaylistData {
     }
 
     /**
+     * Maintains a client-side cache of {@link LiveBroadcastSwitchNotification}s
+     * now that the server is no longer queried every time a different
+     * Transmitter is selected.
+     * 
+     * @param notification
+     *            the {@link LiveBroadcastSwitchNotification} to add or remove
+     *            from the cache.
+     */
+    public void handleLiveBroadcastSwitchNotification(
+            LiveBroadcastSwitchNotification notification) {
+        if (notification.getBroadcastState() == STATE.STARTED) {
+            this.broadcastOverrideMap.put(notification.getTransmitterGroup()
+                    .getName(), notification);
+        } else if (notification.getBroadcastState() == STATE.FINISHED) {
+            this.broadcastOverrideMap.remove(notification.getTransmitterGroup()
+                    .getName());
+        }
+    }
+
+    public LiveBroadcastSwitchNotification getLiveBroadcastNotification(
+            final String tg) {
+        return this.broadcastOverrideMap.get(tg);
+    }
+
+    /**
      * Get the updated {@link TableData} object for the provided transmitter
      * group name.
      * 
@@ -259,6 +299,11 @@ public class PlaylistData {
      * @return
      */
     public TableData getUpdatedTableData(String transmitterGroupName) {
+        if (this.broadcastOverrideMap.containsKey(transmitterGroupName)) {
+            return this.getLiveTableData(this.broadcastOverrideMap
+                    .get(transmitterGroupName));
+        }
+
         PlaylistDataStructure playlistDataStructure = playlistDataMap
                 .get(transmitterGroupName);
         if (playlistDataStructure == null) {

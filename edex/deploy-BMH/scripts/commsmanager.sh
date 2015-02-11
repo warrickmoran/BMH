@@ -34,7 +34,7 @@
 #    10/17/14        3687          bsteffen       Practice mode.
 #    12/04/14        3890          bkowal         Use centralized yajsw.
 #    12/08/14        3651          bkowal         Dynamically set logfile_base based on the
-                                                  mode.
+#                                                 mode.
 ##############################################################################
 
 CONF_FILE="wrapper.conf"

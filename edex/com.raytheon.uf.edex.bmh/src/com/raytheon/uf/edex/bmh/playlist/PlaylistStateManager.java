@@ -67,6 +67,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jan 13, 2015    3844    bsteffen    Include PlaylistMessages in PlaylistDataStructure
  * Feb 05, 2015   4088     bkowal      Handle interrupt playlists that are not saved to the
  *                                     database.
+ * Feb 10, 2015    4106    bkowal      Include the playlist that would be playing in a live broadcast
+ *                                     notification.
  * </pre>
  * 
  * @author mpduff
@@ -276,17 +278,23 @@ public class PlaylistStateManager {
 
     public synchronized IPlaylistData getPlaylistDataStructure(
             String transmitterGrpName) {
-        if (this.liveBroadcastDataMap.containsKey(transmitterGrpName)) {
-            return this.liveBroadcastDataMap.get(transmitterGrpName);
-        }
         // return a copy of the map to avoid concurrent issues during
         // serialization
+        PlaylistDataStructure playlistData = null;
         if (playlistDataMap.containsKey(transmitterGrpName)) {
-            return new PlaylistDataStructure(
+            playlistData = new PlaylistDataStructure(
                     playlistDataMap.get(transmitterGrpName));
         } else {
-            return new PlaylistDataStructure();
+            playlistData = new PlaylistDataStructure();
         }
+
+        if (this.liveBroadcastDataMap.containsKey(transmitterGrpName)) {
+            return new LiveBroadcastSwitchNotification(
+                    this.liveBroadcastDataMap.get(transmitterGrpName),
+                    playlistData);
+        }
+
+        return playlistData;
     }
 
     public void setPlaylistDao(PlaylistDao playlistDao) {
