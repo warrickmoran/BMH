@@ -139,6 +139,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    Area Selection Dialog.
  * Feb 10, 2015  4085     bkowal      Prevent users from creating weather messages associated
  *                                    with static message types.
+ * Feb 11, 2015  4115     bkowal      Confirm submission of expired messages.
  * 
  * </pre>
  * 
@@ -881,6 +882,34 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             return false;
         }
 
+        /*
+         * verify that the message has not already expired: 1) expiration time
+         * is < the current time or 2) effective time and expiration time are
+         * the same.
+         */
+        long effectiveTime = this.effectiveDTF.getBackingCalendar()
+                .getTimeInMillis();
+        long expirationTime = this.expirationDTF.getBackingCalendar()
+                .getTimeInMillis();
+        if (expirationTime == effectiveTime
+                || expirationTime <= System.currentTimeMillis()) {
+            /*
+             * Verify that the user would actually like to submit an expired
+             * message.
+             */
+            int option = DialogUtility
+                    .showMessageBox(
+                            this.shell,
+                            SWT.ICON_WARNING | SWT.YES | SWT.NO,
+                            "Weather Messages - Expiration Confirmation",
+                            "Message "
+                                    + this.msgNameTF.getText()
+                                    + " has already expired. Would you like to submit an expired message?");
+            if (option != SWT.YES) {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -896,7 +925,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                     .showMessageBox(
                             this.shell,
                             SWT.ICON_WARNING | SWT.YES | SWT.NO,
-                            "Emergency Override - Tone Playback",
+                            "Weather Messages - Tone Playback",
                             this.selectedMessageType.getTitle()
                                     + " will activate SAME and/or Alert Tones! Would you like to continue?");
             if (option != SWT.YES) {
