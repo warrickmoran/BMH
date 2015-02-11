@@ -81,6 +81,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 12, 2015  3843     bsteffen    Return empty list when areas is null.
  * Jan 20, 2015  4010     bkowal      Added {@link #selectedTransmitters}.
  * Feb 09, 2015  4094     bsteffen    Update areaCodes to be length of 4096.
+ * Feb 10, 2015  4104     bkowal      Trim any area codes beyond the maximum length
  * 
  * </pre>
  * 
@@ -125,6 +126,8 @@ public class InputMessage {
     public static final String UNEXPIRED_QUERY_NAME = "getNonExpiredMessages";
 
     protected static final String UNEXPIRED_QUERY = "select id, name, afosid, creationTime, active FROM InputMessage m WHERE m.expirationTime >= :currentTime";
+
+    private static final int AREA_CODE_LENGTH = 4096;
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
@@ -234,7 +237,7 @@ public class InputMessage {
      * geographical areas to be served by the message's transmission. This field
      * consists of one or more UGCs separated by a dash.
      */
-    @Column(length = 4096)
+    @Column(length = AREA_CODE_LENGTH)
     @DynamicSerializeElement
     private String areaCodes;
 
@@ -528,7 +531,27 @@ public class InputMessage {
     }
 
     public void setAreaCodes(String areaCodes) {
+        if (areaCodes != null && areaCodes.length() > AREA_CODE_LENGTH) {
+            areaCodes = this.trimAreaCodesToLength(areaCodes);
+        }
         this.areaCodes = areaCodes;
+    }
+
+    /**
+     * Removes area codes at the end of the {@link String} until the area code
+     * {@link String} length is <= the specified maximum.
+     * 
+     * @param areaCodes
+     *            the area code {@link String} to trim.
+     * @return the trimmed area code {@link String}
+     */
+    private String trimAreaCodesToLength(String areaCodes) {
+        while (areaCodes.length() > AREA_CODE_LENGTH) {
+            int lastIndex = areaCodes.lastIndexOf("-");
+            areaCodes = areaCodes.substring(0, lastIndex);
+        }
+
+        return areaCodes;
     }
 
     /**
