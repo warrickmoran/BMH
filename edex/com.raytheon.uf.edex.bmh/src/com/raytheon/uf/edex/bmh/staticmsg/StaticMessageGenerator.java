@@ -91,6 +91,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jan 22, 2015 4017       bkowal      Use {@link TransmitterGroupIdentifier}.
  * Feb 10, 2015 4085       bkowal      Updated how static message types are
  *                                     retrieved.
+ * Feb 11, 2015 4116       bkowal      Include the name of the destination in the
+ *                                     static message name.
  * 
  * </pre>
  * 
@@ -644,7 +646,14 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         /* create an InputMessage */
         InputMessage inputMsg = new InputMessage();
 
-        String inputMsgName = "StaticMsg-" + messageType.getAfosid();
+        /**
+         * get the transmitter mnemonic. the {@link Set} is guaranteed to only
+         * include one {@link TransmitterGroup} as of 02/11/2015.
+         */
+        final String destinationName = groupSet.iterator().next().getName();
+
+        String inputMsgName = "StaticMsg-" + destinationName + "-"
+                + messageType.getAfosid();
         // TODO: use annotation scanning to get the max field length
         if (inputMsgName.length() > 40) {
             inputMsgName = inputMsgName.substring(0, 39);
