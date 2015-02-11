@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.StaticMessageIdentifier;
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
@@ -41,6 +42,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * Aug 29, 2014 3568       bkowal      Initial creation
  * Oct 2, 2014  3642       bkowal      Added support for static time fragments.
  * Nov 13, 2014 3717       bsteffen    Simplify isStaticMsgType
+ * Feb 10, 2015 4085       bkowal      Refactor into common
+ *                                     {@link StaticMessageIdentifier}.
  * 
  * </pre>
  * 
@@ -48,26 +51,18 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * @version 1.0
  */
 
-public class StaticMessageIdentifierUtil {
-
-    public static final Designation stationDesignation = Designation.StationID;
-
-    public static final Designation timeDesignation = Designation.TimeAnnouncement;
+public class StaticMessageIdentifierUtil extends StaticMessageIdentifier {
 
     public static final String TIME_PLACEHOLDER = "[__TIME__]";
 
     public static TIME_MSG_TOKENS[] timeContentFormat = new TIME_MSG_TOKENS[] {
-            TIME_MSG_TOKENS.HOUR, TIME_MSG_TOKENS.MINUTE, TIME_MSG_TOKENS.PERIOD,
-            TIME_MSG_TOKENS.TIME_ZONE };
+            TIME_MSG_TOKENS.HOUR, TIME_MSG_TOKENS.MINUTE,
+            TIME_MSG_TOKENS.PERIOD, TIME_MSG_TOKENS.TIME_ZONE };
 
     /**
      * 
      */
     protected StaticMessageIdentifierUtil() {
-    }
-
-    public static boolean isStaticMsgType(MessageType messageType) {
-        return messageType.getDesignation().isStatic();
     }
 
     public static String getText(MessageType mt, TransmitterLanguage tl) {

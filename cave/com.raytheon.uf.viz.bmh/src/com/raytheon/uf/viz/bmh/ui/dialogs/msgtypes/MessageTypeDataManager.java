@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.StaticMessageIdentifier;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
@@ -47,6 +48,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  *                                     class from the BroadcastCycleDataManager.
  * Sep 19, 2014   #3611    lvenable    Added method to get emergency override message types.
  * Oct 23, 2014   #3728    lvenable    Updated for getting AFOS IDs via designation.
+ * Feb 10, 2015   #4085    bkowal      Added {@link #getStaticMessageAfosIds()}.
  * 
  * </pre>
  * 
@@ -131,6 +133,7 @@ public class MessageTypeDataManager {
 
         MessageTypeRequest mtRequest = new MessageTypeRequest();
         mtRequest.setAction(MessageTypeAction.GetAfosDesignation);
+        mtRequest.setDesignation(designation);
 
         MessageTypeResponse mtResponse = (MessageTypeResponse) BmhUtils
                 .sendRequest(mtRequest);
@@ -234,5 +237,23 @@ public class MessageTypeDataManager {
         }
 
         return messageTypeList;
+    }
+
+    /**
+     * Returns the afos ids for all {@link MessageType}(s) that are considered
+     * static.
+     * 
+     * @return a {@link Set} of all afos ids associated with static
+     *         {@link MessageType}(s).
+     * @throws Exception
+     */
+    public Set<String> getStaticMessageAfosIds() throws Exception {
+        Set<String> timeAfosIds = this
+                .getAfosIdsByDesignation(StaticMessageIdentifier.timeDesignation);
+        Set<String> staticAfosIds = new HashSet<>(timeAfosIds.size() + 1, 1.0f);
+        staticAfosIds.addAll(timeAfosIds);
+        staticAfosIds.add(StaticMessageIdentifier.staticStationIdAfosId);
+
+        return staticAfosIds;
     }
 }

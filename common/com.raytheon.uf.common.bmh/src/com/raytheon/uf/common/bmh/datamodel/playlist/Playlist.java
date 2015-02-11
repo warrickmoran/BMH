@@ -50,7 +50,9 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
+import com.raytheon.uf.common.bmh.StaticMessageIdentifier;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
@@ -87,6 +89,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * Jan 20, 2015  4010     bkowal      Compare selected transmitters when analyzing
  *                                    replacements.
+ * Feb 05, 2015  4085     bkowal      Designations are no longer static.
  * 
  * </pre>
  * 
@@ -273,7 +276,14 @@ public class Playlist {
             }
         } else {
             for (SuiteMessage message : suite.getSuiteMessages()) {
-                if (!message.getMsgTypeSummary().getDesignation().isStatic()) {
+                /*
+                 * special case: all messages with a station id designation are
+                 * considered a static message.
+                 */
+                boolean isStatic = (message.getMsgTypeSummary()
+                        .getDesignation() == StaticMessageIdentifier.timeDesignation)
+                        || (message.getMsgTypeSummary().getDesignation() == Designation.StationID);
+                if (isStatic == false) {
                     triggerAfosids.add(message.getAfosid());
                 }
             }

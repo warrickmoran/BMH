@@ -89,6 +89,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jan 19, 2015 4011       bkowal      Support transmitter language removal.
  * Jan 20, 2015 4011       bkowal      Static msg deactivation fixes.
  * Jan 22, 2015 4017       bkowal      Use {@link TransmitterGroupIdentifier}.
+ * Feb 10, 2015 4085       bkowal      Updated how static message types are
+ *                                     retrieved.
  * 
  * </pre>
  * 
@@ -147,41 +149,65 @@ public class StaticMessageGenerator implements IContextStateProcessor {
     public void initializeInternal() {
         this.staticMessageTypesMap = new HashMap<>();
 
-        List<MessageType> stationMessageTypes = this
-                .retrieveMsgTypes(StaticMessageIdentifierUtil.stationDesignation);
-        if (stationMessageTypes != null) {
-            for (MessageType stationMessageType : stationMessageTypes) {
-                this.staticMessageTypesMap.put(stationMessageType.getId(),
-                        stationMessageType);
-            }
+        MessageType mt = this
+                .retrieveMsgTypes(StaticMessageIdentifierUtil.staticStationIdAfosId);
+        if (mt != null) {
+            this.staticMessageTypesMap.put(mt.getId(), mt);
         }
-        List<MessageType> timeMessageTypes = this
-                .retrieveMsgTypes(StaticMessageIdentifierUtil.timeDesignation);
-        if (timeMessageTypes != null) {
-            for (MessageType timeMessageType : timeMessageTypes) {
-                this.staticMessageTypesMap.put(timeMessageType.getId(),
-                        timeMessageType);
-            }
+        List<MessageType> messageTypes = this
+                .retrieveMsgTypesForDesignation(StaticMessageIdentifierUtil.timeDesignation);
+        for (MessageType msgType : messageTypes) {
+            this.staticMessageTypesMap.put(msgType.getId(), msgType);
         }
     }
 
-    private List<MessageType> retrieveMsgTypes(Designation designation) {
-        List<MessageType> msgTypes;
-
-        statusHandler.info("Retrieving the " + designation
-                + " Message Type(s) ...");
-        msgTypes = this.messageTypeDao
-                .getMessageTypeForDesignation(designation);
-        if (msgTypes != null && msgTypes.isEmpty() == false) {
-            statusHandler.info("Successfully retrieved " + msgTypes.size()
-                    + " message type(s) for the " + designation
-                    + " designation.");
+    /**
+     * Retrieves the {@link MessageType} associated with the specified afos id.
+     * 
+     * @param afosId
+     *            the specified afos id.
+     * @return the {@link MessageType} that was retrieved or {@code null} if one
+     *         was not found.
+     */
+    private MessageType retrieveMsgTypes(final String afosId) {
+        statusHandler.info("Retrieving the  Message Type with static afos id "
+                + afosId + "...");
+        MessageType mt = this.messageTypeDao.getByAfosId(afosId);
+        if (mt != null) {
+            statusHandler.info("Successfully retrieved " + mt.toString()
+                    + " for static afosId " + afosId + ".");
         } else {
-            statusHandler.info("Unable to find any message type(s) for the "
-                    + designation + " designation.");
+            statusHandler
+                    .info("Unable to find a message type for static afosId "
+                            + afosId + ".");
         }
 
-        return msgTypes;
+        return mt;
+    }
+
+    /**
+     * Retrieves the {@link MessageType}(s) associated with the specified
+     * {@link Designation}.
+     * 
+     * @param designation
+     *            the specified {@link Designation}.
+     * @return a {@link List} of {@link MessageType}(s) that were retrieved.
+     */
+    private List<MessageType> retrieveMsgTypesForDesignation(
+            final Designation designation) {
+        statusHandler.info("Retrieving the Message Type(s) with designation "
+                + designation.name() + " ...");
+        List<MessageType> messageTypes = this.messageTypeDao
+                .getMessageTypeForDesignation(designation);
+        if (messageTypes == null || messageTypes.isEmpty()) {
+            statusHandler.info("Unable to find any message type(s) for the "
+                    + designation.name() + " designation.");
+            return Collections.emptyList();
+        }
+
+        statusHandler.info("Successfully retrieved " + messageTypes.size()
+                + " message type(s) for the " + designation + " designation.");
+        return messageTypes;
     }
 
     public List<ValidatedMessage> process(Object notificationObject) {
@@ -579,9 +605,14 @@ public class StaticMessageGenerator implements IContextStateProcessor {
          * update to the message will need to be generated.
          */
         // compare the message text, periodicity, and voice.
+        final String mtPeriodicity = messageType.getPeriodicity();
+        final String msgPeriodicity = existingMsg.getInputMessage()
+                .getPeriodicity();
+        boolean equivalentPeriodicity = (mtPeriodicity == null && msgPeriodicity == null)
+                || (mtPeriodicity != null && msgPeriodicity != null && mtPeriodicity
+                        .equals(msgPeriodicity));
         if (text.equals(existingMsg.getInputMessage().getContent()) == false
-                || messageType.getPeriodicity().equals(
-                        existingMsg.getInputMessage().getPeriodicity()) == false) {
+                || equivalentPeriodicity == false) {
             /*
              * The message text has been altered. New audio will need to be
              * generated.
