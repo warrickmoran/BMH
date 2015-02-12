@@ -188,7 +188,7 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
 
     private void startBroadcastLive() {
         super.recordAction(this.broadcastThread);
-        statusLbl.setText("On the Air!"); // Temporary
+        statusLbl.setText("On the Air!");
     }
 
     @Override

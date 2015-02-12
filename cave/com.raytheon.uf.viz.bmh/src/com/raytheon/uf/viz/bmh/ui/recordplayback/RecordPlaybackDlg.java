@@ -81,6 +81,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      of the decibel levels of the recorded audio.
  * Dec 09, 2014  #3904     bkowal       Publish a {@link AudioRecordPlaybackNotification}
  *                                      prior to the start of audio recording / playback.
+ * Feb 12, 2015  #4076     bkowal       Update the status label based on the action that was performed.
  * 
  * 
  * </pre>
@@ -95,6 +96,8 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
             .getHandler(RecordPlaybackDlg.class);
 
     public static final int INDETERMINATE_PROGRESS = Integer.MAX_VALUE;
+
+    private static final String DEFAULT_STATUS_TEXT = "Press REC Button to Start Recording...";
 
     /** Status label. */
     /*
@@ -280,7 +283,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         statusLbl = new Label(labelComp, SWT.CENTER);
 
-        statusLbl.setText("Press REC Button to Start Recording...");
+        statusLbl.setText(DEFAULT_STATUS_TEXT);
         statusLbl.setLayoutData(gd);
         FontData fd = statusLbl.getFont().getFontData()[0];
         fd.setHeight(18);
@@ -519,6 +522,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         recBtn.setEnabled(false);
         playBtn.setEnabled(false);
         timer = Executors.newSingleThreadScheduledExecutor();
+        this.statusLbl.setText("Recording ...");
         this.recorderThread.start();
         timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, updateRate,
                 TimeUnit.MILLISECONDS);
@@ -553,6 +557,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         }
         this.cancelBtn.setEnabled(true);
         this.recordPlayStatus = RecordPlayStatus.STOP;
+        this.statusLbl.setText(DEFAULT_STATUS_TEXT);
         this.okToClose = true;
     }
 
@@ -581,6 +586,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         recBtn.setEnabled(false);
         stopBtn.setEnabled(true);
         resetRecordPlayValues();
+        this.statusLbl.setText("Playing ...");
         timer = Executors.newSingleThreadScheduledExecutor();
         timer.scheduleAtFixedRate(new ElapsedTimerTask(), 1000, updateRate,
                 TimeUnit.MILLISECONDS);
@@ -606,7 +612,6 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         elapsedTimeLbl.setText(String.format(minutesSecondsFormatStr,
                 elapsedMinutes, elapsedSeconds));
         recordingProgBar.setSelection(0);
-        statusLbl.setText("Press REC Button to Start Recording...");
     }
 
     /**
@@ -647,6 +652,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
                 okBtn.setEnabled(true);
                 cancelBtn.setEnabled(true);
                 okToClose = true;
+                statusLbl.setText(DEFAULT_STATUS_TEXT);
             }
         });
         this.recordPlayStatus = RecordPlayStatus.STOP;
