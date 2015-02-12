@@ -74,6 +74,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 09, 2014  #3909     bkowal       Use {@link RecordedByUtils}.
  * Dec 9, 2014   #3904     bkowal       Publish a {@link AudioRecordPlaybackNotification}
  *                                      prior to the start of audio playback.
+ * Feb 11, 2015  #3908     bkowal       Removed the "Edit" button.
  * 
  * </pre>
  * 
@@ -97,9 +98,6 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
     private Button playBtn;
 
     private TextAudioPlaybackDelegate delegate;
-
-    /** Edit button. */
-    private Button editBtn;
 
     /** Import button. */
     private Button importBtn;
@@ -194,7 +192,6 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
                 | SWT.H_SCROLL | SWT.V_SCROLL);
         messageSt.setWordWrap(true);
         messageSt.setLayoutData(gd);
-        messageSt.setEditable(false);
 
         Composite textActionBtnComp = new Composite(messageContentsGroup,
                 SWT.NONE);
@@ -231,32 +228,6 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
             messageSt.setText(this.originalMessageContent);
         }
 
-        gd = new GridData();
-        gd.widthHint = buttonWidth;
-        editBtn = new Button(textActionBtnComp, SWT.PUSH);
-        editBtn.setText("Edit");
-        editBtn.setLayoutData(gd);
-        editBtn.setToolTipText("Enable editing of the message text");
-        editBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                StringBuilder msg = new StringBuilder();
-
-                msg.append("Editing the text will remove the audio files.\n\n");
-                msg.append("Do you wish to continue?");
-
-                int choice = DialogUtility.showMessageBox(getShell(),
-                        SWT.ICON_QUESTION | SWT.OK | SWT.CANCEL, "Edit Text",
-                        msg.toString());
-
-                if (choice == SWT.OK) {
-                    messageSt.setEditable(true);
-                    msgAudioComp.removeAllAudioControls();
-                    contentType = CONTENT_TYPE.TEXT;
-                }
-            }
-        });
-
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
         importBtn = new Button(textActionBtnComp, SWT.PUSH);
@@ -266,22 +237,11 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         importBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-
-                if (msgAudioComp.hasAudioControls()
-                        || messageSt.getEditable() == false) {
-                    StringBuilder msg = new StringBuilder();
-
-                    if (msgAudioComp.hasAudioControls()) {
-                        msg.append("Importing text will wipe the audio files and enable text editing.\n");
-                    } else if (messageSt.getEditable() == false) {
-                        msg.append("Importing text will enable text editing.\n\n");
-                    }
-
-                    msg.append("Do you wish to continue?");
-
-                    int choice = DialogUtility.showMessageBox(getShell(),
-                            SWT.ICON_QUESTION | SWT.OK | SWT.CANCEL,
-                            "Import Text", msg.toString());
+                if (msgAudioComp.hasAudioControls()) {
+                    int choice = DialogUtility
+                            .showMessageBox(getShell(), SWT.ICON_QUESTION
+                                    | SWT.OK | SWT.CANCEL, "Import Text",
+                                    "Importing text will wipe the audio files. Do you wish to continue?");
 
                     if (choice == SWT.CANCEL) {
                         return;
@@ -289,7 +249,6 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
                 }
 
                 if (handleContentsFromFileAction()) {
-                    messageSt.setEditable(true);
                     msgAudioComp.removeAllAudioControls();
                     contentType = CONTENT_TYPE.TEXT;
                 }
@@ -417,9 +376,34 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
      * Handle the OK action.
      */
     private void handleOkayAction() {
-        // TODO : is validation needed?
+        /*
+         * Determine the content type.
+         */
+        // getText should never return null according to the JavaDoc.
+        final String currentMsg = this.messageSt.getText().trim();
+
+        if (RecordedByUtils.isMessage(currentMsg)) {
+            this.contentType = CONTENT_TYPE.AUDIO;
+        } else {
+            this.contentType = CONTENT_TYPE.TEXT;
+        }
+
+        /*
+         * if the content type is audio, verify that audio actually exists.
+         */
+        if (this.contentType == CONTENT_TYPE.AUDIO
+                && (this.msgAudioComp.getAudioDataList() == null || this.msgAudioComp
+                        .getAudioDataList().isEmpty())) {
+            // do not allow the user to use the content.
+            DialogUtility
+                    .showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
+                            "Weather Messages - Contents",
+                            "Invalid Message Contents - Please record or import audio for the message.");
+            return;
+        }
+
         WxMessagesContent content = new WxMessagesContent(this.contentType);
-        content.setText(this.messageSt.getText());
+        content.setText(currentMsg);
         if (this.contentType == CONTENT_TYPE.AUDIO) {
             content.setAudioDataList(this.msgAudioComp.getAudioDataList());
         }
@@ -522,7 +506,6 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
          */
         this.playBtn.setEnabled(false);
         this.messageSt.setText(RecordedByUtils.getMessage());
-        this.messageSt.setEditable(false);
 
         msgAudioComp.removeAllAudioControls();
         // create a new record to display in the audio list
