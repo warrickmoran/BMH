@@ -135,6 +135,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      a warning or interrupt.
  * Jan 28, 2015  #4036     bsteffen     Actually expire playlists with no playable messages.
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
+ * Feb 12, 2015  #4114     bsteffen     Fix playlist expiration.
  * 
  * </pre>
  * 
@@ -439,19 +440,22 @@ public final class PlaylistScheduler implements
 
                 if ((currentPlaylist != null) & (!activePlaylists.isEmpty())) {
                     nextPlaylist = activePlaylists.first();
-                    if (currentPlaylist == nextPlaylist) {
-                        logger.debug("Continuing with playlist "
-                                + currentPlaylist);
-                    } else if ((currentPlaylist.getPriority() == nextPlaylist
-                            .getPriority())
-                            && (currentPlaylist.getSuite().equals(nextPlaylist
-                                    .getSuite()))) {
-                        logger.debug("Playlist "
-                                + currentPlaylist
-                                + " has been updated by future queued playlist "
-                                + nextPlaylist);
+                    boolean expired = currentPlaylist.isExpired();
 
-                        setCurrentPlaylist(nextPlaylist, true);
+                    boolean sameSuite = currentPlaylist.getSuite().equals(
+                            nextPlaylist.getSuite());
+
+                    if (!expired && sameSuite) {
+                        if (currentPlaylist == nextPlaylist) {
+                            logger.debug("Continuing with playlist "
+                                    + currentPlaylist);
+                        } else {
+                            logger.debug("Playlist "
+                                    + currentPlaylist
+                                    + " has been updated by future queued playlist "
+                                    + nextPlaylist);
+                            setCurrentPlaylist(nextPlaylist, true);
+                        }
                     } else {
                         /*
                          * We're going to be swapping playlists, so let's just
@@ -497,24 +501,27 @@ public final class PlaylistScheduler implements
 
                 while ((nextMessage == null) && (!activePlaylists.isEmpty())) {
                     nextPlaylist = activePlaylists.first();
-                    setCurrentPlaylist(nextPlaylist, false);
-                    if (!currentMessages.isEmpty()) {
-                        logger.debug("Switching to playlist: "
-                                + nextPlaylist.toString());
-                        /*
-                         * Since we've switched playlists, this call will return
-                         * index 0 from the playlist. Set the messageIndex to 1,
-                         * so the next call to this method is set to check the
-                         * next message in the playlist. If this playlist so
-                         * happens to only have a single message, we'll just
-                         * loop back to the beginning at the next call to
-                         * nextMessage() and generate an updated
-                         * PlaylistSwitchNotification.
-                         */
-                        nextMessage = cache.getMessage(currentMessages.get(0));
-                        messageIndex += 1;
+                    if (!nextPlaylist.isExpired()) {
+                        setCurrentPlaylist(nextPlaylist, false);
+                        if (!currentMessages.isEmpty()) {
+                            logger.debug("Switching to playlist: "
+                                    + nextPlaylist.toString());
+                            /*
+                             * Since we've switched playlists, this call will
+                             * return index 0 from the playlist. Set the
+                             * messageIndex to 1, so the next call to this
+                             * method is set to check the next message in the
+                             * playlist. If this playlist so happens to only
+                             * have a single message, we'll just loop back to
+                             * the beginning at the next call to nextMessage()
+                             * and generate an updated
+                             * PlaylistSwitchNotification.
+                             */
+                            nextMessage = cache.getMessage(currentMessages
+                                    .get(0));
+                            messageIndex += 1;
+                        }
                     }
-
                     if (nextMessage == null) {
                         expiredPlaylists.add(nextPlaylist);
                         activePlaylists.remove(nextPlaylist);
