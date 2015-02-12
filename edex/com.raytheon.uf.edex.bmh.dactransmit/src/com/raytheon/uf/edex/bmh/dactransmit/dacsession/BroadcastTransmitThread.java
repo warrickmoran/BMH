@@ -30,8 +30,6 @@ import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
-import com.raytheon.uf.common.time.util.ITimer;
-import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
 import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
@@ -47,6 +45,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
+ * Feb 11, 2015 4098       bsteffen    Maintain jitter buffer during broadcast.
  * 
  * </pre>
  * 
@@ -59,8 +58,6 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
     private final double dbTarget;
 
     protected LinkedBlockingQueue<byte[]> audioBuffer = new LinkedBlockingQueue<>();
-
-    protected ITimer transmitTimer;
 
     protected volatile boolean error;
 
@@ -129,21 +126,10 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
         RtpPacketIn rtpPacket = buildRtpPacket(previousPacket, regulatedAudio);
 
         sendPacket(rtpPacket);
-        if (this.transmitTimer == null) {
-            this.transmitTimer = TimeUtil.getTimer();
-            this.transmitTimer.start();
-        } else {
-            this.transmitTimer.stop();
-            logger.info(
-                    "A total of {} elapsed between the transmission of the current packet and the previous packet.",
-                    TimeUtil.prettyDuration(this.transmitTimer.getElapsedTime()));
-            this.transmitTimer.reset();
-            this.transmitTimer.start();
-        }
 
         previousPacket = rtpPacket;
 
-        Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
+        Thread.sleep(packetInterval);
 
         while (!hasSync) {
             Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
@@ -165,9 +151,6 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
         AudioRegulator audioRegulator = new AudioRegulator();
         regulatedAudio = audioRegulator.regulateAudioVolume(sourceAudio,
                 this.dbTarget, sourceAudio.length);
-        logger.info("Successfully finished audio attenuation/amplification in "
-                + audioRegulator.getDuration()
-                + " ms for message: 'Live Audio Stream'");
 
         return regulatedAudio;
     }

@@ -82,6 +82,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 22, 2015  #3912     bsteffen     Add more frequent packet logging and include intermessage intervals.
  * Feb 02, 2015  #4093     bsteffen     Add shutdown hook.
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
+ * Feb 11, 2015  #4098     bsteffen     Allow pause to maintain packet sequence numbers.
  * 
  * </pre>
  * 
@@ -185,14 +186,25 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
         AudioPacketLogger allPacketLog = new AudioPacketLogger(getName(),
                 logger, 10);
         try {
+            try {
+                this.pauseLock.acquire();
+            } catch (InterruptedException e) {
+                logger.error(
+                        "Unexpected interrupt while acquiring pause lock.", e);
+            }
             long nextPacketTime = System.currentTimeMillis();
             eventBus.register(this);
             OUTER_LOOP: while (keepRunning) {
                 try {
                     while (this.pausePlayback) {
                         logger.info("Pausing the playback of the current playlist.");
-                        this.pauseLock.acquire();
                         this.pauseLock.release();
+                        /*
+                         * Sleeping gives the pausing thread time to steal the
+                         * lock.
+                         */
+                        Thread.sleep(5);
+                        this.pauseLock.acquire();
                         logger.info("Resuming the playback of the current playlist.");
                     }
 
@@ -356,17 +368,19 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
         pausePlayback = now | pausePlayback;
     }
 
-    public void pausePlayback() {
+    public RtpPacketIn pausePlayback() {
+        this.pausePlayback = true;
         try {
             this.pauseLock.acquire();
         } catch (InterruptedException e) {
             // TODO: actually throw exception to notify that current audio
             // stream could not be paused.
         }
-        this.pausePlayback = true;
+        return this.previousPacket;
     }
 
-    public void resumePlayback() {
+    public void resumePlayback(RtpPacketIn previousPacket) {
+        this.previousPacket = previousPacket;
         this.pausePlayback = false;
         this.pauseLock.release();
     }
