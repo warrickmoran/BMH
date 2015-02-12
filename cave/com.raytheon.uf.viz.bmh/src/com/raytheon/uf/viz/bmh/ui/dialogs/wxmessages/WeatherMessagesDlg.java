@@ -34,6 +34,7 @@ import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.RGB;
@@ -78,6 +79,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
+import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -140,7 +142,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 10, 2015  4085     bkowal      Prevent users from creating weather messages associated
  *                                    with static message types.
  * Feb 11, 2015  4115     bkowal      Confirm submission of expired messages.
- * 
+ * Feb 11, 2015  4044     rjpeter     Only select transmitters whose program contains the message type.
  * </pre>
  * 
  * @author lvenable
@@ -218,6 +220,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
     /** Selected Message Type */
     private MessageType selectedMessageType = null;
+
+    private final Set<String> selectedMessageTypeTransmitters = new HashSet<>();
 
     /** Input message selected by the user. */
     private InputMessage userInputMessage = null;
@@ -681,6 +685,18 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         interruptChk = new Button(defaultsGrp, SWT.CHECK);
         interruptChk.setText("Interrupt");
         interruptChk.setLayoutData(gd);
+        interruptChk.addSelectionListener(new SelectionListener() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                updateSAMETransmitterOptions();
+            }
+
+            @Override
+            public void widgetDefaultSelected(SelectionEvent e) {
+            }
+
+        });
 
         gd = new GridData();
         gd.horizontalIndent = hIndent;
@@ -744,7 +760,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                             return;
                         }
 
-                        if (returnValue instanceof WxMessagesContent == false) {
+                        if ((returnValue instanceof WxMessagesContent) == false) {
                             return;
                         }
 
@@ -823,7 +839,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         /*
          * verify that a name has been set.
          */
-        if (this.msgNameTF.getText() == null
+        if ((this.msgNameTF.getText() == null)
                 || this.msgNameTF.getText().isEmpty()) {
             DialogUtility
                     .showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
@@ -856,9 +872,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
          * Check if the input message has selected area/zone codes. If not then
          * create the area/zone codes string and set it in the input message.
          */
-        if ((userInputMessage.getAreaCodes() == null || userInputMessage
+        if (((userInputMessage.getAreaCodes() == null) || userInputMessage
                 .getAreaCodes().isEmpty())
-                && (this.userInputMessage.getSelectedTransmitters() == null || this.userInputMessage
+                && ((this.userInputMessage.getSelectedTransmitters() == null) || this.userInputMessage
                         .getSelectedTransmitters().isEmpty())) {
             DialogUtility
                     .showMessageBox(
@@ -872,7 +888,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         /*
          * verify that message contents have been set.
          */
-        if (this.content != null && this.content.isComplete() == false) {
+        if ((this.content != null) && (this.content.isComplete() == false)) {
             DialogUtility
                     .showMessageBox(
                             this.shell,
@@ -891,8 +907,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 .getTimeInMillis();
         long expirationTime = this.expirationDTF.getBackingCalendar()
                 .getTimeInMillis();
-        if (expirationTime == effectiveTime
-                || expirationTime <= System.currentTimeMillis()) {
+        if ((expirationTime == effectiveTime)
+                || (expirationTime <= System.currentTimeMillis())) {
             /*
              * Verify that the user would actually like to submit an expired
              * message.
@@ -984,8 +1000,27 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         // TODO: need to handle input message area on message type selection.
         List<Transmitter> selectedTransmitters = new ArrayList<Transmitter>();
         for (Transmitter transmitter : this.areaData.getAffectedTransmitters()) {
-            selectedTransmitters.add(transmitter);
+            // if not an interrupt limit by program assigned to transmitter
+            if (interruptChk.getSelection()
+                    || selectedMessageTypeTransmitters.contains(transmitter
+                            .getMnemonic())) {
+                selectedTransmitters.add(transmitter);
+            }
         }
+        if (selectedTransmitters.isEmpty()) {
+            StringBuilder msg = new StringBuilder();
+            msg.append("Message Type [")
+                    .append(selectedMessageType.getAfosid());
+            if (selectedMessageTypeTransmitters.isEmpty()) {
+                msg.append("] does not belong to any programs.  Cannot Submit Message.");
+            } else {
+                msg.append("] does not map to any program assigned to selected areas.");
+            }
+            DialogUtility.showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
+                    "Weather Messages - Area Selection", msg.toString());
+            return;
+        }
+
         request.setSelectedTransmitters(selectedTransmitters);
         try {
             Object result = BmhUtils.sendRequest(request);
@@ -1036,6 +1071,21 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
      */
     private void updateMessageTypeControls(final ValidatedMessage validatedMsg) {
         if (selectedMessageType == null) {
+            return;
+        }
+
+        ProgramDataManager pdm = new ProgramDataManager();
+        try {
+            List<Transmitter> transmitters = pdm
+                    .getTransmittersForMsgType(selectedMessageType);
+            selectedMessageTypeTransmitters.clear();
+            for (Transmitter t : transmitters) {
+                selectedMessageTypeTransmitters.add(t.getMnemonic());
+            }
+        } catch (Exception e) {
+            statusHandler
+                    .error("Error occurred retrieving valid transmitters for message type",
+                            e);
             return;
         }
 
@@ -1143,9 +1193,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 }
             }
 
-            if (this.userInputMessage.getSelectedTransmitters() != null
-                    && this.userInputMessage.getSelectedTransmitters()
-                            .isEmpty() == false) {
+            if ((this.userInputMessage.getSelectedTransmitters() != null)
+                    && (this.userInputMessage.getSelectedTransmitters()
+                            .isEmpty() == false)) {
                 for (Transmitter t : this.userInputMessage
                         .getSelectedTransmitters()) {
                     this.areaData.addTransmitter(t);
@@ -1216,7 +1266,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         }
 
         Set<String> areaZoneCodes = areaData.getSelectedAreaZoneCodes();
-        if (areaZoneCodes == null || areaZoneCodes.isEmpty()) {
+        if ((areaZoneCodes == null) || areaZoneCodes.isEmpty()) {
             userInputMessage.setAreaCodes("");
         } else {
             StringBuilder sb = new StringBuilder();
@@ -1230,8 +1280,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
             }
             this.userInputMessage.setAreaCodes(sb.toString());
         }
-        if (this.areaData.getTransmitters() != null
-                && this.areaData.getTransmitters().isEmpty() == false) {
+        if ((this.areaData.getTransmitters() != null)
+                && (this.areaData.getTransmitters().isEmpty() == false)) {
             this.userInputMessage.setSelectedTransmitters(this.areaData
                     .getTransmitters());
         } else {
@@ -1252,6 +1302,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         for (Transmitter transmitter : areaData.getAffectedTransmitters()) {
             transmitterIdentifiers.add(transmitter.getMnemonic());
         }
+
+        if (interruptChk.getSelection() == false) {
+            /* Not an interrupt, further limit selection by program */
+            transmitterIdentifiers.retainAll(selectedMessageTypeTransmitters);
+        }
+
         sameTransmitters.enableCheckboxes(transmitterIdentifiers);
     }
 
@@ -1335,8 +1391,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
 
         // Update periodicity
         String peridicityStr = userInputMessage.getPeriodicity();
-        if (peridicityStr == null || peridicityStr.length() == 0
-                || peridicityStr.length() != 8) {
+        if ((peridicityStr == null) || (peridicityStr.length() == 0)
+                || (peridicityStr.length() != 8)) {
             periodicityDTF.setFieldValue(DateFieldType.DAY, 0);
             periodicityDTF.setFieldValue(DateFieldType.HOUR, 0);
             periodicityDTF.setFieldValue(DateFieldType.MINUTE, 0);
