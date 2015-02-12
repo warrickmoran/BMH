@@ -25,6 +25,7 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
@@ -58,6 +59,8 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  *                                    {@link TransmitterGroupConfigNotification} when
  *                                    all required information is available.
  * Jan 22, 2015  3995     rjpeter     Added setting position of a new TransmitterGroup.
+ * Feb 09, 2015  4082     bkowal      Added support for creating languages with a new
+ *                                    Transmitter Group.
  * </pre>
  * 
  * @author mpduff
@@ -183,7 +186,23 @@ public class TransmitterHandler extends
             group.setPosition(tgDao.getNextPosition());
         }
 
-        tgDao.saveOrUpdate(group);
+        if (request.getLanguages() != null
+                && request.getLanguages().isEmpty() == false) {
+            tgDao.createGroupAndLanguages(group, request.getLanguages());
+
+            /*
+             * Determine if new need to log the new Transmitter Language(s) that
+             * were just created.
+             */
+            if (logger.isPriorityEnabled(Priority.INFO)) {
+                String user = BMHLoggerUtils.getUser(request);
+                for (TransmitterLanguage tl : request.getLanguages()) {
+                    BMHLoggerUtils.logSave(request, user, null, tl);
+                }
+            }
+        } else {
+            tgDao.saveOrUpdate(group);
+        }
         List<TransmitterGroup> list = new ArrayList<TransmitterGroup>(1);
         list.add(group);
         response.setTransmitterGroupList(list);

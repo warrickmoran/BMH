@@ -86,6 +86,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     {@link LegacyDictionaryConverter} constructors.
  * Jan 30, 2015     4046   bkowal      Notify the user when they have unsaved changes before
  *                                     allowing them to select another word or close the dialog.
+ * Feb 10, 2015     4082   bkowal      Revert the unsaved word flag when the user clicks
+ *                                     "No" on the unsaved word confirmation dialog.
  * 
  * </pre>
  * 
@@ -788,6 +790,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
             /*
              * The user does not want to save the word.
              */
+            this.unsavedWord = false;
             return true;
         }
 

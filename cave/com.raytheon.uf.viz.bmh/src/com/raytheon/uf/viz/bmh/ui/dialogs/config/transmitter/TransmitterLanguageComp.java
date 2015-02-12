@@ -47,6 +47,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.NewEditTransmitterDlg.TransmitterEditType;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -63,7 +64,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 19, 2015 4011       bkowal      Implemented a delete option.
  * Jan 20, 2015 4011       bkowal      All languages can now be deleted.
  * Jan 22, 2015 3995       rjpeter     Update new TransmitterGroup check.
-
+ * Feb 09, 2015 4082       bkowal      Added the ability to add languages to
+ *                                     new Transmitter Groups.
+ * 
  * </pre>
  * 
  * @author bkowal
@@ -94,9 +97,23 @@ public class TransmitterLanguageComp {
     private final Map<Language, TransmitterLanguage> existingLanguagesMap = new HashMap<>(
             Language.values().length, 1.0f);
 
-    public TransmitterLanguageComp(final Shell shell, TransmitterGroup group) {
+    private final Map<Language, TransmitterLanguage> archiveLanguagesMap = new HashMap<>(
+            Language.values().length, 1.0f);
+
+    public TransmitterLanguageComp(final Shell shell, TransmitterGroup group,
+            final TransmitterEditType type) {
         this.shell = shell;
-        this.group = group;
+        /*
+         * only associate existing groups with the languages if the user is
+         * editing a group directly or if they are editing a standalone
+         * transmitter.
+         */
+        if (type == TransmitterEditType.EDIT_TRANSMITTER_GROUP
+                || (group != null && group.isStandalone())) {
+            this.group = group;
+        } else {
+            this.group = new TransmitterGroup();
+        }
         this.init(shell);
         this.retrieveLanguages();
     }
@@ -191,8 +208,37 @@ public class TransmitterLanguageComp {
         });
     }
 
+    public void enableGroupControls(boolean enabled) {
+        this.addButton.setEnabled(enabled);
+        this.editButton.setEnabled(enabled);
+        this.deleteButton.setEnabled(enabled);
+
+        if (enabled == false) {
+            this.languagesTable.removeAllTableItems();
+            this.archiveLanguagesMap.putAll(this.existingLanguagesMap);
+            this.existingLanguagesMap.clear();
+        } else {
+            if (this.archiveLanguagesMap.isEmpty()) {
+                return;
+            }
+            this.existingLanguagesMap.putAll(this.archiveLanguagesMap);
+            this.archiveLanguagesMap.clear();
+            this.buildLanguagesTable();
+        }
+    }
+
     private void retrieveLanguages() {
-        if ((this.group == null) || (group.getName() == null)) {
+        unassignedLanguages = new ArrayList<>(Language.values().length);
+        for (Language language : Language.values()) {
+            unassignedLanguages.add(language);
+        }
+
+        if ((this.group == null) || (group.getName() == null)
+                || (group.getId() == 0)) {
+            /*
+             * this is a completely new Transmitter Group.
+             */
+            this.addButton.setEnabled(true);
             return;
         }
 
@@ -209,16 +255,8 @@ public class TransmitterLanguageComp {
         /*
          * Determine if the user will be allowed to create new languages.
          */
-        unassignedLanguages = new ArrayList<>(languages.size());
         if (languages.size() < Language.values().length) {
             this.addButton.setEnabled(true);
-            /*
-             * determine which languages still have not been assigned to the
-             * transmitter.
-             */
-            for (Language language : Language.values()) {
-                unassignedLanguages.add(language);
-            }
         }
 
         /*
@@ -274,12 +312,20 @@ public class TransmitterLanguageComp {
     }
 
     private void handleNewLanguage(TransmitterLanguage transmitterLanguage) {
-        try {
-            transmitterLanguage = this.tldm.saveLanguage(transmitterLanguage);
-        } catch (Exception e) {
-            statusHandler.error("Failed to save the transmitter language: "
-                    + transmitterLanguage.toString() + ".", e);
-            return;
+        /**
+         * Only save the {@link TransmitterLanguage} if the associated
+         * {@link TransmitterGroup} also exists.
+         */
+        if (transmitterLanguage.getTransmitterGroup() != null
+                && transmitterLanguage.getTransmitterGroup().getId() != 0) {
+            try {
+                transmitterLanguage = this.tldm
+                        .saveLanguage(transmitterLanguage);
+            } catch (Exception e) {
+                statusHandler.error("Failed to save the transmitter language: "
+                        + transmitterLanguage.toString() + ".", e);
+                return;
+            }
         }
 
         this.unassignedLanguages.remove(transmitterLanguage.getLanguage());
@@ -314,8 +360,15 @@ public class TransmitterLanguageComp {
         StringBuilder sb = new StringBuilder(
                 "Are you sure you want to delete language: ");
         sb.append(tl.getLanguage().toString());
-        sb.append(" for Transmitter ");
-        sb.append(tl.getTransmitterGroup().getName()).append("?");
+        if (tl.getTransmitterGroup() != null) {
+            sb.append(" for Transmitter ");
+            sb.append(tl.getTransmitterGroup().getName()).append("?");
+        } else {
+            /*
+             * name will be NULL for an unsaved Transmitter/Group.
+             */
+            sb.append("?");
+        }
 
         int option = DialogUtility.showMessageBox(this.shell, SWT.ICON_QUESTION
                 | SWT.YES | SWT.NO, "Transmitter Language - Delete",
@@ -324,13 +377,15 @@ public class TransmitterLanguageComp {
             return;
         }
 
-        try {
-            this.tldm.deleteLanguage(tl);
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Failed to delete transmitter language: " + tl.toString()
-                            + ".", e);
-            return;
+        if (tl.getTransmitterGroup() != null
+                && tl.getTransmitterGroup().getId() != 0) {
+            try {
+                this.tldm.deleteLanguage(tl);
+            } catch (Exception e) {
+                statusHandler.error("Failed to delete transmitter language: "
+                        + tl.toString() + ".", e);
+                return;
+            }
         }
         this.existingLanguagesMap.remove(tl.getLanguage());
         this.unassignedLanguages.add(tl.getLanguage());
@@ -339,12 +394,17 @@ public class TransmitterLanguageComp {
     }
 
     private void handleUpdatedLanguage(TransmitterLanguage transmitterLanguage) {
-        try {
-            transmitterLanguage = this.tldm.saveLanguage(transmitterLanguage);
-        } catch (Exception e) {
-            statusHandler.error("Failed to update the transmitter language: "
-                    + transmitterLanguage.toString() + ".", e);
-            return;
+        if (transmitterLanguage.getTransmitterGroup() != null
+                && transmitterLanguage.getTransmitterGroup().getId() != 0) {
+            try {
+                transmitterLanguage = this.tldm
+                        .saveLanguage(transmitterLanguage);
+            } catch (Exception e) {
+                statusHandler.error(
+                        "Failed to update the transmitter language: "
+                                + transmitterLanguage.toString() + ".", e);
+                return;
+            }
         }
         this.existingLanguagesMap.put(transmitterLanguage.getLanguage(),
                 transmitterLanguage);
@@ -361,5 +421,35 @@ public class TransmitterLanguageComp {
         Language language = (Language) trd.getData();
 
         return this.existingLanguagesMap.get(language);
+    }
+
+    /**
+     * Returns a {@link List} of unsaved {@link TransmitterLanguage}s that are
+     * present in the {@link #languagesTable} {@link Table}.
+     * 
+     * @return a {@link List} of unsaved {@link TransmitterLanguage}s that are
+     *         present in the {@link #languagesTable} {@link Table}
+     */
+    public List<TransmitterLanguage> getUnsavedTransmitterLanguages() {
+        if (this.existingLanguagesMap.values().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<TransmitterLanguage> unsavedLanguages = new ArrayList<>(
+                this.existingLanguagesMap.values().size());
+        for (TransmitterLanguage tl : this.existingLanguagesMap.values()) {
+            if (tl.getId().getTransmitterGroup() != null
+                    && tl.getId().getTransmitterGroup().getId() > 0) {
+                continue;
+            }
+            /*
+             * eliminate the partial transmitter group because the actual
+             * transmitter group will be set when the data is persisted to the
+             * database.
+             */
+            tl.getId().setTransmitterGroup(null);
+            unsavedLanguages.add(tl);
+        }
+        return unsavedLanguages;
     }
 }

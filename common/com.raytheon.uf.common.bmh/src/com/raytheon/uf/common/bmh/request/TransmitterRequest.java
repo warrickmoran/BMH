@@ -23,6 +23,7 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -39,6 +40,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 24, 2014  3432     mpduff      Added GetEnabledTransmitterGroups
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Nov 21, 2014  3845     bkowal      Added GetTransmitterGroupWithTransmitter
+ * Feb 09, 2015  4082     bkowal      It is now possible to specify languages to
+ *                                    create alongside a Transmitter Group.
  * 
  * </pre>
  * 
@@ -62,6 +65,9 @@ public class TransmitterRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
+
+    @DynamicSerializeElement
+    private List<TransmitterLanguage> languages;
 
     @DynamicSerializeElement
     private List<TransmitterGroup> transmitterGroupList;
@@ -109,6 +115,21 @@ public class TransmitterRequest extends AbstractBMHServerRequest {
      */
     public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    /**
+     * @return the languages
+     */
+    public List<TransmitterLanguage> getLanguages() {
+        return languages;
+    }
+
+    /**
+     * @param languages
+     *            the languages to set
+     */
+    public void setLanguages(List<TransmitterLanguage> languages) {
+        this.languages = languages;
     }
 
     /**

@@ -19,10 +19,15 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 
 /**
  * BMH DAO for {@link TransmitterGroup}.
@@ -39,6 +44,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Nov 21, 2014  3845     bkowal      Added getTransmitterGroupWithTransmitter
  * Jan 22, 2015  3995     rjpeter     Added getNextPosition()
+ * Feb 09, 2015  4082     bkowal      Added {@link #createGroupAndLanguages(TransmitterGroup, Collection)}.
  * </pre>
  * 
  * @author bkowal
@@ -124,5 +130,32 @@ public class TransmitterGroupDao extends
         }
 
         return 1;
+    }
+
+    /**
+     * Used to save both a new {@link TransmitterGroup} and
+     * {@link TransmitterLanguage}(s) in the same transaction.
+     * 
+     * @param tg
+     *            the {@link TransmitterGroup} to save.
+     * @param languages
+     *            the {@link TransmitterLanguage}(s) to save.
+     */
+    public void createGroupAndLanguages(final TransmitterGroup tg,
+            final Collection<TransmitterLanguage> languages) {
+        if (tg.getId() != 0) {
+            throw new IllegalArgumentException(
+                    "createGroupAndLanguages only supports NEW Transmitter Group(s).");
+        }
+        txTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(TransactionStatus status) {
+                persist(tg);
+                for (TransmitterLanguage tl : languages) {
+                    tl.getId().setTransmitterGroup(tg);
+                    persist(tl);
+                }
+            }
+        });
     }
 }

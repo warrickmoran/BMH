@@ -62,6 +62,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 13, 2015 3809       bkowal      Initial creation
+ * Feb 12, 2015 4082       bkowal      Handle the case when Transmitter Languages cannot be
+ *                                     saved because the associated group does not exist.
  * 
  * </pre>
  * 
@@ -89,6 +91,15 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
     private TransmitterLanguage transmitterLanguage;
 
     private final List<Language> unassignedLanguages;
+
+    /**
+     * flag indicating whether or not a language can actually be saved to the
+     * database based on whether the associated Transmitter Group currently
+     * exists or not. If the group does not exist (new group or when a
+     * transmitter is transitioned to standalone), the languages will be saved
+     * when the group is saved instead of independently being saved.
+     */
+    private final boolean saveCapable;
 
     private Map<String, Integer> voiceNameIdentifierMap = new HashMap<>();
 
@@ -138,6 +149,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         this.unassignedLanguages = unassignedLanguages;
         this.transmitterGroup = transmitterGroup;
         this.setText(CREATE_TITLE);
+        this.saveCapable = (transmitterGroup != null && transmitterGroup
+                .getId() != 0);
     }
 
     public CreateEditTransmitterLangDialog(Shell parentShell,
@@ -149,6 +162,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         this.unassignedLanguages = Collections.emptyList();
         this.transmitterGroup = transmitterGroup;
         this.setText(EDIT_TITLE);
+        this.saveCapable = (transmitterGroup != null && transmitterGroup
+                .getId() != 0);
     }
 
     /*
@@ -472,7 +487,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
 
         gd = new GridData(75, SWT.DEFAULT);
         Button saveUpdateBtn = new Button(comp, SWT.PUSH);
-        saveUpdateBtn.setText("Save");
+        final String saveText = (this.saveCapable) ? "Save" : "OK";
+        saveUpdateBtn.setText(saveText);
         saveUpdateBtn.setLayoutData(gd);
         saveUpdateBtn.addSelectionListener(new SelectionAdapter() {
             @Override

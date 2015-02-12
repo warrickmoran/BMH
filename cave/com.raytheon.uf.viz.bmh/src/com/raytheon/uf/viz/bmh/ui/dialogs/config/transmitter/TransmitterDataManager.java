@@ -27,6 +27,7 @@ import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramRequest.ProgramAction;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
@@ -54,6 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  *                                     for sorting when getting the transmitter
  *                                     groups. 
  * Nov 21, 2014    3845    bkowal      Added getTransmitterGroupContainsTransmitter.
+ * Feb 09, 2015    4082    bkowal      Added {@link #saveTransmitterGroup(TransmitterGroup, List)}.
  * </pre>
  * 
  * @author mpduff
@@ -156,9 +158,27 @@ public class TransmitterDataManager {
      */
     public List<TransmitterGroup> saveTransmitterGroup(TransmitterGroup group)
             throws Exception {
+        List<TransmitterLanguage> unsavedLanguages = Collections.emptyList();
+        return this.saveTransmitterGroup(group, unsavedLanguages);
+    }
+
+    /**
+     * Save the {@link TransmitterGroup}
+     * 
+     * @param group
+     *            The TransmitterGroup to save
+     * @param unsavedLanguages
+     *            a {@link List} of {@link TransmitterLanguage}s to save with
+     *            the group
+     * @return TransmitterGroup object in a list
+     * @throws Exception
+     */
+    public List<TransmitterGroup> saveTransmitterGroup(TransmitterGroup group,
+            List<TransmitterLanguage> unsavedLanguages) throws Exception {
         TransmitterRequest request = new TransmitterRequest();
         request.setAction(TransmitterRequestAction.SaveGroup);
         request.setTransmitterGroup(group);
+        request.setLanguages(unsavedLanguages);
 
         TransmitterResponse response = (TransmitterResponse) BmhUtils
                 .sendRequest(request);

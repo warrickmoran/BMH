@@ -90,6 +90,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 26, 2015     4035   bkowal      Fix Transmitter form validation.
  * Feb 09, 2015     4095   bsteffen    Remove Transmitter Name.
  * 
+ * Feb 09, 2015     4082   bkowal      It is now possible to save Languages with new
+ *                                     Transmitter Groups.
  * </pre>
  * 
  * @author mpduff
@@ -161,6 +163,9 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
     /** List of transmitter controls */
     private final List<Control> transmitterControlList = new ArrayList<Control>();
+
+    /** Used to manage the Transmitter Language(s) */
+    private TransmitterLanguageComp transmitterLanguageComp;
 
     private final ICloseCallback callback;
 
@@ -246,7 +251,11 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
         // createStatusComp(mainComp);
         createAttrComp(mainComp);
-        new TransmitterLanguageComp(shell, this.group);
+        this.transmitterLanguageComp = new TransmitterLanguageComp(shell,
+                this.group, this.type);
+        // Disable all controls by default
+        enableGroupControls(false);
+        enableTransmitterControls(false);
 
         createBottomButtons();
 
@@ -455,10 +464,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             }
         });
         transmitterControlList.add(fipsTxt);
-
-        // Disable all controls by default
-        enableGroupControls(false);
-        enableTransmitterControls(false);
     }
 
     private void createBottomButtons() {
@@ -845,9 +850,15 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                 }
 
                 if (validateGroup(tg)) {
+                    /*
+                     * Just save the Transmitter Group.
+                     */
                     try {
                         List<TransmitterGroup> savedGroup = dataManager
-                                .saveTransmitterGroup(tg);
+                                .saveTransmitterGroup(
+                                        tg,
+                                        this.transmitterLanguageComp
+                                                .getUnsavedTransmitterLanguages());
                         if ((savedGroup != null) && !savedGroup.isEmpty()) {
                             tg = savedGroup.get(0);
                         }
@@ -1274,6 +1285,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         for (Control c : groupControlList) {
             c.setEnabled(enabled);
         }
+        this.transmitterLanguageComp.enableGroupControls(enabled);
     }
 
     /**
