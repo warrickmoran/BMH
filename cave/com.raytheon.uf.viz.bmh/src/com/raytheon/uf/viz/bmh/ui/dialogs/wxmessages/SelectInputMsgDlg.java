@@ -40,8 +40,6 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
-import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
-import com.raytheon.uf.common.bmh.request.InputMessageAudioResponse;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest.InputMessageAction;
 import com.raytheon.uf.common.bmh.request.InputMessageResponse;
@@ -55,7 +53,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
-import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.FilterComp;
 import com.raytheon.uf.viz.bmh.ui.common.utility.FilterComp.DateFilterChoice;
 import com.raytheon.uf.viz.bmh.ui.common.utility.FilterComp.TextFilterChoice;
@@ -89,6 +86,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jan 02, 2014   3833      lvenable    Added filtering capability.
  * Feb 10, 2015   4085      bkowal      Filter out input messages associated with
  *                                      static message types.
+ * Feb 12, 2015   4113      bkowal      Dialog will now return a {@link InputMessageSequence}.
  * 
  * </pre>
  * 
@@ -261,48 +259,18 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
         if (index < 0) {
             return;
         }
-        InputMessage im = filteredInputMessages.get(index);
 
-        InputAudioMessage fullInputMessage = null;
-
-        try {
-            fullInputMessage = getInputMessageById(im.getId());
-
-            if (fullInputMessage == null) {
-                StringBuilder msg = new StringBuilder();
-
-                msg.append("No data retrieved for: ");
-                msg.append(im.getName()).append("\n\n");
-                msg.append("Click OK to close the selection dialog or Cancel to go back and try again.");
-
-                int choice = DialogUtility.showMessageBox(getShell(),
-                        SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
-                        "No Data Returned", msg.toString());
-
-                if (choice == SWT.CANCEL) {
-                    return;
-                }
-            }
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving input message from the database: ", e);
-
-            StringBuilder msg = new StringBuilder();
-
-            msg.append("Error retrieving: ");
-            msg.append(im.getName()).append("\n\n");
-            msg.append("Click OK to close the selection dialog or Cancel to go back and try again.");
-
-            int choice = DialogUtility.showMessageBox(getShell(),
-                    SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
-                    "Data Retrieve Error", msg.toString());
-
-            if (choice == SWT.CANCEL) {
-                return;
-            }
+        /*
+         * add input message sequencing information to the returned data.
+         */
+        int[] messageSequence = new int[this.filteredInputMessages.size()];
+        for (int i = 0; i < this.filteredInputMessages.size(); i++) {
+            messageSequence[i] = this.filteredInputMessages.get(i).getId();
         }
+        InputMessageSequence inputMsgSequence = new InputMessageSequence(index,
+                messageSequence);
 
-        setReturnValue(fullInputMessage);
+        setReturnValue(inputMsgSequence);
 
         close();
     }
@@ -474,47 +442,6 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
 
         filteredInputMessages.clear();
         filteredInputMessages.addAll(allInputMessages);
-    }
-
-    /**
-     * Get the Input Message from the database using the primary key Id.
-     * 
-     * @param id
-     *            Primary Key Id.
-     * @return The input message and list of audio.
-     */
-    private InputAudioMessage getInputMessageById(int id) throws Exception {
-        InputMessageRequest imRequest = new InputMessageRequest();
-        imRequest.setAction(InputMessageAction.GetByPkId);
-        imRequest.setPkId(id);
-
-        InputAudioMessage inputAudioMessageData = null;
-
-        InputMessageAudioResponse imResponse = (InputMessageAudioResponse) BmhUtils
-                .sendRequest(imRequest);
-        List<InputMessage> inputMessages = imResponse.getInputMessageList();
-
-        if (inputMessages == null || inputMessages.isEmpty()) {
-            return inputAudioMessageData;
-        }
-
-        // Create the input audio message data and populate the object.
-        inputAudioMessageData = new InputAudioMessage();
-
-        inputAudioMessageData.setInputMessage(inputMessages.get(0));
-
-        // Check if the the audio is null. If it is then set it up to be an
-        // empty list.
-        List<InputMessageAudioData> audioDataList = imResponse
-                .getAudioDataList();
-        if (imResponse.getAudioDataList() == null) {
-            audioDataList = Collections.emptyList();
-        }
-
-        inputAudioMessageData.setAudioDataList(audioDataList);
-        inputAudioMessageData.setValidatedMsg(imResponse.getValidatedMessage());
-
-        return inputAudioMessageData;
     }
 
     @Override
