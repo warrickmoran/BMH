@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -38,7 +39,6 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.data.DictionaryManager;
@@ -61,6 +61,9 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 10, 2014    3355    mpduff      Initial creation.
  * Jan 28, 2015    4045    bkowal      Provide the current {@link Shell} to the
  *                                     phoneme playback methods.
+ * Feb 12, 2015    4109    bkowal      Place the phoneme at the position of the cursor. Switched
+ *                                     to {@link StyledText} to that the cursor position could be
+ *                                     updated after every phoneme insert.
  * 
  * </pre>
  */
@@ -91,7 +94,7 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
     /**
      * The phoneme text field
      */
-    private Text phonemeTxt;
+    private StyledText phonemeTxt;
 
     /**
      * The play phoneme button
@@ -229,8 +232,9 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.heightHint = 50;
         gd.horizontalSpan = 2;
-        phonemeTxt = new Text(wordGrp, SWT.MULTI | SWT.BORDER | SWT.WRAP
+        phonemeTxt = new StyledText(wordGrp, SWT.MULTI | SWT.BORDER | SWT.WRAP
                 | SWT.V_SCROLL);
+        this.phonemeTxt.setWordWrap(true);
         phonemeTxt.setLayoutData(gd);
         phonemeTxt.setText(autoGenPhoneme());
 
@@ -390,6 +394,18 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
         boolean left = (e.stateMask == SWT.BUTTON1);
         String text = "";
 
+        String textToUpdate = this.phonemeTxt.getText().trim() + " %s";
+        int cursorPosition = this.phonemeTxt.getCaretOffset();
+        if (cursorPosition > 0 && cursorPosition < textToUpdate.length()) {
+            String currentText = this.phonemeTxt.getText();
+
+            String txtBeforeCursor = currentText.substring(0, cursorPosition);
+            String txtAfterCursor = currentText.substring(cursorPosition);
+            textToUpdate = txtBeforeCursor.trim() + " %s "
+                    + txtAfterCursor.trim();
+        } else if (cursorPosition == 0) {
+            textToUpdate = "%s " + this.phonemeTxt.getText().trim();
+        }
         if (srcBtn.getData().equals(VOWEL)) {
             boolean shift = false;
             boolean ctrl = false;
@@ -403,16 +419,16 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
                 if (shift) {
                     text = srcBtn.getText();
                     text += "1";
-                    phonemeTxt.setText(phonemeTxt.getText() + " " + text);
                 } else if (ctrl) {
                     text = srcBtn.getText();
                     text += "2";
-                    phonemeTxt.setText(phonemeTxt.getText() + " " + text);
                 } else {
                     text = srcBtn.getText();
                     text += "0";
-                    phonemeTxt.setText(phonemeTxt.getText() + " " + text);
                 }
+                cursorPosition += text.length();
+                phonemeTxt.setText(String.format(textToUpdate, text));
+                this.phonemeTxt.setCaretOffset(cursorPosition);
 
                 BmhUtils.playAsPhoneme(this.shell, text);
             } else if (e.stateMask == SWT.BUTTON3) {
@@ -449,7 +465,9 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
         } else {
             if (e.stateMask == SWT.BUTTON1) {
                 text = srcBtn.getText();
-                phonemeTxt.setText(phonemeTxt.getText() + " " + text);
+                cursorPosition += text.length();
+                phonemeTxt.setText(String.format(textToUpdate, text));
+                this.phonemeTxt.setCaretOffset(cursorPosition);
                 BmhUtils.playAsPhoneme(this.shell, text);
             } else if (e.stateMask == SWT.BUTTON3) {
                 MenuItem speakPhoneme = new MenuItem(popupMenu, SWT.NONE);
