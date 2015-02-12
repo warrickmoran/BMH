@@ -66,11 +66,6 @@
          This permission allows the user to access BMH Emergency Override dialog.
        </description>
    </permission>
-   <permission id="bmh.dialog.alertMonitor">
-      <description>
-         This permission allows the user to access BMH Alert Monitor dialog.
-       </description>
-   </permission>
    <permission id="bmh.dialog.copyOperationalDB">
       <description>
          This permission allows the user to access BMH Copy Operational Database.
@@ -129,7 +124,6 @@
        <rolePermission>bmh.dialog.weatherMessages</rolePermission>
        <rolePermission>bmh.dialog.emergencyOverride</rolePermission>
        <rolePermission>bmh.dialog.broadcastLive</rolePermission>
-       <rolePermission>bmh.dialog.alertMonitor</rolePermission>
        <rolePermission>bmh.dialog.copyOperationalDB</rolePermission>
        <rolePermission>bmh.dialog.ldadConfiguration</rolePermission>
        <rolePermission>bmh.dialog.manageDictionaries</rolePermission>
@@ -155,7 +149,6 @@
        <rolePermission>bmh.dialog.weatherMessages</rolePermission>
        <rolePermission>bmh.dialog.emergencyOverride</rolePermission>
        <rolePermission>bmh.dialog.broadcastLive</rolePermission>
-       <rolePermission>bmh.dialog.alertMonitor</rolePermission>
        <rolePermission>bmh.dialog.copyOperationalDB</rolePermission>
        <rolePermission>bmh.dialog.ldadConfiguration</rolePermission>
        <rolePermission>bmh.dialog.manageDictionaries</rolePermission>
