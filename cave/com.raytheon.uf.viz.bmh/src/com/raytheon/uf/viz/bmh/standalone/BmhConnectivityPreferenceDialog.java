@@ -36,7 +36,9 @@ import com.raytheon.uf.common.bmh.request.GetBmhServersRequest;
 import com.raytheon.uf.common.localization.msgs.GetServersResponse;
 import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.core.VizServers;
+import com.raytheon.uf.viz.core.comm.ConnectivityManager;
 import com.raytheon.uf.viz.core.comm.ConnectivityManager.ConnectivityResult;
+import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.ConnectivityPreferenceDialog;
 import com.raytheon.uf.viz.core.localization.TextOrCombo;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
@@ -55,6 +57,7 @@ import com.raytheon.uf.viz.core.requests.ThriftClient;
  * Date          Ticket#   Engineer    Description
  * ------------- --------- ----------- --------------------------
  * Feb 05, 2015  3743      bsteffen    Initial creation
+ * Feb 16, 2015  4119      bsteffen    Do not validate when BMH is not available.
  * 
  * </pre>
  * 
@@ -180,16 +183,7 @@ public class BmhConnectivityPreferenceDialog extends
                 validateSite();
             }
 
-            ConnectivityResult results = new ConnectivityResult(false,
-                    bmhServer);
-            try {
-                GetBmhServersRequest test = new GetBmhServersRequest();
-                validatedServers = (GetServersResponse) ThriftClient
-                        .sendRequest(test, bmhServer);
-                results.hasConnectivity = true;
-            } catch (Exception e) {
-                results.exception = e;
-            }
+            ConnectivityResult results = validateBmhServer(bmhServer);
             appendDetails(buildDetails(results));
             if (!results.hasConnectivity && status == null) {
                 status = buildErrorMessage(results);
@@ -237,9 +231,51 @@ public class BmhConnectivityPreferenceDialog extends
             updateStatus(everythingGood, status, details);
 
             return everythingGood;
+        } else if (super.validate()) {
+                ConnectivityResult results = null;
+                try {
+                    GetServersResponse servers = ConnectivityManager
+                        .checkLocalizationServer(getLocalization(),
+                                    false);
+                    results = validateBmhServer(servers.getServerLocations()
+                            .get(BMHServers.BMH_SERVER));
+                } catch (VizException e) {
+                    results = new ConnectivityResult(false, bmhServer);
+                    results.exception = e;
+                }
+                appendDetails(buildDetails(results));
+                if (!results.hasConnectivity) {
+                    status = buildErrorMessage(results);
+                }
+                if (localizationSrv != null
+                        && !localizationSrv.widget.isDisposed()) {
+                    localizationSrv.widget
+                            .setBackground(getTextColor(results.hasConnectivity));
+                }
+                updateStatus(results.hasConnectivity, status, details);
+            return results.hasConnectivity;
+
         } else {
-            return super.validate();
+            return false;
         }
+    }
+
+    private ConnectivityResult validateBmhServer(String bmhServer) {
+        ConnectivityResult results = new ConnectivityResult(false, bmhServer);
+        if (bmhServer == null) {
+            results.exception = new NullPointerException(
+                    "No BMH Server Avaialble");
+            return results;
+        }
+        try {
+            GetBmhServersRequest test = new GetBmhServersRequest();
+            validatedServers = (GetServersResponse) ThriftClient.sendRequest(
+                    test, bmhServer);
+            results.hasConnectivity = true;
+        } catch (Exception e) {
+            results.exception = e;
+        }
+        return results;
     }
 
     protected void updateCheckboxes() {
