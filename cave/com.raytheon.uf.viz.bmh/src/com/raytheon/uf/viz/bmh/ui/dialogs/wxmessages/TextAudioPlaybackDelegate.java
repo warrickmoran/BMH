@@ -37,6 +37,7 @@ import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioException;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackCompleteNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackThread;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.IPlaybackCompleteListener;
@@ -55,6 +56,8 @@ import com.raytheon.uf.viz.core.VizApp;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 9, 2014  3883       bkowal      Initial creation
+ * Feb 16, 2015 4112       bkowal      Publish a {@link AudioPlaybackCompleteNotification} when
+ *                                     playback concludes.
  * 
  * </pre>
  * 
@@ -283,6 +286,9 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
      * actions triggered by the {@link IPlaybackCompleteListener}.
      */
     private void executeStopTransition() {
+        BMHDialogNotificationManager.getInstance().post(
+                new AudioPlaybackCompleteNotification());
+
         if (this.disposing) {
             return;
         }

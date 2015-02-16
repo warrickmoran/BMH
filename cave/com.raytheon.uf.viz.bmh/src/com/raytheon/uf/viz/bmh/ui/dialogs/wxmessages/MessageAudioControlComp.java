@@ -45,6 +45,7 @@ import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioException;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackCompleteNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackThread;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.IPlaybackCompleteListener;
@@ -66,6 +67,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IPlaybackCompleteListener;
  * Dec 10, 2014  #3883     bkowal       No longer dual track the audio playback state.
  * Dec 09, 2014  #3904     bkowal       Publish a {@link AudioRecordPlaybackNotification}
  *                                      prior to the start of audio playback.
+ * Feb 16, 2015  #4112     bkowal       Publish a {@link AudioPlaybackCompleteNotification} when
+ *                                      playback concludes.
  * 
  * </pre>
  * 
@@ -300,6 +303,9 @@ public class MessageAudioControlComp extends Composite implements
     }
 
     private void executeStopTransition() {
+        BMHDialogNotificationManager.getInstance().post(
+                new AudioPlaybackCompleteNotification());
+
         this.shutdownTimer();
         if (this.isDisposed()) {
             // user closes dialog during audio playback

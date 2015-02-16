@@ -97,6 +97,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.DisconnectListener;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackCompleteNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
@@ -155,6 +156,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 10, 2015  4106      bkowal      Support caching live broadcast information.
  * Feb 11, 2015  4088      bkowal      Update the listed transmitters to reflect the
  *                                     active transmitters as they are changed.
+ * Feb 16, 2015  4112      bkowal      Re-enable inline monitoring if it was previously enabled when
+ *                                     a {@link AudioPlaybackCompleteNotification} is received.
  * 
  * </pre>
  * 
@@ -260,6 +263,18 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     /** Map of BroadcastMessage id to MessageDetailsDlg for that id */
     private final Map<Long, MessageDetailsDlg> detailsMap = new HashMap<>();
+
+    /**
+     * Flag used to track the state of the inline selection prior to audio
+     * playback from an external location.
+     */
+    private volatile boolean inlinePreviouslyEnabled;
+
+    /**
+     * "lock" used to ensure that the dialog does not respond to monitor inline
+     * events and disposal events simultaneously.
+     */
+    private Object disposalLock = new Object();
 
     /**
      * Constructor.
@@ -997,20 +1012,25 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     }
 
     private void handleMonitorInlineEvent() {
-        if (monitorThread != null) {
-            monitorThread.removeDisconnectListener(BroadcastCycleDlg.this);
-            monitorThread.cancel();
-            monitorThread = null;
-        }
-        if (monitorBtn.getSelection()) {
-            String tName = transmitterList.getSelection()[0];
-            tName = tName.split("-")[0];
-            TransmitterGroup selectedTransmitterGroup = transmitterGroupNameMap
-                    .get(tName.trim());
-            monitorThread = new MonitorInlineThread(
-                    selectedTransmitterGroup.getName());
-            monitorThread.addDisconnectListener(BroadcastCycleDlg.this);
-            monitorThread.start();
+        synchronized (this.disposalLock) {
+            if (monitorThread != null) {
+                monitorThread.removeDisconnectListener(BroadcastCycleDlg.this);
+                monitorThread.cancel();
+                monitorThread = null;
+            }
+            if (monitorBtn.isDisposed()) {
+                return;
+            }
+            if (monitorBtn.getSelection()) {
+                String tName = transmitterList.getSelection()[0];
+                tName = tName.split("-")[0];
+                TransmitterGroup selectedTransmitterGroup = transmitterGroupNameMap
+                        .get(tName.trim());
+                monitorThread = new MonitorInlineThread(
+                        selectedTransmitterGroup.getName());
+                monitorThread.addDisconnectListener(BroadcastCycleDlg.this);
+                monitorThread.start();
+            }
         }
     }
 
@@ -1239,22 +1259,29 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     @Override
     protected void disposed() {
-        super.disposed();
-        if (monitorThread != null) {
-            monitorThread.cancel();
-            monitorThread.removeDisconnectListener(this);
-            monitorThread = null;
-        }
+        synchronized (this.disposalLock) {
+            super.disposed();
+            /*
+             * dialog is closing; ensure that the dialog will never attempt to
+             * re-enable inline monitoring.
+             */
+            this.inlinePreviouslyEnabled = false;
+            if (monitorThread != null) {
+                monitorThread.cancel();
+                monitorThread.removeDisconnectListener(this);
+                monitorThread = null;
+            }
 
-        BMHDialogNotificationManager.getInstance().unregister(this);
+            BMHDialogNotificationManager.getInstance().unregister(this);
 
-        NotificationManagerJob.removeObserver(
-                BMHJmsDestinations.getStatusDestination(), this);
-        NotificationManagerJob.removeObserver(
-                BMHJmsDestinations.getBMHConfigDestination(), this);
+            NotificationManagerJob.removeObserver(
+                    BMHJmsDestinations.getStatusDestination(), this);
+            NotificationManagerJob.removeObserver(
+                    BMHJmsDestinations.getBMHConfigDestination(), this);
 
-        if (liveBroadcastFont != null) {
-            liveBroadcastFont.dispose();
+            if (liveBroadcastFont != null) {
+                liveBroadcastFont.dispose();
+            }
         }
     }
 
@@ -1595,18 +1622,31 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     @Override
     @Subscribe
     public void notificationArrived(IDialogNotification notification) {
-        if (notification instanceof AudioRecordPlaybackNotification == false) {
+        if (monitorBtn.isDisposed()) {
             return;
         }
-
-        VizApp.runAsync(new Runnable() {
-            @Override
-            public void run() {
-                if (monitorBtn.getSelection()) {
-                    monitorBtn.setSelection(false);
-                    handleMonitorInlineEvent();
+        if (notification instanceof AudioRecordPlaybackNotification) {
+            VizApp.runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    if (monitorBtn.getSelection()) {
+                        inlinePreviouslyEnabled = true;
+                        monitorBtn.setSelection(false);
+                        handleMonitorInlineEvent();
+                    }
                 }
-            }
-        });
+            });
+        } else if (notification instanceof AudioPlaybackCompleteNotification) {
+            VizApp.runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    if (inlinePreviouslyEnabled) {
+                        inlinePreviouslyEnabled = false;
+                        monitorBtn.setSelection(true);
+                        handleMonitorInlineEvent();
+                    }
+                }
+            });
+        }
     }
 }
