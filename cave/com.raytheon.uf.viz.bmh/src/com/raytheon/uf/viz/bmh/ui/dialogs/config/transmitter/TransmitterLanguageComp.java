@@ -66,6 +66,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 22, 2015 3995       rjpeter     Update new TransmitterGroup check.
  * Feb 09, 2015 4082       bkowal      Added the ability to add languages to
  *                                     new Transmitter Groups.
+ * Feb 16, 2015 4082       bkowal      Only disable edit, delete buttons based on
+ *                                     Transmitter or Group selection.
  * 
  * </pre>
  * 
@@ -210,14 +212,21 @@ public class TransmitterLanguageComp {
 
     public void enableGroupControls(boolean enabled) {
         this.addButton.setEnabled(enabled);
-        this.editButton.setEnabled(enabled);
-        this.deleteButton.setEnabled(enabled);
 
         if (enabled == false) {
+            /*
+             * always disable edit and delete when disabled.
+             */
+            this.editButton.setEnabled(enabled);
+            this.deleteButton.setEnabled(enabled);
             this.languagesTable.removeAllTableItems();
             this.archiveLanguagesMap.putAll(this.existingLanguagesMap);
             this.existingLanguagesMap.clear();
         } else {
+            /*
+             * edit and delete should only be enabled when a language is
+             * actually selected.
+             */
             if (this.archiveLanguagesMap.isEmpty()) {
                 return;
             }
@@ -360,7 +369,8 @@ public class TransmitterLanguageComp {
         StringBuilder sb = new StringBuilder(
                 "Are you sure you want to delete language: ");
         sb.append(tl.getLanguage().toString());
-        if (tl.getTransmitterGroup() != null) {
+        if (tl.getTransmitterGroup() != null
+                && tl.getTransmitterGroup().getName() != null) {
             sb.append(" for Transmitter ");
             sb.append(tl.getTransmitterGroup().getName()).append("?");
         } else {
