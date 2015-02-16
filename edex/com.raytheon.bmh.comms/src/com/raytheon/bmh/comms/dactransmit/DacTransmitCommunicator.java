@@ -43,6 +43,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitScanPlaylists;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
 
@@ -75,6 +76,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Jan 14, 2015  3969     bkowal      Handle {@link MessageNotBroadcastNotification}.
  * Jan 19, 2015  4002     bkowal      Handle {@link MessageDelayedBroadcastNotification}.
  * Jan 23, 2015  3912     bsteffen    Handle all Throwables in run.
+ * Feb 16, 2015  4107     bsteffen    Add updatePlaylistListener
  * 
  * </pre>
  * 
@@ -227,6 +229,10 @@ public class DacTransmitCommunicator extends Thread {
 
     public void sendLiveBroadcastMsg(ILiveBroadcastMessage msg) {
         send(msg);
+    }
+
+    public void updatePlaylistListener(boolean active){
+        send(new DacTransmitScanPlaylists(!active));
     }
 
     private void send(Object toSend) {

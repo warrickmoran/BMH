@@ -286,6 +286,16 @@ public class DacTransmitServer extends AbstractServerThread {
         }
     }
 
+    public void updatePlaylistListener(DacTransmitKey key, boolean active) {
+        List<DacTransmitCommunicator> communicators = this.communicators
+                .get(key);
+        if (communicators != null) {
+            for (DacTransmitCommunicator communicator : communicators) {
+                communicator.updatePlaylistListener(active);
+            }
+        }
+    }
+
     /**
      * Shutdown all dac transmit communications as well as the server. This
      * should only be called for cluster failover.

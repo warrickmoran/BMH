@@ -47,6 +47,8 @@ import com.raytheon.uf.common.jms.notification.NotificationMessage;
  * Sep 23, 2014  3485     bsteffen    Send notification to the DacTransmitServer
  * Oct 17, 2014  3687     bsteffen    Add info log statement for normal playlist updates.
  * Feb 09, 2015  4071     bsteffen    Consolidate Queues.
+ * Feb 16, 2015  4107     bsteffen    Notify dac transmit server when actually connected.
+ * 
  * 
  * </pre>
  * 
@@ -94,6 +96,15 @@ public class PlaylistNotificationObserver implements INotificationObserver {
             }
 
         }
+    }
+
+    public void connected() {
+        server.updatePlaylistListener(key, true);
+
+    }
+
+    public void disconnected() {
+        server.updatePlaylistListener(key, false);
     }
 
     @Override

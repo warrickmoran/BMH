@@ -20,6 +20,8 @@
 package com.raytheon.bmh.comms.jms;
 
 import java.util.Deque;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.LinkedBlockingDeque;
 
 import javax.jms.BytesMessage;
@@ -62,6 +64,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * Nov 03, 2014  3525     bsteffen    Allow sending of status messages to alert topic.
  * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
+ * Feb 16, 2015  4107     bsteffen    Notify the playlist observer when it is successfully observing.
  * 
  * </pre>
  * 
@@ -75,8 +78,10 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     private static final int BMH_STATUS_QUEUE_SIZE = 100;
 
+    private Set<PlaylistNotificationObserver> playlistObservers = new HashSet<>();
+
     private final boolean operational;
-    
+
     private final ProducerWrapper bmhStatusProducer;
 
     private final ProducerWrapper alertProducer;
@@ -110,10 +115,20 @@ public class JmsCommunicator extends JmsNotificationManager {
     public void connect(boolean notifyError) {
         super.connect(notifyError);
         bmhStatusProducer.sendQueued();
+        synchronized (playlistObservers) {
+            for (PlaylistNotificationObserver observer : playlistObservers) {
+                observer.connected();
+            }
+        }
     }
 
     @Override
     public void disconnect(boolean notifyError) {
+        synchronized (playlistObservers) {
+            for (PlaylistNotificationObserver observer : playlistObservers) {
+                observer.disconnected();
+            }
+        }
         disconnectProducers();
         super.disconnect(notifyError);
     }
@@ -126,16 +141,33 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     public void listenForPlaylistChanges(DacTransmitKey key, String group,
             DacTransmitServer server) {
-        addObserver(
-                PlaylistUpdateNotification.getTopicName(group, operational),
-                new PlaylistNotificationObserver(server, key));
+        String topic = PlaylistUpdateNotification.getTopicName(group,
+                operational);
+        PlaylistNotificationObserver observer = new PlaylistNotificationObserver(
+                server, key);
+        addObserver(topic, observer);
+        synchronized (playlistObservers) {
+            playlistObservers.add(observer);
+            if (connected) {
+                observer.connected();
+            }
+        }
     }
 
     public void unlistenForPlaylistChanges(DacTransmitKey key, String group,
             DacTransmitServer server) {
-        removeObserver(
-                PlaylistUpdateNotification.getTopicName(group, operational),
-                new PlaylistNotificationObserver(server, key), null);
+        String topic = PlaylistUpdateNotification.getTopicName(group,
+                operational);
+        PlaylistNotificationObserver observer = new PlaylistNotificationObserver(
+                server, key);
+        synchronized (playlistObservers) {
+            playlistObservers.remove(observer);
+            if (connected) {
+                observer.disconnected();
+            }
+        }
+        removeObserver(topic, observer, null);
+
     }
 
     protected synchronized void disconnectProducers() {

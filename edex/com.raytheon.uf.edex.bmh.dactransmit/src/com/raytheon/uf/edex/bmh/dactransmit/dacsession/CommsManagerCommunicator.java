@@ -49,10 +49,12 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitScanPlaylists;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PrioritizableCallable;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PriorityBasedExecutorService;
+import com.raytheon.uf.edex.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
 
 /**
  * 
@@ -87,6 +89,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.PriorityBasedExecutorServic
  * Jan 14, 2015  3969     bkowal      Handle {@link MessageNotBroadcastNotification}.
  * Jan 19, 2015  4002     bkowal      Handle {@link MessageDelayedBroadcastNotification}.
  * Feb 06, 2015  4071     bsteffen    Consolidate threading.
+ * Feb 16, 2015  4107     bsteffen    Manually scan for playlist changes when the comms manager
+ *                                    is down or has not sent a command to stop scanning.
  * 
  * </pre>
  * 
@@ -107,6 +111,10 @@ public final class CommsManagerCommunicator extends Thread {
 
     private final ExecutorService executorService;
 
+    private boolean scan;
+
+    private final ScanPlaylistDirectoryTask backupPlaylistTask;
+
     private Socket socket;
 
     private DacTransmitStatus statusToSend = new DacTransmitStatus(false);
@@ -118,6 +126,13 @@ public final class CommsManagerCommunicator extends Thread {
         this.config = dacSession.getConfig();
         this.eventBus = dacSession.getEventBus();
         this.executorService = dacSession.getAsyncExecutor();
+        backupPlaylistTask = new ScanPlaylistDirectoryTask(eventBus,
+                dacSession.getConfig().getInputDirectory());
+        /*
+         * Allow the task to prepopulate the playlist, this is not important
+         * enough to delay startup.
+         */
+        executorService.submit(backupPlaylistTask);
     }
 
     @Override
@@ -161,6 +176,9 @@ public final class CommsManagerCommunicator extends Thread {
                         }
                     }
                 }
+            }
+            if (socket == null || scan) {
+                executorService.submit(backupPlaylistTask);
             }
             if (socket == null) {
                 try {
@@ -217,6 +235,8 @@ public final class CommsManagerCommunicator extends Thread {
             eventBus.post(message);
         } else if (message instanceof LiveBroadcastSwitchNotification) {
             eventBus.post(message);
+        } else if (message instanceof DacTransmitScanPlaylists) {
+            scan = ((DacTransmitScanPlaylists) message).isScan();
         } else {
             logger.error("Unrecognized message from comms manager of type "
                     + message.getClass().getSimpleName());
