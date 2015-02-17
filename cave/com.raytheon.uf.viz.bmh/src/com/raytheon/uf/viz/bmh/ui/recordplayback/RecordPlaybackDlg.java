@@ -82,6 +82,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Dec 09, 2014  #3904     bkowal       Publish a {@link AudioRecordPlaybackNotification}
  *                                      prior to the start of audio recording / playback.
  * Feb 12, 2015  #4076     bkowal       Update the status label based on the action that was performed.
+ * Feb 16, 2015  #4112     bkowal       Publish a {@link AudioPlaybackCompleteNotification} when audio
+ *                                      playback or recording has concluded.
  * 
  * 
  * </pre>
@@ -548,6 +550,10 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
                 // Ignore.
             }
         }
+
+        BMHDialogNotificationManager.getInstance().post(
+                new AudioPlaybackCompleteNotification());
+
         shutdownTimer();
         recBtn.setEnabled(true);
         playBtn.setEnabled(true);
