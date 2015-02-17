@@ -21,6 +21,7 @@ package com.raytheon.uf.edex.bmh.tts;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -99,6 +100,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jan 29, 2015 4060       bkowal      Include fragment id in the name of the generated
  *                                     audio files.
  * Feb 09, 2015 4091       bkowal      Use {@link EdexAudioConverterManager}.
+ * Feb 17, 2015 4136       bkowal      Truncate any audio data with duration that is greater
+ *                                     than the maximum default or specified duration.
  * 
  * </pre>
  * 
@@ -139,6 +142,14 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private static final String TTS_DISABLED_PROPERTY = "bmh.tts.disabled";
 
+    private static final int DEFAULT_MAX_AUDIO_DURATION_SECONDS = 600;
+
+    /*
+     * property used to override the 10-minute maximum audio length. property
+     * value specified in seconds.
+     */
+    private static final String MAX_AUDIO_DURATION = "bmh.audio.max-duration";
+
     /* Configuration */
     private String bmhDataDirectory;
 
@@ -152,6 +163,10 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private long ttsRetryDelay;
 
+    private final int maxAudioDuration;
+
+    private final int maxAudioByteCount;
+
     private final boolean disabled;
 
     private TTSSynthesisFactory synthesisFactory;
@@ -163,6 +178,10 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     public TTSManager(final IMessageLogger messageLogger) {
         this.disabled = Boolean.getBoolean(TTS_DISABLED_PROPERTY);
         this.messageLogger = messageLogger;
+
+        this.maxAudioDuration = Integer.getInteger(MAX_AUDIO_DURATION,
+                DEFAULT_MAX_AUDIO_DURATION_SECONDS);
+        this.maxAudioByteCount = ((this.maxAudioDuration * (int) TimeUtil.MILLIS_PER_SECOND) / 20) * 160;
     }
 
     /*
@@ -432,13 +451,15 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             fragment.setSuccess(ttsReturn.isSynthesisSuccess());
             if (ttsReturn.isSynthesisSuccess()) {
                 /* Synthesis Success */
-                int totalBytes = ttsReturn.getVoiceData().length;
+                byte[] synthesizedAudio = ttsReturn.getVoiceData();
+                int totalPlaybackSeconds = this
+                        .getAudioPlaybackDurationSeconds(synthesizedAudio);
                 statusHandler
                         .info("Text-to-Speech Transformation completed successfully for "
                                 + logIdentifier.toString()
                                 + ".  Length of playback = "
-                                + (((totalBytes / 160) * 20) / 1000)
-                                + " seconds");
+                                + totalPlaybackSeconds + " seconds");
+
                 /* Write the output file. */
                 File outputFile = this.determineOutputFile(message.getId(),
                         fragment.getId(),
@@ -446,7 +467,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                         fragment.getVoice());
                 boolean writeSuccess = true;
                 try {
-                    this.writeSynthesizedAudio(ttsReturn.getVoiceData(),
+                    this.writeSynthesizedAudio(synthesizedAudio,
                             Paths.get(outputFile.getAbsolutePath()),
                             logIdentifier.toString());
                 } catch (IOException e) {
@@ -735,13 +756,38 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             }
         }
 
-        try {
-            Files.write(outputPath, audio);
+        final int totalPlaybackSeconds = this
+                .getAudioPlaybackDurationSeconds(audio);
+        int writeLength = audio.length;
+
+        /*
+         * Verify the duration is not greater than the maximum allowed duration.
+         */
+        if (totalPlaybackSeconds > this.maxAudioDuration) {
+            StringBuilder sb = new StringBuilder("Truncating audio for ");
+            sb.append(logIdentifier.toString()).append(" from ");
+            sb.append(totalPlaybackSeconds).append(" seconds to ");
+            sb.append(this.maxAudioDuration).append(" seconds.");
+            statusHandler.warn(BMH_CATEGORY.AUDIO_TRUNCATED, sb.toString());
+            writeLength = this.maxAudioByteCount;
+        }
+
+        /**
+         * We use a {@link OutputStream} to complete the write just in case we
+         * only want to write a portion of the audio bytes. If we were to copy
+         * an audio array that we want to truncate into a smaller audio array,
+         * we risk a java.lang.OutOfMemoryError which would allow external users
+         * to DDOS the system by constantly sending data files with large blocks
+         * of text that when synthesized are significantly > 10 minutes.
+         */
+        try (OutputStream os = Files.newOutputStream(outputPath)) {
+            os.write(audio, 0, writeLength);
+            os.flush();
             statusHandler.info("Successfully wrote audio output file: "
                     + outputPath.toString() + " for "
                     + logIdentifier.toString() + ". " + audio.length
                     + " bytes were written.");
-        } catch (IOException e) {
+        } catch (Exception e) {
             StringBuilder stringBuilder = new StringBuilder(
                     "Failed to write audio output file: ");
             stringBuilder.append(outputPath.toString());
@@ -993,5 +1039,15 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      */
     public void setSynthesisFactory(TTSSynthesisFactory synthesisFactory) {
         this.synthesisFactory = synthesisFactory;
+    }
+
+    private int getAudioPlaybackDurationSeconds(final byte[] audio) {
+        // TODO: need to centralize audio playback time calculation.
+        /* calculate the duration in seconds */
+        final long playbackTimeMS = audio.length / 160L * 20L;
+        // swt component expects an Integer
+        final int playbackTimeS = (int) playbackTimeMS / 1000;
+
+        return playbackTimeS;
     }
 }

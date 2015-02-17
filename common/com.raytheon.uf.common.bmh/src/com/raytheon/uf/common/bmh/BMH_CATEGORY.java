@@ -43,6 +43,7 @@ import java.util.Map;
  * Nov 19, 2014 3385       bkowal      Added {@link BMH_CATEGORY#LDAD_ERROR}
  * Nov 26, 2014 3821       bsteffen    Add some dac and comms categories
  * Jan 19, 2015 4002       bkowal      Added {@link #DAC_TRANSMIT_BROADCAST_DELAY}.
+ * Feb 17, 2015 4136       bkowal      Added {@link #AUDIO_TRUNCATED}.
  * 
  * </pre>
  * 
@@ -147,6 +148,11 @@ public enum BMH_CATEGORY {
      * transmitter due to an active broadcast live session.
      */
     DAC_TRANSMIT_BROADCAST_DELAY(21),
+    /*
+     * indicates that audio has been truncated because its duration exceeded the
+     * maximum allowed duration.
+     */
+    AUDIO_TRUNCATED(22),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.
