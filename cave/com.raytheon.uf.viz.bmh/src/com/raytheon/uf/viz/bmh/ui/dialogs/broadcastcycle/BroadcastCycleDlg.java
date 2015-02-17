@@ -26,6 +26,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -1120,15 +1121,17 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             }
             request.setSelectedTransmitters(selectedTransmitters);
         } else {
-            List<String> names = data.getCheckedItems();
-            if (names.isEmpty()) {
-                return;
-            }
             request.setInputMessage(inputMessage);
             List<Transmitter> selectedTransmitters = new ArrayList<>();
-            for (String name : names) {
-                selectedTransmitters.addAll(transmitterGroups.get(name)
+            for (Entry<String, Boolean> entry : data.getDataMap().entrySet()) {
+                if (!entry.getValue()) {
+                    selectedTransmitters.addAll(transmitterGroups.get(
+                            entry.getKey())
                         .getTransmitters());
+                }
+            }
+            if (selectedTransmitters.isEmpty()) {
+                return;
             }
             request.setSelectedTransmitters(selectedTransmitters);
         }
