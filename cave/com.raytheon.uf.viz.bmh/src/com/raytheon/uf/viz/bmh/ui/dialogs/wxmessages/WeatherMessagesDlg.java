@@ -32,6 +32,8 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -58,6 +60,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
+import com.raytheon.uf.common.bmh.request.InputMessageAudioResponse;
+import com.raytheon.uf.common.bmh.request.InputMessageRequest;
+import com.raytheon.uf.common.bmh.request.InputMessageRequest.InputMessageAction;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -78,6 +83,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.InputMessageSequence.SEQUENCE_DIRECTION;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -143,17 +149,27 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    with static message types.
  * Feb 11, 2015  4115     bkowal      Confirm submission of expired messages.
  * Feb 11, 2015  4044     rjpeter     Only select transmitters whose program contains the message type.
+ * Feb 12, 2015  4113     bkowal      Users can now advance through the input messages using a previous
+ *                                    and next button.
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
 
-public class WeatherMessagesDlg extends AbstractBMHDialog {
+public class WeatherMessagesDlg extends AbstractBMHDialog implements
+        KeyListener {
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(WeatherMessagesDlg.class);
+
+    /** Buttons used to advance through sequenced records when loaded. */
+    private Button prevSequenceBtn;
+
+    private Label sequenceLbl;
+
+    private Button nextSequenceBtn;
 
     /** Message name. */
     private Text msgNameTF;
@@ -233,6 +249,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     private WxMessagesContent content = null;
 
     /**
+     * Keeps track of the available input messages that the user will be able to
+     * move back and forth through.
+     */
+    private InputMessageSequence messageSequence;
+
+    /**
      * Constructor.
      * 
      * @param parentShell
@@ -265,7 +287,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     protected void initializeComponents(Shell shell) {
         setText(DlgInfo.WEATHER_MESSAGES.getTitle());
 
-        createNewEditButtons();
+        createHeaderButtons();
         createMainControls();
         this.handleNewAction();
     }
@@ -289,11 +311,11 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
     }
 
     /**
-     * Create the New and Edit buttons.
+     * Create the new, edit, and message navigation buttons.
      */
-    private void createNewEditButtons() {
+    private void createHeaderButtons() {
         Composite btnComp = new Composite(shell, SWT.NONE);
-        btnComp.setLayout(new GridLayout(2, false));
+        btnComp.setLayout(new GridLayout(5, false));
         btnComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
         int buttonWidth = 70;
@@ -315,6 +337,13 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                 }
 
                 handleNewAction();
+                /*
+                 * disable the sequenced message buttons when the user interacts
+                 * with a message that is not in the sequence.
+                 */
+                prevSequenceBtn.setEnabled(false);
+                nextSequenceBtn.setEnabled(false);
+                sequenceLbl.setText("");
             }
         });
 
@@ -342,16 +371,49 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
                             return;
                         }
 
-                        if (returnValue instanceof InputAudioMessage) {
-                            InputAudioMessage im = (InputAudioMessage) returnValue;
-                            sameTransmitters.reset();
-                            populateControlsForEdit(im.getInputMessage(), im);
+                        if (returnValue instanceof InputMessageSequence) {
+                            messageSequence = (InputMessageSequence) returnValue;
+                            loadMessageFromSequence();
+                            prevSequenceBtn.setEnabled(true);
+                            nextSequenceBtn.setEnabled(true);
+                            nextSequenceBtn.forceFocus();
                         }
                     }
                 });
                 simd.open();
             }
         });
+
+        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        gd.horizontalIndent = 15;
+        prevSequenceBtn = new Button(btnComp, SWT.PUSH);
+        prevSequenceBtn.setText("< Prev");
+        prevSequenceBtn.setLayoutData(gd);
+        prevSequenceBtn.setEnabled(false);
+        prevSequenceBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                continueSequence(SEQUENCE_DIRECTION.LEFT);
+            }
+        });
+        prevSequenceBtn.addKeyListener(this);
+
+        gd = new GridData(95, SWT.DEFAULT);
+        sequenceLbl = new Label(btnComp, SWT.CENTER);
+        sequenceLbl.setLayoutData(gd);
+
+        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        nextSequenceBtn = new Button(btnComp, SWT.PUSH);
+        nextSequenceBtn.setText("Next >");
+        nextSequenceBtn.setLayoutData(gd);
+        nextSequenceBtn.setEnabled(false);
+        nextSequenceBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                continueSequence(SEQUENCE_DIRECTION.RIGHT);
+            }
+        });
+        nextSequenceBtn.addKeyListener(this);
 
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
     }
@@ -1044,6 +1106,13 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         DialogUtility.showMessageBox(this.shell, SWT.ICON_INFORMATION | SWT.OK,
                 "Weather Messages",
                 "The weather message has been successfully submitted.");
+        if (this.nextSequenceBtn.isEnabled()) {
+            /*
+             * enable message sequencing via the arrow buttons if sequenced
+             * messages have been loaded.
+             */
+            this.nextSequenceBtn.forceFocus();
+        }
     }
 
     /**
@@ -1478,5 +1547,109 @@ public class WeatherMessagesDlg extends AbstractBMHDialog {
         }
 
         return currentCal;
+    }
+
+    private void continueSequence(final SEQUENCE_DIRECTION direction) {
+        this.messageSequence.advanceSequence(direction);
+        this.loadMessageFromSequence();
+    }
+
+    private void loadMessageFromSequence() {
+        if (this.messageSequence == null) {
+            return;
+        }
+
+        int id = this.messageSequence.getCurrentSequence();
+        if (id == -1) {
+            statusHandler
+                    .error("No input message sequencing information exists.");
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(this.messageSequence.getCurrentIndex() + 1).append(" of ")
+                .append(this.messageSequence.getMaxSequence());
+        this.sequenceLbl.setText(sb.toString());
+
+        InputAudioMessage im = null;
+
+        try {
+            im = this.getInputMessageById(id);
+        } catch (Exception e) {
+            statusHandler
+                    .error("Failed to retrieve the Input Message with id: "
+                            + id + ".", e);
+            /*
+             * reset the dialog; we do not want to associate the same message
+             * (the message that was previously successfully retrieved) with two
+             * sequence numbers.
+             */
+            this.handleNewAction();
+            return;
+        }
+        sameTransmitters.reset();
+        populateControlsForEdit(im.getInputMessage(), im);
+    }
+
+    /**
+     * Get the Input Message from the database using the primary key Id.
+     * 
+     * @param id
+     *            Primary Key Id.
+     * @return The input message and list of audio.
+     */
+    private InputAudioMessage getInputMessageById(int id) throws Exception {
+        InputMessageRequest imRequest = new InputMessageRequest();
+        imRequest.setAction(InputMessageAction.GetByPkId);
+        imRequest.setPkId(id);
+
+        InputAudioMessage inputAudioMessageData = null;
+
+        InputMessageAudioResponse imResponse = (InputMessageAudioResponse) BmhUtils
+                .sendRequest(imRequest);
+        List<InputMessage> inputMessages = imResponse.getInputMessageList();
+
+        if (inputMessages == null || inputMessages.isEmpty()) {
+            return inputAudioMessageData;
+        }
+
+        // Create the input audio message data and populate the object.
+        inputAudioMessageData = new InputAudioMessage();
+
+        inputAudioMessageData.setInputMessage(inputMessages.get(0));
+
+        // Check if the the audio is null. If it is then set it up to be an
+        // empty list.
+        List<InputMessageAudioData> audioDataList = imResponse
+                .getAudioDataList();
+        if (imResponse.getAudioDataList() == null) {
+            audioDataList = Collections.emptyList();
+        }
+
+        inputAudioMessageData.setAudioDataList(audioDataList);
+        inputAudioMessageData.setValidatedMsg(imResponse.getValidatedMessage());
+
+        return inputAudioMessageData;
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        // Do Nothing.
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+        /*
+         * if the left arrow key or the right arrow key has been released, set
+         * the focus to to corresponding sequence button and advance the message
+         * sequence.
+         */
+        if (e.keyCode == SWT.ARROW_LEFT) {
+            this.prevSequenceBtn.forceFocus();
+            this.continueSequence(SEQUENCE_DIRECTION.LEFT);
+        } else if (e.keyCode == SWT.ARROW_RIGHT) {
+            this.nextSequenceBtn.forceFocus();
+            this.continueSequence(SEQUENCE_DIRECTION.RIGHT);
+        }
     }
 }

@@ -250,7 +250,7 @@ public class FilterComp extends Composite {
                 true, false));
 
         Label filterLbl = new Label(filterControlComp, SWT.NONE);
-        filterLbl.setText("Filter: ");
+        filterLbl.setText("Name: ");
 
         /*
          * Filter text control.
@@ -300,7 +300,7 @@ public class FilterComp extends Composite {
          * Date label.
          */
         Label dateLbl = new Label(filterControlComp, SWT.NONE);
-        dateLbl.setText("Date: ");
+        dateLbl.setText("Creation Date: ");
 
         /*
          * Combo box of date choices.
