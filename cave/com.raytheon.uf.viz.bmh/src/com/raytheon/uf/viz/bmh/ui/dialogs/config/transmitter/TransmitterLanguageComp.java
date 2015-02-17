@@ -68,6 +68,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     new Transmitter Groups.
  * Feb 16, 2015 4082       bkowal      Only disable edit, delete buttons based on
  *                                     Transmitter or Group selection.
+ * Feb 17, 2015 4082       bkowal      The contents of the languages table should determine
+ *                                     whether the add button is disabled/enabled when it is
+ *                                     not forcefully disabled.
  * 
  * </pre>
  * 
@@ -211,18 +214,7 @@ public class TransmitterLanguageComp {
     }
 
     public void enableGroupControls(boolean enabled) {
-        this.addButton.setEnabled(enabled);
-
-        if (enabled == false) {
-            /*
-             * always disable edit and delete when disabled.
-             */
-            this.editButton.setEnabled(enabled);
-            this.deleteButton.setEnabled(enabled);
-            this.languagesTable.removeAllTableItems();
-            this.archiveLanguagesMap.putAll(this.existingLanguagesMap);
-            this.existingLanguagesMap.clear();
-        } else {
+        if (enabled) {
             /*
              * edit and delete should only be enabled when a language is
              * actually selected.
@@ -233,6 +225,16 @@ public class TransmitterLanguageComp {
             this.existingLanguagesMap.putAll(this.archiveLanguagesMap);
             this.archiveLanguagesMap.clear();
             this.buildLanguagesTable();
+        } else {
+            /*
+             * always disable edit and delete when disabled.
+             */
+            this.addButton.setEnabled(enabled);
+            this.editButton.setEnabled(enabled);
+            this.deleteButton.setEnabled(enabled);
+            this.languagesTable.removeAllTableItems();
+            this.archiveLanguagesMap.putAll(this.existingLanguagesMap);
+            this.existingLanguagesMap.clear();
         }
     }
 
