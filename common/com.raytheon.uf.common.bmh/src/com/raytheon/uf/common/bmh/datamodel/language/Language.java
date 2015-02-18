@@ -29,6 +29,8 @@ package com.raytheon.uf.common.bmh.datamodel.language;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 30, 2014 3175       rjpeter     Initial creation
+ * Feb 18, 2015 4136       bkowal      Changed the {@link #SPANISH} {@link #identifier} to
+ *                                     "SPA" for consistency.
  * 
  * </pre>
  * 
@@ -37,7 +39,7 @@ package com.raytheon.uf.common.bmh.datamodel.language;
  */
 public enum Language {
     // Language Name: 0-English, 1-Spanish, default - English
-    ENGLISH("ENG"), SPANISH("SPN");
+    ENGLISH("ENG"), SPANISH("SPA");
 
     public static final int LENGTH = 7;
 

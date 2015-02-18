@@ -59,6 +59,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
  * Jan 05, 2015  3872     rjpeter     Add file name to stack trace.
  * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
+ * Feb 18, 2015  4136     bkowal      Use the {@link Language} identifiers to determine
+ *                                    the Language when parsing the input.
  * </pre>
  * 
  * @author bsteffen
@@ -99,8 +101,9 @@ public class InputMessageParser {
         this.messageLogger = messageLogger;
     }
 
-    public InputMessage parse(@Body CharSequence text,
-            @Headers Map<String, Object> headers) {
+    public InputMessage parse(@Body
+    CharSequence text, @Headers
+    Map<String, Object> headers) {
         InputMessage message = new InputMessage();
         String fileName = headers.get("CamelFileNameOnly").toString();
         message.setName(fileName);
@@ -154,9 +157,9 @@ public class InputMessageParser {
             throw new ParseException("Unhandled format:" + format.group(1),
                     format.start(1));
         }
-        if ("ENG".equals(format.group(2))) {
+        if (Language.ENGLISH.getIdentifier().equals(format.group(2))) {
             message.setLanguage(Language.ENGLISH);
-        } else if ("SPA".equals(format.group(2))) {
+        } else if (Language.SPANISH.getIdentifier().equals(format.group(2))) {
             message.setLanguage(Language.SPANISH);
         } else {
             throw new ParseException("Unhandled language:" + format.group(2),

@@ -44,6 +44,7 @@ import java.util.Map;
  * Nov 26, 2014 3821       bsteffen    Add some dac and comms categories
  * Jan 19, 2015 4002       bkowal      Added {@link #DAC_TRANSMIT_BROADCAST_DELAY}.
  * Feb 17, 2015 4136       bkowal      Added {@link #AUDIO_TRUNCATED}.
+ * Feb 18, 2015 4136       bkowal      Added {@link #EXCESSIVE_FILE_SIZE}.
  * 
  * </pre>
  * 
@@ -153,6 +154,11 @@ public enum BMH_CATEGORY {
      * maximum allowed duration.
      */
     AUDIO_TRUNCATED(22),
+    /*
+     * indicates that an incoming file has been discarded because its size was
+     * greater than the maximum allowed size.
+     */
+    EXCESSIVE_FILE_SIZE(23),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.

@@ -3,7 +3,14 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
+	<bean id="rejectionDataManager" class="com.raytheon.uf.edex.bmh.BMHRejectionDataManager" />
+
 	<bean id="fileChangedStrategy" class="com.raytheon.uf.edex.esb.camel.FileChangedExclusiveReadLockStrategy"/>
+
+	<bean id="largeFileFilter" class="com.raytheon.uf.edex.bmh.msg.validator.BMHLargeFileFilter"
+	depends-on="rejectionDataManager">
+		<constructor-arg ref="rejectionDataManager" />
+	</bean>
 
 	<bean id="inputMessageParser" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageParser">
 		<constructor-arg ref="edexMessageLogger" />
@@ -17,7 +24,7 @@
 		xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
 		<endpoint id="bmhDirectoryScanner"
-            uri="file:${BMH_DATA}/nwr/ready?delete=true&amp;delay=5000&amp;maxMessagesPerPoll=1000&amp;exclusiveReadLockStrategy=#fileChangedStrategy&amp;recursive=true" />
+            uri="file:${BMH_DATA}/nwr/ready?delete=true&amp;delay=5000&amp;maxMessagesPerPoll=1000&amp;exclusiveReadLockStrategy=#fileChangedStrategy&amp;filter=#largeFileFilter&amp;recursive=true" />
 
 		<route id="bmhInputMessageParser">
 		    <from ref="bmhDirectoryScanner" />
