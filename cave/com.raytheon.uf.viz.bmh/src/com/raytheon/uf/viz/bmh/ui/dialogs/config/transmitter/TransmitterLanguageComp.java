@@ -219,11 +219,10 @@ public class TransmitterLanguageComp {
              * edit and delete should only be enabled when a language is
              * actually selected.
              */
-            if (this.archiveLanguagesMap.isEmpty()) {
-                return;
+            if (this.archiveLanguagesMap.isEmpty() == false) {
+                this.existingLanguagesMap.putAll(this.archiveLanguagesMap);
+                this.archiveLanguagesMap.clear();
             }
-            this.existingLanguagesMap.putAll(this.archiveLanguagesMap);
-            this.archiveLanguagesMap.clear();
             this.buildLanguagesTable();
         } else {
             /*
