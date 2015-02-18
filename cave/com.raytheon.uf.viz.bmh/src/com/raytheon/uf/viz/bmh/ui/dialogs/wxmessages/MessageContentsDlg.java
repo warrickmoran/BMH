@@ -24,8 +24,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
@@ -44,11 +48,17 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.ImportedByUtils;
 import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
+import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
@@ -75,6 +85,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 9, 2014   #3904     bkowal       Publish a {@link AudioRecordPlaybackNotification}
  *                                      prior to the start of audio playback.
  * Feb 11, 2015  #3908     bkowal       Removed the "Edit" button.
+ * Feb 16, 2015  #4118     bkowal       Added an option to import audio.
  * 
  * </pre>
  * 
@@ -82,6 +93,15 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * @version 1.0
  */
 public class MessageContentsDlg extends CaveSWTDialogBase {
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(MessageContentsDlg.class);
+
+    private final LdadConfigDataManager ldadDataMgr = new LdadConfigDataManager();
+
+    private final int MAX_AUDIO_SECONDS = 600;
+
+    private final int MAX_AUDIO_BYTES = ((MAX_AUDIO_SECONDS * (int) TimeUtil.MILLIS_PER_SECOND) / 20) * 160;
+
     /** Message text styled text control. */
     private StyledText messageSt;
 
@@ -99,14 +119,17 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
 
     private TextAudioPlaybackDelegate delegate;
 
-    /** Import button. */
-    private Button importBtn;
+    /** Import message text button. */
+    private Button importTextBtn;
 
     /** Record images. */
     private RecordImages recordImages;
 
     /** Record button. */
     private Button recordBtn;
+
+    /** Import audio button. */
+    private Button importAudioBtn;
 
     /** Audio data list. */
     private List<InputMessageAudioData> audioDataList;
@@ -230,11 +253,11 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        importBtn = new Button(textActionBtnComp, SWT.PUSH);
-        importBtn.setText("Import...");
-        importBtn.setToolTipText("Import text from file");
-        importBtn.setLayoutData(gd);
-        importBtn.addSelectionListener(new SelectionAdapter() {
+        importTextBtn = new Button(textActionBtnComp, SWT.PUSH);
+        importTextBtn.setText("Import...");
+        importTextBtn.setToolTipText("Import text from file");
+        importTextBtn.setLayoutData(gd);
+        importTextBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (msgAudioComp.hasAudioControls()) {
@@ -305,7 +328,7 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
      */
     private void createRecordAudioControls() {
         Composite audioComp = new Composite(shell, SWT.NONE);
-        audioComp.setLayout(new GridLayout(2, true));
+        audioComp.setLayout(new GridLayout(3, false));
         audioComp
                 .setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
@@ -331,6 +354,30 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
 
                 if (choice == SWT.OK) {
                     handleRecordAction();
+                }
+            }
+        });
+
+        gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
+        gd.widthHint = 80;
+        importAudioBtn = new Button(audioComp, SWT.PUSH);
+        importAudioBtn.setText("Import...");
+        importAudioBtn.setToolTipText("Import audio from file");
+        importAudioBtn.setLayoutData(gd);
+        importAudioBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                StringBuilder msg = new StringBuilder();
+
+                msg.append("Importing audio will remove the existing text and audio files.\n\n");
+                msg.append("Do you wish to continue?");
+
+                int choice = DialogUtility.showMessageBox(getShell(),
+                        SWT.ICON_QUESTION | SWT.OK | SWT.CANCEL,
+                        "Import Audio", msg.toString());
+
+                if (choice == SWT.OK) {
+                    handleAudioImportAction();
                 }
             }
         });
@@ -382,7 +429,8 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         // getText should never return null according to the JavaDoc.
         final String currentMsg = this.messageSt.getText().trim();
 
-        if (RecordedByUtils.isMessage(currentMsg)) {
+        if (RecordedByUtils.isMessage(currentMsg)
+                || ImportedByUtils.isMessage(currentMsg)) {
             this.contentType = CONTENT_TYPE.AUDIO;
         } else {
             this.contentType = CONTENT_TYPE.TEXT;
@@ -477,11 +525,163 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         return false;
     }
 
+    private void handleAudioImportAction() {
+        /*
+         * Get a list of supported formats from the server and build a file
+         * selection filter with them.
+         */
+        final Set<BMHAudioFormat> supportedEncodings;
+        try {
+            supportedEncodings = this.ldadDataMgr.getSupportedLdadEncodings();
+        } catch (Exception e) {
+            statusHandler.error("Failed to retrieve the supported encodings.",
+                    e);
+            return;
+        }
+
+        Iterator<BMHAudioFormat> formatIterator = supportedEncodings.iterator();
+        /*
+         * remove the mp3 audio format, if present. the default pre-compiled and
+         * pre-packaged libmp3lame provides support for encoding. however, it
+         * does not provide support for decoding => decoding requires royalty
+         * payments: http://www.mp3licensing.com/royalty/software.html.
+         */
+        while (formatIterator.hasNext()) {
+            if (formatIterator.next() == BMHAudioFormat.MP3) {
+                formatIterator.remove();
+            }
+        }
+        final String[] filterNames = new String[supportedEncodings.size()];
+        final String[] filterExtensions = new String[supportedEncodings.size()];
+        int index = 0;
+        for (BMHAudioFormat format : supportedEncodings) {
+            filterNames[index] = format.getName();
+            filterExtensions[index] = "*" + format.getExtension();
+            ++index;
+        }
+
+        FileDialog dlg = new FileDialog(shell, SWT.OPEN);
+        dlg.setFilterNames(filterNames);
+        dlg.setFilterExtensions(filterExtensions);
+        String fn = dlg.open();
+        if (fn == null) {
+            /*
+             * dialog closed.
+             */
+            return;
+        }
+
+        Path filePath = Paths.get(fn);
+        if (Files.exists(filePath) == false) {
+            /*
+             * file does not exist.
+             */
+            StringBuilder sb = new StringBuilder("The specified file: ");
+            sb.append(filePath.toString()).append(" does not exist.");
+
+            DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING | SWT.OK,
+                    "File Read Error", sb.toString());
+            return;
+        }
+
+        /*
+         * determine the input audio format based on the extension of the
+         * selected file.
+         */
+        final String fileName = filePath.getFileName().toString();
+        final String[] fileParts = fileName.split("\\.");
+        final String fileExtension = (fileParts.length >= 1) ? "."
+                + fileParts[fileParts.length - 1] : null;
+        if (fileExtension == null
+                || BMHAudioFormat.isValidExtension(fileExtension) == false) {
+            StringBuilder sb = new StringBuilder(
+                    "Invalid file type specified: ");
+            sb.append(filePath.toString()).append(".");
+
+            DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING | SWT.OK,
+                    "File Read Error", sb.toString());
+            return;
+        }
+
+        BMHAudioFormat selectedAudioFormat = BMHAudioFormat
+                .lookupByExtension(fileExtension);
+        /*
+         * Read the file bytes.
+         */
+        byte[] audioData;
+        try {
+            audioData = Files.readAllBytes(filePath);
+        } catch (IOException e) {
+            StringBuilder sb = new StringBuilder("Failed to read audio file: ");
+            sb.append(filePath.toString()).append(".");
+
+            DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING | SWT.OK,
+                    "File Read Error", sb.toString());
+            return;
+        }
+        // TODO: should we limit file size?
+
+        /*
+         * If the file is already a ulaw file, it will not need to be converted.
+         */
+        if (selectedAudioFormat != BMHAudioFormat.ULAW) {
+            try {
+                audioData = this.ldadDataMgr.convertAudio(selectedAudioFormat,
+                        audioData);
+            } catch (Exception e) {
+                StringBuilder sb = new StringBuilder(
+                        "Failed to convert audio in file: ");
+                sb.append(filePath.toString()).append(" from format ")
+                        .append(selectedAudioFormat.name());
+                sb.append(" to format ").append(BMHAudioFormat.ULAW.name())
+                        .append(".");
+
+                DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING
+                        | SWT.OK, "File Conversion Error", sb.toString());
+                return;
+            }
+        }
+
+        /*
+         * Determine if the audio needs to be truncated.
+         */
+        int currentAudioDurationSeconds = this
+                .getAudioPlaybackLengthSeconds(audioData);
+        if (currentAudioDurationSeconds > MAX_AUDIO_SECONDS) {
+            final byte[] truncatedAudio = Arrays.copyOf(audioData,
+                    MAX_AUDIO_BYTES);
+            audioData = truncatedAudio;
+
+            /*
+             * Confirm that the user approves of the audio truncation.
+             */
+            StringBuilder sb = new StringBuilder(
+                    "The imported audio will need to be truncated from ");
+            sb.append(currentAudioDurationSeconds).append(" seconds to ");
+            sb.append(MAX_AUDIO_SECONDS).append(
+                    " seconds. Would you like to proceed?");
+
+            int option = DialogUtility.showMessageBox(getShell(),
+                    SWT.ICON_QUESTION | SWT.YES | SWT.NO,
+                    "Audio Truncation Required", sb.toString());
+            if (option != SWT.YES) {
+                return;
+            }
+        }
+
+        /*
+         * Process the audio as though it were recorded audio.
+         */
+        this.audioLoaded(audioData, ImportedByUtils.getMessage(filePath),
+                "User Import");
+    }
+
     /**
      * For the microphone contents, display the record/playback dialog.
      */
     private void handleRecordAction() {
-        RecordPlaybackDlg recPlaybackDlg = new RecordPlaybackDlg(shell, 600);
+        RecordPlaybackDlg recPlaybackDlg = new RecordPlaybackDlg(shell,
+                MAX_AUDIO_SECONDS);
         recPlaybackDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -493,37 +693,45 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
                     return;
                 }
 
-                audioRecorded(((ByteBuffer) returnValue).array());
+                audioLoaded(((ByteBuffer) returnValue).array(),
+                        RecordedByUtils.getMessage(), "User Recording");
             }
         });
         recPlaybackDlg.open();
     }
 
-    private void audioRecorded(byte[] messageAudio) {
+    private void audioLoaded(byte[] messageAudio, final String messageText,
+            final String displayName) {
         /*
          * if we reach this point, the user will have confirmed purging the
          * current information and the user has successfully recorded new audio.
          */
         this.playBtn.setEnabled(false);
-        this.messageSt.setText(RecordedByUtils.getMessage());
+        this.messageSt.setText(messageText);
 
         msgAudioComp.removeAllAudioControls();
         // create a new record to display in the audio list
         InputMessageAudioData recordedInputAudio = new InputMessageAudioData();
-        recordedInputAudio.setTransmitterGroupName("User Recording"); // agreed.
-                                                                      // rename
+        recordedInputAudio.setTransmitterGroupName(displayName); // agreed.
+                                                                 // rename
         // variable.
         recordedInputAudio.setSuccess(true);
-        // TODO: need to centralize audio playback time calculation.
-        /* calculate the duration in seconds */
-        final long playbackTimeMS = messageAudio.length / 160L * 20L;
-        // swt component expects an Integer
-        final int playbackTimeS = (int) playbackTimeMS / 1000;
-        recordedInputAudio.setAudioDuration(playbackTimeS);
+        recordedInputAudio.setAudioDuration(this
+                .getAudioPlaybackLengthSeconds(messageAudio));
         recordedInputAudio.setAudio(messageAudio);
         // TODO: format duration string if it end up being used.
         this.msgAudioComp.addAudioControl(recordedInputAudio);
 
         this.contentType = CONTENT_TYPE.AUDIO;
+    }
+
+    private int getAudioPlaybackLengthSeconds(final byte[] audio) {
+        // TODO: need to centralize audio playback time calculation.
+        /* calculate the duration in seconds */
+        final long playbackTimeMS = audio.length / 160L * 20L;
+        // swt component expects an Integer
+        final int playbackTimeS = (int) playbackTimeMS / 1000;
+
+        return playbackTimeS;
     }
 }

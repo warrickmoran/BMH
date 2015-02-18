@@ -158,6 +158,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     active transmitters as they are changed.
  * Feb 16, 2015  4112      bkowal      Re-enable inline monitoring if it was previously enabled when
  *                                     a {@link AudioPlaybackCompleteNotification} is received.
+ * Feb 16, 2015  4118      bkowal      Check for disposal of components updated
+ *                                     asynchronously.
  * 
  * </pre>
  * 
@@ -1582,6 +1584,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      *            Test to put in the label.
      */
     private void setProgramLabelTextFontAndColor(String text) {
+        if (progValueLbl.isDisposed()) {
+            return;
+        }
+        
         if (eoText.equals(text) || blText.equals(text)) {
             progValueLbl.setFont(liveBroadcastFont);
             progValueLbl.setForeground(getDisplay().getSystemColor(
@@ -1602,6 +1608,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      *            The updated TableData
      */
     private void updateTable(final TableData tableData) {
+        if (tableComp.isDisposed()) {
+            return;
+        }
         VizApp.runAsync(new Runnable() {
             @Override
             public void run() {

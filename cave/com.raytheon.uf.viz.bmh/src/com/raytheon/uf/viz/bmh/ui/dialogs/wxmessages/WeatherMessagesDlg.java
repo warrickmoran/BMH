@@ -67,6 +67,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.ImportedByUtils;
 import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
@@ -151,6 +152,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 11, 2015  4044     rjpeter     Only select transmitters whose program contains the message type.
  * Feb 12, 2015  4113     bkowal      Users can now advance through the input messages using a previous
  *                                    and next button.
+ * Feb 16, 2015  4118     bkowal      Check for imported audio when determining message type.
+ *                                    
  * </pre>
  * 
  * @author lvenable
@@ -1532,8 +1535,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
      * @return
      */
     private CONTENT_TYPE determineContentType(final String content) {
-        return RecordedByUtils.isMessage(content) ? CONTENT_TYPE.AUDIO
-                : CONTENT_TYPE.TEXT;
+        return (RecordedByUtils.isMessage(content) || ImportedByUtils
+                .isMessage(content)) ? CONTENT_TYPE.AUDIO : CONTENT_TYPE.TEXT;
     }
 
     /*

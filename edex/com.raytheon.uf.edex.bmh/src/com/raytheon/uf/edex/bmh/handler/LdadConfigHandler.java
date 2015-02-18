@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.LdadConfigNotification;
@@ -46,6 +47,7 @@ import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
  * Nov 13, 2014 3803       bkowal      Transmit LdadConfigNotification
  * Dec 4, 2014  3880       bkowal      Added handleRetrieveSupportedEncodings.
  * Feb 09, 2015 4091       bkowal      Use {@link EdexAudioConverterManager}.
+ * Feb 16, 2015 4118       bkowal      Added {@link #handleAudioConversion(LdadConfigResponse, LdadConfigRequest)}.
  * 
  * </pre>
  * 
@@ -83,6 +85,9 @@ public class LdadConfigHandler extends
             break;
         case RetrieveSupportedEncodings:
             this.handleRetrieveSupportedEncodings(response);
+            break;
+        case ConvertAudio:
+            this.handleAudioConversion(response, request);
             break;
         }
 
@@ -130,6 +135,13 @@ public class LdadConfigHandler extends
     private void handleRetrieveSupportedEncodings(LdadConfigResponse response) {
         response.setEncodings(EdexAudioConverterManager.getInstance()
                 .getSupportedFormats());
+    }
+
+    private void handleAudioConversion(LdadConfigResponse response,
+            final LdadConfigRequest request) throws Exception {
+        response.setConvertedAudio(EdexAudioConverterManager.getInstance()
+                .convertAudio(request.getAudioBytes(),
+                        request.getSourceFormat(), BMHAudioFormat.ULAW));
     }
 
     private List<LdadConfig> wrapSingleRecordList(LdadConfig ldadConfig) {

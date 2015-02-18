@@ -41,6 +41,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Jul 11, 2014    3381    mpduff      Initial creation
  * Nov 13, 2014    3803    bkowal      Implemented.
  * Dec 4, 2014     3880    bkowal      Added getSupportedLdadEncodings.
+ * Feb 16, 2015    4118    bkowal      Added {@link #convertAudio(BMHAudioFormat, byte[])}.
  * 
  * </pre>
  * 
@@ -102,6 +103,29 @@ public class LdadConfigDataManager {
         }
 
         return response.getEncodings();
+    }
+
+    /**
+     * Converts the specified audio bytes from the specified source audio format
+     * to the ulaw audio format.
+     * 
+     * @param sourceFormat
+     *            the specified source audio format
+     * @param audioBytes
+     *            the specified audio bytes
+     * @return the converted audio bytes
+     * @throws Exception
+     */
+    public byte[] convertAudio(BMHAudioFormat sourceFormat, byte[] audioBytes)
+            throws Exception {
+        LdadConfigRequest request = new LdadConfigRequest();
+        request.setAction(LdadConfigAction.ConvertAudio);
+        request.setSourceFormat(sourceFormat);
+        request.setAudioBytes(audioBytes);
+        LdadConfigResponse response = (LdadConfigResponse) BmhUtils
+                .sendRequest(request);
+
+        return response.getConvertedAudio();
     }
 
     public void deleteLdadConfig(LdadConfig ldadConfig) throws Exception {

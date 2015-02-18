@@ -35,6 +35,7 @@ package com.raytheon.uf.common.bmh.audio;
  * Oct 2, 2014  3642       bkowal      Fix file extension specifiers
  * Dec 3, 2014  3880       bkowal      Added MP3.
  * Jan 29, 2015 4057       bkowal      Added {@link #isValidExtension(String)}.
+ * Feb 16, 2015 4118       bkowal      Added {@link #name}.
  * 
  * </pre>
  * 
@@ -44,15 +45,17 @@ package com.raytheon.uf.common.bmh.audio;
 
 public enum BMHAudioFormat {
     /* The WAV Audio Format. */
-    WAV(".wav"),
+    WAV(".wav", "WAV File (*.wav)"),
     /* The ULAW Audio Format. */
-    ULAW(".ulaw"),
+    ULAW(".ulaw", "ULAW File (*.ulaw)"),
     /* The PCM Audio Format. */
-    PCM(".pcm"),
+    PCM(".pcm", "PCM File (*.pcm)"),
     /* The proprietary MP3 Audio Format. */
-    MP3(".mp3");
+    MP3(".mp3", "MP3 File (*.mp3)");
 
     private final String extension;
+    
+    private final String name;
 
     /**
      * Constructor
@@ -60,12 +63,17 @@ public enum BMHAudioFormat {
      * @param extension
      *            the extension associated with the audio format
      */
-    private BMHAudioFormat(final String extension) {
+    private BMHAudioFormat(final String extension, final String name) {
         this.extension = extension;
+        this.name = name;
     }
 
     public String getExtension() {
         return this.extension;
+    }
+    
+    public String getName() {
+        return this.name;
     }
 
     /**

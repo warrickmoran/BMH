@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3803       bkowal      Initial creation
  * Dec 4, 2014  3880       bkowal      Added RetrieveSupportedEncodings.
+ * Feb 16, 2015 4118       bkowal      Added fields to support audio conversion.
  * 
  * </pre>
  * 
@@ -61,7 +63,11 @@ public class LdadConfigRequest extends AbstractBMHServerRequest {
          * Retrieves the {@link BMHAudioFormat}s that the system has audio
          * converters for
          */
-        RetrieveSupportedEncodings
+        RetrieveSupportedEncodings,
+        /*
+         * Converts the audio from the specified format to the ulaw format
+         */
+        ConvertAudio
     }
 
     @DynamicSerializeElement
@@ -75,6 +81,12 @@ public class LdadConfigRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private LdadConfig ldadConfig;
+    
+    @DynamicSerializeElement
+    private BMHAudioFormat sourceFormat;
+    
+    @DynamicSerializeElement
+    private byte[] audioBytes;
 
     /**
      * 
@@ -147,5 +159,33 @@ public class LdadConfigRequest extends AbstractBMHServerRequest {
      */
     public void setLdadConfig(LdadConfig ldadConfig) {
         this.ldadConfig = ldadConfig;
+    }
+
+    /**
+     * @return the sourceFormat
+     */
+    public BMHAudioFormat getSourceFormat() {
+        return sourceFormat;
+    }
+
+    /**
+     * @param sourceFormat the sourceFormat to set
+     */
+    public void setSourceFormat(BMHAudioFormat sourceFormat) {
+        this.sourceFormat = sourceFormat;
+    }
+
+    /**
+     * @return the audioBytes
+     */
+    public byte[] getAudioBytes() {
+        return audioBytes;
+    }
+
+    /**
+     * @param audioBytes the audioBytes to set
+     */
+    public void setAudioBytes(byte[] audioBytes) {
+        this.audioBytes = audioBytes;
     }
 }

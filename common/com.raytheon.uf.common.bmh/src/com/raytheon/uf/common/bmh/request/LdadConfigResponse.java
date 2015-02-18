@@ -40,6 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2014 3803       bkowal      Initial creation
  * Dec 4, 2014  3880       bkowal      Added encodings.
+ * Feb 16, 2015 4118       bkowal      Added {@link #convertedAudio}.
  * 
  * </pre>
  * 
@@ -54,6 +55,9 @@ public class LdadConfigResponse {
 
     @DynamicSerializeElement
     private Set<BMHAudioFormat> encodings;
+
+    @DynamicSerializeElement
+    private byte[] convertedAudio;
 
     /**
      * 
@@ -89,5 +93,20 @@ public class LdadConfigResponse {
      */
     public void setEncodings(Set<BMHAudioFormat> encodings) {
         this.encodings = encodings;
+    }
+
+    /**
+     * @return the convertedAudio
+     */
+    public byte[] getConvertedAudio() {
+        return convertedAudio;
+    }
+
+    /**
+     * @param convertedAudio
+     *            the convertedAudio to set
+     */
+    public void setConvertedAudio(byte[] convertedAudio) {
+        this.convertedAudio = convertedAudio;
     }
 }
