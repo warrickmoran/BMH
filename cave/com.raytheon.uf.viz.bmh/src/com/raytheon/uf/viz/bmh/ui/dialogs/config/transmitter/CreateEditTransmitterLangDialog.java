@@ -64,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 13, 2015 3809       bkowal      Initial creation
  * Feb 12, 2015 4082       bkowal      Handle the case when Transmitter Languages cannot be
  *                                     saved because the associated group does not exist.
+ * Feb 18, 2015 4142       bkowal      Added {@link RateOfSpeechComp} to the dialog.
  * 
  * </pre>
  * 
@@ -140,6 +141,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
     private StyledText timePreambleTxt;
 
     private StyledText timePostambleTxt;
+
+    private RateOfSpeechComp rateOfSpeechComp;
 
     public CreateEditTransmitterLangDialog(Shell parentShell,
             List<Language> unassignedLanguages,
@@ -281,6 +284,12 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         this.voiceCombo = new Combo(attributesComp, SWT.BORDER | SWT.READ_ONLY);
         this.voiceCombo.setLayoutData(gd);
         this.voiceCombo.setEnabled(false);
+        this.voiceCombo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleVoiceSelection();
+            }
+        });
 
         /*
          * Dictionary field. No limits.
@@ -365,6 +374,15 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
                 | SWT.MULTI | SWT.V_SCROLL);
         this.timePostambleTxt.setLayoutData(gd);
         this.timePostambleTxt.setWordWrap(true);
+
+        gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
+        Label rateOfSpeechLabel = new Label(attributesComp, SWT.NONE);
+        rateOfSpeechLabel.setText("Rate of Speech:");
+        rateOfSpeechLabel.setLayoutData(gd);
+
+        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
+        gd.horizontalSpan = 2;
+        this.rateOfSpeechComp = new RateOfSpeechComp(attributesComp);
     }
 
     private void populateDialog() {
@@ -398,6 +416,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             this.timePostambleTxt.setText(this.transmitterLanguage
                     .getTimeMsgPostamble());
         }
+        
+        this.handleVoiceSelection();
     }
 
     private void handleLanguageSelection() {
@@ -455,8 +475,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             this.voiceNameIdentifierMap.put(voice.getVoiceName(),
                     voice.getVoiceNumber());
         }
-        this.voiceCombo.select(0);
         this.voiceCombo.setEnabled(true);
+        this.voiceCombo.select(0);
     }
 
     private void handleChangeAction() {
@@ -596,5 +616,18 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
                 .getText().trim());
         setReturnValue(this.transmitterLanguage);
         close();
+    }
+
+    /**
+     * Handles voice selections. Keeps the {@link RateOfSpeechComp} sample voice
+     * in sync with the selected voice.
+     */
+    private void handleVoiceSelection() {
+        if (SELECT_VOICE.equals(this.voiceCombo.getText())) {
+            this.rateOfSpeechComp.setSampleVoice(-1);
+        } else {
+            this.rateOfSpeechComp.setSampleVoice(this.voiceNameIdentifierMap
+                    .get(this.voiceCombo.getText()));
+        }
     }
 }
