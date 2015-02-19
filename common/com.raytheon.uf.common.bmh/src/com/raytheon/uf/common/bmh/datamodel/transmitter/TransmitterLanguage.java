@@ -53,6 +53,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 28, 2014 3636       rferrel     Implemented logging.
  * Nov 02, 2014 3746       rjpeter     Fix column definition for hibernate upgrade.
  * Jan 13, 2015 3809       bkowal      Fixed {@link #toString()}.
+ * Feb 19, 2015 4142       bkowal      Added {@link #speechRate}.
  * </pre>
  * 
  * @author rjpeter
@@ -98,6 +99,10 @@ public class TransmitterLanguage {
     @JoinColumn(name = "voiceNumber")
     @DynamicSerializeElement
     private TtsVoice voice;
+
+    @Column(nullable = false)
+    @DynamicSerializeElement
+    private int speechRate = 0;
 
     /**
      * @return the id
@@ -221,6 +226,19 @@ public class TransmitterLanguage {
         this.voice = voice;
     }
 
+    public int getSpeechRate() {
+        return speechRate;
+    }
+
+    public void setSpeechRate(int speechRate) {
+        if (speechRate < -99 || speechRate > 99) {
+            throw new IllegalArgumentException(
+                    "An invalid speech rate has been specified! The speech rate must be between -99 and 99 inclusive.");
+        }
+
+        this.speechRate = speechRate;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -261,7 +279,8 @@ public class TransmitterLanguage {
         if (this.dictionary != null) {
             sb.append(", dictionary=").append(dictionary.getName());
         }
-        sb.append(", voice=").append(voice.getVoiceName()).append("]");
+        sb.append(", voice=").append(voice.getVoiceName());
+        sb.append(", speechRate=").append(this.speechRate).append("]");
         return sb.toString();
     }
 }
