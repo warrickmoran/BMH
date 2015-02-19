@@ -64,6 +64,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 12, 2015    4109    bkowal      Place the phoneme at the position of the cursor. Switched
  *                                     to {@link StyledText} to that the cursor position could be
  *                                     updated after every phoneme insert.
+ * Fe 19, 2015     4150    bkowal      Take the space into account when calculating the new
+ *                                     phoneme cursor position.
  * 
  * </pre>
  */
@@ -406,6 +408,8 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
         } else if (cursorPosition == 0) {
             textToUpdate = "%s " + this.phonemeTxt.getText().trim();
         }
+        ++cursorPosition;
+
         if (srcBtn.getData().equals(VOWEL)) {
             boolean shift = false;
             boolean ctrl = false;
