@@ -109,6 +109,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 13, 2014  3698      rferrel     Checks to allow only one GENERAL type suite per program.
  * Nov 20, 2014   3830     rferrel     Remove assignProgramBtn button and supporting methods.
  * Dec 01, 2014   3838     rferrel     Change for new BmhUtil.getProgramGeneralSuite.
+ * Feb 19, 2015   4151     bkowal      Removed the assigned programs field for new suites. Removed
+ *                                     the "Set Triggers..." button when creating/editing a suite
+ *                                     without an associated program.
  * </pre>
  * 
  * @author lvenable
@@ -361,6 +364,15 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         gd.minimumWidth = 350;
         programListLbl = new Label(progTransComp, SWT.BORDER);
         programListLbl.setLayoutData(gd);
+
+        if (this.dialogType == DialogType.CREATE) {
+            /*
+             * do not display the assigned programs field when a new suite is
+             * being created.
+             */
+            transmitterLbl.setVisible(false);
+            this.programListLbl.setVisible(false);
+        }
     }
 
     /**
@@ -570,6 +582,13 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         if ((getSelectedSuiteType() == SuiteType.GENERAL)
                 || (this.selectedProgram == null)) {
             setTriggersBtn.setEnabled(false);
+            /*
+             * Additionally do not even display the "Set Triggers..." button if
+             * there is not an associated program.
+             */
+            if (this.selectedProgram == null) {
+                this.setTriggersBtn.setVisible(false);
+            }
         } else {
             setTriggersBtn
                     .setEnabled(selectedMsgTypeTable.getTableItemCount() > 0);
