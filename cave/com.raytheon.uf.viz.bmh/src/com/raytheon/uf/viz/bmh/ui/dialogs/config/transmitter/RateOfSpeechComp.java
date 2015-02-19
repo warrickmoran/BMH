@@ -48,6 +48,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2015 4142       bkowal      Initial creation
+ * Feb 19, 2015 4142       bkowal      Use {@link #sampleVoice} when synthesizing
+ *                                     the rate of speech sample.
  * 
  * </pre>
  * 
@@ -87,11 +89,14 @@ public class RateOfSpeechComp {
      * 
      * @param parent
      *            the parent {@link Composite} the components will be placed in.
+     * @param horizontalSpan
+     *            the number of column(s) this component should occupy when
+     *            rendered.
      */
-    public RateOfSpeechComp(Composite parent) {
+    public RateOfSpeechComp(Composite parent, final int horizontalSpan) {
         GridLayout gl = new GridLayout(3, false);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.horizontalSpan = 2;
+        gd.horizontalSpan = horizontalSpan;
         Composite controlComp = new Composite(parent, SWT.NONE);
         controlComp.setLayout(gl);
         controlComp.setLayoutData(gd);
@@ -119,7 +124,7 @@ public class RateOfSpeechComp {
         this.rateLabel.setLayoutData(gd);
         this.handleRateScaleChange();
 
-        gd = new GridData(SWT.RIGHT, SWT.CENTER, true, false);
+        gd = new GridData(SWT.DEFAULT, SWT.CENTER, true, false);
         this.playButton = new Button(controlComp, SWT.PUSH);
         this.playButton.setText("Play");
         this.playButton.setLayoutData(gd);
@@ -144,10 +149,22 @@ public class RateOfSpeechComp {
      */
     public void setSampleVoice(int voiceNumber) {
         this.sampleVoice = voiceNumber;
-        
+
         boolean enabled = (this.sampleVoice != -1);
         this.rateOfSpeechScale.setEnabled(enabled);
         this.playButton.setEnabled(enabled);
+    }
+
+    /**
+     * Used to set the initial rate of Speech displayed on the dialog based on
+     * the selected Transmitter Language.
+     * 
+     * @param rateOfSpeech
+     *            the initial rate of speech to set.
+     */
+    public void setInitialRateOfSpeech(final int rateOfSpeech) {
+        this.rateOfSpeechScale.setSelection(rateOfSpeech + SCALED_ZERO);
+        this.handleRateScaleChange();
     }
 
     /**
@@ -218,9 +235,6 @@ public class RateOfSpeechComp {
             return;
         }
 
-        /*
-         * TODO: add support for using specific voices; next changeset.
-         */
-        BmhUtils.playText(ssml);
+        BmhUtils.playText(ssml, this.sampleVoice);
     }
 }
