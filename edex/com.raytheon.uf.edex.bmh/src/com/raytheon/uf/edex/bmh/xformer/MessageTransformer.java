@@ -58,9 +58,11 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
+import com.raytheon.uf.common.bmh.schemas.ssml.Prosody;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.Sentence;
+import com.raytheon.uf.common.bmh.schemas.ssml.SpeechRateFormatter;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
@@ -120,7 +122,9 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     into a Google {@link Table}. Merge {@link Dictionary}(ies}
  *                                     by {@link Word} regex.
  * Jan 07, 2015 3899       bkowal      Skip {@link LdadConfig}s that have been disabled.
- * Jan 07, 2015 3958      bkowal       The ldad configs returned by the dao will never be {@code null}.
+ * Jan 07, 2015 3958       bkowal      The ldad configs returned by the dao will never be {@code null}.
+ * Feb 19, 2015 4142       bkowal      Include a prosody tag with the generated SSML to influence
+ *                                     the rate of speech.
  * 
  * </pre>
  * 
@@ -159,7 +163,7 @@ public class MessageTransformer implements IContextStateProcessor {
     private ConcurrentMap<Language, Dictionary> nationalDictionaryLanguageMap = new ConcurrentHashMap<>(
             Language.values().length, 1.0f);
 
-    private Table<TransmitterGroup, Language, Dictionary> transmitterLanguageDictionaryTableCache = HashBasedTable
+    private Table<TransmitterGroup, Language, TransmitterLanguage> transmitterLanguageTableCache = HashBasedTable
             .create();
 
     /* Used to fullfil the message logging requirement. */
@@ -234,23 +238,28 @@ public class MessageTransformer implements IContextStateProcessor {
         for (TransmitterGroup group : message.getTransmitterGroups()) {
             /* Get the transmitter level dictionary */
             Dictionary transmitterDictionary = null;
-            synchronized (this.transmitterLanguageDictionaryTableCache) {
-                transmitterDictionary = this.transmitterLanguageDictionaryTableCache
-                        .get(group, messageType.getVoice().getLanguage());
+            synchronized (this.transmitterLanguageTableCache) {
+                if (this.transmitterLanguageTableCache.get(group, messageType
+                        .getVoice().getLanguage()) == null) {
+                    this.cacheTransmitterLanguageInformation(group, messageType
+                            .getVoice().getLanguage());
+                }
+                transmitterDictionary = this.transmitterLanguageTableCache.get(
+                        group, messageType.getVoice().getLanguage())
+                        .getDictionary();
                 if (transmitterDictionary == null) {
-                    transmitterDictionary = this.getTransmitterDictionary(
-                            group, messageType.getVoice().getLanguage(),
-                            message.getId());
-                    /**
-                     * Only cache the {@link Transmitter} {@link Dictionary} if
-                     * one was actually retrieved. The Google {@link Table} does
-                     * not allow {@code null} values.
-                     */
-                    if (transmitterDictionary != null) {
-                        this.transmitterLanguageDictionaryTableCache.put(group,
-                                messageType.getVoice().getLanguage(),
-                                transmitterDictionary);
-                    }
+                    StringBuilder stringBuilder = new StringBuilder(
+                            "No dictionary has been defined for language: ");
+                    stringBuilder.append(messageType.getVoice().getLanguage()
+                            .toString());
+                    stringBuilder.append(" in transmitter group: ");
+                    stringBuilder.append(group.getName());
+                    stringBuilder.append("! [ Message = ");
+                    stringBuilder.append(message.getId());
+                    stringBuilder.append("]");
+
+                    statusHandler.warn(BMH_CATEGORY.XFORM_MISSING_DICTIONARY,
+                            stringBuilder.toString());
                 }
             }
             BroadcastMsg msg = null;
@@ -351,8 +360,11 @@ public class MessageTransformer implements IContextStateProcessor {
         final List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
         transformationCandidates.add(new RulingFreeText(formattedText));
 
+        // TODO: implement speech rates for ldad
         SSMLDocument defaultSSMLDocument = this.applyTransformations(
-                new LinkedList<>(transformationCandidates), formattedText);
+                new LinkedList<>(transformationCandidates), formattedText,
+                SpeechRateFormatter
+                        .formatSpeechRate(SpeechRateFormatter.DEFAULT_RATE));
         for (LdadConfig ldadConfig : ldadConfigurations) {
             if (ldadConfig.isEnabled() == false) {
                 /**
@@ -369,9 +381,11 @@ public class MessageTransformer implements IContextStateProcessor {
             ldadMsg.setAfosid(messageType.getAfosid());
             ldadMsg.setVoiceNumber(ldadConfig.getVoice().getVoiceNumber());
             ldadMsg.setEncoding(ldadConfig.getEncoding());
-            if (ldadConfig.getDictionary() == null) {
+            if (ldadConfig.getDictionary() == null
+                    && ldadConfig.getSpeechRate() == SpeechRateFormatter.DEFAULT_RATE) {
                 /*
-                 * No dictionary defined, use the default ssml.
+                 * No dictionary or custom speech rate have been defined, use
+                 * the default ssml.
                  */
                 ldadMsg.setSsml(defaultSSMLDocument.toSSML());
                 ldadMessages.add(ldadMsg);
@@ -394,7 +408,8 @@ public class MessageTransformer implements IContextStateProcessor {
 
             // Generate the Transformed SSML.
             SSMLDocument ssmlDocument = this.applyTransformations(
-                    transformedCandidates, formattedText);
+                    transformedCandidates, formattedText, SpeechRateFormatter
+                            .formatSpeechRate(ldadConfig.getSpeechRate()));
 
             ldadMsg.setSsml(ssmlDocument.toSSML());
             ldadMessages.add(ldadMsg);
@@ -447,50 +462,51 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     /**
-     * Retrieves the dictionary associated with the specified Transmitter Group
-     * and Language
+     * Retrieves the {@link TransmitterLanguage} associated with the specified
+     * {@link TransmitterGroup} and {@link Language}. Caches the associated
+     * {@link Dictionary} and Speech Rate, when applicable.
      * 
      * @param group
-     *            the specified {@link TransmitterGroup}
      * @param language
-     *            the specified {@link Language}
-     * @param messageID
-     *            id of the Validated Message for auditing purposes
-     * @return
      */
-    private Dictionary getTransmitterDictionary(TransmitterGroup group,
-            Language language, int messageID) {
-        ITimer dictionaryTimer = TimeUtil.getTimer();
-        dictionaryTimer.start();
+    private void cacheTransmitterLanguageInformation(TransmitterGroup group,
+            Language language) {
+        ITimer tlCacheTimer = TimeUtil.getTimer();
+        tlCacheTimer.start();
+
+        /**
+         * Attempt to retrieve the {@link TransmitterLanguage}.
+         */
         TransmitterLanguagePK pk = new TransmitterLanguagePK();
         pk.setTransmitterGroup(group);
         pk.setLanguage(language);
         TransmitterLanguage lang = transmitterLanguageDao.getByID(pk);
-
-        // lookup dictionary
-        if ((lang == null) || (lang.getDictionary() == null)) {
-            StringBuilder stringBuilder = new StringBuilder(
-                    "No dictionary has been defined for language: ");
-            stringBuilder.append(language.toString());
-            stringBuilder.append(" in transmitter group: ");
-            stringBuilder.append(group.getName());
-            stringBuilder.append("! [ Message = ");
-            stringBuilder.append(messageID);
-            stringBuilder.append("]");
-
-            statusHandler.warn(BMH_CATEGORY.XFORM_MISSING_DICTIONARY,
-                    stringBuilder.toString());
-            dictionaryTimer.stop(); // not logging non-retrievals
-            return null;
+        if (lang == null) {
+            /*
+             * No transmitter language was found - nothing to cache.
+             */
+            StringBuilder sb = new StringBuilder(
+                    "No Transmitter Language was found for Transmitter Group ");
+            sb.append(group.getName()).append(" and language ")
+                    .append(language.toString()).append(".");
+            statusHandler.info(sb.toString());
+            tlCacheTimer.stop(); // not logging non-retrievals
         }
 
-        dictionaryTimer.stop();
-        statusHandler.info("The Dictionary for Transmitter Group: "
-                + group.getName() + " and Language: " + language.toString()
-                + " was successfully retrieved in "
-                + TimeUtil.prettyDuration(dictionaryTimer.getElapsedTime())
-                + ".");
-        return lang.getDictionary();
+        /**
+         * A {@link TransmitterLanguage} was successfully retrieved. Add it to
+         * the cache.
+         */
+        this.transmitterLanguageTableCache.put(group, language, lang);
+
+        tlCacheTimer.stop();
+        StringBuilder sb = new StringBuilder(
+                "Successfully cached the Transmitter Language for Transmitter Group ");
+        sb.append(group.getName()).append(" and language ")
+                .append(language.toString()).append(" in ")
+                .append(TimeUtil.prettyDuration(tlCacheTimer.getElapsedTime()))
+                .append(".");
+        statusHandler.info(sb.toString());
     }
 
     /**
@@ -584,7 +600,10 @@ public class MessageTransformer implements IContextStateProcessor {
                      * regeneration.
                      */
                     SSMLDocument ssmlDocument = this.applyTransformations(
-                            transformationCandidates, formattedTimeText);
+                            transformationCandidates, formattedTimeText,
+                            SpeechRateFormatter
+                                    .formatSpeechRate(transmitterLanguage
+                                            .getSpeechRate()));
                     BroadcastFragment fragment = new BroadcastFragment();
                     fragment.setSsml(ssmlDocument.toSSML());
                     fragment.setPosition(index);
@@ -632,10 +651,27 @@ public class MessageTransformer implements IContextStateProcessor {
                     textTransformations, transformationCandidates);
 
             /*
+             * retrieve the cached speed rate if one is available.
+             */
+            final int speechRate;
+            synchronized (this.transmitterLanguageTableCache) {
+                if (this.transmitterLanguageTableCache.get(group,
+                        inputMessage.getLanguage()) == null) {
+                    this.cacheTransmitterLanguageInformation(group,
+                            inputMessage.getLanguage());
+                }
+                speechRate = (this.transmitterLanguageTableCache.get(group,
+                        inputMessage.getLanguage()) == null) ? SpeechRateFormatter.DEFAULT_RATE
+                        : this.transmitterLanguageTableCache.get(group,
+                                inputMessage.getLanguage()).getSpeechRate();
+            }
+
+            /*
              * There will only be one fragment for all text.
              */
             SSMLDocument ssmlDocument = this.applyTransformations(
-                    transformationCandidates, formattedContent);
+                    transformationCandidates, formattedContent,
+                    SpeechRateFormatter.formatSpeechRate(speechRate));
             BroadcastFragment fragment = new BroadcastFragment();
             fragment.setSsml(ssmlDocument.toSSML());
             broadcastFragments.add(fragment);
@@ -838,11 +874,14 @@ public class MessageTransformer implements IContextStateProcessor {
      *            the transformed text
      * @param originalMessage
      *            the text associated with the original message.
+     * @param speechRate
+     *            the formatted prosody speech rate.
      * @throws SSMLConversionException
      */
     private SSMLDocument applyTransformations(
             List<ITextRuling> transformationCandidates,
-            final String originalMessage) throws SSMLConversionException {
+            final String originalMessage, final String speechRate)
+            throws SSMLConversionException {
         /* Approximate the sentence divisions in the original message. */
         List<String> approximateSentences = new LinkedList<String>();
         Matcher sentenceMatcher = SENTENCE_PATTERN.matcher(originalMessage);
@@ -852,6 +891,14 @@ public class MessageTransformer implements IContextStateProcessor {
 
         // Create the SSML Document.
         SSMLDocument ssmlDocument = new SSMLDocument();
+
+        // Construct the prosody.
+        Prosody prosody = ssmlDocument.getFactory().createProsody();
+        /*
+         * initialize the prosody rate to the default rate.
+         */
+        prosody.setRate(speechRate);
+
         // Start the first sentence.
         Sentence ssmlSentence = ssmlDocument.getFactory().createSentence();
 
@@ -884,7 +931,7 @@ public class MessageTransformer implements IContextStateProcessor {
                         currentSentence).trim();
                 if (currentSentence.isEmpty()
                         && (approximateSentences.isEmpty() == false)) {
-                    ssmlDocument.getRootTag().getContent().add(ssmlSentence);
+                    prosody.getContent().add(ssmlSentence);
                     ssmlSentence = ssmlDocument.getFactory().createSentence();
                     currentSentence = approximateSentences.remove(0);
                 }
@@ -894,7 +941,8 @@ public class MessageTransformer implements IContextStateProcessor {
         /*
          * Add the final sentence to the SSML document.
          */
-        ssmlDocument.getRootTag().getContent().add(ssmlSentence);
+        prosody.getContent().add(ssmlSentence);
+        ssmlDocument.getRootTag().getContent().add(prosody);
 
         return ssmlDocument;
     }
@@ -920,19 +968,22 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     /**
-     * Removes the existing {@link Dictionary} associated with a
+     * Removes the cached {@link TransmitterLanguage} associated with a
      * {@link TransmitterGroup} and {@link Language} from the cache to ensure
-     * that the most recent version of the {@link Dictionary} will be retrieved
-     * the next time it is needed.
+     * that the most recent version of the {@link TransmitterLanguage} will be
+     * retrieved the next time it is needed.
      * 
      * @param notification
+     *            a {@link TransmitterLanguageConfigNotification} containing
+     *            identifying information about the {@link TransmitterLanguage}
+     *            that was updated.
      */
     public void updateTransmitterDictionary(
             TransmitterLanguageConfigNotification notification) {
-        synchronized (this.transmitterLanguageDictionaryTableCache) {
-            this.transmitterLanguageDictionaryTableCache.remove(notification
-                    .getKey().getTransmitterGroup(), notification.getKey()
-                    .getLanguage());
+        synchronized (this.transmitterLanguageTableCache) {
+            this.transmitterLanguageTableCache
+                    .remove(notification.getKey().getTransmitterGroup(),
+                            notification.getKey().getLanguage());
         }
     }
 

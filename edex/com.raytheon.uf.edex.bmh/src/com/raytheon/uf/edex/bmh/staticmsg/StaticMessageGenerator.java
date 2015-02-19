@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.xml.bind.JAXBElement;
+
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
@@ -51,6 +53,10 @@ import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
+import com.raytheon.uf.common.bmh.schemas.ssml.Prosody;
+import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
+import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
+import com.raytheon.uf.common.bmh.schemas.ssml.SpeechRateFormatter;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
@@ -93,6 +99,9 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     retrieved.
  * Feb 11, 2015 4116       bkowal      Include the name of the destination in the
  *                                     static message name.
+ * Feb 19, 2015 4142       bkowal      Take the speech rate into account when determining
+ *                                     whether or not a static message needs to be
+ *                                     regenerated.
  * 
  * </pre>
  * 
@@ -587,11 +596,64 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 && (existingMsg.getInputMessage().getActive() != null && existingMsg
                         .getInputMessage().getActive());
         if (complete) {
+            /*
+             * technically, this flag should really be set during the content
+             * verification instead of during the test for completeness;
+             * however, we do not want to have to iterate through the broadcast
+             * fragments a second time.
+             */
+            boolean oneSpeechRateMatch = false;
+            /*
+             * so, that we will not need to extract the numeric speech rate from
+             * the prosody speech rate String.
+             */
+            final String formattedSpeechRate = SpeechRateFormatter
+                    .formatSpeechRate(language.getSpeechRate());
             for (BroadcastFragment fragment : existingMsg.getFragments()) {
                 String output = fragment.getOutputName();
                 complete &= output != null && !output.isEmpty()
                         && Files.exists(Paths.get(output));
+
+                if (complete && oneSpeechRateMatch == false
+                        && fragment.getSsml() != null
+                        && fragment.getSsml().isEmpty() == false) {
+                    /*
+                     * based on the currently limited usage of fragments, we are
+                     * always guaranteed to have at least one fragment that
+                     * should match the speech rate at a given point in time.
+                     */
+                    final SSMLDocument ssmlDocument;
+                    try {
+                        ssmlDocument = SSMLDocument
+                                .fromSSML(fragment.getSsml());
+                    } catch (SSMLConversionException e) {
+                        // ignore for now; this JAXB transformation is not
+                        // critical.
+                        continue;
+                    }
+
+                    if (ssmlDocument == null
+                            || ssmlDocument.getRootTag().getContent().isEmpty()) {
+                        continue;
+                    }
+
+                    /*
+                     * check for a prosody tag as the first child of the root
+                     * speak tag.
+                     */
+                    JAXBElement<?> element = (JAXBElement<?>) ssmlDocument
+                            .getRootTag().getContent().get(0);
+                    if (element.getValue() instanceof Prosody) {
+                        /*
+                         * compare the speech rate
+                         */
+                        Prosody prosody = (Prosody) element.getValue();
+                        oneSpeechRateMatch = formattedSpeechRate.equals(prosody
+                                .getRate());
+                    }
+                }
             }
+            complete = (complete && oneSpeechRateMatch);
         }
 
         if (complete == false) {

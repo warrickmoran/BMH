@@ -65,6 +65,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 13, 2014 3803       bkowal      Added selectLdadConfigByName
  * Nov 19, 2014 3385       bkowal      Added {@link LdadConfig#SELECT_LDAD_CONFIG_BY_MSG_TYPE_QUERY}
  * Jan 07, 2015 3899       bkowal      Added {@link #enabled}.
+ * Feb 19, 2015 4142       bkowal      Added {@link #speechRate}.
  * 
  * </pre>
  * 
@@ -132,6 +133,10 @@ public class LdadConfig {
     @DynamicSerializeElement
     @Enumerated(EnumType.STRING)
     private BMHAudioFormat encoding;
+
+    @Column(nullable = false)
+    @DynamicSerializeElement
+    private int speechRate = 0;
 
     /**
      * boolean flag indicating whether or not this ldad configuration is
@@ -267,6 +272,25 @@ public class LdadConfig {
      */
     public void setEncoding(BMHAudioFormat encoding) {
         this.encoding = encoding;
+    }
+
+    /**
+     * @return the speechRate
+     */
+    public int getSpeechRate() {
+        return speechRate;
+    }
+
+    /**
+     * @param speechRate
+     *            the speechRate to set
+     */
+    public void setSpeechRate(int speechRate) {
+        if (speechRate < -99 || speechRate > 99) {
+            throw new IllegalArgumentException(
+                    "An invalid speech rate has been specified! The speech rate must be between -99 and 99 inclusive.");
+        }
+        this.speechRate = speechRate;
     }
 
     /**
