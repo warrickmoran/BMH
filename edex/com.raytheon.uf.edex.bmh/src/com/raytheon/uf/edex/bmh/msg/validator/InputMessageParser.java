@@ -61,6 +61,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
  * Feb 18, 2015  4136     bkowal      Use the {@link Language} identifiers to determine
  *                                    the Language when parsing the input.
+ * Feb 20, 2015  4158     bsteffen    Add support for optional polygons
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -92,6 +94,9 @@ public class InputMessageParser {
 
     private static final Pattern ugcPattern = Pattern.compile("^([^c]*)c");
 
+    private static final Pattern polygonPattern = Pattern
+            .compile("^([-]?[0-9]{3,4} [0-9]{3,5})( [-]?[0-9]{3,4} [0-9]{3,5}){0,19}");
+
     private static final Pattern endPattern = Pattern.compile("^(.*)\\eb",
             Pattern.DOTALL);
 
@@ -121,6 +126,7 @@ public class InputMessageParser {
             index = parseConfirmation(message, text, index);
             index = parseInterrupt(message, text, index);
             index = parseTone(message, text, index);
+            index = parsePolygon(message, text, index);
             index = parseAreaCodes(message, text, index);
             index = parseExpirationDate(message, text, index);
             index = parseContent(message, text, index);
@@ -307,6 +313,18 @@ public class InputMessageParser {
         return index + 1;
     }
 
+    private int parsePolygon(InputMessage message, CharSequence text, int index) {
+        Matcher polygon = polygonPattern.matcher(text);
+        polygon.region(index, text.length());
+        if (polygon.find()) {
+            statusHandler.info("Found and ignored polygon(" + polygon.group()
+                    + ") inforamtion in input message(" + message.getName()
+                    + ").");
+            return polygon.end();
+        }
+        return index;
+    }
+
     private int parseAreaCodes(InputMessage message, CharSequence text,
             int index) throws ParseException {
         Matcher ugc = ugcPattern.matcher(text);
@@ -372,5 +390,6 @@ public class InputMessageParser {
         c.setTime(d);
         return c;
     }
+
 
 }
