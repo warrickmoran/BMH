@@ -86,6 +86,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Dec 10, 2014   3883      bkowal      Added {@link #textToAudio(String)}.
  * Jan 28, 2015   4054      bkowal      Validate phonemes before submitting them for
  *                                      synthesis.
+ * Feb 19, 2015   4142      bkowal      It is now possible to specify which voice to use
+ *                                      for the on-demand synthesis.
  * </pre>
  * 
  * @author mpduff
@@ -128,8 +130,20 @@ public class BmhUtils {
      *            The text to play
      */
     public static void playText(String text) {
+        playText(text, TextToSpeechRequest.DEFAULT_VOICE);
+    }
+
+    /**
+     * Convert the provided text to speech and play it
+     * 
+     * @param text
+     *            The text to play
+     * @param voice
+     *            the identifier of the voice to use when generating the audio.
+     */
+    public static void playText(String text, int voice) {
         try {
-            playSound(textToAudio(text));
+            playSound(textToAudio(text, voice));
         } catch (Exception e) {
             statusHandler.error("Error playing text", e);
         }
@@ -145,8 +159,24 @@ public class BmhUtils {
      *             if audio generation fails
      */
     public static byte[] textToAudio(String text) throws Exception {
+        return textToAudio(text, TextToSpeechRequest.DEFAULT_VOICE);
+    }
+
+    /**
+     * Convert the provided text to audio and return the audio
+     * 
+     * @param text
+     *            the text to convert
+     * @param voice
+     *            the identifier of the voice to use when generating the audio.
+     * @return the generated audio
+     * @throws Exception
+     *             if audio generation fails
+     */
+    public static byte[] textToAudio(String text, int voice) throws Exception {
         TextToSpeechRequest req = new TextToSpeechRequest();
         req.setPhoneme(text);
+        req.setVoice(voice);
         req.setTimeout(10000);
         req = (TextToSpeechRequest) BmhUtils.sendRequest(req);
         if (req.getByteData() == null) {

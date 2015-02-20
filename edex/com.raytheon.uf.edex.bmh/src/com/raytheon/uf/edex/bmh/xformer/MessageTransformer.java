@@ -360,7 +360,6 @@ public class MessageTransformer implements IContextStateProcessor {
         final List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
         transformationCandidates.add(new RulingFreeText(formattedText));
 
-        // TODO: implement speech rates for ldad
         SSMLDocument defaultSSMLDocument = this.applyTransformations(
                 new LinkedList<>(transformationCandidates), formattedText,
                 SpeechRateFormatter

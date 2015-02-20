@@ -59,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.RateOfSpeechComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.uf.viz.bmh.voice.VoiceDataManager;
@@ -82,6 +83,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     conversion format.
  * Jan 07, 2015    3899    bkowal      Allow a user to enable/disable {@link LdadConfig}s.
  * Jan 29, 2015    4057    bkowal      Display default values for new configurations.
+ * Feb 19, 2015    4142    bkowal      It is now possible to associate a rate of speech
+ *                                     with a {@link LdadConfig}.
  * 
  * </pre>
  * 
@@ -158,6 +161,11 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
      * Dictionary selection combo box
      */
     private Combo dictCbo;
+
+    /**
+     * Used to alter the rate of speech for the current ldad configuration.
+     */
+    private RateOfSpeechComp rateOfSpeechComp;
 
     /**
      * {@link Button} used to enable and disable a ldad configuration.
@@ -248,6 +256,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         createBottomButtons();
 
         this.populateDialog();
+        this.handleVoiceSelection();
     }
 
     /**
@@ -263,7 +272,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         configComp.setLayout(gl);
         configComp.setLayoutData(gd);
 
-        /**
+        /*
          * Ldad Configuration Name.
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -276,7 +285,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         nameTxt.setLayoutData(gd);
         nameTxt.setTextLimit(40);
 
-        /**
+        /*
          * Ldad Configuration Host.
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -289,7 +298,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         hostTxt.setLayoutData(gd);
         hostTxt.setTextLimit(60);
 
-        /**
+        /*
          * Ldad Configuration Destination Directory.
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -302,7 +311,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         directoryTxt.setLayoutData(gd);
         directoryTxt.setTextLimit(250);
 
-        /**
+        /*
          * Ldad Configuration Encoding.
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -321,7 +330,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
             }
         });
 
-        /**
+        /*
          * Ldad Configuration Voice.
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -332,8 +341,14 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         voiceCbo = new Combo(configComp, SWT.SINGLE | SWT.READ_ONLY);
         voiceCbo.setLayoutData(gd);
+        this.voiceCbo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleVoiceSelection();
+            }
+        });
 
-        /**
+        /*
          * Ldad Configuration Dictionary.
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -346,7 +361,17 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         dictCbo = new Combo(configComp, SWT.SINGLE);
         dictCbo.setLayoutData(gd);
 
-        /**
+        /*
+         * Ldad Rate of Speech
+         */
+        gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
+        Label rateOfSpeechLabel = new Label(configComp, SWT.NONE);
+        rateOfSpeechLabel.setText("Rate of Speech:");
+        rateOfSpeechLabel.setLayoutData(gd);
+
+        rateOfSpeechComp = new RateOfSpeechComp(configComp, 1);
+
+        /*
          * Ldad Configuration Status.
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -501,6 +526,8 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         this.directoryTxt.setText(this.ldadConfig.getDirectory());
         this.encodingCbo.setText(this.ldadConfig.getEncoding().getExtension());
         this.voiceCbo.setText(this.ldadConfig.getVoice().getVoiceName());
+        this.rateOfSpeechComp.setInitialRateOfSpeech(this.ldadConfig
+                .getSpeechRate());
         if (this.ldadConfig.getDictionary() != null) {
             this.dictCbo.setText(this.ldadConfig.getDictionary().getName());
         }
@@ -745,6 +772,8 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
                 .getText()));
         this.ldadConfig.setEncoding(BMHAudioFormat
                 .lookupByExtension(this.encodingCbo.getText()));
+        this.ldadConfig.setSpeechRate(this.rateOfSpeechComp
+                .getSelectedRateOfSpeech());
         this.ldadConfig.setEnabled(this.statusButton.getSelection());
 
         LdadConfig savedLdadConfig = null;
@@ -887,5 +916,19 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
                     validationDtlsMsg.toString());
         }
         return valid;
+    }
+
+    private void handleVoiceSelection() {
+        if (this.voiceCbo.getSelectionIndex() == -1) {
+            return;
+        }
+
+        if (this.voiceCbo.getData(this.voiceCbo.getText()) == null) {
+            return;
+        }
+
+        TtsVoice selectedVoice = (TtsVoice) this.voiceCbo.getData(this.voiceCbo
+                .getText());
+        this.rateOfSpeechComp.setSampleVoice(selectedVoice.getVoiceNumber());
     }
 }

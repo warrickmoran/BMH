@@ -65,6 +65,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 12, 2015 4082       bkowal      Handle the case when Transmitter Languages cannot be
  *                                     saved because the associated group does not exist.
  * Feb 18, 2015 4142       bkowal      Added {@link RateOfSpeechComp} to the dialog.
+ * Feb 19, 2015 4142       bkowal      Retrieve/update the rate of speech in the
+ *                                     selected {@link TransmitterLanguage}.
  * 
  * </pre>
  * 
@@ -380,9 +382,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         rateOfSpeechLabel.setText("Rate of Speech:");
         rateOfSpeechLabel.setLayoutData(gd);
 
-        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.horizontalSpan = 2;
-        this.rateOfSpeechComp = new RateOfSpeechComp(attributesComp);
+        this.rateOfSpeechComp = new RateOfSpeechComp(attributesComp, 2);
     }
 
     private void populateDialog() {
@@ -416,8 +416,11 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             this.timePostambleTxt.setText(this.transmitterLanguage
                     .getTimeMsgPostamble());
         }
-        
+
         this.handleVoiceSelection();
+
+        this.rateOfSpeechComp.setInitialRateOfSpeech(this.transmitterLanguage
+                .getSpeechRate());
     }
 
     private void handleLanguageSelection() {
@@ -614,6 +617,13 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
                 .getText().trim());
         this.transmitterLanguage.setTimeMsgPostamble(this.timePostambleTxt
                 .getText().trim());
+
+        /*
+         * rate of speech.
+         */
+        this.transmitterLanguage.setSpeechRate(this.rateOfSpeechComp
+                .getSelectedRateOfSpeech());
+
         setReturnValue(this.transmitterLanguage);
         close();
     }
