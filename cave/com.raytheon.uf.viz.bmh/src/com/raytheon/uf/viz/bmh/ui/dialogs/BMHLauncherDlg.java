@@ -85,6 +85,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterAlignmen
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacConfigDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.demo.DemoMessageDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.DictionaryManagerDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverterDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride.EmergencyOverrideDlg;
@@ -148,9 +149,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 14, 2015   3969     bkowal      Handle watch/warning not broadcast notifications.
  * Jan 30, 2015   4069     bkowal      Move Broadcast Live to the Messages menu.
  * Feb 05, 2015   3743     bsteffen    Save the BMH Servers whenever dialog is created.
- * 
  * Feb 06, 2015   4019     lvenable    Updated code to have the status monitor as a part of this dialog
  *                                     and removed the menu items for the status monitor and alert monitor.
+ * Feb 19, 2015   4143     bsteffen    Add demo message dialog.
  * 
  * </pre>
  * 
@@ -225,6 +226,8 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
     /** Weather Messages dialog. */
     private WeatherMessagesDlg weatherMessagesDlg;
+
+    private DemoMessageDialog demoMessageDlg;
 
     /** Emergency Override dialog. */
     private EmergencyOverrideDlg emergecyOverrideDlg;
@@ -843,6 +846,24 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 launchWeatherMessages();
+            }
+        });
+
+        MenuItem demoMessageMI = new MenuItem(messagesMenu, SWT.PUSH);
+        demoMessageMI.setText("Send Demo Message...");
+        demoMessageMI.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                if (isAuthorized(DlgInfo.DEMO_MESSAGE)) {
+                    if (demoMessageDlg == null
+                            || demoMessageDlg.isDisposed() == true) {
+                        demoMessageDlg = new DemoMessageDialog(
+                                dlgsToValidateCloseMap, shell);
+                        demoMessageDlg.open();
+                    } else {
+                        demoMessageDlg.bringToTop();
+                    }
+                }
             }
         });
 
