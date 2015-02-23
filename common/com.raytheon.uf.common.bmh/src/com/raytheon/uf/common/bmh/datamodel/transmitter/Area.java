@@ -39,6 +39,7 @@ import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
@@ -61,6 +62,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Oct 24, 2014  3636     rferrel     Implement logging.
  * Nov 21, 2014  3845     bkowal      Added getAreaForTransmitter
+ * Feb 23, 2015  4140     rjpeter     Named foreign key constraints.
  * </pre>
  * 
  * @author rjpeter
@@ -113,6 +115,7 @@ public class Area {
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "area_tx", schema = "bmh", joinColumns = @JoinColumn(name = "areaId"), inverseJoinColumns = @JoinColumn(name = "transmitterId"))
+    @ForeignKey(name = "fk_area_tx_to_area", inverseName = "fk_area_tx_to_transmitter")
     @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private Set<Transmitter> transmitters;

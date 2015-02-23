@@ -33,6 +33,7 @@
  * Dec 09, 2014 3603       bsteffen    Add cascade for transmitter language
  * Dec 08, 2014 3864       bsteffen    Add a PlaylistMsg class.
  * Jan 21, 2015 3960       bkowal      Added on delete cascade for foreign key fk_1xd877wghwn3fnawv8d7u6xrx.
+ * Feb 23, 2014 4140       rjpeter     Updated constraint names, add Message Default Transmitter Groups cascades.
  **/
 
 /**
@@ -111,14 +112,14 @@ alter table bmh.program_trigger add constraint program_trigger_to_message_type
 /**
  * Area/Zone join table cascade delete
  **/
-alter table bmh.area_tx drop constraint fk_nxlwu1vgxtuv1w1r8rpu5lk0s;
-alter table bmh.area_tx add constraint fk_nxlwu1vgxtuv1w1r8rpu5lk0s
-    foreign key (areaId) references bmh.area(areaId) on delete cascade;
+alter table bmh.area_tx drop constraint fk_area_tx_to_area;
+alter table bmh.area_tx add constraint fk_area_tx_to_area
+    foreign key (areaid) references bmh.area(areaid) on delete cascade;
 
-alter table bmh.area_tx drop constraint fk_r4ohtb0vnul78bp0w2k64feqv;
-alter table bmh.area_tx add constraint fk_r4ohtb0vnul78bp0w2k64feqv
-    foreign key (transmitterId) references bmh.transmitter(id) on delete cascade;
-    
+alter table bmh.area_tx drop constraint fk_area_tx_to_transmitter;
+alter table bmh.area_tx add constraint fk_area_tx_to_transmitter
+    foreign key (transmitterid) references bmh.transmitter(id) on delete cascade;
+
 alter table bmh.zone_area drop constraint fk_oc1q5or3b91kvqh5i9mnrbfv5;
 alter table bmh.zone_area add constraint fk_oc1q5or3b91kvqh5i9mnrbfv5
     foreign key (areaId) references bmh.area(areaId) on delete cascade;
@@ -159,9 +160,21 @@ alter table bmh.broadcast_msg add constraint broadcast_msg_to_tx_group
 /**
  * Message Same Tx to Transmitter
  */
-alter table bmh.message_same_tx drop constraint msg_same_tx_to_tx;
-alter table bmh.message_same_tx add constraint msg_same_tx_to_tx
+alter table bmh.message_same_tx drop constraint fk_msg_same_tx_to_tx;
+alter table bmh.message_same_tx add constraint fk_msg_same_tx_to_tx
     foreign key (transmitter_id) references bmh.transmitter (id) on delete cascade;
+
+/**
+ * Message Default Transmitter Groups to MessageType and TransmitterGroup
+ */
+alter table bmh.message_default_transmitter_groups drop constraint fk_msg_def_tx_to_msg_type;
+alter table bmh.message_default_transmitter_groups add constraint fk_msg_def_tx_to_msg_type
+ foreign key (msgtype_id) references bmh.message_type (id) on delete cascade;
+
+alter table bmh.message_default_transmitter_groups drop constraint fk_msg_def_tx_to_tx_group;
+alter table bmh.message_default_transmitter_groups add constraint fk_msg_def_tx_to_tx_group
+ foreign key (transmitter_group_id) references bmh.transmitter_group (id) on delete cascade;
+
 
 /**
  * Ldad Config to Dictionary
@@ -205,13 +218,13 @@ alter table bmh.tts_voice add constraint fk_nsj4b6uq3lxg3xlhfktiqgxk4
 /**
  * Input Msg Selected Transmitter to Input Msg
  */
-alter table bmh.input_msg_selected_transmitters drop constraint msg_def_tx_to_input_msg;
-alter table bmh.input_msg_selected_transmitters add constraint msg_def_tx_to_input_msg
+alter table bmh.input_msg_selected_transmitters drop constraint fk_selected_tx_to_input_msg;
+alter table bmh.input_msg_selected_transmitters add constraint fk_selected_tx_to_input_msg
     foreign key (input_msg_id) references bmh.input_msg (id) on delete cascade;
 
 /**
  * Input Msg Selected Transmitter To Transmitter
  */
-alter table bmh.input_msg_selected_transmitters drop constraint msg_def_tx_to_tx;
-alter table bmh.input_msg_selected_transmitters add constraint msg_def_tx_to_tx
+alter table bmh.input_msg_selected_transmitters drop constraint fk_selected_tx_to_tx;
+alter table bmh.input_msg_selected_transmitters add constraint fk_selected_tx_to_tx
     foreign key (transmitter_id) references bmh.transmitter (id) on delete cascade;

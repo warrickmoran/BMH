@@ -82,7 +82,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 20, 2015  4010     bkowal      Added {@link #selectedTransmitters}.
  * Feb 09, 2015  4094     bsteffen    Update areaCodes to be length of 4096.
  * Feb 10, 2015  4104     bkowal      Trim any area codes beyond the maximum length
- * 
+ * Fev 23, 2015  4140     rjpeter     Renamed foreign constraint.
  * </pre>
  * 
  * @author bsteffen
@@ -249,7 +249,7 @@ public class InputMessage {
      */
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "input_msg_selected_transmitters", schema = "bmh", joinColumns = @JoinColumn(name = "input_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
-    @ForeignKey(name = "msg_def_tx_to_input_msg", inverseName = "msg_def_tx_to_tx")
+    @ForeignKey(name = "fk_selected_tx_to_input_msg", inverseName = "fk_selected_tx_to_tx")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Transmitter> selectedTransmitters;
@@ -366,7 +366,7 @@ public class InputMessage {
             int hours = Integer.parseInt(this.periodicity.substring(2, 4));
             int minutes = Integer.parseInt(this.periodicity.substring(4, 6));
             int seconds = Integer.parseInt(this.periodicity.substring(6, 8));
-            return seconds + (60 * minutes + (60 * (hours + (24 * days))));
+            return seconds + ((60 * minutes) + (60 * (hours + (24 * days))));
         }
         return -1;
     }
@@ -496,7 +496,7 @@ public class InputMessage {
     }
 
     public void setSameTransmitterSet(Set<String> transmitters) {
-        if (transmitters == null || transmitters.isEmpty()) {
+        if ((transmitters == null) || transmitters.isEmpty()) {
             sameTransmitters = null;
         } else {
             StringBuilder transmittersBuilder = new StringBuilder();
@@ -515,7 +515,7 @@ public class InputMessage {
     }
 
     public List<String> getAreaCodeList() {
-        if (areaCodes == null || areaCodes.isEmpty()) {
+        if ((areaCodes == null) || areaCodes.isEmpty()) {
             return Collections.emptyList();
         }
         return Arrays.asList(areaCodes.split("-"));
@@ -531,7 +531,7 @@ public class InputMessage {
     }
 
     public void setAreaCodes(String areaCodes) {
-        if (areaCodes != null && areaCodes.length() > AREA_CODE_LENGTH) {
+        if ((areaCodes != null) && (areaCodes.length() > AREA_CODE_LENGTH)) {
             areaCodes = this.trimAreaCodesToLength(areaCodes);
         }
         this.areaCodes = areaCodes;
@@ -600,7 +600,7 @@ public class InputMessage {
      */
     public boolean isPeriodic() {
         try {
-            if (periodicity != null && Integer.parseInt(periodicity) > 0) {
+            if ((periodicity != null) && (Integer.parseInt(periodicity) > 0)) {
                 return true;
             }
         } catch (NumberFormatException e) {

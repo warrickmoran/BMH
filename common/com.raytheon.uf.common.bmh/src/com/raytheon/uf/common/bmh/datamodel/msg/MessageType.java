@@ -80,6 +80,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 13, 2014  3717      bsteffen    Add staticDesignation field to Designation
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * Feb 05, 2015  4085      bkowal      Designations are no longer static.
+ * Feb 23, 2015  4140      rjpeter     Renamed foreign constraints.
  * </pre>
  * 
  * @author rjpeter
@@ -199,7 +200,7 @@ public class MessageType {
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_same_tx", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
-    @ForeignKey(name = "msg_same_tx_to_msg_type", inverseName = "msg_same_tx_to_tx")
+    @ForeignKey(name = "fk_msg_same_tx_to_msg_type", inverseName = "fk_msg_same_tx_to_tx")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Transmitter> sameTransmitters;
@@ -208,26 +209,26 @@ public class MessageType {
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     @JoinTable(name = "message_replace", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "msgtype_replace_id"))
-    @ForeignKey(name = "msg_replace_to_msg_type", inverseName = "msg_replace_to_replaced_msgs")
+    @ForeignKey(name = "fk_msg_replace_to_msg_type", inverseName = "fk_msg_replace_to_replaced_msgs")
     private Set<MessageTypeSummary> replacementMsgs;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_areas", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "area_id"))
-    @ForeignKey(name = "msg_def_areas_to_msg_type", inverseName = "msg_def_areas_to_area")
+    @ForeignKey(name = "fk_msg_def_areas_to_msg_type", inverseName = "fk_msg_def_areas_to_area")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Area> defaultAreas;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_zones", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "zone_id"))
-    @ForeignKey(name = "msg_def_zones_to_msg_type", inverseName = "msg_def_zones_to_zone")
+    @ForeignKey(name = "fk_msg_def_zones_to_msg_type", inverseName = "fk_msg_def_zones_to_zone")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Zone> defaultZones;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "message_default_transmitter_groups", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_id"))
-    @ForeignKey(name = "msg_def_tx_to_msg_type", inverseName = "msg_def_tx_to_tx_group")
+    @ForeignKey(name = "fk_msg_def_tx_to_msg_type", inverseName = "fk_msg_def_tx_to_tx_group")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<TransmitterGroup> defaultTransmitterGroups;
