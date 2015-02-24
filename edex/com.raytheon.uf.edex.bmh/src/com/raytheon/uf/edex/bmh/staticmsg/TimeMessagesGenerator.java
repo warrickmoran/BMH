@@ -32,6 +32,7 @@ import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
@@ -64,6 +65,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * Nov 3, 2014  3759       bkowal      Practice Mode Support.
  * Nov 5, 2014  3630       bkowal      Use constants audio directory. BMH Data is
  *                                     now set in the constructor.
+ * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * 
  * </pre>
  * 
@@ -198,7 +200,7 @@ public class TimeMessagesGenerator {
 
     private String constructSSMLSayAs(final String text)
             throws SSMLConversionException {
-        SSMLDocument ssmlDocument = new SSMLDocument();
+        SSMLDocument ssmlDocument = new SSMLDocument(Language.ENGLISH);
         SayAs sayAsTag = ssmlDocument.getFactory().createSayAs();
         sayAsTag.setInterpretAs(SAY_AS_INTERPRET_AS);
         sayAsTag.setFormat(SAY_AS_FORMAT);
@@ -210,7 +212,7 @@ public class TimeMessagesGenerator {
 
     private String constructSSML(final String text)
             throws SSMLConversionException {
-        SSMLDocument ssmlDocument = new SSMLDocument();
+        SSMLDocument ssmlDocument = new SSMLDocument(Language.ENGLISH);
         ssmlDocument.getRootTag().getContent().add(text);
 
         return ssmlDocument.toSSML();
@@ -328,7 +330,7 @@ public class TimeMessagesGenerator {
                 /*
                  * Generate the timezone audio.
                  */
-                SSMLDocument ssmlDocument = new SSMLDocument();
+                SSMLDocument ssmlDocument = new SSMLDocument(Language.ENGLISH);
                 SayAs sayAsTag = ssmlDocument.getFactory().createSayAs();
                 sayAsTag.setInterpretAs(SAY_AS_CHARACTERS);
                 sayAsTag.setContent(timezone);

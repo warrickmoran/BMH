@@ -85,6 +85,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 29, 2015    4057    bkowal      Display default values for new configurations.
  * Feb 19, 2015    4142    bkowal      It is now possible to associate a rate of speech
  *                                     with a {@link LdadConfig}.
+ * Feb 24, 2015    4157    bkowal      Supply a {@link Language} to the {@link RateOfSpeechComp}.
  * 
  * </pre>
  * 
@@ -929,6 +930,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
 
         TtsVoice selectedVoice = (TtsVoice) this.voiceCbo.getData(this.voiceCbo
                 .getText());
-        this.rateOfSpeechComp.setSampleVoice(selectedVoice.getVoiceNumber());
+        this.rateOfSpeechComp.setSampleVoice(selectedVoice.getVoiceNumber(),
+                selectedVoice.getLanguage());
     }
 }

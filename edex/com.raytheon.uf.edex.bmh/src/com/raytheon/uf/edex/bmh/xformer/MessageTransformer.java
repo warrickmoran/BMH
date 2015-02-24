@@ -125,6 +125,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jan 07, 2015 3958       bkowal      The ldad configs returned by the dao will never be {@code null}.
  * Feb 19, 2015 4142       bkowal      Include a prosody tag with the generated SSML to influence
  *                                     the rate of speech.
+ * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * 
  * </pre>
  * 
@@ -363,7 +364,8 @@ public class MessageTransformer implements IContextStateProcessor {
         SSMLDocument defaultSSMLDocument = this.applyTransformations(
                 new LinkedList<>(transformationCandidates), formattedText,
                 SpeechRateFormatter
-                        .formatSpeechRate(SpeechRateFormatter.DEFAULT_RATE));
+                        .formatSpeechRate(SpeechRateFormatter.DEFAULT_RATE),
+                Language.ENGLISH);
         for (LdadConfig ldadConfig : ldadConfigurations) {
             if (ldadConfig.isEnabled() == false) {
                 /**
@@ -408,7 +410,8 @@ public class MessageTransformer implements IContextStateProcessor {
             // Generate the Transformed SSML.
             SSMLDocument ssmlDocument = this.applyTransformations(
                     transformedCandidates, formattedText, SpeechRateFormatter
-                            .formatSpeechRate(ldadConfig.getSpeechRate()));
+                            .formatSpeechRate(ldadConfig.getSpeechRate()),
+                    ldadConfig.getVoice().getLanguage());
 
             ldadMsg.setSsml(ssmlDocument.toSSML());
             ldadMessages.add(ldadMsg);
@@ -602,7 +605,8 @@ public class MessageTransformer implements IContextStateProcessor {
                             transformationCandidates, formattedTimeText,
                             SpeechRateFormatter
                                     .formatSpeechRate(transmitterLanguage
-                                            .getSpeechRate()));
+                                            .getSpeechRate()), inputMessage
+                                    .getLanguage());
                     BroadcastFragment fragment = new BroadcastFragment();
                     fragment.setSsml(ssmlDocument.toSSML());
                     fragment.setPosition(index);
@@ -670,7 +674,8 @@ public class MessageTransformer implements IContextStateProcessor {
              */
             SSMLDocument ssmlDocument = this.applyTransformations(
                     transformationCandidates, formattedContent,
-                    SpeechRateFormatter.formatSpeechRate(speechRate));
+                    SpeechRateFormatter.formatSpeechRate(speechRate),
+                    inputMessage.getLanguage());
             BroadcastFragment fragment = new BroadcastFragment();
             fragment.setSsml(ssmlDocument.toSSML());
             broadcastFragments.add(fragment);
@@ -879,8 +884,8 @@ public class MessageTransformer implements IContextStateProcessor {
      */
     private SSMLDocument applyTransformations(
             List<ITextRuling> transformationCandidates,
-            final String originalMessage, final String speechRate)
-            throws SSMLConversionException {
+            final String originalMessage, final String speechRate,
+            final Language language) throws SSMLConversionException {
         /* Approximate the sentence divisions in the original message. */
         List<String> approximateSentences = new LinkedList<String>();
         Matcher sentenceMatcher = SENTENCE_PATTERN.matcher(originalMessage);
@@ -889,7 +894,7 @@ public class MessageTransformer implements IContextStateProcessor {
         }
 
         // Create the SSML Document.
-        SSMLDocument ssmlDocument = new SSMLDocument();
+        SSMLDocument ssmlDocument = new SSMLDocument(language);
 
         // Construct the prosody.
         Prosody prosody = ssmlDocument.getFactory().createProsody();

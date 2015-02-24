@@ -31,6 +31,7 @@ package com.raytheon.uf.common.bmh.datamodel.language;
  * May 30, 2014 3175       rjpeter     Initial creation
  * Feb 18, 2015 4136       bkowal      Changed the {@link #SPANISH} {@link #identifier} to
  *                                     "SPA" for consistency.
+ * Feb 24, 2015 4157       bkowal      Added {@link #isoCode}.
  * 
  * </pre>
  * 
@@ -39,19 +40,29 @@ package com.raytheon.uf.common.bmh.datamodel.language;
  */
 public enum Language {
     // Language Name: 0-English, 1-Spanish, default - English
-    ENGLISH("ENG"), SPANISH("SPA");
+    ENGLISH("ENG", "en"), SPANISH("SPA", "es");
 
     public static final int LENGTH = 7;
 
     // Internal state
     private final String identifier;
 
+    /*
+     * Reference: http://www.w3schools.com/tags/ref_language_codes.asp
+     */
+    private final String isoCode;
+
     // Constructor
-    private Language(String identifier) {
+    private Language(String identifier, String isoCode) {
         this.identifier = identifier;
+        this.isoCode = isoCode;
     }
 
     public String getIdentifier() {
         return identifier;
+    }
+
+    public String getIsoCode() {
+        return isoCode;
     }
 }

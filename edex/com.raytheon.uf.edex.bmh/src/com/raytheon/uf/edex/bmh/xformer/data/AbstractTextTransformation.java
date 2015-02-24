@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 
 import javax.xml.bind.JAXBException;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 
@@ -42,6 +43,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
  * Jul 7, 2014  3302       bkowal      Implemented the transformation capabilities.
  * Aug 26, 2014 3559       bkowal      Lower case all text when constructing dictionary
  *                                     regex and determining if rules apply.
+ * Feb 24, 2015 4157       bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * 
  * </pre>
  * 
@@ -80,7 +82,11 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
 
     private static synchronized void generateSpeakSSMLWrapper()
             throws SSMLConversionException {
-        SSMLDocument ssmlDocument = new SSMLDocument();
+        /*
+         * In this case the language does not matter because we just extract the
+         * inner tags from the SSML Document.
+         */
+        SSMLDocument ssmlDocument = new SSMLDocument(Language.ENGLISH);
         ssmlDocument.getRootTag().getContent().add(REPLACEMENT_TXT);
 
         ssmlSpeakWrapperText = ssmlDocument.toSSML();

@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.tts;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -48,6 +49,7 @@ import voiceware.libttsapi;
  *                                     set bmh tts nfs directory.
  *                                     Convert the audio length to the time that it would
  *                                     take to play the audio.
+ * Feb 24, 2015 4157       bkowal      Pass UTF-8 bytes to the NeoSpeech API.
  * 
  * </pre>
  * 
@@ -125,9 +127,16 @@ public class TTSSynthesisTask implements Callable<TTSReturn> {
         libttsapi ttsapi = new libttsapi();
         ttsapi.SetConnectTimeout(this.ttsConnectionTimeout);
         int returnCode = TTS_RETURN_VALUE.TTS_UNKNOWN_ERROR.getCode();
+        /*
+         * May be due to a bug in the NeoSpeech API? But, we are now passing
+         * bytes to the ttsRequestFileSSML API method because passing SSML with
+         * special characters cannot be successfully processed. However, we can
+         * pass the same SSML String to the request buffer ssml API method and
+         * it works without any problems evaluating the SSML.
+         */
         returnCode = ttsapi.ttsRequestFileSSML(this.ttsServer, this.ttsPort,
-                this.ssml, null, this.synthesisOutputFileName, this.voice,
-                this.format);
+                this.ssml.getBytes(StandardCharsets.UTF_8), null,
+                this.synthesisOutputFileName, this.voice, this.format);
         TTS_RETURN_VALUE returnValue = TTS_RETURN_VALUE.lookup(returnCode);
         TTSReturn ttsReturn = new TTSReturn(returnValue);
         if (returnValue != TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {

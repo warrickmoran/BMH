@@ -67,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 18, 2015 4142       bkowal      Added {@link RateOfSpeechComp} to the dialog.
  * Feb 19, 2015 4142       bkowal      Retrieve/update the rate of speech in the
  *                                     selected {@link TransmitterLanguage}.
+ * Feb 24, 2015 4157       bkowal      Supply a {@link Language} to the {@link RateOfSpeechComp}.
  * 
  * </pre>
  * 
@@ -634,10 +635,11 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
      */
     private void handleVoiceSelection() {
         if (SELECT_VOICE.equals(this.voiceCombo.getText())) {
-            this.rateOfSpeechComp.setSampleVoice(-1);
+            this.rateOfSpeechComp.setSampleVoice(-1, null);
         } else {
-            this.rateOfSpeechComp.setSampleVoice(this.voiceNameIdentifierMap
-                    .get(this.voiceCombo.getText()));
+            this.rateOfSpeechComp.setSampleVoice(
+                    this.voiceNameIdentifierMap.get(this.voiceCombo.getText()),
+                    this.selectedLanguage);
         }
     }
 }

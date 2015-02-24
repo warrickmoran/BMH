@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
+import java.util.Map;
+import java.util.HashMap;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -35,6 +38,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 
 /**
@@ -50,6 +54,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * Feb 18, 2015 4142       bkowal      Initial creation
  * Feb 19, 2015 4142       bkowal      Use {@link #sampleVoice} when synthesizing
  *                                     the rate of speech sample.
+ * Feb 24, 2015 4157       bkowal      Added Spanish sample text.
  * 
  * </pre>
  * 
@@ -62,7 +67,16 @@ public class RateOfSpeechComp {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(RateOfSpeechComp.class);
 
-    private final String DEFAULT_SAMPLE_TEXT = "This is a test of the rate of speech option.";
+    private final Map<Language, String> sampleTextLanguageMap = new HashMap<>(
+            Language.values().length, 1.0f);
+
+    private final String SAMPLE_TEXT_ENGLISH = "This is a test of the rate of speech option.";
+
+    /**
+     * Translated the {@link #SAMPLE_TEXT_ENGLISH} using
+     * http://www.bing.com/translator/.
+     */
+    private final String SAMPLE_TEXT_SPANISH = "Esta es una prueba del índice de la opción de discurso.";
 
     private final int SCALED_RATE_MIN = 1;
 
@@ -83,6 +97,8 @@ public class RateOfSpeechComp {
     private Button playButton;
 
     private int sampleVoice = -1;
+
+    private Language sampleLanguage;
 
     /**
      * Constructor
@@ -139,6 +155,12 @@ public class RateOfSpeechComp {
             this.rateOfSpeechScale.setEnabled(false);
             this.playButton.setEnabled(false);
         }
+
+        /*
+         * Populate the sample language map.
+         */
+        this.sampleTextLanguageMap.put(Language.ENGLISH, SAMPLE_TEXT_ENGLISH);
+        this.sampleTextLanguageMap.put(Language.SPANISH, SAMPLE_TEXT_SPANISH);
     }
 
     /**
@@ -147,8 +169,9 @@ public class RateOfSpeechComp {
      * @param voiceNumber
      *            the identifier to the voice to use for audio playback
      */
-    public void setSampleVoice(int voiceNumber) {
+    public void setSampleVoice(int voiceNumber, Language language) {
         this.sampleVoice = voiceNumber;
+        this.sampleLanguage = language;
 
         boolean enabled = (this.sampleVoice != -1);
         this.rateOfSpeechScale.setEnabled(enabled);
@@ -207,7 +230,7 @@ public class RateOfSpeechComp {
      * Plays sample audio based on the selected rate of speech.
      */
     private void handlePlayAction() {
-        SSMLDocument ssmlDoc = new SSMLDocument();
+        SSMLDocument ssmlDoc = new SSMLDocument(this.sampleLanguage);
 
         /*
          * Construct the prosody tag.
@@ -222,7 +245,7 @@ public class RateOfSpeechComp {
          * form messages is significantly longer than the sample text. Add the
          * text to the prosody.
          */
-        prosody.getContent().add(DEFAULT_SAMPLE_TEXT);
+        prosody.getContent().add(this.sampleTextLanguageMap.get(this.sampleLanguage));
 
         ssmlDoc.getRootTag().getContent().add(prosody);
         final String ssml;

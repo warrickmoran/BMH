@@ -39,6 +39,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.schemas.ssml.Break;
 import com.raytheon.uf.common.bmh.schemas.ssml.Phoneme;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
@@ -65,6 +66,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jun 25, 2014    3355    mpduff      Initial creation
  * Jul 21, 2014    3407    mpduff      Removed unused variable
+ * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * 
  * </pre>
  * 
@@ -313,13 +315,18 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
         final String REPLACE = "REPLACEME";
         if (ssmlSnippet != null) {
             try {
-                SSMLDocument ssmlDocument = new SSMLDocument();
+                /*
+                 * In this case the language does not matter because we just
+                 * extract the inner tags from the SSML Document.
+                 */
+                SSMLDocument ssmlDocument = new SSMLDocument(Language.ENGLISH);
                 // Need to replace contents to get correct string representation
                 ssmlDocument.getRootTag().getContent().add(REPLACE);
                 String xml = jaxb.getJaxbManager().marshalToXml(
                         ssmlDocument.getRootTag());
 
                 xml = xml.replace(REPLACE, ssmlSnippet);
+                // TODO: fix to eliminate the warning.
                 JAXBElement<Speak> o = (JAXBElement<Speak>) jaxb
                         .getJaxbManager().unmarshalFromXml(xml);
 

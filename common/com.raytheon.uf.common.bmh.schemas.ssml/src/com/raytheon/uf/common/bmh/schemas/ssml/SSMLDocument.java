@@ -22,6 +22,7 @@ package com.raytheon.uf.common.bmh.schemas.ssml;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.schemas.ssml.jaxb.SSMLJaxbManager;
 import com.raytheon.uf.common.serialization.MarshalOptions;
 
@@ -38,6 +39,7 @@ import com.raytheon.uf.common.serialization.MarshalOptions;
  * Jun 12, 2014 3259       bkowal      Initial creation
  * Jul 7, 2014  3302       bkowal      Created a method that would accept a String of
  *                                     SSML and return a new document.
+ * Feb 24, 2015 4157       bkowal      Include the actual language in the Speak element.
  * 
  * </pre>
  * 
@@ -49,7 +51,7 @@ public class SSMLDocument {
 
     private static final String SSML_VERSION = "1.0";
 
-    private static final String DEFAULT_LANG = "en-US";
+    private static final String DEFAULT_REGION = "US";
 
     private final ObjectFactory factory;
 
@@ -58,13 +60,17 @@ public class SSMLDocument {
     /**
      * 
      */
-    public SSMLDocument() {
+    public SSMLDocument(final Language language) {
+        if (language == null) {
+            throw new IllegalArgumentException(
+                    "Required argument language can not be NULL.");
+        }
         this.factory = new ObjectFactory();
 
         this.rootTag = this.factory.createSpeak();
         /* Set required properties on the root tag. */
         this.rootTag.setVersion(SSML_VERSION);
-        this.rootTag.setLang(DEFAULT_LANG);
+        this.rootTag.setLang(language.getIsoCode() + "-" + DEFAULT_REGION);
     }
 
     protected SSMLDocument(Speak rootTag) {
