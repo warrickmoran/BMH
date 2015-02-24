@@ -51,6 +51,7 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  * Nov 26, 2014  3613     bsteffen    Initial creation
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Jan 26, 2015  3928     bsteffen    Allow creation of a practice purger.
+ * Feb 24, 2015  4160     bsteffen    Purge message files.
  * 
  * </pre>
  * 
@@ -71,6 +72,8 @@ public class MessagePurger {
 
     private final Path audioPath;
 
+    private final Path playlistPath;
+
     public MessagePurger(int purgeDays, final InputMessageDao inputMessageDao,
             final BroadcastMsgDao broadcastMessageDao, boolean operational) {
         this.purgeDays = purgeDays;
@@ -78,6 +81,8 @@ public class MessagePurger {
         this.broadcastMessageDao = broadcastMessageDao;
         audioPath = BMHConstants.getBmhDataDirectory(operational).resolve(
                 BMHConstants.AUDIO_DATA_DIRECTORY);
+        playlistPath = BMHConstants.getBmhDataDirectory(operational).resolve(
+                "playlist");
     }
 
     public void purge() {
@@ -86,8 +91,10 @@ public class MessagePurger {
         }
         Calendar purgeTime = Calendar.getInstance();
         purgeTime.add(Calendar.DAY_OF_YEAR, -purgeDays);
-        purgeAudioFiles(purgeTime);
         purgeDatabase(purgeTime);
+        purgeAudioFiles(purgeTime);
+        purgeMessageFiles(purgeTime);
+
     }
 
     protected void purgeDatabase(Calendar purgeTime) {
@@ -96,6 +103,7 @@ public class MessagePurger {
         logger.info("Purging {} messages older than {}", inputMessages.size(),
                 purgeTime.getTime());
         List<Path> audioFilesToDelete = new ArrayList<>(inputMessages.size());
+        List<Path> messageFilesToDelete = new ArrayList<>(inputMessages.size());
         for (InputMessage inputMessage : inputMessages) {
             for (BroadcastMsg broadcastMessage : broadcastMessageDao
                     .getMessagesByInputMsgId(inputMessage.getId())) {
@@ -103,12 +111,25 @@ public class MessagePurger {
                         .getFragments()) {
                     audioFilesToDelete.add(Paths.get(fragment.getOutputName()));
                 }
+                Path messagePath = playlistPath
+                        .resolve(
+                                broadcastMessage.getTransmitterGroup()
+                                        .getName()).resolve("messages")
+                        .resolve(broadcastMessage.getId() + ".xml");
+                messageFilesToDelete.add(messagePath);
             }
         }
         inputMessageDao.deleteAll(inputMessages);
         for (Path path : audioFilesToDelete) {
             try {
                 Files.delete(path);
+            } catch (IOException e) {
+                logger.error("Failed to delete {}", path, e);
+            }
+        }
+        for (Path path : messageFilesToDelete) {
+            try {
+                Files.deleteIfExists(path);
             } catch (IOException e) {
                 logger.error("Failed to delete {}", path, e);
             }
@@ -168,6 +189,60 @@ public class MessagePurger {
                 Files.delete(datedDir);
             } catch (IOException e) {
                 logger.error("Failed to delete empty directroy: ", datedDir, e);
+            }
+        }
+    }
+
+    protected void purgeMessageFiles(Calendar purgeTime) {
+        if (Files.isDirectory(playlistPath)) {
+            try (DirectoryStream<Path> stream = Files
+                    .newDirectoryStream(playlistPath)) {
+                for (Path playlistDir : stream) {
+                    Path messageDir = playlistDir.resolve("messages");
+                    if (Files.exists(messageDir)) {
+                        purgeMessageFilesForTransmitter(messageDir,
+                                purgeTime);
+                    }
+                }
+            } catch (IOException e) {
+                logger.error("Cannot clear old orphaned audio files.", e);
+            }
+        }
+    }
+
+    protected void purgeMessageFilesForTransmitter(Path messageDir,
+            Calendar purgeTime) {
+        boolean empty = true;
+        try (DirectoryStream<Path> stream = Files
+                .newDirectoryStream(messageDir)) {
+            for (Path messageFile : stream) {
+                if (Files.getLastModifiedTime(messageFile).toMillis() < purgeTime
+                        .getTimeInMillis()) {
+                    String fileName = messageFile.getFileName().toString();
+                    long id = Long.parseLong(fileName.substring(0,
+                            fileName.indexOf('.')));
+                    BroadcastMsg parent = broadcastMessageDao.getByID(id);
+                    if (parent == null) {
+                        logger.info("Deleting orphaned message file: {}",
+                                messageFile);
+                        Files.delete(messageFile);
+                    } else {
+                        empty = false;
+                    }
+                } else {
+                    empty = false;
+                }
+            }
+        } catch (IOException e) {
+            logger.error("Cannot clear old orphaned message files.", e);
+            empty = false;
+        }
+        if (empty) {
+            try {
+                Files.delete(messageDir);
+            } catch (IOException e) {
+                logger.error("Failed to delete empty directroy: ", messageDir,
+                        e);
             }
         }
     }

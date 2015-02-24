@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -93,6 +92,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 05, 2015  #3651     bkowal       Use {@link DefaultMessageLogger} to log msg errors.
  * Jan 16, 2015  #3928     bsteffen     Fix purging of old playlists on dac startup.
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
+ * Feb 24, 2015  #4160     bsteffen     Do not purge message files.
  * 
  * </pre>
  * 
@@ -515,18 +515,11 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         }
     }
 
-    private void purgeMessage(final DacPlaylistMessageId messageId)
-            throws IOException {
+    private void purgeMessage(final DacPlaylistMessageId messageId) {
         logger.debug("Removing message " + messageId + " from cache.");
 
-        DacPlaylistMessage message = cachedMessages.remove(messageId);
-        if (message != null) {
-            Path path = message.getPath();
-            if (path != null) {
-                Files.delete(path);
-                logger.info("Deleted " + message.getPath());
-            }
-        }
+        cachedMessages.remove(messageId);
+
     }
 
     private void purgeAudio(final DacPlaylistMessageId messageId) {
@@ -555,13 +548,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
             for (DacPlaylistMessageId messageId : cachedMessages.keySet()) {
                 if (!activeMessageIds.contains(messageId)) {
-                    try {
-                        purgeAudio(messageId);
-                        purgeMessage(messageId);
-                    } catch (IOException e) {
-                        logger.error("Error removing message " + messageId
-                                + " from cache.", e);
-                    }
+                    purgeAudio(messageId);
+                    purgeMessage(messageId);
                 } else if (isExpired(messageId)) {
                     /*
                      * we remove the cached audio buffer separate from the
