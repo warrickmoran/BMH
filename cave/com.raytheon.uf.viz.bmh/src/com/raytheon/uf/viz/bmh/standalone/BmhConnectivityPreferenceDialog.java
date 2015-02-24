@@ -43,6 +43,7 @@ import com.raytheon.uf.viz.core.localization.ConnectivityPreferenceDialog;
 import com.raytheon.uf.viz.core.localization.TextOrCombo;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
  * Dialog giving the user options for how to start BMH in standalone mode. By
@@ -94,8 +95,16 @@ public class BmhConnectivityPreferenceDialog extends
 
     }
 
+
     @Override
     protected void createTextBoxes(Composite textBoxComp) {
+        /*
+         * This is not the most obvious spot to put in the mode listener because
+         * it affects the entire dialog and not just the text boxes but this is
+         * the first time that this class gains access to the shell so it is the
+         * best spot to do this.
+         */
+        new ModeListener(textBoxComp.getShell());
         super.createTextBoxes(textBoxComp);
 
         Label label = new Label(textBoxComp, SWT.RIGHT);
