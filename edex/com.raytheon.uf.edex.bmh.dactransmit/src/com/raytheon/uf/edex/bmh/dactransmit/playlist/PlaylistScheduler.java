@@ -65,6 +65,7 @@ import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
+import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotificationHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
@@ -138,6 +139,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Mar 03, 2015  #4002     bkowal       Log that the dac transmit has disseminated a
  *                                      {@link MessageNotBroadcastNotification}.
  * Mar 06, 2015  #4188     bsteffen     Handle start time of interrupts.
+ * Mar 09, 2015  #4170     bsteffen     Remove messages when audio failed to load.
  * 
  * </pre>
  * 
@@ -375,17 +377,32 @@ public final class PlaylistScheduler implements
             warnNoMessages = true;
             DacPlaylistMessage nextMessage = nextMessageData.getMessage();
             logger.debug("Switching to message: " + nextMessage.toString());
-            IAudioFileBuffer audioDataBuffer = cache.getAudio(nextMessage);
-            AudioFileBuffer audioData = null;
-            if (audioDataBuffer.isDynamic()) {
-                audioData = this.cache.refreshTimeSensitiveAudio(
-                        (DynamicTimeAudioFileBuffer) audioDataBuffer,
-                        nextMessage, TimeUtil.newGmtCalendar());
-            } else {
-                audioData = (AudioFileBuffer) audioDataBuffer;
+            IAudioFileBuffer audioDataBuffer = null;
+            try {
+                audioDataBuffer = cache.getAudio(nextMessage);
+            } catch (Throwable e) {
+                logger.error(e.getMessage(), e);
+                CriticalErrorEvent event = new CriticalErrorEvent(
+                        e.getMessage(), e);
+                this.eventBus.post(event);
+                synchronized (playlistMessgeLock) {
+                    messageIndex -= 1;
+                    this.currentPlaylist.getMessages().remove(
+                            this.currentMessages.remove(messageIndex));
+                }
             }
-            audioData.setReturnTones(nextMessage.shouldPlayTones(TimeUtil
-                    .newGmtCalendar()));
+            AudioFileBuffer audioData = null;
+            if (audioDataBuffer != null) {
+                if (audioDataBuffer.isDynamic()) {
+                    audioData = this.cache.refreshTimeSensitiveAudio(
+                            (DynamicTimeAudioFileBuffer) audioDataBuffer,
+                            nextMessage, TimeUtil.newGmtCalendar());
+                } else {
+                    audioData = (AudioFileBuffer) audioDataBuffer;
+                }
+                audioData.setReturnTones(nextMessage.shouldPlayTones(TimeUtil
+                        .newGmtCalendar()));
+            }
             nextMessageData.setAudio(audioData);
         } else {
             if (warnNoMessages) {

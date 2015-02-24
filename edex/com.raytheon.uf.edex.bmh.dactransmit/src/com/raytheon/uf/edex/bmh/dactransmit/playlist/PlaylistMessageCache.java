@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Calendar;
@@ -94,6 +95,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * Feb 24, 2015  #4160     bsteffen     Do not purge message files.
  * Mar 05, 2015  #4222     bkowal       Handle messages that never expire.
+ * Mar 09, 2015  #4170     bsteffen     Throw exceptions from getAudio.
  * 
  * </pre>
  * 
@@ -241,36 +243,27 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * @return The audio file's data, or {@code null} if the data isn't in the
      *         cache.
      */
-    public IAudioFileBuffer getAudio(final DacPlaylistMessage message) {
+    public IAudioFileBuffer getAudio(final DacPlaylistMessage message)
+            throws Throwable {
         schedulePurge();
         Future<IAudioFileBuffer> fileStatus = cacheStatus
                 .get(new DacPlaylistMessageId(message.getBroadcastId()));
         if (fileStatus != null) {
             IAudioFileBuffer buffer = cachedFiles.get(message);
             if (buffer == null) {
+                long startTime = System.currentTimeMillis();
                 try {
-                    long startTime = System.currentTimeMillis();
                     buffer = fileStatus.get();
-                    long time = System.currentTimeMillis() - startTime;
-                    if(time > 1){
-                        logger.info(
-                                "Spent {}ms waiting for audio for message with id={}.",
-                                time, message.getBroadcastId());
-                    }
-                    cachedFiles.put(message, buffer);
-                } catch (InterruptedException e) {
-                    logger.error(
-                            "Exception thrown waiting on cache status for "
-                                    + message, e);
-                    DefaultMessageLogger.getInstance().logError(
-                            BMH_COMPONENT.DAC_TRANSMIT,
-                            BMH_ACTIVITY.AUDIO_READ, message, e);
                 } catch (ExecutionException e) {
-                    logger.error(e.getMessage(), e.getCause());
-                    CriticalErrorEvent event = new CriticalErrorEvent(
-                            e.getMessage(), e.getCause());
-                    this.eventBus.post(event);
+                    throw e.getCause();
                 }
+                long time = System.currentTimeMillis() - startTime;
+                if (time > 1) {
+                    logger.info(
+                            "Spent {}ms waiting for audio for message with id={}.",
+                            time, message.getBroadcastId());
+                }
+                cachedFiles.put(message, buffer);
             }
 
             if (buffer != null) {
@@ -386,11 +379,14 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             if (status != null && status.isDone()) {
                 try {
                     buffer = status.get();
-                } catch (InterruptedException | ExecutionException e) {
+                } catch (InterruptedException e) {
+                    /* Should never happen, just check file size. */
+                } catch(ExecutionException e){
                     /*
                      * Ignore for now, when the message is played the same
                      * exception will be thrown and logged in getAudio
                      */
+                    return 0;
                 }
             }
         }
@@ -410,9 +406,14 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                     Path audioFile = Paths.get(pathString);
                     try {
                         fileSize = Files.size(audioFile);
+                    } catch (NoSuchFileException e) {
+                        logger.error(
+                                "Unable to retrieve file size for file: {} because it does not exist.",
+                                audioFile);
                     } catch (Exception e) {
-                        logger.error("Unable to retrieve file size for file: "
-                                + audioFile.toString(), e);
+                        logger.error(
+                                "Unable to retrieve file size for file: {}",
+                                audioFile, e);
                     }
 
                 } else {
