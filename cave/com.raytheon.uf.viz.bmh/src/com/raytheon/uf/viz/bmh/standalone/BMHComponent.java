@@ -31,6 +31,7 @@ import org.osgi.framework.ServiceReference;
 import com.raytheon.uf.viz.application.component.IStandaloneComponent;
 import com.raytheon.uf.viz.bmh.ui.dialogs.BMHLauncherDlg;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
+import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -43,6 +44,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date          Ticket#   Engineer    Description
  * ------------- --------- ----------- --------------------------
  * Feb 05, 2015  3743      bsteffen    Initial creation
+ * Feb 16, 2015  4168      bsteffen    Set CAVEMode.
  * 
  * </pre>
  * 
@@ -54,6 +56,7 @@ public class BMHComponent implements IStandaloneComponent {
     @Override
     public Object startComponent(String componentName) throws Exception {
         Display display = PlatformUI.createDisplay();
+        CAVEMode.performStartupDuties();
         CaveSWTDialog dialog = null;
         BmhConnectivityInitializer connectivity = new BmhConnectivityInitializer();
         connectivity.run();

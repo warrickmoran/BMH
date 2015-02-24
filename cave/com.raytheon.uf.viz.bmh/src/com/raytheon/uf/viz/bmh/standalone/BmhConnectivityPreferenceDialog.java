@@ -42,6 +42,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.ConnectivityPreferenceDialog;
 import com.raytheon.uf.viz.core.localization.TextOrCombo;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * Dialog giving the user options for how to start BMH in standalone mode. By
@@ -58,6 +59,7 @@ import com.raytheon.uf.viz.core.requests.ThriftClient;
  * ------------- --------- ----------- --------------------------
  * Feb 05, 2015  3743      bsteffen    Initial creation
  * Feb 16, 2015  4119      bsteffen    Do not validate when BMH is not available.
+ * Feb 16, 2015  4168      bsteffen    Do not allow broadcast live in practice mode.
  * 
  * </pre>
  * 
@@ -143,7 +145,6 @@ public class BmhConnectivityPreferenceDialog extends
         emergencyComp.setLayout(gl);
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         emergencyComp.setLayoutData(gd);
-
         onlyBroadcastLiveCheck = new Button(emergencyComp, SWT.CHECK | SWT.LEFT);
         onlyBroadcastLiveCheck.setSelection(onlyBroadcastLive);
         onlyBroadcastLiveCheck.addSelectionListener(new SelectionAdapter() {
@@ -164,6 +165,17 @@ public class BmhConnectivityPreferenceDialog extends
         broadcastServerEntry.addSelectionListener(new EntrySelectionListener());
         broadcastServerEntry.widget
                 .setEnabled(useBmhServer | onlyBroadcastLive);
+        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+            /*
+             * Since broadcast live is using a server that does not behave
+             * differently in practice mode we have no way to ensure they are
+             * not affecting operations so this option is disabled.
+             */
+            label.setVisible(false);
+            ((GridData) label.getLayoutData()).exclude = true;
+            emergencyComp.setVisible(false);
+            ((GridData) emergencyComp.getLayoutData()).exclude = true;
+        }
     }
 
     @Override
