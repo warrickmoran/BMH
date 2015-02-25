@@ -68,6 +68,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 19, 2015 4142       bkowal      Retrieve/update the rate of speech in the
  *                                     selected {@link TransmitterLanguage}.
  * Feb 24, 2015 4157       bkowal      Supply a {@link Language} to the {@link RateOfSpeechComp}.
+ * Feb 24, 2015 4082       bkowal      Prevent duplicate voice entries as a result of re-selection
+ *                                     of the currently selected language.
  * 
  * </pre>
  * 
@@ -465,6 +467,10 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
     }
 
     private void populateVoices() {
+        /*
+         * Remove any existing elements from the voice combo.
+         */
+        this.voiceCombo.setItems(new String[] {});
         this.voiceCombo.add(SELECT_VOICE);
         List<TtsVoice> voices = null;
         try {

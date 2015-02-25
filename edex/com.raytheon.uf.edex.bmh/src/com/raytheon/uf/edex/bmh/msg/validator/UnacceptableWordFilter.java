@@ -58,6 +58,9 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Dec 02, 2014  3614     bsteffen    Initial creation
+ * Feb 24, 2015  4082     bkowal      Do not attempt to find unacceptable words
+ *                                    in empty Strings. Will always return true
+ *                                    when no unacceptable words exist.
  * 
  * </pre>
  * 
@@ -181,8 +184,11 @@ public class UnacceptableWordFilter {
      * @return a {@link List} of all the unnaceptable words found in message
      */
     public synchronized List<String> check(CharSequence message) {
+        if (message == null || message.length() == 0) {
+            return Collections.emptyList();
+        }
         Matcher matcher = this.pattern.matcher(message);
-        List<String> results = new ArrayList<String>();
+        List<String> results = new ArrayList<>();
         while (matcher.find()) {
             results.add(matcher.group());
         }
