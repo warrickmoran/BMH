@@ -82,6 +82,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 09, 2015   4095     bsteffen    Remove Transmitter Name.
  * Feb 10, 2015   4104     bkowal      Specify the table height so that it does not extend past the
  *                                     edge of the dialog when loaded with a large number of items.
+ * Feb 25, 2015  4122      rferrel     Message type constructor now take data to populate table.
  * 
  * </pre>
  * 
@@ -186,7 +187,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
      * @param parentShell
      *            The parent shell
      */
-    public AreaSelectionDlg(Shell parentShell, MessageType messageType) {
+    public AreaSelectionDlg(Shell parentShell, MessageType messageType,
+            AreaSelectionSaveData data) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
         if (messageType == null) {
@@ -195,6 +197,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         }
 
         this.messageType = messageType;
+        this.data = data;
     }
 
     /**
@@ -749,7 +752,9 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                     tableData.addDataRow(row);
                 }
             }
-        } else if (this.data != null) {
+        }
+
+        if (this.data != null) {
             for (Area area : this.data.getAreas()) {
                 TableRowData row = createAreaRow(area);
                 tableData.addDataRow(row);

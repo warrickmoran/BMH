@@ -47,6 +47,7 @@ import org.eclipse.swt.widgets.Spinner;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -105,6 +106,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 21, 2014  3845      bkowal       Use EOBroadcastSettingsBuilder.
  * Dec 09, 2014  3909      bkowal       Use {@link RecordedByUtils}.
  * Jan 07, 2014  3958      bkowal       Added {@link #verifyMsgRebroadcast(List)}.
+ * Feb 25, 2015  4122      rferrel      Save Area data in order to populate Area Selection dialog.
  * 
  * </pre>
  * 
@@ -167,6 +169,9 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
     /** Maximum number of hours for the duration. */
     private final int hourMax = 6;
+
+    /** Area Data for a given message type. */
+    private final Map<MessageType, AreaSelectionSaveData> areaDataMap = new HashMap<>();
 
     /**
      * Constructor.
@@ -521,7 +526,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
      */
     private void handleAreaSelection() {
         AreaSelectionDlg areaSelectionDlg = new AreaSelectionDlg(this.shell,
-                this.selectedMsgType);
+                this.selectedMsgType, areaDataMap.get(selectedMsgType));
         areaSelectionDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -530,6 +535,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                 }
 
                 AreaSelectionSaveData areaData = (AreaSelectionSaveData) returnValue;
+                areaDataMap.put(selectedMsgType, areaData);
                 sameTransmitters.selectCheckboxes(false);
                 CheckListData cld = sameTransmitters.getCheckedItems();
 
