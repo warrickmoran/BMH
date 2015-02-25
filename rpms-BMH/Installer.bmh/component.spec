@@ -2,7 +2,7 @@
 # AWIPS II BMH spec file
 #
 Name: awips2-bmh
-Summary: AWIPS II EDEX BMH Installation
+Summary: AWIPS II BMH Installation
 Version: %{_component_version}
 Release: %{_component_release}
 Group: AWIPSII
