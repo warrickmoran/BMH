@@ -58,6 +58,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 22, 2014    3740    mpduff      Clear phoneme var when phoneme text field is cleared
  * Jan 28, 2015    4045    bkowal      Provide the current {@link Shell} to the phoneme
  *                                     audio playback method.
+ * Feb 26, 2015    4054    rferrel     Fixed setup to PronunciationBuilderDlg to use ssml snippet.
  * </pre>
  * 
  * @author mpduff
@@ -371,13 +372,11 @@ public class NewEditWordDlg extends CaveSWTDialog {
     private void launchPronunciationBuilder() {
         if ((pronunciationBuilderDlg == null)
                 || pronunciationBuilderDlg.isDisposed()) {
+            pronunciationBuilderDlg = new PronunciationBuilderDlg(getShell(),
+                    wordTxt.getText().trim());
             if (phonemeTxt.getText().trim().length() > 0) {
-                pronunciationBuilderDlg = new PronunciationBuilderDlg(
-                        getShell(), wordTxt.getText().trim(), phonemeTxt
-                                .getText().trim());
-            } else {
-                pronunciationBuilderDlg = new PronunciationBuilderDlg(
-                        getShell(), wordTxt.getText().trim());
+                pronunciationBuilderDlg.setSsmlSnippet(phonemeTxt.getText()
+                        .toLowerCase());
             }
             pronunciationBuilderDlg.setCloseCallback(new ICloseCallback() {
                 @Override
