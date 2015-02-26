@@ -160,7 +160,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     a {@link AudioPlaybackCompleteNotification} is received.
  * Feb 16, 2015  4118      bkowal      Check for disposal of components updated
  *                                     asynchronously.
- * 
+ * Feb 26, 2015  4187      rjpeter     Added isDisposed checks.
  * </pre>
  * 
  * @author mpduff
@@ -276,7 +276,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * "lock" used to ensure that the dialog does not respond to monitor inline
      * events and disposal events simultaneously.
      */
-    private Object disposalLock = new Object();
+    private final Object disposalLock = new Object();
 
     /**
      * Constructor.
@@ -760,7 +760,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 }
             }
 
-            if (notification == null && dataStruct != null) {
+            if ((notification == null) && (dataStruct != null)) {
                 if (this.selectedSuite != null) {
                     suiteValueLbl.setText(this.selectedSuite);
                 }
@@ -892,8 +892,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 + selectedTransmitterGrp);
         transmitterNameLbl.setText(selectedTransmitterGrp);
 
-        if (selectedTransmitterGrp != null
-                && selectedTransmitterGrp.length() > 0) {
+        if ((selectedTransmitterGrp != null)
+                && (selectedTransmitterGrp.isEmpty() == false)) {
             transmitterNameLbl.setToolTipText(selectedTransmitterGrp);
         } else {
             transmitterNameLbl.setToolTipText(null);
@@ -1148,8 +1148,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             for (Entry<String, Boolean> entry : data.getDataMap().entrySet()) {
                 if (!entry.getValue()) {
                     selectedTransmitters.addAll(transmitterGroups.get(
-                            entry.getKey())
-                        .getTransmitters());
+                            entry.getKey()).getTransmitters());
                 }
             }
             if (selectedTransmitters.isEmpty()) {
@@ -1249,7 +1248,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
             // If the entry is null then don't update the text as there will be
             // other text displayed.
-            if (entry != null && entry.getInputMsg() != null) {
+            if ((entry != null) && (entry.getInputMsg() != null)) {
                 String content = entry.getInputMsg().getContent();
                 this.messageTextArea.setText(content);
             } else {
@@ -1315,6 +1314,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     @Override
     public void notificationArrived(NotificationMessage[] messages) {
+        if (isDisposed()) {
+            return;
+        }
+
         for (NotificationMessage message : messages) {
             try {
                 Object o = message.getMessagePayload();
@@ -1337,6 +1340,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
                             @Override
                             public void run() {
+                                if (messageDetailBtn.isDisposed()) {
+                                    return;
+                                }
+
                                 messageDetailBtn.setEnabled(true);
                                 if (programObj == null) {
                                     setProgramLabelTextFontAndColor("Unknown");
@@ -1351,7 +1358,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                 suiteCatValueLbl.setText(currentSuiteCategory);
                                 cycleDurValueLbl.setText(cycleDurationTime);
 
-                                if (periodicMsgDlg != null
+                                if ((periodicMsgDlg != null)
                                         && !periodicMsgDlg.isDisposed()) {
                                     periodicMsgDlg.populateTableData();
                                 }
@@ -1371,8 +1378,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
                             @Override
                             public void run() {
+                                if (messageDetailBtn.isDisposed()) {
+                                    return;
+                                }
+
                                 messageDetailBtn.setEnabled(true);
-                                if (periodicMsgDlg != null
+                                if ((periodicMsgDlg != null)
                                         && !periodicMsgDlg.isDisposed()) {
                                     periodicMsgDlg.populateTableData();
                                 }
@@ -1384,7 +1395,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     /*
                      * does this apply to the program we have selected?
                      */
-                    if (this.programObj == null
+                    if ((this.programObj == null)
                             || (this.programObj.getId() != pgmConfigNotification
                                     .getId())) {
                         return;
@@ -1397,8 +1408,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         public void run() {
                             retrieveProgram();
 
-                            if (changeSuiteDlg != null
-                                    && changeSuiteDlg.isDisposed() == false) {
+                            if ((changeSuiteDlg != null)
+                                    && (changeSuiteDlg.isDisposed() == false)) {
                                 changeSuiteDlg.updateSuites(programObj
                                         .getSuites());
                             }
@@ -1420,6 +1431,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         VizApp.runAsync(new Runnable() {
                             @Override
                             public void run() {
+                                if (isDisposed()) {
+                                    return;
+                                }
+
                                 updateDisplayForLiveBroadcast(liveTableData,
                                         notification.getType());
                             }
@@ -1432,6 +1447,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
                             @Override
                             public void run() {
+                                if (messageDetailBtn.isDisposed()) {
+                                    return;
+                                }
+
                                 messageDetailBtn.setEnabled(true);
                                 setProgramLabelTextFontAndColor(programObj
                                         .getName());
@@ -1467,7 +1486,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      */
     private String getCategoryForCurrentSuite() {
         String suiteCategory = NA;
-        if (this.selectedSuite == null || this.selectedSuite.isEmpty()) {
+        if ((this.selectedSuite == null) || this.selectedSuite.isEmpty()) {
             return "NA";
         }
         SuiteDataManager sdm = new SuiteDataManager();
@@ -1544,7 +1563,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                      * is the group that was removed, the currently selected
                      * group?
                      */
-                    if (selectedTransmitterGrp != null
+                    if ((selectedTransmitterGrp != null)
                             && selectedTransmitterGrp.equals(grp)) {
                         zeroSelection = true;
                     }
@@ -1587,7 +1606,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         if (progValueLbl.isDisposed()) {
             return;
         }
-        
+
         if (eoText.equals(text) || blText.equals(text)) {
             progValueLbl.setFont(liveBroadcastFont);
             progValueLbl.setForeground(getDisplay().getSystemColor(

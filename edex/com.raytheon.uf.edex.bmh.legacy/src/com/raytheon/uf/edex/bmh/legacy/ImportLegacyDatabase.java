@@ -80,6 +80,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Dec 10, 2014 3824       rferrel     Initial creation
  * Jan 06, 2015 3651       bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Feb 10, 2015 4058       rjpeter     Added auto assigning of DACs.
+ * Feb 26, 2015 4187       rjpeter     Respect operational flag on reset notification.
  * </pre>
  * 
  * @author rferrel
@@ -245,7 +246,7 @@ public class ImportLegacyDatabase {
                 }
 
                 BmhMessageProducer.sendConfigMessage(new ResetNotification(),
-                        true);
+                        operational);
             } catch (Throwable e) {
                 statusHandler.error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
                         "Error occurred saving legacy data to database", e);
