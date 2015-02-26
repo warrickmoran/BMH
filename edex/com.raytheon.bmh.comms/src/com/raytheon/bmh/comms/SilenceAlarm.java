@@ -46,7 +46,7 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * ------------- -------- ----------- --------------------------
  * Nov 26, 2014  3821     bsteffen    Initial Implementation
  * Jan 08, 2015  3821     bsteffen    Rename silenceAlarm to deadAirAlarm
- * 
+ * Feb 26, 2015  4187     rjpeter     Make thread daemon so jvm can stop.
  * </pre>
  * 
  * @author bsteffen
@@ -125,6 +125,7 @@ public class SilenceAlarm {
                         silenceTimes.put(group, new SilenceTime(group));
                         if (thread == null) {
                             thread = new SilenceAlarmThread();
+                            thread.setDaemon(true);
                             thread.start();
                         } else {
                             thread.interrupt();
@@ -183,7 +184,7 @@ public class SilenceAlarm {
         /**
          * Alarm(log an error) if enough time has passed.
          * 
-         * @return The amopunt of time before the next alarm should be sent.
+         * @return The amount of time before the next alarm should be sent.
          */
         public long alarm() {
             long currentTime = System.currentTimeMillis();

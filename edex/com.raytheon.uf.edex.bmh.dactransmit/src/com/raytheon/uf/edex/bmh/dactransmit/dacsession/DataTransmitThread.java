@@ -83,7 +83,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Feb 02, 2015  #4093     bsteffen     Add shutdown hook.
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * Feb 11, 2015  #4098     bsteffen     Allow pause to maintain packet sequence numbers.
- * 
+ * Feb 26, 2015  #4187     rjpeter      Added keepRunning check to allow shutdown when thread doesn't have sync.
  * </pre>
  * 
  * @author dgilling
@@ -256,7 +256,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                     while ((playbackData.hasRemaining())
                             && (playingInterrupt || (interruptsAvailable.get() == 0))) {
                         try {
-                            while (!hasSync && !pausePlayback) {
+                            while (!hasSync && !pausePlayback && keepRunning) {
                                 Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
 
                                 if (hasSync && onSyncRestartMessage) {

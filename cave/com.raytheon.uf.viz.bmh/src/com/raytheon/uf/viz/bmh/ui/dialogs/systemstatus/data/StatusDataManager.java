@@ -118,6 +118,10 @@ public class StatusDataManager {
                         DacVoiceStatus[] dvsArray = dhsn.getVoiceStatus();
 
                         for (DacVoiceStatus dvs : dvsArray) {
+                            /*
+                             * TODO: This is incorrect, should be based on
+                             * receiving a silence alarm message
+                             */
                             if (dvs != DacVoiceStatus.IP_AUDIO) {
                                 silence = true;
                                 break;
