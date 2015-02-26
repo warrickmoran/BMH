@@ -90,6 +90,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 08, 2015    3963    bkowal      Allow a user to complete or undo a transmitter decommission.
  * Jan 13, 2015    3995    rjpeter     Do not pass stand alone transmitters to new transmitter dialog.
  * Feb 09, 2015    4095    bsteffen    Remove Transmitter Name.
+ * Feb 26, 2015    4156    bkowal      Menu item to commission a Transmitter is now Disabled. Status
+ *                                     change confirmations are now asked in the form from state to state.
  * 
  * </pre>
  * 
@@ -442,7 +444,7 @@ public class TransmitterComp extends Composite implements
              */
             final TxStatus newStatus = (transmitterDecomissioned) ? TxStatus.DISABLED
                     : TxStatus.DECOMM;
-            final String menuItemText = (transmitterDecomissioned) ? "Commission Transmitter"
+            final String menuItemText = (transmitterDecomissioned) ? "Disable Transmitter"
                     : "Decommission Transmitter";
 
             MenuItem decommissionTransmitterItem = new MenuItem(menu, SWT.PUSH);
@@ -761,10 +763,16 @@ public class TransmitterComp extends Composite implements
 
     private boolean confirmChangeTxStatus(Transmitter toChange, TxStatus status) {
         String statusName = status.name();
+
+        StringBuilder sb = new StringBuilder(
+                "Are you sure you want to change the status of Transmitter ");
+        sb.append(toChange.getLocation()).append(" from ")
+                .append(toChange.getTxStatus().name());
+        sb.append(" to ").append(status.name()).append("?");
+
         return SWT.YES == DialogUtility.showMessageBox(this.getShell(),
                 SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm " + statusName,
-                "Are you sure you want " + statusName + " Transmitter "
-                        + toChange.getLocation() + "?");
+                sb.toString());
     }
 
     /**
