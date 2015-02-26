@@ -92,6 +92,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 09, 2015    4095    bsteffen    Remove Transmitter Name.
  * Feb 26, 2015    4156    bkowal      Menu item to commission a Transmitter is now Disabled. Status
  *                                     change confirmations are now asked in the form from state to state.
+ * Feb 26, 2015    4166    bkowal      Check for decomm state instead of active state when determining if
+ *                                     the user should be able to commission a transmitter in a group.
  * 
  * </pre>
  * 
@@ -293,7 +295,7 @@ public class TransmitterComp extends Composite implements
                                 .getTransmitterList().get(0).getTxStatus() == TxStatus.ENABLED));
                 if (transmitterEnabled == false) {
                     transmitterDecomissioned = ((groupTransmitter != null) && (groupTransmitter
-                            .getTxStatus() == TxStatus.ENABLED))
+                            .getTxStatus() == TxStatus.DECOMM))
                             || ((standaloneGroup != null) && (standaloneGroup
                                     .getTransmitterList().get(0).getTxStatus() == TxStatus.DECOMM));
                 }
