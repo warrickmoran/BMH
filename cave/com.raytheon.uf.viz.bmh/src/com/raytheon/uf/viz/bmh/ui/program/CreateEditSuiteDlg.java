@@ -112,6 +112,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 19, 2015   4151     bkowal      Removed the assigned programs field for new suites. Removed
  *                                     the "Set Triggers..." button when creating/editing a suite
  *                                     without an associated program.
+ * Feb 26, 2015   3749     rferrel     Message type only in the available or selected table.
  * </pre>
  * 
  * @author lvenable
@@ -125,6 +126,9 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
     /** List of all message types. */
     private List<MessageType> allMsgTypesList;
+
+    /** List of available message types not selected. */
+    private List<MessageType> availMessageTypes;
 
     /** List of message types in the suite. */
     private final List<SuiteMessage> msgTypesInSuiteList = new ArrayList<SuiteMessage>();
@@ -941,20 +945,22 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             selectedMsgTypeIndex = 0;
         }
 
+        List<MessageType> removeFromAvil = new ArrayList<>(indices.length);
         for (int i = indices.length - 1; i >= 0; --i) {
-            MessageType mt = allMsgTypesList.get(indices[i]);
+            MessageType mt = availMessageTypes.get(indices[i]);
 
-            if (msgTypeNames.contains(mt.getAfosid())) {
-                continue;
-            }
+            removeFromAvil.add(mt);
 
             SuiteMessage newSuiteMessage = new SuiteMessage();
             newSuiteMessage.setSuite(this.selectedSuite);
             newSuiteMessage.setMsgTypeSummary(mt.getSummary());
 
             msgTypesInSuiteList.add(selectedMsgTypeIndex, newSuiteMessage);
-            msgTypeNames.add(mt.getAfosid());
         }
+
+        availMessageTypes.removeAll(removeFromAvil);
+
+        populateAvailableMessageTypeTable();
 
         populateSelectedMsgTypesTable(true);
         enableDisableAddRemoveTriggerBtns();
@@ -1024,8 +1030,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                 this.triggerSuiteMsgsRemoved.add(removalCandidate.getId());
             }
 
-            msgTypeNames
-                    .remove(msgTypesInSuiteList.get(indices[i]).getAfosid());
             msgTypesInSuiteList.remove(indices[i]);
             if (this.selectedProgram != null) {
                 this.selectedProgram.removeTriggerMsgType(this.selectedSuite,
@@ -1035,6 +1039,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         populateSelectedMsgTypesTable(true);
         enableDisableAddRemoveTriggerBtns();
+        populateAvailableMessageTypeTable();
     }
 
     /**
@@ -1183,9 +1188,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
             msgTypesInSuiteList.addAll(suiteMsgMap.values());
 
-            for (SuiteMessage sm : msgTypesInSuiteList) {
-                msgTypeNames.add(sm.getAfosid());
-            }
         }
     }
 
@@ -1231,6 +1233,12 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * the table.
      */
     private void populateSelectedMessageTypeTableData() {
+        if (availMessageTypes == null) {
+            availMessageTypes = new ArrayList<>(allMsgTypesList);
+        } else {
+            availMessageTypes.clear();
+            availMessageTypes.addAll(allMsgTypesList);
+        }
         for (SuiteMessage sm : msgTypesInSuiteList) {
             TableRowData trd = new TableRowData();
 
@@ -1238,6 +1246,12 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                     .getAfosid()));
             trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()
                     .getTitle()));
+            for (MessageType mt : allMsgTypesList) {
+                if (mt.getId() == sm.getMsgTypeSummary().getId()) {
+                    availMessageTypes.remove(mt);
+                    break;
+                }
+            }
             if ((this.selectedProgram != null) && (this.selectedSuite != null)) {
                 trd.addTableCellData(new TableCellData(this.selectedProgram
                         .isTriggerMsgType(this.selectedSuite,
@@ -1271,7 +1285,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * Populate the Message Type table data.
      */
     private void populateAvailableMessageTypeTableData() {
-        for (MessageType mt : allMsgTypesList) {
+        for (MessageType mt : availMessageTypes) {
             TableRowData trd = new TableRowData();
             trd.addTableCellData(new TableCellData(mt.getAfosid()));
             trd.addTableCellData(new TableCellData(mt.getTitle()));
