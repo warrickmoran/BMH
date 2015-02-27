@@ -48,6 +48,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  * ------------ ---------- ----------- --------------------------
  * Oct 15, 2014            lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Silent alarm updates.
+ * Feb 27, 2915  #3962     rferrel      Add status images for transmitters.
  * 
  * </pre>
  * 
@@ -153,10 +154,10 @@ public class TransmitterGroupStatusComp extends Composite {
         SortedMap<Integer, List<TransmitterInfo>> transInfoMap = transmitterGrpInfo
                 .getTransmitterInfoMap();
 
-        gl = new GridLayout(3, false);
+        gl = new GridLayout(4, false);
         gl.marginHeight = 1;
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.horizontalIndent = 40;
+        gd.horizontalIndent = 20;
         Composite xmitComp = new Composite(this, SWT.NONE);
         xmitComp.setLayout(gl);
         xmitComp.setLayoutData(gd);
@@ -194,6 +195,15 @@ public class TransmitterGroupStatusComp extends Composite {
             TransmitterInfo ti = iter.next();
 
             GridData gd = new GridData();
+            gd.widthHint = 20;
+            Label txStatusImgLbl = new Label(xmitComp, SWT.NONE);
+            txStatusImgLbl.setLayoutData(gd);
+            if (ti.getTxStatus() == TxStatus.DECOMM) {
+                txStatusImgLbl.setImage(statusImages
+                        .getStatusImage(StatusImage.Decommissioned));
+            }
+
+            gd = new GridData();
             gd.widthHint = 20;
             Label transmitterImgLbl = new Label(xmitComp, SWT.NONE);
             transmitterImgLbl.setLayoutData(gd);
@@ -254,12 +264,17 @@ public class TransmitterGroupStatusComp extends Composite {
         Label silentAlarmLbl = new Label(xmitComp, SWT.NONE);
         silentAlarmLbl.setLayoutData(gd);
 
-        // There are three possible images to display:
-        // 1.) if the silent alarm is flagged and the user disabled the silent
+        // There are five possible images to display:
+        // 1.) transmitter status is decommissioned
+        // 2.) transmitter status is maintenance (not yet implemented)
+        // 3.) if the silent alarm is flagged and the user disabled the silent
         // alarm then show the alarm & disabled silent alarm image.
-        // 2.) if the silent alarm is disabled
-        // 3.) if the silent alarm is flagged (no audio playing)
-        if (transmitterGrpInfo.isSilenceAlarm()
+        // 4.) if the silent alarm is disabled
+        // 5.) if the silent alarm is flagged (no audio playing)
+        if (transmitterInfo.getTxStatus() == TxStatus.DECOMM) {
+            silentAlarmLbl.setImage(statusImages
+                    .getStatusImage(StatusImage.Decommissioned));
+        } else if (transmitterGrpInfo.isSilenceAlarm()
                 && transmitterGrpInfo.isDisabledSilenceAlarm()) {
             silentAlarmLbl.setImage(statusImages
                     .getStatusImage(StatusImage.AlarmPlusDisabledSilentAlarm));

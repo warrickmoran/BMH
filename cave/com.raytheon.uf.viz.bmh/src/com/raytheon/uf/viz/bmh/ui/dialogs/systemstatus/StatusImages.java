@@ -49,6 +49,7 @@ import com.raytheon.uf.viz.bmh.Activator;
  * Nov 17, 2014  3349      lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Added image for a silent alarm and
  *                                      if it's disabled.
+ * Feb 27, 2015  #3962     rferrel      Added image for decommissioned.
  * 
  * </pre>
  * 
@@ -59,7 +60,7 @@ public class StatusImages {
 
     /** Enumeration of record states. */
     public enum StatusImage {
-        Dac, Transmitter, TransmitterGrp, TransmitterDisabled, Alarm, DisabledSilentAlarm, AlarmPlusDisabledSilentAlarm;
+        Dac, Transmitter, TransmitterGrp, TransmitterDisabled, Alarm, DisabledSilentAlarm, AlarmPlusDisabledSilentAlarm, Decommissioned;
     };
 
     /** Transmitter image. */
@@ -78,6 +79,9 @@ public class StatusImages {
     private Image transmitterGrpImg;
 
     private Image alarmPlusDisabledSilentAlarmImg;
+
+    /** Decommissioned Image */
+    private Image decommissionedImage;
 
     /** Map of images. */
     private Map<StatusImage, Image> imageMap = new HashMap<StatusImage, Image>();
@@ -125,6 +129,12 @@ public class StatusImages {
                 "icons/alarm.png");
         alarmImg = id.createImage();
         imageMap.put(StatusImage.Alarm, alarmImg);
+
+        // Decommissioned
+        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
+                "icons/decommissioned.png");
+        decommissionedImage = id.createImage();
+        imageMap.put(StatusImage.Decommissioned, decommissionedImage);
 
         // Transmitter
         id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
