@@ -24,10 +24,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioFormat.Encoding;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
-import javax.sound.sampled.AudioFormat.Encoding;
 import javax.sound.sampled.LineEvent;
 import javax.sound.sampled.LineEvent.Type;
 import javax.sound.sampled.LineListener;
@@ -45,6 +45,7 @@ import javax.sound.sampled.LineUnavailableException;
  * Oct 7, 2014  3657       bkowal      Initial creation
  * Oct 26, 2014 3748       bkowal      Implemented new/resume.
  * Dec 10, 2014 3883       bkowal      Added {@link #isPaused()}.
+ * Feb 27, 2015 4149       rferrel     Add check for null audio clip in halt().
  * 
  * </pre>
  * 
@@ -125,8 +126,10 @@ public class AudioPlaybackThread extends Thread implements LineListener {
     }
 
     public void halt() {
-        this.audioClip.stop();
-        this.dispose();
+        if (this.audioClip != null) {
+            this.audioClip.stop();
+            this.dispose();
+        }
     }
 
     @Override
