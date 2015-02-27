@@ -62,6 +62,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Feb 18, 2015  4136     bkowal      Use the {@link Language} identifiers to determine
  *                                    the Language when parsing the input.
  * Feb 20, 2015  4158     bsteffen    Add support for optional polygons
+ * Feb 27, 2016  4182     rferrel     Corrected spelling in messages.
  * 
  * </pre>
  * 
@@ -213,7 +214,7 @@ public class InputMessageParser {
         Matcher periodicity = periodicityPattern.matcher(text);
         periodicity.region(index, text.length());
         if (periodicity.find() == false) {
-            throw new ParseException("Invalid Periocity.", index);
+            throw new ParseException("Invalid Periodicity.", index);
         }
         if (!periodicity.group().trim().isEmpty()) {
             message.setPeriodicity(periodicity.group());
@@ -284,7 +285,7 @@ public class InputMessageParser {
             message.setInterrupt(false);
             break;
         default:
-            throw new ParseException("Unrecognized Interupt Flag Character: "
+            throw new ParseException("Unrecognized Interrupt Flag Character: "
                     + active, index);
         }
         return index + 1;
@@ -390,6 +391,5 @@ public class InputMessageParser {
         c.setTime(d);
         return c;
     }
-
 
 }
