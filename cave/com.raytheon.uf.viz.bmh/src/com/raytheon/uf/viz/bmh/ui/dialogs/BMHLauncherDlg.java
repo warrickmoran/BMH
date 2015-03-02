@@ -55,8 +55,6 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessageExpiredNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
@@ -71,8 +69,6 @@ import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.practice.PracticeKeepAliveJob;
-import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
-import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CustomToolTip;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
@@ -83,7 +79,6 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.BroadcastCycleDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterAlignmentDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterConfigDlg;
-import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacConfigDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.demo.DemoMessageDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.DictionaryManagerDlg;
@@ -103,7 +98,6 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
-import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
  * 
@@ -152,6 +146,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 06, 2015   4019     lvenable    Updated code to have the status monitor as a part of this dialog
  *                                     and removed the menu items for the status monitor and alert monitor.
  * Feb 19, 2015   4143     bsteffen    Add demo message dialog.
+ * Mar 02, 2015   4141     bkowal      Use the {@link SilenceAlarmDelegate} to manage silence alarms.
  * 
  * </pre>
  * 
@@ -1219,78 +1214,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
     }
 
     private void handleDisableSilenceAlarm() {
-
-        // TODO: Need to determine the silence alarms so we can check the
-        // transmitters
-
-        /*
-         * Create the list of transmitters to be used with the
-         * CheckScrollListDlg
-         */
-        CheckListData cld = new CheckListData();
-        TransmitterDataManager tdm = new TransmitterDataManager();
-        List<TransmitterGroup> transmitterGrps = null;
-
-        try {
-            transmitterGrps = tdm
-                    .getTransmitterGroups(new TransmitterGroupPositionComparator());
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving transmitter data from the database: ", e);
-            return;
-        }
-
-        for (TransmitterGroup tg : transmitterGrps) {
-            cld.addDataItem(tg.getName(), !tg.getDeadAirAlarm());
-        }
-
-        /*
-         * Create the check list dialog with the list of transmitters.
-         */
-        CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
-                DlgInfo.DISABLES_SILENCE_ALARM.getTitle(),
-                "Select Transmitter to Disable:", cld, true);
-        checkListDlg.setCloseCallback(new ICloseCallback() {
-            @Override
-            public void dialogClosed(Object returnValue) {
-                if (returnValue != null && returnValue instanceof CheckListData) {
-                    CheckListData listData = (CheckListData) returnValue;
-                    handleTransmitterGroupUpdate(listData.getDataMap());
-                }
-            }
-        });
-        checkListDlg.open();
-    }
-
-    private void handleTransmitterGroupUpdate(Map<String, Boolean> dataMap) {
-
-        if (dataMap.isEmpty()) {
-            return;
-        }
-
-        TransmitterDataManager tdm = new TransmitterDataManager();
-        List<TransmitterGroup> transmitterGrps = null;
-
-        try {
-            transmitterGrps = tdm.getTransmitterGroups();
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving transmitter data from the database: ", e);
-            return;
-        }
-
-        for (TransmitterGroup tg : transmitterGrps) {
-            if (dataMap.containsKey(tg.getName())) {
-                tg.setDeadAirAlarm(!dataMap.get(tg.getName()));
-                try {
-                    tdm.saveTransmitterGroup(tg);
-                } catch (Exception e) {
-                    statusHandler.error(
-                            "Error saving updated transmitter group "
-                                    + tg.getName() + " to the database: ", e);
-                }
-            }
-        }
+        new SilenceAlarmDelegate(this.shell);
     }
 
     private void importLegacyDB() {
