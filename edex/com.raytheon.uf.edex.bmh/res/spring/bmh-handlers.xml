@@ -34,7 +34,10 @@
         <constructor-arg ref="suiteHandler" />
     </bean>
     
-    <bean id="ttsVoiceHandler" class="com.raytheon.uf.edex.bmh.handler.TtsVoiceHandler" />
+    <bean id="ttsVoiceHandler" class="com.raytheon.uf.edex.bmh.handler.TtsVoiceHandler">
+    	<constructor-arg ref="ttsVoiceManager" />
+    	<constructor-arg ref="practice_ttsVoiceManager" />
+    </bean>
     <bean factory-bean="handlerRegistry" factory-method="register">
         <constructor-arg
             value="com.raytheon.uf.common.bmh.request.TtsVoiceRequest" />

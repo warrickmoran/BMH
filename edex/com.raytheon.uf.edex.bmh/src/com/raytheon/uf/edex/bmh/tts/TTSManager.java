@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FilenameUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.BMHVoice;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.TTSSynthesisException;
@@ -102,6 +103,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Feb 09, 2015 4091       bkowal      Use {@link EdexAudioConverterManager}.
  * Feb 17, 2015 4136       bkowal      Truncate any audio data with duration that is greater
  *                                     than the maximum default or specified duration.
+ * Feb 03, 2015 4175       bkowal      Use the required and guaranteed Paul voice for
+ *                                     TTS Availability Verification.
  * 
  * </pre>
  * 
@@ -134,8 +137,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     /* Configuration Property Name Constants */
     private static final String TTS_HEARTBEAT = "bmh.tts.heartbeat";
 
-    private static final String TTS_VOICE_VALIDATE_PROPERTY = "bmh.tts.voice.validate";
-
     private static final String TTS_RETRY_THRESHOLD_PROPERTY = "bmh.tts.retry-threshold";
 
     private static final String TTS_RETRY_DELAY_PROPERTY = "bmh.tts.retry-delay";
@@ -157,7 +158,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private long ttsHeartbeat;
 
-    private Integer ttsValidationVoice;
+    private final Integer ttsValidationVoice = BMHVoice.PAUL.getId();
 
     private int ttsRetryThreshold;
 
@@ -256,8 +257,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
          */
         Long ttsHeartbeatLong = Long.getLong(TTS_HEARTBEAT, null);
 
-        this.ttsValidationVoice = Integer.getInteger(
-                TTS_VOICE_VALIDATE_PROPERTY, null);
         Integer retryInteger = Integer.getInteger(TTS_RETRY_THRESHOLD_PROPERTY,
                 null);
         Long delayLong = Long.getLong(TTS_RETRY_DELAY_PROPERTY, null);
@@ -293,15 +292,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             throw new BMHConfigurationException("TTS Retry Delay must be >= 0!");
         }
 
-        if (this.ttsValidationVoice != null) {
-            statusHandler
-                    .info("TTS Voice "
-                            + this.ttsValidationVoice
-                            + " will be used to verify that the TTS synthesis capability is available.");
-        }
-        /*
-         * Perform both checks during the initialization validation.
-         */
         this.validateSynthesis();
 
         statusHandler.info("TTS Heartbeat Interval is " + this.ttsHeartbeat);
@@ -333,12 +323,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      */
     private void validateSynthesis() throws BMHConfigurationException,
             IOException {
-        if (this.ttsValidationVoice == null) {
-            statusHandler
-                    .info("A validation voice has not been specified. Please check the configuration. Skipping synthesis validation ...");
-            return;
-        }
-
         int attempt = 0;
         boolean retry = true;
 

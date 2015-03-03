@@ -31,7 +31,6 @@ import java.util.Set;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
-import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
@@ -66,6 +65,7 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
+import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
 
 /**
  * Imports legacy BmhData to the database. Assumes data is already verified.
@@ -81,6 +81,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Jan 06, 2015 3651       bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Feb 10, 2015 4058       rjpeter     Added auto assigning of DACs.
  * Feb 26, 2015 4187       rjpeter     Respect operational flag on reset notification.
+ * Mar 03, 2015 4175       bkowal      Use {@link TTSVoiceManager}.
  * </pre>
  * 
  * @author rferrel
@@ -99,29 +100,36 @@ public class ImportLegacyDatabase {
 
     private final IMessageLogger messageLogger;
 
+    private final TTSVoiceManager ttsVoiceManager;
+
     public ImportLegacyDatabase(String input, String source,
-            boolean operational, final IMessageLogger messageLogger) {
+            boolean operational, final IMessageLogger messageLogger,
+            TTSVoiceManager ttsVoiceManager) {
         this.input = input;
         this.source = source;
         this.operational = operational;
         this.messageLogger = messageLogger;
+        this.ttsVoiceManager = ttsVoiceManager;
     }
 
     public void saveImport() throws Exception {
 
         statusHandler.info("Start Importing Legacy Database: " + source);
         BmhData data = null;
+
+        // Ensure that all default voices have been registered.
+        this.ttsVoiceManager.determineSpanishSupport();
+
         // Scan for TtsVoices
         TtsVoiceDao voiceDao = new TtsVoiceDao(operational);
         List<TtsVoice> voices = voiceDao.getAll();
-        if ((voices == null) || (voices.size() == 0)) {
-            TtsVoice voice = new TtsVoice();
-            voice.setVoiceNumber(101);
-            voice.setVoiceName("Paul");
-            voice.setLanguage(Language.ENGLISH);
-            voice.setMale(true);
-            voiceDao.create(voice);
-            voices.add(voice);
+        if ((voices == null) || (voices.isEmpty())) {
+            Exception ex = new Exception(
+                    "No voices currently exist in the BMH system!");
+            statusHandler.error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
+                    "Legacy database import of: " + this.source
+                            + " has failed.", ex);
+            throw ex;
         }
 
         clearTables();

@@ -26,6 +26,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
 import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
+import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
 
 /**
  * Handles any requests to get or modify the state of {@link TtsVoice}s
@@ -43,6 +44,7 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
  *                                    {@link #getVoiceById(TtsVoiceRequest)}, and
  *                                    {@link #updateVoice(TtsVoiceRequest)}.
  * Jan 13, 2015  3809     bkowal      Added {@link #getIdentifiersForLanguage(TtsVoiceRequest)}.
+ * Mar 03, 2015  4175     bkowal      Support voice registration.
  * 
  * </pre>
  * 
@@ -52,6 +54,16 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 
 public class TtsVoiceHandler extends
         AbstractBMHServerRequestHandler<TtsVoiceRequest> {
+
+    private final TTSVoiceManager ttsVoiceManager;
+
+    private final TTSVoiceManager practice_ttsVoiceManager;
+
+    public TtsVoiceHandler(TTSVoiceManager ttsVoiceManager,
+            TTSVoiceManager practice_ttsVoiceManager) {
+        this.ttsVoiceManager = ttsVoiceManager;
+        this.practice_ttsVoiceManager = practice_ttsVoiceManager;
+    }
 
     /*
      * (non-Javadoc)
@@ -79,6 +91,9 @@ public class TtsVoiceHandler extends
             break;
         case UpdateVoice:
             ttsVoiceResponse = updateVoice(request);
+            break;
+        case RegisterVoice:
+            ttsVoiceResponse = registerVoice(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -168,5 +183,40 @@ public class TtsVoiceHandler extends
         dao.saveOrUpdate(request.getVoice());
 
         return response;
+    }
+
+    private TtsVoiceResponse registerVoice(TtsVoiceRequest request) {
+        TtsVoiceDao dao = new TtsVoiceDao(request.isOperational());
+
+        /*
+         * First verify that the voice does not already exist. Rare scenario in
+         * which user attempt to register the same voice simultaneously.
+         */
+        TtsVoice voice = dao.getByID(request.getBmhVoice().getId());
+        if (voice == null) {
+            final TTSVoiceManager ttsVoiceManager = this
+                    .getVoiceManager(request);
+
+            if (ttsVoiceManager.verifyVoiceAvailability(request.getBmhVoice())) {
+                voice = request.getBmhVoice().getVoice();
+
+                dao.saveOrUpdate(voice);
+            }
+        }
+
+        TtsVoiceResponse response = new TtsVoiceResponse();
+        if (voice != null) {
+            List<TtsVoice> voiceList = new ArrayList<>(1);
+            voiceList.add(voice);
+
+            response.setTtsVoiceList(voiceList);
+        }
+
+        return response;
+    }
+
+    private TTSVoiceManager getVoiceManager(final TtsVoiceRequest request) {
+        return (request.isOperational()) ? this.ttsVoiceManager
+                : this.practice_ttsVoiceManager;
     }
 }

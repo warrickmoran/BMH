@@ -36,6 +36,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.BMHVoice;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -50,8 +51,6 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * TTS Voice Configuration dialog. This dialog allows users to see the voices
  * and assign a dictionary to voices that are available in the system.
  * 
- * TODO: implement dialog. This initial check-in just includes dialog design.
- * 
  * <pre>
  * 
  * SOFTWARE HISTORY
@@ -60,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Dec 13, 2014 3618       bkowal      Initial creation
  * Dec 16, 2014 3618       bkowal      Implemented
+ * Mar 03, 2015 4175       bkowal      Implemented voice registration.
  * 
  * </pre>
  * 
@@ -77,6 +77,8 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
 
     private Map<String, Integer> voiceIdentifierMap = new HashMap<>();
 
+    private Map<Integer, BMHVoice> unregisteredVoices;
+
     /**
      * Used to retrieve and store {@link TtsVoice} information.
      */
@@ -93,6 +95,8 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
     private Button changeBtn;
 
     private Button saveBtn;
+
+    private Button addVoiceButton;
 
     private TtsVoice selectedVoice;
 
@@ -215,6 +219,18 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 populateVoiceAttributes();
+            }
+        });
+
+        gd = new GridData(SWT.CENTER, SWT.FILL, true, false);
+        gd.widthHint = 100;
+        addVoiceButton = new Button(voicesGroup, SWT.PUSH);
+        addVoiceButton.setText("Add Voice ...");
+        addVoiceButton.setLayoutData(gd);
+        addVoiceButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleAddVoiceAction();
             }
         });
     }
@@ -363,9 +379,12 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
             return;
         }
 
+        unregisteredVoices = new HashMap<>(BMHVoice.values().length, 1.0f);
+        for (BMHVoice bmhVoice : BMHVoice.values()) {
+            unregisteredVoices.put(bmhVoice.getId(), bmhVoice);
+        }
+
         if (availableVoices == null || availableVoices.isEmpty()) {
-            statusHandler
-                    .error("No TTS Voices have been defined in the system.");
             return;
         }
 
@@ -373,8 +392,14 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
             this.voiceList.add(voice.getVoiceName());
             this.voiceIdentifierMap.put(voice.getVoiceName(),
                     voice.getVoiceNumber());
+
+            this.unregisteredVoices.remove(voice.getVoiceNumber());
         }
         this.voiceList.select(0);
+
+        if (unregisteredVoices.isEmpty()) {
+            this.addVoiceButton.setEnabled(false);
+        }
     }
 
     private void populateVoiceAttributes() {
@@ -496,6 +521,62 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         this.selectedVoice.setDictionary(dictionary);
         this.voiceDictionaryLabel.setText(dictionary.getName());
         this.saveBtn.setEnabled(true);
+    }
+
+    private void handleAddVoiceAction() {
+        SelectVoiceDlg selectVoiceDlg = new SelectVoiceDlg(this.shell,
+                this.unregisteredVoices);
+        selectVoiceDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue == null
+                        || returnValue instanceof BMHVoice == false) {
+                    return;
+                }
+
+                addVoice((BMHVoice) returnValue);
+            }
+        });
+        selectVoiceDlg.open();
+    }
+
+    private void addVoice(BMHVoice bmhVoice) {
+        TtsVoice registeredVoice = null;
+
+        try {
+            registeredVoice = this.vdm.registerTtsVoice(bmhVoice);
+        } catch (Exception e) {
+            statusHandler.error("Failed to register BMH Voice: "
+                    + registeredVoice.getVoiceName() + "!", e);
+            return;
+        }
+
+        if (registeredVoice == null) {
+            /*
+             * the voice could not be registered.
+             */
+            StringBuilder sb = new StringBuilder("Unable to register voice: ");
+            sb.append(bmhVoice.getName())
+                    .append(". It has not been installed or the current TTS License does not support it.");
+
+            DialogUtility.showMessageBox(this.shell, SWT.ICON_INFORMATION
+                    | SWT.OK, "Voice Registration", sb.toString());
+            return;
+        }
+
+        this.voiceIdentifierMap.put(registeredVoice.getVoiceName(),
+                registeredVoice.getVoiceNumber());
+        this.voiceList.add(registeredVoice.getVoiceName());
+        this.unregisteredVoices.remove(registeredVoice.getVoiceNumber());
+        if (this.unregisteredVoices.isEmpty()) {
+            this.addVoiceButton.setEnabled(false);
+        }
+
+        StringBuilder sb = new StringBuilder("Successfully registered voice: ");
+        sb.append(bmhVoice.getName()).append(".");
+
+        DialogUtility.showMessageBox(this.shell, SWT.ICON_INFORMATION | SWT.OK,
+                "Voice Registration", sb.toString());
     }
 
     /*

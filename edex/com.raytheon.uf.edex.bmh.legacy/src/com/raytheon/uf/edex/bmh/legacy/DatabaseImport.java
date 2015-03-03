@@ -37,7 +37,6 @@ import java.util.Set;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
-import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
@@ -60,6 +59,7 @@ import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
+import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
 
 /**
  * Imports legacy database and stores it. Will only run on start up. Moves
@@ -81,6 +81,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Oct 13, 2014 3687       bsteffen    Send ResetNotification instead of individual notifications.
  * Nov 02, 2014 2746       rjpeter     Updated DAC population and transmitter assignment.
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
+ * Mar 03, 2015  4175      bkowal      Use {@link TTSVoiceManager}.
  * </pre>
  * 
  * @author rjpeter
@@ -88,17 +89,18 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  */
 public class DatabaseImport {
 
-    // Default voice information if there is not one currently in the database
-    protected static final int DEFAULT_VOICE_NUMBER = 101;
-
-    protected static final String DEFAULT_VOICE_NAME = "Paul";
-
     protected static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(DatabaseImport.class);
+
+    private final TTSVoiceManager ttsVoiceManager;
 
     private boolean runImport;
 
     private String databaseDir;
+
+    public DatabaseImport(TTSVoiceManager ttsVoiceManager) {
+        this.ttsVoiceManager = ttsVoiceManager;
+    }
 
     public boolean isRunImport() {
         return runImport;
@@ -123,7 +125,7 @@ public class DatabaseImport {
             if (!dir.exists() && !dir.mkdirs()) {
                 statusHandler.error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
                         "Failed to create directory [" + dir.getAbsolutePath()
-                                + "].  Cannot import legacy database");
+                                + "]. Cannot import legacy database");
                 return;
             }
 
@@ -132,7 +134,7 @@ public class DatabaseImport {
                         BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
                         "Legacy import directory is not a directory ["
                                 + dir.getAbsolutePath()
-                                + "].  Cannot import legacy database");
+                                + "]. Cannot import legacy database");
                 return;
             }
 
@@ -147,17 +149,22 @@ public class DatabaseImport {
 
                         BmhData data = null;
                         try {
+                            // Ensure that all default voices have been
+                            // registered.
+                            this.ttsVoiceManager.determineSpanishSupport();
+
                             // Scan for TtsVoices
                             TtsVoiceDao voiceDao = new TtsVoiceDao();
                             List<TtsVoice> voices = voiceDao.getAll();
-                            if ((voices == null) || (voices.size() == 0)) {
-                                TtsVoice voice = new TtsVoice();
-                                voice.setVoiceNumber(101);
-                                voice.setVoiceName("Paul");
-                                voice.setLanguage(Language.ENGLISH);
-                                voice.setMale(true);
-                                voiceDao.create(voice);
-                                voices.add(voice);
+                            if ((voices == null) || (voices.isEmpty())) {
+                                Exception ex = new Exception(
+                                        "No voices currently exist in the BMH system!");
+                                statusHandler.error(
+                                        BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
+                                        "Legacy database import of: "
+                                                + file.getAbsolutePath()
+                                                + " has failed.", ex);
+                                throw ex;
                             }
 
                             AsciiFileTranslator asciiFile = new AsciiFileTranslator(
