@@ -136,6 +136,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 28, 2015  #4036     bsteffen     Actually expire playlists with no playable messages.
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * Feb 12, 2015  #4114     bsteffen     Fix playlist expiration.
+ * Mar 03, 2015  #4002     bkowal       Log that the dac transmit has disseminated a
+ *                                      {@link MessageNotBroadcastNotification}.
  * 
  * </pre>
  * 
@@ -943,10 +945,13 @@ public final class PlaylistScheduler implements
                     && this.delayInterrupts && this.type == BROADCASTTYPE.BL) {
                 final String expire = (messageData.getExpire() == null) ? StringUtils.EMPTY
                         : messageData.getExpire().getTime().toString();
-                this.eventBus.post(new MessageDelayedBroadcastNotification(
+                MessageDelayedBroadcastNotification notification = new MessageDelayedBroadcastNotification(
                         messageData.getBroadcastId(), playlist.isInterrupt(),
                         messageData.getName(), messageData.getMessageType(),
-                        expire));
+                        expire);
+                logger.info("Notifying users of delayed broadcast: {}.",
+                        notification.toString());
+                this.eventBus.post(notification);
             }
 
             /*
