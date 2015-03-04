@@ -154,6 +154,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    and next button.
  * Feb 16, 2015  4118     bkowal      Check for imported audio when determining message type.
  * Mar 03, 2015  4211     bkowal      Do not allow users to submit expired messages.
+ * Mar 03, 2015  4212     bkowal      Display the Tone Playback confirmation for any combination
+ *                                    of SAME and Alert tones.
  * 
  * </pre>
  * 
@@ -998,7 +1000,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             return;
         }
 
-        if (this.alertChk.getSelection()) {
+        final boolean nwrSameTone = (sameTransmitters.getCheckedItems()
+                .getCheckedItems().isEmpty() == false);
+
+        if (this.alertChk.getSelection() || nwrSameTone) {
             // alert the user that they are about to play same tones.
             int option = DialogUtility
                     .showMessageBox(
@@ -1052,8 +1057,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
          * through entire process so PlaylistManager can use it to write the
          * proper SAME tone string.
          */
-        userInputMessage.setNwrsameTone(!sameTransmitters.getCheckedItems()
-                .getCheckedItems().isEmpty());
+        userInputMessage.setNwrsameTone(nwrSameTone);
 
         if (Boolean.TRUE.equals(userInputMessage.getNwrsameTone())) {
             userInputMessage.setSameTransmitterSet(new HashSet<String>(
