@@ -27,12 +27,13 @@ import java.nio.file.Paths;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
+import voiceware.libttsapi;
+
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
+import com.raytheon.uf.common.util.SystemUtil;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
-
-import voiceware.libttsapi;
 
 /**
  * Performs the Text-To-Speech Synthesis.
@@ -50,6 +51,8 @@ import voiceware.libttsapi;
  *                                     Convert the audio length to the time that it would
  *                                     take to play the audio.
  * Feb 24, 2015 4157       bkowal      Pass UTF-8 bytes to the NeoSpeech API.
+ * Mar 04, 2015 4172       rferrel     Add host name to synthesisOutputFileName
+ *                                      to make unique across servers.
  * 
  * </pre>
  * 
@@ -156,6 +159,8 @@ public class TTSSynthesisTask implements Callable<TTSReturn> {
         /* Read the bytes from the generated file. */
         Path synthesisOutputFilePath = Paths.get(this.ttsNfsDir,
                 this.synthesisOutputFileName + PCM_EXTENSION);
+        statusHandler.debug("Synthesis output temporary file: "
+                + synthesisOutputFilePath);
         /*
          * Indicate that synthesis is complete. Even if reading the raw byte
          * data fails (which is unlikely), the resource will still need to be
@@ -216,7 +221,14 @@ public class TTSSynthesisTask implements Callable<TTSReturn> {
      * written to.
      */
     private void generateSynthesisOutputFile() {
-        StringBuilder stringBuilder = new StringBuilder(this.voice);
+        String hostName = SystemUtil.getHostName();
+        int index = hostName.indexOf('.');
+        if (index > 0) {
+            hostName = hostName.substring(0, index);
+        }
+        StringBuilder stringBuilder = new StringBuilder(hostName);
+        stringBuilder.append("_");
+        stringBuilder.append(this.voice);
         stringBuilder.append("_");
         stringBuilder.append(this.identifier);
         stringBuilder.append("_");
