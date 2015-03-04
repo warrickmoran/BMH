@@ -35,6 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 19, 2015 4002       bkowal      Initial creation
+ * Mar 03, 2015 4002       bkowal      Added {@link #toString()}.
  * 
  * </pre>
  * 
@@ -187,5 +188,25 @@ public class MessageDelayedBroadcastNotification {
      */
     public void setTransmitterGroup(String transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder(
+                "MessageDelayedBroadcastNotification [broadcastId=");
+        sb.append(this.broadcastId);
+        sb.append(", interrupt=");
+        sb.append(this.interrupt);
+        sb.append(", name=");
+        sb.append(this.name);
+        sb.append(", messageType=");
+        sb.append(this.messageType);
+        sb.append(", expire=");
+        sb.append(this.expire);
+        sb.append(", transmitterGroup=");
+        sb.append(this.transmitterGroup);
+        sb.append("]");
+
+        return sb.toString();
     }
 }
