@@ -49,7 +49,7 @@ import com.raytheon.uf.viz.bmh.Activator;
  * Nov 17, 2014  3349      lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Added image for a silent alarm and
  *                                      if it's disabled.
- * Feb 27, 2015  #3962     rferrel      Added image for decommissioned.
+ * Feb 27, 2015  #3962     rferrel      Added images for decommissioned and maintenance.
  * 
  * </pre>
  * 
@@ -60,28 +60,12 @@ public class StatusImages {
 
     /** Enumeration of record states. */
     public enum StatusImage {
-        Dac, Transmitter, TransmitterGrp, TransmitterDisabled, Alarm, DisabledSilentAlarm, AlarmPlusDisabledSilentAlarm, Decommissioned;
+        Dac, Transmitter, TransmitterGrp, TransmitterDisabled,
+
+        Alarm, DisabledSilentAlarm, AlarmPlusDisabledSilentAlarm,
+
+        Decommissioned, Maintenance;
     };
-
-    /** Transmitter image. */
-    private Image transmitterImg;
-
-    /** Silent Alarm image. */
-    private Image disabledSilentAlarmImg;
-
-    /** Disabled Silent Alarm image. */
-    private Image disabledTransmitterImg;
-
-    /** Alarm image. */
-    private Image alarmImg;
-
-    /** Transmitter group image. */
-    private Image transmitterGrpImg;
-
-    private Image alarmPlusDisabledSilentAlarmImg;
-
-    /** Decommissioned Image */
-    private Image decommissionedImage;
 
     /** Map of images. */
     private Map<StatusImage, Image> imageMap = new HashMap<StatusImage, Image>();
@@ -122,50 +106,44 @@ public class StatusImages {
             }
         });
 
-        ImageDescriptor id;
-
         // Alarm
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
-                "icons/alarm.png");
-        alarmImg = id.createImage();
-        imageMap.put(StatusImage.Alarm, alarmImg);
+        putImage(StatusImage.Alarm, "icons/alarm.png");
 
         // Decommissioned
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
-                "icons/decommissioned.png");
-        decommissionedImage = id.createImage();
-        imageMap.put(StatusImage.Decommissioned, decommissionedImage);
+        putImage(StatusImage.Decommissioned, "icons/decommissioned.png");
+
+        // Maintenance
+        putImage(StatusImage.Maintenance, "icons/maintenance.png");
 
         // Transmitter
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
-                "icons/xmit.png");
-        transmitterImg = id.createImage();
-        imageMap.put(StatusImage.Transmitter, transmitterImg);
+        putImage(StatusImage.Transmitter, "icons/xmit.png");
 
         // Disabled transmitter
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
-                "icons/xmit_disabled.png");
-        disabledTransmitterImg = id.createImage();
-        imageMap.put(StatusImage.TransmitterDisabled, disabledTransmitterImg);
+        putImage(StatusImage.TransmitterDisabled, "icons/xmit_disabled.png");
 
         // Silent Alarm
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
+        putImage(StatusImage.DisabledSilentAlarm,
                 "icons/disabledSilentAlarm.png");
-        disabledSilentAlarmImg = id.createImage();
-        imageMap.put(StatusImage.DisabledSilentAlarm, disabledSilentAlarmImg);
 
         // Transmitter group
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
-                "icons/xmit_grp.png");
-        transmitterGrpImg = id.createImage();
-        imageMap.put(StatusImage.TransmitterGrp, transmitterGrpImg);
+        putImage(StatusImage.TransmitterGrp, "icons/xmit_grp.png");
 
         // Alarm active with SilentAlarm disabled
-        id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
+        putImage(StatusImage.AlarmPlusDisabledSilentAlarm,
                 "icons/alarmDisabledSilent.png");
-        alarmPlusDisabledSilentAlarmImg = id.createImage();
-        imageMap.put(StatusImage.AlarmPlusDisabledSilentAlarm,
-                alarmPlusDisabledSilentAlarmImg);
+    }
+
+    /**
+     * Create image and put in imageMap.
+     * 
+     * @param statusImage
+     * @param filename
+     */
+    private void putImage(StatusImage statusImage, String filename) {
+        ImageDescriptor id = AbstractUIPlugin.imageDescriptorFromPlugin(
+                Activator.PLUGIN_ID, filename);
+        Image image = id.createImage();
+        imageMap.put(statusImage, image);
     }
 
     /**

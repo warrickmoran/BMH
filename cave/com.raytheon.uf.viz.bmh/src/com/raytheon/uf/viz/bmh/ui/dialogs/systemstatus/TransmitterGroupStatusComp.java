@@ -201,6 +201,9 @@ public class TransmitterGroupStatusComp extends Composite {
             if (ti.getTxStatus() == TxStatus.DECOMM) {
                 txStatusImgLbl.setImage(statusImages
                         .getStatusImage(StatusImage.Decommissioned));
+            } else if (ti.getTxStatus() == TxStatus.MAINT) {
+                txStatusImgLbl.setImage(statusImages
+                        .getStatusImage(StatusImage.Maintenance));
             }
 
             gd = new GridData();
@@ -266,7 +269,7 @@ public class TransmitterGroupStatusComp extends Composite {
 
         // There are five possible images to display:
         // 1.) transmitter status is decommissioned
-        // 2.) transmitter status is maintenance (not yet implemented)
+        // 2.) transmitter status is maintenance
         // 3.) if the silent alarm is flagged and the user disabled the silent
         // alarm then show the alarm & disabled silent alarm image.
         // 4.) if the silent alarm is disabled
@@ -274,6 +277,9 @@ public class TransmitterGroupStatusComp extends Composite {
         if (transmitterInfo.getTxStatus() == TxStatus.DECOMM) {
             silentAlarmLbl.setImage(statusImages
                     .getStatusImage(StatusImage.Decommissioned));
+        } else if (transmitterInfo.getTxStatus() == TxStatus.MAINT) {
+            silentAlarmLbl.setImage(statusImages
+                    .getStatusImage(StatusImage.Maintenance));
         } else if (transmitterGrpInfo.isSilenceAlarm()
                 && transmitterGrpInfo.isDisabledSilenceAlarm()) {
             silentAlarmLbl.setImage(statusImages

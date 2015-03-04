@@ -364,6 +364,8 @@ public class TransmitterComp extends Composite implements
                 disableStatusItem
                         .setSelection(!(transmitterEnabled || transmitterDecomissioned));
 
+                new MenuItem(statusMenu, SWT.SEPARATOR);
+
                 MenuItem decommissionTransmitterItem = new MenuItem(statusMenu,
                         SWT.RADIO);
                 decommissionTransmitterItem.setText("Decommission Transmitter");
@@ -949,6 +951,11 @@ public class TransmitterComp extends Composite implements
                 event.gc.setForeground(display.getSystemColor(SWT.COLOR_WHITE));
                 event.gc.setBackground(brown);
                 brown.dispose();
+                break;
+            case MAINT:
+                event.gc.setBackground(display
+                        .getSystemColor(SWT.COLOR_DARK_BLUE));
+                event.gc.setForeground(display.getSystemColor(SWT.COLOR_WHITE));
                 break;
             default:
                 statusHandler.error("Color not set for TxStatus: "

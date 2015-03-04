@@ -40,7 +40,6 @@ import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
-import javax.persistence.Transient;
 import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
@@ -90,6 +89,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Jan 22, 2015 3995       rjpeter     Added {@link #GET_TRANSMITTER_GROUP_MAX_POSITION}, removed Tone.
  * Feb 02, 2015 4080       bkowal      Only include transmitters with a TxStatus of enabled in the
  *                                     {@link Set} produced by {@link #getEnabledTransmitters()}.
+ * Mar 03, 2015 3962       rferrel     Added logic for MAINT status.
  * </pre>
  * 
  * @author rjpeter
@@ -167,12 +167,6 @@ public class TransmitterGroup {
     @ForeignKey(name = "transmitter_group_to_program")
     @JoinColumn(name = "program_id")
     private ProgramSummary programSummary;
-
-    /**
-     * Set of transmitters enabled when the whole group is disabled.
-     */
-    @Transient
-    private final Set<Integer> prevEnabledTransmitters = new HashSet<>();
 
     public TransmitterGroup() {
     }
@@ -342,44 +336,44 @@ public class TransmitterGroup {
     }
 
     /**
-     * Disables all transmitters in the group. Keeps track of which transmitters
-     * were enabled before this call so that the same transmitters can be
-     * re-enabled.
+     * Determine if the group is in maintenance.
+     * 
+     * @return true if one or more transmitters' status is maintenance
      */
-    public void disableGroup() {
+    public boolean isMaint() {
+        for (Transmitter t : getTransmitters()) {
+            if (t.getTxStatus() == TxStatus.MAINT) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Group's enabled transmitters change to maintenance.
+     */
+    public void maintenanceGroup() {
         if (!transmitters.isEmpty()) {
             for (Transmitter t : transmitters) {
                 if (t.getTxStatus() == TxStatus.ENABLED) {
-                    prevEnabledTransmitters.add(t.id);
-                    t.setTxStatus(TxStatus.DISABLED);
+                    t.setTxStatus(TxStatus.MAINT);
                 }
             }
         }
     }
 
     /**
-     * Enables transmitters in the group.
+     * Group's maintenance transmitters change to enabled.
      * 
-     * If enableAll is true then all transmitters are enabled, otherwise only
-     * those that were previously enabled are re-enabled.
-     * 
-     * @param enableAll
-     *            true to enable all transmitters, false to enable those
-     *            previously enabled
      */
-    public void enableGroup(boolean enableAll) {
+    public void enableGroup() {
         if (!transmitters.isEmpty()) {
             for (Transmitter t : transmitters) {
-                if (enableAll) {
+                if (t.getTxStatus() == TxStatus.MAINT) {
                     t.setTxStatus(TxStatus.ENABLED);
-                } else {
-                    if (prevEnabledTransmitters.contains(t.getId())) {
-                        t.setTxStatus(TxStatus.ENABLED);
-                    }
                 }
             }
-
-            prevEnabledTransmitters.clear();
         }
     }
 
