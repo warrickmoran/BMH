@@ -44,6 +44,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 7, 2014     3173    mpduff      Initial creation
+ * Mar 04, 2015    4218    rferrel     Add scroll bars to group's list.
  * 
  * </pre>
  * 
@@ -93,14 +94,13 @@ public class GroupTransmitterOrderDlg extends CaveSWTDialog {
     protected void initializeComponents(Shell shell) {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         Group group = new Group(shell, SWT.BORDER);
-        group.setText(" " + this.getText() + " ");
         group.setLayout(new GridLayout(1, false));
         group.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.widthHint = 200;
         gd.heightHint = 250;
-        uiList = new List(group, SWT.BORDER);
+        uiList = new List(group, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
         uiList.setLayoutData(gd);
 
         uiList.setItems(listItems.toArray(new String[0]));
