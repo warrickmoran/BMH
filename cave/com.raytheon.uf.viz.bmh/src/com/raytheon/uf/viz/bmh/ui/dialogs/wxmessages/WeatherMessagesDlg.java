@@ -153,7 +153,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 12, 2015  4113     bkowal      Users can now advance through the input messages using a previous
  *                                    and next button.
  * Feb 16, 2015  4118     bkowal      Check for imported audio when determining message type.
- *                                    
+ * Mar 03, 2015  4211     bkowal      Do not allow users to submit expired messages.
+ * 
  * </pre>
  * 
  * @author lvenable
@@ -975,20 +976,17 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         if ((expirationTime == effectiveTime)
                 || (expirationTime <= System.currentTimeMillis())) {
             /*
-             * Verify that the user would actually like to submit an expired
-             * message.
+             * Do not allow a user to submit an expired message.
              */
-            int option = DialogUtility
+            DialogUtility
                     .showMessageBox(
                             this.shell,
-                            SWT.ICON_WARNING | SWT.YES | SWT.NO,
-                            "Weather Messages - Expiration Confirmation",
+                            SWT.ICON_ERROR | SWT.OK,
+                            "Weather Messages - Expired",
                             "Message "
                                     + this.msgNameTF.getText()
-                                    + " has already expired. Would you like to submit an expired message?");
-            if (option != SWT.YES) {
-                return false;
-            }
+                                    + " has already expired. Please update the expiration date/time.");
+            return false;
         }
 
         return true;
