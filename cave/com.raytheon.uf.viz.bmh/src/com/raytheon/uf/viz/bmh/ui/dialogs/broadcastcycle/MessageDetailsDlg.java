@@ -82,7 +82,9 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Dec 11, 2014    3895     lvenable   Changed SimpleDateFormat to use GMT.
  * Dec 11, 2014    3905     lvenable   Updated to show area codes for the selected message.
  * Jan 20, 2015    4010     bkowal     Include the areas associated with the selected 
- *                                     transmitters (when applicable). 
+ *                                     transmitters (when applicable).
+ * Mar 03, 2015    4210     bkowal     Use the periodicity associated with the Message instead
+ *                                     of the Message Type.
  * 
  * </pre>
  * 
@@ -561,7 +563,11 @@ public class MessageDetailsDlg extends CaveSWTDialog {
     }
 
     private String getPeriodicity() {
-        String periodicity = messageType.getPeriodicity();
+        String periodicity = this.broadcastMsg.getInputMessage()
+                .getPeriodicity();
+        if (periodicity == null || periodicity.isEmpty()) {
+            return "00:00:00:00";
+        }
         final String COLON = ":";
         StringBuilder sb = new StringBuilder();
         sb.append(periodicity.substring(0, 2)).append(COLON);
