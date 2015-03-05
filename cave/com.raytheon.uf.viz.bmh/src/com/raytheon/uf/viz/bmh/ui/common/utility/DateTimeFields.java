@@ -70,6 +70,8 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  *                                     the user manually alters the time.
  * Jan 02, 2014   3833     lvenable    Removed the calendar icon since it was never used.  Can be put
  *                                     back in later if needed.
+ * Mar 05, 2015   4214     rferrel     Method getCalDateTimeValues adds 0 value Calendar.SECOND to result
+ *                                      map when there is no spinner for seconds.
  * 
  * </pre>
  * 
@@ -379,7 +381,7 @@ public class DateTimeFields extends Composite {
      * Gets the values from the spinner controls. They are mapped to the
      * {@link Calendar#get(int)} fields.
      * 
-     * @return
+     * @return valueMap
      */
     public Map<Integer, Integer> getCalDateTimeValues() {
         Map<Integer, Integer> valueMap = new HashMap<>();
@@ -392,6 +394,14 @@ public class DateTimeFields extends Composite {
             }
             valueMap.put(this.dfTypeToCalMap.get(dft), fieldValue);
         }
+
+        // Make 0 value second entry when no second spinner.
+        if (valueMap.get(Calendar.SECOND) == null) {
+            valueMap.put(Calendar.SECOND, 0);
+        }
+
+        // Never have a millisecond spinner.
+        valueMap.put(Calendar.MILLISECOND, 0);
 
         return valueMap;
     }
