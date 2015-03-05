@@ -40,6 +40,8 @@ import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
  * ------------ ---------- ----------- --------------------------
  * Oct 2, 2014             bkowal      Initial creation
  * Oct 23, 2014 3748       bkowal      AudioRetrievalException is now in common
+ * Mar 04, 2014 4224       bkowal      Optionally skip audio adjustments based on
+ *                                     DISABLE_AUDIO_ATTENUATION.
  * 
  * </pre>
  * 
@@ -49,6 +51,9 @@ import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 
 public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
         PrioritizableCallable<T> {
+
+    private static final boolean DISABLE_AUDIO_ATTENUATION = Boolean
+            .getBoolean("disableAudioAttenuation");
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -115,6 +120,10 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
      */
     protected byte[] adjustAudio(final byte[] originalAudio, final String part)
             throws AudioRetrievalException {
+        if (DISABLE_AUDIO_ATTENUATION) {
+            return originalAudio;
+        }
+
         byte[] regulatedAudio = new byte[0];
         try {
             AudioRegulator audioRegulator = new AudioRegulator();

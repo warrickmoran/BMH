@@ -32,6 +32,7 @@ import com.raytheon.uf.common.bmh.tones.data.Tone;
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2014 3304       bkowal      Initial creation
  * Oct 17, 2014 3655       bkowal      Move tones to common.
+ * Mar 04, 2015 4224       bkowal      Fix to match ported algorithm.
  * 
  * </pre>
  * 
@@ -151,7 +152,7 @@ public class ToneGenerator {
                     output[i] = this.sineWave[idx];
                 }
             } else {
-                output[i] = this.sineWave[i];
+                output[i] = this.sineWave[idx];
             }
         }
 
