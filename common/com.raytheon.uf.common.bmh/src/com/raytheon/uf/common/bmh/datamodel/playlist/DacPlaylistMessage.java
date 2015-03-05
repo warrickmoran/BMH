@@ -62,6 +62,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                    {@link #messageBroadcastNotificationSent},
  *                                    and {@link #requiresExpirationNoPlaybackNotification()}.
  * Feb 03, 2015  4081     bkowal      Fix {@link #isPeriodic()}. Removed unused isStatic field.
+ * Mar 05, 2015  4222     bkowal      Handle messages that never expire.
  * 
  * </pre>
  * 
@@ -330,7 +331,8 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      */
     public boolean isValid(long currentTime) {
         boolean started = currentTime >= start.getTimeInMillis();
-        boolean ended = currentTime >= expire.getTimeInMillis();
+        boolean ended = (this.expire != null && currentTime >= expire
+                .getTimeInMillis());
         boolean replaced = replaceTime == null ? false
                 : currentTime >= replaceTime.getTimeInMillis();
         return started && !ended && !replaced;

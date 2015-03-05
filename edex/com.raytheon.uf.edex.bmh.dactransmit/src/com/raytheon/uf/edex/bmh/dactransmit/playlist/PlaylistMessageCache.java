@@ -93,6 +93,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 16, 2015  #3928     bsteffen     Fix purging of old playlists on dac startup.
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * Feb 24, 2015  #4160     bsteffen     Do not purge message files.
+ * Mar 05, 2015  #4222     bkowal       Handle messages that never expire.
  * 
  * </pre>
  * 
@@ -492,6 +493,10 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     }
 
     private boolean isExpired(final DacPlaylistMessageId messageId) {
+        if (getMessage(messageId).getExpire() == null) {
+            return false;
+        }
+        
         long playbackTime;
         try {
             playbackTime = getPlaybackTime(messageId);

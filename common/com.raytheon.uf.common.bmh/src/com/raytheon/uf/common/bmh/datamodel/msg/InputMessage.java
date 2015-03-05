@@ -83,6 +83,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Feb 09, 2015  4094     bsteffen    Update areaCodes to be length of 4096.
  * Feb 10, 2015  4104     bkowal      Trim any area codes beyond the maximum length
  * Fev 23, 2015  4140     rjpeter     Renamed foreign constraint.
+ * Mar 05, 2015  4222     bkowal      Include messages that never expire when retrieving
+ *                                    unexpired messages.
  * </pre>
  * 
  * @author bsteffen
@@ -125,7 +127,7 @@ public class InputMessage {
      */
     public static final String UNEXPIRED_QUERY_NAME = "getNonExpiredMessages";
 
-    protected static final String UNEXPIRED_QUERY = "select id, name, afosid, creationTime, active FROM InputMessage m WHERE m.expirationTime >= :currentTime";
+    protected static final String UNEXPIRED_QUERY = "select id, name, afosid, creationTime, active FROM InputMessage m WHERE m.expirationTime >= :currentTime OR (m.expirationTime is null AND m.validHeader = true)";
 
     private static final int AREA_CODE_LENGTH = 4096;
 
