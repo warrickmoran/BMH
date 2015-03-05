@@ -51,7 +51,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
-import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
@@ -93,6 +92,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Jan 20, 2015  #4010     bkowal      Include the selected transmitters in the
  *                                     input message equals comparison.
  * Feb 09, 2015  #4091     bkowal      Use {@link EdexAudioConverterManager}.
+ * Mar 05, 2015  #4208     bsteffen    Throw Exception when message is submitted without changes.
  * 
  * </pre>
  * 
@@ -174,6 +174,10 @@ public class NewBroadcastMsgHandler extends
                     request.isOperational(), this.getMessageLogger(request));
             InputMessage previous = inputMessageDao.getByID(inputMessage
                     .getId());
+            if (inputMessage.equals(previous)) {
+                throw new IllegalStateException(
+                        "Duplicate message will be ignored.");
+            }
             boolean activeChanged = false;
             if (inputMessage.getActive() != null) {
                 activeChanged = !inputMessage.getActive().equals(
@@ -457,7 +461,7 @@ public class NewBroadcastMsgHandler extends
     private List<BroadcastMsg> buildBroadcastRecords(
             final ValidatedMessage validMsg,
             final Set<TransmitterGroup> transmitterGroups,
-            Path recordedAudioOutputPath) throws IOException {
+            Path recordedAudioOutputPath) {
         List<BroadcastMsg> broadcastRecords = new ArrayList<>(
                 transmitterGroups.size());
         for (TransmitterGroup transmitterGroup : transmitterGroups) {
@@ -517,7 +521,7 @@ public class NewBroadcastMsgHandler extends
     }
 
     private void sendToDestination(final String destinationURI,
-            final Object message) throws EdexException, SerializationException {
+            final Object message) throws EdexException {
         EDEXUtil.getMessageProducer().sendAsyncUri(destinationURI, message);
     }
 
