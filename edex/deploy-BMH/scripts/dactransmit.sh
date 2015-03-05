@@ -40,6 +40,8 @@
 #    10/21/14        3687          bsteffen       Log practice mode to a different file.
 #    11/15/14        3630          bkowal         Allow for greater customization of log file name.
 #    01/09/15        3942          rjpeter        Set memory parameters, added USE_POSITION_STREAM.
+#    03/04/15        4224          bkowal         Added DISABLE_AUDIO_ATTENUATION to optionally disable
+#                                                 audio attenuation / amplification before transmit.
 ##############################################################################
 
 
@@ -52,6 +54,8 @@ preservedArgs=()
 
 #Disables use of position stream, set to true to enable, enabling may cause issues keeping jitter buffer loaded
 USE_POSITION_STREAM=false
+#Disabled audio attenuation. Exists primarily for debugging purposes. This does not affect live audio streams.
+DISABLE_AUDIO_ATTENUATION=false
 
 # This loop processes the command line args. We need to extract DAC_ADDRESS(-d)
 # and DAC_PORT(-p). To make it easier to grab the argument to flags $prev will
@@ -116,7 +120,7 @@ for dependency in $DEPENDENCIES; do
 done;
 
 JVM_ARGS="-Xms16m -Xmx48m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode -XX:NewSize=8m -XX:MaxNewSize=8m -XX:SurvivorRatio=6 -XX:MaxPermSize=24m -XX:ReservedCodeCacheSize=8m"
-JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml -DusePositionStream=${USE_POSITION_STREAM}"
+JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml -DusePositionStream=${USE_POSITION_STREAM} -DdisableAudioAttenuation=${DISABLE_AUDIO_ATTENUATION}"
 
 
 java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "${preservedArgs[@]}"

@@ -49,7 +49,8 @@ import com.raytheon.uf.common.bmh.tones.data.Tone;
  *                                     generateSAMETone().
  * Aug 12, 2014 3286       dgilling    Add second generateSAMETone() that 
  *                                     supports encoding an arbitrary byte string.
- * Aug 17, 2014 3655       bkowal      Move tones to common.  
+ * Aug 17, 2014 3655       bkowal      Move tones to common.
+ * Mar 04, 2015 4224       bkowal      Pad generated SAME tones.
  * 
  * </pre>
  * 
@@ -58,6 +59,14 @@ import com.raytheon.uf.common.bmh.tones.data.Tone;
  */
 
 public class TonesManager {
+    /*
+     * The device that receives the SAME Tones that it supposed to react to them
+     * may drop the end bytes unless we add extra padding that it can drop
+     * instead.
+     */
+    private static final byte[] ZERO_PADDING = new byte[] { (byte) 0, (byte) 0,
+            (byte) 0, (byte) 0, (byte) 0, (byte) 0 };
+
     private static final double ALERT_TONE_FREQUENCY = 1050.0; // Hz
 
     private static final double TRANSFER_TONE_PRIMARY_FREQUENCY = 1800.0;
@@ -130,8 +139,13 @@ public class TonesManager {
      */
     public static byte[] generateSAMETone(final byte[] SAMEData)
             throws ToneGenerationException {
+        ByteBuffer paddedSAMEBuffer = ByteBuffer.allocate(SAMEData.length
+                + ZERO_PADDING.length);
+        paddedSAMEBuffer.put(SAMEData);
+        paddedSAMEBuffer.put(ZERO_PADDING);
+
         AFSKToneGenerator toneGenerator = new AFSKToneGenerator();
-        short[] data = toneGenerator.execute(SAMEData);
+        short[] data = toneGenerator.execute(paddedSAMEBuffer.array());
         if (data.length <= 0) {
             return null;
         }
