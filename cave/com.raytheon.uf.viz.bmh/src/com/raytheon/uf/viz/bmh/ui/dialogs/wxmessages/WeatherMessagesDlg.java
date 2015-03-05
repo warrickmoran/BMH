@@ -156,6 +156,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 03, 2015  4211     bkowal      Do not allow users to submit expired messages.
  * Mar 03, 2015  4212     bkowal      Display the Tone Playback confirmation for any combination
  *                                    of SAME and Alert tones.
+ * Mar 05, 2015  4222     bkowal      Allow users to create messages that never expire.
  * 
  * </pre>
  * 
@@ -203,6 +204,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
     /** Expiration date/time field. */
     private DateTimeFields expirationDTF;
+
+    /** Checkbox used to indicate that a message does not expire. */
+    private Button noExpireChk;
 
     /** Periodicity date/time field. */
     private DateTimeFields periodicityDTF;
@@ -651,7 +655,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         /*
          * Expiration
          */
-        gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
+        gd = new GridData(SWT.RIGHT, SWT.TOP, true, true);
         gd.verticalIndent = 5;
         Label expirationLbl = new Label(controlComp, SWT.CENTER);
         expirationLbl.setText("Expiration Date/Time\n(YYMMDDHHmm): ");
@@ -668,6 +672,29 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         expirationDTFComp.setLayoutData(gd);
         expirationDTF = new DateTimeFields(expirationDTFComp, dateTimeMap,
                 false, false, false);
+
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.horizontalSpan = 2;
+        noExpireChk = new Button(expirationDTFComp, SWT.CHECK);
+        noExpireChk.setText("No Expiration");
+        noExpireChk.setLayoutData(gd);
+        noExpireChk.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (noExpireChk.getSelection()) {
+                    expirationDTF.setEnabled(false);
+                    userInputMessage.setExpirationTime(null);
+                } else {
+                    expirationDTF.setEnabled(true);
+                    /*
+                     * this will eventually be updated to match whatever is in
+                     * the spinners before the message is submitted.
+                     */
+                    userInputMessage.setExpirationTime(expirationDTF
+                            .getBackingCalendar());
+                }
+            }
+        });
 
         /*
          * Area Selection
@@ -971,6 +998,25 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
          * is < the current time or 2) effective time and expiration time are
          * the same.
          */
+        if (this.noExpireChk.getSelection()) {
+            /* message never expires */
+
+            // messages that include SAME tones must have an expiration
+            // date/time
+            if (sameTransmitters.getCheckedItems().getCheckedItems().isEmpty() == false) {
+                DialogUtility
+                        .showMessageBox(
+                                this.shell,
+                                SWT.ICON_ERROR | SWT.OK,
+                                "Weather Messages - No Expiration",
+                                "An expiration date/time must be set for Message "
+                                        + this.msgNameTF.getText()
+                                        + " for the SAME Tones. Please set an expiration date/time.");
+                return false;
+            }
+
+            return true;
+        }
         long effectiveTime = this.effectiveDTF.getBackingCalendar()
                 .getTimeInMillis();
         long expirationTime = this.expirationDTF.getBackingCalendar()
@@ -1029,9 +1075,13 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         this.userInputMessage.setEffectiveTime(this.updateCalFromDTF(
                 this.userInputMessage.getEffectiveTime(),
                 this.effectiveDTF.getCalDateTimeValues()));
-        this.userInputMessage.setExpirationTime(this.updateCalFromDTF(
-                this.userInputMessage.getExpirationTime(),
-                this.expirationDTF.getCalDateTimeValues()));
+        if (this.noExpireChk.getSelection()) {
+            this.userInputMessage.setExpirationTime(null);
+        } else {
+            this.userInputMessage.setExpirationTime(this.updateCalFromDTF(
+                    this.userInputMessage.getExpirationTime(),
+                    this.expirationDTF.getCalDateTimeValues()));
+        }
         if ("00000000".equals(this.periodicityDTF.getFormattedValue()) == false) {
             this.userInputMessage.setPeriodicity(this.periodicityDTF
                     .getFormattedValue());
@@ -1461,6 +1511,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         if (userInputMessage.getExpirationTime() != null) {
             expirationDTF.setDateTimeSpinners(userInputMessage
                     .getExpirationTime());
+        } else {
+            if (this.userInputMessage.getId() != 0
+                    && this.userInputMessage.isValidHeader()) {
+                this.noExpireChk.setSelection(true);
+                this.expirationDTF.setEnabled(false);
+            }
         }
 
         // Update periodicity

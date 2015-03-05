@@ -102,6 +102,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Feb 19, 2015 4142       bkowal      Take the speech rate into account when determining
  *                                     whether or not a static message needs to be
  *                                     regenerated.
+ * Mar 05, 2015 4222       bkowal      Use null for messages that never expire.
  * 
  * </pre>
  * 
@@ -119,16 +120,6 @@ public class StaticMessageGenerator implements IContextStateProcessor {
     private final TimeMessagesGenerator tmGenerator;
 
     private final AlignmentTestGenerator alignmentTestGenerator;
-
-    /*
-     * Maximum allowed value for PostgreSQL year as documented at:
-     * http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
-     * 
-     * TODO: recommend supporting NULL to indicate no expiration.
-     */
-    private static final int MAX_YEAR = 294276;
-
-    private final Calendar expire;
 
     private BroadcastMsgDao broadcastMsgDao;
 
@@ -152,8 +143,6 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             final boolean operational) {
         this.tmGenerator = tmGenerator;
         this.alignmentTestGenerator = alignmentTestGenerator;
-        this.expire = Calendar.getInstance();
-        this.expire.set(Calendar.YEAR, MAX_YEAR);
         this.operational = operational;
     }
 
@@ -730,7 +719,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         inputMsg.setInterrupt(false);
         inputMsg.setAlertTone(false);
         inputMsg.setNwrsameTone(false);
-        inputMsg.setExpirationTime(this.expire);
+        inputMsg.setExpirationTime(null);
         inputMsg.setContent(text);
         inputMsg.setValidHeader(true);
 

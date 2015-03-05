@@ -85,6 +85,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     transmitters (when applicable).
  * Mar 03, 2015    4210     bkowal     Use the periodicity associated with the Message instead
  *                                     of the Message Type.
+ * Mar 05, 2015    4222     bkowal     Handle messages that never expire.
  * 
  * </pre>
  * 
@@ -309,9 +310,13 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label expirationTimeValueLbl = new Label(comp, SWT.NONE);
         if (broadcastMsg != null) {
-            String expDate = dateFormat.format(msg.getExpirationTime()
-                    .getTime());
-            expirationTimeValueLbl.setText(expDate);
+            if (msg.getExpirationTime() != null) {
+                String expDate = dateFormat.format(msg.getExpirationTime()
+                        .getTime());
+                expirationTimeValueLbl.setText(expDate);
+            } else {
+                expirationTimeValueLbl.setText("NEVER");
+            }
         }
         expirationTimeValueLbl.setLayoutData(gd);
     }

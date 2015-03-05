@@ -62,7 +62,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Feb 18, 2015  4136     bkowal      Use the {@link Language} identifiers to determine
  *                                    the Language when parsing the input.
  * Feb 20, 2015  4158     bsteffen    Add support for optional polygons
- * Feb 27, 2016  4182     rferrel     Corrected spelling in messages.
+ * Feb 27, 2015  4182     rferrel     Corrected spelling in messages.
+ * Mar 05, 2015  4222     bkowal      Use null for messages that never expire.
  * 
  * </pre>
  * 
@@ -345,9 +346,10 @@ public class InputMessageParser {
             throw new ParseException("Invalid Expiration Date.", index);
         }
         if (date.group().equals("9999999999")) {
-            Calendar c = Calendar.getInstance();
-            c.setTimeInMillis(Long.MAX_VALUE);
-            message.setExpirationTime(c);
+            /*
+             * The message never expires.
+             */
+            message.setExpirationTime(null);
         } else {
             message.setExpirationTime(parseDate(date));
         }

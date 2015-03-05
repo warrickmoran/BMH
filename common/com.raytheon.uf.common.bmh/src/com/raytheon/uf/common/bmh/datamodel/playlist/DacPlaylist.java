@@ -49,6 +49,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 24, 2014  3558     rjpeter     Added path.
  * Sep 18, 2014  3554     bsteffen    Initialize messages to avoid null list.
  * Dec 16, 2014  3753     bsteffen    Add isEmpty()
+ * Mar 05, 2015  4222     bkowal      Handle playlists that never expire.
  * 
  * </pre>
  * 
@@ -112,7 +113,7 @@ public class DacPlaylist {
      */
     public boolean isValid() {
         long currentTime = TimeUtil.currentTimeMillis();
-        return ((currentTime >= start.getTimeInMillis()) && (currentTime <= expired
+        return ((currentTime >= start.getTimeInMillis()) && (expired == null || currentTime <= expired
                 .getTimeInMillis()));
     }
 
@@ -124,7 +125,8 @@ public class DacPlaylist {
      *         time. Else, {@code false}.
      */
     public boolean isExpired() {
-        return (TimeUtil.currentTimeMillis() >= expired.getTimeInMillis());
+        return (expired != null && TimeUtil.currentTimeMillis() >= expired
+                .getTimeInMillis());
     }
 
     public int getPriority() {
@@ -216,6 +218,6 @@ public class DacPlaylist {
      * the expiration time is not after the start time.
      */
     public boolean isEmpty() {
-        return !expired.after(start) || messages.isEmpty();
+        return (expired != null && !expired.after(start)) || messages.isEmpty();
     }
 }
