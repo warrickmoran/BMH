@@ -100,6 +100,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      interrupts.
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * Feb 11, 2015  #4098     bsteffen     Track packet sequence when switching to live.
+ * Mar 05, 2015  #4229     bkowal       Include the broadcast id of the broadcast that could not
+ *                                      be serviced because the dac was busy in the status.
  * 
  * </pre>
  * 
@@ -236,10 +238,9 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
             shutdownSignal.acquire();
         } catch (InterruptedException e) {
             logger.error(
-                    "DacSession was interrupted while waiting to shutdown.",
-                    e);
+                    "DacSession was interrupted while waiting to shutdown.", e);
         }
-        
+
         logger.info("Initiating shutdown...");
 
         try {
@@ -437,6 +438,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         BroadcastStatus status = new BroadcastStatus();
         status.setMsgSource(MSGSOURCE.DAC);
         status.setStatus(false);
+        status.setBroadcastId(broadcastId);
         status.setTransmitterGroups(transmitterGroups);
         status.setMessage(message);
         status.setException(exception);
