@@ -37,7 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Nov 18, 2014  3817     bsteffen    Initial creation
  * Jan 27, 2015  4029     bkowal      Added {@link #equals(Object)}.
- * 
+ * Mar 06, 2015  4241     rjpeter     Removed statusTime from equals.
  * </pre>
  * 
  * @author bsteffen
@@ -98,7 +98,6 @@ public class PeriodicStatusMessage {
 
         EqualsBuilder eq = new EqualsBuilder();
         eq.append(this.host, other.host);
-        eq.append(this.statusTime, other.statusTime);
 
         return eq.isEquals();
     }

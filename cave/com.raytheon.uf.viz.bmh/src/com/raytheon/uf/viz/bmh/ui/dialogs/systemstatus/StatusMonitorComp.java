@@ -19,15 +19,17 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ControlAdapter;
@@ -46,16 +48,13 @@ import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.DacConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
-import com.raytheon.uf.common.bmh.notify.status.BmhEdexStatus;
-import com.raytheon.uf.common.bmh.notify.status.CommsManagerStatus;
-import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
-import com.raytheon.uf.common.bmh.notify.status.DacVoiceStatus;
 import com.raytheon.uf.common.bmh.systemstatus.ISystemStatusListener;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
@@ -85,7 +84,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Jan 27, 2015  #4029     bkowal       Use {@link BMHJmsDestinations}.
  * Feb 06, 2015  #4019     lvenable     Changed class to be a composite and made other changes
  *                                      so it can be embedded into a dialog.
- * 
+ * Mar 06, 2015  #4241     rjpeter      Put in retrieval job.
  * </pre>
  * 
  * @author lvenable
@@ -97,6 +96,8 @@ public class StatusMonitorComp extends Composite implements
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(StatusMonitorComp.class);
+
+    private final long UPDATE_INTERVAL = TimeUtil.MILLIS_PER_SECOND;
 
     /**
      * Status data manager that manages all of the data for displaying the
@@ -116,14 +117,16 @@ public class StatusMonitorComp extends Composite implements
     /** Viz Status Monitor. */
     private VizStatusMonitor vizStatusMonitor;
 
-    /** List of DACs */
-    private List<Dac> dacList = null;
-
-    /** List of Transmitter Groups. */
-    private List<TransmitterGroup> tgList = null;
-
     /** Process Status group container. */
     private Group processStatusGrp;
+
+    /** RetrievalJob for looking up data from server and updating display. */
+    private final StatusRetrievalJob retrievalJob = new StatusRetrievalJob();
+
+    /** Retrieval type for the retrieval job */
+    private enum RetrieveType {
+        DacTransmitter, Process, Both
+    }
 
     /**
      * Constructor.
@@ -170,17 +173,22 @@ public class StatusMonitorComp extends Composite implements
         this.setLayout(gl);
         this.setLayoutData(gd);
 
-        createDacTransmitterStatusControls();
-        createProcessStatusControlGroup();
+        List<Dac> dacList = getDacList();
+        List<TransmitterGroup> tgList = getTransmitterGroups();
+
+        createDacTransmitterStatusControls(dacList, tgList);
+        createProcessStatusControlGroup(tgList);
 
     }
 
     /**
      * Create the DAC & Transmitter Group status controls.
+     * 
+     * @param dacList
+     * @param tgList
      */
-    private void createDacTransmitterStatusControls() {
-        dacList = getDacList();
-        tgList = getTransmitterGroups();
+    private void createDacTransmitterStatusControls(List<Dac> dacList,
+            List<TransmitterGroup> tgList) {
 
         vizStatusMonitor = new VizStatusMonitor();
         vizStatusMonitor.addListener(this);
@@ -213,12 +221,13 @@ public class StatusMonitorComp extends Composite implements
         dacTransmittersComp.setLayoutData(new GridData(SWT.FILL, SWT.FILL,
                 true, true));
 
-        populateDacTransmitterControls();
+        populateDacTransmitterControls(dacList, tgList);
 
         scrolledComp.setExpandHorizontal(true);
         scrolledComp.setExpandVertical(true);
         scrolledComp.setContent(dacTransmittersComp);
         scrolledComp.addControlListener(new ControlAdapter() {
+            @Override
             public void controlResized(ControlEvent e) {
                 scrolledComp.setMinSize(dacTransmittersComp.computeSize(
                         SWT.DEFAULT, SWT.DEFAULT));
@@ -229,8 +238,10 @@ public class StatusMonitorComp extends Composite implements
 
     /**
      * Create the Group that will contain the Process Status controls.
+     * 
+     * @param tgList
      */
-    private void createProcessStatusControlGroup() {
+    private void createProcessStatusControlGroup(List<TransmitterGroup> tgList) {
         processStatusGrp = new Group(this, SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         processStatusGrp.setLayout(gl);
@@ -238,13 +249,15 @@ public class StatusMonitorComp extends Composite implements
         processStatusGrp.setLayoutData(gd);
         processStatusGrp.setText("Process Status");
 
-        populateProcessStatusControls();
+        populateProcessStatusControls(tgList);
     }
 
     /**
      * Populate the Process Status controls.
+     * 
+     * @param tgList
      */
-    private void populateProcessStatusControls() {
+    private void populateProcessStatusControls(List<TransmitterGroup> tgList) {
         SortedSet<String> transmitterGroups = new TreeSet<>();
 
         for (TransmitterGroup tg : tgList) {
@@ -257,8 +270,12 @@ public class StatusMonitorComp extends Composite implements
 
     /**
      * Populate the DAC/Transmitter controls.
+     * 
+     * @param dacList
+     * @param tgList
      */
-    private void populateDacTransmitterControls() {
+    private void populateDacTransmitterControls(List<Dac> dacList,
+            List<TransmitterGroup> tgList) {
         DacTransmitterStatusData dtsd = sdm.createDacTransmitterStatusData(
                 dacList, tgList, vizStatusMonitor.getDacStatus());
 
@@ -292,8 +309,12 @@ public class StatusMonitorComp extends Composite implements
 
     /**
      * Repopulate the DAC/Transmitter controls.
+     * 
+     * @param dacList
+     * @param tgList
      */
-    private void repopulateDacTransmitterStatus() {
+    private void repopulateDacTransmitterStatus(List<Dac> dacList,
+            List<TransmitterGroup> tgList) {
         if (dacTransmittersComp.isDisposed()) {
             return;
         }
@@ -307,16 +328,14 @@ public class StatusMonitorComp extends Composite implements
             ctrl.dispose();
         }
 
-        dacList = getDacList();
-        tgList = getTransmitterGroups();
-        populateDacTransmitterControls();
+        populateDacTransmitterControls(dacList, tgList);
 
         dacTransmittersComp.layout();
         scrolledComp.layout();
         getShell().redraw();
     }
 
-    private void repopulateProcessStatus() {
+    private void repopulateProcessStatus(List<TransmitterGroup> tgList) {
         if (this.processStatusGrp.isDisposed()) {
             return;
         }
@@ -329,7 +348,7 @@ public class StatusMonitorComp extends Composite implements
             ctrl.dispose();
         }
 
-        populateProcessStatusControls();
+        populateProcessStatusControls(tgList);
         processStatusGrp.layout();
         getShell().layout();
         getShell().redraw();
@@ -394,14 +413,7 @@ public class StatusMonitorComp extends Composite implements
                 Object o = message.getMessagePayload();
                 if ((o instanceof TransmitterGroupConfigNotification)
                         || (o instanceof DacConfigNotification)) {
-
-                    VizApp.runAsync(new Runnable() {
-                        @Override
-                        public void run() {
-                            repopulateDacTransmitterStatus();
-                        }
-                    });
-
+                    retrievalJob.scheduleRetrieval(RetrieveType.DacTransmitter);
                 }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing update notification", e);
@@ -415,90 +427,75 @@ public class StatusMonitorComp extends Composite implements
     @Override
     public void systemStatusChanged(BmhComponent component, String key) {
         if (component == BmhComponent.DAC) {
-            VizApp.runAsync(new Runnable() {
-                @Override
-                public void run() {
-                    repopulateDacTransmitterStatus();
-                }
-            });
+            retrievalJob.scheduleRetrieval(RetrieveType.DacTransmitter);
         } else {
-            VizApp.runAsync(new Runnable() {
-                @Override
-                public void run() {
-                    repopulateProcessStatus();
-                }
-            });
+            retrievalJob.scheduleRetrieval(RetrieveType.Process);
         }
     }
 
-    // ****************************************************************************
-    // ****************************************************************************
-    // TODO : REMOVE THIS TESTING IS DONE
-    // ****************************************************************************
-    // ****************************************************************************
-    private void printVizStatusMonitorVariables() {
+    /**
+     * Internal job to handle looking up data from edex and ensuring we don't
+     * update the display more than once a second.
+     */
+    private class StatusRetrievalJob extends Job {
+        private final Object lock = new Object();
 
-        Map<String, DacHardwareStatusNotification> ds = vizStatusMonitor
-                .getDacStatus();
+        private RetrieveType nextType;
 
-        System.out
-                .println("********** DacHardwareStatusNotification *********************");
-        for (String s : ds.keySet()) {
-            System.out.println("Dac Status Key: " + s);
-            DacHardwareStatusNotification dhsn = ds.get(s);
-            System.out.println("--- PS1 Voltage: " + dhsn.getPsu1Voltage());
-            System.out.println("--- PS2 Voltage: " + dhsn.getPsu2Voltage());
-            System.out.println("--- Buffer size: " + dhsn.getBufferSize());
-            System.out.println("--- Transmitter Group: "
-                    + dhsn.getTransmitterGroup());
-
-            // TODO : status voice should be used to determine if there is
-            // silence from the dac and should display an "A"
-
-            DacVoiceStatus[] dvsArray = dhsn.getVoiceStatus();
-            for (DacVoiceStatus dvs : dvsArray) {
-                System.out.println("****** Dac Status Voice:" + dvs);
-                System.out
-                        .println("****** Dac Status Voice name:" + dvs.name());
-            }
-
-            int[] validChannels = dhsn.getValidChannels();
-
-            for (int i : validChannels) {
-                System.out.println(">>>> Valid Channel: " + i);
-            }
+        /**
+         * @param name
+         */
+        public StatusRetrievalJob() {
+            super("Retrieving Status Data");
         }
 
-        System.out.println("\n\n********** Connected *********************");
-
-        Map<String, BmhEdexStatus> edexStatusMap = vizStatusMonitor
-                .getEdexStatus();
-
-        for (String s : edexStatusMap.keySet()) {
-            System.out.println("Host: " + s);
-            System.out.println("EDEX: " + vizStatusMonitor.isEdexConnected(s));
-            System.out.println("Comms Mgr: "
-                    + vizStatusMonitor.isCommsManagerConnected(s));
-
-            for (TransmitterGroup tg : tgList) {
-                System.out.println("--- DAC connected: "
-                        + tg.getName()
-                        + " - "
-                        + vizStatusMonitor.isTransmitterGroupConnected(s,
-                                tg.getName()));
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.eclipse.core.runtime.jobs.Job#run(org.eclipse.core.runtime.
+         * IProgressMonitor)
+         */
+        @Override
+        protected IStatus run(IProgressMonitor monitor) {
+            RetrieveType type;
+            synchronized (lock) {
+                type = nextType;
+                nextType = null;
             }
+
+            if (type == null) {
+                return Status.OK_STATUS;
+            }
+
+            /* only need dacList if doing a DacTransmitter status */
+            final List<Dac> dacList = (!RetrieveType.Process.equals(type) ? getDacList()
+                    : null);
+            final List<TransmitterGroup> tgList = getTransmitterGroups();
+            final RetrieveType runType = type;
+
+            VizApp.runSync(new Runnable() {
+                @Override
+                public void run() {
+                    if (!RetrieveType.Process.equals(runType)) {
+                        repopulateDacTransmitterStatus(dacList, tgList);
+                    }
+                    if (!RetrieveType.DacTransmitter.equals(runType)) {
+                        repopulateProcessStatus(tgList);
+                    }
+                }
+            });
+
+            return Status.OK_STATUS;
         }
 
-        System.out
-                .println("\n\n********** Connected Comm Managers *********************");
-
-        Collection<CommsManagerStatus> commMgrStatusArray = vizStatusMonitor
-                .getConnectedCommsManagers();
-
-        for (CommsManagerStatus cms : commMgrStatusArray) {
-            Set<String> connectedXmitGrps = cms.getConnectedTransmitterGroups();
-            for (String s : connectedXmitGrps) {
-                System.out.println("Connected Transmitter Group: " + s);
+        protected void scheduleRetrieval(RetrieveType type) {
+            synchronized (lock) {
+                if (nextType == null) {
+                    nextType = type;
+                    schedule(UPDATE_INTERVAL);
+                } else if (!type.equals(nextType)) {
+                    nextType = RetrieveType.Both;
+                }
             }
         }
     }
