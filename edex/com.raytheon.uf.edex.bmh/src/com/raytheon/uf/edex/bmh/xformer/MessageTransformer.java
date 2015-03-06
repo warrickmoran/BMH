@@ -126,6 +126,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Feb 19, 2015 4142       bkowal      Include a prosody tag with the generated SSML to influence
  *                                     the rate of speech.
  * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
+ * Mar 05, 2015 4237       bkowal      Added missing return statement for null transmitter languages.
  * 
  * </pre>
  * 
@@ -493,6 +494,7 @@ public class MessageTransformer implements IContextStateProcessor {
                     .append(language.toString()).append(".");
             statusHandler.info(sb.toString());
             tlCacheTimer.stop(); // not logging non-retrievals
+            return;
         }
 
         /**
