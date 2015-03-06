@@ -10,6 +10,12 @@
 		<constructor-arg value="${bmh.tts.nfs.dir}" />
 		<constructor-arg value="${bmh.tts.threads}" />
 	</bean>
+	
+	<bean id="ttsVoiceManager" class="com.raytheon.uf.edex.bmh.tts.TTSVoiceManager"
+	depends-on="ttsVoiceDao, ttsSynthesisFactory">
+		<constructor-arg ref="ttsVoiceDao" />
+		<constructor-arg ref="ttsSynthesisFactory" />
+	</bean>
 
 	<!-- tts manager -->
 	<bean id="ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager"

@@ -25,7 +25,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -46,7 +45,6 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
-import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
@@ -70,6 +68,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 05, 2014  #3824     rferrel     Initial creation
+ * Mar 03, 2015  #4175     bkowal      Always expect at least one voice.
  * 
  * </pre>
  * 
@@ -217,16 +216,13 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
 
         try {
             List<TtsVoice> voices = new VoiceDataManager().getAllVoices();
-            if ((voices == null) || (voices.size() == 0)) {
-                TtsVoice voice = new TtsVoice();
-                voice.setVoiceNumber(101);
-                voice.setVoiceName("Paul");
-                voice.setLanguage(Language.ENGLISH);
-                voice.setMale(true);
-                if (voices == null) {
-                    voices = new ArrayList<>();
-                }
-                voices.add(voice);
+            if ((voices == null) || (voices.isEmpty())) {
+                DialogUtility.showMessageBox(this.shell, SWT.ICON_ERROR
+                        | SWT.OK, "BMH Configuration Error",
+                        "No voices currently exist in the BMH system!");
+
+                input = null;
+                return;
             }
 
             final AsciiFileTranslator asciiFile = new AsciiFileTranslator(

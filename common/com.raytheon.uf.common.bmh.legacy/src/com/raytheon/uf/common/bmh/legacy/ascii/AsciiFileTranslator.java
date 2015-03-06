@@ -84,6 +84,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  *                                       Added reader/source constructor.
  * Jan 22, 2015 3995       rjpeter     Removed importing of amplitudes.
  * Feb 09, 2015 4095       bsteffen    Remove Transmitter Name.
+ * Mar 03, 2015 4175       bkowal      Cleanup.
  * 
  * </pre>
  * 
@@ -133,11 +134,6 @@ public class AsciiFileTranslator {
      * Set of Transmitter Mnemonics that will be skipped.
      */
     private static final Set<String> PLAYBACK_TRANSMITTERS;
-
-    /**
-     * Tracker for number of bad triggers found.
-     */
-    private static int badTriggers = 0;
 
     static {
         int[] ignore = new int[] { 3, 4, 6, 7, 12, 13, 18 };
@@ -220,7 +216,7 @@ public class AsciiFileTranslator {
                     "No voices configured for BMH, cannot parse legacy database");
         }
 
-        includeSpanish = conatinsSpanishVoice(definedVoices);
+        includeSpanish = containsSpanishVoice(definedVoices);
 
         if (includeSpanish) {
             voiceMsg = "Including Spanish information.";
@@ -1089,7 +1085,6 @@ public class AsciiFileTranslator {
                             if (suiteMsg != null) {
                                 triggers.add(triggerGroup);
                             } else {
-                                badTriggers++;
                                 StringBuilder msg = new StringBuilder(80);
                                 msg.append("Program [")
                                         .append(program.getName())
@@ -1113,7 +1108,6 @@ public class AsciiFileTranslator {
                         if (suiteMsg != null) {
                             triggers.add(field);
                         } else {
-                            badTriggers++;
                             StringBuilder msg = new StringBuilder(80);
                             msg.append("Program [")
                                     .append(program.getName())
@@ -1537,7 +1531,7 @@ public class AsciiFileTranslator {
         return validationMessages;
     }
 
-    private boolean conatinsSpanishVoice(List<TtsVoice> voices) {
+    private boolean containsSpanishVoice(List<TtsVoice> voices) {
         for (TtsVoice voice : voices) {
             if (voice.getLanguage() == Language.SPANISH) {
                 return true;
@@ -1552,73 +1546,5 @@ public class AsciiFileTranslator {
 
     public boolean parsedData() {
         return this.parsedData.get();
-    }
-
-    public static void main(String args[]) {
-        TtsVoice voice = new TtsVoice();
-        voice.setVoiceNumber(101);
-        voice.setVoiceName("Paul");
-        voice.setLanguage(Language.ENGLISH);
-        voice.setMale(true);
-        List<TtsVoice> voices = new ArrayList<TtsVoice>(1);
-        voices.add(voice);
-
-        int runType = 1;
-        switch (runType) {
-        case 0:
-            // analyze one file
-
-            try {
-                File file = new File(
-                        "/R/AWIPS/Systems Engineering/Task Order 22 (Development)/Work Assignments/WA24.1 BMH-NWR/WA24.2/Code/Legacy-CRS-2012DatabaseExport/OAX/OAX-daily.ASC");
-                AsciiFileTranslator translator = new AsciiFileTranslator(file,
-                        false, voices);
-                List<String> msgs = translator.getValidationMessages();
-                for (String msg : msgs) {
-                    System.err.println(msg);
-                }
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-            break;
-        case 1:
-            // analyze all files for parsing errors
-            try {
-                File dir = new File(
-                        "/R/AWIPS/Systems Engineering/Task Order 22 (Development)/Work Assignments/WA24.1 BMH-NWR/WA24.2/Code/Legacy-CRS-July2014DatabaseExport/");
-                List<File> current = new ArrayList<>();
-                List<File> toCheck = new ArrayList<>();
-                toCheck.add(dir);
-
-                while (!toCheck.isEmpty()) {
-                    current.clear();
-                    List<File> swp = current;
-                    current = toCheck;
-                    toCheck = swp;
-
-                    for (File curFile : current) {
-                        if (curFile.isFile()
-                                && curFile.getName().endsWith(".ASC")) {
-                            System.out.println("Parsing file ["
-                                    + curFile.getAbsolutePath());
-                            AsciiFileTranslator translater = new AsciiFileTranslator(
-                                    curFile, false, voices);
-                            List<String> msgs = translater
-                                    .getValidationMessages();
-                            for (String msg : msgs) {
-                                System.err.println(msg);
-                            }
-                        } else if (curFile.isDirectory()) {
-                            toCheck.addAll(Arrays.asList(curFile.listFiles()));
-                        }
-                    }
-
-                }
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-            System.err.println("Found " + badTriggers + " bad triggers");
-            break;
-        }
     }
 }

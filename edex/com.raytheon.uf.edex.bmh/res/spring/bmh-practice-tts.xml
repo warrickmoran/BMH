@@ -11,6 +11,12 @@
 		<constructor-arg value="${bmh.practice.tts.threads}" />
 	</bean>
 	
+	<bean id="practice_ttsVoiceManager" class="com.raytheon.uf.edex.bmh.tts.TTSVoiceManager"
+	depends-on="practice_ttsVoiceDao, practice_ttsSynthesisFactory">
+		<constructor-arg ref="practice_ttsVoiceDao" />
+		<constructor-arg ref="practice_ttsSynthesisFactory" />
+	</bean>
+	
 	<!-- tts manager -->
 	<bean id="practice_ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager"
 		destroy-method="dispose">

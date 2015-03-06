@@ -26,6 +26,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.handler.AbstractBMHLoggingServerRequestHandler;
 import com.raytheon.uf.edex.bmh.legacy.ImportLegacyDatabase;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
+import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
 
 /**
  * 
@@ -39,6 +40,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * ------------- -------- ----------- --------------------------
  * Dec 05, 2014  3824     rferrel     Initial creation.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * Mar 03, 2015  4175     bkowal      Use {@link TTSVoiceManager}.
  * 
  * </pre>
  * 
@@ -48,9 +50,16 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 public class ImportLegacyDbHandler extends
         AbstractBMHLoggingServerRequestHandler<ImportLegacyDbRequest> {
 
+    private final TTSVoiceManager ttsVoiceManager;
+
+    private final TTSVoiceManager practice_ttsVoiceManager;
+
     public ImportLegacyDbHandler(IMessageLogger opMessageLogger,
-            IMessageLogger pracMessageLogger) {
+            IMessageLogger pracMessageLogger, TTSVoiceManager ttsVoiceManager,
+            TTSVoiceManager practice_ttsVoiceManager) {
         super(opMessageLogger, pracMessageLogger);
+        this.ttsVoiceManager = ttsVoiceManager;
+        this.practice_ttsVoiceManager = practice_ttsVoiceManager;
     }
 
     @Override
@@ -63,7 +72,8 @@ public class ImportLegacyDbHandler extends
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
 
         new ImportLegacyDatabase(input, source, operational,
-                this.getMessageLogger(request)).saveImport();
+                this.getMessageLogger(request), this.getVoiceManager(request))
+                .saveImport();
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
@@ -71,5 +81,10 @@ public class ImportLegacyDbHandler extends
                     + source);
         }
         return true;
+    }
+
+    private TTSVoiceManager getVoiceManager(final ImportLegacyDbRequest request) {
+        return (request.isOperational()) ? this.ttsVoiceManager
+                : this.practice_ttsVoiceManager;
     }
 }
