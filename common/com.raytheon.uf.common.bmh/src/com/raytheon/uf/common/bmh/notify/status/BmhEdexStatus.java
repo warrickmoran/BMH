@@ -23,7 +23,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 
 /**
  * 
- * Status message sent periodically from every instance of bmh edex.
+ * Status message sent periodically from every instance of bmh edex. Utilized as
+ * an am alive message.
  * 
  * <pre>
  * 
@@ -48,7 +49,5 @@ public class BmhEdexStatus extends PeriodicStatusMessage {
     public BmhEdexStatus(String host) {
         super(host);
     }
-
-
 
 }
