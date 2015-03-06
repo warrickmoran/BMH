@@ -1509,6 +1509,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         }
 
         if (userInputMessage.getExpirationTime() != null) {
+            this.noExpireChk.setSelection(false);
             expirationDTF.setDateTimeSpinners(userInputMessage
                     .getExpirationTime());
         } else {
