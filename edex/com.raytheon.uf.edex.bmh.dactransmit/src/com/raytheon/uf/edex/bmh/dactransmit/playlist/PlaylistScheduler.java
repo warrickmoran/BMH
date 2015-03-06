@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -36,12 +35,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 
 import javax.xml.bind.JAXB;
@@ -57,6 +56,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistStartTimeComparator;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
@@ -65,7 +65,6 @@ import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
-import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IPlaylistUpdateNotificationHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
@@ -138,6 +137,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Feb 12, 2015  #4114     bsteffen     Fix playlist expiration.
  * Mar 03, 2015  #4002     bkowal       Log that the dac transmit has disseminated a
  *                                      {@link MessageNotBroadcastNotification}.
+ * Mar 06, 2015  #4188     bsteffen     Handle start time of interrupts.
  * 
  * </pre>
  * 
@@ -194,7 +194,7 @@ public final class PlaylistScheduler implements
      * Unplayed interrupt messages. We use a Queue because the playlist
      * associated with an interrupt is played only one time and discarded.
      */
-    private final Queue<DacPlaylist> interrupts;
+    private final ConcurrentSkipListSet<DacPlaylist> interrupts;
 
     /**
      * New playlists that we've received that don't take effect until some time
@@ -333,7 +333,8 @@ public final class PlaylistScheduler implements
 
         expirePlaylists(expiredPlaylists);
 
-        this.interrupts = new ArrayDeque<>();
+        this.interrupts = new ConcurrentSkipListSet<>(
+                new DacPlaylistStartTimeComparator());
         /*
          * On startup we may have some unplayed interrupts. find them and
          * transfer them to interrupt queue
@@ -351,6 +352,14 @@ public final class PlaylistScheduler implements
         this.playlistMessgeLock = new Object();
 
         this.warnNoMessages = true;
+    }
+
+    public boolean hasInterrupt() {
+        if (delayInterrupts || interrupts.isEmpty()) {
+            return false;
+        }
+        long start = interrupts.first().getStart().getTimeInMillis();
+        return start <= System.currentTimeMillis();
     }
 
     /**
@@ -421,8 +430,18 @@ public final class PlaylistScheduler implements
              * first. After completing the INTERRUPT, playback will resume at
              * the beginning of the highest priority playlist.
              */
-            if (this.delayInterrupts == false && !interrupts.isEmpty()) {
-                nextPlaylist = interrupts.poll();
+            DacPlaylist interrupt = null;
+            if (!this.delayInterrupts && !this.interrupts.isEmpty()) {
+                interrupt = this.interrupts.first();
+                long start = interrupts.first().getStart().getTimeInMillis();
+                if (start > System.currentTimeMillis()) {
+                    interrupt = null;
+                } else {
+                    interrupts.remove(interrupt);
+                }
+            }
+            if (interrupt != null) {
+                nextPlaylist = interrupt;
                 logger.debug("Switching to playlist: "
                         + nextPlaylist.toString());
 
@@ -649,7 +668,6 @@ public final class PlaylistScheduler implements
 
                 if (newPlaylist.isInterrupt()) {
                     interrupts.add(newPlaylist);
-                    eventBus.post(new InterruptMessageReceivedEvent(newPlaylist));
                     return;
                 }
 

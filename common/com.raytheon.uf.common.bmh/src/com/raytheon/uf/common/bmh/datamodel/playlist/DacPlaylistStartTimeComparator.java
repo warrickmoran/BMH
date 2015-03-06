@@ -17,35 +17,33 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dactransmit.events.handlers;
+package com.raytheon.uf.common.bmh.datamodel.playlist;
 
-import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
+import java.util.Comparator;
 
 /**
- * Event handler interface for {@code InterruptMessageReceivedEvent}.
+ * 
+ * Comparator for ordering {@link DacPlaylist}s by only their startTime.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 24, 2014  #3286     dgilling     Initial creation
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Mar 06, 2015  4188     bsteffen    Initial creation
  * 
  * </pre>
  * 
- * @author dgilling
+ * @author bsteffen
  * @version 1.0
  */
+public class DacPlaylistStartTimeComparator implements
+        Comparator<DacPlaylist> {
 
-public interface IInterruptMessageReceivedHandler {
+    @Override
+    public int compare(DacPlaylist p1, DacPlaylist p2) {
+        return p1.getStart().compareTo(p2.getStart());
+    }
 
-    /**
-     * Event handler method for new interrupt message events.
-     * 
-     * @param e
-     *            {@code InterruptMessageReceivedEvent} instance containing
-     *            information about the new interrupt playlist received.
-     */
-    void handleInterruptMessage(InterruptMessageReceivedEvent e);
 }
