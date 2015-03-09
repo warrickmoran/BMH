@@ -59,6 +59,7 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Jul 07, 2014  3285     bsteffen    Initial creation
  * Jan 26, 2015  3359     bsteffen    Switch to interface with default implementation.
+ * Mar 09, 2015  4247     rferrel     Added isValidState.
  * 
  * </pre>
  * 
@@ -68,6 +69,14 @@ import java.util.Map;
 public interface SAMEStateCodes {
 
     public Integer getStateCode(String state);
+
+    /**
+     * Determine if a valid state or maritime abbreviation.
+     * 
+     * @param abbrev
+     * @return
+     */
+    public boolean isValidState(String abbrev);
 
     public static final SAMEStateCodes DEFAULT = new SAMEStateCodes() {
 
@@ -144,12 +153,17 @@ public interface SAMEStateCodes {
             stateCodes.put("LE", 96);
             stateCodes.put("LO", 97);
             stateCodes.put("SL", 98);
-    }
+        }
 
         @Override
-    public Integer getStateCode(String state) {
-        return stateCodes.get(state);
-    }
+        public Integer getStateCode(String state) {
+            return stateCodes.get(state);
+        }
+
+        @Override
+        public boolean isValidState(String abbrev) {
+            return stateCodes.keySet().contains(abbrev);
+        }
 
     };
 }
