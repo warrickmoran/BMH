@@ -89,7 +89,7 @@ public class InputMessageParser {
      * Match CCCNNNXXX, sssNNNXXX, CCCNNNXXs and sssNNNXXs where s is spaces.
      */
     private static final Pattern afosidPattern = Pattern
-            .compile("^(([A-Z]{3}| {3})[A-Z]{5}[A-Z ])");
+            .compile("^(([A-Z0-9]{3}| {3})[A-Z0-9]{5}[A-Z0-9 ])");
 
     private static final Pattern datePattern = Pattern.compile("^[0-9]{10}");
 
