@@ -102,6 +102,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Feb 11, 2015  #4098     bsteffen     Track packet sequence when switching to live.
  * Mar 05, 2015  #4229     bkowal       Include the broadcast id of the broadcast that could not
  *                                      be serviced because the dac was busy in the status.
+ * Mar 06, 2015  #4188     bsteffen     Track interrupts only in PlaylistScheduler.
  * 
  * </pre>
  * 
@@ -387,7 +388,6 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
          * Delay any further interrupts ...
          */
         this.playlistMgr.lockInterrupts(startCommand.getType());
-        this.dataThread.lockInterrupts();
 
         /*
          * Prepare the live streaming thread.
@@ -476,7 +476,6 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
          * Resume interrupts.
          */
         this.playlistMgr.resumeInterrupts();
-        this.dataThread.resumeInterrupts();
     }
 
     /*

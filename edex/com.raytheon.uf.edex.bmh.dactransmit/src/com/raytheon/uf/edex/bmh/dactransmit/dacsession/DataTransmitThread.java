@@ -22,15 +22,11 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 import java.net.SocketException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
-import com.raytheon.uf.edex.bmh.dactransmit.events.InterruptMessageReceivedEvent;
-import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IInterruptMessageReceivedHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.DacMessagePlaybackData;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
@@ -84,14 +80,15 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * Feb 11, 2015  #4098     bsteffen     Allow pause to maintain packet sequence numbers.
  * Feb 26, 2015  #4187     rjpeter      Added keepRunning check to allow shutdown when thread doesn't have sync.
+ * Mar 06, 2015  #4188     bsteffen     Track interrupts only in PlaylistScheduler.
+ * 
  * </pre>
  * 
  * @author dgilling
  * @version 1.0
  */
 
-public final class DataTransmitThread extends AbstractTransmitThread implements
-        IInterruptMessageReceivedHandler {
+public final class DataTransmitThread extends AbstractTransmitThread {
 
     private final PlaylistScheduler playlistMgr;
 
@@ -103,16 +100,7 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
      */
     private volatile boolean keepRunning;
 
-    private final AtomicInteger interruptsAvailable;
-
     private boolean playingInterrupt;
-
-    /**
-     * Flag indicating that any interrupts should be ignored until further
-     * notice. This flag is used to ensure that interrupts will not interfere
-     * with the initialization of a live broadcast.
-     */
-    private volatile boolean delayInterrupts;
 
     private volatile boolean warnNoData;
 
@@ -151,7 +139,6 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
         this.playlistMgr = playlistMgr;
         this.executorService = dacSession.getAsyncExecutor();
         this.keepRunning = true;
-        this.interruptsAvailable = new AtomicInteger(0);
         this.playingInterrupt = false;
         this.warnNoData = true;
         Runtime.getRuntime().addShutdownHook(
@@ -208,11 +195,6 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                         logger.info("Resuming the playback of the current playlist.");
                     }
 
-                    if ((this.delayInterrupts == false)
-                            && (interruptsAvailable.get() > 0)) {
-                        interruptsAvailable.decrementAndGet();
-                    }
-
                     DacMessagePlaybackData playbackData = playlistMgr.next();
                     while ((playbackData == null) && keepRunning) {
                         if (warnNoData) {
@@ -254,7 +236,8 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
                                 playbackData.getMessage().getBroadcastId()));
                     }
                     while ((playbackData.hasRemaining())
-                            && (playingInterrupt || (interruptsAvailable.get() == 0))) {
+                            && (playingInterrupt || (!playlistMgr
+                                    .hasInterrupt()))) {
                         try {
                             while (!hasSync && !pausePlayback && keepRunning) {
                                 Thread.sleep(DataTransmitConstants.DEFAULT_CYCLE_TIME);
@@ -389,20 +372,4 @@ public final class DataTransmitThread extends AbstractTransmitThread implements
         return this.playingInterrupt;
     }
 
-    @Override
-    @Subscribe
-    public void handleInterruptMessage(InterruptMessageReceivedEvent e) {
-        interruptsAvailable.incrementAndGet();
-        logger.info("Received new interrupt: " + e.getPlaylist().toString());
-    }
-
-    public void lockInterrupts() {
-        logger.info("Delaying interrupt playback. No interrupts will be played until further notice.");
-        this.delayInterrupts = true;
-    }
-
-    public void resumeInterrupts() {
-        logger.info("Resuming interrupt playback.");
-        this.delayInterrupts = false;
-    }
 }
