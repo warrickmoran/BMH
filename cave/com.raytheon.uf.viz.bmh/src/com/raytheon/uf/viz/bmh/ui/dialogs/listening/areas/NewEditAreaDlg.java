@@ -38,8 +38,8 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.same.SAMEStateCodes;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
-import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.widgets.duallist.DualList;
 import com.raytheon.viz.ui.widgets.duallist.DualListConfig;
@@ -56,6 +56,7 @@ import com.raytheon.viz.ui.widgets.duallist.IUpdate;
  * ------------ ---------- ----------- --------------------------
  * Jul 17, 2014    3406    mpduff      Initial creation
  * Feb 09, 2015    4095    bsteffen    Remove Transmitter Name.
+ * Mar 09, 2015    4247    rferrel     Now use SAMEStateCodes to validate state abbreviation.
  * 
  * </pre>
  * 
@@ -314,7 +315,7 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
                 + "(i.e., 1 through 9) for a partial area code\nNNN - county code number";
 
         // First check state
-        if (new ZonesAreasDataManager().getStateAbbreviations().contains(state)) {
+        if (SAMEStateCodes.DEFAULT.isValidState(state)) {
             // State is good, now check next char is either C or 1-9.
             if (areaCode.matches("\\w\\w[C1-9]{1}\\d{3}")) {
                 return true;

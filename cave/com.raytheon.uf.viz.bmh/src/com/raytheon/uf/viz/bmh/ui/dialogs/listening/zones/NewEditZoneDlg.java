@@ -38,10 +38,10 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import com.raytheon.uf.common.bmh.same.SAMEStateCodes;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
-import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.widgets.duallist.DualList;
 import com.raytheon.viz.ui.widgets.duallist.DualListConfig;
@@ -57,6 +57,7 @@ import com.raytheon.viz.ui.widgets.duallist.IUpdate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 14, 2014    3406    mpduff      Initial creation
+ * Mar 09, 2015    4247    rferrel     Now use SAMEStateCodes to validate state abbreviation.
  * 
  * </pre>
  * 
@@ -318,7 +319,7 @@ public class NewEditZoneDlg extends CaveSWTDialog implements IUpdate {
                 + "\nNNN - Zone code number";
 
         // First check state
-        if (new ZonesAreasDataManager().getStateAbbreviations().contains(state)) {
+        if (SAMEStateCodes.DEFAULT.isValidState(state)) {
             // State is good, now check next char is Z.
             if (zoneCode.matches("\\w\\w[Z]{1}\\d{3}")) {
                 return true;
