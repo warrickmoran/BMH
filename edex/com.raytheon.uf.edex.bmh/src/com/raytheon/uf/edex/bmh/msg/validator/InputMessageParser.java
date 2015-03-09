@@ -64,6 +64,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Feb 20, 2015  4158     bsteffen    Add support for optional polygons
  * Feb 27, 2015  4182     rferrel     Corrected spelling in messages.
  * Mar 05, 2015  4222     bkowal      Use null for messages that never expire.
+ * Mar 05, 2015  4199     rferrel     The afosidPattern excepts valid spaces in the id.
  * 
  * </pre>
  * 
@@ -84,7 +85,11 @@ public class InputMessageParser {
     private static final Pattern formatPattern = Pattern
             .compile("^([A-Z])_([A-Z]{3})");
 
-    private static final Pattern afosidPattern = Pattern.compile("^[A-Z]{9}");
+    /**
+     * Match CCCNNNXXX, sssNNNXXX, CCCNNNXXs and sssNNNXXs where s is spaces.
+     */
+    private static final Pattern afosidPattern = Pattern
+            .compile("^(([A-Z]{3}| {3})[A-Z]{5}[A-Z ])");
 
     private static final Pattern datePattern = Pattern.compile("^[0-9]{10}");
 
