@@ -60,6 +60,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 19, 2014  #3699     mpduff       Implement dialog
  * Feb 03, 2015  4056      bsteffen     Auto populate new dac and validate all fields for duplicates.
+ * Mar 09, 2015  4235      rferrel      Check for duplicate channel numbers.
  * 
  * </pre>
  * 
@@ -493,9 +494,14 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
                 }
                 portNum++;
             }
+
+            if (ports.size() != 4) {
+                isValid = false;
+                errMsg.append("Channels must have unique integer values.\n");
+            }
         } catch (NumberFormatException e) {
             isValid = false;
-            errMsg.append("Channel " + portNum + " must be an integer value");
+            errMsg.append("Channel " + portNum + " must be an integer value.\n");
         }
 
         for (Integer port : ports) {
