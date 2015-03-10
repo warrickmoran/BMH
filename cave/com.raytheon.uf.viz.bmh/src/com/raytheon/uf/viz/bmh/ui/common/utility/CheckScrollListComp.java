@@ -52,6 +52,7 @@ import org.eclipse.swt.widgets.Label;
  * Dec 15, 2014 #3876      bkowal       Added {@link #reset()} and {@link #enableCheckboxes(List)}.
  * Feb 02, 2015 #4073      bkowal       Do not select/deselect disabled checkboxes during a mass
  *                                      selection or de-selection.
+ * Mar 10, 2015 #4249      rferrel      Added {@link #setHelpText(String)}
  * 
  * </pre>
  * 
@@ -328,6 +329,7 @@ public class CheckScrollListComp extends Composite {
             btn.setEnabled(true);
             btn.setSelection(false);
         }
+        setHelpText(null);
     }
 
     /**
@@ -347,5 +349,14 @@ public class CheckScrollListComp extends Composite {
                 btn.setSelection(false);
             }
         }
+    }
+
+    /**
+     * Place help text on the check button component.
+     * 
+     * @param helpText
+     */
+    public void setHelpText(String helpText) {
+        checkBtnComp.setToolTipText(helpText);
     }
 }
