@@ -113,6 +113,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     the "Set Triggers..." button when creating/editing a suite
  *                                     without an associated program.
  * Feb 26, 2015   3749     rferrel     Message type only in the available or selected table.
+ * Mar 10, 2015   4250     rferrel     Confirm removal of Message Types only when editing existing suite.
  * </pre>
  * 
  * @author lvenable
@@ -999,28 +1000,31 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
             if ((triggeredPrograms != null)
                     && (triggeredPrograms.isEmpty() == false)) {
-                StringBuilder stringBuilder = new StringBuilder("Message Type ");
-                stringBuilder.append(removalCandidate.getMsgTypeSummary()
-                        .getAfosid());
-                stringBuilder
-                        .append(" is currently a Trigger for the following programs:\n\n");
-                for (Program triggeredProgram : triggeredPrograms) {
-                    stringBuilder.append(triggeredProgram.getName());
-                    stringBuilder.append("\n");
-                }
-                stringBuilder
-                        .append("\nAre you sure you want to remove the message type from Suite ");
-                stringBuilder.append(removalCandidate.getSuite().getName());
-                stringBuilder.append("?");
+                if (dialogType == DialogType.EDIT) {
+                    StringBuilder stringBuilder = new StringBuilder(
+                            "Message Type ");
+                    stringBuilder.append(removalCandidate.getMsgTypeSummary()
+                            .getAfosid());
+                    stringBuilder
+                            .append(" is currently a Trigger for the following programs:\n\n");
+                    for (Program triggeredProgram : triggeredPrograms) {
+                        stringBuilder.append(triggeredProgram.getName());
+                        stringBuilder.append("\n");
+                    }
+                    stringBuilder
+                            .append("\nAre you sure you want to remove the message type from Suite ");
+                    stringBuilder.append(removalCandidate.getSuite().getName());
+                    stringBuilder.append("?");
 
-                int result = DialogUtility.showMessageBox(shell,
-                        SWT.ICON_WARNING | SWT.YES | SWT.NO,
-                        "Remove Message Type", stringBuilder.toString());
-                if (result == SWT.NO) {
-                    /*
-                     * Do not remove anything.
-                     */
-                    continue;
+                    int result = DialogUtility.showMessageBox(shell,
+                            SWT.ICON_WARNING | SWT.YES | SWT.NO,
+                            "Remove Message Type", stringBuilder.toString());
+                    if (result == SWT.NO) {
+                        /*
+                         * Do not remove anything.
+                         */
+                        continue;
+                    }
                 }
 
                 /*
