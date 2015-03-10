@@ -277,7 +277,7 @@ public class DacTransmitServer extends AbstractServerThread {
         if (communicators != null) {
             List<DacTransmitCommunicator> bad = new ArrayList<>();
             for (DacTransmitCommunicator communicator : communicators) {
-                if (!communicator.isConnectedToDacTransmit()) {
+                if (communicator.isDisconnectedFromDacTransmit()) {
                     bad.add(communicator);
                 }
             }
