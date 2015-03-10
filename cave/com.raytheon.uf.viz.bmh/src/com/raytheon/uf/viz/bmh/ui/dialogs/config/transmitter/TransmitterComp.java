@@ -97,6 +97,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     the user should be able to commission a transmitter in a group.
  * Feb 27, 2015    3962    rferrel     Move decomm menu item and disable when unable to change status to decomm.
  *                                      Change color of text when using a dark background color.
+ * Mar 10, 2015    4258    rferrel     Change Mode confirmation message when no DAC/Port.
  * 
  * </pre>
  * 
@@ -775,27 +776,37 @@ public class TransmitterComp extends Composite implements
         Transmitter transmitter = getSelectedTransmitter();
         Object data = tree.getSelection()[0].getData();
         if (confirmChangeTxMode(transmitter, mode)) {
-            TransferToneRequest request = new TransferToneRequest(
-                    transmitter.getId(), mode);
             TransmitterGroup transmitterGroup = transmitter
                     .getTransmitterGroup();
             try {
-                String inputAudioFile = (String) BmhUtils.sendRequest(request);
                 DacDataManager dacDataManager = new DacDataManager();
                 Dac dac = dacDataManager.getDacById(transmitterGroup.getDac());
+                Integer port = transmitter.getDacPort();
+                if ((dac == null) || (port == null)) {
+                    if (mode != transmitter.getTxMode()) {
+                        transmitter.setTxMode(mode);
+                        dataManager.saveTransmitter(transmitter);
+                    }
+                } else {
+                    TransferToneRequest request = new TransferToneRequest(
+                            transmitter.getId(), mode);
+                    String inputAudioFile = (String) BmhUtils
+                            .sendRequest(request);
 
-                TransmitterMaintenanceCommand command = new TransmitterMaintenanceCommand();
-                command.setMaintenanceDetails("Transfer Tone");
-                command.setMsgSource(MSGSOURCE.VIZ);
-                command.addTransmitterGroup(transmitterGroup);
-                command.setDacHostname(dac.getAddress());
-                command.setAllowedDataPorts(dac.getDataPorts());
-                command.setRadios(new int[] { transmitter.getDacPort() });
-                command.setDecibelTarget(transmitterGroup.getAudioDBTarget());
-                command.setInputAudioFile(inputAudioFile);
-                command.setBroadcastDuration(-1);
-                TransmitterMaintenanceThread.runAndReportResult(statusHandler,
-                        this.getShell(), command);
+                    TransmitterMaintenanceCommand command = new TransmitterMaintenanceCommand();
+                    command.setMaintenanceDetails("Transfer Tone");
+                    command.setMsgSource(MSGSOURCE.VIZ);
+                    command.addTransmitterGroup(transmitterGroup);
+                    command.setDacHostname(dac.getAddress());
+                    command.setAllowedDataPorts(dac.getDataPorts());
+                    command.setRadios(new int[] { port });
+                    command.setDecibelTarget(transmitterGroup
+                            .getAudioDBTarget());
+                    command.setInputAudioFile(inputAudioFile);
+                    command.setBroadcastDuration(-1);
+                    TransmitterMaintenanceThread.runAndReportResult(
+                            statusHandler, this.getShell(), command);
+                }
                 populateTree(data);
             } catch (Exception e) {
                 statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
@@ -805,13 +816,27 @@ public class TransmitterComp extends Composite implements
     }
 
     private boolean confirmChangeTxMode(Transmitter toChange, TxMode mode) {
+        StringBuilder sb = new StringBuilder();
+        TransmitterGroup transmitterGroup = toChange.getTransmitterGroup();
+        DacDataManager dacDataManager = new DacDataManager();
+        Dac dac = null;
+        try {
+            dac = dacDataManager.getDacById(transmitterGroup.getDac());
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM, "Unable to get dac.", e);
+        }
+        Integer port = toChange.getDacPort();
         String modeName = mode.name();
-        return SWT.YES == DialogUtility.showMessageBox(
-                this.getShell(),
-                SWT.ICON_QUESTION | SWT.YES | SWT.NO,
-                "Confirm " + modeName,
-                "Are you sure you want to set Transmitter "
-                        + toChange.getMnemonic() + " as " + modeName + "?");
+
+        if ((dac == null) || (port == null)) {
+            sb.append("No transfer tones will be sent since transmitter does not have a DAC and/or Port assigned.\n\n");
+        }
+        sb.append("Are you sure you want to set Transmitter ")
+                .append(toChange.getMnemonic()).append(" as ").append(modeName)
+                .append("?");
+        return SWT.YES == DialogUtility.showMessageBox(this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm " + modeName,
+                sb.toString());
     }
 
     /**
