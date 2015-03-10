@@ -81,6 +81,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Feb 10, 2015   4106     bkowal      Support caching live broadcast information.
  * Feb 11, 2015   4088     bkowal      Provide identifying information about the broadcast
  *                                     msg when it is not found.
+ * Mar 10, 2015   4252     bkowal      Attempt to retrieve {@link BroadcastMsg}s that are not
+ *                                     available in the playlist cache.
  * 
  * </pre>
  * 
@@ -208,27 +210,51 @@ public class PlaylistData {
                     // retrieve the associated broadcast message.
                     long id = notification.getMessages().get(0)
                             .getBroadcastId();
-                    BroadcastMsg broadcastMsg = this.dataManager
-                            .getBroadcastMessage(id);
-                    if (broadcastMsg == null) {
-                        statusHandler
-                                .error("Failed to find the broadcast msg for id: "
-                                        + id
-                                        + " associated with notification: "
-                                        + notification.toString() + ".");
-                        return;
-                    }
-                    MessageType messageType = dataManager
-                            .getMessageType(broadcastMsg.getAfosid());
-                    PlaylistMessage playlistMessage = new PlaylistMessage();
-                    playlistMessage.setBroadcastMsg(broadcastMsg);
-                    playlistMap.put(id, playlistMessage);
-                    messageTypeMap.put(id, messageType);
+                    this.forceLoadBroadcast(id, playlistMap, messageTypeMap);
                 } catch (Exception e) {
                     statusHandler.error("Error accessing BMH database", e);
+                    return;
                 }
             }
         }
+
+        /*
+         * Verify that all playlist messages in the prediction map have been
+         * accounted for.
+         */
+        for (MessagePlaybackPrediction mpp : messageList) {
+            final long broadcastId = mpp.getBroadcastId();
+            if (playlistMap.containsKey(broadcastId)) {
+                try {
+                    this.forceLoadBroadcast(broadcastId, playlistMap,
+                            messageTypeMap);
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "Failed to retrieve broadcast message with id: "
+                                    + broadcastId
+                                    + ". Setting data to unknown.", e);
+                }
+            }
+        }
+    }
+
+    private void forceLoadBroadcast(final long broadcastId,
+            Map<Long, PlaylistMessage> playlistMap,
+            Map<Long, MessageType> messageTypeMap) throws Exception {
+        BroadcastMsg broadcastMsg = this.dataManager
+                .getBroadcastMessage(broadcastId);
+        if (broadcastMsg == null) {
+            statusHandler.warn("Broadcast Message with id: " + broadcastId
+                    + " no longer exists.");
+            return;
+        }
+
+        MessageType messageType = dataManager.getMessageType(broadcastMsg
+                .getAfosid());
+        PlaylistMessage playlistMessage = new PlaylistMessage();
+        playlistMessage.setBroadcastMsg(broadcastMsg);
+        playlistMap.put(broadcastId, playlistMessage);
+        messageTypeMap.put(broadcastId, messageType);
     }
 
     /**
@@ -352,8 +378,6 @@ public class PlaylistData {
                 cycleTableData.setExpirationTime(null);
                 cycleTableData.setMessageId("Unknown");
                 cycleTableData.setInputMsg(null);
-                statusHandler.error("Broadcast message is null for id: "
-                        + broadcastId + ".  Setting data to unknown.");
             }
 
             String title = "Unknown";
@@ -452,6 +476,7 @@ public class PlaylistData {
             rows.add(row);
             tableData.addDataRow(row);
         }
+
         return tableData;
     }
 
