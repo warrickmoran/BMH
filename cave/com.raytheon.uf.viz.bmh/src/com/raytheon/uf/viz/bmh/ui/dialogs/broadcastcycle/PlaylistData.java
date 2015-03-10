@@ -200,22 +200,6 @@ public class PlaylistData {
                     statusHandler.error("Error accessing BMH database", e);
                 }
             }
-        } else {
-            if (notification.getMessages().size() == 1) {
-                /*
-                 * A single message without a saved playlist would indicate that
-                 * the notification may be for an interrupt.
-                 */
-                try {
-                    // retrieve the associated broadcast message.
-                    long id = notification.getMessages().get(0)
-                            .getBroadcastId();
-                    this.forceLoadBroadcast(id, playlistMap, messageTypeMap);
-                } catch (Exception e) {
-                    statusHandler.error("Error accessing BMH database", e);
-                    return;
-                }
-            }
         }
 
         /*
@@ -224,7 +208,7 @@ public class PlaylistData {
          */
         for (MessagePlaybackPrediction mpp : messageList) {
             final long broadcastId = mpp.getBroadcastId();
-            if (playlistMap.containsKey(broadcastId)) {
+            if (playlistMap.containsKey(broadcastId) == false) {
                 try {
                     this.forceLoadBroadcast(broadcastId, playlistMap,
                             messageTypeMap);
