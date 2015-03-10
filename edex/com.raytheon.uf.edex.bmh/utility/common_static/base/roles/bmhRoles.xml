@@ -137,23 +137,15 @@
           This role is for BMH operator permissions.
        </roleDescription>
        <rolePermission>bmh.dialog.transmitterConfiguration</rolePermission>
-       <rolePermission>bmh.dialog.transmitterAlignment</rolePermission>
-       <rolePermission>bmh.dialog.listeningAreas</rolePermission>
-       <rolePermission>bmh.dialog.listeningZones</rolePermission>
+       <rolePermission>bmh.dialog.transmitterConfiguration.decommission</rolePermission>
        <rolePermission>bmh.dialog.disableSilenceAlarm</rolePermission>
        <rolePermission>bmh.dialog.broadcastCycle</rolePermission>
        <rolePermission>bmh.dialog.broadcastPrograms</rolePermission>
-       <rolePermission>bmh.dialog.suiteManager</rolePermission>
        <rolePermission>bmh.dialog.messageType</rolePermission>
-       <rolePermission>bmh.dialog.messageTypeAssociation</rolePermission>
        <rolePermission>bmh.dialog.weatherMessages</rolePermission>
        <rolePermission>bmh.dialog.emergencyOverride</rolePermission>
        <rolePermission>bmh.dialog.broadcastLive</rolePermission>
        <rolePermission>bmh.dialog.copyOperationalDB</rolePermission>
-       <rolePermission>bmh.dialog.ldadConfiguration</rolePermission>
-       <rolePermission>bmh.dialog.manageDictionaries</rolePermission>
-       <rolePermission>bmh.dialog.voiceConfiguration</rolePermission>
-       <rolePermission>bmh.dialog.convertLegacyDictionary</rolePermission>
    </role>
    <role roleId="bmh.maintenance">
        <roleDescription>
