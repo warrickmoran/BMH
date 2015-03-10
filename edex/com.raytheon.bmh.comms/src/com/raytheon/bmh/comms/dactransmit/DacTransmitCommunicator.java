@@ -77,6 +77,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Jan 19, 2015  4002     bkowal      Handle {@link MessageDelayedBroadcastNotification}.
  * Jan 23, 2015  3912     bsteffen    Handle all Throwables in run.
  * Feb 16, 2015  4107     bsteffen    Add updatePlaylistListener
+ * Mar 10, 2015  4228     bsteffen    Track disconnected state more carefully.
  * 
  * </pre>
  * 
@@ -102,6 +103,8 @@ public class DacTransmitCommunicator extends Thread {
     private double dbTarget;
 
     private DacTransmitStatus lastStatus;
+
+    private boolean disconnected = false;
 
     private static final BroadcastDelayAlarm broadcastDelayAlarm = new BroadcastDelayAlarm();
 
@@ -192,15 +195,31 @@ public class DacTransmitCommunicator extends Thread {
         }
     }
 
+    /**
+     * @return true if a status message has been received from the dac transmit
+     *         process and the socket has not been disconnected, false
+     *         otherwise.
+     * @See {@link #isDisconnectedFromDacTransmit()}
+     */
     public boolean isConnectedToDacTransmit() {
-        return lastStatus != null;
+        return lastStatus != null && !disconnected;
+    }
+
+    /**
+     * This is NOT an exact opposite of {@link #isConnectedToDacTransmit()}.
+     * When the socket is connected but a status message has not been retrieved
+     * from the DAC then both methods will return false. In all other cases this
+     * is just the opposite of {@link #isConnectedToDacTransmit()}
+     */
+    public boolean isDisconnectedFromDacTransmit() {
+        return disconnected;
     }
 
     public boolean isConnectedToDac() {
-        if (lastStatus == null) {
-            return false;
-        } else {
+        if (isConnectedToDacTransmit()) {
             return lastStatus.isConnectedToDac();
+        } else {
+            return false;
         }
     }
 
@@ -250,7 +269,7 @@ public class DacTransmitCommunicator extends Thread {
 
     private void disconnect() {
         boolean wasConnectedToDac = isConnectedToDac();
-        lastStatus = null;
+        disconnected = true;
         try {
             socket.close();
         } catch (IOException e) {
