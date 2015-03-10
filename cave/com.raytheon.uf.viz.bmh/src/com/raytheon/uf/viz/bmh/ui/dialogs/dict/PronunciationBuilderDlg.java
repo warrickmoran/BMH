@@ -67,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 25, 2014    3355    mpduff      Initial creation
  * Jul 21, 2014    3407    mpduff      Removed unused variable
  * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
+ * Mar 10, 2015    4253    rferrel     Change label on cancel button.
  * 
  * </pre>
  * 
@@ -261,7 +262,7 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
 
         gd = new GridData(75, SWT.DEFAULT);
         Button cancelBtn = new Button(btnComp, SWT.PUSH);
-        cancelBtn.setText("Close");
+        cancelBtn.setText("Cancel");
         cancelBtn.setLayoutData(gd);
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -311,6 +312,7 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
     /**
      * Populate when ssml snippet is provided
      */
+    @SuppressWarnings("unchecked")
     private void populateFromInput() {
         final String REPLACE = "REPLACEME";
         if (ssmlSnippet != null) {
