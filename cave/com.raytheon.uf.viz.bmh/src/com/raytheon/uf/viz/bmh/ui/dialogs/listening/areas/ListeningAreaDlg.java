@@ -68,6 +68,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    Convert areaTableComp to GenericTable.
  * Nov 11, 2014  3413     rferrel     Use DlgInfo to get title.
  * Feb 09, 2015  4095     bsteffen    Remove Transmitter Name.
+ * Mar 10, 2015  4247     rferrel     Fix sorting after delete and bug in search.
  * 
  * </pre>
  * 
@@ -310,6 +311,10 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
      */
     private void areaTableSelectionAction() {
         List<TableRowData> selection = areaTableComp.getSelection();
+        if (selection.isEmpty()) {
+            return;
+        }
+
         List<TableCellData> cellData = selection.get(0).getTableCellData();
         String area = cellData.get(0).getDisplayString();
         lacLbl.setText(area);
@@ -479,7 +484,7 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
                         "Delete Area?",
                         "Are you sure you want to permenantly delete the selected area?");
 
-        if (result == SWT.CANCEL) {
+        if (result != SWT.OK) {
             return;
         }
 
@@ -498,6 +503,8 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
             if (toDelete != null) {
                 areas.remove(toDelete);
                 generateTableData();
+                areaTableData.setSortColumnAndDirection(0,
+                        SortDirection.ASCENDING);
                 areaTableComp.populateTable(areaTableData);
                 try {
                     dataManager.deleteArea(toDelete);

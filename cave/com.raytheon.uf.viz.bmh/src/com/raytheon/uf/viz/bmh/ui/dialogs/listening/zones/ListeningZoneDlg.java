@@ -67,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08,2014    #3646    rferrel     Convert zoneTableComp  and areaTableComp
  *                                      to GenericTable.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Mar 10, 2015  4247      rferrel     Fix sorting after delete and bug in search.
  * 
  * </pre>
  * 
@@ -310,6 +311,10 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
      */
     private void zoneTableSelectionAction() {
         List<TableRowData> selection = zoneTableComp.getSelection();
+        if (selection.isEmpty()) {
+            return;
+        }
+
         List<TableCellData> cellData = selection.get(0).getTableCellData();
         String zone = cellData.get(0).getDisplayString();
         selectedAreaLbl.setText(zone);
@@ -481,7 +486,7 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
                         "Delete Zone?",
                         "Are you sure you want to permenantly delete the selected zone?");
 
-        if (result == SWT.CANCEL) {
+        if (result != SWT.OK) {
             return;
         }
 
@@ -500,6 +505,8 @@ public class ListeningZoneDlg extends AbstractBMHDialog {
             if (toDelete != null) {
                 zones.remove(toDelete);
                 generateTableData();
+                zoneTableData.setSortColumnAndDirection(0,
+                        SortDirection.ASCENDING);
                 zoneTableComp.populateTable(zoneTableData);
                 try {
                     dataManager.deleteZone(toDelete);
