@@ -157,6 +157,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 03, 2015  4212     bkowal      Display the Tone Playback confirmation for any combination
  *                                    of SAME and Alert tones.
  * Mar 05, 2015  4222     bkowal      Allow users to create messages that never expire.
+ * Mar 10, 2015  4249     rferrel     Better help message for SAME disabled transmitters.
  * 
  * </pre>
  * 
@@ -342,7 +343,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                         SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
                         "New Weather Message", msg);
 
-                if (choice == SWT.CANCEL) {
+                if (choice != SWT.OK) {
                     return;
                 }
 
@@ -369,7 +370,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                         SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
                         "Edit Weather Message", msg);
 
-                if (choice == SWT.CANCEL) {
+                if (choice != SWT.OK) {
                     return;
                 }
 
@@ -440,6 +441,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         Calendar expire = TimeUtil.newCalendar(creation);
         expire.add(Calendar.DATE, 1);
         im.setExpirationTime(expire);
+        areaData = null;
         resetControls();
 
         this.populateControlsForEdit(im, null);
@@ -1417,6 +1419,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
     }
 
     private void updateSAMETransmitterOptions() {
+        if (areaData == null) {
+            return;
+        }
         /*
          * ensure that the user will only be able to select Transmitters for
          * SAME tone playback associated with the area that was selected.
@@ -1430,6 +1435,11 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         if (interruptChk.getSelection() == false) {
             /* Not an interrupt, further limit selection by program */
             transmitterIdentifiers.retainAll(selectedMessageTypeTransmitters);
+            sameTransmitters
+                    .setHelpText("A disabled transmitter does not intersect with the selected area or its program list does not contain selected message type.");
+        } else {
+            sameTransmitters
+                    .setHelpText("A disabled transmitter does not intersect with the selected area.");
         }
 
         sameTransmitters.enableCheckboxes(transmitterIdentifiers);
