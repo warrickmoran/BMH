@@ -97,6 +97,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     the constructor that will be used for area selection
  *                                     for new and existing message types.
  * Feb 04, 2015   4087     bkowal      Default to designation for new messages to Forecast.
+ * Mar 11, 2015   4267     bkowal      Do not alter the local {@link AreaSelectionSaveData}
+ *                                     if {@link AreaSelectionDlg} returns a {@code null} value.
  * 
  * </pre>
  * 
@@ -647,7 +649,9 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                 dlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
-                        areaData = (AreaSelectionSaveData) returnValue;
+                        if (returnValue instanceof AreaSelectionSaveData) {
+                            areaData = (AreaSelectionSaveData) returnValue;
+                        }
                     }
                 });
                 dlg.open();
