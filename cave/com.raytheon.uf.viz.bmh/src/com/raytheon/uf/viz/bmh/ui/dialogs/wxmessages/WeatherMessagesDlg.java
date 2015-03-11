@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
@@ -158,6 +159,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    of SAME and Alert tones.
  * Mar 05, 2015  4222     bkowal      Allow users to create messages that never expire.
  * Mar 10, 2015  4249     rferrel     Better help message for SAME disabled transmitters.
+ * Mar 11, 2015  4254     rferrel     Better dialog message for bad words or duplicate message.
  * 
  * </pre>
  * 
@@ -1147,12 +1149,23 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                 userInputMessage.setId((Integer) result);
             }
         } catch (Exception e) {
-            statusHandler.handle(Priority.WARN,
-                    "Failed to submit the weather message.", e);
-            DialogUtility
-                    .showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
-                            "Weather Messages",
-                            "Failed to submit the weather message.");
+            String msg = ExceptionUtils.getRootCauseMessage(e);
+            if (msg != null) {
+                // Strip msg of the leading Exception: tag.
+                msg = msg.substring(msg.indexOf(":") + 1).trim();
+            }
+
+            if ((msg == null) || msg.isEmpty()) {
+                statusHandler.handle(Priority.WARN,
+                        "Failed to submit the weather message.", e);
+                DialogUtility.showMessageBox(this.shell, SWT.ICON_ERROR
+                        | SWT.OK, "Weather Messages",
+                        "Failed to submit the weather message.");
+            } else {
+                DialogUtility.showMessageBox(this.shell, SWT.ICON_ERROR
+                        | SWT.OK, "Weather Messages",
+                        "Failed to submit the weather message:\n\n" + msg);
+            }
             return;
         }
 
