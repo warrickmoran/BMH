@@ -108,6 +108,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Dec 01, 2014  3797     bkowal      Support broadcast clustering.
  * Jan 22, 2015  3912     bsteffen    Add isConnectedRemote.
  * Jan 23, 2015  3912     bsteffen    Sleep more when starting many dac transmits.
+ * Mar 11, 2015  4186     bsteffen    Report silence alarms in status
  * 
  * </pre>
  * 
@@ -241,7 +242,7 @@ public class CommsManager {
                     e);
         }
 
-        silenceAlarm = new SilenceAlarm(config);
+        silenceAlarm = new SilenceAlarm(this);
     }
 
     /**
@@ -664,6 +665,14 @@ public class CommsManager {
     }
 
     /**
+     * This method should be called by the SilenceAlarm whenever the an alarm
+     * activates/deactivates.
+     */
+    public void silenceStatusChanged() {
+        sendStatus();
+    }
+
+    /**
      * This method should be called when a dac transmit process has sent a
      * message that needs to be forwarded on to the rest of the world(edex and
      * cave mostly).
@@ -773,6 +782,8 @@ public class CommsManager {
                         }
                     }
                 }
+                status.setSilentTransmitterGroups(silenceAlarm
+                        .getAlarmingGroups());
                 jms.sendBmhStatus(status);
             } catch (UnknownHostException e) {
                 logger.error(

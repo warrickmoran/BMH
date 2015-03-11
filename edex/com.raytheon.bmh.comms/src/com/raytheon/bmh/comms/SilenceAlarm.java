@@ -47,6 +47,8 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Nov 26, 2014  3821     bsteffen    Initial Implementation
  * Jan 08, 2015  3821     bsteffen    Rename silenceAlarm to deadAirAlarm
  * Feb 26, 2015  4187     rjpeter     Make thread daemon so jvm can stop.
+ * Mar 11, 2015  4186     bsteffen    Notify comms manager of silence changes.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -63,9 +65,11 @@ public class SilenceAlarm {
     private static final int ALARM_REPEAT_MS = Integer.getInteger(
             "SilenceAlarmRepeatSeconds", 60) * 1000;
 
-    private Set<String> alarmableGroups;
+    private final CommsManager commsManager;
 
     private final Map<String, SilenceTime> silenceTimes = new HashMap<>();
+
+    private Set<String> alarmableGroups;
 
     private SilenceAlarmThread thread = null;
 
@@ -76,8 +80,9 @@ public class SilenceAlarm {
      * @param config
      *            the current configuration for the comms manager.
      */
-    public SilenceAlarm(CommsConfig config) {
-        reconfigure(config);
+    public SilenceAlarm(CommsManager commsManager) {
+        this.commsManager = commsManager;
+        reconfigure(commsManager.getCurrentConfigState());
     }
 
     /**
@@ -118,6 +123,7 @@ public class SilenceAlarm {
         if (!alarmableGroups.contains(group)) {
             return;
         }
+        SilenceTime canceledAlarm = null;
         synchronized (silenceTimes) {
             for (DacVoiceStatus voiceStatus : status.getVoiceStatus()) {
                 if (voiceStatus != DacVoiceStatus.IP_AUDIO) {
@@ -134,9 +140,24 @@ public class SilenceAlarm {
                     return;
                 }
             }
-            silenceTimes.remove(group);
+            canceledAlarm = silenceTimes.remove(group);
+        }
+        if (canceledAlarm != null && canceledAlarm.isAlarming()) {
+            commsManager.silenceStatusChanged();
         }
 
+    }
+
+    public Set<String> getAlarmingGroups() {
+        Set<String> result = new HashSet<>(alarmableGroups.size());
+        synchronized (silenceTimes) {
+            for (SilenceTime time : silenceTimes.values()) {
+                if (time.isAlarming()) {
+                    result.add(time.transmitterGroup);
+                }
+            }
+        }
+        return result;
     }
 
     private class SilenceAlarmThread extends Thread {
@@ -148,6 +169,7 @@ public class SilenceAlarm {
         @Override
         public void run() {
             while (true) {
+                boolean changed = false;
                 long sleepTime = Long.MAX_VALUE;
                 synchronized (silenceTimes) {
                     if (silenceTimes.isEmpty()) {
@@ -155,13 +177,20 @@ public class SilenceAlarm {
                         return;
                     }
                     for (SilenceTime time : silenceTimes.values()) {
+                        boolean hasAlarmed = time.isAlarming();
                         sleepTime = Math.min(sleepTime, time.alarm());
+                        if (hasAlarmed != time.isAlarming()) {
+                            changed = true;
+                        }
                     }
+                }
+                if (changed) {
+                    commsManager.silenceStatusChanged();
                 }
                 try {
                     sleep(sleepTime);
                 } catch (InterruptedException e) {
-                    ;// Interrupt just checks all the alarms again.
+                    /* Just checks all the alarms again. */
                 }
             }
         }
@@ -195,6 +224,7 @@ public class SilenceAlarm {
                 alarmAt = lastAlarm + ALARM_REPEAT_MS;
             }
             if (currentTime >= alarmAt) {
+                lastAlarm = currentTime;
                 logger.error("{} has been silent for  {} seconds.",
                         transmitterGroup, (currentTime - startSilence) / 1000);
                 return ALARM_REPEAT_MS;
@@ -203,6 +233,11 @@ public class SilenceAlarm {
             }
 
         }
+
+        public boolean isAlarming() {
+            return lastAlarm != 0;
+        }
+
 
     }
 }

@@ -279,7 +279,7 @@ public class StatusMonitorComp extends Composite implements
     private void populateDacTransmitterControls(List<Dac> dacList,
             List<TransmitterGroup> tgList) {
         DacTransmitterStatusData dtsd = sdm.createDacTransmitterStatusData(
-                dacList, tgList, vizStatusMonitor.getDacStatus());
+                dacList, tgList, vizStatusMonitor);
 
         Map<Integer, DacInfo> dacInfoMap = dtsd.getDacInfoMap();
 

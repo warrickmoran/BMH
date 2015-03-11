@@ -22,8 +22,6 @@ package com.raytheon.uf.common.bmh.notify.status;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.commons.lang.builder.EqualsBuilder;
-
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -40,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 18, 2014  3817     bsteffen    Initial creation
  * Dec 05, 2014  3287     lvenable    Check for null when retrieving connectedTransmitterGroups.
  * Jan 27, 2015  4029     bkowal      Added {@link #equals(Object)}.
+ * Mar 11, 2015  4186     bsteffen    Add silentTransmitterGroups
  * 
  * </pre>
  * 
@@ -51,6 +50,9 @@ public class CommsManagerStatus extends PeriodicStatusMessage {
 
     @DynamicSerializeElement
     private Set<String> connectedTransmitterGroups;
+
+    @DynamicSerializeElement
+    private Set<String> silentTransmitterGroups;
 
     public CommsManagerStatus() {
         super();
@@ -78,6 +80,14 @@ public class CommsManagerStatus extends PeriodicStatusMessage {
         this.connectedTransmitterGroups = connectedTransmitterGroups;
     }
 
+    public Set<String> getSilentTransmitterGroups() {
+        return silentTransmitterGroups;
+    }
+
+    public void setSilentTransmitterGroups(Set<String> silentTransmitterGroups) {
+        this.silentTransmitterGroups = silentTransmitterGroups;
+    }
+
     public boolean addConnectedTransmitterGroup(String connectedTransmitterGroup) {
         if (connectedTransmitterGroups == null) {
             connectedTransmitterGroups = new HashSet<>();
@@ -93,25 +103,50 @@ public class CommsManagerStatus extends PeriodicStatusMessage {
         return connectedTransmitterGroups.contains(connectedTransmitterGroup);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.bmh.notify.status.PeriodicStatusMessage#equals
-     * (java.lang.Object)
-     */
-    @Override
-    public boolean equals(Object obj) {
-        if (super.equals(obj) == false) {
+    public boolean containsSilentTransmitterGroup(String silentTransmitterGroup) {
+        if (silentTransmitterGroups == null) {
             return false;
         }
-
-        CommsManagerStatus other = (CommsManagerStatus) obj;
-
-        EqualsBuilder eq = new EqualsBuilder();
-        eq.append(this.connectedTransmitterGroups,
-                other.connectedTransmitterGroups);
-
-        return eq.isEquals();
+        return silentTransmitterGroups.contains(silentTransmitterGroup);
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime
+                * result
+                + ((connectedTransmitterGroups == null) ? 0
+                        : connectedTransmitterGroups.hashCode());
+        result = prime
+                * result
+                + ((silentTransmitterGroups == null) ? 0
+                        : silentTransmitterGroups.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (!super.equals(obj))
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        CommsManagerStatus other = (CommsManagerStatus) obj;
+        if (connectedTransmitterGroups == null) {
+            if (other.connectedTransmitterGroups != null)
+                return false;
+        } else if (!connectedTransmitterGroups
+                .equals(other.connectedTransmitterGroups))
+            return false;
+        if (silentTransmitterGroups == null) {
+            if (other.silentTransmitterGroups != null)
+                return false;
+        } else if (!silentTransmitterGroups
+                .equals(other.silentTransmitterGroups))
+            return false;
+        return true;
+    }
+
 }

@@ -50,6 +50,7 @@ import com.raytheon.uf.viz.bmh.Activator;
  * Nov 23, 2014  #3287     lvenable     Added image for a silent alarm and
  *                                      if it's disabled.
  * Feb 27, 2015  #3962     rferrel      Added images for decommissioned and maintenance.
+ * Mar 11, 2015  #4186     bsteffen     Removed alarming disabled image.
  * 
  * </pre>
  * 
@@ -62,7 +63,7 @@ public class StatusImages {
     public enum StatusImage {
         Dac, Transmitter, TransmitterGrp, TransmitterDisabled,
 
-        Alarm, DisabledSilentAlarm, AlarmPlusDisabledSilentAlarm,
+        Alarm, DisabledSilentAlarm,
 
         Decommissioned, Maintenance;
     };
@@ -128,9 +129,6 @@ public class StatusImages {
         // Transmitter group
         putImage(StatusImage.TransmitterGrp, "icons/xmit_grp.png");
 
-        // Alarm active with SilentAlarm disabled
-        putImage(StatusImage.AlarmPlusDisabledSilentAlarm,
-                "icons/alarmDisabledSilent.png");
     }
 
     /**
