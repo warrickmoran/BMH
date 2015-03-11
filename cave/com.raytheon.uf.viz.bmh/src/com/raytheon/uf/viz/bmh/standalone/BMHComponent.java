@@ -28,6 +28,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceReference;
 
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.application.component.IStandaloneComponent;
 import com.raytheon.uf.viz.bmh.ui.dialogs.BMHLauncherDlg;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
@@ -41,10 +42,11 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * SOFTWARE HISTORY
  * 
- * Date          Ticket#   Engineer    Description
- * ------------- --------- ----------- --------------------------
- * Feb 05, 2015  3743      bsteffen    Initial creation
- * Feb 16, 2015  4168      bsteffen    Set CAVEMode.
+ * Date          Ticket#  Engineer    Description
+ * ------------- -------- ----------- --------------------------
+ * Feb 05, 2015  3743     bsteffen    Initial creation
+ * Feb 16, 2015  4168     bsteffen    Set CAVEMode.
+ * Mar 11, 2015  4266     bsteffen    Better error/ufstatus handling.
  * 
  * </pre>
  * 
@@ -66,15 +68,22 @@ public class BMHComponent implements IStandaloneComponent {
             NotificationManagerJob.connect();
             dialog = new BMHLauncherDlg(new Shell(display));
         }
+        UFStatus.setHandlerFactory(new BmhStatusHandlerFactory());
         dialog.open();
         applicationRunning();
         while (!dialog.isDisposed()) {
-            if (!display.readAndDispatch()) {
-                display.sleep();
+            try {
+                if (!display.readAndDispatch()) {
+                    display.sleep();
+                }
+            } catch (Throwable e) {
+                UFStatus.getHandler().error(
+                        "Unexpected Exception in BMH Dialog.", e);
             }
         }
         return IApplication.EXIT_OK;
     }
+
 
     /**
      * Tell Eclipse that the application is up. Otherwise the splash screen
