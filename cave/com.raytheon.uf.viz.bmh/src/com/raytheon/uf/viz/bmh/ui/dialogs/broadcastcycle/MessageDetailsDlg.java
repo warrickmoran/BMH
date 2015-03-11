@@ -86,6 +86,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 03, 2015    4210     bkowal     Use the periodicity associated with the Message instead
  *                                     of the Message Type.
  * Mar 05, 2015    4222     bkowal     Handle messages that never expire.
+ * Mar 10, 2015    4256     rferrel    Make message text read only.
  * 
  * </pre>
  * 
@@ -392,7 +393,8 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.heightHint = 125;
-        messageText = new Text(shell, SWT.BORDER | SWT.V_SCROLL | SWT.WRAP);
+        messageText = new Text(shell, SWT.BORDER | SWT.V_SCROLL | SWT.WRAP
+                | SWT.READ_ONLY);
         messageText.setLayoutData(gd);
         messageText.setLayoutData(gd);
     }
