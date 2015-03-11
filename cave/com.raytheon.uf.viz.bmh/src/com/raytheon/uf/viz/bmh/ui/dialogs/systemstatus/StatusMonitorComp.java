@@ -85,6 +85,8 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Feb 06, 2015  #4019     lvenable     Changed class to be a composite and made other changes
  *                                      so it can be embedded into a dialog.
  * Mar 06, 2015  #4241     rjpeter      Put in retrieval job.
+ * Mar 10, 2015  #4219     bsteffen     Reset min size on scrolledComp when transmitters change.
+ * 
  * </pre>
  * 
  * @author lvenable
@@ -331,6 +333,8 @@ public class StatusMonitorComp extends Composite implements
         populateDacTransmitterControls(dacList, tgList);
 
         dacTransmittersComp.layout();
+        scrolledComp.setMinSize(dacTransmittersComp.computeSize(SWT.DEFAULT,
+                SWT.DEFAULT));
         scrolledComp.layout();
         getShell().redraw();
     }
