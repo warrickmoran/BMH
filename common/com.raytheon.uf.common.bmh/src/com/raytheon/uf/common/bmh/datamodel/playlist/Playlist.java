@@ -90,6 +90,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jan 20, 2015  4010     bkowal      Compare selected transmitters when analyzing
  *                                    replacements.
  * Feb 05, 2015  4085     bkowal      Designations are no longer static.
+ * Mar 12, 2015  4207     bsteffen    Do not preserve start/end time when triggers are present.
  * 
  * </pre>
  * 
@@ -229,7 +230,7 @@ public class Playlist {
      * expiration is before that time. Also rechecks that all messages are
      * active and in the suite and removes any that are not.
      */
-    public void refresh() {
+    public void refresh(Set<MessageTypeSummary> triggers) {
         modTime = TimeUtil.newGmtCalendar();
         Iterator<PlaylistMessage> it = messages.iterator();
         while (it.hasNext()) {
@@ -239,6 +240,19 @@ public class Playlist {
             } else if (modTime.after(existing.getExpirationTime())) {
                 it.remove();
             } else if (!existing.isActive()) {
+                for (MessageTypeSummary summary : triggers) {
+                    if (summary.getAfosid().equals(existing.getAfosid())) {
+                        /*
+                         * When a trigger is made inactive the times must be
+                         * reset so the playlist stops if there are not other
+                         * triggers. If there are other triggers than the times
+                         * will be recalulated and the list will continue to
+                         * play anyway.
+                         */
+                        this.startTime = null;
+                        this.endTime = null;
+                    }
+                }
                 it.remove();
             }
         }
@@ -288,9 +302,9 @@ public class Playlist {
                 }
             }
         }
-        Calendar startTime = this.startTime;
+        Calendar startTime = null;
         List<Calendar> triggerTimes = new LinkedList<>();
-        Calendar endTime = this.endTime;
+        Calendar endTime = null;
         for (PlaylistMessage message : messages) {
             if (triggerAfosids.contains(message.getAfosid())) {
                 Calendar messageStart = message.getEffectiveTime();
@@ -305,12 +319,20 @@ public class Playlist {
             }
         }
         if (startTime == null) {
-            this.startTime = this.modTime;
-            this.endTime = this.modTime;
-            return Collections.emptyList();
+            /*
+             * If this.startTime is not null then this playlist may have been
+             * forced in which case it should continue playing using previously
+             * assigned times.
+             */
+            if (this.startTime == null) {
+                this.startTime = this.modTime;
+                this.endTime = this.modTime;
+                return Collections.emptyList();
+            }
+        } else {
+            this.startTime = startTime;
+            this.endTime = endTime;
         }
-        this.startTime = startTime;
-        this.endTime = endTime;
         if (forced || suite.getType() == SuiteType.GENERAL) {
             return Collections.singletonList(modTime);
         }
