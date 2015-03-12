@@ -33,6 +33,7 @@ import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
@@ -46,6 +47,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
+import org.eclipse.swt.widgets.Widget;
 
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
@@ -98,6 +100,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 27, 2015    3962    rferrel     Move decomm menu item and disable when unable to change status to decomm.
  *                                      Change color of text when using a dark background color.
  * Mar 10, 2015    4258    rferrel     Change Mode confirmation message when no DAC/Port.
+ * Mar 11, 2015    4249    rferrel     Enable all menu items and display dialog.
  * 
  * </pre>
  * 
@@ -112,6 +115,12 @@ public class TransmitterComp extends Composite implements
     private final String TRANSMITTER = "Transmitter";
 
     private final String GROUP = "Group";
+
+    private final String DISABLE_MSG_KEY = "disable.message";
+
+    private final String MAINT_GROUP_MSG = "Cannot edit group with a transmitter in maintenance. Use Transmitter Alignment to enable.";;
+
+    private final String MAINT_TRANSMITTER_MSG = "Cannot edit transmitter in maintenance. Use Transmitter Alignment to enable.";
 
     private enum TreeTableColumn {
         GROUP_TRANSMITTER("Group/Transmitter", 125, SWT.LEFT), NAME(
@@ -175,6 +184,8 @@ public class TransmitterComp extends Composite implements
 
     private List<String> displayStrings;
 
+    private final Image disableImage;
+
     /**
      * Call back for NewEditTranmitterDlg.
      */
@@ -193,8 +204,9 @@ public class TransmitterComp extends Composite implements
      * 
      * @param parent
      */
-    public TransmitterComp(Composite parent) {
+    public TransmitterComp(Composite parent, Image disableImage) {
         super(parent, SWT.NONE);
+        this.disableImage = disableImage;
         init();
     }
 
@@ -221,12 +233,14 @@ public class TransmitterComp extends Composite implements
      * Build the popup menu
      */
     private void handleMenuShown() {
+        boolean enableItem = true;
+
         MenuItem[] items = menu.getItems();
         for (MenuItem item : items) {
             item.dispose();
         }
 
-        MenuItem newGroupItem = new MenuItem(menu, SWT.PUSH);
+        MenuItem newGroupItem = createItem(menu, SWT.PUSH, true, null);
         newGroupItem.setText("New Group...");
         newGroupItem.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -235,7 +249,7 @@ public class TransmitterComp extends Composite implements
             }
         });
 
-        MenuItem newTransmitterItem = new MenuItem(menu, SWT.PUSH);
+        MenuItem newTransmitterItem = createItem(menu, SWT.PUSH, true, null);
         newTransmitterItem.setText("New Transmitter...");
         newTransmitterItem.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -249,6 +263,7 @@ public class TransmitterComp extends Composite implements
         TransmitterGroup standaloneGroup = null;
         Transmitter groupTransmitter = null;
         boolean transmitterEnabled = false;
+        boolean transmitterMaint = false;
         boolean transmitterDecomissioned = false;
         boolean transmitterPrimary = false;
 
@@ -264,32 +279,49 @@ public class TransmitterComp extends Composite implements
             } else if (o instanceof Transmitter) {
                 groupTransmitter = (Transmitter) o;
             }
-            MenuItem editItem = new MenuItem(menu, SWT.PUSH);
 
             if (group != null) {
+                MenuItem editItem = createItem(menu, SWT.PUSH,
+                        !group.isMaint(), MAINT_GROUP_MSG);
+
                 editItem.setText("Edit Group...");
                 editItem.addSelectionListener(new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent e) {
-                        groupMenuAction(false);
+                        if (enabledWidget(e.widget)) {
+                            groupMenuAction(false);
+                        }
                     }
                 });
 
-                MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
+                enableItem = group.getTransmitters().isEmpty();
+                MenuItem deleteItem = createItem(menu, SWT.PUSH, enableItem,
+                        "Group cannot be deleted when it contains transmitters.");
                 deleteItem.setText("Delete Group");
                 deleteItem.addSelectionListener(new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent e) {
-                        deleteGroup();
+                        if (enabledWidget(e.widget)) {
+                            deleteGroup();
+                        }
                     }
                 });
-                deleteItem.setEnabled(group.getTransmitters().size() == 0);
             } else {
+                transmitterMaint = ((groupTransmitter != null) && (groupTransmitter
+                        .getTxStatus() == TxStatus.MAINT))
+                        || ((standaloneGroup != null) && (standaloneGroup
+                                .getTransmitterList().get(0).getTxStatus() == TxStatus.MAINT));
+
+                MenuItem editItem = createItem(menu, SWT.PUSH,
+                        !transmitterMaint, MAINT_TRANSMITTER_MSG);
+
                 editItem.setText("Edit Transmitter...");
                 editItem.addSelectionListener(new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent e) {
-                        transmitterMenuAction(false);
+                        if (enabledWidget(e.widget)) {
+                            transmitterMenuAction(false);
+                        }
                     }
                 });
 
@@ -310,130 +342,174 @@ public class TransmitterComp extends Composite implements
                                 .getTransmitterList().get(0).getTxMode() == TxMode.PRIMARY));
 
                 new MenuItem(menu, SWT.SEPARATOR);
+
                 /*
                  * Ensure that the user will not be able to enable/disable or
                  * change the mode of a decommissioned transmitter.
                  */
-                MenuItem statusMenuItem = new MenuItem(menu, SWT.CASCADE);
+
+                MenuItem statusMenuItem = createItem(
+                        menu,
+                        SWT.CASCADE,
+                        !transmitterMaint,
+                        "Cannot change status of transmitter in maintenance. Use Transmitter Alignment to enable.");
                 statusMenuItem.setText("Transmitter Status");
-                Menu statusMenu = new Menu(menu);
-                statusMenuItem.setMenu(statusMenu);
 
-                MenuItem enableStatusItem = new MenuItem(statusMenu, SWT.RADIO);
-                enableStatusItem.setText("Enable Transmitter");
-                enableStatusItem.addSelectionListener(new SelectionAdapter() {
+                if (transmitterMaint) {
+                    statusMenuItem.addSelectionListener(new SelectionAdapter() {
 
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        MenuItem item = (MenuItem) e.widget;
-                        if (item.getSelection()) {
-                            changeTxStatus(TxStatus.ENABLED);
+                        @Override
+                        public void widgetSelected(SelectionEvent e) {
+                            enabledWidget(e.widget);
                         }
-                    }
-                });
-                enableStatusItem.setSelection(transmitterEnabled);
+                    });
+                } else {
+                    Menu statusMenu = new Menu(menu);
+                    statusMenuItem.setMenu(statusMenu);
 
-                /*
-                 * Enable only when transmitter has a DAC, DAC port, group has a
-                 * program and the program contains a GENERAL suite.
-                 */
-                enableStatusItem
-                        .setEnabled(((standaloneGroup != null)
-                                && (standaloneGroup.getDac() != null)
-                                && (standaloneGroup.getTransmitterList().get(0)
-                                        .getDacPort() != null) && containsGeneralSuite(standaloneGroup
-                                    .getProgramSummary()))
-                                || ((groupTransmitter != null)
-                                        && (groupTransmitter.getDacPort() != null)
-                                        && (groupTransmitter
-                                                .getTransmitterGroup().getDac() != null) && containsGeneralSuite(groupTransmitter
-                                        .getTransmitterGroup()
-                                        .getProgramSummary())));
+                    /*
+                     * Enable only when transmitter has a DAC, DAC port, group
+                     * has a program and the program contains a GENERAL suite.
+                     */
+                    enableItem = ((standaloneGroup != null)
+                            && (standaloneGroup.getDac() != null)
+                            && (standaloneGroup.getTransmitterList().get(0)
+                                    .getDacPort() != null) && containsGeneralSuite(standaloneGroup
+                                .getProgramSummary()))
+                            || ((groupTransmitter != null)
+                                    && (groupTransmitter.getDacPort() != null)
+                                    && (groupTransmitter.getTransmitterGroup()
+                                            .getDac() != null) && containsGeneralSuite(groupTransmitter
+                                    .getTransmitterGroup().getProgramSummary()));
 
-                MenuItem disableStatusItem = new MenuItem(statusMenu, SWT.RADIO);
-                disableStatusItem.setText("Disable Transmitter");
-                disableStatusItem.addSelectionListener(new SelectionAdapter() {
+                    MenuItem enableStatusItem = createItem(
+                            statusMenu,
+                            SWT.RADIO,
+                            enableItem,
+                            "Can only enable trasmitter with an assigned DAC and port. The assigned program must contain a GENERAL suite.");
+                    enableStatusItem.setText("Enable Transmitter");
+                    enableStatusItem
+                            .addSelectionListener(new SelectionAdapter() {
 
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        MenuItem item = (MenuItem) e.widget;
-                        if (item.getSelection()) {
-                            changeTxStatus(TxStatus.DISABLED);
-                        }
-                    }
-                });
-                disableStatusItem
-                        .setSelection(!(transmitterEnabled || transmitterDecomissioned));
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    if (enabledWidget(e.widget)) {
+                                        changeTxStatus(TxStatus.ENABLED);
+                                    }
+                                }
+                            });
+                    enableStatusItem.setSelection(transmitterEnabled);
 
-                new MenuItem(statusMenu, SWT.SEPARATOR);
+                    MenuItem disableStatusItem = createItem(statusMenu,
+                            SWT.RADIO, true, null);
+                    disableStatusItem.setText("Disable Transmitter");
+                    disableStatusItem
+                            .addSelectionListener(new SelectionAdapter() {
 
-                MenuItem decommissionTransmitterItem = new MenuItem(statusMenu,
-                        SWT.RADIO);
-                decommissionTransmitterItem.setText("Decommission Transmitter");
-                decommissionTransmitterItem
-                        .addSelectionListener(new SelectionAdapter() {
-                            @Override
-                            public void widgetSelected(SelectionEvent e) {
-                                decommissionTransmitter();
-                            }
-                        });
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    if (enabledWidget(e.widget)) {
+                                        changeTxStatus(TxStatus.DISABLED);
+                                    }
+                                }
+                            });
+                    disableStatusItem
+                            .setSelection(!(transmitterEnabled || transmitterDecomissioned));
 
-                decommissionTransmitterItem
-                        .setSelection(transmitterDecomissioned);
-                decommissionTransmitterItem.setEnabled(transmitterDecomissioned
-                        || !transmitterEnabled);
+                    new MenuItem(statusMenu, SWT.SEPARATOR);
 
-                MenuItem modeMenuItem = new MenuItem(menu, SWT.CASCADE);
+                    enableItem = !transmitterDecomissioned
+                            && !transmitterEnabled;
+                    MenuItem decommissionTransmitterItem = createItem(
+                            statusMenu, SWT.RADIO, enableItem,
+                            "Only a disabled transmitter can be decomissioned");
+                    decommissionTransmitterItem
+                            .setText("Decommission Transmitter");
+                    decommissionTransmitterItem
+                            .addSelectionListener(new SelectionAdapter() {
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    if (enabledWidget(e.widget)) {
+                                        decommissionTransmitter();
+                                    }
+                                }
+                            });
+                    decommissionTransmitterItem
+                            .setSelection(transmitterDecomissioned);
+                }
+
+                enableItem = !transmitterDecomissioned && !transmitterEnabled
+                        && !transmitterMaint;
+
+                MenuItem modeMenuItem = createItem(
+                        menu,
+                        SWT.CASCADE,
+                        enableItem,
+                        transmitterMaint ? "Cannot change mode of transmitter in maintenace. Use Transmitter Alignment to enable."
+                                : "Can only set mode of DISABLED transmitter.");
                 modeMenuItem.setText("Transmitter Mode");
-                Menu modeMenu = new Menu(menu);
-                modeMenuItem.setMenu(modeMenu);
-                modeMenuItem.setEnabled(!transmitterDecomissioned);
 
-                MenuItem primaryModeItem = new MenuItem(modeMenu, SWT.RADIO);
-                primaryModeItem.setText("PRIMARY Mode");
-                primaryModeItem.addSelectionListener(new SelectionAdapter() {
+                if (!enableItem) {
+                    modeMenuItem.addSelectionListener(new SelectionAdapter() {
 
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        MenuItem item = (MenuItem) e.widget;
-                        if (item.getSelection()) {
-                            changeTxMode(TxMode.PRIMARY);
+                        @Override
+                        public void widgetSelected(SelectionEvent e) {
+                            enabledWidget(e.widget);
                         }
-                    }
-                });
-                primaryModeItem.setSelection(transmitterPrimary);
-                primaryModeItem.setEnabled(!transmitterEnabled);
+                    });
+                } else {
+                    Menu modeMenu = new Menu(menu);
+                    modeMenuItem.setMenu(modeMenu);
 
-                MenuItem secondaryModeItem = new MenuItem(modeMenu, SWT.RADIO);
-                secondaryModeItem.setText("SECONDARY Mode");
-                secondaryModeItem.addSelectionListener(new SelectionAdapter() {
+                    MenuItem primaryModeItem = createItem(modeMenu, SWT.RADIO,
+                            true, null);
+                    primaryModeItem.setText("PRIMARY Mode");
+                    primaryModeItem
+                            .addSelectionListener(new SelectionAdapter() {
 
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        MenuItem item = (MenuItem) e.widget;
-                        if (item.getSelection()) {
-                            changeTxMode(TxMode.SECONDARY);
-                        }
-                    }
-                });
-                secondaryModeItem.setSelection(!transmitterPrimary);
-                secondaryModeItem.setEnabled(!transmitterEnabled);
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    if (enabledWidget(e.widget)) {
+                                        changeTxMode(TxMode.PRIMARY);
+                                    }
+                                }
+                            });
+                    primaryModeItem.setSelection(transmitterPrimary);
+
+                    MenuItem secondaryModeItem = createItem(modeMenu,
+                            SWT.RADIO, true, null);
+                    secondaryModeItem.setText("SECONDARY Mode");
+                    secondaryModeItem
+                            .addSelectionListener(new SelectionAdapter() {
+
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    if (enabledWidget(e.widget)) {
+                                        changeTxMode(TxMode.SECONDARY);
+                                    }
+                                }
+                            });
+                    secondaryModeItem.setSelection(!transmitterPrimary);
+                }
 
                 new MenuItem(menu, SWT.SEPARATOR);
 
-                MenuItem deleteItem = new MenuItem(menu, SWT.PUSH);
+                enableItem = !transmitterEnabled;
+                MenuItem deleteItem = createItem(menu, SWT.PUSH, enableItem,
+                        "Cannot delete an enabled transmitter.");
                 deleteItem.setText("Delete Transmitter");
-                deleteItem.setEnabled(!transmitterEnabled);
                 deleteItem.addSelectionListener(new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent e) {
-                        deleteTransmitter();
+                        if (enabledWidget(e.widget)) {
+                            deleteTransmitter();
+                        }
                     }
                 });
             }
         }
 
-        MenuItem reorderMenuItem = new MenuItem(menu, SWT.PUSH);
+        MenuItem reorderMenuItem = createItem(menu, SWT.PUSH, true, null);
         if (groupTransmitter != null) {
             reorderMenuItem.setText("Order Transmitters...");
             reorderMenuItem.addSelectionListener(new SelectionAdapter() {
@@ -455,7 +531,7 @@ public class TransmitterComp extends Composite implements
         if (tree.getSelectionCount() > 0) {
             new MenuItem(menu, SWT.SEPARATOR);
 
-            MenuItem detailsItem = new MenuItem(menu, SWT.PUSH);
+            MenuItem detailsItem = createItem(menu, SWT.PUSH, true, null);
             detailsItem.setText("Details...");
             detailsItem.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -467,7 +543,7 @@ public class TransmitterComp extends Composite implements
 
         new MenuItem(menu, SWT.SEPARATOR);
 
-        MenuItem expandAllItem = new MenuItem(menu, SWT.PUSH);
+        MenuItem expandAllItem = createItem(menu, SWT.PUSH, true, null);
         expandAllItem.setText("Expand All Groups");
         expandAllItem.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -476,7 +552,7 @@ public class TransmitterComp extends Composite implements
             }
         });
 
-        MenuItem collapseAllItem = new MenuItem(menu, SWT.PUSH);
+        MenuItem collapseAllItem = createItem(menu, SWT.PUSH, true, null);
         collapseAllItem.setText("Collapse All Groups");
         collapseAllItem.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -484,6 +560,56 @@ public class TransmitterComp extends Composite implements
                 expandAll(false);
             }
         });
+    }
+
+    /**
+     * If enabled create menu item of the desired style; else create a PUSH menu
+     * item, add disable image and set the disable message.
+     * 
+     * @param parent
+     * @param enableStyle
+     * @param enabled
+     * @param disableMsg
+     * @return menuItem
+     */
+    private MenuItem createItem(Menu parent, int enableStyle, boolean enabled,
+            String disableMsg) {
+        int style = enableStyle;
+        if (!enabled) {
+            style = SWT.PUSH;
+        }
+        MenuItem item = new MenuItem(parent, style);
+        if (!enabled) {
+            item.setImage(disableImage);
+            item.setData(DISABLE_MSG_KEY, disableMsg);
+        }
+        return item;
+    }
+
+    /**
+     * Check to see if widget is allowed to perform its task. Assumes the widget
+     * is a menu item.
+     * 
+     * @param widget
+     * @return true when widget doesn't contain a disable message
+     */
+    private boolean enabledWidget(Widget widget) {
+        MenuItem item = (MenuItem) widget;
+
+        // Ignore if item is RADIO button that is no longer selected.
+        boolean checkSelection = (widget.getStyle() & SWT.RADIO) == SWT.RADIO;
+        if (checkSelection && !item.getSelection()) {
+            return false;
+        }
+
+        Object msg = item.getData(DISABLE_MSG_KEY);
+        if (msg != null) {
+            DialogUtility.showMessageBox(this.getShell(), SWT.ICON_INFORMATION
+                    | SWT.OK, "Disabled", msg.toString());
+
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -914,13 +1040,32 @@ public class TransmitterComp extends Composite implements
         if (tree.getSelectionCount() > 0) {
             Object o = tree.getSelection()[0].getData();
             if (o instanceof Transmitter) {
-                transmitterMenuAction(false);
-            } else if (o instanceof TransmitterGroup) {
-                TransmitterGroup group = (TransmitterGroup) o;
-                if (group.isStandalone()) {
+                Transmitter t = (Transmitter) o;
+                if (t.getTxStatus() != TxStatus.MAINT) {
                     transmitterMenuAction(false);
                 } else {
-                    groupMenuAction(false);
+                    DialogUtility.showMessageBox(this.getShell(),
+                            SWT.ICON_INFORMATION | SWT.OK, "Disabled",
+                            MAINT_TRANSMITTER_MSG);
+                }
+            } else if (o instanceof TransmitterGroup) {
+                TransmitterGroup group = (TransmitterGroup) o;
+                if (!group.isMaint()) {
+                    if (group.isStandalone()) {
+                        transmitterMenuAction(false);
+                    } else {
+                        groupMenuAction(false);
+                    }
+                } else {
+                    if (group.isStandalone()) {
+                        DialogUtility.showMessageBox(this.getShell(),
+                                SWT.ICON_INFORMATION | SWT.OK, "Disabled",
+                                MAINT_TRANSMITTER_MSG);
+                    } else {
+                        DialogUtility.showMessageBox(this.getShell(),
+                                SWT.ICON_INFORMATION | SWT.OK, "Disabled",
+                                MAINT_GROUP_MSG);
+                    }
                 }
             }
         }
