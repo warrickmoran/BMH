@@ -140,6 +140,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      {@link MessageNotBroadcastNotification}.
  * Mar 06, 2015  #4188     bsteffen     Handle start time of interrupts.
  * Mar 09, 2015  #4170     bsteffen     Remove messages when audio failed to load.
+ * Mar 12, 2015  #4193     bsteffen     Do not insert invalid messages into the past.
  * 
  * </pre>
  * 
@@ -877,9 +878,9 @@ public final class PlaylistScheduler implements
                 } else {
                     DacPlaylistMessage messageData = cache
                             .getMessage(messageId);
-                    if (!messageData.isPeriodic()
-                            || messageData.getPlayCount() == 0
-                            || forceSchedulePeriodic) {
+                    if (messageData.isValid()
+                            && (!messageData.isPeriodic()
+                                    || messageData.getPlayCount() == 0 || forceSchedulePeriodic)) {
                         newUnperiodicMessages.add(messageId);
                     }
                 }

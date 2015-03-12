@@ -91,6 +91,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                    replacements.
  * Feb 05, 2015  4085     bkowal      Designations are no longer static.
  * Mar 12, 2015  4207     bsteffen    Do not preserve start/end time when triggers are present.
+ * Mar 12, 2015  4193     bsteffen    Always keep replacements in the list.
  * 
  * </pre>
  * 
@@ -412,11 +413,7 @@ public class Playlist {
                 boolean mrdEqual = mrd == existingMrd;
                 if (areaCodesEqual && selectedTransmittersEqual && mrdEqual) {
                     removedMessages.add(existing.getBroadcastMsg());
-                    if (message.getEffectiveTime().after(modTime)) {
-                        existing.setReplacementTime(message.getEffectiveTime());
-                    } else {
-                        it.remove();
-                    }
+                    existing.setReplacementTime(message.getEffectiveTime());
                 }
             }
         }
@@ -446,11 +443,7 @@ public class Playlist {
                         .equals(existingAreaCodes)))
                         && selectedTransmittersEqual) {
                     removedMessages.add(existing.getBroadcastMsg());
-                    if (message.getEffectiveTime().after(modTime)) {
-                        existing.setReplacementTime(message.getEffectiveTime());
-                    } else {
-                        it.remove();
-                    }
+                    existing.setReplacementTime(message.getEffectiveTime());
                     if (message.getReplacementType() == null) {
                         message.setReplacementType(ReplacementType.MAT);
                     }
@@ -480,11 +473,7 @@ public class Playlist {
                         .getInputMessage().getMrdId();
                 if (mrdReplacementSet.contains(existingMrdId)) {
                     removedMessages.add(existing.getBroadcastMsg());
-                    if (message.getEffectiveTime().after(modTime)) {
-                        existing.setReplacementTime(message.getEffectiveTime());
-                    } else {
-                        it.remove();
-                    }
+                    existing.setReplacementTime(message.getEffectiveTime());
                     message.setReplacementType(ReplacementType.MRD);
                 }
             }
