@@ -151,7 +151,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Feb 03, 2015  4081     bkowal      Eliminate unused isStatic dac playlist message setting.
  * Feb 06, 2015  4036     bsteffen    Ensure message writer is closed.
  * Feb 10, 2015  4093     bsteffen    Leave tones in UTC
- * 
+ * Mar 12, 2015  4207     bsteffen    Pass triggers to playlist when refreshing.
  * 
  * </pre>
  * 
@@ -448,7 +448,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setSuite(programSuite.getSuite());
                 playlist.setTransmitterGroup(group);
             }
-            playlist.refresh();
+            playlist.refresh(programSuite.getTriggers());
             loadExistingMessages(playlist);
             if (playlist.getId() != 0 || !playlist.getMessages().isEmpty()) {
                 playlist.setStartTime(null);
@@ -532,7 +532,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist = new Playlist();
                 playlist.setSuite(programSuite.getSuite());
                 playlist.setTransmitterGroup(group);
-                playlist.refresh();
+                playlist.refresh(programSuite.getTriggers());
                 if (programSuite.getSuite().getType() != SuiteType.GENERAL) {
                     if (programSuite.isTrigger(msg.getAfosid())) {
                         loadExistingMessages(playlist);
@@ -545,7 +545,7 @@ public class PlaylistManager implements IContextStateProcessor {
                             new HashMap<String, Set<String>>());
                 }
             } else {
-                playlist.refresh();
+                playlist.refresh(programSuite.getTriggers());
                 mergeMessage(playlist, msg, new HashMap<String, Set<String>>());
             }
             DacPlaylist dacPlaylist = persistPlaylist(playlist, programSuite,
