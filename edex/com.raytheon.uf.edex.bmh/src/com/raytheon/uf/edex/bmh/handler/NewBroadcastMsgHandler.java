@@ -51,6 +51,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
+import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
@@ -93,6 +94,7 @@ import com.raytheon.uf.edex.core.EdexException;
  *                                     input message equals comparison.
  * Feb 09, 2015  #4091     bkowal      Use {@link EdexAudioConverterManager}.
  * Mar 05, 2015  #4208     bsteffen    Throw Exception when message is submitted without changes.
+ * Mar 10, 2015  #4255     bsteffen    Delay inactivating previous until new validates.
  * 
  * </pre>
  * 
@@ -161,76 +163,11 @@ public class NewBroadcastMsgHandler extends
     public Object handleRequest(NewBroadcastMsgRequest request)
             throws Exception {
         // TODO: logging
-
         InputMessage inputMessage = request.getInputMessage();
-        if (inputMessage.getId() != 0) {
-            /*
-             * This is an update need to check what changed, if it is only the
-             * active/inactive flag then apply the change directly to this
-             * entry, if it is any other change then need to mark the old
-             * message as inactive and then process the change as a new message.
-             */
-            InputMessageDao inputMessageDao = new InputMessageDao(
-                    request.isOperational(), this.getMessageLogger(request));
-            InputMessage previous = inputMessageDao.getByID(inputMessage
-                    .getId());
-            if (inputMessage.equals(previous)) {
-                throw new IllegalStateException(
-                        "Duplicate message will be ignored.");
-            }
-            boolean activeChanged = false;
-            if (inputMessage.getActive() != null) {
-                activeChanged = !inputMessage.getActive().equals(
-                        previous.getActive());
-            } else if (previous.getActive() != null) {
-                activeChanged = true;
-            }
-            boolean nothingElseChanged = true;
-            if (activeChanged) {
-                EqualsBuilder builder = new EqualsBuilder();
-                builder.append(previous.getName(), inputMessage.getName());
-                builder.append(previous.getLanguage(),
-                        inputMessage.getLanguage());
-                builder.append(previous.getAfosid(), inputMessage.getAfosid());
-                builder.append(previous.getCreationTime(),
-                        inputMessage.getCreationTime());
-                builder.append(previous.getEffectiveTime(),
-                        inputMessage.getEffectiveTime());
-                builder.append(previous.getPeriodicity(),
-                        inputMessage.getPeriodicity());
-                builder.append(previous.getMrd(), inputMessage.getMrd());
-                builder.append(previous.getConfirm(), inputMessage.getConfirm());
-                builder.append(previous.getInterrupt(),
-                        inputMessage.getInterrupt());
-                builder.append(previous.getAlertTone(),
-                        inputMessage.getAlertTone());
-                builder.append(previous.getNwrsameTone(),
-                        inputMessage.getNwrsameTone());
-                builder.append(previous.getAreaCodes(),
-                        inputMessage.getAreaCodes());
-                builder.append(previous.getSelectedTransmitters(),
-                        inputMessage.getSelectedTransmitters());
-                builder.append(previous.getExpirationTime(),
-                        inputMessage.getExpirationTime());
-                builder.append(previous.getContent(), inputMessage.getContent());
-                builder.append(previous.isValidHeader(),
-                        inputMessage.isValidHeader());
-                nothingElseChanged = builder.isEquals();
-            }
-            if (activeChanged && nothingElseChanged) {
-                inputMessageDao.persist(inputMessage);
-                BmhMessageProducer.sendConfigMessage(
-                        new MessageActivationNotification(inputMessage),
-                        request.isOperational());
-                return inputMessage.getId();
-            } else if (!Boolean.FALSE.equals(previous.getActive())) {
-                previous.setActive(false);
-                inputMessageDao.persist(previous);
-                BmhMessageProducer.sendConfigMessage(
-                        new MessageActivationNotification(previous),
-                        request.isOperational());
-            }
-            inputMessage.setId(0);
+
+        InputMessage previous = checkPrevious(request);
+        if (previous == inputMessage) {
+            return previous.getId();
         }
 
         LdadValidator ldadCheck = this.getLdadValidator(request);
@@ -270,7 +207,14 @@ public class NewBroadcastMsgHandler extends
             this.sendToDestination(
                     BMHJmsDestinations.getBMHTransformDestination(request),
                     validMsg.getId());
-
+            if (previous != null) {
+                InputMessageDao inputMessageDao = new InputMessageDao(
+                        request.isOperational(), this.getMessageLogger(request));
+                inputMessageDao.persist(previous);
+                BmhMessageProducer.sendConfigMessage(
+                        new MessageActivationNotification(previous),
+                        request.isOperational());
+            }
             return inputMessage.getId();
         }
 
@@ -301,6 +245,14 @@ public class NewBroadcastMsgHandler extends
             this.sendToDestination(
                     BMHJmsDestinations.getBMHScheduleDestination(request),
                     broadcastRecord.getId());
+        }
+        if (previous != null) {
+            InputMessageDao inputMessageDao = new InputMessageDao(
+                    request.isOperational(), this.getMessageLogger(request));
+            inputMessageDao.persist(previous);
+            BmhMessageProducer.sendConfigMessage(
+                    new MessageActivationNotification(previous),
+                    request.isOperational());
         }
 
         /*
@@ -451,6 +403,88 @@ public class NewBroadcastMsgHandler extends
         }
 
         return inputMessage.getId();
+    }
+
+    /**
+     * Check if this is a modification of a previous message and if so, does it
+     * need to be persisted as a new message. Returns null if there is no
+     * previous message, returns request.getInputMessage() if there is a
+     * previous message and there is no need to create a new message, otherwise
+     * returns the previous message, which should be made inactive if the new
+     * message passes all validation checks.
+     */
+    private InputMessage checkPrevious(NewBroadcastMsgRequest request)
+            throws EdexException, SerializationException {
+        InputMessage inputMessage = request.getInputMessage();
+
+        if (inputMessage.getId() != 0) {
+            /*
+             * This is an update need to check what changed, if it is only the
+             * active/inactive flag then apply the change directly to this
+             * entry, if it is any other change then need to mark the old
+             * message as inactive and then process the change as a new message.
+             */
+            InputMessageDao inputMessageDao = new InputMessageDao(
+                    request.isOperational(), this.getMessageLogger(request));
+            InputMessage previous = inputMessageDao.getByID(inputMessage
+                    .getId());
+            if (inputMessage.equals(previous)) {
+                throw new IllegalStateException(
+                        "Duplicate message will be ignored.");
+            }
+            boolean activeChanged = false;
+            if (inputMessage.getActive() != null) {
+                activeChanged = !inputMessage.getActive().equals(
+                        previous.getActive());
+            } else if (previous.getActive() != null) {
+                activeChanged = true;
+            }
+            boolean nothingElseChanged = true;
+            if (activeChanged) {
+                EqualsBuilder builder = new EqualsBuilder();
+                builder.append(previous.getName(), inputMessage.getName());
+                builder.append(previous.getLanguage(),
+                        inputMessage.getLanguage());
+                builder.append(previous.getAfosid(), inputMessage.getAfosid());
+                builder.append(previous.getCreationTime(),
+                        inputMessage.getCreationTime());
+                builder.append(previous.getEffectiveTime(),
+                        inputMessage.getEffectiveTime());
+                builder.append(previous.getPeriodicity(),
+                        inputMessage.getPeriodicity());
+                builder.append(previous.getMrd(), inputMessage.getMrd());
+                builder.append(previous.getConfirm(), inputMessage.getConfirm());
+                builder.append(previous.getInterrupt(),
+                        inputMessage.getInterrupt());
+                builder.append(previous.getAlertTone(),
+                        inputMessage.getAlertTone());
+                builder.append(previous.getNwrsameTone(),
+                        inputMessage.getNwrsameTone());
+                builder.append(previous.getAreaCodes(),
+                        inputMessage.getAreaCodes());
+                builder.append(previous.getSelectedTransmitters(),
+                        inputMessage.getSelectedTransmitters());
+                builder.append(previous.getExpirationTime(),
+                        inputMessage.getExpirationTime());
+                builder.append(previous.getContent(), inputMessage.getContent());
+                builder.append(previous.isValidHeader(),
+                        inputMessage.isValidHeader());
+                nothingElseChanged = builder.isEquals();
+            }
+            if (activeChanged && nothingElseChanged) {
+                inputMessageDao.persist(inputMessage);
+                BmhMessageProducer.sendConfigMessage(
+                        new MessageActivationNotification(inputMessage),
+                        request.isOperational());
+                return inputMessage;
+            } else if (!Boolean.FALSE.equals(previous.getActive())) {
+                inputMessage.setId(0);
+                previous.setActive(false);
+                return previous;
+            }
+            inputMessage.setId(0);
+        }
+        return null;
     }
 
     private LdadValidator getLdadValidator(NewBroadcastMsgRequest request) {
