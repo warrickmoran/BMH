@@ -228,7 +228,13 @@ public class Playlist {
     /**
      * Update the modTime to be the currentTime and expire all messages who's
      * expiration is before that time. Also rechecks that all messages are
-     * active and in the suite and removes any that are not.
+     * active and in the suite and removes any that are not. If a trigger is
+     * removed from the playlist because it has become inactive then the start
+     * and end times are also cleared. {@link #setTimes(Set, boolean) should be
+     * called at some point after this method before persisting the list to
+     * ensure times are set properly.
+     * 
+     * @param triggers the triggers for the program suite for this list.
      */
     public void refresh(Set<MessageTypeSummary> triggers) {
         modTime = TimeUtil.newGmtCalendar();
