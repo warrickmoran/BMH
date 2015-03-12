@@ -49,6 +49,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  * Oct 15, 2014            lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Silent alarm updates.
  * Feb 27, 2915  #3962     rferrel      Add status images for transmitters.
+ * Mar 11, 2015  #4186     bsteffen     Show alarm disabled image even if there is silence.
  * 
  * </pre>
  * 
@@ -119,11 +120,7 @@ public class TransmitterGroupStatusComp extends Composite {
         Label silentAlarmLbl = new Label(xmitGrpComp, SWT.NONE);
         silentAlarmLbl.setLayoutData(gd);
 
-        if (transmitterGrpInfo.isSilenceAlarm()
-                && transmitterGrpInfo.isDisabledSilenceAlarm()) {
-            silentAlarmLbl.setImage(statusImages
-                    .getStatusImage(StatusImage.AlarmPlusDisabledSilentAlarm));
-        } else if (transmitterGrpInfo.isDisabledSilenceAlarm()) {
+        if (transmitterGrpInfo.isDisabledSilenceAlarm()) {
             silentAlarmLbl.setImage(statusImages
                     .getStatusImage(StatusImage.DisabledSilentAlarm));
         } else if (transmitterGrpInfo.isSilenceAlarm()) {
@@ -267,23 +264,17 @@ public class TransmitterGroupStatusComp extends Composite {
         Label silentAlarmLbl = new Label(xmitComp, SWT.NONE);
         silentAlarmLbl.setLayoutData(gd);
 
-        // There are five possible images to display:
+        // There are four possible images to display:
         // 1.) transmitter status is decommissioned
         // 2.) transmitter status is maintenance
-        // 3.) if the silent alarm is flagged and the user disabled the silent
-        // alarm then show the alarm & disabled silent alarm image.
-        // 4.) if the silent alarm is disabled
-        // 5.) if the silent alarm is flagged (no audio playing)
+        // 3.) if the silent alarm is disabled
+        // 4.) if the silent alarm is flagged (no audio playing)
         if (transmitterInfo.getTxStatus() == TxStatus.DECOMM) {
             silentAlarmLbl.setImage(statusImages
                     .getStatusImage(StatusImage.Decommissioned));
         } else if (transmitterInfo.getTxStatus() == TxStatus.MAINT) {
             silentAlarmLbl.setImage(statusImages
                     .getStatusImage(StatusImage.Maintenance));
-        } else if (transmitterGrpInfo.isSilenceAlarm()
-                && transmitterGrpInfo.isDisabledSilenceAlarm()) {
-            silentAlarmLbl.setImage(statusImages
-                    .getStatusImage(StatusImage.AlarmPlusDisabledSilentAlarm));
         } else if (transmitterGrpInfo.isDisabledSilenceAlarm()) {
             silentAlarmLbl.setImage(statusImages
                     .getStatusImage(StatusImage.DisabledSilentAlarm));

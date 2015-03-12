@@ -50,6 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 18, 2014  3817     bsteffen    Initial creation
  * Jan 26, 2015  4020     bkowal      Fix TTS Status and Dac Transmitter
  *                                    Group status retrieval.
+ * Mar 11, 2015  4186     bsteffen    Add isTransmitterGroupSilent
  * 
  * </pre>
  * 
@@ -267,6 +268,16 @@ public class SystemStatusMonitor {
         }
         return this.getCommsStatus().get(dacHost)
                 .containsConnectedTransmitterGroup(transmitterGroupName);
+    }
+
+    public boolean isTransmitterGroupSilent(final String dacHost,
+            String transmitterGroupName) {
+        Map<String, CommsManagerStatus> commsStatus = getCommsStatus();
+        if (commsStatus.containsKey(dacHost)) {
+            return commsStatus.get(dacHost).containsSilentTransmitterGroup(
+                    transmitterGroupName);
+        }
+        return false;
     }
 
     public boolean isCommsManagerConnected(String host) {

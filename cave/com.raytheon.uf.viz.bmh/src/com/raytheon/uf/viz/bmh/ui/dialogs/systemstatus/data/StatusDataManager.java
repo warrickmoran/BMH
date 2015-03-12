@@ -28,7 +28,7 @@ import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
-import com.raytheon.uf.common.bmh.notify.status.DacVoiceStatus;
+import com.raytheon.uf.common.bmh.systemstatus.SystemStatusMonitor;
 
 /**
  * This class will take all of the DAC and Transmitter Group information and
@@ -46,6 +46,7 @@ import com.raytheon.uf.common.bmh.notify.status.DacVoiceStatus;
  * Dec 01, 2014  #3287     lvenable     Added null check.
  * Jan 08, 2015  3821      bsteffen     Rename silenceAlarm to deadAirAlarm
  * Feb 09, 2015  4095      bsteffen     Remove Transmitter Name.
+ * Mar 11, 2015  #4186     bsteffen     Check system status monitor for silence instead of dac hardware status.
  * 
  * </pre>
  * 
@@ -76,7 +77,7 @@ public class StatusDataManager {
      */
     public DacTransmitterStatusData createDacTransmitterStatusData(
             List<Dac> dacs, List<TransmitterGroup> transmitterGroups,
-            Map<String, DacHardwareStatusNotification> dacStatus) {
+            SystemStatusMonitor statusMonitor) {
 
         dtsd = new DacTransmitterStatusData();
 
@@ -98,6 +99,9 @@ public class StatusDataManager {
          */
         Set<Integer> updatedDac = new HashSet<>(dacs.size(), 1.0f);
 
+        Map<String, DacHardwareStatusNotification> dacStatus = statusMonitor
+                .getDacStatus();
+
         for (TransmitterGroup tg : transmitterGroups) {
             TransmitterGrpInfo tgi = createTransGroupInfo(tg);
 
@@ -111,33 +115,16 @@ public class StatusDataManager {
                     // status information.
                     DacHardwareStatusNotification dhsn = dacStatus.get(tg
                             .getName());
-                    if (dhsn != null) {
-                        // Check for a silence alarm and flag it so the
-                        // transmitter group and be set
-                        boolean silence = false;
-                        DacVoiceStatus[] dvsArray = dhsn.getVoiceStatus();
-
-                        for (DacVoiceStatus dvs : dvsArray) {
-                            /*
-                             * TODO: This is incorrect, should be based on
-                             * receiving a silence alarm message
-                             */
-                            if (dvs != DacVoiceStatus.IP_AUDIO) {
-                                silence = true;
-                                break;
-                            }
-                        }
-                        tgi.setSilenceAlarm(silence);
-
-                        if (updatedDac.contains(tgDac) == false) {
+                    if (dhsn != null && updatedDac.contains(tgDac) == false) {
                             di.setPsu1Voltage(dhsn.getPsu1Voltage());
                             di.setPsu2Voltage(dhsn.getPsu2Voltage());
                             updatedDac.add(tgDac);
-                        }
                     }
                 } else {
                     dtsd.addTranmitterWithNoDac(tgi);
                 }
+                tgi.setSilenceAlarm(statusMonitor.isTransmitterGroupSilent(
+                        di.getDacAddress(), tg.getName()));
             } else {
                 dtsd.addTranmitterWithNoDac(tgi);
             }
