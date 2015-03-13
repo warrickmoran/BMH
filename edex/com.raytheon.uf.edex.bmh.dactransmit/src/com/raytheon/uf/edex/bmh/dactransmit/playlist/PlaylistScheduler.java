@@ -141,6 +141,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Mar 06, 2015  #4188     bsteffen     Handle start time of interrupts.
  * Mar 09, 2015  #4170     bsteffen     Remove messages when audio failed to load.
  * Mar 12, 2015  #4193     bsteffen     Do not insert invalid messages into the past.
+ * Mar 13, 2015  #4222     bkowal       Prevent Unsupported Operation Exception when
+ *                                      an Interrupt arrives.
  * 
  * </pre>
  * 
@@ -388,8 +390,19 @@ public final class PlaylistScheduler implements
                 this.eventBus.post(event);
                 synchronized (playlistMessgeLock) {
                     messageIndex -= 1;
-                    this.currentPlaylist.getMessages().remove(
-                            this.currentMessages.remove(messageIndex));
+                    /*
+                     * It is possible that the DacPlaylistMessageId that we want
+                     * to remove may be NULL or not exist when an interrupt is
+                     * triggered.
+                     */
+                    if (this.currentMessages.contains(messageIndex)) {
+                        DacPlaylistMessageId messageIdToRemove = this.currentMessages
+                                .remove(messageIndex);
+                        if (messageIdToRemove != null) {
+                            this.currentPlaylist.getMessages().remove(
+                                    messageIdToRemove);
+                        }
+                    }
                 }
             }
             AudioFileBuffer audioData = null;
