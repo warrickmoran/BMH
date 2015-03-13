@@ -152,6 +152,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Feb 06, 2015  4036     bsteffen    Ensure message writer is closed.
  * Feb 10, 2015  4093     bsteffen    Leave tones in UTC
  * Mar 12, 2015  4207     bsteffen    Pass triggers to playlist when refreshing.
+ * Mar 13, 2015  4193     bsteffen    Do not convert replaced messages to xml.
  * 
  * </pre>
  * 
@@ -709,7 +710,9 @@ public class PlaylistManager implements IContextStateProcessor {
         dac.setInterrupt(suite.getType() == SuiteType.INTERRUPT);
         for (PlaylistMessage message : db.getSortedMessages()) {
             BroadcastMsg broadcast = message.getBroadcastMsg();
-            if (broadcast.isSuccess()) {
+            if (broadcast.isSuccess()
+                    && (message.getReplacementTime() == null || message
+                            .getReplacementTime().after(db.getModTime()))) {
                 DacPlaylistMessageId dacMessage = convertMessageForDAC(broadcast);
                 dacMessage.setReplaceTime(message.getReplacementTime());
                 dac.addMessage(dacMessage);
