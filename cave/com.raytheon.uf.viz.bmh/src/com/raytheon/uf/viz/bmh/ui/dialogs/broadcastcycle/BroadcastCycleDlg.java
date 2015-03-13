@@ -161,6 +161,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 16, 2015  4118      bkowal      Check for disposal of components updated
  *                                     asynchronously.
  * Feb 26, 2015  4187      rjpeter     Added isDisposed checks.
+ * Mar 13, 2015  4270      rferrel     Update display when selected group modified or removed.
  * </pre>
  * 
  * @author mpduff
@@ -1554,8 +1555,13 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     int indx = transmitterList.indexOf(grp);
                     if (indx != -1) {
                         /*
-                         * the group was added.
+                         * The group already in the list. Update if it is the
+                         * selected group.
                          */
+                        if (grp.equals(selectedTransmitterGrp)) {
+                            // Program may have been changed.
+                            closeChangeSuiteDlg();
+                        }
                         continue;
                     }
 
@@ -1563,8 +1569,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                      * is the group that was removed, the currently selected
                      * group?
                      */
-                    if ((selectedTransmitterGrp != null)
-                            && selectedTransmitterGrp.equals(grp)) {
+                    if (grp.equals(selectedTransmitterGrp)) {
                         zeroSelection = true;
                     }
 
@@ -1581,7 +1586,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 if (transmitterList.getItemCount() > 0) {
                     if (zeroSelection) {
                         transmitterList.select(0);
-                        updateOnTransmitterChange();
+                        closeChangeSuiteDlg();
                     } else {
                         /*
                          * select the transmitter that is "currently" selected
@@ -1590,9 +1595,29 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         transmitterList.select(transmitterList
                                 .indexOf(selectedTransmitterGrp));
                     }
+                    updateOnTransmitterChange();
                 }
             }
         });
+    }
+
+    /**
+     * Force close of the Change Suite dialog.
+     */
+    private void closeChangeSuiteDlg() {
+        if ((changeSuiteDlg != null) && !changeSuiteDlg.isDisposed()) {
+            /*
+             * Prevent multiple popups when notification received mutliple
+             * times.
+             */
+            SuiteListDlg csd = changeSuiteDlg;
+            changeSuiteDlg = null;
+            MessageBox mb = new MessageBox(csd.getShell(), SWT.OK);
+            mb.setText("Change Suite");
+            mb.setMessage("This dialog must close due to changes in the transmitter.");
+            mb.open();
+            csd.close();
+        }
     }
 
     /**
