@@ -24,6 +24,7 @@ import java.util.Arrays;
 
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
 
@@ -55,6 +56,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  * Jan 15, 2015  3999      bkowal       Adjust offsets as data is added to the destination
  *                                      array in {@link #get(byte[], int, int)}.
  * Feb 02, 2015  4093      bsteffen     Add position()
+ * Mar 13, 2015  4251      bkowal       Limit messages accompanied by tones to 2 minutes.
  * 
  * </pre>
  * 
@@ -63,6 +65,14 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  */
 
 public class AudioFileBuffer extends AbstractAudioFileBuffer {
+
+    /**
+     * A message can only be a maximum of two (2) minutes when accompanied by
+     * tones.
+     */
+    private static final int MAX_TONES_MSG_DURATION_SECONDS = 120;
+
+    public static final int MAX_TONES_MSG_AUDIO_BYTE_COUNT = ((MAX_TONES_MSG_DURATION_SECONDS * (int) TimeUtil.MILLIS_PER_SECOND) / 20) * 160;
 
     /**
      * Between each message we must play around 1 second of silence. That's the
@@ -182,9 +192,11 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
             }
         }
 
-        if ((bytesRemaining > 0) && (messageBuffer.hasRemaining())) {
+        if ((bytesRemaining > 0)
+                && (messageBuffer.hasRemaining() && this.isToneTruncated() == false)) {
             int bytesToRead = Math.min(bytesRemaining,
-                    messageBuffer.remaining());
+                    (this.returnTones) ? this.getTruncatedBytesRemaining()
+                            : messageBuffer.remaining());
             messageBuffer.get(dst, offset, bytesToRead);
             bytesRemaining -= bytesToRead;
             offset += bytesToRead;
@@ -274,6 +286,17 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
                         .hasRemaining() && endOfMessageTones.hasRemaining()));
     }
 
+    public boolean isToneTruncated() {
+        return this.returnTones
+                && (this.messageBuffer.position() >= MAX_TONES_MSG_AUDIO_BYTE_COUNT);
+    }
+
+    public int getTruncatedBytesRemaining() {
+        int calculatedBytesRemaining = MAX_TONES_MSG_AUDIO_BYTE_COUNT
+                - this.messageBuffer.position();
+        return (calculatedBytesRemaining < 0) ? 0 : calculatedBytesRemaining;
+    }
+
     /*
      * (non-Javadoc)
      * 
@@ -297,7 +320,7 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
      *         remaining in this buffer.
      */
     public boolean hasRemaining() {
-        return returnTones ? (messageBuffer.hasRemaining()
+        return returnTones ? (this.isToneTruncated()
                 || tonesBuffer.hasRemaining()
                 || endOfMessageTones.hasRemaining() || endOfMessageSilence
                 .hasRemaining())
@@ -314,8 +337,9 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
      */
     @Override
     public int capacity(boolean includeTones) {
-        int capacity = messageBuffer.capacity()
-                + endOfMessageSilence.capacity();
+        int capacity = (includeTones) ? Math.min(messageBuffer.capacity(),
+                MAX_TONES_MSG_AUDIO_BYTE_COUNT) : messageBuffer.capacity();
+        capacity += endOfMessageSilence.capacity();
         if (includeTones) {
             capacity += (tonesBuffer.capacity() + endOfMessageTones.capacity());
         }

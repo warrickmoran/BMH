@@ -96,6 +96,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Feb 24, 2015  #4160     bsteffen     Do not purge message files.
  * Mar 05, 2015  #4222     bkowal       Handle messages that never expire.
  * Mar 09, 2015  #4170     bsteffen     Throw exceptions from getAudio.
+ * Mar 13, 2015  4251      bkowal       Limit messages accompanied by tones to 2 minutes.
  * 
  * </pre>
  * 
@@ -381,7 +382,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                     buffer = status.get();
                 } catch (InterruptedException e) {
                     /* Should never happen, just check file size. */
-                } catch(ExecutionException e){
+                } catch (ExecutionException e) {
                     /*
                      * Ignore for now, when the message is played the same
                      * exception will be thrown and logged in getAudio
@@ -422,6 +423,12 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 }
             }
             if (includeTones) {
+                /*
+                 * audio playback is truncated to two (2) minutes when tones are
+                 * also played.
+                 */
+                fileSize = Math.min(fileSize,
+                        AudioFileBuffer.MAX_TONES_MSG_AUDIO_BYTE_COUNT);
                 fileSize += SAME_TONE_ESTIMATE;
                 if (message.isAlertTone()) {
                     fileSize += ALERT_TONE_ESTIMATE;
@@ -497,7 +504,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         if (getMessage(messageId).getExpire() == null) {
             return false;
         }
-        
+
         long playbackTime;
         try {
             playbackTime = getPlaybackTime(messageId);
@@ -576,7 +583,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             return PriorityBasedExecutorService.PRIORITY_LOW;
         }
     }
-    
+
     private class PurgePlaylistTask implements PrioritizableCallable<Object> {
 
         private final DacPlaylist playlist;
@@ -588,8 +595,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         @Override
         public Object call() {
             try {
-                for (DacPlaylistMessageId messageId : playlist
-                        .getMessages()) {
+                for (DacPlaylistMessageId messageId : playlist.getMessages()) {
                     if (!doesMessageFileExist(messageId)
                             || isExpired(messageId)) {
                         purgeAudio(messageId);
@@ -599,9 +605,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 Files.delete(playlist.getPath());
                 logger.info("Deleted " + playlist.getPath());
             } catch (Throwable e) {
-                logger.error(
-                        "Error deleting playlist " + playlist.getPath()
-                                + " from disk.", e);
+                logger.error("Error deleting playlist " + playlist.getPath()
+                        + " from disk.", e);
             }
             return null;
         }
