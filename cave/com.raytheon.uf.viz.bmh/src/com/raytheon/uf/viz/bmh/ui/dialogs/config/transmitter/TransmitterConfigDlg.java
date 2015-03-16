@@ -21,16 +21,20 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import java.util.Map;
 
+import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.viz.bmh.Activator;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 
@@ -45,6 +49,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
  * ------------ ---------- ----------- --------------------------
  * Jul 30, 2014    3173    mpduff      Initial creation
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Mar 12, 2015  4249      rferrel     Load/dispose disableImage used by TransmitterComp.
  * 
  * </pre>
  * 
@@ -55,6 +60,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 public class TransmitterConfigDlg extends AbstractBMHDialog {
     /** Transmitter Composite Tree */
     private TransmitterComp tComp;
+
+    private Image disableImage;
 
     /**
      * Constructor.
@@ -82,6 +89,9 @@ public class TransmitterConfigDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
+        ImageDescriptor id = AbstractUIPlugin.imageDescriptorFromPlugin(
+                Activator.PLUGIN_ID, "icons/radio_disabled.png");
+        disableImage = id.createImage();
         createTree();
         createBottomButtons();
         shell.setMinimumSize(650, 350);
@@ -91,7 +101,7 @@ public class TransmitterConfigDlg extends AbstractBMHDialog {
         GridLayout gl = new GridLayout();
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.heightHint = 400;
-        tComp = new TransmitterComp(shell);
+        tComp = new TransmitterComp(shell, disableImage);
         tComp.setLayout(gl);
         tComp.setLayoutData(gd);
     }
@@ -118,5 +128,13 @@ public class TransmitterConfigDlg extends AbstractBMHDialog {
     @Override
     public boolean okToClose() {
         return tComp.okToClose();
+    }
+
+    @Override
+    protected void disposed() {
+        if (disableImage != null) {
+            disableImage.dispose();
+        }
+        super.disposed();
     }
 }
