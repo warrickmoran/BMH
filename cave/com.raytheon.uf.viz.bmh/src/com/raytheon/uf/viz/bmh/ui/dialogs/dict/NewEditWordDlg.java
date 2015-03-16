@@ -59,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 28, 2015    4045    bkowal      Provide the current {@link Shell} to the phoneme
  *                                     audio playback method.
  * Feb 26, 2015    4054    rferrel     Fixed setup to PronunciationBuilderDlg to use ssml snippet.
+ * Mar 16, 2015    4283    bkowal      Use substitution in the place of phoneme labels.
  * </pre>
  * 
  * @author mpduff
@@ -177,13 +178,13 @@ public class NewEditWordDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label neoLbl = new Label(neoComp, SWT.NONE);
-        neoLbl.setText("Phoneme: ");
+        neoLbl.setText("Substitution: ");
         neoLbl.setLayoutData(gd);
 
-        gd = new GridData(105, SWT.DEFAULT);
+        gd = new GridData(125, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.CENTER;
         Button phonemeBtn = new Button(neoComp, SWT.PUSH);
-        phonemeBtn.setText("Play Phoneme");
+        phonemeBtn.setText("Play Substitution");
         phonemeBtn.setLayoutData(gd);
         phonemeBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -194,10 +195,10 @@ public class NewEditWordDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(105, SWT.DEFAULT);
+        gd = new GridData(125, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.CENTER;
         Button clearPhonemeBtn = new Button(neoComp, SWT.PUSH);
-        clearPhonemeBtn.setText("Clear Phoneme");
+        clearPhonemeBtn.setText("Clear Substitution");
         clearPhonemeBtn.setLayoutData(gd);
         clearPhonemeBtn.addSelectionListener(new SelectionAdapter() {
             @Override

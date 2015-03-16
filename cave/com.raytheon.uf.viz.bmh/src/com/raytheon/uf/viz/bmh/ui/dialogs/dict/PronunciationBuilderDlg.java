@@ -23,9 +23,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.xml.bind.JAXBElement;
-import javax.xml.bind.JAXBException;
-
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -44,8 +41,6 @@ import com.raytheon.uf.common.bmh.schemas.ssml.Break;
 import com.raytheon.uf.common.bmh.schemas.ssml.Phoneme;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.SayAs;
-import com.raytheon.uf.common.bmh.schemas.ssml.Speak;
-import com.raytheon.uf.common.bmh.schemas.ssml.jaxb.SSMLJaxbManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
@@ -53,6 +48,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dict.BuilderComposite.BuilderType;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyPhonemeParser;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.ParsedPhoneme;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.ParsedPhoneme.ParseType;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.SSMLPhonemeParser;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -68,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 21, 2014    3407    mpduff      Removed unused variable
  * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * Mar 10, 2015    4253    rferrel     Change label on cancel button.
+ * Mar 16, 2015    4283    bkowal      Use {@link SSMLPhonemeParser}.
  * 
  * </pre>
  * 
@@ -78,11 +75,6 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 public class PronunciationBuilderDlg extends CaveSWTDialog {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(PronunciationBuilderDlg.class);
-
-    /**
-     * JaxB manager for SSML
-     */
-    private SSMLJaxbManager jaxb;
 
     /**
      * Label showing results
@@ -163,11 +155,6 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
         this.inputPhoneme = phoneme;
 
         setText("Pronunciation Builder");
-        try {
-            jaxb = SSMLJaxbManager.getInstance();
-        } catch (JAXBException e) {
-            statusHandler.error("Error getting SSMLJaxBManager", e);
-        }
     }
 
     @Override
@@ -312,52 +299,32 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
     /**
      * Populate when ssml snippet is provided
      */
-    @SuppressWarnings("unchecked")
     private void populateFromInput() {
-        final String REPLACE = "REPLACEME";
         if (ssmlSnippet != null) {
             try {
-                /*
-                 * In this case the language does not matter because we just
-                 * extract the inner tags from the SSML Document.
-                 */
-                SSMLDocument ssmlDocument = new SSMLDocument(Language.ENGLISH);
-                // Need to replace contents to get correct string representation
-                ssmlDocument.getRootTag().getContent().add(REPLACE);
-                String xml = jaxb.getJaxbManager().marshalToXml(
-                        ssmlDocument.getRootTag());
 
-                xml = xml.replace(REPLACE, ssmlSnippet);
-                // TODO: fix to eliminate the warning.
-                JAXBElement<Speak> o = (JAXBElement<Speak>) jaxb
-                        .getJaxbManager().unmarshalFromXml(xml);
+                List<Serializable> ssmlContents = SSMLPhonemeParser
+                        .parse(ssmlSnippet);
 
-                Speak speak = o.getValue();
-                for (Serializable s : speak.getContent()) {
-                    if (s instanceof JAXBElement<?>) {
-                        JAXBElement<?> element = (JAXBElement<?>) s;
-                        if (element.getValue() instanceof Phoneme) {
-                            Phoneme phoneme = (Phoneme) element.getValue();
-                            BuilderComposite bc = addBuilder();
-                            bc.setPhoneme(phoneme);
-                        } else if (element.getValue() instanceof Break) {
-                            Break br = (Break) element.getValue();
-                            BuilderComposite bc = addBuilder();
-                            bc.setBreak(br);
-                        } else if (element.getValue() instanceof SayAs) {
-                            SayAs sayas = (SayAs) element.getValue();
-                            BuilderComposite bc = addBuilder();
-                            bc.setSayAs(sayas);
-                        }
+                for (Serializable s : ssmlContents) {
+                    if (s instanceof Phoneme) {
+                        BuilderComposite bc = addBuilder();
+                        bc.setPhoneme((Phoneme) s);
+                    } else if (s instanceof Break) {
+                        BuilderComposite bc = addBuilder();
+                        bc.setBreak((Break) s);
+                    } else if (s instanceof SayAs) {
+                        BuilderComposite bc = addBuilder();
+                        bc.setSayAs((SayAs) s);
                     } else if (s instanceof String) {
                         String str = (String) s;
-                        if (str.trim().length() > 0) {
+                        if (str.trim().isEmpty() == false) {
                             BuilderComposite bc = addBuilder();
-                            bc.setText(str);
+                            bc.setText(str.trim());
                         }
                     }
                 }
-            } catch (JAXBException e) {
+            } catch (Exception e) {
                 statusHandler.error("Error parsing data.", e);
             }
         } else {
