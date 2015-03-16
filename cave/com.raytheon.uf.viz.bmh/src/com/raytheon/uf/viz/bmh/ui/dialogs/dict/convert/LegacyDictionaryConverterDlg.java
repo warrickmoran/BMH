@@ -88,6 +88,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     allowing them to select another word or close the dialog.
  * Feb 10, 2015     4082   bkowal      Revert the unsaved word flag when the user clicks
  *                                     "No" on the unsaved word confirmation dialog.
+ * Mar 16, 2015     4283   bkowal      Use substitution in the place of phoneme labels.
  * 
  * </pre>
  * 
@@ -420,13 +421,13 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label neoLbl = new Label(neoComp, SWT.NONE);
-        neoLbl.setText("Phoneme: ");
+        neoLbl.setText("Substitution: ");
         neoLbl.setLayoutData(gd);
 
-        gd = new GridData(105, SWT.DEFAULT);
+        gd = new GridData(125, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.CENTER;
         phonemeBtn = new Button(neoComp, SWT.PUSH);
-        phonemeBtn.setText("Play Phoneme");
+        phonemeBtn.setText("Play Substitution");
         phonemeBtn.setLayoutData(gd);
         phonemeBtn.setEnabled(false);
         phonemeBtn.addSelectionListener(new SelectionAdapter() {

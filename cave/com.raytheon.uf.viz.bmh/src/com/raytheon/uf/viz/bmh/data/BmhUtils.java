@@ -21,6 +21,8 @@ package com.raytheon.uf.viz.bmh.data;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,7 +35,6 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Shell;
@@ -47,6 +48,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.bmh.request.BmhAuthorizationRequest;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
+import com.raytheon.uf.common.bmh.schemas.ssml.Phoneme;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -56,6 +58,7 @@ import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.SSMLPhonemeParser;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
 import com.raytheon.uf.viz.core.auth.UserController;
@@ -88,6 +91,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      synthesis.
  * Feb 19, 2015   4142      bkowal      It is now possible to specify which voice to use
  *                                      for the on-demand synthesis.
+ * Mar 16, 2015   4283      bkowal      Handle playback for a combination of phonemes
+ *                                      and other sound elements.
  * </pre>
  * 
  * @author mpduff
@@ -224,11 +229,11 @@ public class BmhUtils {
      *            The phoneme text
      */
     public static void playBriefPhoneme(Shell shell, String text) {
+        text = text.replaceAll("\\[", PHONEME_OPEN);
+        text = text.replaceAll("\\]", PHONEME_CLOSE);
         if (validatePhoneme(shell, text) == false) {
             return;
         }
-        text = text.replaceAll("\\[", PHONEME_OPEN);
-        text = text.replaceAll("\\]", PHONEME_CLOSE);
         playText(text);
     }
 
@@ -240,10 +245,10 @@ public class BmhUtils {
      *            The bare phoneme text
      */
     public static void playAsPhoneme(Shell shell, String text) {
+        String textToPlay = PHONEME_OPEN + text + PHONEME_CLOSE;
         if (validatePhoneme(shell, text) == false) {
             return;
         }
-        String textToPlay = PHONEME_OPEN + text + PHONEME_CLOSE;
         playText(textToPlay);
     }
 
@@ -258,33 +263,62 @@ public class BmhUtils {
      */
     private static boolean validatePhoneme(final Shell shell, String text) {
         text = text.trim();
-        /*
-         * phonemes passed to this method may have three (3) different
-         * beginnings.
-         */
-        if (text.startsWith("\\[")) {
-            text = text.replaceAll("\\[", StringUtils.EMPTY);
-        } else if (text.startsWith(PHONEME_OPEN.trim())) {
-            text = text.replaceAll(PHONEME_OPEN.trim(), StringUtils.EMPTY);
-        }
 
-        /*
-         * phonemes passed to this method may have three (3) different endings.
-         */
-        if (text.endsWith("\\]")) {
-            text = text.replaceAll("\\]", StringUtils.EMPTY);
-        } else if (text.endsWith(PHONEME_CLOSE.trim())) {
-            text = text.replaceAll(PHONEME_CLOSE.trim(), StringUtils.EMPTY);
+        List<String> phonemes = null;
+        try {
+            phonemes = extractPhonemeStrings(text);
+        } catch (Exception e) {
+            statusHandler.error("Failed to parse the dictionary substitution.",
+                    e);
+            return false;
         }
-
-        if (NeoSpeechPhonemeMapping.getInstance().isValidPhoneme(text)) {
+        if (phonemes.isEmpty()) {
+            /*
+             * No phonemes exist in the substitution.
+             */
             return true;
         }
 
-        DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK, "Phoneme",
-                "Invalid phoneme: " + text + ". Please enter a valid phoneme.");
+        for (String phoneme : phonemes) {
+            if (NeoSpeechPhonemeMapping.getInstance().isValidPhoneme(phoneme) == false) {
+                DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
+                        "Phoneme", "Invalid phoneme: " + phoneme
+                                + ". Please enter a valid phoneme.");
 
-        return false;
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Extracts and returns any phonemes that are contained within the specified
+     * {@link String}.
+     * 
+     * @param text
+     *            the specified {@link String}
+     * @return a {@link List} of phonemes; may also be an empty {@link List} if
+     *         no phonemes are present
+     * @throws Exception
+     */
+    private static List<String> extractPhonemeStrings(String text)
+            throws Exception {
+        List<Serializable> ssmlContents = SSMLPhonemeParser.parse(text);
+        if (ssmlContents.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> phonemes = new ArrayList<>(ssmlContents.size());
+        for (Serializable s : ssmlContents) {
+            if (s instanceof Phoneme == false) {
+                continue;
+            }
+            Phoneme phoneme = (Phoneme) s;
+            phonemes.add(phoneme.getPh());
+        }
+
+        return phonemes;
     }
 
     /**
