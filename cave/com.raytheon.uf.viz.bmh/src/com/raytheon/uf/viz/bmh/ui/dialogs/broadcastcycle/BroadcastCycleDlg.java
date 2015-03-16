@@ -162,6 +162,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     asynchronously.
  * Feb 26, 2015  4187      rjpeter     Added isDisposed checks.
  * Mar 13, 2015  4270      rferrel     Update display when selected group modified or removed.
+ * Mar 16, 2015  4285      bkowal      Fix transmitter list updates.
  * </pre>
  * 
  * @author mpduff
@@ -1587,6 +1588,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     if (zeroSelection) {
                         transmitterList.select(0);
                         closeChangeSuiteDlg();
+                        updateOnTransmitterChange();
                     } else {
                         /*
                          * select the transmitter that is "currently" selected
@@ -1595,7 +1597,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         transmitterList.select(transmitterList
                                 .indexOf(selectedTransmitterGrp));
                     }
-                    updateOnTransmitterChange();
                 }
             }
         });
