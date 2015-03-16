@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -32,6 +31,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
@@ -55,11 +55,8 @@ import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioResponse;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
@@ -72,14 +69,12 @@ import com.raytheon.uf.viz.bmh.ImportedByUtils;
 import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
-import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
-import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListComp;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.SAMETransmitterSelector;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
-import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
@@ -87,7 +82,6 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.InputMessageSequence.SEQUENCE_DIRECTION;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
-import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -160,6 +154,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 05, 2015  4222     bkowal      Allow users to create messages that never expire.
  * Mar 10, 2015  4249     rferrel     Better help message for SAME disabled transmitters.
  * Mar 11, 2015  4254     rferrel     Better dialog message for bad words or duplicate message.
+ * Mar 16, 2015  4244     bsteffen    Extract same transmitter logic into SAMETransmitterSelector.
  * 
  * </pre>
  * 
@@ -215,7 +210,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
     private DateTimeFields periodicityDTF;
 
     /** List of SAME transmitters. */
-    private CheckScrollListComp sameTransmitters;
+    private SAMETransmitterSelector sameTransmitters;
 
     /** Interrupt check box. */
     private Button interruptChk;
@@ -241,16 +236,11 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
     /** Submit Message button. */
     private Button submitMsgBtn;
 
-    /** Map of all the transmitters. */
-    private final Map<String, Transmitter> transmitterMap = new HashMap<>();
-
     /** Area data from the Area Selection dialog. */
     private AreaSelectionSaveData areaData;
 
     /** Selected Message Type */
     private MessageType selectedMessageType = null;
-
-    private final Set<String> selectedMessageTypeTransmitters = new HashSet<>();
 
     /** Input message selected by the user. */
     private InputMessage userInputMessage = null;
@@ -727,10 +717,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
      *            Main composite.
      */
     private void createSameXmitControls(Composite mainComp) {
-        CheckListData cld = createTransmitterListData();
-
-        sameTransmitters = new CheckScrollListComp(mainComp, "SAME: ", cld,
-                true, 80, 250, false);
+        sameTransmitters = new SAMETransmitterSelector(mainComp, true, 80, 250);
     }
 
     /**
@@ -788,7 +775,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                updateSAMETransmitterOptions();
+                sameTransmitters.setInterrupt(interruptChk.getSelection());
             }
 
             @Override
@@ -900,40 +887,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         });
     }
 
-    /**
-     * Get the list of transmitters.
-     * 
-     * @return Object containing the list of SAME transmitters.
-     */
-    private CheckListData createTransmitterListData() {
-
-        CheckListData cld = new CheckListData();
-
-        TransmitterDataManager tdm = new TransmitterDataManager();
-        List<Transmitter> transmitters = null;
-
-        try {
-            transmitters = tdm.getTransmitters();
-
-            if (transmitters == null) {
-                return cld;
-            }
-
-            Collections.sort(transmitters, new TransmitterMnemonicComparator());
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving transmitter data from the database: ", e);
-            return cld;
-        }
-
-        for (Transmitter t : transmitters) {
-            cld.addDataItem(t.getMnemonic(), false);
-            transmitterMap.put(t.getMnemonic(), t);
-        }
-
-        return cld;
-    }
-
     private boolean validate() {
         /*
          * verify that a name has been set.
@@ -961,7 +914,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         /*
          * Set the NWR same tone flag if no transmitters were selected.
          */
-        if (this.sameTransmitters.getCheckedItems().getCheckedItems().isEmpty()) {
+        if (this.sameTransmitters.isEmpty()) {
             userInputMessage.setNwrsameTone(false);
         } else {
             userInputMessage.setNwrsameTone(true);
@@ -997,6 +950,15 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             return false;
         }
 
+        IStatus transmitterStatus = sameTransmitters
+                .getAffectedTransmitterStatus();
+        if (transmitterStatus.getSeverity() == IStatus.ERROR) {
+            DialogUtility.showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
+                    "Weather Messages - Area Selection",
+                    transmitterStatus.getMessage());
+            return false;
+        }
+
         /*
          * verify that the message has not already expired: 1) expiration time
          * is < the current time or 2) effective time and expiration time are
@@ -1007,7 +969,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
             // messages that include SAME tones must have an expiration
             // date/time
-            if (sameTransmitters.getCheckedItems().getCheckedItems().isEmpty() == false) {
+            if (sameTransmitters.isEmpty() == false) {
                 DialogUtility
                         .showMessageBox(
                                 this.shell,
@@ -1050,8 +1012,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             return;
         }
 
-        final boolean nwrSameTone = (sameTransmitters.getCheckedItems()
-                .getCheckedItems().isEmpty() == false);
+        final boolean nwrSameTone = (sameTransmitters.isEmpty() == false);
 
         if (this.alertChk.getSelection() || nwrSameTone) {
             // alert the user that they are about to play same tones.
@@ -1114,35 +1075,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         userInputMessage.setNwrsameTone(nwrSameTone);
 
         if (Boolean.TRUE.equals(userInputMessage.getNwrsameTone())) {
-            userInputMessage.setSameTransmitterSet(new HashSet<String>(
-                    sameTransmitters.getCheckedItems().getCheckedItems()));
+            userInputMessage.setSameTransmitterSet(sameTransmitters
+                    .getSAMETransmitterMnemonics());
         }
 
-        // TODO: need to handle input message area on message type selection.
-        List<Transmitter> selectedTransmitters = new ArrayList<Transmitter>();
-        for (Transmitter transmitter : this.areaData.getAffectedTransmitters()) {
-            // if not an interrupt limit by program assigned to transmitter
-            if (interruptChk.getSelection()
-                    || selectedMessageTypeTransmitters.contains(transmitter
-                            .getMnemonic())) {
-                selectedTransmitters.add(transmitter);
-            }
-        }
-        if (selectedTransmitters.isEmpty()) {
-            StringBuilder msg = new StringBuilder();
-            msg.append("Message Type [")
-                    .append(selectedMessageType.getAfosid());
-            if (selectedMessageTypeTransmitters.isEmpty()) {
-                msg.append("] does not belong to any programs.  Cannot Submit Message.");
-            } else {
-                msg.append("] does not map to any program assigned to selected areas.");
-            }
-            DialogUtility.showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
-                    "Weather Messages - Area Selection", msg.toString());
-            return;
-        }
-
-        request.setSelectedTransmitters(selectedTransmitters);
+        request.setSelectedTransmitters(new ArrayList<>(sameTransmitters
+                .getAffectedTransmitters()));
         try {
             Object result = BmhUtils.sendRequest(request);
             if (result instanceof Integer) {
@@ -1199,7 +1137,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
                 areaData = (AreaSelectionSaveData) returnValue;
                 updateInputMsgAreas();
-                updateSAMETransmitterOptions();
+                sameTransmitters.setAreaData(areaData);
             }
         });
         dlg.open();
@@ -1213,21 +1151,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             return;
         }
 
-        ProgramDataManager pdm = new ProgramDataManager();
-        try {
-            List<Transmitter> transmitters = pdm
-                    .getTransmittersForMsgType(selectedMessageType);
-            selectedMessageTypeTransmitters.clear();
-            for (Transmitter t : transmitters) {
-                selectedMessageTypeTransmitters.add(t.getMnemonic());
-            }
-        } catch (Exception e) {
-            statusHandler
-                    .error("Error occurred retrieving valid transmitters for message type",
-                            e);
-            return;
-        }
-
         // Message Type
         msgTypeLbl.setText(selectedMessageType.getAfosid());
         msgTitleLbl.setText(selectedMessageType.getTitle());
@@ -1237,17 +1160,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         String eo = (selectedMessageType.isEmergencyOverride()) ? "Yes" : "No";
         emergenyOverrideLbl.setText(eo);
 
-        CheckListData cld = new CheckListData();
-        Set<Transmitter> transSet = selectedMessageType.getSameTransmitters();
-        if (transSet != null) {
-            for (Transmitter t : transSet) {
-                cld.addDataItem(t.getMnemonic(), transSet.contains(t));
-                transmitterMap.put(t.getMnemonic(), t);
-            }
-        }
-
         this.areaSelectionBtn.setEnabled(true);
-        sameTransmitters.selectCheckboxes(cld);
 
         String periodicityDateTimeStr = selectedMessageType.getPeriodicity();
 
@@ -1257,6 +1170,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         periodicityDTF.setFieldValues(periodicityMap);
 
         interruptChk.setSelection(selectedMessageType.isInterrupt());
+        sameTransmitters.setInterrupt(selectedMessageType.isInterrupt());
         alertChk.setSelection(selectedMessageType.isAlert());
         confirmChk.setSelection(selectedMessageType.isConfirm());
 
@@ -1270,17 +1184,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
         expirationDTF.setDateTimeSpinners(cal);
 
-        Set<Transmitter> listOfAffectedTransmitters = new HashSet<Transmitter>();
-        this.areaData = new AreaSelectionSaveData();
-
-        AreaSelectionData areaSelectionData = new AreaSelectionData();
-        try {
-            areaSelectionData.populate();
-        } catch (Exception e) {
-            statusHandler.error("Error accessing BMH area/zone data", e);
-            return;
-        }
-
         if (validatedMsg == null) {
             // eliminate any existing area codes.
             this.userInputMessage.setAreaCodes(null);
@@ -1290,28 +1193,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
              * selected message type and pre-populate the information for the
              * dialog.
              */
-            for (Area area : selectedMessageType.getDefaultAreas()) {
-                areaData.addArea(area);
-                listOfAffectedTransmitters.addAll(area.getTransmitters());
-            }
-
-            for (Zone zone : selectedMessageType.getDefaultZones()) {
-                areaData.addZone(zone);
-                if (zone.getAreas() != null) {
-                    for (Area area : zone.getAreas()) {
-                        listOfAffectedTransmitters.addAll(area
-                                .getTransmitters());
-                    }
-                }
-            }
-
-            for (TransmitterGroup group : selectedMessageType
-                    .getDefaultTransmitterGroups()) {
-                for (Transmitter t : group.getTransmitters()) {
-                    areaData.addTransmitter(t);
-                    listOfAffectedTransmitters.add(t);
-                }
-            }
+            areaData = new AreaSelectionSaveData(selectedMessageType);
             this.updateInputMsgAreas();
         } else {
             /**
@@ -1321,6 +1203,15 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
              * of the input message because the user may have added other areas
              * to the input message instead of just using the default.
              */
+            this.areaData = new AreaSelectionSaveData();
+            AreaSelectionData areaSelectionData = new AreaSelectionData();
+            try {
+                areaSelectionData.populate();
+            } catch (Exception e) {
+                statusHandler.error("Error accessing BMH area/zone data", e);
+                return;
+            }
+            Set<Transmitter> listOfAffectedTransmitters = new HashSet<Transmitter>();
 
             for (String code : this.userInputMessage.getAreaCodeSet()) {
                 if (code.charAt(2) == 'Z') {
@@ -1348,10 +1239,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             for (TransmitterGroup tg : validatedMsg.getTransmitterGroups()) {
                 listOfAffectedTransmitters.addAll(tg.getTransmitters());
             }
+            this.areaData.setAffectedTransmitters(listOfAffectedTransmitters);
         }
 
-        this.areaData.setAffectedTransmitters(listOfAffectedTransmitters);
-        this.updateSAMETransmitterOptions();
+        sameTransmitters.setAreaData(areaData);
+        sameTransmitters.setMessageType(selectedMessageType);
+
     }
 
     /**
@@ -1431,33 +1324,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         }
     }
 
-    private void updateSAMETransmitterOptions() {
-        if (areaData == null) {
-            return;
-        }
-        /*
-         * ensure that the user will only be able to select Transmitters for
-         * SAME tone playback associated with the area that was selected.
-         */
-        List<String> transmitterIdentifiers = new ArrayList<>(areaData
-                .getAffectedTransmitters().size());
-        for (Transmitter transmitter : areaData.getAffectedTransmitters()) {
-            transmitterIdentifiers.add(transmitter.getMnemonic());
-        }
-
-        if (interruptChk.getSelection() == false) {
-            /* Not an interrupt, further limit selection by program */
-            transmitterIdentifiers.retainAll(selectedMessageTypeTransmitters);
-            sameTransmitters
-                    .setHelpText("A disabled transmitter does not intersect with the selected area or its program list does not contain selected message type.");
-        } else {
-            sameTransmitters
-                    .setHelpText("A disabled transmitter does not intersect with the selected area.");
-        }
-
-        sameTransmitters.enableCheckboxes(transmitterIdentifiers);
-    }
-
     /**
      * Populate the controls when in the "edit state".
      * 
@@ -1504,6 +1370,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
          */
         if (userInputMessage.getInterrupt() != null) {
             interruptChk.setSelection(userInputMessage.getInterrupt());
+            sameTransmitters.setInterrupt(userInputMessage.getInterrupt());
         }
         if (userInputMessage.getAlertTone() != null) {
             alertChk.setSelection(userInputMessage.getAlertTone());
@@ -1563,12 +1430,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             periodicityDTF.setFieldValue(DateFieldType.SECOND,
                     periodicityValues[3]);
         }
-
-        CheckListData cld = new CheckListData();
-        for (String mnemonic : userInputMessage.getSameTransmitterSet()) {
-            cld.addDataItem(mnemonic, true);
-        }
-        sameTransmitters.selectCheckboxes(cld);
 
         // handle message contents.
         WxMessagesContent msgContent = new WxMessagesContent(

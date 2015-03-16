@@ -22,8 +22,10 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 
 /**
@@ -45,6 +47,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  *  Jan 13, 2014  3876     lvenable    Updated method name and comments to be more correct.
  * Jan 15, 2015    4010    bkowal      Areas associated with transmitters are no longer
  *                                     included in the area/zone list.
+ * Mar 16, 2015  4244      bsteffen    Add constructor which copies from message type.
  * 
  * </pre>
  * 
@@ -79,6 +82,36 @@ public class AreaSelectionSaveData {
      * to complete the same process.
      */
     private Set<Transmitter> affectedTransmitters;
+
+    public AreaSelectionSaveData() {
+
+    }
+
+    public AreaSelectionSaveData(MessageType messageType) {
+        Set<Transmitter> affectedTransmitters = new HashSet<Transmitter>();
+
+        for (Area area : messageType.getDefaultAreas()) {
+            addArea(area);
+            affectedTransmitters.addAll(area.getTransmitters());
+        }
+
+        for (Zone zone : messageType.getDefaultZones()) {
+            addZone(zone);
+            if (zone.getAreas() != null) {
+                for (Area area : zone.getAreas()) {
+                    affectedTransmitters.addAll(area.getTransmitters());
+                }
+            }
+        }
+
+        for (TransmitterGroup group : messageType.getDefaultTransmitterGroups()) {
+            for (Transmitter t : group.getTransmitters()) {
+                addTransmitter(t);
+                affectedTransmitters.add(t);
+            }
+        }
+        this.affectedTransmitters = affectedTransmitters;
+    }
 
     /**
      * @return the areaList
@@ -175,4 +208,5 @@ public class AreaSelectionSaveData {
     public Set<String> getSelectedAreaZoneCodes() {
         return allSelectedZonesAreaCodes;
     }
+
 }

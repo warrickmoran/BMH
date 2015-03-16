@@ -23,10 +23,12 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -49,7 +51,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -62,18 +63,15 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
-import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
-import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListComp;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.SAMETransmitterSelector;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
-import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
-import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybackDlg;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -107,6 +105,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 09, 2014  3909      bkowal       Use {@link RecordedByUtils}.
  * Jan 07, 2014  3958      bkowal       Added {@link #verifyMsgRebroadcast(List)}.
  * Feb 25, 2015  4122      rferrel      Save Area data in order to populate Area Selection dialog.
+ * Mar 16, 2015  4244      bsteffen     Use only selected areas/same tone transmitters.
  * 
  * </pre>
  * 
@@ -119,8 +118,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(EmergencyOverrideDlg.class);
-
-    private final ProgramDataManager pdm = new ProgramDataManager();
 
     /** Table containing the emergency message types. */
     private GenericTable emerMsgTypeTable;
@@ -138,10 +135,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
      * selects a new message type. This will undo any changes that the user
      * manually made to the selection.
      */
-    private CheckScrollListComp sameTransmitters;
-
-    /** Map of all the transmitters. */
-    private final Map<String, Transmitter> transmitterMap = new HashMap<>();
+    private SAMETransmitterSelector sameTransmitters;
 
     /** Selected message type. */
     private MessageType selectedMsgType = null;
@@ -395,59 +389,9 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
      *            Main composite.
      */
     private void createSameTransmitterControls(Composite mainComp) {
-        CheckListData cld = createTransmitterListData();
-
-        sameTransmitters = new CheckScrollListComp(mainComp,
-                "SAME Transmitter: ", cld, false, 100, 165);
-    }
-
-    /**
-     * Get the list of transmitters.
-     * 
-     * @return Object containing the list of SAME transmitters.
-     */
-    private CheckListData createTransmitterListData() {
-
-        CheckListData cld = new CheckListData();
-
-        TransmitterDataManager tdm = new TransmitterDataManager();
-        List<Transmitter> transmitters = null;
-
-        try {
-            transmitters = tdm.getTransmitters();
-
-            if (transmitters == null) {
-                return cld;
-            }
-
-            Collections.sort(transmitters, new TransmitterMnemonicComparator());
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving transmitter data from the database: ", e);
-            return cld;
-        }
-
-        if (selectedMsgType != null) {
-            Set<Transmitter> transSet = selectedMsgType.getSameTransmitters();
-            if (transSet != null) {
-                for (Transmitter t : transmitters) {
-                    cld.addDataItem(t.getMnemonic(), transSet.contains(t));
-                    transmitterMap.put(t.getMnemonic(), t);
-                }
-            } else {
-                for (Transmitter t : transmitters) {
-                    cld.addDataItem(t.getMnemonic(), false);
-                    transmitterMap.put(t.getMnemonic(), t);
-                }
-            }
-        } else {
-            for (Transmitter t : transmitters) {
-                cld.addDataItem(t.getMnemonic(), false);
-                transmitterMap.put(t.getMnemonic(), t);
-            }
-        }
-
-        return cld;
+        sameTransmitters = new SAMETransmitterSelector(mainComp, false, 100,
+                165);
+        sameTransmitters.setInterrupt(true);
     }
 
     /**
@@ -515,10 +459,17 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             this.durMinuteSpnr.setSelection(durationMinute);
             this.durMinuteSpnr.setEnabled(true);
         }
-
         // Update the selected transmitters
-        this.sameTransmitters
-                .selectCheckboxes(this.createTransmitterListData());
+        if (areaDataMap.containsKey(selectedMsgType)) {
+            this.sameTransmitters.setAreaData(areaDataMap.get(selectedMsgType));
+        } else {
+            AreaSelectionSaveData areaData = new AreaSelectionSaveData(
+                    selectedMsgType);
+            this.sameTransmitters.setAreaData(areaData);
+            areaDataMap.put(selectedMsgType, areaData);
+
+        }
+        this.sameTransmitters.setMessageType(selectedMsgType);
     }
 
     /**
@@ -526,7 +477,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
      */
     private void handleAreaSelection() {
         AreaSelectionDlg areaSelectionDlg = new AreaSelectionDlg(this.shell,
-                this.selectedMsgType, areaDataMap.get(selectedMsgType));
+                areaDataMap.get(selectedMsgType));
         areaSelectionDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -536,16 +487,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
                 AreaSelectionSaveData areaData = (AreaSelectionSaveData) returnValue;
                 areaDataMap.put(selectedMsgType, areaData);
-                sameTransmitters.selectCheckboxes(false);
-                CheckListData cld = sameTransmitters.getCheckedItems();
-
-                for (Transmitter selectedTransmitter : areaData
-                        .getAffectedTransmitters()) {
-                    cld.getDataMap().put(selectedTransmitter.getMnemonic(),
-                            true);
-                }
-
-                sameTransmitters.selectCheckboxes(cld);
+                sameTransmitters.setAreaData(areaData);
             }
         });
 
@@ -557,23 +499,13 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             return;
         }
 
-        // get the selected transmitters.
-        List<String> transmitterNames = this.sameTransmitters.getCheckedItems()
-                .getCheckedItems();
-        final List<Transmitter> transmitters = new ArrayList<>(
-                transmitterNames.size());
-        for (String transmitterName : transmitterNames) {
-            /*
-             * only transmitters associated with the selected message type
-             * should be available for selection.
-             */
-            transmitters.add(this.transmitterMap.get(transmitterName));
-        }
-
         final EOBroadcastSettingsBuilder settingsBuilder;
         try {
             settingsBuilder = new EOBroadcastSettingsBuilder(
-                    this.selectedMsgType, transmitters,
+                    this.selectedMsgType,
+                    sameTransmitters.getAffectedTransmitters(),
+                    sameTransmitters.getSAMETransmitters(),
+                    areaDataMap.get(selectedMsgType),
                     this.alertChk.getSelection(),
                     this.durHourSpnr.getSelection(),
                     this.durMinuteSpnr.getSelection());
@@ -582,19 +514,19 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             return;
         }
 
-        final List<Transmitter> rescheduleCandidates;
+        final Set<Transmitter> rescheduleCandidates;
         if (this.autoScheduleChk.getSelection()) {
             /**
              * Determine if the message can be automatically scheduled.
              */
-            rescheduleCandidates = this.verifyMsgRebroadcast(transmitters);
+            rescheduleCandidates = this.verifyMsgRebroadcast();
         } else {
             /**
              * Will not determine if the message can be scheduled for
              * rebroadcast on every transmitter until the scheduling dialog is
              * submitted.
              */
-            rescheduleCandidates = Collections.emptyList();
+            rescheduleCandidates = Collections.emptySet();
         }
 
         // alert the user that they are about to play same tones.
@@ -649,50 +581,16 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
      * @return a {@link List} of {@link Transmitter}s the message can be
      *         scheduled for rebroadcast on.
      */
-    private List<Transmitter> verifyMsgRebroadcast(
-            final List<Transmitter> transmitters) {
-        /**
-         * Retrieve the {@link Transmitter}s that are associated with a
-         * {@link Program} associated with the selected {@link MessageType}.
-         */
-        List<Transmitter> supportedTransmitters = null;
-        try {
-            supportedTransmitters = pdm
-                    .getTransmittersForMsgType(this.selectedMsgType);
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Failed to determine which SAME Transmitters a message with type: "
-                            + this.selectedMsgType.getAfosid()
-                            + "can be re-scheduled for rebroadcast to!", e);
-            /**
-             * The system already ensures that the message will not be submitted
-             * for broadcast to {@link Transmitter}s that are not expecting it
-             * based on the {@link MessageType} and associated {@link Suite}s.
-             */
-            return transmitters;
-        }
+    private Set<Transmitter> verifyMsgRebroadcast() {
+        Set<Transmitter> interruptTransmitters = sameTransmitters
+                .getAffectedTransmitters();
+        sameTransmitters.setInterrupt(false);
+        Set<Transmitter> rescheduleCandidates = sameTransmitters
+                .getAffectedTransmitters();
 
-        /**
-         * The {@link Transmitter}s that the message cannot be scheduled for
-         * re-broadcast on.
-         */
-        List<Transmitter> excludedTransmitters = new ArrayList<>(
-                transmitters.size());
-        /**
-         * The {@link Transmitter}s that message can be scheduled for
-         * rebroadcast on. These are the only {@link Transmitter}s that will be
-         * associated with the message that is generated for re-scheduling.
-         */
-        List<Transmitter> rescheduleCandidates = new ArrayList<>(
-                transmitters.size());
-
-        for (Transmitter transmitter : transmitters) {
-            if (supportedTransmitters.contains(transmitter)) {
-                rescheduleCandidates.add(transmitter);
-            } else {
-                excludedTransmitters.add(transmitter);
-            }
-        }
+        Set<Transmitter> excludedTransmitters = new HashSet<>(
+                interruptTransmitters);
+        excludedTransmitters.removeAll(rescheduleCandidates);
 
         if (excludedTransmitters.isEmpty()) {
             /**
@@ -773,13 +671,12 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         /*
          * Verify that at least one transmitter has been selected.
          */
-        if (this.sameTransmitters.getCheckedItems().getCheckedItems().size() <= 0) {
-            DialogUtility
-                    .showMessageBox(
-                            this.shell,
-                            SWT.ICON_ERROR | SWT.OK,
-                            "Emergency Override - Transmitters",
-                            "No transmitters have been selected. At least one transmitter must be selected.");
+        IStatus transmitterStatus = sameTransmitters
+                .getAffectedTransmitterStatus();
+        if (transmitterStatus.getSeverity() == IStatus.ERROR) {
+            DialogUtility.showMessageBox(this.shell, SWT.ICON_ERROR | SWT.OK,
+                    "Emergency Override - Transmitters",
+                    transmitterStatus.getMessage());
             return false;
         }
 
@@ -788,22 +685,27 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
     private void handleTransmitComplete(ByteBuffer recordedAudio,
             final EOBroadcastSettingsBuilder settingsBuilder,
-            final List<Transmitter> rescheduleCandidates) {
+            final Set<Transmitter> rescheduleCandidates) {
 
         if (this.autoScheduleChk.getSelection()) {
-            this.handleMessageScheduling(recordedAudio, settingsBuilder,
-                    this.buildInputMsg(settingsBuilder), rescheduleCandidates);
+            this.handleMessageScheduling(recordedAudio,
+                    buildInputMsg(settingsBuilder), rescheduleCandidates);
         } else {
-            this.handleManualMsgScheduling(recordedAudio, settingsBuilder);
+            this.handleManualMsgScheduling(recordedAudio,
+                    buildInputMsg(settingsBuilder),
+                    settingsBuilder.getMessageType());
         }
     }
 
+    /**
+     * Open the scheduling dialog and allow the user to select scheduling
+     * options.
+     */
     private void handleManualMsgScheduling(final ByteBuffer recordedAudio,
-            final EOBroadcastSettingsBuilder settingsBuilder) {
-        InputMessage inputMsg = this.buildInputMsg(settingsBuilder);
+            final InputMessage inputMsg, final MessageType messageType) {
 
         MessageScheduleDlg scheduleDlg = new MessageScheduleDlg(this.shell,
-                inputMsg, settingsBuilder.getMessageType());
+                inputMsg, messageType);
         scheduleDlg.setCloseCallback(new ICloseCallback() {
 
             @Override
@@ -821,19 +723,20 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                     return;
                 }
 
-                List<Transmitter> rescheduleCandidates = verifyMsgRebroadcast(new ArrayList<>(
-                        settingsBuilder.getTransmitters()));
-                handleMessageScheduling(recordedAudio, settingsBuilder,
+                Set<Transmitter> rescheduleCandidates = verifyMsgRebroadcast();
+                handleMessageScheduling(recordedAudio,
                         (InputMessage) returnValue, rescheduleCandidates);
             }
         });
         scheduleDlg.open();
     }
 
+    /**
+     * Submit a message to be scheduled.
+     */
     private void handleMessageScheduling(final ByteBuffer recordedAudio,
-            final EOBroadcastSettingsBuilder settingsBuilder,
             final InputMessage inputMessage,
-            final List<Transmitter> rescheduleCandidates) {
+            final Set<Transmitter> rescheduleCandidates) {
         if (rescheduleCandidates.isEmpty()) {
             /**
              * The message cannot be successfully scheduled for rebroadcast on
@@ -845,7 +748,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
         request.setInputMessage(inputMessage);
         request.setMessageAudio(recordedAudio.array());
-        request.setSelectedTransmitters(rescheduleCandidates);
+        request.setSelectedTransmitters(new ArrayList<>(rescheduleCandidates));
         try {
             BmhUtils.sendRequest(request);
         } catch (Exception e) {
@@ -853,8 +756,9 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         }
     }
 
-    private InputMessage buildInputMsg(
+    private static InputMessage buildInputMsg(
             final EOBroadcastSettingsBuilder settingsBuilder) {
+        MessageType messageType = settingsBuilder.getMessageType();
         /*
          * Generate a message name.
          */
@@ -863,12 +767,12 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
         InputMessage inputMsg = new InputMessage();
         inputMsg.setName(generatedMsgName);
-        inputMsg.setLanguage(settingsBuilder.getMessageType().getVoice()
+        inputMsg.setLanguage(messageType.getVoice()
                 .getLanguage());
-        inputMsg.setAfosid(this.selectedMsgType.getAfosid());
+        inputMsg.setAfosid(messageType.getAfosid());
         inputMsg.setCreationTime(TimeUtil.newGmtCalendar());
         inputMsg.setEffectiveTime(settingsBuilder.getEffectiveTime());
-        inputMsg.setPeriodicity(this.selectedMsgType.getPeriodicity());
+        inputMsg.setPeriodicity(messageType.getPeriodicity());
         // no default mrd
         inputMsg.setActive(true);
         // default confirm to FALSE to prevent NPE

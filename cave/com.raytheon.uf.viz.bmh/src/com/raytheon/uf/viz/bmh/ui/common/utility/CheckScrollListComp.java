@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.common.utility;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -53,6 +54,7 @@ import org.eclipse.swt.widgets.Label;
  * Feb 02, 2015 #4073      bkowal       Do not select/deselect disabled checkboxes during a mass
  *                                      selection or de-selection.
  * Mar 10, 2015 #4249      rferrel      Added {@link #setHelpText(String)}
+ * Mar 16, 2015 #4244      bsteffen     Disable select controls when all boxes are disabled.
  * 
  * </pre>
  * 
@@ -90,6 +92,12 @@ public class CheckScrollListComp extends Composite {
 
     /** Lock the controls from being changed. */
     private boolean lockControls = false;
+
+    /** Button for Select All, may be null if showSelectControls = false */
+    protected Button selectAllBtn;
+
+    /** Button for Unselect All, may be null if showSelectControls = false */
+    protected Button unselectAllBtn;
 
     /**
      * Constructor.
@@ -228,7 +236,7 @@ public class CheckScrollListComp extends Composite {
 
         GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        Button selectAllBtn = new Button(buttonComp, SWT.PUSH);
+        selectAllBtn = new Button(buttonComp, SWT.PUSH);
         selectAllBtn.setText(" Select All ");
         selectAllBtn.setLayoutData(gd);
         selectAllBtn.addSelectionListener(new SelectionAdapter() {
@@ -240,7 +248,7 @@ public class CheckScrollListComp extends Composite {
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        Button unselectAllBtn = new Button(buttonComp, SWT.PUSH);
+        unselectAllBtn = new Button(buttonComp, SWT.PUSH);
         unselectAllBtn.setText(" Unselect All ");
         unselectAllBtn.setLayoutData(gd);
         unselectAllBtn.addSelectionListener(new SelectionAdapter() {
@@ -339,9 +347,11 @@ public class CheckScrollListComp extends Composite {
      * @param identifiers
      *            the specified identifiers
      */
-    public void enableCheckboxes(final List<String> identifiers) {
+    public void enableCheckboxes(final Collection<String> identifiers) {
+        boolean allDisabled = true;
         for (Button btn : checkboxArray) {
             if (identifiers.contains(btn.getText())) {
+                allDisabled = false;
                 btn.setEnabled(true);
             } else {
                 btn.setEnabled(false);
@@ -349,6 +359,11 @@ public class CheckScrollListComp extends Composite {
                 btn.setSelection(false);
             }
         }
+        if (showSelectControls) {
+            selectAllBtn.setEnabled(!allDisabled);
+            unselectAllBtn.setEnabled(!allDisabled);
+        }
+
     }
 
     /**

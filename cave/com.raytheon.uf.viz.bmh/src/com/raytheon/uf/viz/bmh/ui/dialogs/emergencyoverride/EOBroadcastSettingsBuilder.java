@@ -20,12 +20,10 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -36,12 +34,14 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.PlaylistData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
-import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 
 /**
@@ -57,7 +57,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Dec 1, 2014  3797       bkowal      Implemented getTonesDuration.
  * Dec 12, 2014 3603       bsteffen    Updates to TonesGenerator.
  * Jan 26, 2015 3359       bsteffen    Use site id for same tones.
- * 
+ * Mar 16, 2015 4244       bsteffen    Use areas from area selection dialog,
+ *                                     only send same tones to selected transmitters.
  * 
  * </pre>
  * 
@@ -72,8 +73,6 @@ public class EOBroadcastSettingsBuilder extends
      * Data Managers
      */
     private TransmitterDataManager tdm = new TransmitterDataManager();
-
-    private ZonesAreasDataManager zadm = new ZonesAreasDataManager();
 
     /*
      * Used to identify the emergency override broadcast, build same tones,
@@ -90,8 +89,6 @@ public class EOBroadcastSettingsBuilder extends
 
     private String areaCodeString;
 
-    private List<Transmitter> transmitters;
-
     private final SimpleDateFormat sdf = new SimpleDateFormat(
             PlaylistData.PLAYLIST_DATE_FORMAT);
 
@@ -100,6 +97,13 @@ public class EOBroadcastSettingsBuilder extends
      */
     private Map<TransmitterGroup, byte[]> transmitterGroupToneMap;
 
+    /*
+     * Groups that whose entry in transmitterGroupToneMap contains SAME tones,
+     * these items need end tones.
+     */
+    private Set<TransmitterGroup> sameGroups = new HashSet<>();
+
+    
     private byte[] endTonesAudio;
 
     /*
@@ -111,17 +115,21 @@ public class EOBroadcastSettingsBuilder extends
     private long longestDuration;
 
     public EOBroadcastSettingsBuilder(final MessageType messageType,
-            final List<Transmitter> selectedTransmitters,
+            final Set<Transmitter> selectedTransmitters,
+            Set<Transmitter> sameTransmitters,
+            AreaSelectionSaveData areaData,
             final boolean playAlertTones, final int hoursDuration,
             final int minutesDuration) throws Exception {
         super(BROADCASTTYPE.EO);
         this.messageType = messageType;
-        this.transmitters = selectedTransmitters;
         this.playAlertTones = playAlertTones;
-        this.initialize(selectedTransmitters, hoursDuration, minutesDuration);
+        this.initialize(selectedTransmitters, sameTransmitters, areaData, hoursDuration,
+                minutesDuration);
     }
 
-    private void initialize(final List<Transmitter> selectedTransmitters,
+    private void initialize(final Set<Transmitter> selectedTransmitters,
+            Set<Transmitter> sameTransmitters,
+            AreaSelectionSaveData areaData,
             final int hoursDuration, final int minutesDuration)
             throws Exception {
         /*
@@ -138,9 +146,17 @@ public class EOBroadcastSettingsBuilder extends
          * Used to build the area code string.
          */
         StringBuilder areaCodeStrBuilder = new StringBuilder();
-        List<String> addedAreaCodes = new ArrayList<>();
-        boolean firstAreaAdded = true;
+        for (String areaOrZone : areaData.getSelectedAreaZoneCodes()) {
+            if (areaCodeStrBuilder.length() > 0) {
+                areaCodeStrBuilder.append("-");
+            }
+            areaCodeStrBuilder.append(areaOrZone);
+        }
+
         for (Transmitter transmitter : selectedTransmitters) {
+            if (transmitter.getTxStatus() != TxStatus.ENABLED) {
+                continue;
+            }
             /*
              * Get the transmitter group that the transmitter is associated
              * with.
@@ -154,30 +170,33 @@ public class EOBroadcastSettingsBuilder extends
                                 + " has been assigned to.");
             }
 
-            /*
-             * Get the areas associated with the transmitter.
-             */
-            List<Area> areas = this.zadm.getAreasForTransmitter(transmitter);
+            Set<Area> areasForThisTransmitter = new HashSet<Area>();
+            if (sameTransmitters.contains(transmitter)) {
+                for (Area area : areaData.getAreas()) {
+                    if (area.getTransmitters().contains(transmitter)) {
+                        areasForThisTransmitter.add(area);
+                    }
+                }
+
+                for (Zone zone : areaData.getZones()) {
+                    for (Area area : zone.getAreas()) {
+                        if (area.getTransmitters().contains(transmitter)) {
+                            areasForThisTransmitter.add(area);
+                        }
+                    }
+                }
+            }
 
             /* Complete the mapping */
             if (transmitterGroupAreaMap.containsKey(transmitterGroup) == false) {
                 transmitterGroupAreaMap.put(transmitterGroup,
-                        new HashSet<Area>());
+                        areasForThisTransmitter);
+            } else {
+                transmitterGroupAreaMap.get(transmitterGroup).addAll(
+                        areasForThisTransmitter);
             }
-            transmitterGroupAreaMap.get(transmitterGroup).addAll(areas);
-            for (Area area : areas) {
-                String areaCode = area.getAreaCode();
-                if (addedAreaCodes.contains(areaCode)) {
-                    continue;
-                }
-                if (firstAreaAdded) {
-                    firstAreaAdded = false;
-                } else {
-                    areaCodeStrBuilder.append("-");
-                }
-                areaCodeStrBuilder.append(areaCode);
-                addedAreaCodes.add(areaCode);
-            }
+
+
         }
 
         this.areaCodeString = areaCodeStrBuilder.toString();
@@ -189,8 +208,18 @@ public class EOBroadcastSettingsBuilder extends
         this.transmitterGroupToneMap = new HashMap<>(this
                 .getSelectedTransmitterGroups().size(), 1.0f);
         for (TransmitterGroup tg : this.getSelectedTransmitterGroups()) {
-            byte[] tones = this.constructSAMEAlertTones(transmitterGroupAreaMap
-                    .get(tg));
+            Set<Area> areas = transmitterGroupAreaMap.get(tg);
+            byte[] tones;
+            if (areas.isEmpty()) {
+                if (playAlertTones) {
+                    tones = TonesGenerator.getOnlyAlertTones().array();
+                } else {
+                    tones = new byte[0];
+                }
+            } else {
+                tones = this.constructSAMEAlertTones(areas);
+                sameGroups.add(tg);
+            }
             long tonesDuration = tones.length / 160L * 20L;
             if (tonesDuration > this.longestDuration) {
                 this.longestDuration = tonesDuration;
@@ -253,7 +282,11 @@ public class EOBroadcastSettingsBuilder extends
          */
         long tonesDuration = config.getToneAudio().length / 160L * 20L;
         config.setDelayMilliseconds(this.longestDuration - tonesDuration);
-        config.setEndToneAudio(this.endTonesAudio);
+        if (sameGroups.contains(tg)) {
+            config.setEndToneAudio(this.endTonesAudio);
+        } else {
+            config.setEndToneAudio(new byte[0]);
+        }
 
         return config;
     }
@@ -289,12 +322,5 @@ public class EOBroadcastSettingsBuilder extends
      */
     public String getAreaCodeString() {
         return areaCodeString;
-    }
-
-    /**
-     * @return the transmitters
-     */
-    public List<Transmitter> getTransmitters() {
-        return transmitters;
     }
 }
