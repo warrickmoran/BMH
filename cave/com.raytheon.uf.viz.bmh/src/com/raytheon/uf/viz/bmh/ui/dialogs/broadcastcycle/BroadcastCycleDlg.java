@@ -162,7 +162,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     asynchronously.
  * Feb 26, 2015  4187      rjpeter     Added isDisposed checks.
  * Mar 13, 2015  4270      rferrel     Update display when selected group modified or removed.
- * Mar 16, 2015  4285      bkowal      Fix transmitter list updates.
+ * Mar 16, 2015  4285      bkowal      Fix transmitter list updates. Handle both 4270 and 4285.
  * </pre>
  * 
  * @author mpduff
@@ -425,7 +425,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         transmitterList.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                updateOnTransmitterChange();
+                updateOnTransmitterChange(true);
             }
         });
     }
@@ -814,7 +814,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         if (select0thTransmitter) {
             if (transmitterList.getItemCount() > 0) {
                 transmitterList.select(0);
-                updateOnTransmitterChange();
+                updateOnTransmitterChange(select0thTransmitter);
             }
         }
     }
@@ -884,8 +884,13 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     /**
      * Called when user selects another Transmitter
+     * 
+     * @param reloadAudioStream
+     *            boolean indicating whether or not the audio stream should
+     *            potentially be re-initialized based on the state of the
+     *            monitor inline checkbox
      */
-    private void updateOnTransmitterChange() {
+    private void updateOnTransmitterChange(boolean reloadAudioStream) {
         String selection = transmitterList.getItem(transmitterList
                 .getSelectionIndex());
         String[] parts = selection.split(" - ");
@@ -951,7 +956,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             this.updateDisplayForLiveBroadcast(tableData,
                     notification.getType());
         }
-        handleMonitorInlineEvent();
+        if (reloadAudioStream) {
+            handleMonitorInlineEvent();
+        }
     }
 
     private void retrieveProgram() {
@@ -1588,7 +1595,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     if (zeroSelection) {
                         transmitterList.select(0);
                         closeChangeSuiteDlg();
-                        updateOnTransmitterChange();
                     } else {
                         /*
                          * select the transmitter that is "currently" selected
@@ -1597,6 +1603,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         transmitterList.select(transmitterList
                                 .indexOf(selectedTransmitterGrp));
                     }
+                    
+                    updateOnTransmitterChange(zeroSelection);
                 }
             }
         });
