@@ -55,6 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.phonemes.PhonemesEditorDlg;
  * Jun 25, 2014    3355    mpduff      Initial creation
  * Sep 10, 2014    3355    mpduff      Make Combo boxes readonly
  * Jan 28, 2015    4045    bkowal      Use the new {@link DictionaryManager} constructor.
+ * Mar 17, 2015    4281    rferrel     Additional setSayAs and setBreak methods.
  * 
  * </pre>
  * 
@@ -374,6 +375,9 @@ public class BuilderComposite extends Composite {
         } else if (bt == BuilderType.Phoneme) {
             text = phonemeTextFld.getText();
             BmhUtils.playAsPhoneme(this.getShell(), text);
+        } else if (bt == BuilderType.Dynamic) {
+            text = dynTextFld.getText();
+            BmhUtils.playText(text);
         }
     }
 
@@ -412,19 +416,28 @@ public class BuilderComposite extends Composite {
     }
 
     /**
-     * Set a {@lind Break} based on the provided Break
+     * Set a {@link Break} based on the provided Break
      * 
      * @param br
      */
     public void setBreak(Break br) {
+        setBreak(br.getStrength().value());
+    }
+
+    /**
+     * Set a {@link Break} base on strength.
+     * 
+     * @param strength
+     */
+    public void setBreak(String strength) {
         for (int i = 0; i < typeCombo.getItems().length; i++) {
             String type = typeCombo.getItem(i);
             if (type.equalsIgnoreCase(BuilderType.Break.getType())) {
                 typeCombo.select(i);
                 changeStack();
                 playBtn.setEnabled(false);
-                String strength = br.getStrength().value();
                 breakCombo.select(breakCombo.indexOf(strength));
+                return;
             }
         }
     }
@@ -473,7 +486,24 @@ public class BuilderComposite extends Composite {
      *            The SayAs to set
      */
     public void setSayAs(SayAs sayas) {
-        this.sayAsTextFld.setText(sayas.getContent());
+        setSayAs(sayas.getInterpretAs(), sayas.getContent());
+    }
+
+    /**
+     * Set the phonetic {@link SayAs} text.
+     * 
+     * @param interpretAs
+     * @param content
+     */
+    public void setSayAs(String interpretAs, String content) {
+        this.sayAsTextFld.setText(content);
+        for (int i = 0; i < interpretCombo.getItemCount(); ++i) {
+            String interSel = interpretCombo.getItem(i);
+            if (interSel.equalsIgnoreCase(interpretAs)) {
+                interpretCombo.select(i);
+                break;
+            }
+        }
         for (int i = 0; i < typeCombo.getItems().length; i++) {
             String type = typeCombo.getItem(i);
             if (type.equalsIgnoreCase(BuilderType.SayAs.getType())) {
