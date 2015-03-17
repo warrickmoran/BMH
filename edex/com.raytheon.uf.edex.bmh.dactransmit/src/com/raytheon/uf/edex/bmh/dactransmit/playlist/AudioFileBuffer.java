@@ -57,6 +57,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  *                                      array in {@link #get(byte[], int, int)}.
  * Feb 02, 2015  4093      bsteffen     Add position()
  * Mar 13, 2015  4251      bkowal       Limit messages accompanied by tones to 2 minutes.
+ * Mar 17, 2015  4251      bkowal       Handle shorter interrupts without buffer underflows.
  * 
  * </pre>
  * 
@@ -292,6 +293,10 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
     }
 
     public int getTruncatedBytesRemaining() {
+        if (this.messageBuffer.capacity() <= MAX_TONES_MSG_AUDIO_BYTE_COUNT) {
+            return this.messageBuffer.remaining();
+        }
+
         int calculatedBytesRemaining = MAX_TONES_MSG_AUDIO_BYTE_COUNT
                 - this.messageBuffer.position();
         return (calculatedBytesRemaining < 0) ? 0 : calculatedBytesRemaining;
@@ -320,7 +325,7 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
      *         remaining in this buffer.
      */
     public boolean hasRemaining() {
-        return returnTones ? (this.isToneTruncated()
+        return returnTones ? (getTruncatedBytesRemaining() > 0
                 || tonesBuffer.hasRemaining()
                 || endOfMessageTones.hasRemaining() || endOfMessageSilence
                 .hasRemaining())
