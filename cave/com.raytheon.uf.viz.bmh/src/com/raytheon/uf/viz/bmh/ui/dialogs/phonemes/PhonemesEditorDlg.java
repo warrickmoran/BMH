@@ -64,8 +64,9 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 12, 2015    4109    bkowal      Place the phoneme at the position of the cursor. Switched
  *                                     to {@link StyledText} to that the cursor position could be
  *                                     updated after every phoneme insert.
- * Fe 19, 2015     4150    bkowal      Take the space into account when calculating the new
+ * Feb 19, 2015    4150    bkowal      Take the space into account when calculating the new
  *                                     phoneme cursor position.
+ * Mar 17, 2015    4277    rferrel     Remove Auto Generate button and legacy label.
  * 
  * </pre>
  */
@@ -89,11 +90,6 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
     private final String selectedWord;
 
     /**
-     * The legacy value label
-     */
-    private Label legacyValueLbl;
-
-    /**
      * The phoneme text field
      */
     private StyledText phonemeTxt;
@@ -102,11 +98,6 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
      * The play phoneme button
      */
     private Button phonemePlayBtn;
-
-    /**
-     * The auto-generate phoneme button
-     */
-    private Button autoGenBtn;
 
     /**
      * The word type combo
@@ -209,16 +200,6 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
         wordTypeCombo.setLayoutData(gd);
         wordTypeCombo.setItems(WordType.getTypes());
 
-        gd = new GridData(SWT.RIGHT, SWT.DEFAULT, false, false);
-        Label legacyLbl = new Label(leftComp, SWT.NONE);
-        legacyLbl.setText("Legacy Phonemes/Substitute: ");
-        legacyLbl.setLayoutData(gd);
-
-        gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
-        legacyValueLbl = new Label(leftComp, SWT.WRAP);
-        legacyValueLbl.setLayoutData(gd);
-        legacyValueLbl.setText(legacyPhoneme);
-
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gl = new GridLayout(1, false);
         Composite rightComp = new Composite(wordGrp, SWT.NONE);
@@ -242,22 +223,10 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         gd.horizontalSpan = 2;
-        gl = new GridLayout(3, false);
+        gl = new GridLayout(2, false);
         Composite btnComp = new Composite(wordGrp, SWT.NONE);
         btnComp.setLayout(gl);
         btnComp.setLayoutData(gd);
-
-        gd = new GridData(110, SWT.DEFAULT);
-        gd.horizontalAlignment = SWT.CENTER;
-        autoGenBtn = new Button(btnComp, SWT.PUSH);
-        autoGenBtn.setLayoutData(gd);
-        autoGenBtn.setText("Auto Generate");
-        autoGenBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                autoGenPhoneme();
-            }
-        });
 
         gd = new GridData(75, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.LEFT;
