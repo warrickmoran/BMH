@@ -70,6 +70,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 08, 2014  3864     bsteffen    Redo some of the playlist manager queries.
  * Mar 05, 2015  4222     bkowal      Include messages that never expire when retrieving
  *                                    unexpired messages.
+ * Mar 17, 2015  4160     bsteffen    Add booleans for tone status.
  * 
  * </pre>
  * 
@@ -146,6 +147,14 @@ public class BroadcastMsg {
     @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
     private List<BroadcastFragment> fragments;
+
+    @Column
+    @DynamicSerializeElement
+    private boolean playedSameTone = false;
+
+    @Column
+    @DynamicSerializeElement
+    private boolean playedAlertTone = false;
 
     /**
      * 
@@ -271,4 +280,21 @@ public class BroadcastMsg {
             return inputMessage.getAfosid();
         }
     }
+
+    public boolean isPlayedSameTone() {
+        return playedSameTone;
+    }
+
+    public void setPlayedSameTone(boolean playedSameTone) {
+        this.playedSameTone = playedSameTone;
+    }
+
+    public boolean isPlayedAlertTone() {
+        return playedAlertTone;
+    }
+
+    public void setPlayedAlertTone(boolean playedAlertTone) {
+        this.playedAlertTone = playedAlertTone;
+    }
+
 }

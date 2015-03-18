@@ -69,6 +69,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  *                                     database.
  * Feb 10, 2015    4106    bkowal      Include the playlist that would be playing in a live broadcast
  *                                     notification.
+ * Mar 17, 2015   4160     bsteffen    Persist state of tones.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -274,6 +276,42 @@ public class PlaylistStateManager {
         pred.setNextTransmitTime(null);
         pred.setPlayedAlertTone(notification.isPlayedAlertTone());
         pred.setPlayedSameTone(notification.isPlayedSameTone());
+        setToneFlags(playlistData, id);
+    }
+
+    private void setToneFlags(PlaylistDataStructure playlistData,
+            long broadcastId) {
+        MessagePlaybackPrediction prediction = playlistData
+.getPredictionMap()
+                .get(broadcastId);
+        if (prediction.isPlayedAlertTone() || prediction.isPlayedSameTone()) {
+            PlaylistMessage playlistMessage = playlistData.getPlaylistMap()
+                    .get(broadcastId);
+            BroadcastMsg broadcastMessage = null;
+            if (playlistMessage != null) {
+                broadcastMessage = playlistMessage.getBroadcastMsg();
+                if (tonesMatch(prediction, broadcastMessage)) {
+                    return;
+                }
+            }
+            broadcastMessage = broadcastMsgDao.getByID(broadcastId);
+            if (broadcastMessage != null
+                    && !tonesMatch(prediction, broadcastMessage)) {
+                broadcastMessage.setPlayedAlertTone(prediction
+                        .isPlayedAlertTone());
+                broadcastMessage.setPlayedSameTone(prediction
+                        .isPlayedSameTone());
+                broadcastMsgDao.persist(broadcastMessage);
+            }
+        }
+    }
+
+    private static boolean tonesMatch(MessagePlaybackPrediction prediction,
+            BroadcastMsg broadcastMessage) {
+        return broadcastMessage.isPlayedAlertTone() == prediction
+                .isPlayedAlertTone()
+                && broadcastMessage.isPlayedSameTone() == prediction
+                        .isPlayedSameTone();
     }
 
     public synchronized IPlaylistData getPlaylistDataStructure(

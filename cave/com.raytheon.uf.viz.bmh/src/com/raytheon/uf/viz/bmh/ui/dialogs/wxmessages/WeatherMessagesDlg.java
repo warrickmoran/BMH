@@ -52,11 +52,15 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest;
+import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest.BroadcastMessageAction;
+import com.raytheon.uf.common.bmh.request.BroadcastMsgResponse;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioResponse;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
@@ -155,6 +159,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 10, 2015  4249     rferrel     Better help message for SAME disabled transmitters.
  * Mar 11, 2015  4254     rferrel     Better dialog message for bad words or duplicate message.
  * Mar 16, 2015  4244     bsteffen    Extract same transmitter logic into SAMETransmitterSelector.
+ * Mar 17, 2015  4160     bsteffen    Check if tones have played when modifying an existing message.
  * 
  * </pre>
  * 
@@ -1012,20 +1017,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             return;
         }
 
-        final boolean nwrSameTone = (sameTransmitters.isEmpty() == false);
-
-        if (this.alertChk.getSelection() || nwrSameTone) {
-            // alert the user that they are about to play same tones.
-            int option = DialogUtility
-                    .showMessageBox(
-                            this.shell,
-                            SWT.ICON_WARNING | SWT.YES | SWT.NO,
-                            "Weather Messages - Tone Playback",
-                            this.selectedMessageType.getTitle()
-                                    + " will activate SAME and/or Alert Tones! Would you like to continue?");
-            if (option != SWT.YES) {
-                return;
-            }
+        if (this.verifyTones() == false) {
+            return;
         }
 
         NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
@@ -1072,7 +1065,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
          * through entire process so PlaylistManager can use it to write the
          * proper SAME tone string.
          */
-        userInputMessage.setNwrsameTone(nwrSameTone);
+        userInputMessage.setNwrsameTone(!sameTransmitters.isEmpty());
 
         if (Boolean.TRUE.equals(userInputMessage.getNwrsameTone())) {
             userInputMessage.setSameTransmitterSet(sameTransmitters
@@ -1121,6 +1114,55 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
              */
             this.nextSequenceBtn.forceFocus();
         }
+    }
+
+    /**
+     * Check if tones will play and if so make sure the user knows.
+     * 
+     * @return true if tones aren't playing or the user has agreed to the tones.
+     *         False if tones will play and the user doens't want them to.
+     */
+    protected boolean verifyTones() {
+        boolean isAlert = this.alertChk.getSelection();
+        if (isAlert || !sameTransmitters.isEmpty()) {
+            if (userInputMessage.getId() != 0) {
+                BroadcastMsgRequest req = new BroadcastMsgRequest();
+                req.setAction(BroadcastMessageAction.GET_MESSAGE_BY_INPUT_ID);
+                req.setMessageId((long) userInputMessage.getId());
+                try {
+                    BroadcastMsgResponse response = (BroadcastMsgResponse) BmhUtils
+                            .sendRequest(req);
+
+                    boolean allToned = true;
+                    for (BroadcastMsg broadcastMessage : response
+                            .getMessageList()) {
+                        if ((!isAlert && !broadcastMessage.isPlayedSameTone())
+                                || !broadcastMessage.isPlayedAlertTone()) {
+                            allToned = false;
+                            break;
+                        }
+                    }
+                    if (allToned) {
+                        return true;
+                    }
+                } catch (Exception e) {
+                    statusHandler.handle(Priority.WARN,
+                            "Unable to check if message has played tones.", e);
+                }
+            }
+            // alert the user that they are about to play same tones.
+            int option = DialogUtility
+                    .showMessageBox(
+                            this.shell,
+                            SWT.ICON_WARNING | SWT.YES | SWT.NO,
+                            "Weather Messages - Tone Playback",
+                            this.selectedMessageType.getTitle()
+                                    + " will activate SAME and/or Alert Tones! Would you like to continue?");
+            if (option != SWT.YES) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
