@@ -90,6 +90,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Feb 02, 2015 4080       bkowal      Only include transmitters with a TxStatus of enabled in the
  *                                     {@link Set} produced by {@link #getEnabledTransmitters()}.
  * Mar 03, 2015 3962       rferrel     Added logic for MAINT status.
+ * Mar 18, 2015 4298       bkowal      Added {@link #getTransmitterWithStatus(TxStatus)}.
  * </pre>
  * 
  * @author rjpeter
@@ -269,16 +270,20 @@ public class TransmitterGroup {
         return transmitters;
     }
 
-    public Set<Transmitter> getEnabledTransmitters() {
+    public Set<Transmitter> getTransmitterWithStatus(final TxStatus status) {
         Set<Transmitter> transmitters = getTransmitters();
         transmitters = new HashSet<>(transmitters);
         Iterator<Transmitter> it = transmitters.iterator();
         while (it.hasNext()) {
-            if (it.next().getTxStatus() != TxStatus.ENABLED) {
+            if (it.next().getTxStatus() != status) {
                 it.remove();
             }
         }
         return transmitters;
+    }
+
+    public Set<Transmitter> getEnabledTransmitters() {
+        return this.getTransmitterWithStatus(TxStatus.ENABLED);
     }
 
     public void setTransmitters(Set<Transmitter> transmitters) {

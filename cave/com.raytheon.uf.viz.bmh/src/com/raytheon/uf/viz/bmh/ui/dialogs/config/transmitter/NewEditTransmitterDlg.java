@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.TimeZone;
 
 import org.eclipse.swt.SWT;
@@ -92,6 +93,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Feb 09, 2015     4082   bkowal      It is now possible to save Languages with new
  *                                     Transmitter Groups.
+ * Mar 18, 2015     4289   bkowal      Do not allow the user to remove the dac and/or port from
+ *                                     a Transmitter in the enabled or maintenance state.
  * </pre>
  * 
  * @author mpduff
@@ -976,6 +979,54 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             }
         }
 
+        if (tg.getDac() == null) {
+            Set<Transmitter> enabledTransmitters = tg.getEnabledTransmitters();
+            Set<Transmitter> maintenanceTransmitters = tg
+                    .getTransmitterWithStatus(TxStatus.MAINT);
+            boolean transmittersEnabled = enabledTransmitters.isEmpty() == false;
+            boolean transmittersMaintenance = maintenanceTransmitters.isEmpty() == false;
+
+            if (transmittersEnabled || transmittersMaintenance) {
+                StringBuilder configError = new StringBuilder(
+                        "You cannot remove the dac from Transmitter Group ");
+                configError.append(tg.getName()).append(
+                        " because Transmitters: ");
+                if (transmittersEnabled) {
+                    boolean first = true;
+                    for (Transmitter transmitter : enabledTransmitters) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            configError.append(", ");
+                        }
+                        configError.append(transmitter.getMnemonic());
+                    }
+                    configError.append(" are in the  ")
+                            .append(TxStatus.ENABLED.name()).append(" state");
+                    if (transmittersMaintenance) {
+                        configError.append(" and Transmitters: ");
+                    }
+                }
+                if (transmittersMaintenance) {
+                    boolean first = true;
+                    for (Transmitter transmitter : maintenanceTransmitters) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            configError.append(", ");
+                        }
+                        configError.append(transmitter.getMnemonic());
+                    }
+                    configError.append(" are in the  ")
+                            .append(TxStatus.MAINT.name()).append(" state");
+                }
+                configError.append(".");
+
+                sb.append(configError.toString()).append("\n");
+                valid = false;
+            }
+        }
+
         if (!valid) {
             DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR, "Invalid",
                     sb.toString());
@@ -1171,6 +1222,29 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                     valid = false;
                     sb.append(msg + "\n");
                 }
+            }
+        }
+
+        /*
+         * Verify that the user is not attempting to remove the port and/or dac
+         * from a transmitter that is currently active. Transmitters in
+         * Maintenance mode also must remain properly configured to function
+         * correctly.
+         */
+        if (transToBeSaved.getTxStatus() == TxStatus.ENABLED
+                || transToBeSaved.getTxStatus() == TxStatus.MAINT) {
+            if (transToBeSaved.getDacPort() == null) {
+                String msg = "You cannot remove the port from a Transmitter in the "
+                        + transToBeSaved.getTxStatus().name() + " state.";
+                valid = false;
+                sb.append(msg).append("\n");
+            }
+
+            if (transToBeSaved.getTransmitterGroup().getDac() == null) {
+                String msg = "You cannot remove the dac from a Transmitter in the "
+                        + transToBeSaved.getTxStatus().name() + " state.";
+                valid = false;
+                sb.append(msg).append("\n");
             }
         }
 
