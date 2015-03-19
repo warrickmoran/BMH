@@ -55,6 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Mar 16, 2015  4244     bsteffen     Initial creation
+ * Mar 18, 2015  4281     rferrel      Added method setAllowEnableTransmitters.
  * 
  * </pre>
  * 
@@ -93,6 +94,17 @@ public class SAMETransmitterSelector {
         this.areaData = null;
         this.interrupt = false;
         setMessageType(null);
+    }
+
+    /**
+     * If false do not allow enabling of SAME transmitters.
+     * 
+     * @see CheckScrollListComp#setAllowEnableTransmitters(boolean)
+     * 
+     * @param allowEnable
+     */
+    public void setAllowEnableTransmitters(boolean allowEnable) {
+        checks.setAllowEnableTransmitters(allowEnable);
     }
 
     /**

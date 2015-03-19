@@ -55,6 +55,7 @@ import org.eclipse.swt.widgets.Label;
  *                                      selection or de-selection.
  * Mar 10, 2015 #4249      rferrel      Added {@link #setHelpText(String)}
  * Mar 16, 2015 #4244      bsteffen     Disable select controls when all boxes are disabled.
+ * Mar 18, 2015 #4281      rferrel      Added allowEnabled flag.
  * 
  * </pre>
  * 
@@ -98,6 +99,9 @@ public class CheckScrollListComp extends Composite {
 
     /** Button for Unselect All, may be null if showSelectControls = false */
     protected Button unselectAllBtn;
+
+    /** Flag to allow enabling of transmitter's check box. */
+    private boolean allowEnable = true;
 
     /**
      * Constructor.
@@ -334,7 +338,7 @@ public class CheckScrollListComp extends Composite {
      */
     public void reset() {
         for (Button btn : checkboxArray) {
-            btn.setEnabled(true);
+            btn.setEnabled(allowEnable);
             btn.setSelection(false);
         }
         setHelpText(null);
@@ -352,7 +356,7 @@ public class CheckScrollListComp extends Composite {
         for (Button btn : checkboxArray) {
             if (identifiers.contains(btn.getText())) {
                 allDisabled = false;
-                btn.setEnabled(true);
+                btn.setEnabled(allowEnable);
             } else {
                 btn.setEnabled(false);
                 /* ensure that the checkbox has not been checked. */
@@ -360,8 +364,8 @@ public class CheckScrollListComp extends Composite {
             }
         }
         if (showSelectControls) {
-            selectAllBtn.setEnabled(!allDisabled);
-            unselectAllBtn.setEnabled(!allDisabled);
+            selectAllBtn.setEnabled(allowEnable && !allDisabled);
+            unselectAllBtn.setEnabled(allowEnable && !allDisabled);
         }
 
     }
@@ -373,5 +377,21 @@ public class CheckScrollListComp extends Composite {
      */
     public void setHelpText(String helpText) {
         checkBtnComp.setToolTipText(helpText);
+    }
+
+    /**
+     * If false do not enable any transmitters else allow enable of desired
+     * transmitters. This method should be invoked prior to selecting
+     * transmitters.
+     * 
+     * @param allowEnable
+     */
+    public void setAllowEnableTransmitters(boolean allowEnable) {
+        if (this.allowEnable != allowEnable) {
+            this.allowEnable = allowEnable;
+            reset();
+            selectAllBtn.setEnabled(allowEnable);
+            unselectAllBtn.setEnabled(allowEnable);
+        }
     }
 }

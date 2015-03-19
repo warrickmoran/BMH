@@ -160,6 +160,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 11, 2015  4254     rferrel     Better dialog message for bad words or duplicate message.
  * Mar 16, 2015  4244     bsteffen    Extract same transmitter logic into SAMETransmitterSelector.
  * Mar 17, 2015  4160     bsteffen    Check if tones have played when modifying an existing message.
+ * Mar 18, 2015  4281     rferrel     Added Close button and editStatus flag.
  * 
  * </pre>
  * 
@@ -256,6 +257,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
     /** Wx Message Content. */
     private WxMessagesContent content = null;
 
+    /** When true performing an edit. */
+    private boolean editStatus = false;
+
     /**
      * Keeps track of the available input messages that the user will be able to
      * move back and forth through.
@@ -349,8 +353,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                  * disable the sequenced message buttons when the user interacts
                  * with a message that is not in the sequence.
                  */
-                prevSequenceBtn.setEnabled(false);
-                nextSequenceBtn.setEnabled(false);
+                setEditStatus(false);
                 sequenceLbl.setText("");
             }
         });
@@ -381,9 +384,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
                         if (returnValue instanceof InputMessageSequence) {
                             messageSequence = (InputMessageSequence) returnValue;
+                            setEditStatus(true);
                             loadMessageFromSequence();
-                            prevSequenceBtn.setEnabled(true);
-                            nextSequenceBtn.setEnabled(true);
                             nextSequenceBtn.forceFocus();
                         }
                     }
@@ -424,6 +426,32 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         nextSequenceBtn.addKeyListener(this);
 
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
+    }
+
+    /**
+     * When set to true dilog is editing a message else dialog is creating a
+     * message. Performs enabling/disabling of various components when status is
+     * changed.
+     * 
+     * @param editStatus
+     */
+    public void setEditStatus(boolean editStatus) {
+        if (this.editStatus != editStatus) {
+            this.editStatus = editStatus;
+            prevSequenceBtn.setEnabled(editStatus);
+            nextSequenceBtn.setEnabled(editStatus);
+            msgNameTF.setEnabled(!editStatus);
+            changeMsgTypeBtn.setEnabled(!editStatus);
+            interruptChk.setEnabled(!editStatus);
+            alertChk.setEnabled(!editStatus);
+            confirmChk.setEnabled(!editStatus);
+            creationDTF.setEnabled(!editStatus);
+            effectiveDTF.setEnabled(!editStatus);
+            sameTransmitters.setAllowEnableTransmitters(!editStatus);
+            if (areaSelectionBtn.isEnabled()) {
+                areaSelectionBtn.setEnabled(!editStatus);
+            }
+        }
     }
 
     private void handleNewAction() {
@@ -868,9 +896,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
      */
     private void createSubmitButton() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
-        GridLayout gl = new GridLayout(1, false);
+        GridLayout gl = new GridLayout(2, false);
         buttonComp.setLayout(gl);
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
+        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, false,
                 false));
 
         GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
@@ -888,6 +916,20 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                  * I record voice for microphone and load a file?
                  */
                 handleSubmitAction();
+            }
+        });
+
+        Button closeBtn = new Button(buttonComp, SWT.PUSH);
+        closeBtn.setText(" Close ");
+        gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        closeBtn.setLayoutData(gd);
+        closeBtn.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (okToClose()) {
+                    close();
+                }
             }
         });
     }
@@ -1202,7 +1244,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         String eo = (selectedMessageType.isEmergencyOverride()) ? "Yes" : "No";
         emergenyOverrideLbl.setText(eo);
 
-        this.areaSelectionBtn.setEnabled(true);
+        this.areaSelectionBtn.setEnabled(!editStatus);
 
         String periodicityDateTimeStr = selectedMessageType.getPeriodicity();
 
@@ -1296,9 +1338,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         selectedMessageType = null;
         this.content = null;
 
+        setEditStatus(false);
+
         // Input message name.
         msgNameTF.setText("");
-        msgNameTF.setEditable(true);
 
         /*
          * Message Type Controls
@@ -1309,8 +1352,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         designationLbl.setText("");
         emergenyOverrideLbl.setText("");
         sameTransmitters.reset();
-
-        changeMsgTypeBtn.setEnabled(true);
 
         /*
          * Input Message controls.
@@ -1387,8 +1428,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         userInputMessage = im;
         selectedMessageType = null;
 
-        changeMsgTypeBtn.setEnabled(false);
-
         // Input message name.
         if (userInputMessage.getName() != null) {
             msgNameTF.setText(userInputMessage.getName());
@@ -1402,7 +1441,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             areaSelectionBtn.setEnabled(false);
             changeMsgTypeBtn.setEnabled(true);
         } else {
-            areaSelectionBtn.setEnabled(true);
+            areaSelectionBtn.setEnabled(!editStatus);
         }
 
         updateMessageTypeControls(vm);
