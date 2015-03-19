@@ -100,8 +100,8 @@ public class CheckScrollListComp extends Composite {
     /** Button for Unselect All, may be null if showSelectControls = false */
     protected Button unselectAllBtn;
 
-    /** Flag to allow enabling of transmitter's check box. */
-    private boolean allowEnable = true;
+    /** Flag to allow enabling of the check boxes. */
+    private boolean allowEnable = false;
 
     /**
      * Constructor.
@@ -380,13 +380,12 @@ public class CheckScrollListComp extends Composite {
     }
 
     /**
-     * If false do not enable any transmitters else allow enable of desired
-     * transmitters. This method should be invoked prior to selecting
-     * transmitters.
+     * If false do not enable any check boxes else allow them to be enabled.
+     * This method should be invoked prior to selecting any check boxes.
      * 
      * @param allowEnable
      */
-    public void setAllowEnableTransmitters(boolean allowEnable) {
+    public void setAllowEnable(boolean allowEnable) {
         if (this.allowEnable != allowEnable) {
             this.allowEnable = allowEnable;
             reset();

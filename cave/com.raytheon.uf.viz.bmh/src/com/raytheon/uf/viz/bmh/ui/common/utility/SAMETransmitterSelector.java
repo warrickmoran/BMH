@@ -99,12 +99,12 @@ public class SAMETransmitterSelector {
     /**
      * If false do not allow enabling of SAME transmitters.
      * 
-     * @see CheckScrollListComp#setAllowEnableTransmitters(boolean)
+     * @see CheckScrollListComp#setAllowEnable(boolean)
      * 
      * @param allowEnable
      */
     public void setAllowEnableTransmitters(boolean allowEnable) {
-        checks.setAllowEnableTransmitters(allowEnable);
+        checks.setAllowEnable(allowEnable);
     }
 
     /**
