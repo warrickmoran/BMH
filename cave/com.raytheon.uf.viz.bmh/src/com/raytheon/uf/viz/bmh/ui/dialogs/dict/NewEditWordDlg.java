@@ -60,6 +60,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     audio playback method.
  * Feb 26, 2015    4054    rferrel     Fixed setup to PronunciationBuilderDlg to use ssml snippet.
  * Mar 16, 2015    4283    bkowal      Use substitution in the place of phoneme labels.
+ * Mar 19, 2014    4282    rferrel     No longer force phonemeTxt to lower case.
  * </pre>
  * 
  * @author mpduff
@@ -376,8 +377,7 @@ public class NewEditWordDlg extends CaveSWTDialog {
             pronunciationBuilderDlg = new PronunciationBuilderDlg(getShell(),
                     wordTxt.getText().trim());
             if (phonemeTxt.getText().trim().length() > 0) {
-                pronunciationBuilderDlg.setSsmlSnippet(phonemeTxt.getText()
-                        .toLowerCase());
+                pronunciationBuilderDlg.setSsmlSnippet(phonemeTxt.getText());
             }
             pronunciationBuilderDlg.setCloseCallback(new ICloseCallback() {
                 @Override
