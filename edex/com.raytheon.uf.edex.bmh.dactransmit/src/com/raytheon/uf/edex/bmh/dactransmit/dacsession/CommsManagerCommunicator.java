@@ -91,6 +91,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
  * Feb 06, 2015  4071     bsteffen    Consolidate threading.
  * Feb 16, 2015  4107     bsteffen    Manually scan for playlist changes when the comms manager
  *                                    is down or has not sent a command to stop scanning.
+ * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil, detect self connection.
  * 
  * </pre>
  * 
@@ -146,9 +147,25 @@ public final class CommsManagerCommunicator extends Thread {
                 synchronized (sendLock) {
                     try {
                         socket = new Socket(commsHost, config.getManagerPort());
-                        socket.setTcpNoDelay(true);
-                        inputStream = socket.getInputStream();
-                        outputStream = socket.getOutputStream();
+                        if (socket.getLocalPort() == config.getManagerPort()) {
+                            /*
+                             * If the manager port is within the ephemeral range
+                             * then on some OSs it is possible that the socket
+                             * is connected to itself using TCP simultaneous
+                             * open. This is only possible if the comms manager
+                             * is not running and it causes the comms manager to
+                             * fail to start because the port is in use so it is
+                             * important to abort the connection ASAP.
+                             */
+                            logger.error(
+                                    "Port reuse has been detected on port {}, connection to comms manager will be aborted.",
+                                    config.getManagerPort());
+                            disconnect();
+                        } else {
+                            socket.setTcpNoDelay(true);
+                            inputStream = socket.getInputStream();
+                            outputStream = socket.getOutputStream();
+                        }
                     } catch (IOException e) {
                         logger.error("Unable to connect to comms manager", e);
                         disconnect();
@@ -168,7 +185,7 @@ public final class CommsManagerCommunicator extends Thread {
                                 SerializationUtil.transformToThriftUsingStream(
                                         statusToSend, outputStream);
                             }
-                        } catch (SerializationException e) {
+                        } catch (Throwable e) {
                             logger.error(
                                     "Unable to communicate with comms manager",
                                     e);
@@ -191,7 +208,7 @@ public final class CommsManagerCommunicator extends Thread {
                 try {
                     handleMessage(SerializationUtil.transformFromThrift(
                             Object.class, inputStream));
-                } catch (SerializationException e) {
+                } catch (Throwable e) {
                     logger.error("Error reading message from comms manager", e);
                     disconnect();
                 }
@@ -340,4 +357,5 @@ public final class CommsManagerCommunicator extends Thread {
         }
 
     }
+
 }

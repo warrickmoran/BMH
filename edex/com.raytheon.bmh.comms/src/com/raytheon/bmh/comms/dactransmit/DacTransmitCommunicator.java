@@ -38,7 +38,6 @@ import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
-import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
@@ -78,6 +77,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Jan 23, 2015  3912     bsteffen    Handle all Throwables in run.
  * Feb 16, 2015  4107     bsteffen    Add updatePlaylistListener
  * Mar 10, 2015  4228     bsteffen    Track disconnected state more carefully.
+ * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil.
  * 
  * </pre>
  * 
@@ -259,7 +259,7 @@ public class DacTransmitCommunicator extends Thread {
             try {
                 SerializationUtil.transformToThriftUsingStream(toSend,
                         socket.getOutputStream());
-            } catch (SerializationException | IOException e) {
+            } catch (Throwable e) {
                 logger.error("Error communicating with DacTransmit: {}",
                         groupName, e);
                 disconnect();
