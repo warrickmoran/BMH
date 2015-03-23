@@ -22,6 +22,7 @@ package com.raytheon.uf.common.bmh.request;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -41,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 17, 2014 #3490      lvenable    Added addProgram method.
  * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
  * Jan 07, 2015 3958       bkowal      Added {@link #transmitters}.
+ * Mar 13, 2015 4213       bkowal      Added {@link #messageTypes}.
  * </pre>
  * 
  * @author lvenable
@@ -54,9 +56,12 @@ public class ProgramResponse {
 
     @DynamicSerializeElement
     private List<ProgramSummary> programSummaryList;
-    
+
     @DynamicSerializeElement
     private List<Transmitter> transmitters;
+
+    @DynamicSerializeElement
+    private List<MessageTypeSummary> messageTypes;
 
     /**
      * Set the list of programs.
@@ -105,10 +110,26 @@ public class ProgramResponse {
     }
 
     /**
-     * @param transmitters the transmitters to set
+     * @param transmitters
+     *            the transmitters to set
      */
     public void setTransmitters(List<Transmitter> transmitters) {
         this.transmitters = transmitters;
+    }
+
+    /**
+     * @return the messageTypes
+     */
+    public List<MessageTypeSummary> getMessageTypes() {
+        return messageTypes;
+    }
+
+    /**
+     * @param messageTypes
+     *            the messageTypes to set
+     */
+    public void setMessageTypes(List<MessageTypeSummary> messageTypes) {
+        this.messageTypes = messageTypes;
     }
 
 }

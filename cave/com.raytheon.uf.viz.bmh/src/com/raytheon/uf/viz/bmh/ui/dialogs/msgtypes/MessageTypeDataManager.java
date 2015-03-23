@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.StaticMessageIdentifier;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
@@ -49,6 +50,8 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Sep 19, 2014   #3611    lvenable    Added method to get emergency override message types.
  * Oct 23, 2014   #3728    lvenable    Updated for getting AFOS IDs via designation.
  * Feb 10, 2015   #4085    bkowal      Added {@link #getStaticMessageAfosIds()}.
+ * Mar 12, 2015   #4213    bkowal      {@link #getStaticMessageAfosIds()} now includes
+ *                                     all station id messages.
  * 
  * </pre>
  * 
@@ -118,6 +121,22 @@ public class MessageTypeDataManager {
         }
 
         return messageTypeList;
+    }
+
+    public List<MessageType> getMessageTypesByDesignationAndLanguage(
+            Designation designation, Language language) throws Exception {
+        MessageTypeRequest mtRequest = new MessageTypeRequest();
+        mtRequest.setAction(MessageTypeAction.GetByDesignationAndLanguage);
+        mtRequest.setDesignation(designation);
+        mtRequest.setLanguage(language);
+
+        MessageTypeResponse mtResponse = (MessageTypeResponse) BmhUtils
+                .sendRequest(mtRequest);
+        if (mtResponse.getMessageTypeList() == null) {
+            return Collections.emptyList();
+        }
+
+        return mtResponse.getMessageTypeList();
     }
 
     /**
@@ -250,9 +269,12 @@ public class MessageTypeDataManager {
     public Set<String> getStaticMessageAfosIds() throws Exception {
         Set<String> timeAfosIds = this
                 .getAfosIdsByDesignation(StaticMessageIdentifier.timeDesignation);
-        Set<String> staticAfosIds = new HashSet<>(timeAfosIds.size() + 1, 1.0f);
+        Set<String> stationIdAfosIds = this
+                .getAfosIdsByDesignation(StaticMessageIdentifier.stationIdDesignation);
+        Set<String> staticAfosIds = new HashSet<>(timeAfosIds.size()
+                + stationIdAfosIds.size(), 1.0f);
         staticAfosIds.addAll(timeAfosIds);
-        staticAfosIds.add(StaticMessageIdentifier.staticStationIdAfosId);
+        staticAfosIds.addAll(stationIdAfosIds);
 
         return staticAfosIds;
     }

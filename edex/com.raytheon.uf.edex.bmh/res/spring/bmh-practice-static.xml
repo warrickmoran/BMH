@@ -26,6 +26,7 @@
 		<property name="transmitterLanguageDao" ref="practice_transmitterLanguageDao" />
 		<property name="messageTypeDao" ref="practice_messageTypeDao" />
 		<property name="inputMessageDao" ref="practice_inputMessageDao" />
+		<property name="staticMessageTypeDao" ref="practice_staticMessageTypeDao" />
 	</bean>
 	
 	<bean factory-bean="maintenanceMessageHandler" factory-method="setPracticeAlignmentTestGenerator"

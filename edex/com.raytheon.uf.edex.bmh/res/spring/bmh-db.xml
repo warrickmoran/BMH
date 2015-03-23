@@ -107,5 +107,7 @@
   	
   <bean id="dictionaryDao" class="com.raytheon.uf.edex.bmh.dao.DictionaryDao"
   	depends-on="bmhTxTemplate" />
-
+	
+  <bean id="staticMessageTypeDao" class="com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao"
+    depends-on="bmhTxTemplate" />
 </beans>

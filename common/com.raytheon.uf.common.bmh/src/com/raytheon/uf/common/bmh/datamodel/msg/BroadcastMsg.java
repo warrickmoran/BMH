@@ -70,6 +70,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 08, 2014  3864     bsteffen    Redo some of the playlist manager queries.
  * Mar 05, 2015  4222     bkowal      Include messages that never expire when retrieving
  *                                    unexpired messages.
+ * Mar 13, 2015  4213     bkowal      Fixed {@link #GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY}.
  * Mar 17, 2015  4160     bsteffen    Add booleans for tone status.
  * 
  * </pre>
@@ -96,7 +97,7 @@ public class BroadcastMsg {
 
     public static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE = "getBroadcastMsgsByAfosIdGroupAndLanguage";
 
-    protected static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosId AND m.transmitterGroup = :group AND m.inputMessage.language = :language ORDER BY m.inputMessage.creationTime ASC";
+    protected static final String GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.afosid = :afosId AND m.transmitterGroup = :group AND m.inputMessage.language = :language ORDER BY m.inputMessage.creationTime DESC";
 
     public static final String GET_MSGS_BY_INPUT_MSG = "getBroadcastMsgsByInputMsg";
 

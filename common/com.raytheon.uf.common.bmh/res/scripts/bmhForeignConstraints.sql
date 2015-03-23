@@ -228,3 +228,24 @@ alter table bmh.input_msg_selected_transmitters add constraint fk_selected_tx_to
 alter table bmh.input_msg_selected_transmitters drop constraint fk_selected_tx_to_tx;
 alter table bmh.input_msg_selected_transmitters add constraint fk_selected_tx_to_tx
     foreign key (transmitter_id) references bmh.transmitter (id) on delete cascade;
+
+/**
+  * Static Message Type to Transmitter Language
+  */
+alter table bmh.static_message_type drop constraint fk_pjd65dcdb1iokpkl1cjj4b9gx;
+alter table bmh.static_message_type add constraint fk_pjd65dcdb1iokpkl1cjj4b9gx
+    foreign key (language, transmittergroup_id) references bmh.transmitter_language (language, transmittergroup_id) on delete cascade;
+
+/**
+  * Static Message Type to Transmitter Group
+  */
+alter table bmh.static_message_type drop constraint fk_noclt5sr9xvlb841v0kde91uk;
+alter table bmh.static_message_type add constraint fk_noclt5sr9xvlb841v0kde91uk
+    foreign key (transmittergroup_id) references bmh.transmitter_group (id) on delete cascade;
+
+/**
+  * Static Message Type to Message Type
+  */
+alter table bmh.static_message_type drop constraint static_message_type_to_message_type;
+alter table bmh.static_message_type add constraint static_message_type_to_message_type
+    foreign key (msgtype_id) references bmh.message_type (id) on delete cascade;

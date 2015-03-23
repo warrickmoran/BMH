@@ -22,14 +22,19 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.StaticMsgTypeConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
 
@@ -49,6 +54,7 @@ import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
  * Jan 13, 2015  3809     bkowal      Fixed {@link #updateTransmitterLanguage(TransmitterLanguageRequest)}.
  * Jan 19, 2015  4011     bkowal      Added {@link #deleteTransmitterLanguage(TransmitterLanguageRequest)}.
  * Feb 09, 2015  4096     bsteffen    Filter Unacceptable Words.
+ * Mar 13, 2015  4213     bkowal      Added support for saving and deleting {@link StaticMessageType}s.
  * 
  * </pre>
  * 
@@ -63,7 +69,7 @@ public class TransmitterLanguageRequestHandler extends
     public Object handleRequest(TransmitterLanguageRequest request)
             throws Exception {
         TransmitterLanguageResponse response = null;
-        TransmitterLanguageConfigNotification notification = null;
+        ConfigNotification notification = null;
         switch (request.getAction()) {
         case GetTransmitterLanguagesForTransmitterGrp:
             response = this.getTransmitterLanguagesForTransmitterGroup(request);
@@ -82,6 +88,24 @@ public class TransmitterLanguageRequestHandler extends
             notification = new TransmitterLanguageConfigNotification(
                     ConfigChangeType.Delete, request.getTransmitterLanguage());
             this.deleteTransmitterLanguage(request);
+            break;
+        case SaveStaticMsgType:
+            response = new TransmitterLanguageResponse();
+
+            response = this.saveStaticMessageType(request);
+            notification = new StaticMsgTypeConfigNotification(
+                    ConfigChangeType.Update, request.getTransmitterLanguage()
+                            .getTransmitterGroup(), request
+                            .getTransmitterLanguage().getLanguage(), request
+                            .getStaticMsgType().getMsgTypeSummary().getAfosid());
+            break;
+        case DeleteStaticMsgType:
+            notification = new StaticMsgTypeConfigNotification(
+                    ConfigChangeType.Delete, request.getTransmitterLanguage()
+                            .getTransmitterGroup(), request
+                            .getTransmitterLanguage().getLanguage(), request
+                            .getStaticMsgType().getMsgTypeSummary().getAfosid());
+            this.deleteStaticMsgType(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -126,27 +150,6 @@ public class TransmitterLanguageRequestHandler extends
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
 
         TransmitterLanguage tl = request.getTransmitterLanguage();
-        UnacceptableWordFilter uwf = UnacceptableWordFilter.getFilter(tl
-                .getLanguage());
-        List<String> uw = uwf.check(tl.getStationIdMsg());
-        if (!uw.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Station Id failed to validate because it contains the following unacceptable words: "
-                            + uw.toString());
-        }
-        uw = uwf.check(tl.getTimeMsgPreamble());
-        if (!uw.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Time Preamble failed to validate because it contains the following unacceptable words: "
-                            + uw.toString());
-        }
-        uw = uwf.check(tl.getTimeMsgPostamble());
-        if (!uw.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Time Postamble failed to validate because it contains the following unacceptable words: "
-                            + uw.toString());
-        }
-
         TransmitterLanguage oldTl = null;
         if (logger.isPriorityEnabled(Priority.INFO)) {
             oldTl = transmitterLanguageDao.getByID(tl.getId());
@@ -160,6 +163,46 @@ public class TransmitterLanguageRequestHandler extends
             String user = BMHLoggerUtils.getUser(request);
             BMHLoggerUtils.logSave(request, user, oldTl, tl);
         }
+
+        return response;
+    }
+
+    private TransmitterLanguageResponse saveStaticMessageType(
+            TransmitterLanguageRequest request) {
+        StaticMessageTypeDao dao = new StaticMessageTypeDao(
+                request.isOperational());
+        TransmitterLanguageResponse response = new TransmitterLanguageResponse();
+        StaticMessageType staticMsgType = request.getStaticMsgType();
+        staticMsgType.setTransmitterLanguage(request.getTransmitterLanguage());
+
+        UnacceptableWordFilter uwf = UnacceptableWordFilter
+                .getFilter(staticMsgType.getTransmitterLanguage().getLanguage());
+        List<String> uw = uwf.check(staticMsgType.getTextMsg1());
+        if (uw.isEmpty() == false) {
+            final String textFieldName = (staticMsgType.getMsgTypeSummary()
+                    .getDesignation() == Designation.StationID) ? "Station Id"
+                    : "Time Preamble";
+            throw new IllegalArgumentException(
+                    textFieldName
+                            + " failed to validate because it contains the following unacceptable words: "
+                            + uw.toString());
+        }
+
+        /*
+         * If this is a time announcement, we also need to check the second text
+         * field.
+         */
+        if (staticMsgType.getMsgTypeSummary().getDesignation() == Designation.TimeAnnouncement) {
+            uw = uwf.check(staticMsgType.getTextMsg2());
+            if (uw.isEmpty() == false) {
+                throw new IllegalArgumentException(
+                        "Time Postamble failed to validate because it contains the following unacceptable words: "
+                                + uw.toString());
+            }
+        }
+
+        dao.saveOrUpdate(staticMsgType);
+        response.setStaticMsgType(staticMsgType);
 
         return response;
     }
@@ -186,5 +229,13 @@ public class TransmitterLanguageRequestHandler extends
             String user = BMHLoggerUtils.getUser(request);
             BMHLoggerUtils.logDelete(request, user, oldTl);
         }
+    }
+
+    private void deleteStaticMsgType(TransmitterLanguageRequest request) {
+        StaticMessageTypeDao dao = new StaticMessageTypeDao(
+                request.isOperational());
+        StaticMessageType staticMsgType = request.getStaticMsgType();
+        staticMsgType.setTransmitterLanguage(request.getTransmitterLanguage());
+        dao.delete(staticMsgType);
     }
 }

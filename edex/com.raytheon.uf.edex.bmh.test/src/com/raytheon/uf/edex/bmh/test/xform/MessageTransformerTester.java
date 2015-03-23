@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.configuration.Configuration;
-import org.apache.commons.lang.StringUtils;
 import org.springframework.transaction.TransactionException;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
@@ -68,6 +67,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  * Sep 25, 2014 3620       bsteffen    Add seconds to periodicity and duration.
  * Oct 7, 2014  3642       bkowal      Update for compilation compatibility.
  * Jan 6, 2015  3651       bkowal      Deprecated
+ * Mar 12, 2015 4213       bkowal      Still Deprecated.
  * 
  * </pre>
  * 
@@ -263,7 +263,6 @@ public class MessageTransformerTester extends AbstractBMHTester {
         transmitterLanguagePK.setLanguage(Language.ENGLISH);
         TransmitterLanguage transmitterLanguage = new TransmitterLanguage();
         transmitterLanguage.setId(transmitterLanguagePK);
-        transmitterLanguage.setStationIdMsg(StringUtils.EMPTY);
         // transmitterLanguage.setDictionaryName(TRANSMITTER_LANGUAGE_DICTIONARY);
         transmitterLanguage.setVoice(ttsVoice);
         languages.put(Language.ENGLISH, transmitterLanguage);

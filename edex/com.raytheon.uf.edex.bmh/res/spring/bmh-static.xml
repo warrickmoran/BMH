@@ -26,6 +26,7 @@
 		<property name="transmitterLanguageDao" ref="transmitterLanguageDao" />
 		<property name="messageTypeDao" ref="messageTypeDao" />
 		<property name="inputMessageDao" ref="inputMessageDao" />
+		<property name="staticMessageTypeDao" ref="staticMessageTypeDao" />
 	</bean>
 
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">

@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -41,6 +42,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 19, 2014  3611     lvenable    Added emergency override.
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Oct 23, 2014  3728     lvenable    Added GetAfosDesignation and designation variable.
+ * Mar 13, 2015  4213     bkowal      Added {@link MessageTypeAction#GetByDesignationAndLanguage}
+ *                                    and {@link #language}.
  * 
  * </pre>
  * 
@@ -50,7 +53,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class MessageTypeRequest extends AbstractBMHServerRequest {
     public enum MessageTypeAction {
-        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle, GetEmergencyOverrideMsgTypes, GetAfosDesignation;
+        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle, GetEmergencyOverrideMsgTypes, GetAfosDesignation, GetByDesignationAndLanguage;
     }
 
     @DynamicSerializeElement
@@ -70,6 +73,9 @@ public class MessageTypeRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private Designation designation;
+
+    @DynamicSerializeElement
+    private Language language;
 
     /**
      * @return the action
@@ -138,5 +144,20 @@ public class MessageTypeRequest extends AbstractBMHServerRequest {
 
     public void setDesignation(Designation designation) {
         this.designation = designation;
+    }
+
+    /**
+     * @return the language
+     */
+    public Language getLanguage() {
+        return language;
+    }
+
+    /**
+     * @param language
+     *            the language to set
+     */
+    public void setLanguage(Language language) {
+        this.language = language;
     }
 }

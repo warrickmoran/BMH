@@ -52,6 +52,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
@@ -69,6 +70,7 @@ import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
+import com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
@@ -127,6 +129,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     the rate of speech.
  * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * Mar 05, 2015 4237       bkowal      Added missing return statement for null transmitter languages.
+ * MAr 13, 2015 4213       bkowal      Support {@link StaticMessageType}s.
  * 
  * </pre>
  * 
@@ -157,6 +160,9 @@ public class MessageTransformer implements IContextStateProcessor {
 
     /* Used to retrieve the national dictionary */
     private DictionaryDao dictionaryDao;
+
+    /* Used to retrieve defined static message types */
+    private StaticMessageTypeDao staticMessageTypeDao;
 
     /* Used to retrieve directory paths associated with time audio. */
     private final TimeMessagesGenerator tmGenerator;
@@ -246,22 +252,24 @@ public class MessageTransformer implements IContextStateProcessor {
                     this.cacheTransmitterLanguageInformation(group, messageType
                             .getVoice().getLanguage());
                 }
-                transmitterDictionary = this.transmitterLanguageTableCache.get(
-                        group, messageType.getVoice().getLanguage())
-                        .getDictionary();
-                if (transmitterDictionary == null) {
-                    StringBuilder stringBuilder = new StringBuilder(
-                            "No dictionary has been defined for language: ");
-                    stringBuilder.append(messageType.getVoice().getLanguage()
-                            .toString());
-                    stringBuilder.append(" in transmitter group: ");
-                    stringBuilder.append(group.getName());
-                    stringBuilder.append("! [ Message = ");
-                    stringBuilder.append(message.getId());
-                    stringBuilder.append("]");
+                // verify that a transmitter language actually exists.
+                TransmitterLanguage tl = this.transmitterLanguageTableCache
+                        .get(group, messageType.getVoice().getLanguage());
+                if (tl == null) {
+                    StringBuilder sb = new StringBuilder(
+                            "No Transmitter Language exists for transmitter group: ");
+                    sb.append(group.getName())
+                            .append(" and language: ")
+                            .append(messageType.getVoice().getLanguage()
+                                    .toString());
+                    sb.append("! [ Message = ");
+                    sb.append(message.getId());
+                    sb.append("]");
 
                     statusHandler.warn(BMH_CATEGORY.XFORM_MISSING_DICTIONARY,
-                            stringBuilder.toString());
+                            sb.toString());
+                } else {
+                    transmitterDictionary = tl.getDictionary();
                 }
             }
             BroadcastMsg msg = null;
@@ -548,26 +556,36 @@ public class MessageTransformer implements IContextStateProcessor {
          */
         TtsVoice fragmentVoice = messageType.getVoice();
         TransmitterLanguage transmitterLanguage = null;
+        StaticMessageType staticMessageType = null;
         if (StaticMessageIdentifierUtil.isStaticMsgType(messageType)) {
             statusHandler
                     .info("Afos Id "
                             + inputMessage.getAfosid()
-                            + " is associated with a static message type. Retrieving associated transmitter language for transmitter group "
+                            + " is associated with a static message type. Retrieving associated static message type for transmitter group "
                             + group.getId() + " and language "
                             + inputMessage.getLanguage().toString() + ".");
-            final TransmitterLanguagePK key = new TransmitterLanguagePK();
-            key.setLanguage(inputMessage.getLanguage());
-            key.setTransmitterGroup(group);
-            transmitterLanguage = this.transmitterLanguageDao.getByID(key);
-            if (transmitterLanguage == null) {
+
+            /*
+             * Retrieve the associated static message type. Users cannot
+             * manually create / edit static message types. So, this
+             * transformation would have had to been triggered by the static
+             * message generator.
+             */
+            staticMessageType = this.staticMessageTypeDao
+                    .getStaticForMsgTypeAndTransmittergroup(
+                            messageType.getAfosid(), group);
+            if (staticMessageType == null) {
                 BMHConfigurationException configException = new BMHConfigurationException(
-                        "Unable to find a transmitter language associated with transmitter group "
+                        "Unable to find a static message type associated with transmitter group "
                                 + group.getId() + " and language "
-                                + inputMessage.getLanguage().toString() + "!");
+                                + inputMessage.getLanguage().toString()
+                                + " for message type "
+                                + messageType.getAfosid() + "!");
                 this.messageLogger.logError(BMH_COMPONENT.MESSAGE_TRANSFORMER,
                         BMH_ACTIVITY.DATA_RETRIEVAL, inputMessage);
                 throw configException;
             }
+            transmitterLanguage = staticMessageType.getTransmitterLanguage();
             fragmentVoice = transmitterLanguage.getVoice();
         }
 
@@ -580,7 +598,7 @@ public class MessageTransformer implements IContextStateProcessor {
              * There will be a fragment for each portion of the time message.
              */
             List<TimeTextFragment> timeFragments = StaticMessageIdentifierUtil
-                    .getTimeMsgFragments(transmitterLanguage);
+                    .getTimeMsgFragments(staticMessageType);
             int index = 0;
             for (TimeTextFragment timeFragment : timeFragments) {
                 if (timeFragment.isTimePlaceholder() == false) {
@@ -1118,6 +1136,22 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     /**
+     * @return the staticMessageTypeDao
+     */
+    public StaticMessageTypeDao getStaticMessageTypeDao() {
+        return staticMessageTypeDao;
+    }
+
+    /**
+     * @param staticMessageTypeDao
+     *            the staticMessageTypeDao to set
+     */
+    public void setStaticMessageTypeDao(
+            StaticMessageTypeDao staticMessageTypeDao) {
+        this.staticMessageTypeDao = staticMessageTypeDao;
+    }
+
+    /**
      * Validate all DAOs are set correctly and throw an exception if any are not
      * set.
      * 
@@ -1136,6 +1170,9 @@ public class MessageTransformer implements IContextStateProcessor {
         } else if (this.dictionaryDao == null) {
             throw new IllegalStateException(
                     "DictionaryDao has not been set on the MessageTransformer");
+        } else if (this.staticMessageTypeDao == null) {
+            throw new IllegalStateException(
+                    "StaticMessageTypeDao has not been set on the MessageTransformer");
         }
     }
 

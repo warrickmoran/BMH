@@ -22,6 +22,7 @@ package com.raytheon.uf.common.bmh.request;
 import java.util.List;
 import java.util.ArrayList;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 29, 2014 3568       bkowal      Initial creation
+ * Mar 13, 2015 4213       bkowal      Added {@link #staticMsgType}.
  * 
  * </pre>
  * 
@@ -48,6 +50,9 @@ public class TransmitterLanguageResponse {
 
     @DynamicSerializeElement
     private List<TransmitterLanguage> transmitterLanguages;
+
+    @DynamicSerializeElement
+    private StaticMessageType staticMsgType;
 
     public void addTransmitterLanguage(TransmitterLanguage transmitterLanguage) {
         if (this.transmitterLanguages == null) {
@@ -70,5 +75,20 @@ public class TransmitterLanguageResponse {
     public void setTransmitterLanguages(
             List<TransmitterLanguage> transmitterLanguages) {
         this.transmitterLanguages = transmitterLanguages;
+    }
+
+    /**
+     * @return the staticMsgType
+     */
+    public StaticMessageType getStaticMsgType() {
+        return staticMsgType;
+    }
+
+    /**
+     * @param staticMsgType
+     *            the staticMsgType to set
+     */
+    public void setStaticMsgType(StaticMessageType staticMsgType) {
+        this.staticMsgType = staticMsgType;
     }
 }

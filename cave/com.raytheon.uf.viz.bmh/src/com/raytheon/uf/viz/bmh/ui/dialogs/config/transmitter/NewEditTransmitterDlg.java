@@ -358,6 +358,12 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         programCombo = new Combo(rightComp, SWT.BORDER | SWT.READ_ONLY);
         programCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
                 false));
+        this.programCombo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleProgramChange();
+            }
+        });
         groupControlList.add(programCombo);
 
         Label timeZoneLbl = new Label(rightComp, SWT.NONE);
@@ -770,9 +776,12 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
 
                 if (tg.getProgramSummary() == null) {
                     programCombo.select(0);
+                    this.transmitterLanguageComp.setSelectedProgram(null);
                 } else {
                     programCombo.select(programCombo.indexOf(tg
                             .getProgramSummary().getName()));
+                    this.transmitterLanguageComp.setSelectedProgram(tg
+                            .getProgramSummary());
                 }
 
                 disableSilenceChk.setSelection(!tg.getDeadAirAlarm());
@@ -1462,6 +1471,18 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         }
 
         return rval;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void handleProgramChange() {
+        if (programCombo.getSelectionIndex() <= 0) {
+            this.transmitterLanguageComp.setSelectedProgram(null);
+        } else {
+            List<ProgramSummary> progList = (List<ProgramSummary>) programCombo
+                    .getData();
+            this.transmitterLanguageComp.setSelectedProgram(progList
+                    .get(programCombo.getSelectionIndex() - 1));
+        }
     }
 
     /**

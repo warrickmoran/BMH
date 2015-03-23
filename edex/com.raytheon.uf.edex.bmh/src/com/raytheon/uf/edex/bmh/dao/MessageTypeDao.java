@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
@@ -48,6 +49,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
  * Oct 13, 2014  3654     rjpeter     Updated to use MessageTypeSummary.
  * Oct 23, 2014  3728     lvenable    Added method to get AFOS IDs by designation.
  * Feb 10, 2015  4085     bkowal      Fix cast in {@link #getAfosIdDesignation(Designation)}.
+ * Mar 13, 2015  4213     bkowal      Added the ability to filter message types retrieved by
+ *                                    designation by language.
  * 
  * </pre>
  * 
@@ -170,10 +173,32 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
      * {@link Designation}.
      * 
      * @param designation
-     * @return
+     *            the specified {@link Designation}
+     * @return a {@link List} of the {@link MessageType}s that were retrieved.
      */
     public List<MessageType> getMessageTypeForDesignation(
             final Designation designation) {
+        return this.getMessageTypeForDesignationAndLanguage(designation, null);
+    }
+
+    /**
+     * Returns a list of the {@link MessageType} for the specified
+     * {@link Designation} and the specified {@link Language}.
+     * 
+     * @param designation
+     *            the specified {@link Designation}
+     * @param language
+     *            the specified {@link Language}; optional see:
+     *            {@link #getMessageTypeForDesignation(Designation)}.
+     * @return a {@link List} of the {@link MessageType}s that were retrieved.
+     */
+    public List<MessageType> getMessageTypeForDesignationAndLanguage(
+            final Designation designation, final Language language) {
+        /*
+         * We could write a separate query to filter by language. However, we
+         * will need to iterate through anything that is retrieved just to cast
+         * it to MessageType.
+         */
         List<?> types = findByNamedQueryAndNamedParam(
                 MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, "designation",
                 designation);
@@ -185,6 +210,11 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         List<MessageType> messageTypes = new ArrayList<>(types.size());
         for (Object type : types) {
             if (type instanceof MessageType) {
+                MessageType messageType = (MessageType) type;
+                if (language != null
+                        && messageType.getVoice().getLanguage() != language) {
+                    continue;
+                }
                 messageTypes.add((MessageType) type);
             }
         }

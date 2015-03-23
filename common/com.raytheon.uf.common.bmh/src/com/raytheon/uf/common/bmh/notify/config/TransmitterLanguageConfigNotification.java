@@ -19,6 +19,11 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.HashSet;
+
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
@@ -37,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Sep 8, 2014  3568       bkowal      Initial creation
  * Jan 19, 2015 4011       bkowal      Added {@link #transmitterGroup}.
+ * Mar 13, 2015 4213       bkowal      Added {@link #staticAfosIds}.
  * 
  * </pre>
  * 
@@ -51,6 +57,14 @@ public class TransmitterLanguageConfigNotification extends ConfigNotification {
 
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
+
+    /*
+     * The afos ids of the static message types associated with the language.
+     * This field is primarily populated when a language is removed because it
+     * will no longer be possible to retrieve the information from the database.
+     */
+    @DynamicSerializeElement
+    private Set<String> staticAfosIds;
 
     /**
      * 
@@ -67,6 +81,16 @@ public class TransmitterLanguageConfigNotification extends ConfigNotification {
         super(type);
         this.setKey(tl);
         this.transmitterGroup = tl.getTransmitterGroup();
+        if (tl.getStaticMessageTypes().isEmpty()) {
+            this.staticAfosIds = Collections.emptySet();
+        } else {
+            this.staticAfosIds = new HashSet<>(tl.getStaticMessageTypes()
+                    .size(), 1.0f);
+            for (StaticMessageType staticMsgType : tl.getStaticMessageTypes()) {
+                this.staticAfosIds.add(staticMsgType.getMsgTypeSummary()
+                        .getAfosid());
+            }
+        }
     }
 
     /**
@@ -101,5 +125,19 @@ public class TransmitterLanguageConfigNotification extends ConfigNotification {
      */
     public void setTransmitterGroup(TransmitterGroup transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    /**
+     * @return the staticAfosIds
+     */
+    public Set<String> getStaticAfosIds() {
+        return staticAfosIds;
+    }
+
+    /**
+     * @param staticAfosIds the staticAfosIds to set
+     */
+    public void setStaticAfosIds(Set<String> staticAfosIds) {
+        this.staticAfosIds = staticAfosIds;
     }
 }

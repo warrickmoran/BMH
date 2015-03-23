@@ -54,6 +54,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 20, 2014  3636     rferrel     Implement Logging.
  * Oct 23, 2014  3728     lvenable    Added method to get AFOS IDs by designation.
+ * Mar 13, 2015  4213     bkowal      Added {@link #getByDesignationAndLanguage(MessageTypeRequest)}.
  * 
  * </pre>
  * 
@@ -96,6 +97,9 @@ public class MessageTypeHandler extends
             break;
         case GetAfosDesignation:
             response = getAfosDesignation(request);
+            break;
+        case GetByDesignationAndLanguage:
+            response = getByDesignationAndLanguage(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -233,6 +237,18 @@ public class MessageTypeHandler extends
 
         List<MessageType> mTypes = dao.getEmergencyOverride(request
                 .isEmergencyOverride());
+        response.setMessageTypeList(mTypes);
+
+        return response;
+    }
+
+    private MessageTypeResponse getByDesignationAndLanguage(
+            MessageTypeRequest request) {
+        MessageTypeResponse response = new MessageTypeResponse();
+        MessageTypeDao dao = new MessageTypeDao(request.isOperational());
+
+        List<MessageType> mTypes = dao.getMessageTypeForDesignationAndLanguage(
+                request.getDesignation(), request.getLanguage());
         response.setMessageTypeList(mTypes);
 
         return response;

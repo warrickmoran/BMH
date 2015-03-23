@@ -35,6 +35,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
@@ -66,6 +67,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Nov 20, 2014  3698     rferrel     Added methods getSuitePrograms and getSuiteEnabledGroups.
  * Dec 02, 2014  3838     rferrel     Added getProgramGeneralSuite.
  * Jan 07, 2015  3958     bkowal      Added {@link #getTransmittersForMsgType(MessageType)}.
+ * Mar 12, 2015  4213     bkowal      Added {@link #getStaticMsgTypesForProgram(int)}.
  * </pre>
  * 
  * @author bsteffen
@@ -349,6 +351,32 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         }
 
         return programs;
+    }
+
+    /**
+     * Returns a {@link List} of the static {@link MessageType}s associated with
+     * the specified {@link Program}.
+     * 
+     * @param programId
+     *            the id of the specified {@link Program}.
+     * @return a {@link List} of the retrieved {@link MessageTypeSummary}s.
+     */
+    public List<MessageTypeSummary> getStaticMsgTypesForProgram(
+            final int programId) {
+        List<?> returnObjects = this.findByNamedQueryAndNamedParam(
+                Program.GET_STATIC_MSG_TYPES_FOR_PROGRAM, "programId",
+                programId);
+        if (returnObjects == null || returnObjects.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<MessageTypeSummary> messageTypes = new ArrayList<>(
+                returnObjects.size());
+        for (Object returnObject : returnObjects) {
+            messageTypes.add((MessageTypeSummary) returnObject);
+        }
+
+        return messageTypes;
     }
 
     @Override

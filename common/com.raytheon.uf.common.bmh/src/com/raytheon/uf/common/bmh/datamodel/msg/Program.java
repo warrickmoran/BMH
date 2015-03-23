@@ -85,6 +85,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 01, 2014 3838      rferrel     Add get program's general suite.
  * Jan 07, 2015 3958      bkowal      Added {@link #GET_TRANSMITTERS_FOR_MSG_TYPE}.
  * Jan 14, 2015 3994      rjpeter     Added distinct to {@link #GET_PROGRAM_FOR_TRANSMITTER_GROUP}.
+ * Mar 13, 2015 4213      bkowal      Added {@link #GET_STATIC_MSG_TYPES_FOR_PROGRAM}.
  * </pre>
  * 
  * @author rjpeter
@@ -100,6 +101,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY),
         @NamedQuery(name = Program.GET_SUITE_PROGRAMS, query = Program.GET_SUITE_PROGRAMS_QUERY),
         @NamedQuery(name = Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS, query = Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS_QUERY),
+        @NamedQuery(name = Program.GET_STATIC_MSG_TYPES_FOR_PROGRAM, query = Program.GET_STATIC_MSG_TYPES_FOR_PROGRAM_QUERY),
         @NamedQuery(name = Program.GET_PROGRAM_GENERAL_SUITE, query = Program.GET_PROGRAM_GENERAL_SUITE_QUERY) })
 @Entity
 @Table(name = "program", schema = "bmh")
@@ -147,6 +149,10 @@ public class Program {
     public static final String GET_PROGRAM_GENERAL_SUITE = "getProgramGeneralSuite";
 
     protected static final String GET_PROGRAM_GENERAL_SUITE_QUERY = "SELECT s FROM Program p INNER JOIN p.programSuites ps INNER Join ps.suite s WHERE p.id = :programId AND s.type = 'GENERAL'";
+
+    public static final String GET_STATIC_MSG_TYPES_FOR_PROGRAM = "getStaticMsgTypesForProgram";
+
+    protected static final String GET_STATIC_MSG_TYPES_FOR_PROGRAM_QUERY = "SELECT DISTINCT mt FROM Program p inner join p.transmitterGroups tg INNER JOIN p.programSuites ps INNER JOIN ps.suite s INNER JOIN s.suiteMessages sm INNER JOIN sm.msgTypeSummary mt WHERE p.id = :programId AND mt.designation IN ('StationID', 'TimeAnnouncement')";
 
     // use surrogate key
     @Id

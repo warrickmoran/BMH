@@ -37,13 +37,18 @@ import java.util.Set;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
+import com.raytheon.uf.common.bmh.legacy.ascii.TransmitterMessages;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.Pair;
@@ -82,6 +87,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
  * Nov 02, 2014 2746       rjpeter     Updated DAC population and transmitter assignment.
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * Mar 03, 2015  4175      bkowal      Use {@link TTSVoiceManager}.
+ * Mar 13, 2015 4213       bkowal      Added support for {@link StaticMessageType}s.
  * </pre>
  * 
  * @author rjpeter
@@ -216,13 +222,6 @@ public class DatabaseImport {
                                                 .size() + " transmitters");
                                 tgDao.loadAll();
 
-                                TransmitterLanguageDao langDao = new TransmitterLanguageDao();
-                                langDao.persistAll(data
-                                        .getTransmitterLanguages());
-                                statusHandler.info("Saved "
-                                        + data.getTransmitterLanguages().size()
-                                        + " transmitter languages");
-                                langDao.loadAll();
                                 AreaDao areaDao = new AreaDao();
                                 areaDao.persistAll(data.getAreas().values());
                                 statusHandler.info("Saved "
@@ -241,7 +240,9 @@ public class DatabaseImport {
                                 statusHandler.info("Saved "
                                         + data.getMsgTypes().values().size()
                                         + " message types");
-                                msgTypeDao.loadAll();
+                                List<MessageType> allMessageTypes = msgTypeDao
+                                        .loadAll();
+
                                 for (Map.Entry<MessageType, Set<MessageTypeSummary>> entry : data
                                         .getReplaceMap().entrySet()) {
                                     MessageType mt = entry.getKey();
@@ -261,27 +262,111 @@ public class DatabaseImport {
                                 ProgramDao programDao = new ProgramDao();
                                 programDao.persistAll(data.getPrograms()
                                         .values());
-                                // Collection<Program> programs = data
-                                // .getPrograms().values();
-                                // for (Program p : programs) {
-                                // for (TransmitterGroup t : p
-                                // .getTransmitterGroups()) {
-                                // t.setProgramSummary(p
-                                // .getProgramSummary());
-                                // }
-                                // }
-                                // for (Program p : programs) {
-                                // statusHandler.info("Persisting Program ["
-                                // + p.getName() + "]");
-                                // programDao.persist(p);
-                                // statusHandler.info("Persisted Program ["
-                                // + p.getName() + "]");
-                                // }
-                                // programDao.persistAll(programs);
                                 statusHandler.info("Saved "
                                         + data.getPrograms().values().size()
                                         + " programs");
                                 programDao.loadAll();
+
+                                /*
+                                 * Identify all messages with a time and/or
+                                 * station id designation and create default
+                                 * static message types based on them.
+                                 */
+                                for (MessageType messageType : allMessageTypes) {
+                                    if (messageType.getDesignation() != Designation.StationID
+                                            && messageType.getDesignation() != Designation.TimeAnnouncement) {
+                                        // not a static message type.
+                                        continue;
+                                    }
+
+                                    /*
+                                     * Determine which Transmitter Group(s) a
+                                     * static message type should be created
+                                     * for.
+                                     */
+                                    List<TransmitterGroup> staticMsgTypeGroups = programDao
+                                            .getGroupsForMsgType(messageType
+                                                    .getAfosid());
+                                    if (staticMsgTypeGroups == null
+                                            || staticMsgTypeGroups.isEmpty()) {
+                                        continue;
+                                    }
+
+                                    /*
+                                     * prevent duplicates.
+                                     */
+                                    Set<TransmitterGroup> staticMsgTypeGroupsSet = new HashSet<>(
+                                            staticMsgTypeGroups);
+                                    for (TransmitterGroup staticMsgGroup : staticMsgTypeGroupsSet) {
+                                        Map<Language, TransmitterLanguage> langMap = data
+                                                .getTransmitterLanguages().get(
+                                                        staticMsgGroup
+                                                                .getName());
+                                        if (langMap == null) {
+                                            continue;
+                                        }
+
+                                        TransmitterLanguage tl = langMap
+                                                .get(messageType.getVoice()
+                                                        .getLanguage());
+                                        if (tl == null) {
+                                            continue;
+                                        }
+
+                                        TransmitterMessages tm = data
+                                                .getTransmitterMessages(
+                                                        staticMsgGroup
+                                                                .getName(),
+                                                        messageType.getVoice()
+                                                                .getLanguage());
+                                        // Do we even have any static text for
+                                        // this transmitter group?
+                                        if (tm == null) {
+                                            StringBuilder sb = new StringBuilder(
+                                                    "No time or station id messages exist for Transmitter Group ");
+                                            sb.append(staticMsgGroup.getName())
+                                                    .append(" and Language ");
+                                            sb.append(
+                                                    messageType.getVoice()
+                                                            .getLanguage()
+                                                            .name())
+                                                    .append(".");
+
+                                            statusHandler.info(sb.toString());
+                                            continue;
+                                        }
+                                        final String text = (messageType
+                                                .getDesignation() == Designation.TimeAnnouncement) ? tm
+                                                .getDefaultTimeMessage() : tm
+                                                .getStationIdMessage();
+                                        if (text == null || text.isEmpty()) {
+                                            continue;
+                                        }
+
+                                        StaticMessageType staticMsgType = new StaticMessageType();
+                                        staticMsgType
+                                                .setMsgTypeSummary(messageType
+                                                        .getSummary());
+                                        staticMsgType.setTextMsg1(text);
+                                        /*
+                                         * default the periodicity to the
+                                         * periodicity of the message type.
+                                         */
+                                        staticMsgType
+                                                .setPeriodicity(messageType
+                                                        .getPeriodicity());
+
+                                        tl.addStaticMessageType(staticMsgType);
+                                    }
+                                }
+
+                                TransmitterLanguageDao langDao = new TransmitterLanguageDao();
+                                List<TransmitterLanguage> tlList = data
+                                        .getAllTransmitterLanguages();
+                                langDao.persistAll(tlList);
+                                statusHandler.info("Saved " + tlList.size()
+                                        + " transmitter languages");
+                                langDao.loadAll();
 
                                 if (!file.renameTo(new File(file
                                         .getAbsolutePath() + ".processed"))) {

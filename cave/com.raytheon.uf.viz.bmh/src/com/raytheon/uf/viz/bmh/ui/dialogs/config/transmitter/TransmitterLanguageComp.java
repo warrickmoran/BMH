@@ -36,6 +36,7 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -71,6 +72,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 17, 2015 4082       bkowal      The contents of the languages table should determine
  *                                     whether the add button is disabled/enabled when it is
  *                                     not forcefully disabled.
+ * Mar 18, 2015 4213       bkowal      Keep track of the currently selected program.
  * 
  * </pre>
  * 
@@ -86,6 +88,8 @@ public class TransmitterLanguageComp {
     private final TransmitterLanguageDataManager tldm = new TransmitterLanguageDataManager();
 
     private final TransmitterGroup group;
+
+    private ProgramSummary selectedProgram;
 
     private final Shell shell;
 
@@ -306,7 +310,8 @@ public class TransmitterLanguageComp {
 
     private void handleAddAction() {
         CreateEditTransmitterLangDialog dialog = new CreateEditTransmitterLangDialog(
-                this.shell, this.unassignedLanguages, this.group);
+                this.shell, this.unassignedLanguages, this.group,
+                this.selectedProgram);
         dialog.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -347,7 +352,8 @@ public class TransmitterLanguageComp {
 
     private void handleEditAction() {
         CreateEditTransmitterLangDialog dialog = new CreateEditTransmitterLangDialog(
-                this.shell, this.getSelectedLanguage(), this.group);
+                this.shell, this.getSelectedLanguage(), this.group,
+                this.selectedProgram);
         dialog.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -462,5 +468,13 @@ public class TransmitterLanguageComp {
             unsavedLanguages.add(tl);
         }
         return unsavedLanguages;
+    }
+
+    /**
+     * @param selectedProgram
+     *            the selectedProgram to set
+     */
+    public void setSelectedProgram(ProgramSummary selectedProgram) {
+        this.selectedProgram = selectedProgram;
     }
 }

@@ -19,14 +19,23 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
+
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
@@ -54,6 +63,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 02, 2014 3746       rjpeter     Fix column definition for hibernate upgrade.
  * Jan 13, 2015 3809       bkowal      Fixed {@link #toString()}.
  * Feb 19, 2015 4142       bkowal      Added {@link #speechRate}.
+ * Mar 12, 2015 4213       bkowal      Added {@link #staticMessageTypes}.
  * </pre>
  * 
  * @author rjpeter
@@ -74,23 +84,6 @@ public class TransmitterLanguage {
     @DiffString
     private TransmitterLanguagePK id;
 
-    // Text: 1-40960 characters
-    @Column(nullable = false, columnDefinition = "text")
-    @DynamicSerializeElement
-    private String stationIdMsg;
-
-    /*
-     * Note: the time preamble and postamble are optional. Additional
-     * information about the time message, itself, is still required.
-     */
-    @Column(nullable = false, columnDefinition = "text")
-    @DynamicSerializeElement
-    private String timeMsgPreamble;
-
-    @Column(nullable = true, columnDefinition = "text")
-    @DynamicSerializeElement
-    private String timeMsgPostamble;
-
     @ManyToOne(optional = true)
     @DynamicSerializeElement
     private Dictionary dictionary;
@@ -103,6 +96,19 @@ public class TransmitterLanguage {
     @Column(nullable = false)
     @DynamicSerializeElement
     private int speechRate = 0;
+
+    @OneToMany(mappedBy = "id.transmitterLanguagePK", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @DynamicSerializeElement
+    @Fetch(FetchMode.SUBSELECT)
+    private List<StaticMessageType> staticMessageTypes;
+
+    public void addStaticMessageType(StaticMessageType staticMsgType) {
+        if (this.staticMessageTypes == null) {
+            this.staticMessageTypes = new ArrayList<>();
+        }
+        staticMsgType.setTransmitterLanguage(this);
+        this.staticMessageTypes.add(staticMsgType);
+    }
 
     /**
      * @return the id
@@ -164,37 +170,6 @@ public class TransmitterLanguage {
     }
 
     /**
-     * @return the stationIdMsg
-     */
-    public String getStationIdMsg() {
-        return stationIdMsg;
-    }
-
-    /**
-     * @param stationIdMsg
-     *            the stationIdMsg to set
-     */
-    public void setStationIdMsg(String stationIdMsg) {
-        this.stationIdMsg = stationIdMsg;
-    }
-
-    public String getTimeMsgPreamble() {
-        return timeMsgPreamble;
-    }
-
-    public void setTimeMsgPreamble(String timeMsgPreamble) {
-        this.timeMsgPreamble = timeMsgPreamble;
-    }
-
-    public String getTimeMsgPostamble() {
-        return timeMsgPostamble;
-    }
-
-    public void setTimeMsgPostamble(String timeMsgPostamble) {
-        this.timeMsgPostamble = timeMsgPostamble;
-    }
-
-    /**
      * 
      * @return the dictionary
      */
@@ -239,6 +214,28 @@ public class TransmitterLanguage {
         this.speechRate = speechRate;
     }
 
+    /**
+     * @return the staticMessageTypes
+     */
+    public List<StaticMessageType> getStaticMessageTypes() {
+        return staticMessageTypes;
+    }
+
+    /**
+     * @param staticMessageTypes
+     *            the staticMessageTypes to set
+     */
+    public void setStaticMessageTypes(List<StaticMessageType> staticMessageTypes) {
+        this.staticMessageTypes = staticMessageTypes;
+        if (this.staticMessageTypes == null
+                || this.staticMessageTypes.isEmpty()) {
+            return;
+        }
+        for (StaticMessageType stm : this.staticMessageTypes) {
+            stm.setTransmitterLanguage(this);
+        }
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -272,10 +269,7 @@ public class TransmitterLanguage {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("TransmitterLanguage[ id=").append(id)
-                .append(", stationIdMsg=").append(stationIdMsg)
-                .append(", timeMsgPreamble=").append(timeMsgPreamble)
-                .append(", timeMsgPostamble=").append(timeMsgPostamble);
+        sb.append("TransmitterLanguage[ id=").append(id);
         if (this.dictionary != null) {
             sb.append(", dictionary=").append(dictionary.getName());
         }

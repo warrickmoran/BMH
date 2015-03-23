@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 import java.util.Collections;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
@@ -40,6 +41,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * ------------ ---------- ----------- --------------------------
  * Jan 13, 2015 3809       bkowal      Initial creation
  * Jan 19, 2015 4011       bkowal      Added {@link #deleteLanguage(TransmitterLanguage)}.
+ * Mar 12, 2015 4213       bkowal      Added methods to save / update static message types.
  * 
  * </pre>
  * 
@@ -96,6 +98,28 @@ public class TransmitterLanguageDataManager {
         TransmitterLanguageRequest request = new TransmitterLanguageRequest();
         request.setAction(TransmitterLanguageRequestAction.DeleteTransmitterLanguage);
         request.setTransmitterLanguage(language);
+
+        BmhUtils.sendRequest(request);
+    }
+
+    public StaticMessageType saveStaticMessageType(
+            StaticMessageType staticMsgType) throws Exception {
+        TransmitterLanguageRequest request = new TransmitterLanguageRequest();
+        request.setAction(TransmitterLanguageRequestAction.SaveStaticMsgType);
+        request.setTransmitterLanguage(staticMsgType.getTransmitterLanguage());
+        request.setStaticMsgType(staticMsgType);
+
+        TransmitterLanguageResponse response = (TransmitterLanguageResponse) BmhUtils
+                .sendRequest(request);
+        return response.getStaticMsgType();
+    }
+
+    public void deleteStaticMessageType(StaticMessageType staticMsgType)
+            throws Exception {
+        TransmitterLanguageRequest request = new TransmitterLanguageRequest();
+        request.setAction(TransmitterLanguageRequestAction.DeleteStaticMsgType);
+        request.setTransmitterLanguage(staticMsgType.getTransmitterLanguage());
+        request.setStaticMsgType(staticMsgType);
 
         BmhUtils.sendRequest(request);
     }

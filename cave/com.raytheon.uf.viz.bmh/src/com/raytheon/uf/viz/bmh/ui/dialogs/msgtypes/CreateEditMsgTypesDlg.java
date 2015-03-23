@@ -45,6 +45,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.raytheon.uf.common.bmh.StaticMessageIdentifier;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
@@ -99,6 +100,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 04, 2015   4087     bkowal      Default to designation for new messages to Forecast.
  * Mar 11, 2015   4267     bkowal      Do not alter the local {@link AreaSelectionSaveData}
  *                                     if {@link AreaSelectionDlg} returns a {@code null} value.
+ * Mar 18, 2015   4213     bkowal      No longer allow users to create a message type with the
+ *                                     station id or time announcement designation.
  * 
  * </pre>
  * 
@@ -965,6 +968,13 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
     private void populateDesignationCombo() {
 
         for (Designation des : Designation.values()) {
+            /*
+             * exclude the static message type designations.
+             */
+            if (des == StaticMessageIdentifier.stationIdDesignation
+                    || des == StaticMessageIdentifier.timeDesignation) {
+                continue;
+            }
             designationCbo.add(des.name());
         }
 

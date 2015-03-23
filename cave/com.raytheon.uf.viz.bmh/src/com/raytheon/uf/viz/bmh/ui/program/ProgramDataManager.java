@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.program;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -53,6 +54,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Dec 02, 2014  3838      rferrel     Added getProgramGeneralSuite;
  * Dec 07, 2014  3846      mpduff      Added getProgramById.
  * Jan 07, 2015  3958      bkowal      Added {@link #getTransmittersForMsgType(MessageType)}.
+ * Mar 12, 2015  4213      bkowal      Added {@link #getStaticAfosIdsForProgram(ProgramSummary)}.
  * </pre>
  * 
  * @author lvenable
@@ -286,5 +288,34 @@ public class ProgramDataManager {
         pr.setMessageType(messageType);
 
         return ((ProgramResponse) BmhUtils.sendRequest(pr)).getTransmitters();
+    }
+
+    /**
+     * Retrieve the static {@link MessageType} afos id(s) associated with the
+     * specified {@link Program}.
+     * 
+     * @param program
+     *            the specified {@link Program}
+     * @return a {@link List} of the afos id(s) that were retrieved.
+     * @throws Exception
+     */
+    public List<String> getStaticAfosIdsForProgram(ProgramSummary program)
+            throws Exception {
+        ProgramRequest pr = new ProgramRequest();
+        pr.setAction(ProgramAction.GetStaticMsgTypesForProgram);
+        pr.setProgramId(program.getId());
+
+        ProgramResponse response = (ProgramResponse) BmhUtils.sendRequest(pr);
+        if (response.getMessageTypes() == null
+                || response.getMessageTypes().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> afosIds = new ArrayList<>(response.getMessageTypes()
+                .size());
+        for (MessageTypeSummary mts : response.getMessageTypes()) {
+            afosIds.add(mts.getAfosid());
+        }
+        return afosIds;
     }
 }

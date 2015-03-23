@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Jan 19, 2015  4011     bkowal      Added 
  *                                    {@link TransmitterLanguageRequestAction#DeleteTransmitterLanguage}.
+ * Mar 13, 2015  4213     bkowal      Added fields to support saving and deleting static message types.                                   
  * 
  * </pre>
  * 
@@ -50,7 +52,7 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
      * yet-to-be-implemented dialog
      */
     public enum TransmitterLanguageRequestAction {
-        GetTransmitterLanguagesForTransmitterGrp, UpdateTransmitterLanguage, DeleteTransmitterLanguage
+        GetTransmitterLanguagesForTransmitterGrp, UpdateTransmitterLanguage, DeleteTransmitterLanguage, SaveStaticMsgType, DeleteStaticMsgType
     }
 
     @DynamicSerializeElement
@@ -61,6 +63,9 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private TransmitterLanguage transmitterLanguage;
+    
+    @DynamicSerializeElement
+    private StaticMessageType staticMsgType;
 
     /**
      * 
@@ -111,5 +116,19 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
      */
     public void setTransmitterLanguage(TransmitterLanguage transmitterLanguage) {
         this.transmitterLanguage = transmitterLanguage;
+    }
+
+    /**
+     * @return the staticMsgType
+     */
+    public StaticMessageType getStaticMsgType() {
+        return staticMsgType;
+    }
+
+    /**
+     * @param staticMsgType the staticMsgType to set
+     */
+    public void setStaticMsgType(StaticMessageType staticMsgType) {
+        this.staticMsgType = staticMsgType;
     }
 }

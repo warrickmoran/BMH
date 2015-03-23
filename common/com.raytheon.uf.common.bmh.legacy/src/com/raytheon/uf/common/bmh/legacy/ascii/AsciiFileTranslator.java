@@ -85,6 +85,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Jan 22, 2015 3995       rjpeter     Removed importing of amplitudes.
  * Feb 09, 2015 4095       bsteffen    Remove Transmitter Name.
  * Mar 03, 2015 4175       bkowal      Cleanup.
+ * Mar 13, 2015 4213       bkowal      Create {@link TransmitterMessages}s.
  * 
  * </pre>
  * 
@@ -504,20 +505,24 @@ public class AsciiFileTranslator {
 
             String engStatIdMsg = parseTransmitterStationIdMsg(
                     Language.ENGLISH, reader);
+            boolean englishStaticMessage = false;
             String spaStatIdMsg = parseTransmitterStationIdMsg(
                     Language.SPANISH, reader);
+            boolean spanishStaticMessage = false;
 
             if (isTransmitter) {
                 TransmitterLanguage lang = parseTransmitterLanguage(
                         Language.ENGLISH, group, engDict, engStatIdMsg, reader);
                 if (lang != null) {
                     langs.add(lang);
+                    englishStaticMessage = true;
                 }
 
                 lang = parseTransmitterLanguage(Language.SPANISH, group,
                         spaDict, spaStatIdMsg, reader);
                 if (includeSpanish && (lang != null)) {
                     langs.add(lang);
+                    spanishStaticMessage = true;
                 }
             }
 
@@ -534,6 +539,16 @@ public class AsciiFileTranslator {
 
             String mnemonic = reader.nextField();
             group.setName(mnemonic);
+            if (englishStaticMessage) {
+                this.bmhData.addTransmitterMessages(new TransmitterMessages(
+                        group.getName(), Language.ENGLISH, engStatIdMsg,
+                        defaultTimeMsgs.get(Language.ENGLISH)));
+            }
+            if (spanishStaticMessage) {
+                this.bmhData.addTransmitterMessages(new TransmitterMessages(
+                        group.getName(), Language.SPANISH, spaStatIdMsg,
+                        defaultTimeMsgs.get(Language.SPANISH)));
+            }
             trans.setMnemonic(mnemonic);
             group.addTransmitter(trans);
             trans.setCallSign(reader.nextField());
@@ -563,7 +578,18 @@ public class AsciiFileTranslator {
         }
 
         bmhData.setTransmitters(map);
-        bmhData.setTransmitterLanguages(langs);
+        Map<String, Map<Language, TransmitterLanguage>> langMap = new HashMap<>(
+                langs.size(), 1.0f);
+        for (TransmitterLanguage lang : langs) {
+            final String transmitterGroupName = lang.getId()
+                    .getTransmitterGroup().getName();
+            if (langMap.get(transmitterGroupName) == null) {
+                langMap.put(transmitterGroupName,
+                        new HashMap<Language, TransmitterLanguage>());
+            }
+            langMap.get(transmitterGroupName).put(lang.getLanguage(), lang);
+        }
+        bmhData.setTransmitterLanguages(langMap);
     }
 
     /**
@@ -1417,9 +1443,6 @@ public class AsciiFileTranslator {
         if (stationMessage != null) {
             TransmitterLanguage transLang = new TransmitterLanguage();
             transLang.setLanguage(lang);
-            transLang.setTimeMsgPreamble(defaultTimeMsgs.get(lang));
-            // transLang.setDictionaryName(dict.getName());
-            transLang.setStationIdMsg(stationMessage);
 
             TtsVoice voice = getTtsVoice(lang, true,
                     reader.getCurrentLineNumber(), reader.getSourceFile());

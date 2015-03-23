@@ -117,4 +117,8 @@
   	<constructor-arg value="false" />
   </bean>
 
+  <bean id="practice_staticMessageTypeDao" class="com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao"
+    depends-on="bmhTxTemplate">
+    <constructor-arg value="false" />
+  </bean>
 </beans>

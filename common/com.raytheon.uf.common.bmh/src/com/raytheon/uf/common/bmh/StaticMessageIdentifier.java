@@ -32,6 +32,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 5, 2015  4085       bkowal      Initial creation
+ * Mar 13, 2015 4213       bkowal      Message types with a station id {@link Designation}
+ *                                     will also be considered static.
  * 
  * </pre>
  * 
@@ -41,7 +43,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 
 public class StaticMessageIdentifier {
 
-    public static final String staticStationIdAfosId = "STATIONID";
+    public static final Designation stationIdDesignation = Designation.StationID;
 
     public static final Designation timeDesignation = Designation.TimeAnnouncement;
 
@@ -57,7 +59,7 @@ public class StaticMessageIdentifier {
             throw new IllegalArgumentException(
                     "Required argument messageType cannot be NULL.");
         }
-        return staticStationIdAfosId.equals(messageType.getAfosid())
+        return messageType.getDesignation() == stationIdDesignation
                 || messageType.getDesignation() == timeDesignation;
     }
 }

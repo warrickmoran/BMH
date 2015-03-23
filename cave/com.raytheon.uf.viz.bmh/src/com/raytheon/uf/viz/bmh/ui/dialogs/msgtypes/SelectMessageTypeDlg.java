@@ -21,7 +21,9 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -60,6 +62,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 10, 2014  #3381     bkowal       Updated to allow for single or multiple selection. Updated
  *                                      to use the SWT #getData and #setData.
  * Nov 13, 2014  #3803     bkowal       Added optional filtering capability.
+ * Mar 12, 2015  #4213     bkowal       Slight refactoring to allow for extending.
  * 
  * </pre>
  * 
@@ -69,8 +72,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 public class SelectMessageTypeDlg extends CaveSWTDialog {
 
     /** Status handler for reporting errors. */
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(SelectMessageTypeDlg.class);
+    protected final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
 
     /** Message type table listing all available message types. */
     private MsgTypeTable msgTypeTable;
@@ -86,7 +89,7 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
      * utilize this dialog will not have to check for duplicates in the message
      * type(s) that are returned by the dialog.
      */
-    private List<String> filteredMessageTypes;
+    private Set<String> filteredMessageTypes;
 
     /**
      * OK button.
@@ -111,7 +114,7 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         /*
          * Initialize to empty to eliminate the need for NULL checks.
          */
-        this.filteredMessageTypes = Collections.emptyList();
+        this.filteredMessageTypes = Collections.emptySet();
     }
 
     @Override
@@ -136,16 +139,12 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         createOkCancelButtons();
 
         populateMsgTypeTable();
-
-        if (msgTypeTable.getItemCount() > 0) {
-            okBtn.setEnabled(true);
-        }
     }
 
     /**
      * Create message types table.
      */
-    private void createMessageTypesTable() {
+    protected void createMessageTypesTable() {
 
         Label selectLbl = new Label(shell, SWT.NONE);
         selectLbl.setText("Select Message Type:");
@@ -167,7 +166,7 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
     /**
      * Create OK & Cancel buttons.
      */
-    private void createOkCancelButtons() {
+    protected void createOkCancelButtons() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(new GridLayout(2, true));
         buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
@@ -240,8 +239,7 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
     /**
      * Populate the message type table.
      */
-    private void populateMsgTypeTable() {
-
+    protected void populateMsgTypeTable() {
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
         TableColumnData tcd = new TableColumnData("Message Type", 150);
         columnNames.add(tcd);
@@ -251,18 +249,39 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         msgTypeTableData = new TableData(columnNames);
         populateMsgTypeTableData();
         msgTypeTable.populateTable(msgTypeTableData);
+        
+        okBtn.setEnabled(msgTypeTable.getItemCount() > 0);
+        if (msgTypeTable.getItemCount() > 0) {
+            this.msgTypeTable.select(0);
+        }
+    }
+
+    protected void replaceMsgTypeTableDataRows(List<TableRowData> rows) {
+        this.msgTypeTableData.deleteAllRows();
+
+        for (TableRowData trd : rows) {
+            final String afosid = (String) trd.getData();
+            if (this.filteredMessageTypes.contains(afosid)) {
+                continue;
+            }
+            
+            this.msgTypeTableData.addDataRow(trd);
+        }
+        this.msgTypeTable.populateTable(this.msgTypeTableData);
+        
+        okBtn.setEnabled(msgTypeTable.getItemCount() > 0);
+        if (msgTypeTable.getItemCount() > 0) {
+            this.msgTypeTable.select(0);
+        }
     }
 
     /**
      * Populate the message type table data.
      */
     private void populateMsgTypeTableData() {
-        MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
-
         List<MessageType> messageTypeList = null;
         try {
-            messageTypeList = msgTypeDataMgr
-                    .getMsgTypesAfosIdTitle(new MsgTypeAfosComparator());
+            messageTypeList = this.retrieveMessageTypes();
         } catch (Exception e) {
             statusHandler
                     .error("Error retrieving message type data from the database: ",
@@ -285,11 +304,28 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         }
     }
 
+    protected List<MessageType> retrieveMessageTypes() throws Exception {
+        MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
+
+        return msgTypeDataMgr
+                .getMsgTypesAfosIdTitle(new MsgTypeAfosComparator());
+    }
+
     /**
      * @param filteredMessageTypes
      *            the filteredMessageTypes to set
      */
     public void setFilteredMessageTypes(List<String> filteredMessageTypes) {
+        if (filteredMessageTypes == null || filteredMessageTypes.isEmpty()) {
+            return;
+        }
+        this.filteredMessageTypes = new HashSet<>(filteredMessageTypes);
+    }
+
+    public void setFilteredMessageTypes(Set<String> filteredMessageTypes) {
+        if (filteredMessageTypes == null || filteredMessageTypes.isEmpty()) {
+            return;
+        }
         this.filteredMessageTypes = filteredMessageTypes;
     }
 }

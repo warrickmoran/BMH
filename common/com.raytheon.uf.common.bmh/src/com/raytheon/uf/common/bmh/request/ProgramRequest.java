@@ -47,6 +47,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 07, 2014  3846     mpduff      Added id and GetProgramById
  * Jan 07, 2015  3958     bkowal      Added {@link ProgramAction#GetTransmittersForMsgType} and
  *                                    {@link #messageType}.
+ * Mar 13, 2015  4213     bkowal      Added {@link ProgramAction#GetStaticMsgTypesForProgram}.
  * </pre>
  * 
  * @author lvenable
@@ -62,7 +63,7 @@ public class ProgramRequest extends AbstractBMHServerRequest {
 
         GetProgramsWithTrigger, AddGroup, SuitePrograms, SuiteEnabledGroups, ProgramGeneralSuite, GetProgramById,
 
-        GetTransmittersForMsgType;
+        GetTransmittersForMsgType, GetStaticMsgTypesForProgram;
     }
 
     @DynamicSerializeElement

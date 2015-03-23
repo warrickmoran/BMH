@@ -23,12 +23,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.xml.bind.JAXBElement;
@@ -44,12 +41,14 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.BMHTimeZone;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
+import com.raytheon.uf.common.bmh.notify.config.StaticMsgTypeConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
@@ -63,6 +62,7 @@ import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
+import com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
@@ -103,6 +103,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     whether or not a static message needs to be
  *                                     regenerated.
  * Mar 05, 2015 4222       bkowal      Use null for messages that never expire.
+ * Mar 13, 2015 4213       bkowal      Support {@link StaticMessageType}s.
  * 
  * </pre>
  * 
@@ -131,7 +132,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
     private InputMessageDao inputMessageDao;
 
-    private Map<Integer, MessageType> staticMessageTypesMap;
+    private StaticMessageTypeDao staticMessageTypeDao;
 
     private Object configurationLock = new Object();
 
@@ -146,80 +147,13 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         this.operational = operational;
     }
 
-    public void initializeInternal() {
-        this.staticMessageTypesMap = new HashMap<>();
-
-        MessageType mt = this
-                .retrieveMsgTypes(StaticMessageIdentifierUtil.staticStationIdAfosId);
-        if (mt != null) {
-            this.staticMessageTypesMap.put(mt.getId(), mt);
-        }
-        List<MessageType> messageTypes = this
-                .retrieveMsgTypesForDesignation(StaticMessageIdentifierUtil.timeDesignation);
-        for (MessageType msgType : messageTypes) {
-            this.staticMessageTypesMap.put(msgType.getId(), msgType);
-        }
-    }
-
-    /**
-     * Retrieves the {@link MessageType} associated with the specified afos id.
-     * 
-     * @param afosId
-     *            the specified afos id.
-     * @return the {@link MessageType} that was retrieved or {@code null} if one
-     *         was not found.
-     */
-    private MessageType retrieveMsgTypes(final String afosId) {
-        statusHandler.info("Retrieving the  Message Type with static afos id "
-                + afosId + "...");
-        MessageType mt = this.messageTypeDao.getByAfosId(afosId);
-        if (mt != null) {
-            statusHandler.info("Successfully retrieved " + mt.toString()
-                    + " for static afosId " + afosId + ".");
-        } else {
-            statusHandler
-                    .info("Unable to find a message type for static afosId "
-                            + afosId + ".");
-        }
-
-        return mt;
-    }
-
-    /**
-     * Retrieves the {@link MessageType}(s) associated with the specified
-     * {@link Designation}.
-     * 
-     * @param designation
-     *            the specified {@link Designation}.
-     * @return a {@link List} of {@link MessageType}(s) that were retrieved.
-     */
-    private List<MessageType> retrieveMsgTypesForDesignation(
-            final Designation designation) {
-        statusHandler.info("Retrieving the Message Type(s) with designation "
-                + designation.name() + " ...");
-        List<MessageType> messageTypes = this.messageTypeDao
-                .getMessageTypeForDesignation(designation);
-        if (messageTypes == null || messageTypes.isEmpty()) {
-            statusHandler.info("Unable to find any message type(s) for the "
-                    + designation.name() + " designation.");
-            return Collections.emptyList();
-        }
-
-        statusHandler.info("Successfully retrieved " + messageTypes.size()
-                + " message type(s) for the " + designation + " designation.");
-        return messageTypes;
-    }
-
     public List<ValidatedMessage> process(Object notificationObject) {
         if (notificationObject instanceof MessageTypeConfigNotification) {
             MessageTypeConfigNotification notification = (MessageTypeConfigNotification) notificationObject;
             statusHandler.info("Processing "
                     + MessageTypeConfigNotification.class + " for id: "
                     + notification.getId());
-            MessageType updatedMsgType = this.refreshMessageTypes(notification);
-            if (updatedMsgType == null) {
-                return Collections.emptyList();
-            }
+            MessageType updatedMsgType = null;
             return this.generateStaticMessages(updatedMsgType);
         } else if (notificationObject instanceof TransmitterLanguageConfigNotification) {
             TransmitterLanguageConfigNotification notification = (TransmitterLanguageConfigNotification) notificationObject;
@@ -229,9 +163,10 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             if (notification.getType() == ConfigChangeType.Delete) {
                 synchronized (this.configurationLock) {
                     try {
-                        this.purgeTransmitterLanguageStaticMsgs(
+                        this.deactivateTransmitterLanguageStaticMsgs(
                                 notification.getTransmitterGroup(),
-                                notification.getKey().getLanguage());
+                                notification.getKey().getLanguage(),
+                                notification.getStaticAfosIds());
                     } catch (Exception e) {
                         StringBuilder sb = new StringBuilder(
                                 "Failed to purge the static message(s) for the deleted Language: ");
@@ -280,7 +215,6 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             }
             return generatedMsgs;
         } else if (notificationObject instanceof ResetNotification) {
-            initializeInternal();
             List<ValidatedMessage> generatedMsgs = new ArrayList<>();
             for (TransmitterGroup group : this.transmitterGroupDao
                     .getEnabledTransmitterGroups()) {
@@ -292,7 +226,67 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 generatedMsgs.addAll(msgs);
             }
             return generatedMsgs;
+        } else if (notificationObject instanceof StaticMsgTypeConfigNotification) {
+            StaticMsgTypeConfigNotification notification = (StaticMsgTypeConfigNotification) notificationObject;
 
+            if (notification.getType() == ConfigChangeType.Delete) {
+                Set<String> staticAfosIds = new HashSet<>(1, 1.0f);
+                staticAfosIds.add(notification.getAfosId());
+
+                try {
+                    this.deactivateTransmitterLanguageStaticMsgs(
+                            notification.getTransmitterGroup(),
+                            notification.getLanguage(), staticAfosIds);
+                } catch (Exception e) {
+                    StringBuilder sb = new StringBuilder(
+                            "Failed to deactive the static message for:  ");
+                    sb.append(notification.toString()).append(".");
+
+                    statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
+                            sb.toString(), e);
+                }
+            } else if (notification.getType() == ConfigChangeType.Update) {
+                final TransmitterGroup group = notification
+                        .getTransmitterGroup();
+                final Set<TransmitterGroup> groupSet = new HashSet<TransmitterGroup>(
+                        1);
+                groupSet.add(group);
+
+                /*
+                 * Retrieve the associated static message type.
+                 */
+                StaticMessageType staticMsgType = this.staticMessageTypeDao
+                        .getStaticForMsgTypeAndTransmittergroup(
+                                notification.getAfosId(), group);
+                if (staticMsgType == null) {
+                    StringBuilder sb = new StringBuilder(
+                            "Unable to find a Static Message Type for Transmitter Group ");
+                    sb.append(group.getName()).append(" and Message Type ")
+                            .append(notification.getAfosId())
+                            .append(" for notification: ");
+                    sb.append(notification.toString()).append(".");
+
+                    statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
+                            sb.toString());
+
+                    return Collections.emptyList();
+                }
+
+                /*
+                 * Generate a validated message (if applicable).
+                 */
+                ValidatedMessage msg = this.generateStaticMessage(
+                        staticMsgType.getTransmitterLanguage(), group,
+                        staticMsgType, groupSet);
+                if (msg == null) {
+                    return Collections.emptyList();
+                }
+                
+                List<ValidatedMessage> messageList = new ArrayList<>(1);
+                messageList.add(msg);
+                
+                return messageList;
+            }
         }
 
         /*
@@ -301,18 +295,22 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         return null;
     }
 
-    private void purgeTransmitterLanguageStaticMsgs(
-            TransmitterGroup transmitterGroup, Language language)
-            throws Exception {
+    private void deactivateTransmitterLanguageStaticMsgs(
+            TransmitterGroup transmitterGroup, Language language,
+            Set<String> staticAfosIds) throws Exception {
+        if (staticAfosIds.isEmpty()) {
+            return;
+        }
+
         List<InputMessage> disabledStaticMessages = new ArrayList<>();
-        for (MessageType mt : this.staticMessageTypesMap.values()) {
+        for (String afosId : staticAfosIds) {
             /**
              * Iterate through all static {@link MessageType}s and retrieve any
              * {@link BroadcastMsg}s associated with the
              * {@link TransmitterGroup} and {@link Language}.
              */
             BroadcastMsg msg = this.broadcastMsgDao.getMessageExistence(
-                    transmitterGroup, mt.getAfosid(), language);
+                    transmitterGroup, afosId, language);
             if (msg == null) {
                 continue;
             }
@@ -359,40 +357,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
     public boolean checkSkipMessage(Object notificationObject) {
         return (notificationObject instanceof MessageTypeConfigNotification
                 || notificationObject instanceof TransmitterLanguageConfigNotification
-                || notificationObject instanceof TransmitterGroupConfigNotification || notificationObject instanceof ResetNotification) == false;
-    }
-
-    private MessageType refreshMessageTypes(
-            MessageTypeConfigNotification notification) {
-        synchronized (this.configurationLock) {
-            int id = notification.getId();
-
-            /*
-             * is it a message type that we are interested in? No reason to
-             * verify that the map actually contains the item that is being
-             * removed (outright or replaced) because it will just be discarded
-             * anyway.
-             */
-            this.staticMessageTypesMap.remove(id);
-
-            if (notification.getType() == ConfigChangeType.Update) {
-                /*
-                 * is it a message type that we are interested in?
-                 */
-                // first, retrieve the current message type from the db.
-                MessageType messageType = this.messageTypeDao.getByID(id);
-                if (StaticMessageIdentifierUtil.isStaticMsgType(messageType)) {
-                    /*
-                     * Either a new or updated static message type.
-                     */
-                    this.staticMessageTypesMap.put(id, messageType);
-                    return messageType;
-                }
-
-            }
-
-            return null;
-        }
+                || notificationObject instanceof TransmitterGroupConfigNotification
+                || notificationObject instanceof ResetNotification || notificationObject instanceof StaticMsgTypeConfigNotification) == false;
     }
 
     private List<ValidatedMessage> generateStaticMessages(MessageType type) {
@@ -423,7 +389,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                         .getLanguagesForTransmitterGroup(group);
 
                 List<ValidatedMessage> msgs = this.generateStaticMessages(
-                        group, languages, types);
+                        group, languages);
                 if (msgs.isEmpty() == false) {
                     generatedMessages.addAll(msgs);
                 }
@@ -448,8 +414,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         languages.add(language);
 
         synchronized (this.configurationLock) {
-            return this.generateStaticMessages(group, languages,
-                    this.staticMessageTypesMap.values());
+            return this.generateStaticMessages(group, languages);
         }
     }
 
@@ -475,25 +440,17 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 .getLanguagesForTransmitterGroup(group);
 
         synchronized (this.configurationLock) {
-            return this.generateStaticMessages(group, languages,
-                    this.staticMessageTypesMap.values());
+            return this.generateStaticMessages(group, languages);
         }
     }
 
     private List<ValidatedMessage> generateStaticMessages(
-            TransmitterGroup group, List<TransmitterLanguage> languages,
-            Collection<MessageType> types) {
+            TransmitterGroup group, List<TransmitterLanguage> languages) {
         if (languages == null || languages.isEmpty()) {
             statusHandler
                     .info("Skipping message generation for transmitter group "
                             + group.getId()
                             + ". No associated transmitter languages were found.");
-            return Collections.emptyList();
-        }
-
-        if (types.isEmpty()) {
-            statusHandler
-                    .info("Skipping message generation. No static message types have been defined.");
             return Collections.emptyList();
         }
 
@@ -504,47 +461,19 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
         for (TransmitterLanguage language : languages) {
             /*
+             * Have static message types been defined.
+             */
+            if (language.getStaticMessageTypes().isEmpty()) {
+                continue;
+            }
+
+            /*
              * Create the static message when necessary.
              */
-            for (MessageType messageType : types) {
-                String text = StaticMessageIdentifierUtil.getText(messageType,
-                        language);
-                /*
-                 * Do time message fragments need to be generated?
-                 * 
-                 * Another special case for static messages.
-                 */
-                if (messageType.getDesignation() == Designation.TimeAnnouncement) {
-                    try {
-                        BMHTimeZone tz = BMHTimeZone.getTimeZoneByID(group
-                                .getTimeZone());
-                        if (tz == null) {
-                            statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
-                                    "Failed to find the BMHTimeZone associated with identifier: "
-                                            + group.getTimeZone());
-
-                            continue;
-                        }
-
-                        String timezoneDaylight = tz.getShortDisplayName(true);
-                        String timezoneNoDaylight = tz
-                                .getShortDisplayName(false);
-                        if (timezoneDaylight.equals(timezoneNoDaylight)) {
-                            timezoneNoDaylight = null;
-                        }
-
-                        this.tmGenerator.process(language.getVoice(),
-                                timezoneDaylight, timezoneNoDaylight);
-                    } catch (StaticGenerationException e) {
-                        statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
-                                "Failed to generate the static time message fragments for voice "
-                                        + language.getVoice().getVoiceNumber()
-                                        + "!", e);
-                        continue;
-                    }
-                }
-                ValidatedMessage msg = this.generateStaticMessage(group,
-                        language, messageType, text, groupSet);
+            for (StaticMessageType staticMsgType : language
+                    .getStaticMessageTypes()) {
+                ValidatedMessage msg = this.generateStaticMessage(language,
+                        group, staticMsgType, groupSet);
                 if (msg != null) {
                     generatedMessages.add(msg);
                 }
@@ -554,13 +483,52 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         return generatedMessages;
     }
 
+    private ValidatedMessage generateStaticMessage(
+            TransmitterLanguage language, TransmitterGroup group,
+            StaticMessageType staticMsgType, Set<TransmitterGroup> groupSet) {
+        String text = StaticMessageIdentifierUtil.getText(staticMsgType);
+
+        if (staticMsgType.getMsgTypeSummary().getDesignation() == Designation.TimeAnnouncement) {
+            try {
+                BMHTimeZone tz = BMHTimeZone.getTimeZoneByID(group
+                        .getTimeZone());
+                if (tz == null) {
+                    statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
+                            "Failed to find the BMHTimeZone associated with identifier: "
+                                    + group.getTimeZone());
+
+                    return null;
+                }
+
+                String timezoneDaylight = tz.getShortDisplayName(true);
+                String timezoneNoDaylight = tz.getShortDisplayName(false);
+                if (timezoneDaylight.equals(timezoneNoDaylight)) {
+                    timezoneNoDaylight = null;
+                }
+
+                this.tmGenerator.process(language.getVoice(), timezoneDaylight,
+                        timezoneNoDaylight);
+            } catch (StaticGenerationException e) {
+                statusHandler
+                        .error(BMH_CATEGORY.STATIC_MSG_ERROR,
+                                "Failed to generate the static time message fragments for voice "
+                                        + language.getVoice().getVoiceNumber()
+                                        + "!", e);
+                return null;
+            }
+        }
+
+        return this.generateStaticMessage(group, language, staticMsgType, text,
+                groupSet);
+    }
+
     private ValidatedMessage generateStaticMessage(TransmitterGroup group,
-            TransmitterLanguage language, MessageType messageType,
+            TransmitterLanguage language, StaticMessageType staticMsgType,
             final String text, final Set<TransmitterGroup> groupSet) {
         if (text == null || text.trim().isEmpty()) {
             StringBuilder logMsg = new StringBuilder(
                     "Skipping message generation for message type ");
-            logMsg.append(messageType.getAfosid());
+            logMsg.append(staticMsgType.getMsgTypeSummary().getAfosid());
             logMsg.append(" associated with transmitter group ");
             logMsg.append(group.getId());
             logMsg.append(" and language ");
@@ -573,7 +541,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
         /* determine if the static message needs to be created. */
         BroadcastMsg existingMsg = this.broadcastMsgDao.getMessageExistence(
-                group, messageType.getAfosid(), language.getLanguage());
+                group, staticMsgType.getMsgTypeSummary().getAfosid(),
+                language.getLanguage());
         /*
          * Does an associated broadcast message exist. And, if one does exist,
          * is it complete?
@@ -649,7 +618,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             /*
              * an associated broadcast message does not exist or is incomplete.
              */
-            return this.create(language, messageType, text, groupSet);
+            return this.create(language, staticMsgType, text, groupSet);
         }
 
         /*
@@ -658,7 +627,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
          * update to the message will need to be generated.
          */
         // compare the message text, periodicity, and voice.
-        final String mtPeriodicity = messageType.getPeriodicity();
+        final String mtPeriodicity = staticMsgType.getPeriodicity();
         final String msgPeriodicity = existingMsg.getInputMessage()
                 .getPeriodicity();
         boolean equivalentPeriodicity = (mtPeriodicity == null && msgPeriodicity == null)
@@ -670,7 +639,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
              * The message text has been altered. New audio will need to be
              * generated.
              */
-            return this.create(language, messageType, text, groupSet);
+            return this.create(language, staticMsgType, text, groupSet);
         }
 
         /*
@@ -681,7 +650,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 "Found existing static message for transmitter group ");
         logMsg.append(group.getId());
         logMsg.append(" with afos id ");
-        logMsg.append(messageType.getAfosid());
+        logMsg.append(staticMsgType.getMsgTypeSummary().getAfosid());
         logMsg.append(" and language ");
         logMsg.append(language.getLanguage().toString());
         logMsg.append(".");
@@ -690,7 +659,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
     }
 
     private ValidatedMessage create(TransmitterLanguage language,
-            MessageType messageType, final String text,
+            StaticMessageType staticMsgType, final String text,
             final Set<TransmitterGroup> groupSet) {
         Calendar now = TimeUtil.newCalendar();
 
@@ -704,7 +673,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         final String destinationName = groupSet.iterator().next().getName();
 
         String inputMsgName = "StaticMsg-" + destinationName + "-"
-                + messageType.getAfosid();
+                + staticMsgType.getMsgTypeSummary().getAfosid();
         // TODO: use annotation scanning to get the max field length
         if (inputMsgName.length() > 40) {
             inputMsgName = inputMsgName.substring(0, 39);
@@ -712,10 +681,10 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         inputMsg.setName(inputMsgName);
 
         inputMsg.setLanguage(language.getLanguage());
-        inputMsg.setAfosid(messageType.getAfosid());
+        inputMsg.setAfosid(staticMsgType.getMsgTypeSummary().getAfosid());
         inputMsg.setCreationTime(now);
         inputMsg.setEffectiveTime(now);
-        inputMsg.setPeriodicity(messageType.getPeriodicity());
+        inputMsg.setPeriodicity(staticMsgType.getPeriodicity());
         inputMsg.setInterrupt(false);
         inputMsg.setAlertTone(false);
         inputMsg.setNwrsameTone(false);
@@ -815,6 +784,22 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         this.inputMessageDao = inputMessageDao;
     }
 
+    /**
+     * @return the staticMessageTypeDao
+     */
+    public StaticMessageTypeDao getStaticMessageTypeDao() {
+        return staticMessageTypeDao;
+    }
+
+    /**
+     * @param staticMessageTypeDao
+     *            the staticMessageTypeDao to set
+     */
+    public void setStaticMessageTypeDao(
+            StaticMessageTypeDao staticMessageTypeDao) {
+        this.staticMessageTypeDao = staticMessageTypeDao;
+    }
+
     private void validateDaos() throws IllegalStateException {
         if (this.messageTypeDao == null) {
             throw new IllegalStateException(
@@ -831,13 +816,14 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         } else if (this.inputMessageDao == null) {
             throw new IllegalStateException(
                     "InputMessageDao has not been set on the StaticMessageGenerator");
+        } else if (this.staticMessageTypeDao == null) {
+            throw new IllegalStateException(
+                    "StaticMessageTypeDao has not been set on the StaticMessageGenerator");
         }
     }
 
     private void initialize() {
         this.validateDaos();
-
-        this.initializeInternal();
 
         try {
             this.tmGenerator.initialize();

@@ -25,8 +25,8 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.StaticMessageIdentifier;
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 
 /**
@@ -44,6 +44,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * Nov 13, 2014 3717       bsteffen    Simplify isStaticMsgType
  * Feb 10, 2015 4085       bkowal      Refactor into common
  *                                     {@link StaticMessageIdentifier}.
+ * Mar 13, 2015 4213       bkowal      Recognize {@link StaticMessageType}s.
  * 
  * </pre>
  * 
@@ -65,11 +66,13 @@ public class StaticMessageIdentifierUtil extends StaticMessageIdentifier {
     protected StaticMessageIdentifierUtil() {
     }
 
-    public static String getText(MessageType mt, TransmitterLanguage tl) {
-        if (mt.getDesignation() == Designation.StationID) {
-            return tl.getStationIdMsg();
-        } else if (mt.getDesignation() == Designation.TimeAnnouncement) {
-            List<TimeTextFragment> timeMsgFragments = getTimeMsgFragments(tl);
+    public static String getText(StaticMessageType staticMsgType) {
+        final Designation mtDesignation = staticMsgType.getMsgTypeSummary()
+                .getDesignation();
+        if (mtDesignation == Designation.StationID) {
+            return staticMsgType.getTextMsg1();
+        } else if (mtDesignation == Designation.TimeAnnouncement) {
+            List<TimeTextFragment> timeMsgFragments = getTimeMsgFragments(staticMsgType);
             StringBuilder timeMsgFullText = new StringBuilder();
             boolean first = true;
             for (TimeTextFragment timeMsgFragment : timeMsgFragments) {
@@ -98,18 +101,18 @@ public class StaticMessageIdentifierUtil extends StaticMessageIdentifier {
      * @return a list of the message fragments that the time msg is composed of
      */
     public static List<TimeTextFragment> getTimeMsgFragments(
-            TransmitterLanguage tl) {
+            StaticMessageType staticMsgType) {
         List<TimeTextFragment> timeMsgFragments = new LinkedList<>();
-        if (tl.getTimeMsgPreamble() != null
-                && tl.getTimeMsgPreamble().trim().isEmpty() == false) {
-            timeMsgFragments.add(new TimeTextFragment(tl.getTimeMsgPreamble()
-                    .trim()));
+        String textMsg1 = staticMsgType.getTextMsg1();
+        textMsg1 = (textMsg1 == null) ? null : textMsg1.trim();
+        if (textMsg1 != null && textMsg1.isEmpty() == false) {
+            timeMsgFragments.add(new TimeTextFragment(textMsg1));
         }
         timeMsgFragments.add(TimeTextFragment.constructPlaceHolderFragment());
-        if (tl.getTimeMsgPostamble() != null
-                && tl.getTimeMsgPostamble().isEmpty() == false) {
-            timeMsgFragments.add(new TimeTextFragment(tl.getTimeMsgPostamble()
-                    .trim()));
+        String textMsg2 = staticMsgType.getTextMsg2();
+        textMsg2 = (textMsg2 == null) ? null : textMsg2.trim();
+        if (textMsg2 != null && textMsg2.isEmpty() == false) {
+            timeMsgFragments.add(new TimeTextFragment(textMsg2));
         }
 
         /*

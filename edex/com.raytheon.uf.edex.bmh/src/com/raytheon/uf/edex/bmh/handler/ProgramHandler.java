@@ -59,6 +59,7 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * Dec 01, 2014  3838     rferrel     Added getProgramGeneralSuite.
  * Dec 07, 2014  3846     mpduff      Added getProgramById
  * Jan 07, 2015  3958     bkowal      Added {@link #getTransmittersForMsgType(ProgramRequest)}.
+ * Mar 13, 2015  4213     bkowal      Added {@link #getStaticMessageTypesForProgram(ProgramRequest)}.
  * 
  * </pre>
  * 
@@ -116,6 +117,8 @@ public class ProgramHandler extends
             return getProgramById(request);
         case GetTransmittersForMsgType:
             return this.getTransmittersForMsgType(request);
+        case GetStaticMsgTypesForProgram:
+            return this.getStaticMessageTypesForProgram(request);
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -325,6 +328,16 @@ public class ProgramHandler extends
         ProgramResponse response = new ProgramResponse();
         response.setTransmitters(dao.getTransmittersForMsgType(request
                 .getMessageType()));
+
+        return response;
+    }
+
+    private ProgramResponse getStaticMessageTypesForProgram(
+            ProgramRequest request) {
+        ProgramDao dao = new ProgramDao(request.isOperational());
+        ProgramResponse response = new ProgramResponse();
+        response.setMessageTypes(dao.getStaticMsgTypesForProgram(request
+                .getProgramId()));
 
         return response;
     }

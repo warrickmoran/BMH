@@ -10,6 +10,7 @@
 		<property name="transmitterLanguageDao" ref="transmitterLanguageDao" />
 		<property name="ldadConfigDao" ref="ldadConfigDao" />
 		<property name="dictionaryDao" ref="dictionaryDao" />
+		<property name="staticMessageTypeDao" ref="staticMessageTypeDao" />
 	</bean>
 	
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">

@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.bmh.legacy.ascii;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
@@ -48,6 +51,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * Jul 17, 2014 3175       rjpeter     Initial creation
  * Aug 19, 2014 3411       mpduff      Handle {@link MessageTypeReplacement}
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
+ * Mar 13, 2015 4213       bkowal      Store {@link TransmitterLanguage}s mapped to
+ *                                     a {@link TransmitterGroup} and {@link Language}.
  * </pre>
  * 
  * @author rjpeter
@@ -58,7 +63,11 @@ public class BmhData {
 
     private Map<String, TransmitterGroup> transmitters;
 
-    private List<TransmitterLanguage> transmitterLanguages;
+    private Map<String, Map<Language, TransmitterLanguage>> transmitterLanguages;
+
+    private final Map<String, TransmitterMessages> englishTransmitterMessages = new HashMap<>();
+
+    private final Map<String, TransmitterMessages> spanishTransmitterMessages = new HashMap<>();
 
     private Map<String, Area> areas;
 
@@ -88,13 +97,62 @@ public class BmhData {
         this.transmitters = transmitters;
     }
 
-    public List<TransmitterLanguage> getTransmitterLanguages() {
+    /**
+     * @return the transmitterLanguages
+     */
+    public Map<String, Map<Language, TransmitterLanguage>> getTransmitterLanguages() {
         return transmitterLanguages;
     }
 
+    /**
+     * @param transmitterLanguages
+     *            the transmitterLanguages to set
+     */
     public void setTransmitterLanguages(
-            List<TransmitterLanguage> transmitterLanguages) {
+            Map<String, Map<Language, TransmitterLanguage>> transmitterLanguages) {
         this.transmitterLanguages = transmitterLanguages;
+    }
+
+    public List<TransmitterLanguage> getAllTransmitterLanguages() {
+        if (this.transmitterLanguages == null
+                || this.transmitterLanguages.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<TransmitterLanguage> languages = new ArrayList<>();
+        for (Map<Language, TransmitterLanguage> tlMap : this.transmitterLanguages
+                .values()) {
+            languages.addAll(tlMap.values());
+        }
+        return languages;
+    }
+
+    public void addTransmitterMessages(
+            final TransmitterMessages transmitterMessages) {
+        switch (transmitterMessages.getLanguage()) {
+        case ENGLISH:
+            this.englishTransmitterMessages.put(
+                    transmitterMessages.getTransmitterGroupName(),
+                    transmitterMessages);
+            break;
+        case SPANISH:
+            this.spanishTransmitterMessages.put(
+                    transmitterMessages.getTransmitterGroupName(),
+                    transmitterMessages);
+            break;
+        }
+    }
+
+    public TransmitterMessages getTransmitterMessages(
+            final String transmitterGroup, final Language language) {
+        switch (language) {
+        case ENGLISH:
+            return this.englishTransmitterMessages.get(transmitterGroup);
+        case SPANISH:
+            return this.spanishTransmitterMessages.get(transmitterGroup);
+        default:
+            return null;
+        }
     }
 
     public Map<String, Area> getAreas() {
