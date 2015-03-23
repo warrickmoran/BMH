@@ -79,6 +79,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Feb 19, 2015  4143     bsteffen    Initial creation
+ * Mar 23, 2015  4309     rferrel     Alert Tone now set to false when submitting the message.
  * 
  * </pre>
  * 
@@ -348,7 +349,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         inputMessage.setCreationTime(TimeUtil.newGmtCalendar());
         inputMessage.setEffectiveTime(TimeUtil.newGmtCalendar());
         inputMessage.setInterrupt(true);
-        inputMessage.setAlertTone(true);
+        inputMessage.setAlertTone(false);
         StringBuilder transmittersBuilder = new StringBuilder();
         for (Transmitter transmitter : selection.getTransmitters()) {
             if (transmittersBuilder.length() > 0) {
@@ -392,7 +393,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
             mType = new MessageType();
             mType.setAfosid(afosid);
             mType.setTitle("Demo message for " + transmitterGroup.getName());
-            mType.setAlert(true);
+            mType.setAlert(false);
             mType.setConfirm(false);
             mType.setInterrupt(true);
             mType.setDesignation(Designation.Other);
