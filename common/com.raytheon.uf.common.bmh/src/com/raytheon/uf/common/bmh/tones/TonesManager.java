@@ -51,6 +51,9 @@ import com.raytheon.uf.common.bmh.tones.data.Tone;
  *                                     supports encoding an arbitrary byte string.
  * Aug 17, 2014 3655       bkowal      Move tones to common.
  * Mar 04, 2015 4224       bkowal      Pad generated SAME tones.
+ * Mar 23, 2015 4299       bkowal      Add the premable and the specified amount of
+ *                                     padding to all generated tones. 
+ *                                     Use {@link FskTonesEncoder}.
  * 
  * </pre>
  * 
@@ -64,8 +67,12 @@ public class TonesManager {
      * may drop the end bytes unless we add extra padding that it can drop
      * instead.
      */
-    private static final byte[] ZERO_PADDING = new byte[] { (byte) 0, (byte) 0,
-            (byte) 0, (byte) 0, (byte) 0, (byte) 0 };
+    public static final byte[] PREAMBLE_CODE = { (byte) 0xAB, (byte) 0xAB,
+            (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB,
+            (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB,
+            (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB };
+
+    private static final byte PADDING_BYTE = (byte) 0;
 
     private static final double ALERT_TONE_FREQUENCY = 1050.0; // Hz
 
@@ -122,10 +129,11 @@ public class TonesManager {
      * @throws ToneGenerationException
      *             If the data could not be encoded into ulaw format.
      */
-    public static byte[] generateSAMETone(final String SAMEMessage)
-            throws ToneGenerationException {
-        return generateSAMETone(SAMEMessage.trim().getBytes(
-                StandardCharsets.US_ASCII));
+    public static byte[] generateSAMETone(final String SAMEMessage,
+            final int paddingBytes) throws ToneGenerationException {
+        return generateSAMETone(
+                SAMEMessage.trim().getBytes(StandardCharsets.US_ASCII),
+                paddingBytes);
     }
 
     /**
@@ -137,15 +145,20 @@ public class TonesManager {
      * @throws ToneGenerationException
      *             If the data could not be encoded into ulaw format.
      */
-    public static byte[] generateSAMETone(final byte[] SAMEData)
-            throws ToneGenerationException {
-        ByteBuffer paddedSAMEBuffer = ByteBuffer.allocate(SAMEData.length
-                + ZERO_PADDING.length);
-        paddedSAMEBuffer.put(SAMEData);
-        paddedSAMEBuffer.put(ZERO_PADDING);
+    private static byte[] generateSAMETone(final byte[] SAMEData,
+            final int paddingBytes) throws ToneGenerationException {
+        int fullSAMEBufferLength = PREAMBLE_CODE.length + SAMEData.length
+                + paddingBytes;
+        ByteBuffer paddedSAMEBuffer = ByteBuffer.allocate(fullSAMEBufferLength);
 
-        AFSKToneGenerator toneGenerator = new AFSKToneGenerator();
-        short[] data = toneGenerator.execute(paddedSAMEBuffer.array());
+        paddedSAMEBuffer.put(PREAMBLE_CODE);
+        paddedSAMEBuffer.put(SAMEData);
+        for (int i = 0; i < paddingBytes; i++) {
+            paddedSAMEBuffer.put(PADDING_BYTE);
+        }
+
+        FskTonesEncoder tonesEncoder = new FskTonesEncoder();
+        short[] data = tonesEncoder.execute(paddedSAMEBuffer.array());
         if (data.length <= 0) {
             return null;
         }

@@ -37,6 +37,8 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  * ------------ ---------- ----------- --------------------------
  * Aug 12, 2014  #3286     dgilling     Initial creation
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
+ * Mar 23, 2015  #4299     bkowal       Ensure that the preamble and padding bytes
+ *                                      are added to SAME and End of Message Tones.
  * 
  * </pre>
  * 
@@ -44,12 +46,7 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  * @version 1.0
  */
 
-final class StaticTones {
-
-    private static final byte[] PREAMBLE_CODE = { (byte) 0xAB, (byte) 0xAB,
-            (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB,
-            (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB,
-            (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB };
+public final class StaticTones {
 
     private static final int SILENCE_BEWTWEEN_PREAMBLE = 8000;
 
@@ -66,8 +63,6 @@ final class StaticTones {
 
     private static final String END_OF_MESSAGE_CODE = "NNNN";
 
-    private final byte[] preambleTones;
-
     private final byte[] betweenPreambleOrClosingPause;
 
     private final byte[] beforeAlertTonePause;
@@ -78,36 +73,30 @@ final class StaticTones {
 
     private final ByteBuffer endOfMessageTones;
 
-    StaticTones() throws ToneGenerationException {
-        this.preambleTones = TonesManager.generateSAMETone(PREAMBLE_CODE);
+    public StaticTones() throws ToneGenerationException {
         this.betweenPreambleOrClosingPause = generateSilence(SILENCE_BEWTWEEN_PREAMBLE);
         this.beforeAlertTonePause = generateSilence(SILENCE_BEFORE_ALERT);
         this.alertTone = TonesManager.generateAlertTone(ALERT_TONE_AMPLITUDE,
                 ALERT_TONE_DURATION);
         this.beforeMessagePause = generateSilence(SILENCE_BEFORE_MESSAGE);
 
-        byte[] eomTone = TonesManager.generateSAMETone(END_OF_MESSAGE_CODE);
+        byte[] eomTone = TonesManager.generateSAMETone(END_OF_MESSAGE_CODE, 2);
         byte[] afterMessagePause = generateSilence(SILENCE_AFTER_MESSAGE);
-        int eomBufferSize = afterMessagePause.length
-                + (3 * (this.preambleTones.length + eomTone.length))
+        int eomBufferSize = afterMessagePause.length + (3 * eomTone.length)
                 + (2 * this.betweenPreambleOrClosingPause.length);
         this.endOfMessageTones = ByteBuffer.allocate(eomBufferSize);
         this.endOfMessageTones.put(afterMessagePause);
-        this.endOfMessageTones.put(this.preambleTones).put(eomTone);
+        this.endOfMessageTones.put(eomTone);
         this.endOfMessageTones.put(this.betweenPreambleOrClosingPause);
-        this.endOfMessageTones.put(this.preambleTones).put(eomTone);
+        this.endOfMessageTones.put(eomTone);
         this.endOfMessageTones.put(this.betweenPreambleOrClosingPause);
-        this.endOfMessageTones.put(this.preambleTones).put(eomTone);
+        this.endOfMessageTones.put(eomTone);
     }
 
     private static byte[] generateSilence(int numBytes) {
         byte[] silence = new byte[numBytes];
         Arrays.fill(silence, DacSessionConstants.SILENCE);
         return silence;
-    }
-
-    public byte[] getPreambleTones() {
-        return preambleTones;
     }
 
     public byte[] getBetweenPreambleOrClosingPause() {

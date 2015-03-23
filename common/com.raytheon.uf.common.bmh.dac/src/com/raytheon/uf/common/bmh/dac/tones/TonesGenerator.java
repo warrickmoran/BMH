@@ -38,6 +38,9 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * Nov 03, 2014  #3781     dgilling     Allow alert tones to be generated
  *                                      independently from SAME tones.
+ * Mar 23, 2015  #4299     bkowal       Generate the SAME tone with the preamble.
+ *                                      Add padding to the end of the preamble + SAME
+ *                                      tones.
  * 
  * </pre>
  * 
@@ -79,12 +82,11 @@ public final class TonesGenerator {
             throws ToneGenerationException {
         StaticTones staticTones = getStaticTones();
 
-        byte[] preamble = staticTones.getPreambleTones();
         byte[] betweenPause = staticTones.getBetweenPreambleOrClosingPause();
         byte[] beforeMessagePause = staticTones.getBeforeMessagePause();
-        byte[] preambleHeader = TonesManager.generateSAMETone(sameHeader);
+        byte[] preambleHeader = TonesManager.generateSAMETone(sameHeader, 4);
 
-        int bufferSize = (3 * (preamble.length + preambleHeader.length))
+        int bufferSize = (3 * (preambleHeader.length))
                 + (2 * betweenPause.length) + beforeMessagePause.length;
         if (includeAlertTone) {
             bufferSize += (staticTones.getAlertTone().length + staticTones
@@ -92,9 +94,9 @@ public final class TonesGenerator {
         }
 
         ByteBuffer retVal = ByteBuffer.allocate(bufferSize);
-        retVal.put(preamble).put(preambleHeader).put(betweenPause);
-        retVal.put(preamble).put(preambleHeader).put(betweenPause);
-        retVal.put(preamble).put(preambleHeader);
+        retVal.put(preambleHeader).put(betweenPause);
+        retVal.put(preambleHeader).put(betweenPause);
+        retVal.put(preambleHeader);
         if (includeAlertTone) {
             retVal.put(defaultTonesInstance.getBeforeAlertTonePause());
             retVal.put(defaultTonesInstance.getAlertTone());

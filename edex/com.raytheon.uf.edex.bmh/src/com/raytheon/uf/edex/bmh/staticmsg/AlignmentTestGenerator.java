@@ -50,6 +50,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * ------------ ---------- ----------- --------------------------
  * Oct 27, 2014 3630       bkowal      Initial creation
  * Dec 12, 2014 3603       bsteffen    Move MAINTENANCE_DATA_DIRECTORY to BMHConstants
+ * Mar 23, 2015 4299       bkowal      Do not add padding to the alignment tones.
  * 
  * </pre>
  * 
@@ -76,7 +77,7 @@ public class AlignmentTestGenerator {
 
     private static final double ALERT_DURATION = 30.0;
 
-    private static final String SAME = "ZCZC-WXR-IPW-031071-031183-031015-031017-031089-031115-031009-031000-031149-031103+0600-3311401-KOAX/NWS";
+    private static final String SAME = "ZCZC-WXR-IPW-031071-031183-031015-031017-031089-031115-031009-031000-031149-031103+0600-3311401-KOAX/NWS-";
 
     private Path maintenanceTextPath;
 
@@ -230,7 +231,7 @@ public class AlignmentTestGenerator {
 
         byte[] audio = null;
         try {
-            audio = TonesManager.generateSAMETone(SAME);
+            audio = TonesManager.generateSAMETone(SAME, 0);
         } catch (ToneGenerationException e) {
             throw new StaticGenerationException(
                     "Failed to generate the same tone maintenance audio!", e);

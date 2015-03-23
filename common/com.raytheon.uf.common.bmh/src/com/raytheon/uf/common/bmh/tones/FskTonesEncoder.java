@@ -1,0 +1,280 @@
+/**
+ * This software was developed and / or modified by Raytheon Company,
+ * pursuant to Contract DG133W-05-CQ-1067 with the US Government.
+ * 
+ * U.S. EXPORT CONTROLLED TECHNICAL DATA
+ * This software product contains export-restricted data whose
+ * export/transfer/disclosure is restricted by U.S. law. Dissemination
+ * to non-U.S. persons whether in the United States or abroad requires
+ * an export license or other authorization.
+ * 
+ * Contractor Name:        Raytheon Company
+ * Contractor Address:     6825 Pine Street, Suite 340
+ *                         Mail Stop B8
+ *                         Omaha, NE 68106
+ *                         402.291.0100
+ * 
+ * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
+ * further licensing information.
+ **/
+package com.raytheon.uf.common.bmh.tones;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * This is a port of the Legacy CRS MP fskwave.c algorithm that is maintained by
+ * CommPower. The interaction of VM_AOsameMsg.c and fskwave.c were also taken
+ * into account when developing this port.
+ * 
+ * <pre>
+ * 
+ * SOFTWARE HISTORY
+ * 
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * Mar 19, 2015 4299       bkowal      Initial creation
+ * 
+ * </pre>
+ * 
+ * @author bkowal
+ * @version 1.0
+ */
+
+public class FskTonesEncoder {
+
+    public static final byte[] PREAMBLE_CODE = { (byte) 0xAB, (byte) 0xAB,
+            (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB,
+            (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB,
+            (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB };
+
+    /*
+     * Symbol definitions
+     */
+    private static final int TABLE_LENGTH = 1024;
+
+    private static final int WRITE_LENGTH = 128;
+
+    private static final int MAX_SAMPLES_PER_BAUD = 1024;
+
+    private static final double BMH_SAMPLE_RATE = 8000; // was 10,000 in CRS
+
+    private static final double ONES_CONSTANT = 1.0;
+
+    /*
+     * for some reason that was not a constant in CRS.
+     */
+    private static final int AMPLITUDE = 8192;
+
+    /*
+     * includes additional decimal places when compared to the Java constant.
+     */
+    private static final double LEGACY_TWO_PI = 6.283185307179586476;
+
+    // from VM_AO.h
+    /* FSK low frequency tone */
+    private static final double FSK_LOW_FREQ = 1562.5;
+
+    /* FSK high frequency tone */
+    private static final double FSK_HIGH_FREQ = 2083.333333333333333;
+
+    /* FSK bit rate */
+    private static final double FSK_BIT_RATE = 520.833333333333333;
+
+    /*
+     * Member variables
+     */
+    // includes an extra index due to Java rounding.
+    private short[] sSineTable = new short[TABLE_LENGTH + 1];
+
+    private double samplePeriod;
+
+    private double bitPeriod;
+
+    private double dPhase;
+
+    private double dLowPhaseIncrement;
+
+    private double dHighPhaseIncrement;
+
+    private double dTableLength;
+
+    /**
+     * Constructor
+     */
+    public FskTonesEncoder() {
+        this.initialize();
+    }
+
+    /*
+     * Port InitFsk in fskwave.c
+     */
+    private void initialize() {
+        // Set the global rate parameters.
+        this.bitPeriod = ONES_CONSTANT / FSK_BIT_RATE;
+        this.samplePeriod = ONES_CONSTANT / BMH_SAMPLE_RATE;
+        this.dTableLength = (double) TABLE_LENGTH;
+
+        // Calculate the low and high tone phase increments.
+        this.dLowPhaseIncrement = FSK_LOW_FREQ * this.samplePeriod
+                * this.dTableLength;
+        this.dHighPhaseIncrement = FSK_HIGH_FREQ * this.samplePeriod
+                * this.dTableLength;
+
+        // Build the sine table: amplitudes for 0..2Pi spread across Table
+        double mult = LEGACY_TWO_PI / this.dTableLength;
+
+        for (int i = 0; i <= TABLE_LENGTH; i++) {
+            double A = AMPLITUDE * Math.sin(mult * (double) i);
+            // round away from zero
+            if (A >= 0.0) {
+                A += 0.5;
+            } else {
+                A -= 0.5;
+            }
+            this.sSineTable[i] = (short) A;
+        }
+    }
+
+    /*
+     * Note in the crs version of VM_AOsameMsg.c (), the preamble and padding
+     * were added to both the SAME tones and the End of Message Tones. The SAME
+     * tones had four (4) bytes of padding and the End of Message Tones had two
+     * (2) bytes of padding. For SAME tones, reference lines: 433 - 555 in
+     * VM_AOsameMsg.c. For End of Message Tones, reference lines: 292 - 319 in
+     * VM_AOsameMsg.c.
+     */
+
+    public short[] execute(final String SAMEMessage)
+            throws ToneGenerationException {
+        return this.execute(SAMEMessage.trim().getBytes(
+                StandardCharsets.US_ASCII));
+    }
+
+    public short[] execute(final byte[] sameMessage)
+            throws ToneGenerationException {
+        return this.encode(sameMessage);
+    }
+
+    /*
+     * Port FskSignal in fskwave.c (excluding wav file management)
+     */
+    private short[] encode(final byte[] sameMessage) {
+        List<short[]> outputList = new LinkedList<short[]>();
+        BitSet sameMessageBits = BitSet.valueOf(sameMessage);
+
+        double dPhaseIncrement;
+        this.dPhase = 0.0f;
+        double lastTime = 0.0;
+        int uiBlockLength = 0;
+
+        /*
+         * used to accumulate sample data as it is calculated.
+         */
+        short[] sSample = new short[WRITE_LENGTH + MAX_SAMPLES_PER_BAUD];
+
+        for (int i = 0; i < sameMessageBits.length(); i++) {
+            if (sameMessageBits.get(i)) {
+                dPhaseIncrement = this.dHighPhaseIncrement;
+            } else {
+                dPhaseIncrement = this.dLowPhaseIncrement;
+            }
+
+            /*
+             * at the start of a Bit, offset the first sample's phase: add
+             * residual phase from the last sample of the previous Bit, but use
+             * the "new" Bit's phase increment, not the "old"'s
+             */
+            dPhase += (lastTime / this.samplePeriod) * dPhaseIncrement;
+
+            if (dPhase >= this.dTableLength) {
+                dPhase -= this.dTableLength;
+            }
+
+            /*
+             * Calculate all samples for this bit.
+             */
+            double bitTime;
+            for (bitTime = lastTime; bitTime <= this.bitPeriod; bitTime += this.samplePeriod) {
+                /*
+                 * rather than just use sSineTable[dPhase], interpolate for
+                 * better accuracy (e.g. when doing coarse sampling for NWS)
+                 */
+                int iTableIndex = (int) dPhase;
+                short sSample1 = this.sSineTable[iTableIndex];
+                short sSample2 = this.sSineTable[iTableIndex + 1];
+                short sInterpolate = (short) ((sSample2 - sSample1) * (dPhase - iTableIndex));
+
+                /*
+                 * store new value
+                 */
+                sSample[uiBlockLength] = (short) (sSample1 + sInterpolate);
+                uiBlockLength++;
+
+                /*
+                 * increment to next phase, for next sample
+                 */
+                dPhase += dPhaseIncrement;
+                if (dPhase >= this.dTableLength) {
+                    dPhase -= this.dTableLength;
+                }
+            }
+
+            /*
+             * time of first sample of next Bit = the amount of "overshoot"
+             */
+            lastTime = bitTime - this.bitPeriod;
+            /*
+             * compensate for the excess increment above at end of Bit... back
+             * up to zero crossing, by subtracting proportional amount of the
+             * "old" Bit's phase increment
+             */
+            dPhase -= (lastTime / this.samplePeriod) * dPhaseIncrement;
+            if (dPhase < 0) {
+                dPhase += this.dTableLength;
+            }
+
+            /*
+             * this version of the algorithm will not write the files. However,
+             * it will add the results to the algorithm output accumulator and
+             * start a new results array.
+             */
+            if (uiBlockLength >= WRITE_LENGTH) {
+                outputList.add(Arrays.copyOf(sSample, uiBlockLength));
+                sSample = new short[WRITE_LENGTH + MAX_SAMPLES_PER_BAUD];
+                uiBlockLength = 0;
+            }
+        }
+
+        /*
+         * If there are any samples then add them to the algorithm output
+         * accumulator.
+         */
+        if (uiBlockLength > 0) {
+            outputList.add(Arrays.copyOf(sSample, uiBlockLength));
+        }
+
+        return this.mergeShortData(outputList);
+    }
+
+    public short[] mergeShortData(List<short[]> dataList) {
+        /* Determine the overall length of the destination. */
+        int totalLength = 0;
+        for (short[] source : dataList) {
+            totalLength += source.length;
+        }
+
+        /* Create and populate the destination. */
+        short[] destination = new short[totalLength];
+        int startIndex = 0;
+        for (short[] source : dataList) {
+            System.arraycopy(source, 0, destination, startIndex, source.length);
+            startIndex += source.length;
+        }
+
+        return destination;
+    }
+}

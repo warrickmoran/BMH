@@ -147,7 +147,7 @@ public class ToneGenerationTester extends AbstractWavFileGeneratingTest {
                     .info("Attempting to generate SAME tone for input file: "
                             + inputFileName + " ...");
             try {
-                audioData = TonesManager.generateSAMETone(SAMEMessage);
+                audioData = TonesManager.generateSAMETone(SAMEMessage, 0);
             } catch (ToneGenerationException e) {
                 throw new TestProcessingFailedException(
                         "Failed to generate a SAME tone for input file: "
