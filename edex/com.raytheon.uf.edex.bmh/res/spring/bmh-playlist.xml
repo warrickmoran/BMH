@@ -12,6 +12,7 @@
 		<property name="broadcastMsgDao" ref="broadcastMsgDao" />
 		<property name="transmitterGroupDao" ref="transmitterGroupDao" />
 		<property name="messageTypeDao" ref="messageTypeDao" />
+        <property name="inputMessageDao" ref="inputMessageDao" />
 	</bean>
 
 	<bean id="playlistStateManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager">
@@ -26,7 +27,8 @@
 		<route id="bmh-schedule">
 			<from uri="jms-durable:queue:BMH.Schedule" />
 			<doTry>
-				<bean ref="broadcastMsgDao" method="getByID" />
+                <bean ref="serializationUtil" method="transformFromThrift" />
+				<bean ref="broadcastMsgDao" method="restoreGroup" />
 				<bean ref="playlistManager" method="newMessage" />
 				<doCatch>
 					<exception>java.lang.Throwable</exception>

@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
@@ -30,7 +29,6 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -38,10 +36,11 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
-import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
@@ -57,8 +56,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
-import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage.ReplacementType;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -92,6 +89,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Feb 05, 2015  4085     bkowal      Designations are no longer static.
  * Mar 12, 2015  4207     bsteffen    Do not preserve start/end time when triggers are present.
  * Mar 12, 2015  4193     bsteffen    Always keep replacements in the list.
+ * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -145,10 +143,11 @@ public class Playlist {
     @Column
     private Calendar endTime;
 
-    @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(schema = "bmh", name = "playlist_msg", joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "message_id", referencedColumnName = "id"))
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
-    private List<PlaylistMessage> messages = new ArrayList<>();
+    private Set<BroadcastMsg> messages = new HashSet<>();
 
     public Playlist() {
         // serialization requires
@@ -206,9 +205,9 @@ public class Playlist {
      * @return a {@link SortedSet} of {@link PlaylistMessage}s in the order they
      *         should be played according to the {@link Suite}
      */
-    public SortedSet<PlaylistMessage> getSortedMessages() {
-        SortedSet<PlaylistMessage> sorted = new TreeSet<>(
-                new PlaylistMessageSuiteOrderComparator(suite));
+    public SortedSet<BroadcastMsg> getSortedMessages() {
+        SortedSet<BroadcastMsg> sorted = new TreeSet<>(
+                new BroadcastMsgSuiteOrderComparator(suite));
         sorted.addAll(messages);
         return sorted;
     }
@@ -218,11 +217,11 @@ public class Playlist {
      * actually play messages. Most of the time {@link #getSortedMessages()}
      * should be used instead.
      */
-    public List<PlaylistMessage> getMessages() {
+    public Set<BroadcastMsg> getMessages() {
         return messages;
     }
 
-    public void setMessages(List<PlaylistMessage> messages) {
+    public void setMessages(Set<BroadcastMsg> messages) {
         this.messages = messages;
     }
 
@@ -239,9 +238,9 @@ public class Playlist {
      */
     public void refresh(Set<MessageTypeSummary> triggers) {
         modTime = TimeUtil.newGmtCalendar();
-        Iterator<PlaylistMessage> it = messages.iterator();
+        Iterator<BroadcastMsg> it = messages.iterator();
         while (it.hasNext()) {
-            PlaylistMessage existing = it.next();
+            BroadcastMsg existing = it.next();
             if (!suite.containsSuiteMessage(existing.getAfosid())) {
                 it.remove();
             } else if (modTime.after(existing.getExpirationTime())) {
@@ -312,7 +311,7 @@ public class Playlist {
         Calendar startTime = null;
         List<Calendar> triggerTimes = new LinkedList<>();
         Calendar endTime = null;
-        for (PlaylistMessage message : messages) {
+        for (BroadcastMsg message : messages) {
             if (triggerAfosids.contains(message.getAfosid())) {
                 Calendar messageStart = message.getEffectiveTime();
                 Calendar messageEnd = message.getExpirationTime();
@@ -372,112 +371,10 @@ public class Playlist {
      * @param matReplacements
      *            the afosids of messages this message should replace.
      */
-    public void addBroadcastMessage(BroadcastMsg message,
-            Set<String> matReplacements, List<BroadcastMsg> removedMessages) {
-        PlaylistMessage playlistMessage = new PlaylistMessage(message, this);
-        if (playlistMessage.isActive() && !messages.contains(playlistMessage)
+    public void addBroadcastMessage(BroadcastMsg message) {
+        if (message.isActive() && !messages.contains(message)
                 && suite.containsSuiteMessage(message.getAfosid())) {
-            removeMrdReplacements(playlistMessage, removedMessages);
-            removeMatReplacements(playlistMessage, matReplacements,
-                    removedMessages);
-            removeIdentityReplacements(playlistMessage, removedMessages);
-            messages.add(playlistMessage);
+            messages.add(message);
         }
     }
-
-    /**
-     * Remove any messages with the same type, and areas.
-     */
-    private void removeIdentityReplacements(PlaylistMessage message,
-            List<BroadcastMsg> removedMessages) {
-        String afosid = message.getAfosid();
-        Iterator<PlaylistMessage> it = messages.iterator();
-        while (it.hasNext()) {
-            PlaylistMessage existing = it.next();
-            if (afosid.equals(existing.getAfosid())) {
-                String areaCodes = message.getAreaCodes();
-                String existingAreaCodes = existing.getAreaCodes();
-                Set<Transmitter> selectedTransmitters = message
-                        .getSelectedTransmitters();
-                Set<Transmitter> existingSelectedTransmitters = existing
-                        .getSelectedTransmitters();
-
-                int mrd = message.getMrdId();
-                int existingMrd = existing.getMrdId();
-                boolean areaCodesEqual = areaCodes == existingAreaCodes
-                        || (areaCodes != null && areaCodes
-                                .equals(existingAreaCodes));
-                boolean selectedTransmittersEqual = areaCodesEqual
-                        && ((selectedTransmitters == null && existingSelectedTransmitters == null) || (selectedTransmitters
-                                .containsAll(existingSelectedTransmitters)));
-                boolean mrdEqual = mrd == existingMrd;
-                if (areaCodesEqual && selectedTransmittersEqual && mrdEqual) {
-                    removedMessages.add(existing.getBroadcastMsg());
-                    existing.setReplacementTime(message.getEffectiveTime());
-                }
-            }
-        }
-    }
-
-    /**
-     * Remove any messages whose type is in matRepklacements.
-     */
-    private void removeMatReplacements(PlaylistMessage message,
-            Set<String> matReplacements, List<BroadcastMsg> removedMessages) {
-        if (matReplacements == null || message.getMrdId() != -1) {
-            return;
-        }
-        Iterator<PlaylistMessage> it = messages.iterator();
-        while (it.hasNext()) {
-            PlaylistMessage existing = it.next();
-            if (matReplacements.contains(existing.getAfosid())) {
-                String areaCodes = message.getAreaCodes();
-                String existingAreaCodes = existing.getAreaCodes();
-                Set<Transmitter> selectedTransmitters = message
-                        .getSelectedTransmitters();
-                Set<Transmitter> existingSelectedTransmitters = existing
-                        .getSelectedTransmitters();
-                boolean selectedTransmittersEqual = ((selectedTransmitters == null && existingSelectedTransmitters == null) || (selectedTransmitters
-                        .containsAll(existingSelectedTransmitters)));
-                if ((areaCodes == existingAreaCodes || (areaCodes != null && areaCodes
-                        .equals(existingAreaCodes)))
-                        && selectedTransmittersEqual) {
-                    removedMessages.add(existing.getBroadcastMsg());
-                    existing.setReplacementTime(message.getEffectiveTime());
-                    if (message.getReplacementType() == null) {
-                        message.setReplacementType(ReplacementType.MAT);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Remove any messages whose mrd id is in the set of ids that this messages
-     * should replace.
-     */
-    private void removeMrdReplacements(PlaylistMessage message,
-            List<BroadcastMsg> removedMessages) {
-        int[] mrdReplacements = message.getBroadcastMsg().getInputMessage()
-                .getMrdReplacements();
-        if (mrdReplacements != null && mrdReplacements.length > 0) {
-            Set<Integer> mrdReplacementSet = new HashSet<>(
-                    mrdReplacements.length, 1.0f);
-            for (int mrdReplacement : mrdReplacements) {
-                mrdReplacementSet.add(mrdReplacement);
-            }
-            Iterator<PlaylistMessage> it = messages.iterator();
-            while (it.hasNext()) {
-                PlaylistMessage existing = it.next();
-                int existingMrdId = existing.getBroadcastMsg()
-                        .getInputMessage().getMrdId();
-                if (mrdReplacementSet.contains(existingMrdId)) {
-                    removedMessages.add(existing.getBroadcastMsg());
-                    existing.setReplacementTime(message.getEffectiveTime());
-                    message.setReplacementType(ReplacementType.MRD);
-                }
-            }
-        }
-    }
-
 }

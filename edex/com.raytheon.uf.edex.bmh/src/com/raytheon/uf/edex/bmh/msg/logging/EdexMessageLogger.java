@@ -96,12 +96,12 @@ public class EdexMessageLogger implements IMessageLogger {
      * 
      * @see
      * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logReplacementActivity
-     * (com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg,
-     * com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg)
+     * (com.raytheon.uf.common.bmh.datamodel.msg.InputMessage,
+     * com.raytheon.uf.common.bmh.datamodel.msg.InputMessage)
      */
     @Override
-    public void logReplacementActivity(BroadcastMsg newMsg,
-            BroadcastMsg replacedMsg) {
+    public void logReplacementActivity(InputMessage newMsg,
+            InputMessage replacedMsg) {
         this.getMessageLogger().logReplacementActivity(newMsg, replacedMsg);
     }
 

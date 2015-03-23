@@ -35,7 +35,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
-import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
@@ -83,6 +82,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  *                                     msg when it is not found.
  * Mar 10, 2015   4252     bkowal      Attempt to retrieve {@link BroadcastMsg}s that are not
  *                                     available in the playlist cache.
+ * Mar 25, 2015   4290     bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -172,7 +172,7 @@ public class PlaylistData {
             }
         }
 
-        Map<Long, PlaylistMessage> playlistMap = playlistData.getPlaylistMap();
+        Map<Long, BroadcastMsg> playlistMap = playlistData.getPlaylistMap();
 
         playlistMap.clear();
 
@@ -188,13 +188,12 @@ public class PlaylistData {
             return;
         }
         if (playlist != null) {
-            for (PlaylistMessage message : playlist.getMessages()) {
+            for (BroadcastMsg broadcastMessage : playlist.getMessages()) {
                 try {
-                    BroadcastMsg broadcastMessage = message.getBroadcastMsg();
                     long id = broadcastMessage.getId();
                     MessageType messageType = dataManager
                             .getMessageType(broadcastMessage.getAfosid());
-                    playlistMap.put(id, message);
+                    playlistMap.put(id, broadcastMessage);
                     messageTypeMap.put(id, messageType);
                 } catch (Exception e) {
                     statusHandler.error("Error accessing BMH database", e);
@@ -223,7 +222,7 @@ public class PlaylistData {
     }
 
     private void forceLoadBroadcast(final long broadcastId,
-            Map<Long, PlaylistMessage> playlistMap,
+            Map<Long, BroadcastMsg> playlistMap,
             Map<Long, MessageType> messageTypeMap) throws Exception {
         BroadcastMsg broadcastMsg = this.dataManager
                 .getBroadcastMessage(broadcastId);
@@ -235,9 +234,7 @@ public class PlaylistData {
 
         MessageType messageType = dataManager.getMessageType(broadcastMsg
                 .getAfosid());
-        PlaylistMessage playlistMessage = new PlaylistMessage();
-        playlistMessage.setBroadcastMsg(broadcastMsg);
-        playlistMap.put(broadcastId, playlistMessage);
+        playlistMap.put(broadcastId, broadcastMsg);
         messageTypeMap.put(broadcastId, messageType);
     }
 
@@ -324,7 +321,7 @@ public class PlaylistData {
         Map<Long, MessagePlaybackPrediction> predictionMap = playlistDataStructure
                 .getPredictionMap();
 
-        Map<Long, PlaylistMessage> playlistMap = playlistDataStructure
+        Map<Long, BroadcastMsg> playlistMap = playlistDataStructure
                 .getPlaylistMap();
         Map<Long, MessageType> messageTypeMap = playlistDataStructure
                 .getMessageTypeMap();
@@ -350,11 +347,11 @@ public class PlaylistData {
                         .getPredictedTransmitTimeColor());
             }
 
-            PlaylistMessage message = playlistMap.get(broadcastId);
+            BroadcastMsg message = playlistMap.get(broadcastId);
             InputMessage inputMsg = null;
 
             if (message != null) {
-                inputMsg = message.getBroadcastMsg().getInputMessage();
+                inputMsg = message.getInputMessage();
                 cycleTableData.setExpirationTime(message.getExpirationTime());
                 cycleTableData.setMessageId(message.getAfosid());
                 cycleTableData.setInputMsg(inputMsg);
@@ -499,31 +496,30 @@ public class PlaylistData {
         Map<Long, MessagePlaybackPrediction> periodicPredictionMap = playlistDataStructure
                 .getPeriodicPredictionMap();
 
-        Map<Long, PlaylistMessage> playlistMap = playlistDataStructure
+        Map<Long, BroadcastMsg> playlistMap = playlistDataStructure
                 .getPlaylistMap();
 
         TableData tableData = new TableData(
                 dataManager.getPeriodicMessageColumns());
 
         for (MessagePlaybackPrediction prediction : predictionMap.values()) {
-            PlaylistMessage playlistMessage = playlistMap.get(prediction
+            BroadcastMsg playlistMessage = playlistMap.get(prediction
                     .getBroadcastId());
             if (playlistMessage != null) {
                 /*
                  * This is bad but the user was already informed when the
                  * broadcast cycle table was populated.
                  */
-                BroadcastMsg broadcast = playlistMessage.getBroadcastMsg();
-                if (broadcast.getInputMessage().isPeriodic()) {
+                if (playlistMessage.isPeriodic()) {
                     tableData.addDataRow(createPeriodicTableRow(prediction,
-                            broadcast));
+                            playlistMessage));
                 }
             }
         }
         for (MessagePlaybackPrediction prediction : periodicPredictionMap
                 .values()) {
-            BroadcastMsg broadcast = playlistMap.get(
-                    prediction.getBroadcastId()).getBroadcastMsg();
+            BroadcastMsg broadcast = playlistMap.get(prediction
+                    .getBroadcastId());
             tableData.addDataRow(createPeriodicTableRow(prediction, broadcast));
         }
         return tableData;

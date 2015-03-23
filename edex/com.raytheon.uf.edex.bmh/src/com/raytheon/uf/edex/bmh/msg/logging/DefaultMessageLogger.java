@@ -56,6 +56,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  *                                     logging methods for playlists.
  * Jan 06, 2015  3651      bkowal      Implemented {@link #logDaoError(BMH_ACTIVITY, Object, Throwable)}.
  * Jan 27, 2015  4037      bkowal      Message identifiers are no longer optional.
+ * Mar 25, 2015  4290      bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -133,17 +134,17 @@ public class DefaultMessageLogger implements IMessageLogger {
      * 
      * @see
      * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logReplacementActivity
-     * (com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg,
-     * com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg)
+     * (com.raytheon.uf.common.bmh.datamodel.msg.InputMessage,
+     * com.raytheon.uf.common.bmh.datamodel.msg.InputMessage)
      */
     @Override
-    public void logReplacementActivity(BroadcastMsg newMsg,
-            BroadcastMsg replacedMsg) {
-        final String expire = this.getExpirationDate(newMsg.getInputMessage()
+    public void logReplacementActivity(InputMessage newMsg,
+            InputMessage replacedMsg) {
+        final String expire = this
+                .getExpirationDate(newMsg
                 .getExpirationTime());
         Object[] logDetails = new Object[] { this.getMsgId(newMsg),
-                this.getMsgId(replacedMsg),
-                newMsg.getTransmitterGroup().getName(), expire };
+                this.getMsgId(replacedMsg), expire };
         this.logActivity(MESSAGE_ACTIVITY.REPLACEMENT, logDetails);
     }
 

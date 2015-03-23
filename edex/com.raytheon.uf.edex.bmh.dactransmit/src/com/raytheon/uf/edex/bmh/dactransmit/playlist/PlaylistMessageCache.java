@@ -97,6 +97,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Mar 05, 2015  #4222     bkowal       Handle messages that never expire.
  * Mar 09, 2015  #4170     bsteffen     Throw exceptions from getAudio.
  * Mar 13, 2015  4251      bkowal       Limit messages accompanied by tones to 2 minutes.
+ * Mar 25, 2015  4290      bsteffen     Switch to global replacement.
  * 
  * </pre>
  * 
@@ -333,7 +334,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             message.setPath(messagePath);
             cachedMessages.put(id, message);
         }
-        message.setReplaceTime(id.getReplaceTime());
+        message.setExpire(id.getExpire());
         return message;
     }
 

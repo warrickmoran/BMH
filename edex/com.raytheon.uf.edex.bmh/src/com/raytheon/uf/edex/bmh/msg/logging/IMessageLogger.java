@@ -48,6 +48,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Dec 15, 2014 3651       bkowal      Defined methods for message error logging
  * Jan 05, 2015 3651       bkowal      Defined methods for playlist error logging
  * Jan 06, 2015 3651       bkowal      Defined {@link #logDaoError(BMH_ACTIVITY, Object, Throwable)}.
+ * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
+ * 
  * 
  * </pre>
  * 
@@ -96,17 +98,17 @@ public interface IMessageLogger {
     public void logCreationActivity(DacPlaylistMessage msg, TransmitterGroup tg);
 
     /**
-     * Logs that the specified newMsg {@link BroadcastMsg} has replaced the
-     * specified replacedMsg {@link BroadcastMsg}.
+     * Logs that the specified newMsg {@link InputMessage} has replaced the
+     * specified replacedMsg {@link InputMessage}.
      * 
      * @param newMsg
      *            the {@link BroadcastMsg} that will take the place of another
-     *            {@link BroadcastMsg}.
+     *            {@link InputMessage}.
      * @param replacedMsg
-     *            the {@link BroadcastMsg} that has been replaced.
+     *            the {@link InputMessage} that has been replaced.
      */
-    public void logReplacementActivity(BroadcastMsg newMsg,
-            BroadcastMsg replacedMsg);
+    public void logReplacementActivity(InputMessage newMsg,
+            InputMessage replacedMsg);
 
     /**
      * Logs that the specified {@link DacPlaylist} has been created or updated.

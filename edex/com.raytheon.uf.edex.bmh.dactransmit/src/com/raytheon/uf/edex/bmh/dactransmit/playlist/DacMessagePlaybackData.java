@@ -66,6 +66,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  * Feb 02, 2015  #4093     bsteffen     Add writePosition.
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * Mar 09, 2015  #4170     bsteffen     Avoid NPE
+ * Mar 25, 2015  #4290     bsteffen     Switch to global replacement.
  * 
  * </pre>
  * 
@@ -218,7 +219,6 @@ public final class DacMessagePlaybackData {
                 logger.error("Unable to delete position file.", e);
             }
         }
-        message.setReplaceTime(null);
         Path msgPath = message.getPath();
         Path tmpPath = msgPath.resolveSibling(msgPath.getFileName().toString()
                 .replace(".xml", ".tmp.xml"));

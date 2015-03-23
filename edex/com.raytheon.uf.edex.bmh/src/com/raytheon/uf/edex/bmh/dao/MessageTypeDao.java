@@ -51,6 +51,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
  * Feb 10, 2015  4085     bkowal      Fix cast in {@link #getAfosIdDesignation(Designation)}.
  * Mar 13, 2015  4213     bkowal      Added the ability to filter message types retrieved by
  *                                    designation by language.
+ * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -238,6 +239,21 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         if (msgTypes != null) {
             for (MessageTypeSummary msgType : msgTypes) {
                 rval.add(msgType.getAfosid());
+            }
+        }
+
+        return rval;
+    }
+
+    public Set<String> getReverseReplacementAfosIdsForAfosId(final String afosId) {
+        List<?> msgTypes = findByNamedQueryAndNamedParam(
+                MessageType.GET_REVERSE_REPLACEMENT_AFOSIDS, "afosid", afosId);
+        Set<String> rval = new HashSet<>(
+                msgTypes == null ? 1 : msgTypes.size(), 1);
+
+        if (msgTypes != null) {
+            for (Object msgType : msgTypes) {
+                rval.add(((MessageType) msgType).getAfosid());
             }
         }
 

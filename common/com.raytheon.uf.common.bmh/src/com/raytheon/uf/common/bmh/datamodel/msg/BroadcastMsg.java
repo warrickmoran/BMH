@@ -43,6 +43,7 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage.ReplacementType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -72,6 +73,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                    unexpired messages.
  * Mar 13, 2015  4213     bkowal      Fixed {@link #GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY}.
  * Mar 17, 2015  4160     bsteffen    Add booleans for tone status.
+ * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -296,6 +298,70 @@ public class BroadcastMsg {
 
     public void setPlayedAlertTone(boolean playedAlertTone) {
         this.playedAlertTone = playedAlertTone;
+    }
+
+    public Calendar getEffectiveTime() {
+        return inputMessage.getEffectiveTime();
+    }
+
+    public Calendar getExpirationTime() {
+        return inputMessage.getExpirationTime();
+    }
+
+    public boolean isActive() {
+        return inputMessage.getActive();
+    }
+
+    public ReplacementType getReplacementType() {
+        return inputMessage.getReplacementType();
+    }
+
+    public boolean isPeriodic() {
+        return inputMessage.isPeriodic();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result
+                + ((creationDate == null) ? 0 : creationDate.hashCode());
+        result = prime * result + (int) (id ^ (id >>> 32));
+        result = prime * result
+                + ((inputMessage == null) ? 0 : inputMessage.hashCode());
+        result = prime
+                * result
+                + ((transmitterGroup == null) ? 0 : transmitterGroup.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        BroadcastMsg other = (BroadcastMsg) obj;
+        if (creationDate == null) {
+            if (other.creationDate != null)
+                return false;
+        } else if (!creationDate.equals(other.creationDate))
+            return false;
+        if (id != other.id)
+            return false;
+        if (inputMessage == null) {
+            if (other.inputMessage != null)
+                return false;
+        } else if (!inputMessage.equals(other.inputMessage))
+            return false;
+        if (transmitterGroup == null) {
+            if (other.transmitterGroup != null)
+                return false;
+        } else if (!transmitterGroup.equals(other.transmitterGroup))
+            return false;
+        return true;
     }
 
 }

@@ -30,6 +30,7 @@ import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
@@ -53,6 +54,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Nov 26, 2014  3613     bsteffen    Add getMessageByFragmentPath
  * Dec 08, 2014  3864     bsteffen    Redo some of the playlist manager queries.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -145,5 +147,46 @@ public class BroadcastMsgDao extends
         } else {
             return (BroadcastMsg) messages.get(0);
         }
+    }
+
+    public BroadcastMsgGroup persistGroup(BroadcastMsgGroup group) {
+        List<BroadcastMsg> messages = group.getMessages();
+        persistAll(messages);
+        List<Long> ids = new ArrayList<>(messages.size());
+        for (BroadcastMsg message : messages) {
+            ids.add(message.getId());
+        }
+        group.setIds(ids);
+        return group;
+    }
+
+    public BroadcastMsgGroup restoreGroup(BroadcastMsgGroup group) {
+        List<Long> ids = group.getIds();
+        List<BroadcastMsg> messages = new ArrayList<>(ids.size());
+        /*
+         * Most groups contain a small number of messages so multiple trips to
+         * the database is not a significant concern, however if it ever becomes
+         * a problem this is an excellent spot for optimization.
+         */
+        for (Long id : ids) {
+            messages.add(getByID(id));
+        }
+        group.setMessages(messages);
+        return group;
+
+    }
+
+    public BroadcastMsgGroup saveOrUpdateGroup(BroadcastMsgGroup group) {
+        List<BroadcastMsg> messages = group.getMessages();
+        /*
+         * Most groups contain a small number of messages so multiple trips to
+         * the database is not a significant concern, however if it ever becomes
+         * a problem this is an excellent spot for optimization.
+         */
+        for (BroadcastMsg message : messages) {
+            saveOrUpdate(message);
+        }
+        return group;
+
     }
 }

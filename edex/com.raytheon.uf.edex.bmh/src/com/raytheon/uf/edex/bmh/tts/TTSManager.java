@@ -34,8 +34,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FilenameUtils;
 
-import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.BMHVoice;
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.TTSSynthesisException;
@@ -45,6 +45,7 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
 import com.raytheon.uf.common.bmh.notify.status.TTSStatus;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -105,6 +106,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     than the maximum default or specified duration.
  * Feb 03, 2015 4175       bkowal      Use the required and guaranteed Paul voice for
  *                                     TTS Availability Verification.
+ * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -385,6 +387,13 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         this.sleepDelayTime();
 
         return true;
+    }
+
+    public BroadcastMsgGroup process(BroadcastMsgGroup group) throws Exception {
+        for (BroadcastMsg message : group.getMessages()) {
+            process(message);
+        }
+        return group;
     }
 
     /**

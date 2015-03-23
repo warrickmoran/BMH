@@ -143,6 +143,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Mar 12, 2015  #4193     bsteffen     Do not insert invalid messages into the past.
  * Mar 13, 2015  #4222     bkowal       Prevent Unsupported Operation Exception when
  *                                      an Interrupt arrives.
+ * Mar 25, 2015  #4290     bsteffen     Switch to global replacement.
  * 
  * </pre>
  * 
@@ -514,7 +515,7 @@ public final class PlaylistScheduler implements
                          * force the code below to start looking by jumping the
                          * index off the edge of the list.
                          */
-                        messageIndex = Integer.MAX_VALUE;
+                        messageIndex = currentMessages.size();
                     }
                 } else if (!activePlaylists.isEmpty()) {
                     nextPlaylist = activePlaylists.first();

@@ -28,11 +28,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.xml.bind.DataBindingException;
@@ -44,6 +42,7 @@ import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
@@ -57,7 +56,6 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
-import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -78,6 +76,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
+import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
@@ -86,6 +85,7 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
+import com.raytheon.uf.edex.bmh.replace.ReplacementManager;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
 import com.raytheon.uf.edex.core.EdexException;
@@ -153,6 +153,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Feb 10, 2015  4093     bsteffen    Leave tones in UTC
  * Mar 12, 2015  4207     bsteffen    Pass triggers to playlist when refreshing.
  * Mar 13, 2015  4193     bsteffen    Do not convert replaced messages to xml.
+ * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -184,6 +185,8 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private MessageTypeDao messageTypeDao;
 
+    private final ReplacementManager replacementManager;
+
     private final IMessageLogger messageLogger;
 
     public PlaylistManager(final IMessageLogger messageLogger)
@@ -199,6 +202,8 @@ public class PlaylistManager implements IContextStateProcessor {
         this.operational = operational;
         this.messageLogger = messageLogger;
         Files.createDirectories(playlistDir);
+        replacementManager = new ReplacementManager();
+        replacementManager.setMessageLogger(messageLogger);
     }
 
     /**
@@ -280,9 +285,14 @@ public class PlaylistManager implements IContextStateProcessor {
 
     public void processMessageActivationChange(
             MessageActivationNotification notification) {
+        Set<InputMessage> needsRefresh = new HashSet<>();
         for (int id : notification.getInputMessageIds()) {
             List<BroadcastMsg> messages = broadcastMsgDao
                     .getMessagesByInputMsgId(id);
+            if (!messages.isEmpty()) {
+                needsRefresh.addAll(replacementManager.replace(messages.get(0)
+                        .getInputMessage()));
+            }
             for (BroadcastMsg message : messages) {
                 TransmitterGroup group = message.getTransmitterGroup();
                 if (!group.isEnabled()) {
@@ -308,6 +318,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 }
             }
         }
+        refreshReplaced(needsRefresh);
     }
 
     public boolean processForceSuiteSwitch(final TransmitterGroup group,
@@ -469,6 +480,43 @@ public class PlaylistManager implements IContextStateProcessor {
         }
     }
 
+    protected void refreshReplaced(Set<InputMessage> needsRefresh) {
+        for (InputMessage inputMessage : needsRefresh) {
+            List<BroadcastMsg> messages = broadcastMsgDao
+                    .getMessagesByInputMsgId(inputMessage.getId());
+            for (BroadcastMsg message : messages) {
+                TransmitterGroup group = message.getTransmitterGroup();
+                if (!group.isEnabled()) {
+                    continue;
+                }
+                Program program = programDao
+                        .getProgramForTransmitterGroup(group);
+                if (program == null) {
+                    statusHandler
+                            .info("Skipping playlist refresh: No program assigned to transmitter group ["
+                                    + group.getName() + "]");
+                    continue;
+                }
+                for (ProgramSuite programSuite : program.getProgramSuites()) {
+                    if (programSuite.getSuite().containsSuiteMessage(
+                            message.getAfosid())) {
+                        refreshPlaylist(group, programSuite, false);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    public void newMessage(BroadcastMsgGroup group) {
+        Set<InputMessage> needsRefresh = replacementManager.replace(group
+                .getMessages().get(0).getInputMessage());
+        for (BroadcastMsg message : group.getMessages()) {
+            newMessage(message);
+        }
+        refreshReplaced(needsRefresh);
+    }
+
     public void newMessage(BroadcastMsg msg) {
         TransmitterGroup group = msg.getTransmitterGroup();
         if (!group.isEnabled()) {
@@ -501,10 +549,7 @@ public class PlaylistManager implements IContextStateProcessor {
             Playlist playlist = new Playlist();
             playlist.setTransmitterGroup(group);
             playlist.setSuite(suite);
-            // to fulfill the message replacement logging requirement.
-            List<BroadcastMsg> replacedMsgs = new ArrayList<>();
-            playlist.addBroadcastMessage(msg, null, replacedMsgs);
-            this.logMsgReplacement(msg, replacedMsgs, playlist);
+            playlist.addBroadcastMessage(msg);
             playlist.setModTime(TimeUtil.newGmtCalendar());
             playlist.setStartTime(msg.getInputMessage().getEffectiveTime());
             playlist.setEndTime(msg.getInputMessage().getExpirationTime());
@@ -542,12 +587,11 @@ public class PlaylistManager implements IContextStateProcessor {
                         return;
                     }
                 } else {
-                    mergeMessage(playlist, msg,
-                            new HashMap<String, Set<String>>());
+                    mergeMessage(playlist, msg);
                 }
             } else {
                 playlist.refresh(programSuite.getTriggers());
-                mergeMessage(playlist, msg, new HashMap<String, Set<String>>());
+                mergeMessage(playlist, msg);
             }
             DacPlaylist dacPlaylist = persistPlaylist(playlist, programSuite,
                     false);
@@ -570,7 +614,7 @@ public class PlaylistManager implements IContextStateProcessor {
              */
             playlistDao.delete(playlist);
         } else {
-            playlistDao.persist(playlist);
+            playlistDao.saveOrUpdate(playlist);
         }
         if (triggerTimes.isEmpty()) {
             return writePlaylistFile(playlist, playlist.getModTime());
@@ -624,28 +668,16 @@ public class PlaylistManager implements IContextStateProcessor {
         List<BroadcastMsg> messages = broadcastMsgDao
                 .getUnexpiredMessagesByAfosidsAndGroup(afosids,
                         playlist.getModTime(), playlist.getTransmitterGroup());
-        Map<String, Set<String>> matReplacementMap = new HashMap<>();
         for (BroadcastMsg message : messages) {
-            mergeMessage(playlist, message, matReplacementMap);
+            mergeMessage(playlist, message);
         }
     }
 
-    private void mergeMessage(Playlist playlist, BroadcastMsg msg,
-            Map<String, Set<String>> matReplacementMap) {
+    private void mergeMessage(Playlist playlist, BroadcastMsg msg) {
         if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
             return;
         }
-        String afosid = msg.getAfosid();
-        Set<String> matReplacements = matReplacementMap.get(afosid);
-        if (matReplacements == null) {
-            matReplacements = messageTypeDao
-                    .getReplacementAfosIdsForAfosId(afosid);
-            matReplacementMap.put(afosid, matReplacements);
-        }
-        // to fulfill the message replacement logging requirement.
-        List<BroadcastMsg> replacedMsgs = new ArrayList<>();
-        playlist.addBroadcastMessage(msg, matReplacements, replacedMsgs);
-        this.logMsgReplacement(msg, replacedMsgs, playlist);
+        playlist.addBroadcastMessage(msg);
     }
 
     private DacPlaylist writePlaylistFile(Playlist playlist,
@@ -708,13 +740,12 @@ public class PlaylistManager implements IContextStateProcessor {
         dac.setStart(db.getStartTime());
         dac.setExpired(db.getEndTime());
         dac.setInterrupt(suite.getType() == SuiteType.INTERRUPT);
-        for (PlaylistMessage message : db.getSortedMessages()) {
-            BroadcastMsg broadcast = message.getBroadcastMsg();
-            if (broadcast.isSuccess()
-                    && (message.getReplacementTime() == null || message
-                            .getReplacementTime().after(db.getModTime()))) {
-                DacPlaylistMessageId dacMessage = convertMessageForDAC(broadcast);
-                dacMessage.setReplaceTime(message.getReplacementTime());
+        for (BroadcastMsg message : db.getSortedMessages()) {
+            if (message.isSuccess()
+                    && (message.getExpirationTime() == null || message
+                            .getExpirationTime().after(db.getModTime()))) {
+                DacPlaylistMessageId dacMessage = convertMessageForDAC(message);
+                dacMessage.setExpire(message.getExpirationTime());
                 dac.addMessage(dacMessage);
             }
         }
@@ -899,6 +930,11 @@ public class PlaylistManager implements IContextStateProcessor {
 
     public void setMessageTypeDao(MessageTypeDao messageTypeDao) {
         this.messageTypeDao = messageTypeDao;
+        replacementManager.setMessageTypeDao(messageTypeDao);
+    }
+
+    public void setInputMessageDao(InputMessageDao inputMessageDao) {
+        replacementManager.setInputMessageDao(inputMessageDao);
     }
 
     /**
@@ -929,13 +965,6 @@ public class PlaylistManager implements IContextStateProcessor {
         } else if (messageTypeDao == null) {
             throw new IllegalStateException(
                     "MessageTypeDao has not been set on the PlaylistManager");
-        }
-    }
-
-    private void logMsgReplacement(BroadcastMsg newMsg,
-            List<BroadcastMsg> replacedMsgs, Playlist playlist) {
-        for (BroadcastMsg msg : replacedMsgs) {
-            this.messageLogger.logReplacementActivity(newMsg, msg);
         }
     }
 

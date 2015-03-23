@@ -48,6 +48,7 @@ import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -88,6 +89,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 19, 2015  4282     rferrel     Added missing elements to clone constructor,
  *                                     equal, hashCode and toString methods. Clone all
  *                                     Calendar elements.
+ * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -97,12 +100,18 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = InputMessage.DUP_QUERY_NAME, query = InputMessage.DUP_QUERY),
         @NamedQuery(name = InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION, query = InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY),
         @NamedQuery(name = InputMessage.PURGE_QUERY_NAME, query = InputMessage.PURGE_QUERY),
-        @NamedQuery(name = InputMessage.UNEXPIRED_QUERY_NAME, query = InputMessage.UNEXPIRED_QUERY) })
+        @NamedQuery(name = InputMessage.UNEXPIRED_QUERY_NAME, query = InputMessage.UNEXPIRED_QUERY),
+        @NamedQuery(name = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME, query = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY),
+        @NamedQuery(name = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME, query = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "input_msg", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = InputMessage.GEN, sequenceName = "input_msg_seq")
 public class InputMessage {
+
+    public static enum ReplacementType {
+        MAT, MRD;
+    }
 
     protected static final String GEN = "Input Messsage Id Generator";
 
@@ -131,6 +140,22 @@ public class InputMessage {
     public static final String UNEXPIRED_QUERY_NAME = "getNonExpiredMessages";
 
     protected static final String UNEXPIRED_QUERY = "select id, name, afosid, creationTime, active FROM InputMessage m WHERE m.expirationTime >= :currentTime OR (m.expirationTime is null AND m.validHeader = true)";
+
+    /**
+     * Named query to retrieve messages that have a specific afosid and
+     * areacodes and are active and have not yet expired and have no mrd.
+     */
+    public static final String ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME = "getActiveInputMessagesWithAfosidAndAreaCodes";
+
+    protected static final String ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid and m.areaCodes = :areaCodes and m.mrd IS NULL and m.expirationTime >= :expireAfter and m.active = true";
+
+    /**
+     * Named query to retrieve messages that have an mrd matching a like
+     * expression and are active and have not yet expired.
+     */
+    public static final String ACTIVE_WITH_MRD_LIKE_QUERY_NAME = "getActiveInputMessagesWithMrdLike";
+
+    protected static final String ACTIVE_WITH_MRD_LIKE_QUERY = "FROM InputMessage m WHERE m.mrd LIKE :mrdLike and m.expirationTime >= :expireAfter and m.active = true";
 
     private static final int AREA_CODE_LENGTH = 4096;
 
@@ -281,6 +306,11 @@ public class InputMessage {
     @DynamicSerializeElement
     private boolean validHeader;
 
+    @Column
+    @Enumerated(EnumType.STRING)
+    @DynamicSerializeElement
+    private ReplacementType replacementType;
+
     public InputMessage() {
         super();
     }
@@ -309,6 +339,7 @@ public class InputMessage {
         this.expirationTime = cloneCal(other.expirationTime);
         this.content = other.content;
         this.validHeader = other.validHeader;
+        this.replacementType = other.replacementType;
         if (other.selectedTransmitters != null) {
             this.selectedTransmitters = new HashSet<>(
                     other.selectedTransmitters);
@@ -624,6 +655,14 @@ public class InputMessage {
         return false;
     }
 
+    public ReplacementType getReplacementType() {
+        return replacementType;
+    }
+
+    public void setReplacementType(ReplacementType replacementType) {
+        this.replacementType = replacementType;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -661,6 +700,8 @@ public class InputMessage {
                 + ((selectedTransmitters == null) ? 0 : selectedTransmitters
                         .hashCode());
         result = (prime * result) + (validHeader ? 1231 : 1237);
+        result = (prime * result)
+                + ((replacementType == null) ? 0 : replacementType.hashCode());
         return result;
     }
 
@@ -797,6 +838,9 @@ public class InputMessage {
         if (validHeader != other.validHeader) {
             return false;
         }
+        if (replacementType != other.replacementType) {
+            return false;
+        }
         return true;
     }
 
@@ -847,7 +891,8 @@ public class InputMessage {
                 + "\n  nwrsameTone=" + nwrsameTone + "\n  areaCodes="
                 + areaCodes + "\n  expirationTime=" + expirationTime.getTime()
                 + "\n  content=" + content + "\n  validHeader=" + validHeader
-                + "\n  selectedTransmitters=" + selectedTransmitters + "\n]";
+                + "\n  selectedTransmitters=" + selectedTransmitters
+                + "\n  replacementType=" + replacementType + "\n]";
     }
 
 }

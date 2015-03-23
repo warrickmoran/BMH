@@ -29,6 +29,7 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
@@ -64,6 +65,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Feb 03, 2015  4081     bkowal      Fix {@link #isPeriodic()}. Removed unused isStatic field.
  * Mar 05, 2015  4222     bkowal      Handle messages that never expire.
  * Mar 13, 2015  4222     bkowal      Prevent NPE for messages that do not expire.
+ * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -90,9 +92,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     @XmlElement
     private Calendar start;
-
-    @XmlElement
-    private Calendar expire;
 
     /** format is DDHHMMSS */
     @XmlElement
@@ -231,14 +230,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         this.start = start;
     }
 
-    public Calendar getExpire() {
-        return expire;
-    }
-
-    public void setExpire(Calendar expire) {
-        this.expire = expire;
-    }
-
     public String getPeriodicity() {
         return periodicity;
     }
@@ -334,9 +325,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         boolean started = currentTime >= start.getTimeInMillis();
         boolean ended = (this.expire != null && currentTime >= expire
                 .getTimeInMillis());
-        boolean replaced = replaceTime == null ? false
-                : currentTime >= replaceTime.getTimeInMillis();
-        return started && !ended && !replaced;
+        return started && !ended;
     }
 
     /**
