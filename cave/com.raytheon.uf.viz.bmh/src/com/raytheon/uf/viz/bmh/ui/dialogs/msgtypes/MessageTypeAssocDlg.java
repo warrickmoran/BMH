@@ -70,6 +70,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
+ * Mar 24, 2015  4306      rferrel     No longer have default selected message type.
  * </pre>
  * 
  * @author lvenable
@@ -172,8 +173,6 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
 
         loadData();
         populateMsgTypeAvailTable();
-
-        selectFirstMessage();
     }
 
     /**
@@ -341,6 +340,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
                 }
             }
         });
+        saveBtn.setEnabled(false);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
@@ -392,13 +392,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         }
 
         msgReplaceTableComp.populateTable(selectedMessageTableData);
-    }
-
-    private void selectFirstMessage() {
-        if (!messageTypeList.isEmpty()) {
-            selectedMessageType = messageTypeList.get(0);
-            populateSelection();
-        }
+        saveBtn.setEnabled(true);
     }
 
     /**
