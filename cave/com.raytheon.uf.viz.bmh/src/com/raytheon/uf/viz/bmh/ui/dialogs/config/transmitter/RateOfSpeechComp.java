@@ -19,10 +19,12 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -32,14 +34,21 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Scale;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.schemas.ssml.Prosody;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
-import com.raytheon.uf.common.bmh.datamodel.language.Language;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackCompleteNotification;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackThread;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
+import com.raytheon.uf.viz.bmh.ui.recordplayback.IPlaybackCompleteListener;
+import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * Allows the user to adjust and sample the rate of speech for a
@@ -55,6 +64,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * Feb 19, 2015 4142       bkowal      Use {@link #sampleVoice} when synthesizing
  *                                     the rate of speech sample.
  * Feb 24, 2015 4157       bkowal      Added Spanish sample text.
+ * Mar 24, 2015 4303       rferrel     When playing audio suspend others such as in line monitor.
  * 
  * </pre>
  * 
@@ -100,6 +110,12 @@ public class RateOfSpeechComp {
 
     private Language sampleLanguage;
 
+    private final Composite parent;
+
+    private final Object audioLock = new Object();
+
+    private AudioPlaybackThread audioThread = null;
+
     /**
      * Constructor
      * 
@@ -110,6 +126,7 @@ public class RateOfSpeechComp {
      *            rendered.
      */
     public RateOfSpeechComp(Composite parent, final int horizontalSpan) {
+        this.parent = parent;
         GridLayout gl = new GridLayout(3, false);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.horizontalSpan = horizontalSpan;
@@ -161,6 +178,18 @@ public class RateOfSpeechComp {
          */
         this.sampleTextLanguageMap.put(Language.ENGLISH, SAMPLE_TEXT_ENGLISH);
         this.sampleTextLanguageMap.put(Language.SPANISH, SAMPLE_TEXT_SPANISH);
+        this.parent.addDisposeListener(new DisposeListener() {
+
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                synchronized (audioLock) {
+                    if (audioThread != null) {
+                        audioThread.halt();
+                        finishAudio();
+                    }
+                }
+            }
+        });
     }
 
     /**
@@ -245,7 +274,8 @@ public class RateOfSpeechComp {
          * form messages is significantly longer than the sample text. Add the
          * text to the prosody.
          */
-        prosody.getContent().add(this.sampleTextLanguageMap.get(this.sampleLanguage));
+        prosody.getContent().add(
+                this.sampleTextLanguageMap.get(this.sampleLanguage));
 
         ssmlDoc.getRootTag().getContent().add(prosody);
         final String ssml;
@@ -258,6 +288,58 @@ public class RateOfSpeechComp {
             return;
         }
 
-        BmhUtils.playText(ssml, this.sampleVoice);
+        synchronized (audioLock) {
+            try {
+                byte[] audio = BmhUtils.textToAudio(ssml, this.sampleVoice);
+                audioThread = new AudioPlaybackThread(audio);
+            } catch (Exception e) {
+                String msg = "Unable to play audio.\n\n"
+                        + BmhUtils.getRootCauseMessage(e);
+
+                DialogUtility.showMessageBox(parent.getShell(), SWT.ICON_ERROR
+                        | SWT.OK, "Audio Play", msg);
+
+                if (audioThread != null) {
+                    audioThread.dispose();
+                    audioThread = null;
+                }
+                return;
+            }
+            BMHDialogNotificationManager.getInstance().post(
+                    new AudioRecordPlaybackNotification());
+        }
+
+        audioThread.setCompleteListener(new IPlaybackCompleteListener() {
+
+            @Override
+            public void notifyPlaybackComplete() {
+                finishAudio();
+            }
+        });
+        playButton.setEnabled(false);
+        audioThread.start();
     }
+
+    /**
+     * Clean up when done playing the audio.
+     */
+    private void finishAudio() {
+        synchronized (audioLock) {
+            if (audioThread != null) {
+                BMHDialogNotificationManager.getInstance().post(
+                        new AudioPlaybackCompleteNotification());
+                audioThread = null;
+                VizApp.runAsync(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        if (!playButton.isDisposed()) {
+                            playButton.setEnabled(true);
+                        }
+                    }
+                });
+            }
+        }
+    }
+
 }
