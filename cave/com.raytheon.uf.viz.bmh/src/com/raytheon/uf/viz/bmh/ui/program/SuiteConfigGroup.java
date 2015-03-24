@@ -86,6 +86,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 17, 2014  3698      rferrel      Added checks to allow only 1 GENERAL type suite in a program.
  * Dec 09, 2014  3906      lvenable     Added method to change the grid data.
  * Dec 13, 2014  3833      lvenable     Fixed selection to get items from correct list.
+ * Mar 24, 2015  4307      rferrel      Do not create filter controls for new program.
  * 
  * </pre>
  * 
@@ -262,7 +263,10 @@ public class SuiteConfigGroup extends Composite {
         suiteGroup.setLayoutData(gd);
         suiteGroup.setText(suiteGroupText);
 
-        createFilterControls();
+        if (suiteGroupType != SuiteGroupType.NEW_PROGRAM) {
+            createFilterControls();
+        }
+
         createTable();
         createSuiteControls();
 
