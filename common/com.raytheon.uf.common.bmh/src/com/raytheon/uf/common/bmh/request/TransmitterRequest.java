@@ -42,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 21, 2014  3845     bkowal      Added GetTransmitterGroupWithTransmitter
  * Feb 09, 2015  4082     bkowal      It is now possible to specify languages to
  *                                    create alongside a Transmitter Group.
+ * Mar 25, 2015  4305     rferrel     Added GetTransmittersByFips and argument element.
  * 
  * </pre>
  * 
@@ -51,7 +52,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class TransmitterRequest extends AbstractBMHServerRequest {
     public enum TransmitterRequestAction {
-        GetTransmitterGroups, GetTransmitters, GetEnabledTransmitterGroups, GetTransmitterGroupWithTransmitter, SaveTransmitter, SaveTransmitterDeleteGroup, SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup;
+        GetTransmitterGroups, GetTransmitters, GetEnabledTransmitterGroups,
+
+        GetTransmitterGroupWithTransmitter, SaveTransmitter, SaveTransmitterDeleteGroup,
+
+        SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup, GetTransmittersByFips;
     }
 
     /**
@@ -71,6 +76,9 @@ public class TransmitterRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private List<TransmitterGroup> transmitterGroupList;
+
+    @DynamicSerializeElement
+    private String argument;
 
     /**
      * @return the action
@@ -146,5 +154,13 @@ public class TransmitterRequest extends AbstractBMHServerRequest {
     public void setTransmitterGroupList(
             List<TransmitterGroup> transmitterGroupList) {
         this.transmitterGroupList = transmitterGroupList;
+    }
+
+    public String getArgument() {
+        return argument;
+    }
+
+    public void setArgument(String argument) {
+        this.argument = argument;
     }
 }

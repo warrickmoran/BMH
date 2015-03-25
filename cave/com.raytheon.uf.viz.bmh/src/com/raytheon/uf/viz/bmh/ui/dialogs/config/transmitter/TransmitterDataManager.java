@@ -56,6 +56,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  *                                     groups. 
  * Nov 21, 2014    3845    bkowal      Added getTransmitterGroupContainsTransmitter.
  * Feb 09, 2015    4082    bkowal      Added {@link #saveTransmitterGroup(TransmitterGroup, List)}.
+ * Mar 25, 2015    4305    rferrel     Added {@link #getTransmittersByFips(String)}.
  * </pre>
  * 
  * @author mpduff
@@ -230,6 +231,16 @@ public class TransmitterDataManager {
         TransmitterResponse response = (TransmitterResponse) BmhUtils
                 .sendRequest(request);
 
+        return response.getTransmitterList();
+    }
+
+    public List<Transmitter> getTransmittersByFips(String fipsCode)
+            throws Exception {
+        TransmitterRequest request = new TransmitterRequest();
+        request.setAction(TransmitterRequestAction.GetTransmittersByFips);
+        request.setArgument(fipsCode);
+        TransmitterResponse response = (TransmitterResponse) BmhUtils
+                .sendRequest(request);
         return response.getTransmitterList();
     }
 

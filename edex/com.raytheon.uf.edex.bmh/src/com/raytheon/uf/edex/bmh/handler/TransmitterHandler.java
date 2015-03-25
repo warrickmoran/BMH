@@ -61,6 +61,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  * Jan 22, 2015  3995     rjpeter     Added setting position of a new TransmitterGroup.
  * Feb 09, 2015  4082     bkowal      Added support for creating languages with a new
  *                                    Transmitter Group.
+ * Mar 25, 2015   4305    rferrel     Added GetTransmittersByFips.
  * </pre>
  * 
  * @author mpduff
@@ -123,6 +124,9 @@ public class TransmitterHandler extends
                     request.isOperational());
             notification = new TransmitterGroupConfigNotification(
                     ConfigChangeType.Delete, request.getTransmitterGroup());
+            break;
+        case GetTransmittersByFips:
+            response = getTransmittersByFips(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -263,6 +267,15 @@ public class TransmitterHandler extends
         List<Transmitter> transmitters = dao.getAllTransmitters();
         response.setTransmitterList(transmitters);
 
+        return response;
+    }
+
+    private TransmitterResponse getTransmittersByFips(TransmitterRequest request) {
+        TransmitterResponse response = new TransmitterResponse();
+        TransmitterDao dao = new TransmitterDao(request.isOperational());
+        List<Transmitter> transmitters = dao.getTransmitterByFips(request
+                .getArgument());
+        response.setTransmitterList(transmitters);
         return response;
     }
 

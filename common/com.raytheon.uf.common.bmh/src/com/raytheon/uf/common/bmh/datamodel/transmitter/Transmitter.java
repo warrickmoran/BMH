@@ -27,6 +27,8 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
@@ -51,12 +53,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Oct 06, 2014  3649     rferrel     Methods hashCode and equals now use id.
  * Oct 16, 2014  3636     rferrel     Added logging.
  * Feb 09, 2015  4095     bsteffen    Remove Name.
+ * Mar 25, 2015   4305    rferrel     Added query for transmitters by FIPS code.
  * 
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = Transmitter.GET_TRANSMITTERS_FOR_FIPS, query = Transmitter.GET_TRANSMITTERS_FOR_FIPS_QUERY) })
 @Entity
 @Table(name = "transmitter", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "mnemonic" }) })
 @SequenceGenerator(initialValue = 1, name = Transmitter.GEN, sequenceName = "transmitter_seq")
@@ -64,6 +68,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
 @DynamicSerializeTypeAdapter(factory = TransmitterAdapter.class)
 public class Transmitter {
     static final String GEN = "Transmitter Generator";
+
+    public static final String GET_TRANSMITTERS_FOR_FIPS = "getTransmittersForFips";
+
+    protected static final String GET_TRANSMITTERS_FOR_FIPS_QUERY = "SELECT distinct t FROM Transmitter t WHERE t.fipsCode = :fipscode";
 
     public enum TxMode {
         PRIMARY, SECONDARY

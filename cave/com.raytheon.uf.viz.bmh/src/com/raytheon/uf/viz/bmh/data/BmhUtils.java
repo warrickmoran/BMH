@@ -35,6 +35,8 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Shell;
@@ -593,5 +595,20 @@ public class BmhUtils {
             throws Exception {
         ProgramDataManager pdm = new ProgramDataManager();
         return pdm.getProgramGeneralSuite(program);
+    }
+
+    /**
+     * Get the exceptions root cause message, strip the leading exception tag
+     * and return a string that can be added to a message dialog.
+     * 
+     * @param exception
+     * @return rootCauseMsg
+     */
+    public static String getRootCauseMessage(Throwable exception) {
+        String rootCauseMsg = ExceptionUtils.getRootCauseMessage(exception);
+        if (rootCauseMsg == null) {
+            return StringUtils.EMPTY;
+        }
+        return rootCauseMsg.substring(rootCauseMsg.indexOf(":") + 1).trim();
     }
 }

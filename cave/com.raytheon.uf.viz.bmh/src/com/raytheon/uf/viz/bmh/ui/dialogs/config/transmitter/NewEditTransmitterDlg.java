@@ -52,6 +52,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
@@ -95,6 +96,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     Transmitter Groups.
  * Mar 18, 2015     4289   bkowal      Do not allow the user to remove the dac and/or port from
  *                                     a Transmitter in the enabled or maintenance state.
+ * Mar 25, 2015     4305   rferrel     Check for unique FIPS codes.
  * </pre>
  * 
  * @author mpduff
@@ -1183,9 +1185,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                             break;
                         } else {
                             String tFips = trans.getFipsCode();
-                            if ((tFips == null) || (tFips.trim().length() == 0)) {
-                                tFips = getFipsCode(
-                                        selGroup.getTransmitterList(), trans);
+                            if ((tFips == null) || tFips.trim().isEmpty()) {
+                                tFips = getFipsCode(trans);
                                 if (tFips == null) {
                                     return false;
                                 } else {
@@ -1230,6 +1231,20 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                             + "the same port.\n\nPlease select another port.\n";
                     valid = false;
                     sb.append(msg + "\n");
+                }
+            }
+        }
+
+        // Check for unique and valid FIPS code
+        if (valid) {
+            String fips = fipsTxt.getText().trim();
+            if (!fips.isEmpty()) {
+                if (!fips.matches(FIPS_CODE_VALID_PATTERN)) {
+                    sb.append(FIPS_CODE_ERROR_MSG).append("\n");
+                    valid = false;
+                } else if (!uniqueFipsCode(transToBeSaved, fips)) {
+                    sb.append("Fips Code must be unique.\n");
+                    valid = false;
                 }
             }
         }
@@ -1298,14 +1313,11 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     /**
      * Get a valid FIPS Code for transmitter.
      * 
-     * @param transmitters
-     *            - list to check for duplicates
      * @param transmitter
      *            - transmitter code is for
      * @return ftpsCode - null if user cancels else valid code.
      */
-    private String getFipsCode(final List<Transmitter> transmitters,
-            final Transmitter transmitter) {
+    private String getFipsCode(final Transmitter transmitter) {
         IInputTextValidator textValidator = new IInputTextValidator() {
 
             @Override
@@ -1316,10 +1328,18 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                             | SWT.OK, "FIPS Code Error", FIPS_CODE_ERROR_MSG);
                     return false;
                 }
-                if (!uniqueFipsCode(transmitters, transmitter, value)) {
-                    DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR
-                            | SWT.OK, "FIPS Code Error",
-                            "FIPS Code must be unique.");
+                try {
+                    if (!uniqueFipsCode(transmitter, value)) {
+                        DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR
+                                | SWT.OK, "FIPS Code Error",
+                                "FIPS Code must be unique.");
+                        return false;
+                    }
+                } catch (Exception e) {
+                    String message = "Unable to retrieve data.\n\n"
+                            + BmhUtils.getRootCauseMessage(e);
+                    DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR,
+                            "Data Retrieval", message);
                     return false;
                 }
                 return true;
@@ -1338,24 +1358,24 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
     }
 
     /**
-     * Checks the group's transmitters to see if the new FIPS code for
-     * transmitter is unique.
+     * Check all transmitters to see if the new FIPS code for transmitter is
+     * unique. This assumes only one transmitter may be in an area covered by
+     * the FIPS code.
      * 
-     * @param transmitters
      * @param transmitter
      * @param fipsCode
-     * @return isUnique
+     * @return true when unique
+     * @throws Exception
+     *             - Problem getting transmitter list
      */
-    private boolean uniqueFipsCode(List<Transmitter> transmitters,
-            Transmitter transmitter, String fipsCode) {
-        for (Transmitter t : transmitters) {
-            if (!transmitter.equals(t)) {
-                if (fipsCode.equals(t.getFipsCode())) {
-                    return false;
-                }
-            }
-        }
-        return true;
+    private boolean uniqueFipsCode(Transmitter transmitter, String fipsCode)
+            throws Exception {
+        List<Transmitter> transmitters = dataManager
+                .getTransmittersByFips(fipsCode);
+
+        return transmitters.isEmpty()
+                || ((transmitters.size() == 1) && (transmitter.getId() == transmitters
+                        .get(0).getId()));
     }
 
     /**

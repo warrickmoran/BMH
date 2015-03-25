@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Jul 17, 2014  3406     mpduff      Added getAllTransmitters()
  * Sep 20, 2014 3640       rferrel     saveTransmitterDeleteGroup no longer deletes transmitter.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Mar 25, 2015  4305     rferrel     Added {@link #getTransmitterByFips(String)}.
  * 
  * </pre>
  * 
@@ -92,5 +93,19 @@ public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
                 });
 
         return xmit;
+    }
+
+    /**
+     * Get list of transmitters with the FIPS Code. Normally should only be zero
+     * or one but if data base corrupt could have more that need to be dealt
+     * with.
+     * 
+     * @param FipsCode
+     * @return transmitters
+     */
+    @SuppressWarnings("unchecked")
+    public List<Transmitter> getTransmitterByFips(String fipsCode) {
+        return (List<Transmitter>) findByNamedQueryAndNamedParam(
+                Transmitter.GET_TRANSMITTERS_FOR_FIPS, "fipscode", fipsCode);
     }
 }
