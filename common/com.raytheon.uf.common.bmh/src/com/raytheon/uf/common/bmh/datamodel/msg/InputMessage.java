@@ -85,6 +85,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Fev 23, 2015  4140     rjpeter     Renamed foreign constraint.
  * Mar 05, 2015  4222     bkowal      Include messages that never expire when retrieving
  *                                    unexpired messages.
+ * Mar 19, 2015  4282     rferrel     Added missing elements to clone constructor,
+ *                                     equal, hashCode and toString methods. Clone all
+ *                                     Calendar elements.
  * </pre>
  * 
  * @author bsteffen
@@ -141,7 +144,7 @@ public class InputMessage {
      */
     @Column(length = 40, nullable = false)
     @DynamicSerializeElement
-    private String name;
+    private String name = "";
 
     @Column(length = Language.LENGTH)
     @Enumerated(EnumType.STRING)
@@ -200,7 +203,7 @@ public class InputMessage {
      */
     @Column
     @DynamicSerializeElement
-    private Boolean confirm;
+    private Boolean confirm = false;
 
     /**
      * This field is used to interrupt any message currently being broadcast on
@@ -208,7 +211,7 @@ public class InputMessage {
      */
     @Column
     @DynamicSerializeElement
-    private Boolean interrupt;
+    private Boolean interrupt = false;
 
     /**
      * This field is used to indicate an alert tone should be broadcast prior to
@@ -216,12 +219,12 @@ public class InputMessage {
      */
     @Column
     @DynamicSerializeElement
-    private Boolean alertTone;
+    private Boolean alertTone = false;
 
     /** Indicate an NWRSAME tone for this message. */
     @Column
     @DynamicSerializeElement
-    private Boolean nwrsameTone;
+    private Boolean nwrsameTone = null;
 
     /**
      * The transmitters for which NWRSAME tones should be played. This field
@@ -282,12 +285,18 @@ public class InputMessage {
         super();
     }
 
+    /**
+     * Clone constructor.
+     * 
+     * @param other
+     */
     public InputMessage(InputMessage other) {
         this.id = other.id;
+        this.name = other.name;
         this.language = other.language;
         this.afosid = other.afosid;
-        this.creationTime = other.creationTime;
-        this.effectiveTime = other.effectiveTime;
+        this.creationTime = cloneCal(other.creationTime);
+        this.effectiveTime = cloneCal(other.effectiveTime);
         this.periodicity = other.periodicity;
         this.mrd = other.mrd;
         this.active = other.active;
@@ -297,9 +306,13 @@ public class InputMessage {
         this.nwrsameTone = other.nwrsameTone;
         this.sameTransmitters = other.sameTransmitters;
         this.areaCodes = other.areaCodes;
-        this.expirationTime = other.expirationTime;
+        this.expirationTime = cloneCal(other.expirationTime);
         this.content = other.content;
         this.validHeader = other.validHeader;
+        if (other.selectedTransmitters != null) {
+            this.selectedTransmitters = new HashSet<>(
+                    other.selectedTransmitters);
+        }
     }
 
     public int getId() {
@@ -339,19 +352,19 @@ public class InputMessage {
     }
 
     public Calendar getCreationTime() {
-        return creationTime;
+        return cloneCal(creationTime);
     }
 
     public void setCreationTime(Calendar creationTime) {
-        this.creationTime = creationTime;
+        this.creationTime = cloneCal(creationTime);
     }
 
     public Calendar getEffectiveTime() {
-        return effectiveTime;
+        return cloneCal(effectiveTime);
     }
 
     public void setEffectiveTime(Calendar effectiveTime) {
-        this.effectiveTime = effectiveTime;
+        this.effectiveTime = cloneCal(effectiveTime);
     }
 
     public String getPeriodicity() {
@@ -572,11 +585,11 @@ public class InputMessage {
     }
 
     public Calendar getExpirationTime() {
-        return expirationTime;
+        return cloneCal(expirationTime);
     }
 
     public void setExpirationTime(Calendar expirationTime) {
-        this.expirationTime = expirationTime;
+        this.expirationTime = cloneCal(expirationTime);
     }
 
     public String getContent() {
@@ -637,12 +650,16 @@ public class InputMessage {
         result = (prime * result)
                 + ((language == null) ? 0 : language.hashCode());
         result = (prime * result) + ((mrd == null) ? 0 : mrd.hashCode());
+        result = (prime * result) + ((name == null) ? 0 : name.hashCode());
         result = (prime * result)
                 + ((nwrsameTone == null) ? 0 : nwrsameTone.hashCode());
         result = (prime * result)
+                + ((periodicity == null) ? 0 : periodicity.hashCode());
+        result = (prime * result)
                 + ((sameTransmitters == null) ? 0 : sameTransmitters.hashCode());
         result = (prime * result)
-                + ((periodicity == null) ? 0 : periodicity.hashCode());
+                + ((selectedTransmitters == null) ? 0 : selectedTransmitters
+                        .hashCode());
         result = (prime * result) + (validHeader ? 1231 : 1237);
         return result;
     }
@@ -742,18 +759,18 @@ public class InputMessage {
         } else if (!mrd.equals(other.mrd)) {
             return false;
         }
+        if (name == null) {
+            if (other.name != null) {
+                return false;
+            }
+        } else if (!name.equals(other.name)) {
+            return false;
+        }
         if (nwrsameTone == null) {
             if (other.nwrsameTone != null) {
                 return false;
             }
         } else if (!nwrsameTone.equals(other.nwrsameTone)) {
-            return false;
-        }
-        if (sameTransmitters == null) {
-            if (other.sameTransmitters != null) {
-                return false;
-            }
-        } else if (!sameTransmitters.equals(other.sameTransmitters)) {
             return false;
         }
         if (periodicity == null) {
@@ -763,10 +780,45 @@ public class InputMessage {
         } else if (!periodicity.equals(other.periodicity)) {
             return false;
         }
+        if (sameTransmitters == null) {
+            if (other.sameTransmitters != null) {
+                return false;
+            }
+        } else if (!sameTransmitters.equals(other.sameTransmitters)) {
+            return false;
+        }
+        if (selectedTransmitters == null) {
+            if (other.selectedTransmitters != null) {
+                return false;
+            }
+        } else if (!selectedTransmitters.equals(other.selectedTransmitters)) {
+            return false;
+        }
         if (validHeader != other.validHeader) {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Protect from any side affects by making clone of any calendar getter or
+     * setter.
+     * 
+     * @param cal
+     * @return cloneCal
+     */
+    private Calendar cloneCal(Calendar cal) {
+        Calendar clone = null;
+        if (cal != null) {
+            clone = (Calendar) cal.clone();
+            /*
+             * Only use to the minute. Zero these elements to make consistent
+             * values for equal and hasCode.
+             */
+            clone.set(Calendar.MILLISECOND, 0);
+            clone.set(Calendar.SECOND, 0);
+        }
+        return clone;
     }
 
     @Override
@@ -786,15 +838,16 @@ public class InputMessage {
             content = content + "...";
         }
         return "InputMessage [\n  id=" + id + "\n  language=" + language
-                + "\n  afosid=" + afosid + "\n  creationTime="
-                + creationTime.getTime() + "\n  effectiveTime="
-                + effectiveTime.getTime() + "\n  periodicity=" + periodicity
-                + "\n  mrd=" + mrd + "\n  active=" + active + "\n  confirm="
-                + confirm + "\n  interrupt=" + interrupt + "\n  alertTone="
-                + alertTone + "\n  nwrsameTone=" + nwrsameTone
-                + "\n  areaCodes=" + areaCodes + "\n  expirationTime="
-                + expirationTime.getTime() + "\n  content=" + content
-                + "\n  validHeader=" + validHeader + "\n]";
+                + "\n  name=\"" + name + "\"" + "\n  afosid=" + afosid
+                + "\n  creationTime=" + creationTime.getTime()
+                + "\n  effectiveTime=" + effectiveTime.getTime()
+                + "\n  periodicity=" + periodicity + "\n  mrd=" + mrd
+                + "\n  active=" + active + "\n  confirm=" + confirm
+                + "\n  interrupt=" + interrupt + "\n  alertTone=" + alertTone
+                + "\n  nwrsameTone=" + nwrsameTone + "\n  areaCodes="
+                + areaCodes + "\n  expirationTime=" + expirationTime.getTime()
+                + "\n  content=" + content + "\n  validHeader=" + validHeader
+                + "\n  selectedTransmitters=" + selectedTransmitters + "\n]";
     }
 
 }

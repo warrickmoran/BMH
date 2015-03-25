@@ -161,6 +161,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 16, 2015  4244     bsteffen    Extract same transmitter logic into SAMETransmitterSelector.
  * Mar 17, 2015  4160     bsteffen    Check if tones have played when modifying an existing message.
  * Mar 18, 2015  4281     rferrel     Added Close button and editStatus flag.
+ *                                    Add modification checks.
  * 
  * </pre>
  * 
@@ -258,13 +259,16 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
     private WxMessagesContent content = null;
 
     /** When true performing an edit. */
-    private boolean editStatus = false;
+    private boolean editStatus = true;
 
     /**
      * Keeps track of the available input messages that the user will be able to
      * move back and forth through.
      */
     private InputMessageSequence messageSequence;
+
+    /* Unmodifed current message. */
+    private InputMessage currentIm = null;
 
     /**
      * Constructor.
@@ -297,6 +301,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
     @Override
     protected void initializeComponents(Shell shell) {
+        super.initializeComponents(shell);
         setText(DlgInfo.WEATHER_MESSAGES.getTitle());
 
         createHeaderButtons();
@@ -313,12 +318,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
      */
     @Override
     public boolean okToClose() {
-        /*
-         * TODO:
-         * 
-         * Need to put in code to check/validate if the dialog can close (need
-         * to save before closing, etc).
-         */
+        if (isModified()) {
+            String msg = "Closing will lose changes.\nSelect OK to continue.";
+            int choice = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
+                    | SWT.OK | SWT.CANCEL, "Close Weather Message", msg);
+            return choice == SWT.OK;
+        }
         return true;
     }
 
@@ -339,13 +344,15 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             @Override
             public void widgetSelected(SelectionEvent e) {
 
-                String msg = "Creating a new weather message will lose any existing changes.  Continue?";
-                int choice = DialogUtility.showMessageBox(shell,
-                        SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
-                        "New Weather Message", msg);
+                if (isModified()) {
+                    String msg = "Creating a new weather message will lose existing changes.\nOK to continue?";
+                    int choice = DialogUtility.showMessageBox(shell,
+                            SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                            "New Weather Message", msg);
 
-                if (choice != SWT.OK) {
-                    return;
+                    if (choice != SWT.OK) {
+                        return;
+                    }
                 }
 
                 handleNewAction();
@@ -365,13 +372,15 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         editBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                String msg = "Editing a weather message will lose any existing changes.  Continue?";
-                int choice = DialogUtility.showMessageBox(shell,
-                        SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
-                        "Edit Weather Message", msg);
+                if (isModified()) {
+                    String msg = "Editing a weather message will lose existing changes.\nSelect OK to continue.";
+                    int choice = DialogUtility.showMessageBox(shell,
+                            SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                            "Edit Weather Message", msg);
 
-                if (choice != SWT.OK) {
-                    return;
+                    if (choice != SWT.OK) {
+                        return;
+                    }
                 }
 
                 SelectInputMsgDlg simd = new SelectInputMsgDlg(shell);
@@ -1063,39 +1072,19 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             return;
         }
 
+        if (!isModified()) {
+            String msg = "No changes to submit.";
+            DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
+                    "Edit Weather Message", msg);
+
+            return;
+        }
+
         NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
 
-        this.userInputMessage.setName(this.msgNameTF.getText());
-        this.userInputMessage.setLanguage(this.selectedMessageType.getVoice()
-                .getLanguage());
-        this.userInputMessage.setAfosid(this.selectedMessageType.getAfosid());
-        this.userInputMessage.setCreationTime(this.updateCalFromDTF(
-                this.userInputMessage.getCreationTime(),
-                this.creationDTF.getCalDateTimeValues()));
-        this.userInputMessage.setEffectiveTime(this.updateCalFromDTF(
-                this.userInputMessage.getEffectiveTime(),
-                this.effectiveDTF.getCalDateTimeValues()));
-        if (this.noExpireChk.getSelection()) {
-            this.userInputMessage.setExpirationTime(null);
-        } else {
-            this.userInputMessage.setExpirationTime(this.updateCalFromDTF(
-                    this.userInputMessage.getExpirationTime(),
-                    this.expirationDTF.getCalDateTimeValues()));
-        }
-        if ("00000000".equals(this.periodicityDTF.getFormattedValue()) == false) {
-            this.userInputMessage.setPeriodicity(this.periodicityDTF
-                    .getFormattedValue());
-        }
-        // skip mrd
-        this.userInputMessage.setActive(this.activeRdo.getSelection());
-        this.userInputMessage.setConfirm(this.confirmChk.getSelection());
-        this.userInputMessage.setInterrupt(this.interruptChk.getSelection());
-        this.userInputMessage.setAlertTone(this.alertChk.getSelection());
+        this.areaSelectionBtn.setEnabled(!editStatus);
         this.userInputMessage.setValidHeader(true);
 
-        // handle content
-        this.userInputMessage.setContent(this.content.getText());
-        // audio?
         if (this.content.getContentType() == CONTENT_TYPE.AUDIO) {
             request.setMessageAudio(this.content.getAudioDataList().get(0)
                     .getAudio());
@@ -1149,6 +1138,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         DialogUtility.showMessageBox(this.shell, SWT.ICON_INFORMATION | SWT.OK,
                 "Weather Messages",
                 "The weather message has been successfully submitted.");
+
+        currentIm = new InputMessage(userInputMessage);
+
         if (this.nextSequenceBtn.isEnabled()) {
             /*
              * enable message sequencing via the arrow buttons if sequenced
@@ -1159,10 +1151,61 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
     }
 
     /**
+     * Modify userInputMessage to current GUI values.
+     */
+    private void updateUserInputMessage() {
+        String name = this.msgNameTF.getText().trim();
+        this.userInputMessage.setName(name);
+
+        if (selectedMessageType != null) {
+            this.userInputMessage.setLanguage(this.selectedMessageType
+                    .getVoice().getLanguage());
+            this.userInputMessage.setAfosid(this.selectedMessageType
+                    .getAfosid());
+        } else {
+            this.userInputMessage.setLanguage(null);
+            this.userInputMessage.setAfosid(null);
+        }
+        this.userInputMessage.setCreationTime(this.updateCalFromDTF(
+                this.userInputMessage.getCreationTime(),
+                this.creationDTF.getCalDateTimeValues()));
+        this.userInputMessage.setEffectiveTime(this.updateCalFromDTF(
+                this.userInputMessage.getEffectiveTime(),
+                this.effectiveDTF.getCalDateTimeValues()));
+        if (this.noExpireChk.getSelection()) {
+            this.userInputMessage.setExpirationTime(null);
+        } else {
+            this.userInputMessage.setExpirationTime(this.updateCalFromDTF(
+                    this.userInputMessage.getExpirationTime(),
+                    this.expirationDTF.getCalDateTimeValues()));
+        }
+        if ("00000000".equals(this.periodicityDTF.getFormattedValue()) == false) {
+            this.userInputMessage.setPeriodicity(this.periodicityDTF
+                    .getFormattedValue());
+        } else {
+            this.userInputMessage.setPeriodicity(null);
+        }
+        // skip mrd
+        this.userInputMessage.setActive(this.activeRdo.getSelection());
+        this.userInputMessage.setConfirm(this.confirmChk.getSelection());
+        this.userInputMessage.setInterrupt(this.interruptChk.getSelection());
+        this.userInputMessage.setAlertTone(this.alertChk.getSelection());
+
+        /*
+         * Handle content. When an Audio is used the contents is changed to
+         * start with #Recorded or #Import followed by who did the action, if
+         * needed link to imported file and timestamp. This is sufficent to pick
+         * up any changes and allow Submit Message.
+         */
+        this.userInputMessage.setContent(this.content.getText());
+
+    }
+
+    /*
      * Check if tones will play and if so make sure the user knows.
      * 
      * @return true if tones aren't playing or the user has agreed to the tones.
-     *         False if tones will play and the user doens't want them to.
+     * False if tones will play and the user doens't want them to.
      */
     protected boolean verifyTones() {
         boolean isAlert = this.alertChk.getSelection();
@@ -1351,7 +1394,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         languageLbl.setText("");
         designationLbl.setText("");
         emergenyOverrideLbl.setText("");
-        sameTransmitters.reset();
+        setEditStatus(false);
 
         /*
          * Input Message controls.
@@ -1425,9 +1468,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         final List<InputMessageAudioData> audioDataList = (iam == null) ? null
                 : iam.getAudioDataList();
 
-        userInputMessage = im;
-        selectedMessageType = null;
+        currentIm = im;
+        userInputMessage = new InputMessage(im);
 
+        selectedMessageType = null;
         // Input message name.
         if (userInputMessage.getName() != null) {
             msgNameTF.setText(userInputMessage.getName());
@@ -1577,6 +1621,15 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
     }
 
     private void continueSequence(final SEQUENCE_DIRECTION direction) {
+        if (isModified()) {
+            String msg = "Changing weather message will lose existing changes.\nSelect OK to continue.";
+            int choice = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
+                    | SWT.OK | SWT.CANCEL, "Edit Weather Message", msg);
+
+            if (choice != SWT.OK) {
+                return;
+            }
+        }
         this.messageSequence.advanceSequence(direction);
         this.loadMessageFromSequence();
     }
@@ -1678,5 +1731,16 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             this.nextSequenceBtn.forceFocus();
             this.continueSequence(SEQUENCE_DIRECTION.RIGHT);
         }
+    }
+
+    /**
+     * Update the user input message from the GUI and determine if it is
+     * different from the current unmodified input message.
+     * 
+     * @return true when modified
+     */
+    private boolean isModified() {
+        updateUserInputMessage();
+        return (currentIm != null) && !currentIm.equals(userInputMessage);
     }
 }
