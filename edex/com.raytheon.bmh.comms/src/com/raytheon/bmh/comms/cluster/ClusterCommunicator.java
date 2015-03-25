@@ -30,7 +30,6 @@ import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterStateMessage.ClusterDacTransmitKey;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
-import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 
 /**
@@ -49,6 +48,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * Dec 1, 2014   3797     bkowal      Support broadcast clustering.
  * Jan 14, 2015  3869     bsteffen    Log a shorter message for disconnect.
+ * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil.
  * 
  * </pre>
  * 
@@ -80,7 +80,7 @@ public class ClusterCommunicator extends Thread {
                 Object message = SerializationUtil.transformFromThrift(
                         Object.class, socket.getInputStream());
                 handleMessage(message);
-            } catch (SerializationException | IOException e) {
+            } catch (Throwable e) {
                 boolean lostConnection = false;
                 if (e.getCause() instanceof TTransportException) {
                     TTransportException te = (TTransportException) e.getCause();
@@ -169,7 +169,7 @@ public class ClusterCommunicator extends Thread {
             try {
                 SerializationUtil.transformToThriftUsingStream(toSend,
                         socket.getOutputStream());
-            } catch (SerializationException | IOException e) {
+            } catch (Throwable e) {
                 logger.error("Error communicating with cluster member: {}",
                         getClusterId(), e);
                 this.disconnect();
