@@ -47,8 +47,10 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.StaticMsgTypeConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
@@ -62,6 +64,7 @@ import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
+import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
@@ -104,6 +107,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     regenerated.
  * Mar 05, 2015 4222       bkowal      Use null for messages that never expire.
  * Mar 13, 2015 4213       bkowal      Support {@link StaticMessageType}s.
+ * Mar 25, 2015 4213       bkowal      Update the generated messages in response to
+ *                                     {@link Program} and {@link Suite} modifications.
  * 
  * </pre>
  * 
@@ -121,6 +126,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
     private final TimeMessagesGenerator tmGenerator;
 
     private final AlignmentTestGenerator alignmentTestGenerator;
+
+    private ProgramDao programDao;
 
     private BroadcastMsgDao broadcastMsgDao;
 
@@ -281,11 +288,46 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 if (msg == null) {
                     return Collections.emptyList();
                 }
-                
+
                 List<ValidatedMessage> messageList = new ArrayList<>(1);
                 messageList.add(msg);
-                
+
                 return messageList;
+            }
+        } else if (notificationObject instanceof SuiteConfigNotification) {
+            SuiteConfigNotification notification = (SuiteConfigNotification) notificationObject;
+
+            if (notification.getType() == ConfigChangeType.Update) {
+                /*
+                 * Need to determine which ENABLED Transmitter Group(s) the
+                 * suite has been assigned to.
+                 */
+                return this.generateStaticMessage(this.programDao
+                        .getSuiteEnabledGroups(notification.getId()));
+            } else if (notification.getType() == ConfigChangeType.Delete) {
+                this.generateStaticMessage(notification
+                        .getAssociatedEnabledTransmitterGroups());
+
+                /*
+                 * Messages will never be created in this case. Messages that
+                 * are no longer assigned to a suite that is associated with the
+                 * Transmitter Group will be deactivated.
+                 */
+                return Collections.emptyList();
+            }
+        } else if (notificationObject instanceof ProgramConfigNotification) {
+            ProgramConfigNotification notification = (ProgramConfigNotification) notificationObject;
+
+            if (notification.getType() == ConfigChangeType.Update) {
+                return this.generateStaticMessage(this.programDao
+                        .getProgramEnabledGroups(notification.getId()));
+            } else if (notification.getType() == ConfigChangeType.Delete) {
+                /*
+                 * TODO? a Transmitter must be enabled before a Program can be
+                 * deleted so there would not be any enabled associated
+                 * Transmitters. All message de-activation would be initiated by
+                 * the Transmitter Group Config notification.
+                 */
             }
         }
 
@@ -358,7 +400,27 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         return (notificationObject instanceof MessageTypeConfigNotification
                 || notificationObject instanceof TransmitterLanguageConfigNotification
                 || notificationObject instanceof TransmitterGroupConfigNotification
-                || notificationObject instanceof ResetNotification || notificationObject instanceof StaticMsgTypeConfigNotification) == false;
+                || notificationObject instanceof ResetNotification
+                || notificationObject instanceof StaticMsgTypeConfigNotification
+                || notificationObject instanceof SuiteConfigNotification || notificationObject instanceof ProgramConfigNotification) == false;
+    }
+
+    private List<ValidatedMessage> generateStaticMessage(
+            List<TransmitterGroup> transmitterGroups) {
+        if (transmitterGroups.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ValidatedMessage> generatedMsgs = new ArrayList<>();
+        for (TransmitterGroup group : transmitterGroups) {
+            List<ValidatedMessage> msgs = this.generateStaticMessages(group);
+            if (msgs == null || msgs.isEmpty()) {
+                continue;
+            }
+            generatedMsgs.addAll(msgs);
+        }
+
+        return generatedMsgs;
     }
 
     private List<ValidatedMessage> generateStaticMessages(MessageType type) {
@@ -539,6 +601,48 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             return null;
         }
 
+        /*
+         * Determine if the static message type can even be scheduled for the
+         * associated Transmitter Group.
+         */
+        if (this.programDao.verifyMsgTypeHandledByTrxGroup(group, staticMsgType
+                .getMsgTypeSummary().getAfosid()) == false) {
+            StringBuilder logMsg = new StringBuilder(
+                    "Skipping message generation for message type ");
+            logMsg.append(staticMsgType.getMsgTypeSummary().getAfosid());
+            logMsg.append(" associated with transmitter group ");
+            logMsg.append(group.getId());
+            logMsg.append(" and language ");
+            logMsg.append(language.getLanguage().toString());
+            logMsg.append(". Message type is not part of a suite associated with the Transmitter Group.");
+
+            statusHandler.info(logMsg.toString());
+
+            /*
+             * Attempt to remove / deactivate any existing messages for the
+             * transmitter group and message type. Handles message type removed
+             * from suite scenario.
+             */
+            Set<String> staticAfosIds = new HashSet<>(1, 1.0f);
+            staticAfosIds.add(staticMsgType.getMsgTypeSummary().getAfosid());
+            try {
+                this.deactivateTransmitterLanguageStaticMsgs(group,
+                        staticMsgType.getTransmitterLanguage().getLanguage(),
+                        staticAfosIds);
+            } catch (Exception e) {
+                logMsg = new StringBuilder(
+                        "Failed to deactive any existing message(s) associated with transmitter group ");
+                logMsg.append(group.getId()).append(" and message type ")
+                        .append(staticMsgType.getMsgTypeSummary().getAfosid())
+                        .append(".");
+
+                statusHandler.warn(BMH_CATEGORY.STATIC_MSG_ERROR,
+                        logMsg.toString());
+            }
+
+            return null;
+        }
+
         /* determine if the static message needs to be created. */
         BroadcastMsg existingMsg = this.broadcastMsgDao.getMessageExistence(
                 group, staticMsgType.getMsgTypeSummary().getAfosid(),
@@ -709,6 +813,21 @@ public class StaticMessageGenerator implements IContextStateProcessor {
     }
 
     /**
+     * @return the programDao
+     */
+    public ProgramDao getProgramDao() {
+        return programDao;
+    }
+
+    /**
+     * @param programDao
+     *            the programDao to set
+     */
+    public void setProgramDao(ProgramDao programDao) {
+        this.programDao = programDao;
+    }
+
+    /**
      * @return the broadcastMsgDao
      */
     public BroadcastMsgDao getBroadcastMsgDao() {
@@ -819,6 +938,9 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         } else if (this.staticMessageTypeDao == null) {
             throw new IllegalStateException(
                     "StaticMessageTypeDao has not been set on the StaticMessageGenerator");
+        } else if (this.programDao == null) {
+            throw new IllegalStateException(
+                    "ProgramDao has not been set on the StaticMessageGenerator");
         }
     }
 

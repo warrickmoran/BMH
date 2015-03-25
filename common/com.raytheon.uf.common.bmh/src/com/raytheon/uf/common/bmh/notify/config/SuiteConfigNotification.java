@@ -19,7 +19,10 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import java.util.List;
+
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -35,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 04, 2014  3554     bsteffen    Initial creation
+ * Mar 25, 2015  4213     bkowal      Added {@link #associatedEnabledTransmitterGroups}.
  * 
  * </pre>
  * 
@@ -47,6 +51,15 @@ public class SuiteConfigNotification extends ConfigNotification {
     @DynamicSerializeElement
     private int id;
 
+    /**
+     * Used to provide a {@link List} of the {@link TransmitterGroup}s that may
+     * be affected by alterations to the {@link Suite}. Primarily used when a
+     * {@link Suite} is deleted because the original relation will be completely
+     * lost.
+     */
+    @DynamicSerializeElement
+    private List<TransmitterGroup> associatedEnabledTransmitterGroups;
+
     public SuiteConfigNotification() {
         super();
     }
@@ -56,12 +69,34 @@ public class SuiteConfigNotification extends ConfigNotification {
         this.id = suite.getId();
     }
 
+    public SuiteConfigNotification(ConfigChangeType type, Suite suite,
+            List<TransmitterGroup> associatedEnabledTransmitterGroups) {
+        this(type, suite);
+        this.associatedEnabledTransmitterGroups = associatedEnabledTransmitterGroups;
+    }
+
     public int getId() {
         return id;
     }
 
     public void setId(int id) {
         this.id = id;
+    }
+
+    /**
+     * @return the associatedEnabledTransmitterGroups
+     */
+    public List<TransmitterGroup> getAssociatedEnabledTransmitterGroups() {
+        return associatedEnabledTransmitterGroups;
+    }
+
+    /**
+     * @param associatedEnabledTransmitterGroups
+     *            the associatedEnabledTransmitterGroups to set
+     */
+    public void setAssociatedEnabledTransmitterGroups(
+            List<TransmitterGroup> associatedEnabledTransmitterGroups) {
+        this.associatedEnabledTransmitterGroups = associatedEnabledTransmitterGroups;
     }
 
 }

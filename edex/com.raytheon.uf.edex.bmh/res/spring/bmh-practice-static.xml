@@ -21,6 +21,7 @@
 		<constructor-arg ref="practice_timeMessagesGenerator" />
 		<constructor-arg ref="practice_alignmentTestGenerator" />
 		<constructor-arg value="false" />
+		<property name="programDao" ref="practice_programDao" />
 		<property name="broadcastMsgDao" ref="practice_broadcastMsgDao" />
 		<property name="transmitterGroupDao" ref="practice_transmitterGroupDao" />
 		<property name="transmitterLanguageDao" ref="practice_transmitterLanguageDao" />
