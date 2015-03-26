@@ -162,6 +162,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 17, 2015  4160     bsteffen    Check if tones have played when modifying an existing message.
  * Mar 18, 2015  4281     rferrel     Added Close button and editStatus flag.
  *                                    Add modification checks.
+ *                                    Keep in edit mode when Next/Prev fails to retrieve message.
  * 
  * </pre>
  * 
@@ -1564,6 +1565,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         msgContent.setAudioDataList(audioDataList);
 
         this.content = msgContent;
+        submitMsgBtn.setEnabled(true);
     }
 
     /**
@@ -1656,15 +1658,14 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         try {
             im = this.getInputMessageById(id);
         } catch (Exception e) {
-            statusHandler
-                    .error("Failed to retrieve the Input Message with id: "
-                            + id + ".", e);
-            /*
-             * reset the dialog; we do not want to associate the same message
-             * (the message that was previously successfully retrieved) with two
-             * sequence numbers.
-             */
-            this.handleNewAction();
+            handleNewAction();
+            setEditStatus(true);
+            submitMsgBtn.setEnabled(false);
+            currentIm = null;
+            String msg = "Failed to retrieve the Input Message with id: " + id
+                    + ".\n\n" + BmhUtils.getRootCauseMessage(e);
+            DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
+                    "Weather Message", msg);
             return;
         }
         sameTransmitters.reset();
