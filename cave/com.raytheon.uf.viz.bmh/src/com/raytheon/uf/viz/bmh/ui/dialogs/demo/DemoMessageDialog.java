@@ -80,6 +80,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * ------------- -------- ----------- --------------------------
  * Feb 19, 2015  4143     bsteffen    Initial creation
  * Mar 23, 2015  4309     rferrel     Alert Tone now set to false when submitting the message.
+ * Mar 26, 2015  4322     rferrel     Added cancel button.
  * 
  * </pre>
  * 
@@ -137,6 +138,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
+        super.initializeComponents(shell);
         this.setText(DlgInfo.DEMO_MESSAGE.getTitle());
 
         Composite transmitterAndVoiceComp = new Composite(shell, SWT.NONE);
@@ -266,14 +268,30 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         Label sepLbl = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
         sepLbl.setLayoutData(gd);
 
+        Composite buttonComp = new Composite(shell, SWT.NONE);
+        GridLayout gl = new GridLayout(2, false);
+        buttonComp.setLayout(gl);
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false, 2, 1);
-        Button submitMsgBtn = new Button(shell, SWT.PUSH);
+        buttonComp.setLayoutData(gd);
+
+        Button submitMsgBtn = new Button(buttonComp, SWT.PUSH);
         submitMsgBtn.setText("Submit Message");
-        submitMsgBtn.setLayoutData(gd);
         submitMsgBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 handleSubmitAction();
+            }
+        });
+
+        Button cancelBtn = new Button(buttonComp, SWT.PUSH);
+        cancelBtn.setText("Cancel");
+        cancelBtn.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (okToClose()) {
+                    close();
+                }
             }
         });
     }
