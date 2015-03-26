@@ -49,6 +49,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
@@ -102,6 +103,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Nov 18, 2014  3746     rjpeter     Refactored MessageTypeReplacement.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Jan 26, 2015  3928     bsteffen    Copy audio files.
+ * Mar 26, 2015  4213     bkowal      Fixed copying of static message types.
  * 
  * </pre>
  * 
@@ -140,10 +142,10 @@ public class BmhDatabaseCopier {
         copyDictionaries();
         copyTtsVoices();
         copyTransmitterGroups();
-        copyTransmitterLanguage();
         copyAreas();
         copyZones();
         copyMessageTypes();
+        copyTransmitterLanguage();
         copySuites();
         copyPrograms();
         copyInputMessages();
@@ -235,6 +237,20 @@ public class BmhDatabaseCopier {
         for (TransmitterLanguage lang : langs) {
             lang.setTransmitterGroup(transmitterGroupMap.get(lang
                     .getTransmitterGroup().getId()));
+            if (lang.getStaticMessageTypes() != null
+                    && lang.getStaticMessageTypes().isEmpty() == false) {
+                // update the message type references.
+                for (StaticMessageType stm : lang.getStaticMessageTypes()) {
+                    int opTrxGrpId = stm.getId().getTransmitterLanguagePK()
+                            .getTransmitterGroup().getId();
+                    int opMsgTypeId = stm.getId().getMsgTypeId();
+                    stm.getId()
+                            .getTransmitterLanguagePK()
+                            .setTransmitterGroup(
+                                    this.transmitterGroupMap.get(opTrxGrpId));
+                    stm.setMsgTypeSummary(this.messageTypeMap.get(opMsgTypeId));
+                }
+            }
         }
         prDao.persistAll(langs);
     }
@@ -426,8 +442,7 @@ public class BmhDatabaseCopier {
                     .getInputMessage().getId()));
             for (BroadcastFragment broadcastFragment : broadcastMsg
                     .getFragments()) {
-                Path output = Paths
-                        .get(broadcastFragment.getOutputName());
+                Path output = Paths.get(broadcastFragment.getOutputName());
                 if (output.startsWith(opAudioDir)) {
                     Path newOutput = prAudioDir.resolve(opAudioDir
                             .relativize(output));
@@ -447,41 +462,34 @@ public class BmhDatabaseCopier {
         }
         prDao.persistAll(broadcastMsgs);
     }
-    
+
     /**
      * Utility visitor for recursive directory copying.
      */
-    private static final class DirectoryCopier extends SimpleFileVisitor<Path>{
-        
+    private static final class DirectoryCopier extends SimpleFileVisitor<Path> {
+
         private final Path oldRoot;
-        
+
         private final Path newRoot;
-        
+
         public DirectoryCopier(Path oldRoot, Path newRoot) {
             this.oldRoot = oldRoot;
             this.newRoot = newRoot;
         }
 
         @Override
-        public FileVisitResult preVisitDirectory(
-                Path dir, BasicFileAttributes attrs)
-                throws IOException {
-            Path newDir = newRoot.resolve(oldRoot
-                    .relativize(dir));
+        public FileVisitResult preVisitDirectory(Path dir,
+                BasicFileAttributes attrs) throws IOException {
+            Path newDir = newRoot.resolve(oldRoot.relativize(dir));
             Files.createDirectories(newDir);
             return FileVisitResult.CONTINUE;
         }
 
         @Override
-        public FileVisitResult visitFile(Path file,
-                BasicFileAttributes attrs)
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
                 throws IOException {
-            Path newFile = newRoot.resolve(oldRoot
-                    .relativize(file));
-            Files.copy(
-                    file,
-                    newFile,
-                    StandardCopyOption.REPLACE_EXISTING);
+            Path newFile = newRoot.resolve(oldRoot.relativize(file));
+            Files.copy(file, newFile, StandardCopyOption.REPLACE_EXISTING);
             return FileVisitResult.CONTINUE;
         }
     }

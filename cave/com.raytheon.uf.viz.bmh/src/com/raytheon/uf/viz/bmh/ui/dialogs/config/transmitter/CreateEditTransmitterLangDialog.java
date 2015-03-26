@@ -83,6 +83,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 24, 2015 4082       bkowal      Prevent duplicate voice entries as a result of re-selection
  *                                     of the currently selected language.
  * Mar 12, 2015 4213       bkowal      Support static message types.
+ * Mar 26, 2015 4213       bkowal      Handle the case when no static message types exist.
  * 
  * </pre>
  * 
@@ -705,6 +706,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
                 && (this.transmitterGroup != null && this.transmitterGroup
                         .getId() > 0));
         if (this.transmitterLanguage == null
+                || this.transmitterLanguage.getStaticMessageTypes() == null
                 || this.transmitterLanguage.getStaticMessageTypes().isEmpty()) {
             return;
         }

@@ -68,6 +68,7 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
+import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
@@ -109,6 +110,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Mar 13, 2015 4213       bkowal      Support {@link StaticMessageType}s.
  * Mar 25, 2015 4213       bkowal      Update the generated messages in response to
  *                                     {@link Program} and {@link Suite} modifications.
+ * Mar 26, 2015 4213       bkowal      Reuse existing usable static {@link InputMessage}s
+ *                                     when only the contents or periodicity has changed. 
  * 
  * </pre>
  * 
@@ -128,6 +131,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
     private final AlignmentTestGenerator alignmentTestGenerator;
 
     private ProgramDao programDao;
+
+    private ValidatedMessageDao validatedMessageDao;
 
     private BroadcastMsgDao broadcastMsgDao;
 
@@ -657,14 +662,14 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 && !existingMsg.getFragments().isEmpty()
                 && (existingMsg.getInputMessage().getActive() != null && existingMsg
                         .getInputMessage().getActive());
+        /*
+         * technically, this flag should really be set during the content
+         * verification instead of during the test for completeness; however, we
+         * do not want to have to iterate through the broadcast fragments a
+         * second time.
+         */
+        boolean oneSpeechRateMatch = false;
         if (complete) {
-            /*
-             * technically, this flag should really be set during the content
-             * verification instead of during the test for completeness;
-             * however, we do not want to have to iterate through the broadcast
-             * fragments a second time.
-             */
-            boolean oneSpeechRateMatch = false;
             /*
              * so, that we will not need to extract the numeric speech rate from
              * the prosody speech rate String.
@@ -715,7 +720,6 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                     }
                 }
             }
-            complete = (complete && oneSpeechRateMatch);
         }
 
         if (complete == false) {
@@ -738,12 +742,23 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 || (mtPeriodicity != null && msgPeriodicity != null && mtPeriodicity
                         .equals(msgPeriodicity));
         if (text.equals(existingMsg.getInputMessage().getContent()) == false
-                || equivalentPeriodicity == false) {
+                || equivalentPeriodicity == false
+                || oneSpeechRateMatch == false) {
             /*
-             * The message text has been altered. New audio will need to be
-             * generated.
+             * update the original message when one or more of the following
+             * conditions apply: the content has been altered, the rate of
+             * speech has been altered, and/or the periodicity has been altered.
              */
-            return this.create(language, staticMsgType, text, groupSet);
+            StringBuilder logMsg = new StringBuilder(
+                    "Updating existing static message for transmitter group ");
+            logMsg.append(group.getId());
+            logMsg.append(" with afos id ");
+            logMsg.append(staticMsgType.getMsgTypeSummary().getAfosid());
+            logMsg.append(" and language ");
+            logMsg.append(language.getLanguage().toString());
+            logMsg.append(".");
+            statusHandler.info(logMsg.toString());
+            return this.update(existingMsg, staticMsgType, text);
         }
 
         /*
@@ -812,6 +827,37 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         return validMsg;
     }
 
+    private ValidatedMessage update(BroadcastMsg existingMsg,
+            StaticMessageType staticMsgType, final String text) {
+        InputMessage inputMsg = existingMsg.getInputMessage();
+        ValidatedMessage validMsg = this.validatedMessageDao
+                .getValidatedMsgByInputMsg(inputMsg);
+        if (validMsg == null) {
+            StringBuilder sb = new StringBuilder(
+                    "Failed to update existing Broadcast Message: ");
+            sb.append(existingMsg.getId()).append(
+                    ". Unable to find the associated Validated Message.");
+
+            statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR, sb.toString());
+            return null;
+        }
+
+        /*
+         * In the case of a static message, the only fields that can be changed
+         * are the text and the periodicity.
+         */
+        inputMsg.setPeriodicity(staticMsgType.getPeriodicity());
+        inputMsg.setContent(text);
+
+        /*
+         * Ensure that the message has not been disabled.
+         */
+        inputMsg.setActive(Boolean.TRUE);
+        validMsg.setInputMessage(inputMsg);
+
+        return validMsg;
+    }
+
     /**
      * @return the programDao
      */
@@ -825,6 +871,14 @@ public class StaticMessageGenerator implements IContextStateProcessor {
      */
     public void setProgramDao(ProgramDao programDao) {
         this.programDao = programDao;
+    }
+
+    public ValidatedMessageDao getValidatedMessageDao() {
+        return validatedMessageDao;
+    }
+
+    public void setValidatedMessageDao(ValidatedMessageDao validatedMessageDao) {
+        this.validatedMessageDao = validatedMessageDao;
     }
 
     /**
@@ -941,6 +995,9 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         } else if (this.programDao == null) {
             throw new IllegalStateException(
                     "ProgramDao has not been set on the StaticMessageGenerator");
+        } else if (this.validatedMessageDao == null) {
+            throw new IllegalStateException(
+                    "ValidatedMessageDao has not been set on the StaticMessageGenerator");
         }
     }
 

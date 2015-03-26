@@ -22,6 +22,7 @@
 		<constructor-arg ref="alignmentTestGenerator" />
 		<constructor-arg value="true" />
 		<property name="programDao" ref="programDao" />
+		<property name="validatedMessageDao" ref="validatedMessageDao" />
 		<property name="broadcastMsgDao" ref="broadcastMsgDao" />
 		<property name="transmitterGroupDao" ref="transmitterGroupDao" />
 		<property name="transmitterLanguageDao" ref="transmitterLanguageDao" />
