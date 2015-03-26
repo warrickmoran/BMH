@@ -95,6 +95,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      for the on-demand synthesis.
  * Mar 16, 2015   4283      bkowal      Handle playback for a combination of phonemes
  *                                      and other sound elements.
+ * Mar 25, 2015   4305      rferrel     Added {@link #getRootCauseMessage(Throwable)}.
  * </pre>
  * 
  * @author mpduff
