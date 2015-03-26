@@ -44,6 +44,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Nov 26, 2014  3613     bsteffen    Add getPurgableMessages
  * Jan 02, 2014   3833    lvenable    Added method to get unexpired messages.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -208,4 +209,28 @@ public class InputMessageDao extends
 
         return createInputMessageIdNameAfosCreation(objectList);
     }
+
+    public List<InputMessage> getActiveWithAfosidAndAreaCodes(
+            String afosid, String areaCodes, Calendar expireAfter) {
+        String[] names = { "afosid", "areaCodes", "expireAfter" };
+        Object[] values = { afosid, areaCodes, expireAfter };
+        @SuppressWarnings("unchecked")
+        List<InputMessage> result = (List<InputMessage>) findByNamedQueryAndNamedParam(
+                InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME,
+                names, values);
+        return result;
+    }
+
+    public List<InputMessage> getActiveWithMrdLike(String mrdLike,
+            Calendar expireAfter) {
+        String[] names = { "mrdLike", "expireAfter" };
+        Object[] values = { mrdLike, expireAfter };
+        @SuppressWarnings("unchecked")
+        List<InputMessage> result = (List<InputMessage>) findByNamedQueryAndNamedParam(
+                InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME,
+                names, values);
+        return result;
+    }
+
+
 }

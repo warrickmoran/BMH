@@ -81,6 +81,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * Feb 05, 2015  4085      bkowal      Designations are no longer static.
  * Feb 23, 2015  4140      rjpeter     Renamed foreign constraints.
+ * Mar 25, 2015  4290      bsteffen    Switch to global replacement.
+ * 
  * </pre>
  * 
  * @author rjpeter
@@ -92,7 +94,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_AFOSID_DESIGNATION, query = MessageType.GET_MESSAGETYPE_AFOSID_DESIGNATION_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE, query = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, query = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION_QUERY),
-        @NamedQuery(name = MessageType.GET_REPLACEMENT_AFOSIDS, query = MessageType.GET_REPLACEMENT_AFOSIDS_QUERY) })
+        @NamedQuery(name = MessageType.GET_REPLACEMENT_AFOSIDS, query = MessageType.GET_REPLACEMENT_AFOSIDS_QUERY),
+        @NamedQuery(name = MessageType.GET_REVERSE_REPLACEMENT_AFOSIDS, query = MessageType.GET_REVERSE_REPLACEMENT_AFOSIDS_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "message_type", schema = "bmh")
@@ -130,6 +133,10 @@ public class MessageType {
     public static final String GET_REPLACEMENT_AFOSIDS = "getReplacementAfosids";
 
     protected static final String GET_REPLACEMENT_AFOSIDS_QUERY = "SELECT mt.replacementMsgs FROM MessageType mt WHERE mt.afosid = :afosid";
+
+    public static final String GET_REVERSE_REPLACEMENT_AFOSIDS = "getReverseReplacementAfosids";
+
+    protected static final String GET_REVERSE_REPLACEMENT_AFOSIDS_QUERY = "Select m FROM MessageType m, MessageTypeSummary s WHERE s.afosid = :afosid and s in elements(m.replacementMsgs)";
 
     // use surrogate key
     @Id

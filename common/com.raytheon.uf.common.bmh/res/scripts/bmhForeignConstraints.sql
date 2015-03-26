@@ -56,9 +56,9 @@ alter table bmh.broadcast_msg drop constraint fk_p29wngg6tdbtcr7ukef334213;
 alter table bmh.broadcast_msg add constraint fk_p29wngg6tdbtcr7ukef334213
     foreign key (input_message_id) references bmh.input_msg (id) on delete cascade;
 
-alter table bmh.playlist_msg drop constraint fk_n7wab174o6f0cmvw3cetrtsl8;
-alter table bmh.playlist_msg add constraint fk_n7wab174o6f0cmvw3cetrtsl8
-    foreign key (broadcast_msg_id) references bmh.broadcast_msg (id) on delete cascade;
+alter table bmh.playlist_msg drop constraint fk_jb1sgxp01q5km5lk986o3tyjf;
+alter table bmh.playlist_msg add constraint fk_jb1sgxp01q5km5lk986o3tyjf
+    foreign key (message_id) references bmh.broadcast_msg (id) on delete cascade;
 
 alter table bmh.broadcast_fragment drop constraint fk_m87w4p7uk2l0vyjb1es2xs4vm;
 alter table bmh.broadcast_fragment add constraint fk_m87w4p7uk2l0vyjb1es2xs4vm

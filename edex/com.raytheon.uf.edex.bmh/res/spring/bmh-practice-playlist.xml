@@ -13,6 +13,7 @@
     <property name="broadcastMsgDao" ref="practice_broadcastMsgDao" />
     <property name="transmitterGroupDao" ref="practice_transmitterGroupDao" />
     <property name="messageTypeDao" ref="practice_messageTypeDao" />
+    <property name="inputMessageDao" ref="practice_inputMessageDao" />
   </bean>
 
   <bean id="practice_playlistStateManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager">
@@ -31,7 +32,8 @@
     <route id="practice_bmh-schedule">
       <from uri="jms-generic:queue:BMH.Practice.Schedule" />
       <doTry>
-        <bean ref="practice_broadcastMsgDao" method="getByID" />
+        <bean ref="serializationUtil" method="transformFromThrift" />
+		<bean ref="practice_broadcastMsgDao" method="restoreGroup" />
         <bean ref="practice_playlistManager" method="newMessage" />
         <doCatch>
           <exception>java.lang.Throwable</exception>

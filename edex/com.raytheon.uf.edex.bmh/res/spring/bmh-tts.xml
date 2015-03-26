@@ -37,25 +37,23 @@
 		<route id="ttsEncodeAudio">
 			<from uri="jms-durable:queue:BMH.TTS" />
 			<doTry>
+                <bean ref="serializationUtil" method="transformFromThrift" />
 				<choice>
 					<when>
 						<simple>
-							${body} is "java.lang.Long"
+							${body} is "com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup"
 						</simple>
-						<bean ref="broadcastMsgDao" method="getByID" />
+						<bean ref="broadcastMsgDao" method="restoreGroup" />
 						<bean ref="ttsManager" method="process" />
-						<bean ref="broadcastMsgDao" method="saveOrUpdate" />
+						<bean ref="broadcastMsgDao" method="saveOrUpdateGroup" />
 						<filter>
 							<simple>${body.isSuccess} == false</simple>
 							<stop />
 						</filter>
-						<setBody>
-							<simple>${body.getId}</simple>
-						</setBody>
+                        <bean ref="serializationUtil" method="transformToThrift" />
 						<to uri="jms-durable:queue:BMH.Schedule" />
 					</when>
 					<otherwise>
-						<bean ref="serializationUtil" method="transformFromThrift" />
 						<bean ref="ttsManager" method="process" />
 						<filter>
 							<simple>${body.isSuccess} == false</simple>

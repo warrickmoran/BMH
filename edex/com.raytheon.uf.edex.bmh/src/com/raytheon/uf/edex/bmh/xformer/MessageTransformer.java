@@ -20,13 +20,13 @@
 package com.raytheon.uf.edex.bmh.xformer;
 
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -35,9 +35,9 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.WordUtils;
+
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
-
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
@@ -46,6 +46,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
@@ -130,6 +131,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * Mar 05, 2015 4237       bkowal      Added missing return statement for null transmitter languages.
  * MAr 13, 2015 4213       bkowal      Support {@link StaticMessageType}s.
+ * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -237,12 +239,7 @@ public class MessageTransformer implements IContextStateProcessor {
          * Iterate through the destination transmitters; determine which
          * dictionary to use.
          */
-        /*
-         * TODO: not sure if we will leave it as an object or if we will create
-         * some type of generic interface for the BroadcastMsg and LdadMsg to
-         * extend?
-         */
-        List<Object> generatedMessages = new LinkedList<>();
+        List<BroadcastMsg> generatedMessages = new LinkedList<>();
         for (TransmitterGroup group : message.getTransmitterGroups()) {
             /* Get the transmitter level dictionary */
             Dictionary transmitterDictionary = null;
@@ -311,6 +308,9 @@ public class MessageTransformer implements IContextStateProcessor {
                             + message.getId() + "!");
         }
 
+        List<Object> result = new ArrayList<Object>();
+        result.add(new BroadcastMsgGroup(generatedMessages));
+
         /* Transformation complete. */
         statusHandler.info("Transformation of message: " + message.getId()
                 + " was successful. Generated " + generatedMessages.size()
@@ -320,7 +320,7 @@ public class MessageTransformer implements IContextStateProcessor {
             statusHandler.info("Building ldad message(s) for message: "
                     + message.getId() + "...");
             try {
-                generatedMessages.addAll(this.processLdad(messageType,
+                result.addAll(this.processLdad(messageType,
                         formattedText));
             } catch (SSMLConversionException e) {
                 StringBuilder errorString = new StringBuilder(
@@ -339,7 +339,7 @@ public class MessageTransformer implements IContextStateProcessor {
             }
         }
 
-        return generatedMessages;
+        return result;
     }
 
     private List<LdadMsg> processLdad(final MessageType messageType,

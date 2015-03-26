@@ -31,7 +31,6 @@ import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
-import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
@@ -70,6 +69,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Feb 10, 2015    4106    bkowal      Include the playlist that would be playing in a live broadcast
  *                                     notification.
  * Mar 17, 2015   4160     bsteffen    Persist state of tones.
+ * Mar 25, 2015   4290     bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -176,7 +176,7 @@ public class PlaylistStateManager {
             }
         }
 
-        Map<Long, PlaylistMessage> playlistMap = playlistData.getPlaylistMap();
+        Map<Long, BroadcastMsg> playlistMap = playlistData.getPlaylistMap();
         // remove unused messages
         playlistMap.clear();
 
@@ -192,11 +192,10 @@ public class PlaylistStateManager {
          * PlaylistData.
          */
         if (playlist != null) {
-            for (PlaylistMessage message : playlist.getMessages()) {
-                BroadcastMsg broadcastMessage = message.getBroadcastMsg();
-                long id = broadcastMessage.getId();
-                MessageType messageType = messageTypeDao
-                        .getByAfosId(broadcastMessage.getAfosid());
+            for (BroadcastMsg message : playlist.getMessages()) {
+                long id = message.getId();
+                MessageType messageType = messageTypeDao.getByAfosId(message
+                        .getAfosid());
                 playlistMap.put(id, message);
                 messageTypeMap.put(id, messageType);
             }
@@ -223,9 +222,7 @@ public class PlaylistStateManager {
                     }
                     MessageType messageType = messageTypeDao
                             .getByAfosId(broadcastMsg.getAfosid());
-                    PlaylistMessage playlistMessage = new PlaylistMessage();
-                    playlistMessage.setBroadcastMsg(broadcastMsg);
-                    playlistMap.put(id, playlistMessage);
+                    playlistMap.put(id, broadcastMsg);
                     messageTypeMap.put(id, messageType);
                 } catch (Exception e) {
                     statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
@@ -281,15 +278,12 @@ public class PlaylistStateManager {
 
     private void setToneFlags(PlaylistDataStructure playlistData,
             long broadcastId) {
-        MessagePlaybackPrediction prediction = playlistData
-.getPredictionMap()
+        MessagePlaybackPrediction prediction = playlistData.getPredictionMap()
                 .get(broadcastId);
         if (prediction.isPlayedAlertTone() || prediction.isPlayedSameTone()) {
-            PlaylistMessage playlistMessage = playlistData.getPlaylistMap()
+            BroadcastMsg broadcastMessage = playlistData.getPlaylistMap()
                     .get(broadcastId);
-            BroadcastMsg broadcastMessage = null;
-            if (playlistMessage != null) {
-                broadcastMessage = playlistMessage.getBroadcastMsg();
+            if (broadcastMessage != null) {
                 if (tonesMatch(prediction, broadcastMessage)) {
                     return;
                 }

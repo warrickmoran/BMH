@@ -32,7 +32,8 @@
 							<simple>${body} is
 								"com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg"
 							</simple>
-							<bean ref="practice_broadcastMsgDao" method="persist" />
+							<bean ref="practice_broadcastMsgDao" method="persistGroup" />
+                            <bean ref="serializationUtil" method="transformToThrift" />
 							<setBody>
 								<simple>${body.getId}</simple>
 							</setBody>

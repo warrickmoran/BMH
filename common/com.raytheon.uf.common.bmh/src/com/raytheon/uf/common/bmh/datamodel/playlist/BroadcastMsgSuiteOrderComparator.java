@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
@@ -43,18 +44,19 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Dec 08, 2014  3864     bsteffen    Initial creation
+ * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class PlaylistMessageSuiteOrderComparator implements
-        Comparator<PlaylistMessage> {
+public class BroadcastMsgSuiteOrderComparator implements
+        Comparator<BroadcastMsg> {
 
     private final Map<String, Integer> positionMap;
 
-    public PlaylistMessageSuiteOrderComparator(Suite suite) {
+    public BroadcastMsgSuiteOrderComparator(Suite suite) {
         List<SuiteMessage> suiteMessages = suite.getSuiteMessages();
         this.positionMap = new HashMap<>(suiteMessages.size() * 3 / 2);
         for (int i = 0; i < suiteMessages.size(); i += 1) {
@@ -63,11 +65,11 @@ public class PlaylistMessageSuiteOrderComparator implements
     }
 
     @Override
-    public int compare(PlaylistMessage m1, PlaylistMessage m2) {
+    public int compare(BroadcastMsg m1, BroadcastMsg m2) {
         int retVal = Integer.compare(indexOf(m1), indexOf(m2));
         if (retVal == 0) {
-            InputMessage i1 = m1.getBroadcastMsg().getInputMessage();
-            InputMessage i2 = m2.getBroadcastMsg().getInputMessage();
+            InputMessage i1 = m1.getInputMessage();
+            InputMessage i2 = m2.getInputMessage();
             retVal = i1.getCreationTime().compareTo(i2.getCreationTime());
             if (retVal == 0) {
                 retVal = Integer.compare(i1.getId(), i2.getId());
@@ -76,7 +78,7 @@ public class PlaylistMessageSuiteOrderComparator implements
         return retVal;
     }
 
-    private int indexOf(PlaylistMessage message) {
+    private int indexOf(BroadcastMsg message) {
         Integer result = positionMap.get(message.getAfosid());
         if (result == null) {
             return -1;

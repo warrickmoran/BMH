@@ -29,6 +29,7 @@ package com.raytheon.uf.edex.bmh.msg.logging;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 10, 2014 3651       bkowal      Initial creation
+ * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
  * 
  * </pre>
  * 
@@ -60,8 +61,7 @@ public class MessageActivity {
             + " has been broadcast " + MESSAGE_EXPIRES_FMT + ".";
 
     protected static final String REPLACEMENT_FORMAT = MESSAGE_FMT
-            + " has replaced " + MESSAGE_FMT + " and will be broadcast to "
-            + TRANSMITTER_GRP_FMT + " " + MESSAGE_EXPIRES_FMT + ".";
+            + " has replaced " + MESSAGE_FMT + " " + MESSAGE_EXPIRES_FMT + ".";
 
     protected static final String CREATION_FORMAT = MESSAGE_FMT
             + " was successfully created and will be broadcast to "
