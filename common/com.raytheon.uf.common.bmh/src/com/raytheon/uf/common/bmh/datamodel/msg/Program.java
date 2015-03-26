@@ -86,6 +86,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 07, 2015 3958      bkowal      Added {@link #GET_TRANSMITTERS_FOR_MSG_TYPE}.
  * Jan 14, 2015 3994      rjpeter     Added distinct to {@link #GET_PROGRAM_FOR_TRANSMITTER_GROUP}.
  * Mar 13, 2015 4213      bkowal      Added {@link #GET_STATIC_MSG_TYPES_FOR_PROGRAM}.
+ * Mar 25, 2015 4213      bkowal      Added {@link #GET_PROGRAM_FOR_TRANSMITTER_GROUP} and
+ *                                    {@link #VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP}.
  * </pre>
  * 
  * @author rjpeter
@@ -101,8 +103,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE, query = Program.GET_PROGRAMS_WITH_TRIGGER_BY_MSG_TYPE_QUERY),
         @NamedQuery(name = Program.GET_SUITE_PROGRAMS, query = Program.GET_SUITE_PROGRAMS_QUERY),
         @NamedQuery(name = Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS, query = Program.GET_SUITE_ENABLED_TRANSMITTER_GROUPS_QUERY),
+        @NamedQuery(name = Program.GET_PROGRAM_ENABLED_TRANSMITTER_GROUPS, query = Program.GET_PROGRAM_ENABLED_TRANSMITTER_GROUPS_QUERY),
         @NamedQuery(name = Program.GET_STATIC_MSG_TYPES_FOR_PROGRAM, query = Program.GET_STATIC_MSG_TYPES_FOR_PROGRAM_QUERY),
-        @NamedQuery(name = Program.GET_PROGRAM_GENERAL_SUITE, query = Program.GET_PROGRAM_GENERAL_SUITE_QUERY) })
+        @NamedQuery(name = Program.GET_PROGRAM_GENERAL_SUITE, query = Program.GET_PROGRAM_GENERAL_SUITE_QUERY),
+        @NamedQuery(name = Program.VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP, query = Program.VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP_QUERY) })
 @Entity
 @Table(name = "program", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = Program.GEN, sequenceName = "program_seq")
@@ -146,6 +150,10 @@ public class Program {
 
     protected static final String GET_SUITE_ENABLED_TRANSMITTER_GROUPS_QUERY = "SELECT tg FROM Program p INNER JOIN p.programSuites ps INNER JOIN p.transmitterGroups tg  INNER JOIN tg.transmitters t WHERE ps.id.suiteId = :suiteId AND t.txStatus = 'ENABLED'";
 
+    public static final String GET_PROGRAM_ENABLED_TRANSMITTER_GROUPS = "getProgramEnabledTransmitterGroups";
+
+    protected static final String GET_PROGRAM_ENABLED_TRANSMITTER_GROUPS_QUERY = "SELECT DISTINCT tg FROM Program p INNER JOIN p.programSuites ps INNER JOIN p.transmitterGroups tg  INNER JOIN tg.transmitters t WHERE ps.id.programId = :programId AND t.txStatus = 'ENABLED'";
+
     public static final String GET_PROGRAM_GENERAL_SUITE = "getProgramGeneralSuite";
 
     protected static final String GET_PROGRAM_GENERAL_SUITE_QUERY = "SELECT s FROM Program p INNER JOIN p.programSuites ps INNER Join ps.suite s WHERE p.id = :programId AND s.type = 'GENERAL'";
@@ -153,6 +161,14 @@ public class Program {
     public static final String GET_STATIC_MSG_TYPES_FOR_PROGRAM = "getStaticMsgTypesForProgram";
 
     protected static final String GET_STATIC_MSG_TYPES_FOR_PROGRAM_QUERY = "SELECT DISTINCT mt FROM Program p inner join p.transmitterGroups tg INNER JOIN p.programSuites ps INNER JOIN ps.suite s INNER JOIN s.suiteMessages sm INNER JOIN sm.msgTypeSummary mt WHERE p.id = :programId AND mt.designation IN ('StationID', 'TimeAnnouncement')";
+
+    public static final String VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP = "verifyMsgTypeHandledByTrxGrp";
+
+    /*
+     * possible for a message type to be in multiple suites within a program.
+     * so, DISTINCT is used in the query.
+     */
+    protected static final String VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP_QUERY = "SELECT DISTINCT mt FROM Program p inner join p.transmitterGroups tg inner join p.programSuites ps inner join ps.suite s inner join s.suiteMessages sm inner join sm.msgTypeSummary mt WHERE tg = :group AND mt.afosid = :afosid";
 
     // use surrogate key
     @Id

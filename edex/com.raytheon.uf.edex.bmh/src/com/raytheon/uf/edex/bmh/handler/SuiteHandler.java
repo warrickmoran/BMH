@@ -23,6 +23,7 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.request.SuiteRequest;
@@ -30,6 +31,7 @@ import com.raytheon.uf.common.bmh.request.SuiteResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.SuiteDao;
 
 /**
@@ -52,6 +54,8 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * Oct 21, 2014  3715     bkowal      Updates due to hibernate upgrade.
  * Oct 29, 2014  3636     rferrel     Implement logging,
  * Dec 07, 2014  3752     mpduff      Add getSuiteByName
+ * Mar 25, 2015  4213     bkowal      Added affected Transmitter Group(s) to the 
+ *                                    {@link SuiteConfigNotification} for deletes.
  * 
  * </pre>
  * 
@@ -77,9 +81,10 @@ public class SuiteHandler extends AbstractBMHServerRequestHandler<SuiteRequest> 
             suiteResponse = getSuites(request);
             break;
         case Delete:
-            deleteSuite(request);
             notification = new SuiteConfigNotification(ConfigChangeType.Delete,
-                    request.getSuite());
+                    request.getSuite(),
+                    this.getAffectedEnabledTransmitterGroups(request));
+            deleteSuite(request);
             break;
         case Save:
             suiteResponse = saveSuite(request);
@@ -100,6 +105,12 @@ public class SuiteHandler extends AbstractBMHServerRequestHandler<SuiteRequest> 
                 request.isOperational());
 
         return suiteResponse;
+    }
+
+    private List<TransmitterGroup> getAffectedEnabledTransmitterGroups(
+            SuiteRequest request) throws Exception {
+        ProgramDao programDao = new ProgramDao(request.isOperational());
+        return programDao.getSuiteEnabledGroups(request.getSuite().getId());
     }
 
     /**

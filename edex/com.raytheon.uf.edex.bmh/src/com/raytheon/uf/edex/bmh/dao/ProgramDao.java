@@ -68,6 +68,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Dec 02, 2014  3838     rferrel     Added getProgramGeneralSuite.
  * Jan 07, 2015  3958     bkowal      Added {@link #getTransmittersForMsgType(MessageType)}.
  * Mar 12, 2015  4213     bkowal      Added {@link #getStaticMsgTypesForProgram(int)}.
+ * Mar 25, 2015  4213     bkowal      Added {@link #getProgramEnabledGroups(int)} and
+ *                                    {@link #verifyMsgTypeHandledByTrxGroup(TransmitterGroup, String)}.
  * </pre>
  * 
  * @author bsteffen
@@ -208,6 +210,21 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
                 suiteId);
         if ((groups == null) || groups.isEmpty()) {
             return Collections.emptyList();
+        }
+        return groups;
+    }
+
+    public List<TransmitterGroup> getProgramEnabledGroups(int programId) {
+        List<?> returnObjects = this.findByNamedQueryAndNamedParam(
+                Program.GET_PROGRAM_ENABLED_TRANSMITTER_GROUPS, "programId",
+                programId);
+        if (returnObjects == null || returnObjects.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<TransmitterGroup> groups = new ArrayList<>(returnObjects.size());
+        for (Object object : returnObjects) {
+            groups.add((TransmitterGroup) object);
         }
         return groups;
     }
@@ -377,6 +394,25 @@ public class ProgramDao extends AbstractBMHDao<Program, Integer> {
         }
 
         return messageTypes;
+    }
+
+    /**
+     * Verifies whether the specified {@link MessageType} belongs to a
+     * {@link Suite}/{@link Program} associated with the specified
+     * {@link TransmitterGroup}.
+     * 
+     * @param group
+     *            the specified {@link TransmitterGroup}.
+     * @param afosid
+     *            the afos id of the specified {@link MessageType}
+     * @return {@code true} if a relationship exists; {@code false} otherwise
+     */
+    public boolean verifyMsgTypeHandledByTrxGroup(final TransmitterGroup group,
+            final String afosid) {
+        List<?> returnObjects = this.findByNamedQueryAndNamedParam(
+                Program.VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP, new String[] {
+                        "group", "afosid" }, new Object[] { group, afosid });
+        return (returnObjects.isEmpty() == false);
     }
 
     @Override
