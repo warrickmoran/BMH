@@ -21,6 +21,7 @@ package com.raytheon.uf.edex.bmh.xformer.data;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import javax.xml.bind.JAXBException;
 
@@ -37,6 +38,8 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
  * ------------ ---------- ----------- --------------------------
  * Jun 26, 2014 3302       bkowal      Initial creation
  * Jul 7, 2014  3302       bkowal      Implemented the transformation method.
+ * Mar 24, 2015 4301       bkowal      Provide better support for basic text substitutions.
+ *                                     Ensure that matches are not found within words.
  * 
  * </pre>
  * 
@@ -46,7 +49,11 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 
 public class SimpleTextTransformation extends AbstractTextTransformation {
 
+    private static final String NON_ALPHA_REGEX = "([\\W|_]+)";
+
     private List<Serializable> appliedTransformation;
+
+    private final String originalText;
 
     /**
      * Constructor
@@ -56,13 +63,38 @@ public class SimpleTextTransformation extends AbstractTextTransformation {
      * @throws JAXBException
      */
     public SimpleTextTransformation(String text, final String ssmlReplacement)
-            throws SSMLConversionException {
+            throws SSMLConversionException, TransformationException {
         super(text, ssmlReplacement);
         this.determineDefaultReplacement();
+        this.originalText = text.toLowerCase();
     }
 
     private void determineDefaultReplacement() throws SSMLConversionException {
         appliedTransformation = convertSSML(this.ssmlReplacement);
+    }
+
+    @Override
+    protected String prepareTransformationRegex(String text) {
+        return NON_ALPHA_REGEX + "(" + Pattern.quote(text) + ")"
+                + NON_ALPHA_REGEX;
+    }
+
+    @Override
+    public boolean determineTransformationApplicability(IFreeText candidate) {
+        /*
+         * edge case - determine if the candidate only consists of a single
+         * character.
+         */
+        String text = candidate.getText().toLowerCase();
+        if (this.originalText.equals(text)) {
+            candidate.claim(0, this.originalText.length());
+            return true;
+        }
+
+        /*
+         * apply standard rules.
+         */
+        return super.determineTransformationApplicability(candidate);
     }
 
     @Override
