@@ -30,13 +30,10 @@
 					<choice>
 						<when>
 							<simple>${body} is
-								"com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg"
+								"com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup"
 							</simple>
 							<bean ref="practice_broadcastMsgDao" method="persistGroup" />
                             <bean ref="serializationUtil" method="transformToThrift" />
-							<setBody>
-								<simple>${body.getId}</simple>
-							</setBody>
 							<to uri="jms-generic:queue:BMH.Practice.TTS" />
 						</when>
 						<when>
