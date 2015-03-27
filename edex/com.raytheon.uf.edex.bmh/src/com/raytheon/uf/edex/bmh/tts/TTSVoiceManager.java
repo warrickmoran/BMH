@@ -19,8 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.tts;
 
-import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.BMHVoice;
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.TTSSynthesisException;
@@ -40,6 +40,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 2, 2015  4175       bkowal      Initial creation
+ * Mar 27, 2015  4315     rferrel      Added {@link #verifyLanguageAvailable(Language)}.
  * 
  * </pre>
  * 
@@ -66,6 +67,18 @@ public class TTSVoiceManager {
             final TTSSynthesisFactory synthesisFactory) {
         this.ttsVoiceDao = ttsVoiceDao;
         this.synthesisFactory = synthesisFactory;
+    }
+
+    public boolean verifyLanguageAvailable(Language language) {
+        switch (language) {
+        case ENGLISH:
+            return verifyVoiceAvailability(BMHVoice.PAUL);
+        case SPANISH:
+            return verifyVoiceAvailability(BMHVoice.VIOLETA);
+
+        default:
+            return false;
+        }
     }
 
     public boolean verifyVoiceAvailability(BMHVoice bmhVoice) {

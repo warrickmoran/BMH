@@ -86,6 +86,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Feb 09, 2015 4095       bsteffen    Remove Transmitter Name.
  * Mar 03, 2015 4175       bkowal      Cleanup.
  * Mar 13, 2015 4213       bkowal      Create {@link TransmitterMessages}s.
+ * Mar 27, 2015  #4315     rferrel     Removed no longer used voiceMsg.
  * 
  * </pre>
  * 
@@ -185,8 +186,6 @@ public class AsciiFileTranslator {
      */
     protected final AtomicBoolean parsedData = new AtomicBoolean(false);
 
-    private final String voiceMsg;
-
     /**
      * Translates the given file as a legacy ascii dictionary. If strict is
      * true, then any parsing/validation issues will throw an exception,
@@ -218,12 +217,6 @@ public class AsciiFileTranslator {
         }
 
         includeSpanish = containsSpanishVoice(definedVoices);
-
-        if (includeSpanish) {
-            voiceMsg = "Including Spanish information.";
-        } else {
-            voiceMsg = "Excluding Spanish information.";
-        }
 
         // put voices in to map for look up
         for (TtsVoice voice : definedVoices) {
@@ -1561,10 +1554,6 @@ public class AsciiFileTranslator {
             }
         }
         return false;
-    }
-
-    public String getVoiceMsg() {
-        return voiceMsg;
     }
 
     public boolean parsedData() {

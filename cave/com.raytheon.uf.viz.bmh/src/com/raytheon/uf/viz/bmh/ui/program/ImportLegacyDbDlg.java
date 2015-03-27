@@ -45,6 +45,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
@@ -69,6 +70,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Dec 05, 2014  #3824     rferrel     Initial creation
  * Mar 03, 2015  #4175     bkowal      Always expect at least one voice.
+ * Mar 27, 2015  #4315     rferrel     Check to allow Spanish and disable when no voices.
  * 
  * </pre>
  * 
@@ -83,6 +85,10 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
     private Text fileTxt;
 
     private String input;
+
+    private List<TtsVoice> voices;
+
+    private Boolean haveSpanish;
 
     /**
      * Constructor.
@@ -120,6 +126,7 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
+        super.initializeComponents(shell);
         setText(DlgInfo.IMPORT_LEGACY_DB.getTitle());
 
         Composite progComp = new Composite(shell, SWT.NONE);
@@ -127,6 +134,12 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
         progComp.setLayout(gl);
         progComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true, false));
         GridData gd = null;
+
+        boolean haveVoices = getAllVoices(progComp);
+
+        if (haveVoices) {
+            haveSpanish = spanishAvailable(progComp);
+        }
 
         Composite fileComp = new Composite(progComp, SWT.NONE);
         gl = new GridLayout(3, false);
@@ -141,6 +154,7 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gd.minimumWidth = 600;
         fileTxt.setLayoutData(gd);
+        fileTxt.setEnabled(haveVoices);
 
         Button browseBtn = new Button(fileComp, SWT.NONE);
         browseBtn.setText("Browse...");
@@ -151,8 +165,7 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
                 fileBrowser();
             }
         });
-
-        // addLabelSeparator(progComp);
+        browseBtn.setEnabled(haveVoices);
 
         Composite buttonComp = new Composite(progComp, SWT.NONE);
         gl = new GridLayout(2, true);
@@ -169,6 +182,7 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
                 verifyFile(fileTxt.getText().trim());
             }
         });
+        importBtn.setEnabled(haveVoices);
 
         Button cancelBtn = new Button(buttonComp, SWT.NONE);
         cancelBtn.setText("Cancel");
@@ -179,6 +193,48 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
                 close();
             }
         });
+    }
+
+    /**
+     * Determine if allowed to do Spanish.
+     * 
+     * @param parent
+     * @return available
+     */
+    private boolean spanishAvailable(Composite parent) {
+        try {
+            return new VoiceDataManager().languageIsAvaiable(Language.SPANISH);
+        } catch (Exception e) {
+            String msg = "Unable to obtain language data.\n\n"
+                    + BmhUtils.getRootCauseMessage(e);
+            Label lbl = new Label(parent, SWT.NONE);
+            lbl.setText(msg);
+        }
+        return false;
+    }
+
+    /**
+     * Query for voices.
+     * 
+     * @param parent
+     * @return true when at least one voice available
+     */
+    private boolean getAllVoices(Composite parent) {
+        try {
+            voices = new VoiceDataManager().getAllVoices();
+        } catch (Exception e) {
+            String msg = "Unable to obtain voices.\n\n"
+                    + BmhUtils.getRootCauseMessage(e);
+            Label lbl = new Label(parent, SWT.NONE);
+            lbl.setText(msg);
+            return false;
+        }
+        if ((voices == null) || (voices.isEmpty())) {
+            Label lbl = new Label(parent, SWT.NONE);
+            lbl.setText("No voices currently exist in the BMH system!");
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -215,16 +271,6 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
         BufferedReader reader = new BufferedReader(new StringReader(input));
 
         try {
-            List<TtsVoice> voices = new VoiceDataManager().getAllVoices();
-            if ((voices == null) || (voices.isEmpty())) {
-                DialogUtility.showMessageBox(this.shell, SWT.ICON_ERROR
-                        | SWT.OK, "BMH Configuration Error",
-                        "No voices currently exist in the BMH system!");
-
-                input = null;
-                return;
-            }
-
             final AsciiFileTranslator asciiFile = new AsciiFileTranslator(
                     reader, file.getAbsolutePath(), false, voices);
 
@@ -284,7 +330,11 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
     private void confirmMessage(final String fileName,
             final AsciiFileTranslator asciiFile) {
         shell.setCursor(shell.getDisplay().getSystemCursor(SWT.CURSOR_WAIT));
-        final String question = asciiFile.getVoiceMsg()
+
+        String voiceMsg = haveSpanish ? "Including Spanish information."
+                : "Excluding Spanish information.";
+
+        final String question = voiceMsg
                 + "\n\nSelect OK to import legacy database.";
         List<String> msgs = asciiFile.getValidationMessages();
         final BmhData data = asciiFile.getTranslatedData();
@@ -394,7 +444,7 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
 
     private void fileBrowser() {
         FileDialog dialog = new FileDialog(shell, SWT.OPEN);
-        dialog.setText(DlgInfo.IMPORT_LEGACY_DB + " Browser");
+        dialog.setText(DlgInfo.IMPORT_LEGACY_DB.getTitle() + " Browser");
         String[] filterNames = new String[] { "Legacy Database",
                 "All Files (*)" };
         String[] filterExtensions = new String[] { "*.[Aa][Ss][Cc]", "*" };
