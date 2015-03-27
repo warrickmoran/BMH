@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import javax.xml.bind.JAXBException;
 
@@ -44,6 +45,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
  * Aug 26, 2014 3559       bkowal      Lower case all text when constructing dictionary
  *                                     regex and determining if rules apply.
  * Feb 24, 2015 4157       bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
+ * Mar 24, 2015 4301       bkowal      Provide better support for plain text rules.
  * 
  * </pre>
  * 
@@ -57,9 +59,11 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
 
     private static String ssmlSpeakWrapperText;
 
-    private final Pattern transformationRegex;
+    protected final Pattern transformationRegex;
 
     protected String ssmlReplacement;
+
+    private int matchGroup = 0;
 
     /**
      * Constructor
@@ -72,12 +76,22 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
      * @throws JAXBException
      */
     public AbstractTextTransformation(String text, final String ssmlReplacement)
-            throws SSMLConversionException {
+            throws SSMLConversionException, TransformationException {
         if (ssmlSpeakWrapperText == null) {
             generateSpeakSSMLWrapper();
         }
-        this.transformationRegex = Pattern.compile(text.toLowerCase());
+
+        try {
+            this.transformationRegex = Pattern.compile(this
+                    .prepareTransformationRegex(text.toLowerCase()));
+        } catch (PatternSyntaxException e) {
+            throw new TransformationException(text.toLowerCase(), e);
+        }
         this.ssmlReplacement = ssmlReplacement;
+    }
+
+    protected String prepareTransformationRegex(String text) {
+        return text;
     }
 
     private static synchronized void generateSpeakSSMLWrapper()
@@ -114,7 +128,7 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
                 .toLowerCase());
         while (matcher.find()) {
             final int endIndex = matcher.end();
-            final String matchText = matcher.group(0);
+            final String matchText = matcher.group(this.matchGroup);
             final int beginIndex = endIndex - matchText.length();
 
             candidate.claim(beginIndex, endIndex);
@@ -133,4 +147,12 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
     @Override
     public abstract List<Serializable> applyTransformation(String text)
             throws SSMLConversionException;
+
+    /**
+     * @param matchGroup
+     *            the matchGroup to set
+     */
+    protected void setMatchGroup(int matchGroup) {
+        this.matchGroup = matchGroup;
+    }
 }

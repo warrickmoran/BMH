@@ -60,6 +60,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
+import com.raytheon.uf.common.bmh.schemas.ssml.ObjectFactory;
+import com.raytheon.uf.common.bmh.schemas.ssml.Paragraph;
 import com.raytheon.uf.common.bmh.schemas.ssml.Prosody;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
@@ -89,6 +91,7 @@ import com.raytheon.uf.edex.bmh.xformer.data.ITextRuling;
 import com.raytheon.uf.edex.bmh.xformer.data.ITextTransformation;
 import com.raytheon.uf.edex.bmh.xformer.data.RulingFreeText;
 import com.raytheon.uf.edex.bmh.xformer.data.SimpleTextTransformation;
+import com.raytheon.uf.edex.bmh.xformer.data.TransformationException;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
 
 /**
@@ -131,6 +134,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * Mar 05, 2015 4237       bkowal      Added missing return statement for null transmitter languages.
  * MAr 13, 2015 4213       bkowal      Support {@link StaticMessageType}s.
+ * Mar 24, 2015 4301       bkowal      Support SSML paragraphs for block-formatted paragraphs.
  * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
  * 
  * </pre>
@@ -144,7 +148,9 @@ public class MessageTransformer implements IContextStateProcessor {
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(MessageTransformer.class);
 
-    private static final String PLATFORM_AGNOSTIC_NEWLINE_REGEX = "\\r\\n|\\r|\\n";
+    private static final String PLATFORM_AGNOSTIC_NEWLINE_REGEX = "[\\r\\n|\\r|\\n][\\r\\n|\\r|\\n]+";
+
+    private static final String BLOCK_PARAGRAPH_NEWLINE = "\n\n";
 
     private static final String SENTENCE_REGEX = "[^.!?\\s][^.!?]*(?:[.!?](?!['\"]?\\s|$)[^.!?]*)*[.!?]?['\"]?(?=\\s|$)";
 
@@ -343,7 +349,8 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     private List<LdadMsg> processLdad(final MessageType messageType,
-            final String formattedText) throws SSMLConversionException {
+            final String formattedText) throws SSMLConversionException,
+            TransformationException {
         /*
          * Retrieve all ldad configuration(s) associated with the specified
          * message type.
@@ -367,14 +374,12 @@ public class MessageTransformer implements IContextStateProcessor {
          * Generate the default case. Transformed text/ssml without any
          * dictionary.
          */
-        final List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
-        transformationCandidates.add(new RulingFreeText(formattedText));
-
+        final List<ITextTransformation> noTransformations = Collections
+                .emptyList();
         SSMLDocument defaultSSMLDocument = this.applyTransformations(
-                new LinkedList<>(transformationCandidates), formattedText,
-                SpeechRateFormatter
+                formattedText, SpeechRateFormatter
                         .formatSpeechRate(SpeechRateFormatter.DEFAULT_RATE),
-                Language.ENGLISH);
+                Language.ENGLISH, noTransformations);
         for (LdadConfig ldadConfig : ldadConfigurations) {
             if (ldadConfig.isEnabled() == false) {
                 /**
@@ -411,16 +416,11 @@ public class MessageTransformer implements IContextStateProcessor {
                     .buildDictionaryTransformationList(ldadConfig
                             .getDictionary());
 
-            // Apply the rules.
-            List<ITextRuling> transformedCandidates = this.setTransformations(
-                    textTransformations, new LinkedList<>(
-                            transformationCandidates));
-
             // Generate the Transformed SSML.
             SSMLDocument ssmlDocument = this.applyTransformations(
-                    transformedCandidates, formattedText, SpeechRateFormatter
+                    formattedText, SpeechRateFormatter
                             .formatSpeechRate(ldadConfig.getSpeechRate()),
-                    ldadConfig.getVoice().getLanguage());
+                    ldadConfig.getVoice().getLanguage(), textTransformations);
 
             ldadMsg.setSsml(ssmlDocument.toSSML());
             ldadMessages.add(ldadMsg);
@@ -544,7 +544,8 @@ public class MessageTransformer implements IContextStateProcessor {
     private BroadcastMsg transformText(InputMessage inputMessage,
             final String formattedContent, Dictionary dictionary,
             TransmitterGroup group, MessageType messageType)
-            throws SSMLConversionException, BMHConfigurationException {
+            throws SSMLConversionException, TransformationException,
+            BMHConfigurationException {
 
         /* Create Transformation rules based on the dictionary. */
         List<ITextTransformation> textTransformations = this.mergeDictionaries(
@@ -605,28 +606,16 @@ public class MessageTransformer implements IContextStateProcessor {
                     final String formattedTimeText = this
                             .formatText(timeFragment.getText());
 
-                    /* Initially all text is Free. */
-                    List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
-                    transformationCandidates.add(new RulingFreeText(
-                            formattedTimeText));
-
-                    /*
-                     * Determine which text the transformations can be applied
-                     * to.
-                     */
-                    transformationCandidates = this.setTransformations(
-                            textTransformations, transformationCandidates);
                     /*
                      * Just a standard part of the message. Will only change
                      * when the message is changed triggering an absolute
                      * regeneration.
                      */
                     SSMLDocument ssmlDocument = this.applyTransformations(
-                            transformationCandidates, formattedTimeText,
-                            SpeechRateFormatter
+                            formattedTimeText, SpeechRateFormatter
                                     .formatSpeechRate(transmitterLanguage
                                             .getSpeechRate()), inputMessage
-                                    .getLanguage());
+                                    .getLanguage(), textTransformations);
                     BroadcastFragment fragment = new BroadcastFragment();
                     fragment.setSsml(ssmlDocument.toSSML());
                     fragment.setPosition(index);
@@ -665,14 +654,6 @@ public class MessageTransformer implements IContextStateProcessor {
                 }
             }
         } else {
-            /* Initially all text is Free. */
-            List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
-            transformationCandidates.add(new RulingFreeText(formattedContent));
-
-            /* Determine which text the transformations can be applied to. */
-            transformationCandidates = this.setTransformations(
-                    textTransformations, transformationCandidates);
-
             /*
              * retrieve the cached speed rate if one is available.
              */
@@ -693,9 +674,9 @@ public class MessageTransformer implements IContextStateProcessor {
              * There will only be one fragment for all text.
              */
             SSMLDocument ssmlDocument = this.applyTransformations(
-                    transformationCandidates, formattedContent,
+                    formattedContent,
                     SpeechRateFormatter.formatSpeechRate(speechRate),
-                    inputMessage.getLanguage());
+                    inputMessage.getLanguage(), textTransformations);
             BroadcastFragment fragment = new BroadcastFragment();
             fragment.setSsml(ssmlDocument.toSSML());
             broadcastFragments.add(fragment);
@@ -717,9 +698,12 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     private String formatText(String content) {
-        /* First replace the new line characters. */
+        /*
+         * Replace multiple new line characters with a single new line
+         * character.
+         */
         content = content.replaceAll(PLATFORM_AGNOSTIC_NEWLINE_REGEX,
-                StringUtils.EMPTY);
+                BLOCK_PARAGRAPH_NEWLINE);
 
         return WordUtils.capitalizeFully(content);
     }
@@ -738,7 +722,8 @@ public class MessageTransformer implements IContextStateProcessor {
      */
     private List<ITextTransformation> mergeDictionaries(Language language,
             final Dictionary transmitterDictionary,
-            final Dictionary voiceDictionary) throws SSMLConversionException {
+            final Dictionary voiceDictionary) throws SSMLConversionException,
+            TransformationException {
         ITimer dictionaryTimer = TimeUtil.getTimer();
         dictionaryTimer.start();
         final Dictionary nationalDictionary = this.nationalDictionaryLanguageMap
@@ -781,7 +766,7 @@ public class MessageTransformer implements IContextStateProcessor {
      */
     private void mergeDictionary(final Dictionary dictionary,
             Map<String, ITextTransformation> mergedDictionaryMap)
-            throws SSMLConversionException {
+            throws SSMLConversionException, TransformationException {
         if (dictionary == null || dictionary.getWords() == null) {
             return;
         }
@@ -809,7 +794,8 @@ public class MessageTransformer implements IContextStateProcessor {
      * @throws SSMLConversionException
      */
     private List<ITextTransformation> buildDictionaryTransformationList(
-            final Dictionary dictionary) throws SSMLConversionException {
+            final Dictionary dictionary) throws SSMLConversionException,
+            TransformationException {
         if (dictionary == null) {
             return Collections.emptyList();
         }
@@ -832,7 +818,7 @@ public class MessageTransformer implements IContextStateProcessor {
      * @throws SSMLConversionException
      */
     private ITextTransformation buildTransformationRule(Word word)
-            throws SSMLConversionException {
+            throws SSMLConversionException, TransformationException {
         if (word.isDynamic()) {
             return new DynamicNumericTextTransformation(word.getWord(),
                     word.getSubstitute());
@@ -890,6 +876,44 @@ public class MessageTransformer implements IContextStateProcessor {
         return transformationCandidates;
     }
 
+    private SSMLDocument applyTransformations(final String content,
+            final String speechRate, final Language language,
+            List<ITextTransformation> textTransformations)
+            throws SSMLConversionException {
+
+        SSMLDocument ssmlDocument = new SSMLDocument(language);
+        Prosody ssmlProsody = ssmlDocument.getFactory().createProsody();
+        ssmlProsody.setRate(speechRate);
+
+        /*
+         * will be required to create additional ssml tags.
+         */
+        ObjectFactory objectFactory = ssmlDocument.getFactory();
+
+        String[] paragraphs = content.split(BLOCK_PARAGRAPH_NEWLINE);
+        for (String paragraph : paragraphs) {
+            /*
+             * Analyze one paragraph worth of text at a time.
+             */
+
+            List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
+            transformationCandidates.add(new RulingFreeText(paragraph));
+
+            if (textTransformations.isEmpty() == false) {
+                transformationCandidates = this.setTransformations(
+                        textTransformations, transformationCandidates);
+            }
+
+            Paragraph ssmlParagraph = this.applyTransformations(objectFactory,
+                    transformationCandidates, content);
+            ssmlProsody.getContent().add(ssmlParagraph);
+        }
+
+        ssmlDocument.getRootTag().getContent().add(ssmlProsody);
+
+        return ssmlDocument;
+    }
+
     /**
      * Builds the SSML Document based on the Transformed Text. Note: the final
      * version of this method will not be 'void'
@@ -902,10 +926,9 @@ public class MessageTransformer implements IContextStateProcessor {
      *            the formatted prosody speech rate.
      * @throws SSMLConversionException
      */
-    private SSMLDocument applyTransformations(
+    private Paragraph applyTransformations(ObjectFactory objectFactory,
             List<ITextRuling> transformationCandidates,
-            final String originalMessage, final String speechRate,
-            final Language language) throws SSMLConversionException {
+            final String originalMessage) throws SSMLConversionException {
         /* Approximate the sentence divisions in the original message. */
         List<String> approximateSentences = new LinkedList<String>();
         Matcher sentenceMatcher = SENTENCE_PATTERN.matcher(originalMessage);
@@ -913,18 +936,13 @@ public class MessageTransformer implements IContextStateProcessor {
             approximateSentences.add(sentenceMatcher.group(0));
         }
 
-        // Create the SSML Document.
-        SSMLDocument ssmlDocument = new SSMLDocument(language);
-
-        // Construct the prosody.
-        Prosody prosody = ssmlDocument.getFactory().createProsody();
         /*
-         * initialize the prosody rate to the default rate.
+         * All sentences that are discovered will be part of the same paragraph.
          */
-        prosody.setRate(speechRate);
+        Paragraph ssmlParagraph = objectFactory.createParagraph();
 
         // Start the first sentence.
-        Sentence ssmlSentence = ssmlDocument.getFactory().createSentence();
+        Sentence ssmlSentence = objectFactory.createSentence();
 
         String currentSentence = approximateSentences.remove(0);
         /*
@@ -955,8 +973,8 @@ public class MessageTransformer implements IContextStateProcessor {
                         currentSentence).trim();
                 if (currentSentence.isEmpty()
                         && (approximateSentences.isEmpty() == false)) {
-                    prosody.getContent().add(ssmlSentence);
-                    ssmlSentence = ssmlDocument.getFactory().createSentence();
+                    ssmlParagraph.getContent().add(ssmlSentence);
+                    ssmlSentence = objectFactory.createSentence();
                     currentSentence = approximateSentences.remove(0);
                 }
             }
@@ -965,10 +983,11 @@ public class MessageTransformer implements IContextStateProcessor {
         /*
          * Add the final sentence to the SSML document.
          */
-        prosody.getContent().add(ssmlSentence);
-        ssmlDocument.getRootTag().getContent().add(prosody);
+        if (ssmlSentence.getContent().isEmpty() == false) {
+            ssmlParagraph.getContent().add(ssmlSentence);
+        }
 
-        return ssmlDocument;
+        return ssmlParagraph;
     }
 
     /**

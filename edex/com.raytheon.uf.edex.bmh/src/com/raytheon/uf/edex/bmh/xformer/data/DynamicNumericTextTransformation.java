@@ -43,6 +43,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
  * Jul 7, 2014  3302       bkowal      Initial creation
  * Aug 26, 2014 3559       bkowal      Lower case all text when constructing dictionary
  *                                     regex and determining if rules apply.
+ * Mar 24, 2015 4301       bkowal      Implement and override {@link #prepareTransformationRegex(String)}.
  * 
  * </pre>
  * 
@@ -63,12 +64,13 @@ public class DynamicNumericTextTransformation extends
      * @throws SSMLConversionException
      */
     public DynamicNumericTextTransformation(String text, String ssmlReplacement)
-            throws SSMLConversionException {
-        super(buildNumericTransformationRegex(text), ssmlReplacement);
+            throws SSMLConversionException, TransformationException {
+        super(text, ssmlReplacement);
     }
 
-    private static String buildNumericTransformationRegex(String originalRegex) {
-        return originalRegex.replace(Word.DYNAMIC_NUMERIC_CHAR, NUMBER_REGEX);
+    @Override
+    protected String prepareTransformationRegex(String text) {
+        return text.replace(Word.DYNAMIC_NUMERIC_CHAR, NUMBER_REGEX);
     }
 
     /*
