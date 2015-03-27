@@ -234,6 +234,14 @@ public class TransmitterDataManager {
         return response.getTransmitterList();
     }
 
+    /**
+     * Get list of {@link Transmitter}s with the FIPS Code. Normally should be 0
+     * or 1.
+     * 
+     * @param fipsCode
+     * @return transmitters
+     * @throws Exception
+     */
     public List<Transmitter> getTransmittersByFips(String fipsCode)
             throws Exception {
         TransmitterRequest request = new TransmitterRequest();
