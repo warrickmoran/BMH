@@ -111,7 +111,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Mar 25, 2015 4213       bkowal      Update the generated messages in response to
  *                                     {@link Program} and {@link Suite} modifications.
  * Mar 26, 2015 4213       bkowal      Reuse existing usable static {@link InputMessage}s
- *                                     when only the contents or periodicity has changed. 
+ *                                     when only the contents or periodicity has changed.
+ * Mar 27, 2015 4314       bkowal      {@link TimeMessagesGenerator} updates. 
  * 
  * </pre>
  * 
@@ -567,14 +568,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                     return null;
                 }
 
-                String timezoneDaylight = tz.getShortDisplayName(true);
-                String timezoneNoDaylight = tz.getShortDisplayName(false);
-                if (timezoneDaylight.equals(timezoneNoDaylight)) {
-                    timezoneNoDaylight = null;
-                }
-
-                this.tmGenerator.process(language.getVoice(), timezoneDaylight,
-                        timezoneNoDaylight);
+                this.tmGenerator.process(language.getVoice(), tz,
+                        language.getSpeechRate());
             } catch (StaticGenerationException e) {
                 statusHandler
                         .error(BMH_CATEGORY.STATIC_MSG_ERROR,

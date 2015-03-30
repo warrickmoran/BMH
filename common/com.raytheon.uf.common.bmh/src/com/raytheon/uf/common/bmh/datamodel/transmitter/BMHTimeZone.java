@@ -41,6 +41,8 @@ import java.util.TimeZone;
  * Oct 28, 2014  #3750     bkowal       Added method to get short timezone name
  * Nov 3, 2014   #3759     bkowal       Added a second get short timezone name method
  *                                      that allows for dst specification.
+ * Mar 27, 2015  #4314     bkowal       Added {@link #getLongDisplayName()} and
+ *                                      {@link #getLongDisplayName(boolean)}.
  * 
  * </pre>
  * 
@@ -95,6 +97,15 @@ public enum BMHTimeZone {
 
     public String getShortDisplayName(boolean daylight) {
         return this.tz.getDisplayName(daylight, TimeZone.SHORT);
+    }
+
+    public String getLongDisplayName() {
+        return this.getLongDisplayName(this.tz.inDaylightTime(Calendar
+                .getInstance().getTime()));
+    }
+
+    public String getLongDisplayName(boolean daylight) {
+        return this.tz.getDisplayName(daylight, TimeZone.LONG);
     }
 
     public static BMHTimeZone getTimeZoneByID(final String id) {

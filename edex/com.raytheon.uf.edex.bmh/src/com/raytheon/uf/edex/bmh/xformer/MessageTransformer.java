@@ -133,9 +133,10 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     the rate of speech.
  * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * Mar 05, 2015 4237       bkowal      Added missing return statement for null transmitter languages.
- * MAr 13, 2015 4213       bkowal      Support {@link StaticMessageType}s.
+ * Mar 13, 2015 4213       bkowal      Support {@link StaticMessageType}s.
  * Mar 24, 2015 4301       bkowal      Support SSML paragraphs for block-formatted paragraphs.
  * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
+ * Mar 27, 2015 4314       bkowal      Rate of speech is now included in time message audio location.
  * 
  * </pre>
  * 
@@ -326,8 +327,7 @@ public class MessageTransformer implements IContextStateProcessor {
             statusHandler.info("Building ldad message(s) for message: "
                     + message.getId() + "...");
             try {
-                result.addAll(this.processLdad(messageType,
-                        formattedText));
+                result.addAll(this.processLdad(messageType, formattedText));
             } catch (SSMLConversionException e) {
                 StringBuilder errorString = new StringBuilder(
                         "Failed to generate ldad message(s) for message: ");
@@ -638,8 +638,10 @@ public class MessageTransformer implements IContextStateProcessor {
                          */
                         fragment.setOutputName(Paths.get(
                                 this.tmGenerator.getTimeVoiceDirectory(
-                                        fragmentVoice).toString(),
-                                token.getIdentifier()).toString());
+                                        fragmentVoice,
+                                        transmitterLanguage.getSpeechRate())
+                                        .toString(), token.getIdentifier())
+                                .toString());
                         /*
                          * Ensure that TTS Manager skips over this fragment
                          * during synthesis. If the TTS Manager still attempts

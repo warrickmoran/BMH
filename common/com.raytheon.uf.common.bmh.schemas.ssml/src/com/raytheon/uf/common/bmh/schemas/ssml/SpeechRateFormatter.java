@@ -29,6 +29,8 @@ package com.raytheon.uf.common.bmh.schemas.ssml;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2015 4142       bkowal      Initial creation
+ * Mar 27, 2015 4314       bkowal      Added constants for the min, max,
+ *                                     and range.
  * 
  * </pre>
  * 
@@ -39,6 +41,13 @@ package com.raytheon.uf.common.bmh.schemas.ssml;
 public class SpeechRateFormatter {
     
     public static final int DEFAULT_RATE = 0;
+    
+    public static final int MIN_RATE = -99;
+    
+    public static final int MAX_RATE = 99;
+    
+    /* +1 to include 0  */
+    public static final int NUM_RATES = (MAX_RATE * 2) + 1;
 
     private static final String RATE_POSITIVE_DISPLAY_PREFIX = "+";
 
