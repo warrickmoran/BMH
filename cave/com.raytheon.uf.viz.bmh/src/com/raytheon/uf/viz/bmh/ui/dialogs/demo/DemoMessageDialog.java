@@ -277,8 +277,12 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false, 2, 1);
         buttonComp.setLayoutData(gd);
 
+        int btnWidth = 112;
         Button submitMsgBtn = new Button(buttonComp, SWT.PUSH);
         submitMsgBtn.setText("Submit Message");
+        gd = new GridData();
+        gd.widthHint = btnWidth;
+        submitMsgBtn.setLayoutData(gd);
         submitMsgBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -288,6 +292,9 @@ public class DemoMessageDialog extends AbstractBMHDialog {
 
         Button cancelBtn = new Button(buttonComp, SWT.PUSH);
         cancelBtn.setText("Cancel");
+        gd = new GridData();
+        gd.widthHint = btnWidth;
+        cancelBtn.setLayoutData(gd);
         cancelBtn.addSelectionListener(new SelectionAdapter() {
 
             @Override
