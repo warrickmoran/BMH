@@ -55,7 +55,7 @@ import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Mar 16, 2015  4244     bsteffen     Initial creation
- * Mar 18, 2015  4281     rferrel      Added method setAllowEnableTransmitters.
+ * Mar 18, 2015  4282     rferrel      Added method setAllowEnableTransmitters.
  * 
  * </pre>
  * 

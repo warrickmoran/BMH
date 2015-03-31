@@ -160,7 +160,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 11, 2015  4254     rferrel     Better dialog message for bad words or duplicate message.
  * Mar 16, 2015  4244     bsteffen    Extract same transmitter logic into SAMETransmitterSelector.
  * Mar 17, 2015  4160     bsteffen    Check if tones have played when modifying an existing message.
- * Mar 18, 2015  4281     rferrel     Added Close button and editStatus flag.
+ * Mar 18, 2015  4282     rferrel     Added Close button and editStatus flag.
  *                                    Add modification checks.
  *                                    Keep in edit mode when Next/Prev fails to retrieve message.
  * 
@@ -478,7 +478,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         im.setExpirationTime(expire);
         areaData = null;
         resetControls();
-
+        sameTransmitters.reset();
         this.populateControlsForEdit(im, null);
     }
 
@@ -1469,8 +1469,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         final List<InputMessageAudioData> audioDataList = (iam == null) ? null
                 : iam.getAudioDataList();
 
-        currentIm = im;
-        userInputMessage = new InputMessage(im);
+        userInputMessage = im;
 
         selectedMessageType = null;
         // Input message name.
@@ -1566,6 +1565,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
         this.content = msgContent;
         submitMsgBtn.setEnabled(true);
+
+        // Do the update logic so currentIm will be correct for modified checks.
+        updateUserInputMessage();
+        currentIm = new InputMessage(userInputMessage);
     }
 
     /**
