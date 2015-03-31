@@ -54,6 +54,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * Sep 25, 2014    3589    dgilling    Return Suite object to caller.
  * Oct 10, 2014    3646    rferrel     Convert tableComp to GenericTable.
  * Oct 15, 2014    3716    bkowal      Allow updates of the suite list table.
+ * Mar 31, 2015    4340    bkowal      Allow optional filtering of the currently
+ *                                     active suite.
  * 
  * </pre>
  * 
@@ -67,15 +69,18 @@ public class SuiteListDlg extends CaveSWTDialogBase {
 
     private List<Suite> suiteList;
 
+    private String activeSuite;
+
     private Button okBtn;
 
     private Button cancelBtn;
 
-    public SuiteListDlg(Shell parent, List<Suite> suiteList) {
+    public SuiteListDlg(Shell parent, List<Suite> suiteList, String activeSuite) {
         super(parent, SWT.MIN | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
                 | CAVE.PERSPECTIVE_INDEPENDENT);
         this.suiteList = suiteList;
         setText("Change Suite");
+        this.activeSuite = activeSuite;
     }
 
     public void updateSuites(List<Suite> suiteList) {
@@ -89,6 +94,14 @@ public class SuiteListDlg extends CaveSWTDialogBase {
         /* Re-enable controls. */
         this.okBtn.setEnabled(true);
         this.cancelBtn.setEnabled(true);
+    }
+
+    public void updateActiveSuite(String activeSuite) {
+        if (this.activeSuite != null && this.activeSuite.equals(activeSuite)) {
+            return;
+        }
+        this.activeSuite = activeSuite;
+        this.updateSuites(this.suiteList);
     }
 
     @Override
@@ -168,6 +181,10 @@ public class SuiteListDlg extends CaveSWTDialogBase {
         TableData td = new TableData(columns);
 
         for (Suite s : suiteList) {
+            if (this.activeSuite != null
+                    && this.activeSuite.equals(s.getName())) {
+                continue;
+            }
             TableRowData trd = new TableRowData();
             trd.addTableCellData(new TableCellData(s.getName()));
             trd.addTableCellData(new TableCellData(s.getType().name()));

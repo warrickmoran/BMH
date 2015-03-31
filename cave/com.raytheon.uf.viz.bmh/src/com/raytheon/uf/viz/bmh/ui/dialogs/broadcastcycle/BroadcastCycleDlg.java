@@ -163,6 +163,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 26, 2015  4187      rjpeter     Added isDisposed checks.
  * Mar 13, 2015  4270      rferrel     Update display when selected group modified or removed.
  * Mar 16, 2015  4285      bkowal      Fix transmitter list updates. Handle both 4270 and 4285.
+ * Mar 31, 2015  4340      bkowal      Update the suite list dialog based on the currently
+ *                                     selected suite.
  * </pre>
  * 
  * @author mpduff
@@ -425,6 +427,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         transmitterList.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                /*
+                 * Close the Change Suite Dialog if it is opened. The suites
+                 * listed in the dialog no longer correspond to the selected
+                 * transmitter group.
+                 */
+                closeChangeSuiteDlg();
                 updateOnTransmitterChange(true);
             }
         });
@@ -1179,7 +1187,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         Suite selection = null;
         List<Suite> suiteList = programObj.getSuites();
         if ((changeSuiteDlg == null) || changeSuiteDlg.isDisposed()) {
-            changeSuiteDlg = new SuiteListDlg(getShell(), suiteList);
+            changeSuiteDlg = new SuiteListDlg(getShell(), suiteList,
+                    this.selectedSuite);
             selection = (Suite) changeSuiteDlg.open();
         } else {
             changeSuiteDlg.bringToTop();
@@ -1370,6 +1379,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                 if ((periodicMsgDlg != null)
                                         && !periodicMsgDlg.isDisposed()) {
                                     periodicMsgDlg.populateTableData();
+                                }
+
+                                if (changeSuiteDlg != null
+                                        && changeSuiteDlg.isDisposed() == false) {
+                                    changeSuiteDlg
+                                            .updateActiveSuite(selectedSuite);
                                 }
                             }
                         });
@@ -1603,7 +1618,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         transmitterList.select(transmitterList
                                 .indexOf(selectedTransmitterGrp));
                     }
-                    
+
                     updateOnTransmitterChange(zeroSelection);
                 }
             }
