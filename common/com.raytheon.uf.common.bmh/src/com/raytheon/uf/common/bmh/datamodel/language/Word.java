@@ -53,6 +53,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Aug 04, 2014 3175       rjpeter     Added serialization adapter to fix circular reference.
  * Oct 16, 2014 3636       rferrel     Added logging.
  * Jan 06, 2015 3931       bkowal      Added XML JAXB Marshaling tags.
+ * Mar 31, 2015 4291       bkowal      Set word_seq allocationSize to 1.
  * </pre>
  * 
  * @author rjpeter
@@ -61,7 +62,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
 @Entity
 @Table(name = "word", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
         "word", "dictionary" }) })
-@SequenceGenerator(initialValue = 1, name = Word.GEN, sequenceName = "word_seq")
+@SequenceGenerator(initialValue = 1, name = Word.GEN, sequenceName = "word_seq", allocationSize = 1)
 @DynamicSerialize
 @DynamicSerializeTypeAdapter(factory = WordAdapter.class)
 @XmlAccessorType(XmlAccessType.NONE)
