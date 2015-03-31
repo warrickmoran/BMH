@@ -67,6 +67,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                    to SAME string.
  * Nov 26, 2014  3616     bsteffen    Handle demo messages specially.
  * Jan 26, 2015  3359     bsteffen    Add Icao Mapper.
+ * Mar 31, 2015  4339     bkowal      Throw a {@link SAMETruncationException} to indicate
+ *                                    the SAME area maximum has been reached.
  * 
  * </pre>
  * 
@@ -187,8 +189,7 @@ public class SAMEToneTextBuilder {
      */
     public void addArea(CharSequence area) throws IllegalStateException {
         if (this.area.size() >= 31) {
-            throw new IllegalStateException("Too many areas were provided("
-                    + this.area.size() + " >= 31)");
+            throw new SAMETruncationException(this.area.size());
         }
         this.area.add(area);
     }

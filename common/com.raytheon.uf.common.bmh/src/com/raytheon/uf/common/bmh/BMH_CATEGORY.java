@@ -45,6 +45,7 @@ import java.util.Map;
  * Jan 19, 2015 4002       bkowal      Added {@link #DAC_TRANSMIT_BROADCAST_DELAY}.
  * Feb 17, 2015 4136       bkowal      Added {@link #AUDIO_TRUNCATED}.
  * Feb 18, 2015 4136       bkowal      Added {@link #EXCESSIVE_FILE_SIZE}.
+ * Mar 31, 2015 4339       bkowal      Added {@link #SAME_TRUNCATION}.
  * 
  * </pre>
  * 
@@ -159,6 +160,11 @@ public enum BMH_CATEGORY {
      * greater than the maximum allowed size.
      */
     EXCESSIVE_FILE_SIZE(23),
+    /*
+     * indicates that one or more areas have not been included in a SAME tone
+     * because the maximum number of areas has been exceeded.
+     */
+    SAME_TRUNCATION(24),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.

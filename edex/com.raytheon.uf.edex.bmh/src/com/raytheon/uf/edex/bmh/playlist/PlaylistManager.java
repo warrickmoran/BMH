@@ -67,6 +67,7 @@ import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
+import com.raytheon.uf.common.bmh.same.SAMETruncationException;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.ITimer;
@@ -154,6 +155,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Mar 12, 2015  4207     bsteffen    Pass triggers to playlist when refreshing.
  * Mar 13, 2015  4193     bsteffen    Do not convert replaced messages to xml.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
+ * Mar 31, 2015  4339     bkowal      Distinguish between areas that cannot be added because
+ *                                    they are invalid and areas that are over the allowed limit.
  * 
  * </pre>
  * 
@@ -869,17 +872,25 @@ public class PlaylistManager implements IContextStateProcessor {
                                         builder.addAreaFromUGC(ugc);
                                     }
                                 }
-                            } catch (IllegalStateException e) {
-                                statusHandler
-                                        .error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                                                "Cannot add area to SAME tone, same tone will not include all areas.",
-                                                e);
-                                break;
-                            } catch (IllegalArgumentException e) {
+                            } catch (IllegalStateException
+                                    | IllegalArgumentException e) {
+                                /*
+                                 * Indicates bad input or improper
+                                 * initialization.
+                                 */
                                 statusHandler.error(
                                         BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                                         "Cannot add area to SAME tone, same tone will not include this areas("
                                                 + ugc + ").", e);
+                            } catch (SAMETruncationException e) {
+                                /*
+                                 * Indicates that a limit has been reached. Not
+                                 * a true error condition.
+                                 */
+                                statusHandler
+                                        .error(BMH_CATEGORY.SAME_TRUNCATION,
+                                                "Failed to add all areas to the SAME Tone. The maximum number of areas have already been included.",
+                                                e);
                             }
                         }
                         builder.setEffectiveTime(input.getEffectiveTime());
