@@ -102,6 +102,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     if {@link AreaSelectionDlg} returns a {@code null} value.
  * Mar 18, 2015   4213     bkowal      No longer allow users to create a message type with the
  *                                     station id or time announcement designation.
+ * Mar 31, 2015   4304     rferrel     Populate selectedMessage Same Transmitters.
  * 
  * </pre>
  * 
@@ -287,6 +288,14 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         createMainControlComposite();
         createAreaAndRelationshipControls();
         createBottomButtons();
+
+        if (this.selectedMsgType != null) {
+            CheckListData cld = new CheckListData();
+            for (Transmitter t : this.selectedMsgType.getSameTransmitters()) {
+                cld.addDataItem(t.getMnemonic(), true);
+            }
+            sameTransmitters.selectCheckboxes(cld);
+        }
     }
 
     /**
@@ -797,6 +806,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         if (!valid) {
             DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
                     "Invalid Values", msg.toString());
+            return false;
         }
 
         // Valid, save the data
