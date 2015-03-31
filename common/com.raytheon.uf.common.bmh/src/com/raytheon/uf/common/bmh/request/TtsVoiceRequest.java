@@ -19,11 +19,11 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.bmh.BMHVoice;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * Request object for Voice queries.
@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
  *                                    updating voices.
  * Jan 13, 2015  3809     bkowal      Added {@link TtsVoiceAction#VoiceIdentifiersForLanguage}.
  * Mar 03, 2015  4175     bkowal      Support voice registration.
+ * Mar 27, 2015  4315     rferrel     Added {@link TtsVoiceAction#AvailableLanguage}.
  * 
  * </pre>
  * 
@@ -50,7 +51,9 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 public class TtsVoiceRequest extends AbstractBMHServerRequest {
 
     public enum TtsVoiceAction {
-        AllVoices, VoiceIdentifiers, VoiceIdentifiersForLanguage, GetById, UpdateVoice, RegisterVoice;
+        AllVoices, VoiceIdentifiers, VoiceIdentifiersForLanguage, GetById,
+
+        UpdateVoice, RegisterVoice, AvailableLanguage;
     }
 
     @DynamicSerializeElement
@@ -64,7 +67,7 @@ public class TtsVoiceRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private Language language;
-    
+
     @DynamicSerializeElement
     private BMHVoice bmhVoice;
 
@@ -129,7 +132,8 @@ public class TtsVoiceRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @param bmhVoice the bmhVoice to set
+     * @param bmhVoice
+     *            the bmhVoice to set
      */
     public void setBmhVoice(BMHVoice bmhVoice) {
         this.bmhVoice = bmhVoice;

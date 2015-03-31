@@ -25,8 +25,8 @@ import com.raytheon.uf.common.bmh.BMHVoice;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
-import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest.TtsVoiceAction;
+import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 
 /**
@@ -44,6 +44,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  *                                     {@link #saveTtsVoice(TtsVoice)}.
  * Jan 13, 2015  3809      bkowal      Added {@link #getIdentfiersForLanguage(Language)}.
  * Mar 03, 2015  4175      bkowal      Added {@link #registerTtsVoice(BMHVoice)}.
+ * Mar 27, 2015  #4315     rferrel     Added {@link #languageIsAvaiable(Language)}.
  * 
  * </pre>
  * 
@@ -117,5 +118,13 @@ public class VoiceDataManager {
         }
 
         return voiceResponse.getTtsVoiceList().get(0);
+    }
+
+    public boolean languageIsAvaiable(Language language) throws Exception {
+        TtsVoiceRequest voiceRequest = new TtsVoiceRequest();
+        voiceRequest.setAction(TtsVoiceAction.AvailableLanguage);
+        voiceRequest.setLanguage(language);
+
+        return (Boolean) BmhUtils.sendRequest(voiceRequest);
     }
 }

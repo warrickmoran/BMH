@@ -45,6 +45,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
  *                                    {@link #updateVoice(TtsVoiceRequest)}.
  * Jan 13, 2015  3809     bkowal      Added {@link #getIdentifiersForLanguage(TtsVoiceRequest)}.
  * Mar 03, 2015  4175     bkowal      Support voice registration.
+ * Mar 27, 2015  4315     rferrel     Added {@link #availableLanguage(TtsVoiceRequest)}.
  * 
  * </pre>
  * 
@@ -95,6 +96,8 @@ public class TtsVoiceHandler extends
         case RegisterVoice:
             ttsVoiceResponse = registerVoice(request);
             break;
+        case AvailableLanguage:
+            return availableLanguage(request);
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -218,5 +221,10 @@ public class TtsVoiceHandler extends
     private TTSVoiceManager getVoiceManager(final TtsVoiceRequest request) {
         return (request.isOperational()) ? this.ttsVoiceManager
                 : this.practice_ttsVoiceManager;
+    }
+
+    private boolean availableLanguage(final TtsVoiceRequest request) {
+        return getVoiceManager(request).verifyLanguageAvailable(
+                request.getLanguage());
     }
 }
