@@ -43,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 8, 2014  3568       bkowal      Initial creation
  * Jan 19, 2015 4011       bkowal      Added {@link #transmitterGroup}.
  * Mar 13, 2015 4213       bkowal      Added {@link #staticAfosIds}.
+ * Mar 31, 2015 4213       bkowal      Fix NPE when no static message types exist.
  * 
  * </pre>
  * 
@@ -81,7 +82,8 @@ public class TransmitterLanguageConfigNotification extends ConfigNotification {
         super(type);
         this.setKey(tl);
         this.transmitterGroup = tl.getTransmitterGroup();
-        if (tl.getStaticMessageTypes().isEmpty()) {
+        if (tl.getStaticMessageTypes() == null
+                || tl.getStaticMessageTypes().isEmpty()) {
             this.staticAfosIds = Collections.emptySet();
         } else {
             this.staticAfosIds = new HashSet<>(tl.getStaticMessageTypes()
@@ -135,7 +137,8 @@ public class TransmitterLanguageConfigNotification extends ConfigNotification {
     }
 
     /**
-     * @param staticAfosIds the staticAfosIds to set
+     * @param staticAfosIds
+     *            the staticAfosIds to set
      */
     public void setStaticAfosIds(Set<String> staticAfosIds) {
         this.staticAfosIds = staticAfosIds;
