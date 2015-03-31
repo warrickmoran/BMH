@@ -491,3 +491,4 @@ INSERT INTO bmh.word (id, substitute, word, dictionary) VALUES (458, 'oh 4 hundr
 INSERT INTO bmh.word (id, substitute, word, dictionary) VALUES (459, 'virgin islands', 'vi', 'paul-nat');
 INSERT INTO bmh.word (id, substitute, word, dictionary) VALUES (460, '20 nautical miles coastal', '20 nmcoastal ', 'paul-nat');
 INSERT INTO bmh.word (id, substitute, word, dictionary) VALUES (461, '3 0 5 2 2 9 4 5 2 3', '305.229.4523', 'paul-nat');
+SELECT setval('word_seq', 461);
