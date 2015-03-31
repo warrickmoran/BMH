@@ -55,7 +55,7 @@ import org.eclipse.swt.widgets.Label;
  *                                      selection or de-selection.
  * Mar 10, 2015 #4249      rferrel      Added {@link #setHelpText(String)}
  * Mar 16, 2015 #4244      bsteffen     Disable select controls when all boxes are disabled.
- * Mar 18, 2015 #4281      rferrel      Added allowEnabled flag.
+ * Mar 18, 2015 #4282      rferrel      Added allowEnabled flag.
  * 
  * </pre>
  * 
@@ -228,6 +228,7 @@ public class CheckScrollListComp extends Composite {
          * select/unselect the checkboxed.
          */
         if (!showSelectControls || lockControls) {
+            setAllowEnable(true);
             return;
         }
 
@@ -261,7 +262,7 @@ public class CheckScrollListComp extends Composite {
                 selectAll(false);
             }
         });
-
+        setAllowEnable(true);
     }
 
     /**
@@ -389,8 +390,12 @@ public class CheckScrollListComp extends Composite {
         if (this.allowEnable != allowEnable) {
             this.allowEnable = allowEnable;
             reset();
-            selectAllBtn.setEnabled(allowEnable);
-            unselectAllBtn.setEnabled(allowEnable);
+            if ((selectAllBtn != null) && !selectAllBtn.isDisposed()) {
+                selectAllBtn.setEnabled(allowEnable);
+            }
+            if ((unselectAllBtn != null) && !unselectAllBtn.isDisposed()) {
+                unselectAllBtn.setEnabled(allowEnable);
+            }
         }
     }
 }
