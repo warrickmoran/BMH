@@ -26,6 +26,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -81,6 +82,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Feb 19, 2015  4143     bsteffen    Initial creation
  * Mar 23, 2015  4309     rferrel     Alert Tone now set to false when submitting the message.
  * Mar 26, 2015  4322     rferrel     Added cancel button.
+ * Mar 31, 2015  4342     bkowal      Ensure that the generated afos id matches the required
+ *                                    format.
  * 
  * </pre>
  * 
@@ -402,7 +405,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
     protected MessageType getMessageType(TransmitterGroup transmitterGroup)
             throws Exception {
         String site = LocalizationManager.getInstance().getCurrentSite();
-        String afosid = site + "DMO" + transmitterGroup.getName();
+        String afosid = this.constructAfosId(site, transmitterGroup.getName());
         MessageTypeDataManager dataManager = new MessageTypeDataManager();
 
         MessageType mType = dataManager.getMessageType(afosid);
@@ -428,6 +431,33 @@ public class DemoMessageDialog extends AbstractBMHDialog {
             dataManager.saveMessageType(mType);
         }
         return mType;
+    }
+
+    private String constructAfosId(String site, String transmitterGroupName) {
+        /*
+         * the afos id format is CCCNNNXXX.
+         */
+
+        /*
+         * Each element of the afos id can only be a maximum of 3 characters.
+         */
+        final int defaultLength = 3;
+        // ensure that the afos id is a maximum of three characters. pad it if
+        // necessary.
+        if (site.length() > defaultLength) {
+            site = site.substring(0, defaultLength);
+        } else {
+            site = StringUtils.rightPad(site, defaultLength);
+        }
+
+        // ensure that the transmitter group name is a maximum of three
+        // characters.
+        if (transmitterGroupName.length() > defaultLength) {
+            transmitterGroupName = transmitterGroupName.substring(0,
+                    defaultLength);
+        }
+
+        return String.format("%sDMO%s", site, transmitterGroupName);
     }
 
     @Override
