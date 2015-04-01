@@ -43,6 +43,7 @@ import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
@@ -241,11 +242,15 @@ public class NewBroadcastMsgHandler extends
         validatedMsgDao.persistAll(entitiesToPersist);
 
         // send the broadcast message(s) to the playlist scheduler.
+        List<Long> messageIdsToSend = new ArrayList<>();
         for (BroadcastMsg broadcastRecord : broadcastRecords) {
-            this.sendToDestination(
-                    BMHJmsDestinations.getBMHScheduleDestination(request),
-                    broadcastRecord.getId());
+            messageIdsToSend.add(broadcastRecord.getId());
         }
+        BroadcastMsgGroup messagesToSend = new BroadcastMsgGroup();
+        messagesToSend.setIds(messageIdsToSend);
+        this.sendToDestination(
+                BMHJmsDestinations.getBMHScheduleDestination(request),
+                SerializationUtil.transformToThrift(messagesToSend));
         if (previous != null) {
             InputMessageDao inputMessageDao = new InputMessageDao(
                     request.isOperational(), this.getMessageLogger(request));
