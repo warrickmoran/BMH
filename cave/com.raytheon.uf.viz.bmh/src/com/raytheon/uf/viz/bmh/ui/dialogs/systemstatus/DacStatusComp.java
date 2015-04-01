@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.SortedMap;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
@@ -57,6 +56,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  * Jan 27, 2015  4029      bkowal       Buffer size is now included in
  *                                      the tooltip.
  * Jan 29, 2015  4029      bkowal       Simplified Dac Voltage reporting.
+ * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
  * 
  * </pre>
  * 
@@ -148,15 +148,12 @@ public class DacStatusComp extends Composite {
             new TransmitterGroupStatusComp(this, tgi, statusImages);
 
             // Find the assigned ports
-            SortedMap<Integer, List<TransmitterInfo>> transmittersMap = tgi
-                    .getTransmitterInfoMap();
-            for (Integer i : transmittersMap.keySet()) {
-                List<TransmitterInfo> transList = transmittersMap.get(i);
-                for (TransmitterInfo ti : transList) {
-                    if ((ti.getDacPort() != null) && ti.getDacPort() > 0
-                            && ti.getDacPort() <= 4) {
-                        activePorts.add(ti.getDacPort());
-                    }
+            List<TransmitterInfo> transmittersList = tgi
+                    .getTransmitterInfoList();
+            for (TransmitterInfo ti : transmittersList) {
+                if ((ti.getDacPort() != null) && ti.getDacPort() > 0
+                        && ti.getDacPort() <= 4) {
+                    activePorts.add(ti.getDacPort());
                 }
             }
         }

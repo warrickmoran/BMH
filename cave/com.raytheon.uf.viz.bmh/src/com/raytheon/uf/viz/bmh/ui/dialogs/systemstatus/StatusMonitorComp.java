@@ -86,6 +86,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  *                                      so it can be embedded into a dialog.
  * Mar 06, 2015  #4241     rjpeter      Put in retrieval job.
  * Mar 10, 2015  #4219     bsteffen     Reset min size on scrolledComp when transmitters change.
+ * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
  * 
  * </pre>
  * 
@@ -195,9 +196,6 @@ public class StatusMonitorComp extends Composite implements
         vizStatusMonitor = new VizStatusMonitor();
         vizStatusMonitor.addListener(this);
 
-        // TODO : remove when testing is done.
-        // printVizStatusMonitorVariables();
-
         statusImages = new StatusImages(this);
 
         sdm = new StatusDataManager();
@@ -283,29 +281,30 @@ public class StatusMonitorComp extends Composite implements
 
         Map<Integer, DacInfo> dacInfoMap = dtsd.getDacInfoMap();
 
-        Iterator<Integer> iter = dacInfoMap.keySet().iterator();
+        Iterator<DacInfo> iter = dacInfoMap.values().iterator();
         while (iter.hasNext() == true) {
-            new DacStatusComp(dacTransmittersComp, dacInfoMap.get(iter.next()),
-                    statusImages);
+            new DacStatusComp(dacTransmittersComp, iter.next(), statusImages);
 
             if (iter.hasNext()) {
                 DialogUtility.addSeparator(dacTransmittersComp, SWT.HORIZONTAL);
             }
         }
 
-        DialogUtility.addSeparator(dacTransmittersComp, SWT.HORIZONTAL);
-
         /*
          * Show the Transmitters that have no associated DACs
          */
-        Label noDacTransMittersLbl = new Label(dacTransmittersComp, SWT.NONE);
-        noDacTransMittersLbl.setText("Not assigned to a DAC:");
 
         List<TransmitterGrpInfo> noDacTgiList = dtsd.getNoDacTransGrpInfoList();
 
-        for (TransmitterGrpInfo tgi : noDacTgiList) {
-            new TransmitterGroupStatusComp(dacTransmittersComp, tgi,
-                    statusImages);
+        if (!noDacTgiList.isEmpty()) {
+            DialogUtility.addSeparator(dacTransmittersComp, SWT.HORIZONTAL);
+            Label noDacTransMittersLbl = new Label(dacTransmittersComp,
+                    SWT.NONE);
+            noDacTransMittersLbl.setText("Not assigned to a DAC:");
+            for (TransmitterGrpInfo tgi : noDacTgiList) {
+                new TransmitterGroupStatusComp(dacTransmittersComp, tgi,
+                        statusImages);
+            }
         }
     }
 

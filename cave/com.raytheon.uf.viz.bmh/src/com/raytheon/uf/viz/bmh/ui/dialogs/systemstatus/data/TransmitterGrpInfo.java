@@ -20,9 +20,9 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 /**
  * Class that hold the status information for a transmitter group and list of
@@ -37,6 +37,7 @@ import java.util.TreeMap;
  * Sep 30, 2014  3349      lvenable     Initial creation
  * Nov 23, 2014  #3287     lvenable     Added silent alarm flag.
  * Dec 09, 2014  #3910     lvenable     Added check for empty map.
+ * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
  * 
  * </pre>
  * 
@@ -57,18 +58,8 @@ public class TransmitterGrpInfo {
     /** ID */
     private Integer id;
 
-    /**
-     * Map of transmitter information that is related to a transmitter group.
-     * The key is the DAC port number. If multiple transmitters are on the same
-     * port it is added to the list.
-     */
-    private SortedMap<Integer, List<TransmitterInfo>> transmitterInfoMap = new TreeMap<Integer, List<TransmitterInfo>>();
-
-    /**
-     * A port number that is assigned to a transmitter if the DAC port number is
-     * null.
-     */
-    private final int tmpPortNumber = 9999;
+    /** List of transmitter information. */
+    private List<TransmitterInfo> transmitterInfoList = new ArrayList<>();
 
     /**
      * Constructor.
@@ -109,8 +100,8 @@ public class TransmitterGrpInfo {
         this.id = id;
     }
 
-    public SortedMap<Integer, List<TransmitterInfo>> getTransmitterInfoMap() {
-        return transmitterInfoMap;
+    public List<TransmitterInfo> getTransmitterInfoList() {
+        return transmitterInfoList;
     }
 
     /**
@@ -119,20 +110,28 @@ public class TransmitterGrpInfo {
      * @param transmitterInfo
      */
     public void addTransmitterInfo(TransmitterInfo transmitterInfo) {
+        transmitterInfoList.add(transmitterInfo);
+        Collections.sort(transmitterInfoList,
+                new Comparator<TransmitterInfo>() {
 
-        Integer port = transmitterInfo.getDacPort();
+                    @Override
+                    public int compare(TransmitterInfo o1, TransmitterInfo o2) {
+                        Integer p1 = o1.getDacPort();
+                        Integer p2 = o2.getDacPort();
+                        if (p1 == null) {
+                            if (p2 == null) {
+                                return 0;
+                            } else {
+                                return 1;
+                            }
+                        } else if (p2 == null) {
+                            return -1;
+                        } else {
+                            return p1.compareTo(p2);
+                        }
+                    }
 
-        if (port == null) {
-            port = tmpPortNumber;
-        }
-
-        if (transmitterInfoMap.containsKey(port)) {
-            transmitterInfoMap.get(port).add(transmitterInfo);
-        } else {
-            List<TransmitterInfo> transmitterInfoList = new ArrayList<TransmitterInfo>();
-            transmitterInfoList.add(transmitterInfo);
-            transmitterInfoMap.put(port, transmitterInfoList);
-        }
+                });
     }
 
     /**
@@ -144,14 +143,19 @@ public class TransmitterGrpInfo {
      * @return True if stand-alone. False otherwise.
      */
     public boolean isStandalone() {
-        if ((transmitterInfoMap != null) && (transmitterInfoMap.size() == 1)) {
-            if (transmitterInfoMap.get(transmitterInfoMap.firstKey()).get(0)
-                    .getMnemonic().equals(this.groupName)) {
-                return true;
-            }
+        if (transmitterInfoList != null && transmitterInfoList.size() == 1) {
+            return transmitterInfoList.get(0).getMnemonic()
+                    .equals(this.groupName);
+        } else {
+            return false;
         }
+    }
 
-        return false;
+    /**
+     * @return true if no transmitters are in this group, otherwise false.
+     */
+    public boolean isEmpty() {
+        return transmitterInfoList.isEmpty();
     }
 
     /**
@@ -160,9 +164,10 @@ public class TransmitterGrpInfo {
      * @return
      */
     public Integer getLowestDacPortNumber() {
-        if (transmitterInfoMap.isEmpty()) {
+        if (transmitterInfoList == null || transmitterInfoList.isEmpty()) {
             return null;
+        } else {
+            return transmitterInfoList.get(0).getDacPort();
         }
-        return transmitterInfoMap.firstKey();
     }
 }

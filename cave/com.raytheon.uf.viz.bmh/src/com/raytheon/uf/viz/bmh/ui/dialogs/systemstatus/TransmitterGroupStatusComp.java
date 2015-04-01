@@ -19,9 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus;
 
-import java.util.Iterator;
 import java.util.List;
-import java.util.SortedMap;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
@@ -50,6 +48,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  * Nov 23, 2014  #3287     lvenable     Silent alarm updates.
  * Feb 27, 2915  #3962     rferrel      Add status images for transmitters.
  * Mar 11, 2015  #4186     bsteffen     Show alarm disabled image even if there is silence.
+ * Apr 01, 2015  #4219     bsteffen     Display N/A for transmitters within a group that are not assigned a port.
  * 
  * </pre>
  * 
@@ -148,8 +147,8 @@ public class TransmitterGroupStatusComp extends Composite {
         /*
          * Create the transmitters for the transmitter group.
          */
-        SortedMap<Integer, List<TransmitterInfo>> transInfoMap = transmitterGrpInfo
-                .getTransmitterInfoMap();
+        List<TransmitterInfo> transInfoList = transmitterGrpInfo
+                .getTransmitterInfoList();
 
         gl = new GridLayout(4, false);
         gl.marginHeight = 1;
@@ -159,15 +158,13 @@ public class TransmitterGroupStatusComp extends Composite {
         xmitComp.setLayout(gl);
         xmitComp.setLayoutData(gd);
 
-        boolean addSeparator = false;
-        Iterator<Integer> iter = transInfoMap.keySet().iterator();
-        while (iter.hasNext()) {
-            List<TransmitterInfo> transInfoList = transInfoMap.get(iter.next());
-
-            addSeparator = (iter.hasNext()) ? true : false;
-
-            createTransmitterForGroupControls(xmitComp, transInfoList,
-                    addSeparator);
+        Integer previousPort = transInfoList.get(0).getDacPort();
+        for (TransmitterInfo ti : transInfoList) {
+            if (previousPort != null && !previousPort.equals(ti.getDacPort())) {
+                DialogUtility.addSeparator(xmitComp, SWT.HORIZONTAL);
+                previousPort = ti.getDacPort();
+            }
+            createTransmitterForGroupControls(xmitComp, ti);
         }
     }
 
@@ -184,13 +181,7 @@ public class TransmitterGroupStatusComp extends Composite {
      *            transmitter composite.
      */
     private void createTransmitterForGroupControls(Composite xmitComp,
-            List<TransmitterInfo> transmitterInfoList, boolean addSeparator) {
-
-        Iterator<TransmitterInfo> iter = transmitterInfoList.iterator();
-        while (iter.hasNext()) {
-
-            TransmitterInfo ti = iter.next();
-
+            TransmitterInfo ti) {
             GridData gd = new GridData();
             gd.widthHint = 20;
             Label txStatusImgLbl = new Label(xmitComp, SWT.NONE);
@@ -225,12 +216,8 @@ public class TransmitterGroupStatusComp extends Composite {
             gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
             Label transmitterPortLbl = new Label(xmitComp, SWT.NONE);
             transmitterPortLbl.setLayoutData(gd);
-            transmitterPortLbl.setText(" - Port: " + ti.getDacPort());
-
-            if (iter.hasNext() == false && addSeparator) {
-                DialogUtility.addSeparator(xmitComp, SWT.HORIZONTAL);
-            }
-        }
+            transmitterPortLbl.setText(" - Port: "
+                    + checkForNull(ti.getDacPort()));
     }
 
     /**
@@ -245,10 +232,8 @@ public class TransmitterGroupStatusComp extends Composite {
         this.setLayout(gl);
         this.setLayoutData(gd);
 
-        SortedMap<Integer, List<TransmitterInfo>> transmitterInfoMap = transmitterGrpInfo
-                .getTransmitterInfoMap();
-        TransmitterInfo transmitterInfo = transmitterInfoMap.get(
-                transmitterInfoMap.firstKey()).get(0);
+        TransmitterInfo transmitterInfo = transmitterGrpInfo
+                .getTransmitterInfoList().get(0);
 
         Composite xmitComp = new Composite(this, SWT.NONE);
         gl = new GridLayout(4, false);

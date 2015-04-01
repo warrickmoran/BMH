@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,8 @@ import java.util.Set;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterPositionComparator;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.systemstatus.SystemStatusMonitor;
 
@@ -47,6 +50,7 @@ import com.raytheon.uf.common.bmh.systemstatus.SystemStatusMonitor;
  * Jan 08, 2015  3821      bsteffen     Rename silenceAlarm to deadAirAlarm
  * Feb 09, 2015  4095      bsteffen     Remove Transmitter Name.
  * Mar 11, 2015  #4186     bsteffen     Check system status monitor for silence instead of dac hardware status.
+ * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
  * 
  * </pre>
  * 
@@ -78,6 +82,8 @@ public class StatusDataManager {
     public DacTransmitterStatusData createDacTransmitterStatusData(
             List<Dac> dacs, List<TransmitterGroup> transmitterGroups,
             SystemStatusMonitor statusMonitor) {
+        Collections.sort(transmitterGroups,
+                new TransmitterGroupPositionComparator());
 
         dtsd = new DacTransmitterStatusData();
 
@@ -104,7 +110,9 @@ public class StatusDataManager {
 
         for (TransmitterGroup tg : transmitterGroups) {
             TransmitterGrpInfo tgi = createTransGroupInfo(tg);
-
+            if (tgi.isEmpty()) {
+                continue;
+            }
             Integer tgDac = tg.getDac();
             if (tgDac != null) {
                 DacInfo di = dtsd.getDacInfo(tgDac);
@@ -147,6 +155,7 @@ public class StatusDataManager {
         tgi.setGroupName(tg.getName());
 
         List<Transmitter> transmitters = tg.getTransmitterList();
+        Collections.sort(transmitters, new TransmitterPositionComparator());
 
         for (Transmitter t : transmitters) {
             TransmitterInfo ti = new TransmitterInfo();
@@ -163,83 +172,4 @@ public class StatusDataManager {
         return tgi;
     }
 
-    /**
-     * TODO : REMOVE WHEN TESTING IS DONE.
-     * 
-     * Print the data (for testing).
-     */
-    public void printData() {
-
-        Map<Integer, DacInfo> dacInfoMap = dtsd.getDacInfoMap();
-
-        for (Integer i : dacInfoMap.keySet()) {
-            System.out.println("****** DAC Information ********");
-            DacInfo di = dacInfoMap.get(i);
-            System.out.println("DAC id     : " + di.getDacId());
-            System.out.println("DAC name   : " + di.getDacName());
-            System.out.println("DAC address: " + di.getDacAddress());
-
-            List<TransmitterGrpInfo> tgInfoList = di
-                    .getTransmitterGrpInfoList();
-            for (TransmitterGrpInfo tgi : tgInfoList) {
-                System.out.println("\t****** Transmitter Group Info ********");
-                System.out.println("\t ID          :" + tgi.getId());
-                System.out.println("\t Group Name  :" + tgi.getGroupName());
-                System.out.println("\t Silent Alarm:"
-                        + tgi.isDisabledSilenceAlarm());
-
-                Map<Integer, List<TransmitterInfo>> transmitterInfoMap = tgi
-                        .getTransmitterInfoMap();
-                for (Integer mapKey : transmitterInfoMap.keySet()) {
-                    System.out.println("\t\t****** Transmitter Info ********");
-
-                    System.out.println("\t\t Key :" + mapKey);
-                    List<TransmitterInfo> tiList = transmitterInfoMap
-                            .get(mapKey);
-
-                    for (TransmitterInfo ti : tiList) {
-                        System.out.println("\t\t ID        :" + ti.getId());
-                        System.out.println("\t\t Name      :" + ti.getName());
-                        System.out.println("\t\t Mnemonic  :"
-                                + ti.getMnemonic());
-                        System.out.println("\t\t Call Sign :"
-                                + ti.getCallSign());
-                        System.out
-                                .println("\t\t DAC Port  :" + ti.getDacPort());
-                        System.out.println("\t\t Ts Status :"
-                                + ti.getTxStatus().name());
-                        System.out.println();
-                    }
-                }
-            }
-        }
-
-        List<TransmitterGrpInfo> xmitWithNoDAC = dtsd
-                .getNoDacTransGrpInfoList();
-        System.out.println("\n\n****** Transmitters with no DACs ********");
-        for (TransmitterGrpInfo tgi : xmitWithNoDAC) {
-            System.out.println("\t****** Transmitter Group Info ********");
-            System.out.println("ID          :" + tgi.getId());
-            System.out.println("Group Name  :" + tgi.getGroupName());
-            System.out.println("Silent Alarm:" + tgi.isDisabledSilenceAlarm());
-
-            System.out.println("\t****** Transmitter Info ********");
-            Map<Integer, List<TransmitterInfo>> transmitterInfoMap = tgi
-                    .getTransmitterInfoMap();
-            for (Integer mapKey : transmitterInfoMap.keySet()) {
-
-                List<TransmitterInfo> tiList = transmitterInfoMap.get(mapKey);
-
-                for (TransmitterInfo ti : tiList) {
-                    System.out.println("\t ID        :" + ti.getId());
-                    System.out.println("\t Name      :" + ti.getName());
-                    System.out.println("\t Mnemonic  :" + ti.getMnemonic());
-                    System.out.println("\t Call Sign :" + ti.getCallSign());
-                    System.out.println("\t DAC Port  :" + ti.getDacPort());
-                    System.out.println("\t Ts Status :"
-                            + ti.getTxStatus().name());
-                }
-            }
-        }
-    }
 }

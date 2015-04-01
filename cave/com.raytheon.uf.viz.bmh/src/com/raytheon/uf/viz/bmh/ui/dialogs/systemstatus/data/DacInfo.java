@@ -20,9 +20,9 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 /**
  * 
@@ -41,6 +41,7 @@ import java.util.TreeMap;
  * Jan 22, 2015  3995      rjpeter      Remove repeat message when DAC has no transmitters.
  * Jan 27, 2015  4029      bkowal       Removed buffer size.
  * Jan 29, 2015  4029      bkowal       Added {@link DAC_VOLTAGE}.
+ * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
  * 
  * </pre>
  * 
@@ -80,7 +81,7 @@ public class DacInfo {
     private DAC_VOLTAGE psu2Voltage = DAC_VOLTAGE.NO_READING;
 
     /** List of transmitter group information. */
-    private final SortedMap<Integer, TransmitterGrpInfo> transmitterGrpInfoMap = new TreeMap<Integer, TransmitterGrpInfo>();
+    private final List<TransmitterGrpInfo> transmitterGrpInfoList = new ArrayList<>();
 
     /**
      * Constructor.
@@ -111,13 +112,7 @@ public class DacInfo {
      * @return List of Transmitter Group information.
      */
     public List<TransmitterGrpInfo> getTransmitterGrpInfoList() {
-        List<TransmitterGrpInfo> tgList = new ArrayList<TransmitterGrpInfo>();
-
-        for (Integer i : transmitterGrpInfoMap.keySet()) {
-            tgList.add(transmitterGrpInfoMap.get(i));
-        }
-
-        return tgList;
+        return transmitterGrpInfoList;
     }
 
     /**
@@ -126,17 +121,34 @@ public class DacInfo {
      * @param transmitterGrpInfo
      */
     public void addTransmitterGroupInfo(TransmitterGrpInfo transmitterGrpInfo) {
-
+        transmitterGrpInfoList.add(transmitterGrpInfo);
         /*
-         * When inserting the data into the map, use the lowest DAC port number
-         * of all the transmitters in the transmitter group. If the dac port is
-         * null then don't add it to the transmitter group information map.
+         * List should be sorted by lowest dac port and allow duplicates and
+         * allow null ports, existing data structures don't support this so list
+         * MUST be sorted on insertion.
          */
-        Integer portNumber = transmitterGrpInfo.getLowestDacPortNumber();
+        Collections.sort(transmitterGrpInfoList,
+                new Comparator<TransmitterGrpInfo>() {
 
-        if (portNumber != null) {
-            transmitterGrpInfoMap.put(portNumber, transmitterGrpInfo);
-        }
+                    @Override
+                    public int compare(TransmitterGrpInfo o1,
+                            TransmitterGrpInfo o2) {
+                        Integer p1 = o1.getLowestDacPortNumber();
+                        Integer p2 = o2.getLowestDacPortNumber();
+                        if (p1 == null) {
+                            if (p2 == null) {
+                                return 0;
+                            } else {
+                                return 1;
+                            }
+                        } else if (p2 == null) {
+                            return -1;
+                        } else {
+                            return p1.compareTo(p2);
+                        }
+                    }
+
+                });
     }
 
     public String getDacAddress() {
