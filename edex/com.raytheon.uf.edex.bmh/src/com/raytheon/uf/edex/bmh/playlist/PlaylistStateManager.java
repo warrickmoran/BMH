@@ -70,6 +70,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  *                                     notification.
  * Mar 17, 2015   4160     bsteffen    Persist state of tones.
  * Mar 25, 2015   4290     bsteffen    Switch to global replacement.
+ * Apr 01, 2015   4349     rferrel     Checks to prevent exceptions when no enabled transmitters.
  * 
  * </pre>
  * 
@@ -281,8 +282,8 @@ public class PlaylistStateManager {
         MessagePlaybackPrediction prediction = playlistData.getPredictionMap()
                 .get(broadcastId);
         if (prediction.isPlayedAlertTone() || prediction.isPlayedSameTone()) {
-            BroadcastMsg broadcastMessage = playlistData.getPlaylistMap()
-                    .get(broadcastId);
+            BroadcastMsg broadcastMessage = playlistData.getPlaylistMap().get(
+                    broadcastId);
             if (broadcastMessage != null) {
                 if (tonesMatch(prediction, broadcastMessage)) {
                     return;
@@ -320,7 +321,8 @@ public class PlaylistStateManager {
             playlistData = new PlaylistDataStructure();
         }
 
-        if (this.liveBroadcastDataMap.containsKey(transmitterGrpName)) {
+        if ((transmitterGrpName != null)
+                && this.liveBroadcastDataMap.containsKey(transmitterGrpName)) {
             return new LiveBroadcastSwitchNotification(
                     this.liveBroadcastDataMap.get(transmitterGrpName),
                     playlistData);

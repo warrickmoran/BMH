@@ -165,6 +165,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 16, 2015  4285      bkowal      Fix transmitter list updates. Handle both 4270 and 4285.
  * Mar 31, 2015  4340      bkowal      Update the suite list dialog based on the currently
  *                                     selected suite.
+ * Apr 01, 2015  4349      rferrel     Checks to prevent exceptions when no enabled transmitters.
  * </pre>
  * 
  * @author mpduff
@@ -763,7 +764,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             }
 
             if (dataStruct != null) {
-                playlistData.setData(selectedTransmitterGrp, dataStruct);
+                if (selectedTransmitterGrp != null) {
+                    playlistData.setData(selectedTransmitterGrp, dataStruct);
+                }
                 String suiteName = dataStruct.getSuiteName();
                 if (suiteName != null) {
                     this.selectedSuite = suiteName;
@@ -778,8 +781,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         dataStruct.getPlaybackCycleTime())));
                 suiteCatValueLbl.setText(this.getCategoryForCurrentSuite());
 
-                tableData = playlistData
-                        .getUpdatedTableData(selectedTransmitterGrp);
+                if (selectedTransmitterGrp != null) {
+                    tableData = playlistData
+                            .getUpdatedTableData(selectedTransmitterGrp);
+                }
                 tableComp.populateTable(tableData);
                 if (tableData.getTableRowCount() > 0) {
                     tableComp.select(0);
@@ -1040,7 +1045,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             if (monitorBtn.isDisposed()) {
                 return;
             }
-            if (monitorBtn.getSelection()) {
+            if (monitorBtn.getSelection()
+                    && (transmitterList.getSelectionCount() != 0)) {
                 String tName = transmitterList.getSelection()[0];
                 tName = tName.split("-")[0];
                 TransmitterGroup selectedTransmitterGroup = transmitterGroupNameMap
@@ -1057,6 +1063,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * Handler for periodic message button
      */
     private void handlePeriodicAction() {
+        if (selectedTransmitterGrp == null) {
+            return;
+        }
         if ((periodicMsgDlg == null) || periodicMsgDlg.isDisposed()) {
             periodicMsgDlg = new PeriodicMessagesDlg(getShell(), dataManager,
                     playlistData, selectedTransmitterGrp);
@@ -1184,6 +1193,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * Suite change handler
      */
     private void handleChangeSuiteAction() {
+        if (programObj == null) {
+            return;
+        }
         Suite selection = null;
         List<Suite> suiteList = programObj.getSuites();
         if ((changeSuiteDlg == null) || changeSuiteDlg.isDisposed()) {
