@@ -103,6 +103,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 18, 2015   4213     bkowal      No longer allow users to create a message type with the
  *                                     station id or time announcement designation.
  * Mar 31, 2015   4304     rferrel     Populate selectedMessage Same Transmitters.
+ *                                      Only enable same transmitters in affected area.
  * 
  * </pre>
  * 
@@ -232,25 +233,12 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         this.dialogType = dialogType;
         this.selectedMsgType = selectedMsgType;
         this.existingAfosIds = existingAfosId;
-        this.areaData = new AreaSelectionSaveData();
         if (this.selectedMsgType != null) {
-            /*
-             * populate the area selection save data.
-             */
-            for (Area area : this.selectedMsgType.getDefaultAreas()) {
-                this.areaData.addArea(area);
-            }
-
-            for (Zone zone : this.selectedMsgType.getDefaultZones()) {
-                this.areaData.addZone(zone);
-            }
-
-            for (TransmitterGroup tg : this.selectedMsgType
-                    .getDefaultTransmitterGroups()) {
-                for (Transmitter t : tg.getTransmitters()) {
-                    this.areaData.addTransmitter(t);
-                }
-            }
+            this.areaData = new AreaSelectionSaveData(selectedMsgType);
+        } else {
+            this.areaData = new AreaSelectionSaveData();
+            this.areaData.setAffectedTransmitters(Collections
+                    .<Transmitter> emptySet());
         }
     }
 
@@ -288,14 +276,37 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         createMainControlComposite();
         createAreaAndRelationshipControls();
         createBottomButtons();
+        resetSameTransmiters();
+    }
+
+    /**
+     * Enable selectedMsgType's affected transmitters and select its Same
+     * transmitters.
+     */
+    private void resetSameTransmiters() {
+        Set<Transmitter> affectedTransmitters = areaData
+                .getAffectedTransmitters();
+        Set<String> enabledSet = new HashSet<>(affectedTransmitters.size());
+        Set<Transmitter> selectedTransmitter = null;
+        Set<String> selectedSet = null;
+
+        for (Transmitter t : affectedTransmitters) {
+            enabledSet.add(t.getMnemonic());
+        }
 
         if (this.selectedMsgType != null) {
-            CheckListData cld = new CheckListData();
-            for (Transmitter t : this.selectedMsgType.getSameTransmitters()) {
-                cld.addDataItem(t.getMnemonic(), true);
-            }
-            sameTransmitters.selectCheckboxes(cld);
+            selectedTransmitter = selectedMsgType.getSameTransmitters();
         }
+
+        if (selectedTransmitter != null) {
+            selectedSet = new HashSet<>(selectedTransmitter.size());
+            for (Transmitter t : selectedTransmitter) {
+                selectedSet.add(t.getMnemonic());
+            }
+        }
+        sameTransmitters.reset(enabledSet, selectedSet);
+        sameTransmitters
+                .setHelpText("A disabled transmitter does not\nintersect with area selection.");
     }
 
     /**
@@ -663,6 +674,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                     public void dialogClosed(Object returnValue) {
                         if (returnValue instanceof AreaSelectionSaveData) {
                             areaData = (AreaSelectionSaveData) returnValue;
+                            resetSameTransmiters();
                         }
                     }
                 });
@@ -858,17 +870,17 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             if (areaData.getAreas() != null) {
                 selectedMsgType.setDefaultAreas(areaData.getAreas());
             } else {
-                selectedMsgType.setDefaultAreas(new HashSet<Area>());
+                selectedMsgType.setDefaultAreas(Collections.<Area> emptySet());
             }
 
             if (areaData.getZones() != null) {
                 selectedMsgType.setDefaultZones(areaData.getZones());
             } else {
-                selectedMsgType.setDefaultZones(new HashSet<Zone>());
+                selectedMsgType.setDefaultZones(Collections.<Zone> emptySet());
             }
 
             Set<Transmitter> transmitterSet = areaData.getTransmitters();
-            Set<TransmitterGroup> groupSet = new HashSet<>();
+            Set<TransmitterGroup> groupSet = Collections.emptySet();
             for (Transmitter t : transmitterSet) {
                 t.getTransmitterGroup().addTransmitter(t);
                 groupSet.add(t.getTransmitterGroup());

@@ -21,8 +21,10 @@ package com.raytheon.uf.viz.bmh.ui.common.utility;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
@@ -56,6 +58,7 @@ import org.eclipse.swt.widgets.Label;
  * Mar 10, 2015 #4249      rferrel      Added {@link #setHelpText(String)}
  * Mar 16, 2015 #4244      bsteffen     Disable select controls when all boxes are disabled.
  * Mar 18, 2015 #4282      rferrel      Added allowEnabled flag.
+ * Mar 31, 2015 #4304      rferrel      Added {@link #reset(Set, Set)}.
  * 
  * </pre>
  * 
@@ -317,6 +320,7 @@ public class CheckScrollListComp extends Composite {
 
             if (cldDataMap.containsKey(btn.getText())) {
                 btn.setSelection(cldDataMap.get(btn.getText()));
+                btn.setEnabled(allowEnable);
             }
         }
     }
@@ -338,11 +342,39 @@ public class CheckScrollListComp extends Composite {
      * unchecked.
      */
     public void reset() {
+        reset(true);
+    }
+
+    /**
+     * Reset controls to the desired enable state and clear all selections.
+     * 
+     * @param enableState
+     */
+    private void reset(boolean enableState) {
         for (Button btn : checkboxArray) {
-            btn.setEnabled(allowEnable);
+            btn.setEnabled(allowEnable && enableState);
             btn.setSelection(false);
         }
         setHelpText(null);
+    }
+
+    /**
+     * Enable only controls in the enable set and select enabled controls in the
+     * selected set.
+     * 
+     * @param enableSet
+     * @param selectedSet
+     */
+    public void reset(Set<String> enableSet, Set<String> selectedSet) {
+        reset(false);
+        if (selectedSet == null) {
+            selectedSet = Collections.emptySet();
+        }
+        CheckListData cld = new CheckListData();
+        for (String name : enableSet) {
+            cld.addDataItem(name, selectedSet.contains(name));
+        }
+        selectCheckboxes(cld);
     }
 
     /**
