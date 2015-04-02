@@ -81,6 +81,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 02, 2014   3783     lvenable    Changed to only query for a fully populated message type object
  *                                     when the user wants to perform and action on the selected object.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
+ * Apr 02, 2015   4359     rferrel     Fix index exception in {@link #handleDeleteMessageType()}.
  * 
  * </pre>
  * 
@@ -546,15 +547,21 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         try {
             msgTypeDataMgr.deleteMessageType(mt);
 
-            // Since a message type has been deleted find the next available
-            // message type Afos Id in the list.
+            /*
+             * Since a message type has been deleted find the previous available
+             * message type Afos Id in the list.
+             */
             messageTypeList.remove(index);
 
-            if (index != 0 && index == messageTypeList.size() - 1) {
+            if (index != 0) {
                 --index;
             }
 
-            selectedAfosId = messageTypeList.get(index).getAfosid();
+            if (messageTypeList.isEmpty()) {
+                selectedAfosId = null;
+            } else {
+                selectedAfosId = messageTypeList.get(index).getAfosid();
+            }
 
         } catch (Exception e) {
             statusHandler.error(
