@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.dactransmit.ipc;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * 
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * ------------- -------- ----------- --------------------------
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Nov 11, 2014  3762     bsteffen    Add delayed shutdown.
+ * Apr 02, 2015  4294     bsteffen    Serialize now.
  * 
  * </pre>
  * 
@@ -47,6 +49,7 @@ public class DacTransmitShutdown {
      * When true, shutdown should be immediate, false indicates shutdown should
      * occur before beginning another message.
      */
+    @DynamicSerializeElement
     private boolean now;
 
     public DacTransmitShutdown() {
