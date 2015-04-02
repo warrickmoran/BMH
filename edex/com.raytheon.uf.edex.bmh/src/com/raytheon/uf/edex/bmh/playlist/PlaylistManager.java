@@ -67,7 +67,6 @@ import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
-import com.raytheon.uf.common.bmh.same.SAMETruncationException;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.ITimer;
@@ -850,49 +849,44 @@ public class PlaylistManager implements IContextStateProcessor {
                             }
                         }
 
+                        List<String> ugcs = new ArrayList<>();
                         for (String ugc : areaCodeSet) {
-                            try {
-                                if (ugc.charAt(2) == 'Z') {
-                                    Zone z = zoneDao.getByZoneCode(ugc);
-                                    if (z != null) {
-                                        for (Area area : z.getAreas()) {
-                                            if (!Collections.disjoint(
-                                                    area.getTransmitters(),
-                                                    sameTransmitters)) {
-                                                builder.addAreaFromUGC(area
-                                                        .getAreaCode());
-                                            }
+                            if (ugc.charAt(2) == 'Z') {
+                                Zone z = zoneDao.getByZoneCode(ugc);
+                                if (z != null) {
+                                    for (Area area : z.getAreas()) {
+                                        if (!Collections.disjoint(
+                                                area.getTransmitters(),
+                                                sameTransmitters)) {
+                                            ugcs.add(area.getAreaCode());
                                         }
                                     }
-                                } else {
-                                    Area area = areaDao.getByAreaCode(ugc);
-                                    if (!Collections.disjoint(
-                                            area.getTransmitters(),
-                                            sameTransmitters)) {
-                                        builder.addAreaFromUGC(ugc);
-                                    }
                                 }
-                            } catch (IllegalStateException
-                                    | IllegalArgumentException e) {
-                                /*
-                                 * Indicates bad input or improper
-                                 * initialization.
-                                 */
-                                statusHandler.error(
-                                        BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                                        "Cannot add area to SAME tone, same tone will not include this areas("
-                                                + ugc + ").", e);
-                            } catch (SAMETruncationException e) {
-                                /*
-                                 * Indicates that a limit has been reached. Not
-                                 * a true error condition.
-                                 */
-                                statusHandler
-                                        .error(BMH_CATEGORY.SAME_TRUNCATION,
-                                                "Failed to add all areas to the SAME Tone. The maximum number of areas have already been included.",
-                                                e);
+                            } else {
+                                Area area = areaDao.getByAreaCode(ugc);
+                                if (!Collections.disjoint(
+                                        area.getTransmitters(),
+                                        sameTransmitters)) {
+                                    ugcs.add(area.getAreaCode());
+                                }
                             }
                         }
+                        builder.addAreasFromUGC(ugcs);
+                        String invalidAreas = builder.summarizeInvalidAreas();
+                        String overLimitAreas = builder
+                                .summarizeOverLimitAreas();
+                        if (overLimitAreas.isEmpty()) {
+                            statusHandler.error(BMH_CATEGORY.SAME_TRUNCATION,
+                                    "Failed to all all areas to the SAME Message. "
+                                            + overLimitAreas);
+                        }
+                        if (invalidAreas.isEmpty()) {
+                            statusHandler.error(
+                                    BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                                    "Failed to all all areas to the SAME Message. "
+                                            + invalidAreas);
+                        }
+
                         builder.setEffectiveTime(input.getEffectiveTime());
                         builder.setExpireTime(input.getExpirationTime());
                         builder.setNwsSiteId(SiteUtil.getSite());

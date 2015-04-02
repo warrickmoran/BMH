@@ -20,10 +20,12 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,6 +40,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.PlaylistData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
@@ -60,6 +64,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Jan 26, 2015 3359       bsteffen    Use site id for same tones.
  * Mar 16, 2015 4244       bsteffen    Use areas from area selection dialog,
  *                                     only send same tones to selected transmitters.
+ * Apr 01, 2015 4339       bkowal      Notify users when EO Same Tones will be truncated.
  * Apr 02, 2015 4352       rferrel     When no area specified for a transmitter include all
  *                                      its areas.
  * 
@@ -71,6 +76,9 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
 
 public class EOBroadcastSettingsBuilder extends
         AbstractBroadcastSettingsBuilder {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(EOBroadcastSettingsBuilder.class);
 
     /*
      * Data Managers
@@ -256,10 +264,20 @@ public class EOBroadcastSettingsBuilder extends
     private byte[] constructSAMEAlertTones(Collection<Area> areas)
             throws ToneGenerationException {
         SAMEToneTextBuilder toneBuilder = new SAMEToneTextBuilder();
-        toneBuilder.setEventFromAfosid(this.messageType.getAfosid());
+        List<String> ugcs = new ArrayList<>(areas.size());
         for (Area area : areas) {
-            toneBuilder.addAreaFromUGC(area.getAreaCode());
+            ugcs.add(area.getAreaCode());
         }
+        toneBuilder.setEventFromAfosid(this.messageType.getAfosid());
+        toneBuilder.addAreasFromUGC(ugcs);
+        String invalidAreas = toneBuilder.summarizeInvalidAreas();
+        String overLimitAreas = toneBuilder.summarizeOverLimitAreas();
+        if (invalidAreas.isEmpty() == false
+                || overLimitAreas.isEmpty() == false) {
+            statusHandler.error("Failed to all all areas to the SAME Message. "
+                    + overLimitAreas + " " + invalidAreas);
+        }
+
         toneBuilder.setEffectiveTime(this.effectiveTime);
         toneBuilder.setExpireTime(this.expireTime);
         toneBuilder.setNwsSiteId(LocalizationManager.getInstance().getSite());

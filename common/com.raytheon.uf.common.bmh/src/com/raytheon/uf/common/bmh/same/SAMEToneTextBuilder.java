@@ -22,7 +22,11 @@ package com.raytheon.uf.common.bmh.same;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Formatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.lang.StringUtils;
 
 import com.raytheon.uf.common.time.util.TimeUtil;
 
@@ -67,8 +71,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                    to SAME string.
  * Nov 26, 2014  3616     bsteffen    Handle demo messages specially.
  * Jan 26, 2015  3359     bsteffen    Add Icao Mapper.
- * Mar 31, 2015  4339     bkowal      Throw a {@link SAMETruncationException} to indicate
- *                                    the SAME area maximum has been reached.
+ * Mar 31, 2015  4339     bkowal      Added {@link #addAreasFromUGC(List)} to keep track
+ *                                    of all areas that cannot be added as well as summary methods
+ *                                    for reporting the areas that cannot be added.
  * 
  * </pre>
  * 
@@ -110,6 +115,10 @@ public class SAMEToneTextBuilder {
     private CharSequence originatorOffice;
 
     private SAMEIcaoMapper icaoMapper = SAMEIcaoMapper.DEFAULT;
+
+    private final List<String> overLimitAreas = new ArrayList<>();
+
+    private final Map<String, String> invalidAreas = new HashMap<>();
 
     /**
      * The Originator header code block indicates who initiated the message. The
@@ -153,8 +162,8 @@ public class SAMEToneTextBuilder {
      * The Event header code block identifies the type of Event and information
      * contained in the Voice message, if a Voice message is sent. The Event
      * code may be sent with or without a WAT or Voice message as an alerting
-     * function only. It also may be sent as a control code for some NWR system
-     * control functions.
+     * message as an alerting function only. It also may be sent as a control
+     * code for some NWR system control functions.
      * 
      * @param event
      *            header code block.
@@ -189,7 +198,7 @@ public class SAMEToneTextBuilder {
      */
     public void addArea(CharSequence area) throws IllegalStateException {
         if (this.area.size() >= 31) {
-            throw new SAMETruncationException(this.area.size());
+            throw new SAMETruncationException(this.area.size(), area);
         }
         this.area.add(area);
     }
@@ -250,6 +259,33 @@ public class SAMEToneTextBuilder {
         area.append(String.format("%02d", stateCode));
         area.append(ugc.substring(3));
         addArea(area);
+    }
+
+    /**
+     * Attempts to add the specified areas to the SAME Tones. Conveniently
+     * stores any area(s) that cannot be added because they are invalid or
+     * because the area limit is reached. Utilize the {@link #getInvalidAreas()}
+     * and {@link #getOverLimitAreas()} to access the information.
+     * 
+     * @param ugcs
+     *            a {@link List} of specified areas to add to the SAME Tone.
+     */
+    public void addAreasFromUGC(List<String> ugcs) {
+        boolean limitReached = false;
+        for (String ugc : ugcs) {
+            if (limitReached == false) {
+                try {
+                    this.addAreaFromUGC(ugc);
+                } catch (SAMETruncationException e) {
+                    limitReached = true;
+                    this.overLimitAreas.add(ugc);
+                } catch (IllegalStateException | IllegalArgumentException e) {
+                    this.invalidAreas.put(ugc, e.getMessage());
+                }
+            } else {
+                this.overLimitAreas.add(ugc);
+            }
+        }
     }
 
     /**
@@ -449,5 +485,55 @@ public class SAMEToneTextBuilder {
         if (originatorOffice == null) {
             throw new IllegalStateException("Must set originator office.");
         }
+    }
+
+    public String summarizeOverLimitAreas() {
+        if (this.overLimitAreas.isEmpty()) {
+            return StringUtils.EMPTY;
+        }
+
+        StringBuilder sb = new StringBuilder(
+                "The following areas cannot be added because the SAME Area limit has been reached: ");
+        boolean first = true;
+        for (String overLimitArea : this.overLimitAreas) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(", ");
+            }
+            sb.append(overLimitArea);
+        }
+        sb.append(".");
+
+        return sb.toString();
+    }
+
+    /**
+     * @return the overLimitAreas
+     */
+    public List<String> getOverLimitAreas() {
+        return overLimitAreas;
+    }
+
+    public String summarizeInvalidAreas() {
+        if (this.invalidAreas.isEmpty()) {
+            return StringUtils.EMPTY;
+        }
+
+        StringBuilder sb = new StringBuilder(
+                "The following areas were invalid:");
+        for (String invalidArea : this.invalidAreas.keySet()) {
+            sb.append("\n").append(invalidArea).append(" : ")
+                    .append(this.invalidAreas.get(invalidArea));
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * @return the invalidAreas
+     */
+    public Map<String, String> getInvalidAreas() {
+        return invalidAreas;
     }
 }

@@ -44,7 +44,9 @@ public class SAMETruncationException extends RuntimeException {
     /**
      * 
      */
-    public SAMETruncationException(final int areaCount) {
-        super("Too many areas were provided (" + areaCount + " >= 31)");
+    public SAMETruncationException(final int areaCount, final CharSequence area) {
+        super("Failed to add area: " + area
+                + " to the same tone. Too many areas were provided ("
+                + areaCount + " >= 31).");
     }
 }
