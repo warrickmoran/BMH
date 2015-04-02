@@ -41,6 +41,7 @@ import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.PlaylistData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
+import com.raytheon.uf.viz.bmh.ui.dialogs.listening.ZonesAreasDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 
@@ -59,6 +60,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Jan 26, 2015 3359       bsteffen    Use site id for same tones.
  * Mar 16, 2015 4244       bsteffen    Use areas from area selection dialog,
  *                                     only send same tones to selected transmitters.
+ * Apr 02, 2015 4352       rferrel     When no area specified for a transmitter include all
+ *                                      its areas.
  * 
  * </pre>
  * 
@@ -103,7 +106,6 @@ public class EOBroadcastSettingsBuilder extends
      */
     private Set<TransmitterGroup> sameGroups = new HashSet<>();
 
-    
     private byte[] endTonesAudio;
 
     /*
@@ -116,20 +118,18 @@ public class EOBroadcastSettingsBuilder extends
 
     public EOBroadcastSettingsBuilder(final MessageType messageType,
             final Set<Transmitter> selectedTransmitters,
-            Set<Transmitter> sameTransmitters,
-            AreaSelectionSaveData areaData,
+            Set<Transmitter> sameTransmitters, AreaSelectionSaveData areaData,
             final boolean playAlertTones, final int hoursDuration,
             final int minutesDuration) throws Exception {
         super(BROADCASTTYPE.EO);
         this.messageType = messageType;
         this.playAlertTones = playAlertTones;
-        this.initialize(selectedTransmitters, sameTransmitters, areaData, hoursDuration,
-                minutesDuration);
+        this.initialize(selectedTransmitters, sameTransmitters, areaData,
+                hoursDuration, minutesDuration);
     }
 
     private void initialize(final Set<Transmitter> selectedTransmitters,
-            Set<Transmitter> sameTransmitters,
-            AreaSelectionSaveData areaData,
+            Set<Transmitter> sameTransmitters, AreaSelectionSaveData areaData,
             final int hoursDuration, final int minutesDuration)
             throws Exception {
         /*
@@ -185,6 +185,13 @@ public class EOBroadcastSettingsBuilder extends
                         }
                     }
                 }
+                if (areasForThisTransmitter.isEmpty()) {
+                    /* Assume all areas for the transmitter should be covered. */
+                    ZonesAreasDataManager zadm = new ZonesAreasDataManager();
+                    for (Area area : zadm.getAreasForTransmitter(transmitter)) {
+                        areasForThisTransmitter.add(area);
+                    }
+                }
             }
 
             /* Complete the mapping */
@@ -195,8 +202,6 @@ public class EOBroadcastSettingsBuilder extends
                 transmitterGroupAreaMap.get(transmitterGroup).addAll(
                         areasForThisTransmitter);
             }
-
-
         }
 
         this.areaCodeString = areaCodeStrBuilder.toString();
