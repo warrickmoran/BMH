@@ -237,8 +237,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             this.areaData = new AreaSelectionSaveData(selectedMsgType);
         } else {
             this.areaData = new AreaSelectionSaveData();
-            this.areaData.setAffectedTransmitters(Collections
-                    .<Transmitter> emptySet());
+            this.areaData.setAffectedTransmitters(new HashSet<Transmitter>());
         }
     }
 
@@ -870,17 +869,17 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             if (areaData.getAreas() != null) {
                 selectedMsgType.setDefaultAreas(areaData.getAreas());
             } else {
-                selectedMsgType.setDefaultAreas(Collections.<Area> emptySet());
+                selectedMsgType.setDefaultAreas(new HashSet<Area>());
             }
 
             if (areaData.getZones() != null) {
                 selectedMsgType.setDefaultZones(areaData.getZones());
             } else {
-                selectedMsgType.setDefaultZones(Collections.<Zone> emptySet());
+                selectedMsgType.setDefaultZones(new HashSet<Zone>());
             }
 
             Set<Transmitter> transmitterSet = areaData.getTransmitters();
-            Set<TransmitterGroup> groupSet = Collections.emptySet();
+            Set<TransmitterGroup> groupSet = new HashSet<>();
             for (Transmitter t : transmitterSet) {
                 t.getTransmitterGroup().addTransmitter(t);
                 groupSet.add(t.getTransmitterGroup());
