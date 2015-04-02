@@ -36,9 +36,9 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
@@ -60,13 +60,13 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 16, 2014  #3174     lvenable     Initial creation
- * Aug 23, 2014  #3490     lvenable     Hook up transmitter data.
- * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * Oct 09, 2014  #3646     rferrel      Convert tableComp to GenericTable.
- * Dec 07, 2014   3846     mpduff       Populate hashmap internally, handle state of add button
- * Feb 09, 2015   4095     bsteffen     Remove Transmitter Name.
- * 
+ * Jul 16, 2014  #3174     lvenable    Initial creation
+ * Aug 23, 2014  #3490     lvenable    Hook up transmitter data.
+ * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 09, 2014  #3646     rferrel     Convert tableComp to GenericTable.
+ * Dec 07, 2014   3846     mpduff      Populate hashmap internally, handle state of add button
+ * Feb 09, 2015   4095     bsteffen    Remove Transmitter Name.
+ * Mar 31, 2015   4248     rjpeter     Use PositionComparator.
  * </pre>
  * 
  * @author lvenable
@@ -216,8 +216,8 @@ public class AddTransmittersDlg extends CaveSWTDialog {
 
         selectedTransmitters.clear();
 
-        for (int i = 0; i < indices.length; i++) {
-            selectedTransmitters.add(transmitterGrps.get(indices[i]));
+        for (int indice : indices) {
+            selectedTransmitters.add(transmitterGrps.get(indice));
         }
 
         StringBuilder sb = new StringBuilder();
@@ -256,8 +256,7 @@ public class AddTransmittersDlg extends CaveSWTDialog {
         try {
             transmitterGrps = tdm.getTransmitterGroups();
 
-            Collections.sort(transmitterGrps,
-                    new TransmitterGroupPositionComparator());
+            Collections.sort(transmitterGrps, new PositionComparator());
 
             for (TransmitterGroup tg : transmitterGrps) {
                 if (transGrpProgramMap.containsKey(tg.getName())) {

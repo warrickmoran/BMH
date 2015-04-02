@@ -39,7 +39,6 @@ import javax.persistence.JoinColumn;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
-import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.Transient;
@@ -47,6 +46,7 @@ import javax.persistence.Transient;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.diff.DiffString;
@@ -88,6 +88,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 13, 2015 4213      bkowal      Added {@link #GET_STATIC_MSG_TYPES_FOR_PROGRAM}.
  * Mar 25, 2015 4213      bkowal      Added {@link #GET_PROGRAM_FOR_TRANSMITTER_GROUP} and
  *                                    {@link #VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP}.
+ * Apr 02, 2015 4248      rjpeter     Made ProgramSuite database relation a set, added ordered return methods.
  * </pre>
  * 
  * @author rjpeter
@@ -185,9 +186,8 @@ public class Program {
 
     @OneToMany(mappedBy = "program", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @Fetch(FetchMode.SUBSELECT)
-    @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
-    private List<ProgramSuite> programSuites;
+    private Set<ProgramSuite> programSuites;
 
     @OneToMany(fetch = FetchType.EAGER)
     @Fetch(FetchMode.SUBSELECT)
@@ -329,9 +329,8 @@ public class Program {
      */
 
     public void setSuites(List<Suite> suites) {
-        if (programSuites == null) {
-            programSuites = new ArrayList<>(suites.size());
-        }
+        programSuites = new HashSet<>(suites.size(), 1);
+
         for (Suite suite : suites) {
             ProgramSuite programSuite = new ProgramSuite();
             programSuite.setProgram(this);
@@ -344,13 +343,15 @@ public class Program {
     public void addSuite(Suite suite) {
         if (suite != null) {
             if (programSuites == null) {
-                programSuites = new ArrayList<>();
+                programSuites = new HashSet<>();
             }
 
+            PositionUtil.updatePositions(programSuites);
             ProgramSuite programSuite = new ProgramSuite();
             programSuite.setProgram(this);
             programSuite.setSuite(suite);
             programSuite.setPosition(this.programSuites.size());
+
             // check for new trigger messages for new suites.
             if (suite.getNewTriggerSuiteMessages() != null) {
                 for (MessageTypeSummary msgType : suite
@@ -381,7 +382,27 @@ public class Program {
     /**
      * @return the programSuites
      */
-    public List<ProgramSuite> getProgramSuites() {
+    public List<ProgramSuite> getOrderedProgramSuites() {
+        return PositionUtil.order(programSuites);
+    }
+
+    /**
+     * @return the programSuites
+     */
+    public void setOrderedProgramSuites(List<ProgramSuite> programSuites) {
+        if (programSuites == null) {
+            this.programSuites = null;
+            return;
+        }
+
+        PositionUtil.updatePositions(programSuites);
+        setProgramSuites(new HashSet<>(programSuites));
+    }
+
+    /**
+     * @return the programSuites
+     */
+    public Set<ProgramSuite> getProgramSuites() {
         return programSuites;
     }
 
@@ -389,49 +410,23 @@ public class Program {
      * @param programSuites
      *            the programSuites to set
      */
-    public void setProgramSuites(List<ProgramSuite> programSuites) {
-        if (programSuites == null) {
-            /*
-             * Instantiate new list instead of empty list so that items can
-             * still be added to the list.
-             */
-            this.programSuites = new ArrayList<>();
-            return;
-        }
+    public void setProgramSuites(Set<ProgramSuite> programSuites) {
         this.programSuites = programSuites;
 
-        Iterator<ProgramSuite> psi = programSuites.iterator();
-        while (psi.hasNext()) {
-            if (psi.next() == null) {
-                psi.remove();
+        if (this.programSuites != null) {
+            for (ProgramSuite ps : this.programSuites) {
+                ps.setProgram(this);
             }
-        }
-
-        this.updatePositions();
-
-        for (ProgramSuite ps : this.programSuites) {
-            ps.setProgram(this);
-        }
-    }
-
-    public void updatePositions() {
-        if (this.programSuites == null) {
-            return;
-        }
-
-        int index = 0;
-        for (ProgramSuite ps : this.programSuites) {
-            ps.setPosition(index++);
         }
     }
 
     public void addProgramSuite(ProgramSuite programSuite) {
         if (this.programSuites == null) {
-            this.programSuites = new ArrayList<>();
+            this.programSuites = new HashSet<>();
             programSuite.setPosition(0);
         } else {
-            programSuite.setPosition(this.programSuites.get(
-                    this.programSuites.size() - 1).getPosition() + 1);
+            PositionUtil.updatePositions(this.programSuites);
+            programSuite.setPosition(this.programSuites.size());
         }
 
         programSuite.setProgram(this);

@@ -21,8 +21,6 @@ package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -67,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 09, 2014  #3646     rferrel     Converted programTable to GenericTable.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
+ * Mar 31, 2015  4248      rjpeter     Use ordered view of suite messages.
  * </pre>
  * 
  * @author lvenable
@@ -310,14 +309,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
          */
         TableData msgTypeTableData = new TableData(columnNames);
 
-        List<SuiteMessage> suiteMessageArray = selectedSuite.getSuiteMessages();
-
-        Map<Integer, SuiteMessage> suiteMsgMap = new TreeMap<Integer, SuiteMessage>();
-        for (SuiteMessage sm : suiteMessageArray) {
-            suiteMsgMap.put(sm.getPosition(), sm);
-        }
-
-        for (SuiteMessage sm : suiteMsgMap.values()) {
+        for (SuiteMessage sm : selectedSuite.getOrderedSuiteMessages()) {
             TableRowData trd = new TableRowData();
 
             trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()

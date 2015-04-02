@@ -19,8 +19,9 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -37,6 +38,7 @@ import javax.persistence.Table;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
@@ -64,6 +66,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 13, 2015 3809       bkowal      Fixed {@link #toString()}.
  * Feb 19, 2015 4142       bkowal      Added {@link #speechRate}.
  * Mar 12, 2015 4213       bkowal      Added {@link #staticMessageTypes}.
+ * Apr 02, 2015 4248       rjpeter     Updated staticMessageTypes database relation to a set, added ordered returns.
  * </pre>
  * 
  * @author rjpeter
@@ -100,13 +103,15 @@ public class TransmitterLanguage {
     @OneToMany(mappedBy = "id.transmitterLanguagePK", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @DynamicSerializeElement
     @Fetch(FetchMode.SUBSELECT)
-    private List<StaticMessageType> staticMessageTypes;
+    private Set<StaticMessageType> staticMessageTypes;
 
     public void addStaticMessageType(StaticMessageType staticMsgType) {
         if (this.staticMessageTypes == null) {
-            this.staticMessageTypes = new ArrayList<>();
+            this.staticMessageTypes = new HashSet<>();
         }
+
         staticMsgType.setTransmitterLanguage(this);
+        staticMsgType.setPosition(this.staticMessageTypes.size());
         this.staticMessageTypes.add(staticMsgType);
     }
 
@@ -206,7 +211,7 @@ public class TransmitterLanguage {
     }
 
     public void setSpeechRate(int speechRate) {
-        if (speechRate < -99 || speechRate > 99) {
+        if ((speechRate < -99) || (speechRate > 99)) {
             throw new IllegalArgumentException(
                     "An invalid speech rate has been specified! The speech rate must be between -99 and 99 inclusive.");
         }
@@ -217,7 +222,29 @@ public class TransmitterLanguage {
     /**
      * @return the staticMessageTypes
      */
-    public List<StaticMessageType> getStaticMessageTypes() {
+    public List<StaticMessageType> getOrderedStaticMessageTypes() {
+        return PositionUtil.order(staticMessageTypes);
+    }
+
+    /**
+     * @param staticMessageTypes
+     *            the staticMessageTypes to set
+     */
+    public void setOrderedStaticMessageTypes(
+            List<StaticMessageType> staticMessageTypes) {
+        if (staticMessageTypes == null) {
+            this.staticMessageTypes = null;
+            return;
+        }
+
+        PositionUtil.updatePositions(staticMessageTypes);
+        setStaticMessageTypes(new HashSet<>(staticMessageTypes));
+    }
+
+    /**
+     * @return the staticMessageTypes
+     */
+    public Set<StaticMessageType> getStaticMessageTypes() {
         return staticMessageTypes;
     }
 
@@ -225,12 +252,13 @@ public class TransmitterLanguage {
      * @param staticMessageTypes
      *            the staticMessageTypes to set
      */
-    public void setStaticMessageTypes(List<StaticMessageType> staticMessageTypes) {
+    public void setStaticMessageTypes(Set<StaticMessageType> staticMessageTypes) {
         this.staticMessageTypes = staticMessageTypes;
-        if (this.staticMessageTypes == null
+        if ((this.staticMessageTypes == null)
                 || this.staticMessageTypes.isEmpty()) {
             return;
         }
+
         for (StaticMessageType stm : this.staticMessageTypes) {
             stm.setTransmitterLanguage(this);
         }

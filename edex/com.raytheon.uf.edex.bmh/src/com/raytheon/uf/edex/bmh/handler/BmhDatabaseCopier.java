@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
@@ -52,7 +53,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
@@ -104,7 +104,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Jan 26, 2015  3928     bsteffen    Copy audio files.
  * Mar 26, 2015  4213     bkowal      Fixed copying of static message types.
- * 
+ * APr 02, 2015  4248     rjpeter     Use PositionComparator.
  * </pre>
  * 
  * @author bsteffen
@@ -188,7 +188,7 @@ public class BmhDatabaseCopier {
         TransmitterGroupDao prDao = new TransmitterGroupDao(false);
 
         List<TransmitterGroup> groups = opDao.getAll();
-        Collections.sort(groups, new TransmitterGroupPositionComparator());
+        Collections.sort(groups, new PositionComparator());
         Map<Integer, TransmitterGroup> transmitterGroupMap = new HashMap<>(
                 groups.size(), 1.0f);
         Map<Integer, Transmitter> transmitterMap = new HashMap<>(
@@ -237,8 +237,8 @@ public class BmhDatabaseCopier {
         for (TransmitterLanguage lang : langs) {
             lang.setTransmitterGroup(transmitterGroupMap.get(lang
                     .getTransmitterGroup().getId()));
-            if (lang.getStaticMessageTypes() != null
-                    && lang.getStaticMessageTypes().isEmpty() == false) {
+            if ((lang.getStaticMessageTypes() != null)
+                    && (lang.getStaticMessageTypes().isEmpty() == false)) {
                 // update the message type references.
                 for (StaticMessageType stm : lang.getStaticMessageTypes()) {
                     int opTrxGrpId = stm.getId().getTransmitterLanguagePK()

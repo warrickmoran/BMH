@@ -25,11 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterPositionComparator;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.systemstatus.SystemStatusMonitor;
 
@@ -51,7 +50,7 @@ import com.raytheon.uf.common.bmh.systemstatus.SystemStatusMonitor;
  * Feb 09, 2015  4095      bsteffen     Remove Transmitter Name.
  * Mar 11, 2015  #4186     bsteffen     Check system status monitor for silence instead of dac hardware status.
  * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
- * 
+ * Apr 02, 2015  4248      rjpeter      Use PositionComparator.
  * </pre>
  * 
  * @author lvenable
@@ -82,8 +81,7 @@ public class StatusDataManager {
     public DacTransmitterStatusData createDacTransmitterStatusData(
             List<Dac> dacs, List<TransmitterGroup> transmitterGroups,
             SystemStatusMonitor statusMonitor) {
-        Collections.sort(transmitterGroups,
-                new TransmitterGroupPositionComparator());
+        Collections.sort(transmitterGroups, new PositionComparator());
 
         dtsd = new DacTransmitterStatusData();
 
@@ -123,10 +121,10 @@ public class StatusDataManager {
                     // status information.
                     DacHardwareStatusNotification dhsn = dacStatus.get(tg
                             .getName());
-                    if (dhsn != null && updatedDac.contains(tgDac) == false) {
-                            di.setPsu1Voltage(dhsn.getPsu1Voltage());
-                            di.setPsu2Voltage(dhsn.getPsu2Voltage());
-                            updatedDac.add(tgDac);
+                    if ((dhsn != null) && (updatedDac.contains(tgDac) == false)) {
+                        di.setPsu1Voltage(dhsn.getPsu1Voltage());
+                        di.setPsu2Voltage(dhsn.getPsu2Voltage());
+                        updatedDac.add(tgDac);
                     }
                 } else {
                     dtsd.addTranmitterWithNoDac(tgi);
@@ -155,7 +153,7 @@ public class StatusDataManager {
         tgi.setGroupName(tg.getName());
 
         List<Transmitter> transmitters = tg.getTransmitterList();
-        Collections.sort(transmitters, new TransmitterPositionComparator());
+        Collections.sort(transmitters, new PositionComparator());
 
         for (Transmitter t : transmitters) {
             TransmitterInfo ti = new TransmitterInfo();

@@ -28,7 +28,9 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -44,7 +46,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Sep 11, 2014  3588     bsteffen    Initial creation
  * Oct 23, 2014  3748     bkowal      Make the TTS Voice optional
- * 
+ * Mar 31, 2015  4248     rjpeter     Implement PositionOrdered.
  * </pre>
  * 
  * @author bsteffen
@@ -52,9 +54,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Entity
 @DynamicSerialize
-@Table(name = "broadcast_fragment", schema = "bmh")
+@Table(name = "broadcast_fragment", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
+        "message_id", "position" }) })
 @SequenceGenerator(initialValue = 1, name = BroadcastFragment.GEN, sequenceName = "broadcast_fragment_seq")
-public class BroadcastFragment {
+public class BroadcastFragment implements PositionOrdered {
     public static final String GEN = "Broadcast Msg Fragment Generator";
 
     /* A unique auto-generated numerical id. Long = SQL BIGINT */
@@ -83,9 +86,9 @@ public class BroadcastFragment {
     private TtsVoice voice;
 
     /*
-     * The name of the output file; generated at the conclusion of the
-     * synthesis - will initially be NULL; but, will be updated after a
-     * successful text synthesis.
+     * The name of the output file; generated at the conclusion of the synthesis
+     * - will initially be NULL; but, will be updated after a successful text
+     * synthesis.
      */
     @Column(nullable = true)
     @DynamicSerializeElement
@@ -99,6 +102,9 @@ public class BroadcastFragment {
     @DynamicSerializeElement
     private boolean success;
 
+    /*
+     * Position within its parent.
+     */
     @Column(nullable = false)
     @DynamicSerializeElement
     private int position;
@@ -192,10 +198,12 @@ public class BroadcastFragment {
         this.success = success;
     }
 
+    @Override
     public int getPosition() {
         return position;
     }
 
+    @Override
     public void setPosition(int position) {
         this.position = position;
     }

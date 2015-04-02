@@ -45,7 +45,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
  * ------------- -------- ----------- --------------------------
  * Dec 08, 2014  3864     bsteffen    Initial creation
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
- * 
+ * Apr 02, 2015  4228     rjpeter     Updated to call getOrderedSuiteMessages.
  * </pre>
  * 
  * @author bsteffen
@@ -57,8 +57,8 @@ public class BroadcastMsgSuiteOrderComparator implements
     private final Map<String, Integer> positionMap;
 
     public BroadcastMsgSuiteOrderComparator(Suite suite) {
-        List<SuiteMessage> suiteMessages = suite.getSuiteMessages();
-        this.positionMap = new HashMap<>(suiteMessages.size() * 3 / 2);
+        List<SuiteMessage> suiteMessages = suite.getOrderedSuiteMessages();
+        this.positionMap = new HashMap<>((suiteMessages.size() * 3) / 2);
         for (int i = 0; i < suiteMessages.size(); i += 1) {
             positionMap.put(suiteMessages.get(i).getAfosid(), i);
         }

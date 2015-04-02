@@ -19,9 +19,11 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
-import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -35,7 +37,6 @@ import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
-import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
@@ -43,6 +44,7 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage.ReplacementType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -74,7 +76,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 13, 2015  4213     bkowal      Fixed {@link #GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY}.
  * Mar 17, 2015  4160     bsteffen    Add booleans for tone status.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
- * 
+ * Apr 02, 2015  4248     rjpeter     Made BroadcastFragment database relation a set and add ordered return methods.
  * </pre>
  * 
  * @author bkowal
@@ -146,10 +148,9 @@ public class BroadcastMsg {
     private InputMessage inputMessage;
 
     @OneToMany(mappedBy = "message", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @OrderColumn(name = "position", nullable = false)
     @Fetch(FetchMode.SELECT)
     @DynamicSerializeElement
-    private List<BroadcastFragment> fragments;
+    private Set<BroadcastFragment> fragments;
 
     @Column
     @DynamicSerializeElement
@@ -240,23 +241,66 @@ public class BroadcastMsg {
         this.inputMessage = inputMessage;
     }
 
-    public List<BroadcastFragment> getFragments() {
+    /**
+     * Returns BroadcastFragments in position order.
+     * 
+     * @return
+     */
+    public List<BroadcastFragment> getOrderedFragments() {
+        if (fragments == null) {
+            return Collections.emptyList();
+        }
+
+        return PositionUtil.order(fragments);
+    }
+
+    /**
+     * Sets the BroadcastFragments in the specified position order.
+     * 
+     * @param fragments
+     */
+    public void setOrderedFragments(List<BroadcastFragment> fragments) {
+        if (fragments == null) {
+            this.fragments = null;
+            return;
+        }
+
+        PositionUtil.updatePositions(fragments);
+        setFragments(new HashSet<>(fragments));
+    }
+
+    /**
+     * Returns the BroadcastFragments
+     * 
+     * @return
+     */
+    public Set<BroadcastFragment> getFragments() {
         return fragments;
     }
 
-    public void setFragments(List<BroadcastFragment> fragments) {
+    /**
+     * 
+     * @param fragments
+     */
+    public void setFragments(Set<BroadcastFragment> fragments) {
         this.fragments = fragments;
-        for (BroadcastFragment fragment : fragments) {
-            fragment.setMessage(this);
+
+        if (this.fragments != null) {
+            for (BroadcastFragment fragment : this.fragments) {
+                fragment.setMessage(this);
+            }
         }
     }
 
     public void addFragment(BroadcastFragment fragment) {
         if (this.fragments == null) {
-            this.fragments = new ArrayList<>(1);
+            this.fragments = new HashSet<>(2, 1);
         }
-        this.fragments.add(fragment);
+
+        PositionUtil.updatePositions(fragments);
+        fragment.setPosition(this.fragments.size());
         fragment.setMessage(this);
+        this.fragments.add(fragment);
     }
 
     /**
@@ -324,43 +368,52 @@ public class BroadcastMsg {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result
+        result = (prime * result)
                 + ((creationDate == null) ? 0 : creationDate.hashCode());
-        result = prime * result + (int) (id ^ (id >>> 32));
-        result = prime * result
+        result = (prime * result) + (int) (id ^ (id >>> 32));
+        result = (prime * result)
                 + ((inputMessage == null) ? 0 : inputMessage.hashCode());
-        result = prime
-                * result
+        result = (prime * result)
                 + ((transmitterGroup == null) ? 0 : transmitterGroup.hashCode());
         return result;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         BroadcastMsg other = (BroadcastMsg) obj;
         if (creationDate == null) {
-            if (other.creationDate != null)
+            if (other.creationDate != null) {
                 return false;
-        } else if (!creationDate.equals(other.creationDate))
+            }
+        } else if (!creationDate.equals(other.creationDate)) {
             return false;
-        if (id != other.id)
+        }
+        if (id != other.id) {
             return false;
+        }
         if (inputMessage == null) {
-            if (other.inputMessage != null)
+            if (other.inputMessage != null) {
                 return false;
-        } else if (!inputMessage.equals(other.inputMessage))
+            }
+        } else if (!inputMessage.equals(other.inputMessage)) {
             return false;
+        }
         if (transmitterGroup == null) {
-            if (other.transmitterGroup != null)
+            if (other.transmitterGroup != null) {
                 return false;
-        } else if (!transmitterGroup.equals(other.transmitterGroup))
+            }
+        } else if (!transmitterGroup.equals(other.transmitterGroup)) {
             return false;
+        }
         return true;
     }
 

@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -38,6 +39,7 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
 import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -60,7 +62,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * Oct 28, 2014 3636       rferrel     Implement Logging
  * Nov 13, 2014 3717       bsteffen    Remove forced field.
- * 
+ * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered.
  * </pre>
  * 
  * @author bkowal
@@ -68,10 +70,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 
 @Entity
-@Table(name = "program_suite", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
-        "program_id", "suite_id", "position" }) })
+@Table(name = "program_suite", schema = "bmh", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "program_id", "position" }),
+        @UniqueConstraint(columnNames = { "program_id", "suite_id" }) })
 @DynamicSerialize
-public class ProgramSuite implements Serializable {
+public class ProgramSuite implements Serializable, PositionOrdered {
     private static final long serialVersionUID = -4911273921891786116L;
 
     @EmbeddedId
@@ -95,6 +98,7 @@ public class ProgramSuite implements Serializable {
     private Suite suite;
 
     @DynamicSerializeElement
+    @Column(nullable = false)
     private int position;
 
     @ManyToMany(fetch = FetchType.EAGER)
@@ -140,12 +144,12 @@ public class ProgramSuite implements Serializable {
     }
 
     public boolean isTrigger(String afosid) {
-        if ((this.triggers != null) && this.triggers.isEmpty() == false) {
-        for (MessageTypeSummary trigger : this.triggers) {
-            if (trigger.getAfosid().equals(afosid)) {
-                return true;
+        if ((this.triggers != null) && (this.triggers.isEmpty() == false)) {
+            for (MessageTypeSummary trigger : this.triggers) {
+                if (trigger.getAfosid().equals(afosid)) {
+                    return true;
+                }
             }
-        }
         }
         return false;
 
@@ -207,6 +211,7 @@ public class ProgramSuite implements Serializable {
     /**
      * @return the position
      */
+    @Override
     public int getPosition() {
         return this.position;
     }
@@ -215,6 +220,7 @@ public class ProgramSuite implements Serializable {
      * @param position
      *            the position to set
      */
+    @Override
     public void setPosition(int position) {
         this.position = position;
     }
@@ -238,24 +244,29 @@ public class ProgramSuite implements Serializable {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((id == null) ? 0 : id.hashCode());
+        result = (prime * result) + ((id == null) ? 0 : id.hashCode());
         return result;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         ProgramSuite other = (ProgramSuite) obj;
         if (id == null) {
-            if (other.id != null)
+            if (other.id != null) {
                 return false;
-        } else if (!id.equals(other.id))
+            }
+        } else if (!id.equals(other.id)) {
             return false;
+        }
         return true;
     }
 }

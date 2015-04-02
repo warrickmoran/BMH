@@ -44,10 +44,10 @@ import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
 import com.raytheon.uf.common.bmh.broadcast.AbstractOnDemandBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest;
 import com.raytheon.uf.common.bmh.request.MaintenanceMessageResponse;
@@ -81,7 +81,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     using the dialog.
  * Dec 12, 2014 3603       bsteffen    Move backgrounded execution out for reuse by transfer tones.
  * Mar 02, 2015    3962    rferrel     Changes for MAINT status.
- * 
+ * Mar 31, 2015 4248       rjpeter     Removed TransmitterGroupPositionComparator.
  * </pre>
  * 
  * @author mpduff
@@ -251,8 +251,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                 dlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
-                        if (returnValue != null
-                                && returnValue instanceof String) {
+                        if ((returnValue != null)
+                                && (returnValue instanceof String)) {
                             String dbLevelStr = (String) returnValue;
                             selectedTransmitterGrp.setAudioDBTarget(Double
                                     .parseDouble(dbLevelStr));
@@ -458,7 +458,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             java.util.List<TransmitterGroup> transmitterGroupObjectList = dataManager
                     .getTransmitterGroups();
             Collections.sort(transmitterGroupObjectList,
-                    new TransmitterGroupPositionComparator());
+                    new PositionComparator());
             String[] tNames = new String[transmitterGroupObjectList.size()];
             int idx = 0;
             for (TransmitterGroup tg : transmitterGroupObjectList) {
@@ -551,11 +551,11 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     public boolean isTransmitterGroupConfigured(
             TransmitterGroup transmitterGroup) {
 
-        return transmitterGroup != null
-                && transmitterGroup.getDac() != null
-                && transmitterGroup.getTransmitterList() != null
-                && transmitterGroup.getTransmitterList().isEmpty() == false
-                && transmitterGroup.getTransmitterList().get(0).getDacPort() != null;
+        return (transmitterGroup != null)
+                && (transmitterGroup.getDac() != null)
+                && (transmitterGroup.getTransmitterList() != null)
+                && (transmitterGroup.getTransmitterList().isEmpty() == false)
+                && (transmitterGroup.getTransmitterList().get(0).getDacPort() != null);
     }
 
     private void handleRunTest() {
@@ -642,7 +642,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
          * any, are available. If an available data port cannot be found, comms
          * manager will return a {@link TransmitterAlignmentException}.
          */
-        if (dac.getDataPorts() == null || dac.getDataPorts().isEmpty()) {
+        if ((dac.getDataPorts() == null) || dac.getDataPorts().isEmpty()) {
             throw new TransmitterAlignmentException(
                     "No data ports have been assigned to dac " + dac.getName()
                             + ".");

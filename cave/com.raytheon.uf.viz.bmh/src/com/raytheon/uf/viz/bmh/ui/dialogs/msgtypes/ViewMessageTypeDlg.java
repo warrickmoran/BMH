@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -68,6 +69,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 09, 2014  #3646     rferrel     Convert programTable to GenerictTable.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
+ * Mar 31, 2015  4248      rjpeter     Update SuiteMessages return to Set.
  * </pre>
  * 
  * @author lvenable
@@ -331,7 +333,7 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
          * message type.
          */
         for (Suite s : allSuitesArray) {
-            List<SuiteMessage> msgTypesInSuite = s.getSuiteMessages();
+            Set<SuiteMessage> msgTypesInSuite = s.getSuiteMessages();
             for (SuiteMessage sm : msgTypesInSuite) {
                 if (sm.getMsgTypeSummary().getAfosid()
                         .equals(msgType.getAfosid())) {

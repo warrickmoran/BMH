@@ -19,9 +19,9 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -35,7 +35,6 @@ import javax.persistence.Id;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
-import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.Transient;
@@ -44,6 +43,7 @@ import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -77,7 +77,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 29, 2014 3636      rferrel     Implement Logging.
  * Nov 13, 2014 3717      bsteffen    Add containsSuiteMessage
  * Dec 07, 2014 3752      mpduff      Add getSuiteByName
- * 
+ * Apr 02, 2015 4248      rjpeter     Made suiteMessages database relation a set, added ordered return methods.
  * </pre>
  * 
  * @author rjpeter
@@ -130,11 +130,9 @@ public class Suite {
     private SuiteType type = SuiteType.GENERAL;
 
     @OneToMany(mappedBy = "suite", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    // updating position broken https://hibernate.atlassian.net/browse/HHH-5732
-    @OrderColumn(name = "position", nullable = false)
     @DynamicSerializeElement
     @Fetch(FetchMode.SUBSELECT)
-    private List<SuiteMessage> suiteMessages;
+    private Set<SuiteMessage> suiteMessages;
 
     @Transient
     @DynamicSerializeElement
@@ -178,25 +176,29 @@ public class Suite {
         this.type = type;
     }
 
-    public List<SuiteMessage> getSuiteMessages() {
+    public List<SuiteMessage> getOrderedSuiteMessages() {
+        return PositionUtil.order(this.suiteMessages);
+    }
+
+    public void setOrderedSuiteMessages(List<SuiteMessage> suiteMessages) {
+        if (suiteMessages == null) {
+            this.suiteMessages = null;
+            return;
+        }
+
+        PositionUtil.updatePositions(suiteMessages);
+        setSuiteMessages(new HashSet<>(suiteMessages));
+    }
+
+    public Set<SuiteMessage> getSuiteMessages() {
         return suiteMessages;
     }
 
-    public void setSuiteMessages(List<SuiteMessage> suiteMessages) {
+    public void setSuiteMessages(Set<SuiteMessage> suiteMessages) {
         this.suiteMessages = suiteMessages;
 
-        if (suiteMessages != null) {
-
-            Iterator<SuiteMessage> smi = suiteMessages.iterator();
-            while (smi.hasNext()) {
-                if (smi.next() == null) {
-                    smi.remove();
-                }
-            }
-
-            updatePositions();
-
-            for (SuiteMessage sm : suiteMessages) {
+        if (this.suiteMessages != null) {
+            for (SuiteMessage sm : this.suiteMessages) {
                 sm.setSuite(this);
             }
         }
@@ -205,17 +207,13 @@ public class Suite {
     public void addSuiteMessage(SuiteMessage suiteMessage) {
         if (suiteMessage != null) {
             if (suiteMessages == null) {
-                suiteMessages = new ArrayList<>();
-                suiteMessage.setPosition(0);
-            } else {
-                // Work around for
-                // https://hibernate.atlassian.net/browse/HHH-5732
-                suiteMessage.setPosition(suiteMessages.get(
-                        suiteMessages.size() - 1).getPosition() + 1);
+                suiteMessages = new HashSet<>();
             }
 
-            suiteMessages.add(suiteMessage);
+            PositionUtil.updatePositions(suiteMessages);
+            suiteMessage.setPosition(suiteMessages.size());
             suiteMessage.setSuite(this);
+            suiteMessages.add(suiteMessage);
         }
     }
 

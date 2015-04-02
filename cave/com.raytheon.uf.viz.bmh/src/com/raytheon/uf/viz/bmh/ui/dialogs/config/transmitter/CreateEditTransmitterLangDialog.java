@@ -84,7 +84,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     of the currently selected language.
  * Mar 12, 2015 4213       bkowal      Support static message types.
  * Mar 26, 2015 4213       bkowal      Handle the case when no static message types exist.
- * 
+ * Mar 31, 2015 4248       rjpeter     Update to use PositionOrdered returns.
  * </pre>
  * 
  * @author bkowal
@@ -125,7 +125,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
      */
     private final boolean saveCapable;
 
-    private Map<String, Integer> voiceNameIdentifierMap = new HashMap<>();
+    private final Map<String, Integer> voiceNameIdentifierMap = new HashMap<>();
 
     /*
      * Allows the user to select an available language when creating a
@@ -185,8 +185,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         this.transmitterGroup = transmitterGroup;
         this.selectedProgram = selectedProgram;
         this.setText(CREATE_TITLE);
-        this.saveCapable = (transmitterGroup != null && transmitterGroup
-                .getId() != 0);
+        this.saveCapable = ((transmitterGroup != null) && (transmitterGroup
+                .getId() != 0));
     }
 
     public CreateEditTransmitterLangDialog(Shell parentShell,
@@ -199,8 +199,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         this.transmitterGroup = transmitterGroup;
         this.selectedProgram = selectedProgram;
         this.setText(EDIT_TITLE);
-        this.saveCapable = (transmitterGroup != null && transmitterGroup
-                .getId() != 0);
+        this.saveCapable = ((transmitterGroup != null) && (transmitterGroup
+                .getId() != 0));
     }
 
     /*
@@ -468,7 +468,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             if (this.transmitterLanguage.getStaticMessageTypes() == null) {
                 return Collections.emptyList();
             }
-            return this.transmitterLanguage.getStaticMessageTypes();
+            return this.transmitterLanguage.getOrderedStaticMessageTypes();
         } else {
             if (this.newStaticMessageTypes != null) {
                 return this.newStaticMessageTypes;
@@ -702,11 +702,11 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         this.rateOfSpeechComp.setInitialRateOfSpeech(this.transmitterLanguage
                 .getSpeechRate());
 
-        this.addMsgTypeButton.setEnabled(this.selectedLanguage != null
-                && (this.transmitterGroup != null && this.transmitterGroup
-                        .getId() > 0));
-        if (this.transmitterLanguage == null
-                || this.transmitterLanguage.getStaticMessageTypes() == null
+        this.addMsgTypeButton.setEnabled((this.selectedLanguage != null)
+                && ((this.transmitterGroup != null) && (this.transmitterGroup
+                        .getId() > 0)));
+        if ((this.transmitterLanguage == null)
+                || (this.transmitterLanguage.getStaticMessageTypes() == null)
                 || this.transmitterLanguage.getStaticMessageTypes().isEmpty()) {
             return;
         }
@@ -846,8 +846,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         selectDictDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if (returnValue == null
-                        || returnValue instanceof Dictionary == false) {
+                if ((returnValue == null)
+                        || ((returnValue instanceof Dictionary) == false)) {
                     return;
                 }
 
@@ -914,8 +914,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             return false;
         }
 
-        if (this.newStaticMessageTypes != null
-                && this.newStaticMessageTypes.isEmpty() == false) {
+        if ((this.newStaticMessageTypes != null)
+                && (this.newStaticMessageTypes.isEmpty() == false)) {
             /*
              * determine which message types will actually be successfully
              * scheduled based on the selected program.
@@ -1000,7 +1000,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             this.transmitterLanguage.setId(pk);
             if (this.newStaticMessageTypes != null) {
                 this.transmitterLanguage
-                        .setStaticMessageTypes(this.newStaticMessageTypes);
+                        .setOrderedStaticMessageTypes(this.newStaticMessageTypes);
             }
         }
 
@@ -1039,8 +1039,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             this.rateOfSpeechComp
                     .setSampleVoice(voiceId, this.selectedLanguage);
             // do we need to retrieve a voice?
-            if (this.selectedVoice != null
-                    && this.selectedVoice.getVoiceNumber() == voiceId) {
+            if ((this.selectedVoice != null)
+                    && (this.selectedVoice.getVoiceNumber() == voiceId)) {
                 return;
             }
             // retrieve the voice.

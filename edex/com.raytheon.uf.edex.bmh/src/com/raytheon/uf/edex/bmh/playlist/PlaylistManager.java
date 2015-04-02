@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -156,7 +157,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Mar 31, 2015  4339     bkowal      Distinguish between areas that cannot be added because
  *                                    they are invalid and areas that are over the allowed limit.
- * 
+ * Apr 02, 2015  4248     rjpeter     Get ordered messages when needed.
  * </pre>
  * 
  * @author bsteffen
@@ -243,7 +244,7 @@ public class PlaylistManager implements IContextStateProcessor {
                  * The group no longer exists. Forcefully purge the playlist
                  * filesystem associated with the Transmitter Group.
                  */
-                if (identifier.getName() == null
+                if ((identifier.getName() == null)
                         || identifier.getName().isEmpty()) {
                     statusHandler
                             .warn(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
@@ -373,7 +374,8 @@ public class PlaylistManager implements IContextStateProcessor {
                     return false;
                 }
             }
-            List<ProgramSuite> programSuites = program.getProgramSuites();
+
+            Collection<ProgramSuite> programSuites = program.getProgramSuites();
             if (!CollectionUtil.isNullOrEmpty(programSuites)) {
                 if (forcedSuite != null) {
                     ProgramSuite forcedProgramSuite = program
@@ -403,6 +405,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 }
             }
         }
+
         for (Playlist playlist : listsToDelete) {
             ProgramSuite programSuite = new ProgramSuite();
             programSuite.setSuite(playlist.getSuite());
@@ -464,7 +467,7 @@ public class PlaylistManager implements IContextStateProcessor {
             }
             playlist.refresh(programSuite.getTriggers());
             loadExistingMessages(playlist);
-            if (playlist.getId() != 0 || !playlist.getMessages().isEmpty()) {
+            if ((playlist.getId() != 0) || !playlist.getMessages().isEmpty()) {
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
                 DacPlaylist dacPlaylist = persistPlaylist(playlist,
@@ -597,7 +600,7 @@ public class PlaylistManager implements IContextStateProcessor {
             }
             DacPlaylist dacPlaylist = persistPlaylist(playlist, programSuite,
                     false);
-            if (dacPlaylist != null && isTrigger) {
+            if ((dacPlaylist != null) && isTrigger) {
                 this.messageLogger.logTriggerActivity(msg, dacPlaylist);
             }
         } finally {
@@ -662,7 +665,7 @@ public class PlaylistManager implements IContextStateProcessor {
      */
     private void loadExistingMessages(Playlist playlist) {
         List<SuiteMessage> suiteMessages = playlist.getSuite()
-                .getSuiteMessages();
+                .getOrderedSuiteMessages();
         List<String> afosids = new ArrayList<>(suiteMessages.size());
         for (SuiteMessage suiteMessage : suiteMessages) {
             afosids.add(suiteMessage.getAfosid());
@@ -744,7 +747,7 @@ public class PlaylistManager implements IContextStateProcessor {
         dac.setInterrupt(suite.getType() == SuiteType.INTERRUPT);
         for (BroadcastMsg message : db.getSortedMessages()) {
             if (message.isSuccess()
-                    && (message.getExpirationTime() == null || message
+                    && ((message.getExpirationTime() == null) || message
                             .getExpirationTime().after(db.getModTime()))) {
                 DacPlaylistMessageId dacMessage = convertMessageForDAC(message);
                 dacMessage.setExpire(message.getExpirationTime());
@@ -770,7 +773,8 @@ public class PlaylistManager implements IContextStateProcessor {
             Path messageFile = this.determineMessageFile(broadcast);
             if (!Files.exists(messageFile)) {
                 dac.setBroadcastId(id);
-                for (BroadcastFragment fragment : broadcast.getFragments()) {
+                for (BroadcastFragment fragment : broadcast
+                        .getOrderedFragments()) {
                     dac.addSoundFile(fragment.getOutputName());
                 }
                 InputMessage input = broadcast.getInputMessage();
@@ -804,8 +808,8 @@ public class PlaylistManager implements IContextStateProcessor {
                 dac.setPeriodicity(input.getPeriodicity());
                 dac.setMessageText(input.getContent());
                 dac.setAlertTone(input.getAlertTone());
-                if (((input.getAreaCodes() != null) || input
-                        .getSelectedTransmitters() != null)
+                if (((input.getAreaCodes() != null) || (input
+                        .getSelectedTransmitters() != null))
                         && Boolean.TRUE.equals(input.getNwrsameTone())) {
                     Set<String> sameTransmittersNames = input
                             .getSameTransmitterSet();
@@ -996,7 +1000,7 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private static boolean isPreemptedByForced(Suite forcedSuite,
             Suite testSuite) {
-        if (forcedSuite == null || forcedSuite.equals(testSuite)) {
+        if ((forcedSuite == null) || forcedSuite.equals(testSuite)) {
             return false;
         } else {
             SuiteType forcedType = forcedSuite.getType();

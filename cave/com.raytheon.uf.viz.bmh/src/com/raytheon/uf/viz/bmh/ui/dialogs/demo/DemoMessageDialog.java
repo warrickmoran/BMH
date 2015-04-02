@@ -47,6 +47,7 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
@@ -54,7 +55,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -84,7 +84,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Mar 26, 2015  4322     rferrel     Added cancel button.
  * Mar 31, 2015  4342     bkowal      Ensure that the generated afos id matches the required
  *                                    format.
- * 
+ * Mar 31, 2015  4248     rjpeter     Use PositionComparator.
  * </pre>
  * 
  * @author bsteffen
@@ -484,7 +484,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
             try {
                 TransmitterDataManager tdm = new TransmitterDataManager();
                 List<TransmitterGroup> groups = tdm
-                        .getTransmitterGroups(new TransmitterGroupPositionComparator());
+                        .getTransmitterGroups(new PositionComparator());
                 getDisplay().asyncExec(
                         new PopulateTransmitterGroupsTask(groups));
             } catch (Throwable e) {

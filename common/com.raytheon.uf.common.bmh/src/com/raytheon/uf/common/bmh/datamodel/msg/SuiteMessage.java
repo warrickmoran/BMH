@@ -26,10 +26,12 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.MapsId;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.ForeignKey;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
 import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -51,6 +53,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 11, 2014 #3587      bkowal      Remove trigger.
  * Oct 13, 2014 3654       rjpeter     Updated to use MessageTypeSummary.
  * Oct 29, 2014 3636       rferrel     Implement logging.
+ * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered.
  * </pre>
  * 
  * @author rjpeter
@@ -58,9 +61,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Entity
 @DynamicSerialize
-@Table(name = "suite_message", schema = "bmh")
+@Table(name = "suite_message", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
+        "suite_id", "position" }) })
 @BatchSize(size = 100)
-public class SuiteMessage {
+public class SuiteMessage implements PositionOrdered {
     @EmbeddedId
     @DynamicSerializeElement
     @DiffTitle(position = 2)
@@ -118,10 +122,12 @@ public class SuiteMessage {
         id.setMsgTypeId(msgTypeSummary != null ? msgTypeSummary.getId() : 0);
     }
 
+    @Override
     public int getPosition() {
         return position;
     }
 
+    @Override
     public void setPosition(int position) {
         this.position = position;
     }

@@ -102,7 +102,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      Changing program selection now updates program's transmitters.
  * Dec 09, 2014  3906      lvenable    Changed the grid data for the suite and message type tables.
  * Feb 09, 2015  4095      bsteffen    Remove Transmitter Name.
- * 
+ * Mar 31, 2015  4248      rjpeter     Use ordered view of suite messages.
  * </pre>
  * 
  * @author lvenable
@@ -718,8 +718,8 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             return;
         }
 
-        List<ProgramSuite> programSuites = selectedProgram.getProgramSuites();
-        Iterator<ProgramSuite> programSuiteIterator = programSuites.iterator();
+        Iterator<ProgramSuite> programSuiteIterator = selectedProgram
+                .getProgramSuites().iterator();
         boolean removed = false;
         while (programSuiteIterator.hasNext()) {
             if (programSuiteIterator.next().getSuite().getId() == suite.getId()) {
@@ -1002,7 +1002,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      */
     private void populateMsgTypeTableData(Suite suite) {
 
-        List<SuiteMessage> suiteMessageArray = suite.getSuiteMessages();
+        List<SuiteMessage> suiteMessageArray = suite.getOrderedSuiteMessages();
 
         Map<Integer, SuiteMessage> suiteMsgMap = new TreeMap<Integer, SuiteMessage>();
         for (SuiteMessage sm : suiteMessageArray) {

@@ -58,6 +58,7 @@ import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTT
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -65,7 +66,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
@@ -166,6 +166,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 31, 2015  4340      bkowal      Update the suite list dialog based on the currently
  *                                     selected suite.
  * Apr 01, 2015  4349      rferrel     Checks to prevent exceptions when no enabled transmitters.
+ * Apr 02, 2015  4248      rjpeter     Removed TransmitterGroupPositionComparator.
  * </pre>
  * 
  * @author mpduff
@@ -811,7 +812,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             List<TransmitterGroup> transmitterGroupObjectList = dataManager
                     .getEnabledTransmitterGroupList();
             Collections.sort(transmitterGroupObjectList,
-                    new TransmitterGroupPositionComparator());
+                    new PositionComparator());
             String[] tNames = new String[transmitterGroupObjectList.size()];
             int idx = 0;
             for (TransmitterGroup tg : transmitterGroupObjectList) {
@@ -1393,8 +1394,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                     periodicMsgDlg.populateTableData();
                                 }
 
-                                if (changeSuiteDlg != null
-                                        && changeSuiteDlg.isDisposed() == false) {
+                                if ((changeSuiteDlg != null)
+                                        && (changeSuiteDlg.isDisposed() == false)) {
                                     changeSuiteDlg
                                             .updateActiveSuite(selectedSuite);
                                 }

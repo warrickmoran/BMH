@@ -114,6 +114,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     without an associated program.
  * Feb 26, 2015   3749     rferrel     Message type only in the available or selected table.
  * Mar 10, 2015   4250     rferrel     Confirm removal of Message Types only when editing existing suite.
+ * Mar 31, 2015   4248     rjpeter     Use ordered view of suite messages.
  * </pre>
  * 
  * @author lvenable
@@ -794,7 +795,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         Suite savedSuite = null;
         try {
-            selectedSuite.setSuiteMessages(msgTypesInSuiteList);
+            selectedSuite.setOrderedSuiteMessages(msgTypesInSuiteList);
             selectedSuite.setType(suiteType);
             SuiteResponse suiteReponse = sdm.saveSuite(selectedSuite);
             if (suiteReponse.getSuiteList().isEmpty()) {
@@ -833,9 +834,9 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         if (!validMessageTypes(this.selectedSuite.getType())) {
             return;
         }
-        List<SuiteMessage> suiteMsgs = selectedSuite.getSuiteMessages();
+        List<SuiteMessage> suiteMsgs = selectedSuite.getOrderedSuiteMessages();
         List<MessageTypeSummary> newTriggerMsgTypes = new ArrayList<>();
-        if (suiteMsgs != null && this.selectedProgram != null) {
+        if ((suiteMsgs != null) && (this.selectedProgram != null)) {
             for (SuiteMessage suiteMsg : suiteMsgs) {
                 if (this.selectedProgram.isTriggerMsgType(this.selectedSuite,
                         suiteMsg.getMsgTypeSummary())) {
@@ -922,7 +923,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         if ((this.msgTypesInSuiteList != null)
                 && (this.msgTypesInSuiteList.isEmpty() == false)) {
-            this.selectedSuite.setSuiteMessages(this.msgTypesInSuiteList);
+            this.selectedSuite
+                    .setOrderedSuiteMessages(this.msgTypesInSuiteList);
         }
     }
 
@@ -1184,7 +1186,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private void populateMsgTypesInSuiteList() {
         if (selectedSuite != null) {
             List<SuiteMessage> suiteMessageArray = selectedSuite
-                    .getSuiteMessages();
+                    .getOrderedSuiteMessages();
             Map<Integer, SuiteMessage> suiteMsgMap = new TreeMap<Integer, SuiteMessage>();
             for (SuiteMessage sm : suiteMessageArray) {
                 suiteMsgMap.put(sm.getPosition(), sm);

@@ -20,14 +20,14 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
@@ -47,7 +47,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 27, 2015 4141       bkowal      Initial creation
- * 
+ * Mar 31, 2015 4248       rjpeter     Removed TransmitterGroupPositionComparator.
  * </pre>
  * 
  * @author bkowal
@@ -61,7 +61,7 @@ public class SilenceAlarmDelegate {
 
     private final TransmitterDataManager tdm = new TransmitterDataManager();
 
-    private Map<String, TransmitterGroup> currentStateMap = new HashMap<>();
+    private final Map<String, TransmitterGroup> currentStateMap = new HashMap<>();
 
     /**
      * 
@@ -82,8 +82,8 @@ public class SilenceAlarmDelegate {
         silenceAlarmDialog.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if (returnValue == null
-                        || returnValue instanceof CheckListData == false) {
+                if ((returnValue == null)
+                        || ((returnValue instanceof CheckListData) == false)) {
                     return;
                 }
 
@@ -98,7 +98,7 @@ public class SilenceAlarmDelegate {
 
         try {
             transmitterGrps = tdm
-                    .getTransmitterGroups(new TransmitterGroupPositionComparator());
+                    .getTransmitterGroups(new PositionComparator());
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving transmitter data from the database: ", e);

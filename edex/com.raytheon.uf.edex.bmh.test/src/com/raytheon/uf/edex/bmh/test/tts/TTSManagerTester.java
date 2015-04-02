@@ -61,14 +61,13 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  *                                     post-TTS generation based on the optional
  *                                     'tts.volume.adjust' property.
  * Sep 12, 2014 3588       bsteffen    Support audio fragments.
- * 
- * 
+ * Apr 02, 2015 4248       rjpeter     Support PositionOrdered.
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
-
+@Deprecated
 public class TTSManagerTester extends AbstractWavFileGeneratingTest {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(TTSManagerTester.class);
@@ -222,7 +221,7 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
     private TransmitterGroup checkForExistingTransmitterGroup() {
         List<?> results = this.transmitterGroupDao.loadAll();
 
-        if (results == null || results.isEmpty()) {
+        if ((results == null) || results.isEmpty()) {
             return null;
         }
 
@@ -265,14 +264,15 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
             return;
         }
 
-        if (message.getFragments() == null || message.getFragments().isEmpty()) {
+        if ((message.getFragments() == null)
+                || message.getFragments().isEmpty()) {
             statusHandler.error("Message has no fragments; skipping message ["
                     + messageID + "]!");
             return;
         }
 
-        for (BroadcastFragment fragment : message.getFragments()) {
-            if (fragment.getOutputName() == null
+        for (BroadcastFragment fragment : message.getOrderedFragments()) {
+            if ((fragment.getOutputName() == null)
                     || fragment.getOutputName().trim().isEmpty()) {
                 statusHandler
                         .error("Output file name has not been set on the message; skipping message ["
@@ -398,7 +398,7 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
         }
 
         /* Verify that the other required properties have been set. */
-        if (voiceNumber == null || voiceName == null || male == null) {
+        if ((voiceNumber == null) || (voiceName == null) || (male == null)) {
             statusHandler
                     .info("All required required language properties have not been set in input file: "
                             + configurationFilePath + "! Using default voice.");

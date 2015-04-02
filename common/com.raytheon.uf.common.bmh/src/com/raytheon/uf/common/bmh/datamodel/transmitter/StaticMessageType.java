@@ -33,6 +33,7 @@ import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.ForeignKey;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -47,7 +48,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 9, 2015  4213       bkowal      Initial creation
- * 
+ * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered
  * </pre>
  * 
  * @author bkowal
@@ -56,9 +57,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({ @NamedQuery(name = StaticMessageType.GET_STATIC_MSG_BY_MSG_TYPE_AND_GROUP, query = StaticMessageType.GET_STATIC_MSG_BY_MSG_TYPE_AND_GROUP_QUERY) })
 @Entity
 @DynamicSerialize
-@Table(name = "static_message_type", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
-        "transmittergroup_id", "msgtype_id" }) })
-public class StaticMessageType {
+@Table(name = "static_message_type", schema = "bmh", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "transmittergroup_id", "msgtype_id" }),
+        @UniqueConstraint(columnNames = { "transmittergroup_id", "language",
+                "position" }) })
+public class StaticMessageType implements PositionOrdered {
 
     public static final int MSG_LENGTH = 4096;
 
@@ -102,6 +105,13 @@ public class StaticMessageType {
     @Column(nullable = false)
     @DynamicSerializeElement
     private String periodicity = DEFAULT_NO_PERIODICITY;
+
+    /*
+     * Position within its parent.
+     */
+    @Column(nullable = false)
+    @DynamicSerializeElement
+    private int position;
 
     private void checkId() {
         if (this.id == null) {
@@ -206,10 +216,10 @@ public class StaticMessageType {
      *            the periodicity to set
      */
     public void setPeriodicity(String periodicity) {
-        if (periodicity == null
+        if ((periodicity == null)
                 || periodicity.trim().isEmpty()
-                || periodicity.trim().length() != DEFAULT_NO_PERIODICITY
-                        .length()) {
+                || (periodicity.trim().length() != DEFAULT_NO_PERIODICITY
+                        .length())) {
             /*
              * ensure that only valid and recognized values are provided for the
              * periodicity.
@@ -217,5 +227,26 @@ public class StaticMessageType {
             periodicity = DEFAULT_NO_PERIODICITY;
         }
         this.periodicity = periodicity.trim();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.bmh.datamodel.PositionOrdered#getPosition()
+     */
+    @Override
+    public int getPosition() {
+        return position;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.common.bmh.datamodel.PositionOrdered#setPosition(int)
+     */
+    @Override
+    public void setPosition(int position) {
+        this.position = position;
     }
 }

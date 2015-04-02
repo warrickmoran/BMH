@@ -17,12 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.datamodel.transmitter;
+package com.raytheon.uf.common.bmh.datamodel;
 
 import java.util.Comparator;
 
 /**
- * Comparator for {@link Transmitter}s sorting by position value
+ * Comparator for PositionOrdered objects.
  * 
  * <pre>
  * 
@@ -30,18 +30,34 @@ import java.util.Comparator;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 7, 2014    3173     mpduff      Initial creation
+ * Mar 20, 2015 4248       rjpeter     Initial creation
  * 
  * </pre>
  * 
- * @author mpduff
+ * @author rjpeter
  * @version 1.0
  */
 
-public class TransmitterPositionComparator implements Comparator<Transmitter> {
-
+public class PositionComparator implements Comparator<PositionOrdered> {
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.util.Comparator#compare(java.lang.Object, java.lang.Object)
+     */
     @Override
-    public int compare(Transmitter t1, Transmitter t2) {
-        return t1.getPosition() - t2.getPosition();
+    public int compare(PositionOrdered o1, PositionOrdered o2) {
+        if (o1 == null) {
+            if (o2 != null) {
+                return -1;
+            }
+
+            return 0;
+        }
+
+        if (o2 == null) {
+            return 1;
+        }
+
+        return Integer.compare(o1.getPosition(), o2.getPosition());
     }
 }

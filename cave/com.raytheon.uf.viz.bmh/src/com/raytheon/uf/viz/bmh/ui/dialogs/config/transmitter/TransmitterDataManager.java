@@ -57,6 +57,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Nov 21, 2014    3845    bkowal      Added getTransmitterGroupContainsTransmitter.
  * Feb 09, 2015    4082    bkowal      Added {@link #saveTransmitterGroup(TransmitterGroup, List)}.
  * Mar 25, 2015    4305    rferrel     Added {@link #getTransmittersByFips(String)}.
+ * Mar 31, 2015    4248    rjpeter     Use PositionOrdered.
  * </pre>
  * 
  * @author mpduff
@@ -84,7 +85,7 @@ public class TransmitterDataManager {
      * @throws Exception
      */
     public List<TransmitterGroup> getTransmitterGroups(
-            Comparator<TransmitterGroup> comparator) throws Exception {
+            Comparator<? super TransmitterGroup> comparator) throws Exception {
 
         TransmitterRequest request = new TransmitterRequest();
         request.setAction(TransmitterRequestAction.GetTransmitterGroups);

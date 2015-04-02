@@ -51,14 +51,13 @@ import org.eclipse.swt.widgets.Widget;
 
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroupPositionComparator;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterPositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.request.TransferToneRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -101,7 +100,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      Change color of text when using a dark background color.
  * Mar 10, 2015    4258    rferrel     Change Mode confirmation message when no DAC/Port.
  * Mar 11, 2015    4249    rferrel     Enable all menu items and display dialog.
- * 
+ * Mar 31, 2015 4248       rjpeter     Use PositionComparator.
  * </pre>
  * 
  * @author mpduff
@@ -1165,7 +1164,7 @@ public class TransmitterComp extends Composite implements
 
         DacDataManager dacDataManager = new DacDataManager();
 
-        Collections.sort(groups, new TransmitterGroupPositionComparator());
+        Collections.sort(groups, new PositionComparator());
         for (TransmitterGroup group : groups) {
             boolean standAlone = false;
             if ((group.getTransmitters() != null)
@@ -1207,8 +1206,7 @@ public class TransmitterComp extends Composite implements
 
             List<Transmitter> transmitterList = group.getTransmitterList();
             if (transmitterList != null) {
-                Collections.sort(transmitterList,
-                        new TransmitterPositionComparator());
+                Collections.sort(transmitterList, new PositionComparator());
                 for (Transmitter t : transmitterList) {
                     String dacPortStr = "N/A";
                     if (t.getDacPort() != null) {

@@ -46,6 +46,7 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
@@ -91,6 +92,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  *                                     {@link Set} produced by {@link #getEnabledTransmitters()}.
  * Mar 03, 2015 3962       rferrel     Added logic for MAINT status.
  * Mar 18, 2015 4298       bkowal      Added {@link #getTransmitterWithStatus(TxStatus)}.
+ * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered.
  * </pre>
  * 
  * @author rjpeter
@@ -102,11 +104,13 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER, query = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION, query = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY) })
 @Entity
-@Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }) })
+@Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "name" }),
+        @UniqueConstraint(columnNames = { "position" }) })
 @SequenceGenerator(initialValue = 1, name = TransmitterGroup.GEN, sequenceName = "zone_seq")
 @DynamicSerialize
 @DynamicSerializeTypeAdapter(factory = TransmitterGroupAdapter.class)
-public class TransmitterGroup {
+public class TransmitterGroup implements PositionOrdered {
 
     static final String GEN = "Transmitter Group Generator";
 
@@ -236,6 +240,7 @@ public class TransmitterGroup {
     /**
      * @return the position
      */
+    @Override
     public int getPosition() {
         return position;
     }
@@ -244,6 +249,7 @@ public class TransmitterGroup {
      * @param position
      *            the position to set
      */
+    @Override
     public void setPosition(int position) {
         this.position = position;
     }

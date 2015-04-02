@@ -25,6 +25,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -59,6 +60,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.legacy.ascii.data.Ascii;
 import com.raytheon.uf.common.bmh.legacy.ascii.data.MessageGroupData;
 import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
+import com.raytheon.uf.common.util.CollectionUtil;
 
 /**
  * Translates a supplied file from the ascii dictionary format in to BMH objects
@@ -87,7 +89,7 @@ import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
  * Mar 03, 2015 4175       bkowal      Cleanup.
  * Mar 13, 2015 4213       bkowal      Create {@link TransmitterMessages}s.
  * Mar 27, 2015  #4315     rferrel     Removed no longer used voiceMsg.
- * 
+ * Mar 31, 2015 4248       rjpeter     Use set view of program suites and suite messages.
  * </pre>
  * 
  * @author rjpeter
@@ -1069,7 +1071,7 @@ public class AsciiFileTranslator {
                     if (suite != null) {
                         suiteMessages.clear();
 
-                        List<SuiteMessage> suiteMessList = suite
+                        Set<SuiteMessage> suiteMessList = suite
                                 .getSuiteMessages();
                         if (suiteMessList != null) {
                             // optimize look up of messages for triggers
@@ -1166,8 +1168,8 @@ public class AsciiFileTranslator {
         Iterator<Program> progIter = rval.values().iterator();
         while (progIter.hasNext()) {
             Program prg = progIter.next();
-            List<ProgramSuite> prgSuites = prg.getProgramSuites();
-            if ((prgSuites == null) || (prgSuites.size() == 0)) {
+            Collection<ProgramSuite> prgSuites = prg.getProgramSuites();
+            if (CollectionUtil.isNullOrEmpty(prgSuites)) {
                 // remove programs that have no suites
                 progIter.remove();
                 continue;
@@ -1187,8 +1189,8 @@ public class AsciiFileTranslator {
     private Program validateProgram(Program program, AsciiFileParser reader)
             throws ParseException {
         if (program != null) {
-            List<ProgramSuite> suites = program.getProgramSuites();
-            if ((suites == null) || (suites.size() == 0)) {
+            Collection<ProgramSuite> suites = program.getProgramSuites();
+            if (CollectionUtil.isNullOrEmpty(suites)) {
                 // no suites, don't keep program
                 return null;
             }
@@ -1213,7 +1215,7 @@ public class AsciiFileTranslator {
             return;
         }
 
-        List<SuiteMessage> messages = suite.getSuiteMessages();
+        Set<SuiteMessage> messages = suite.getSuiteMessages();
         ProgramSuite programSuite = new ProgramSuite();
         programSuite.setSuite(suite);
         program.addProgramSuite(programSuite);

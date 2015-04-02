@@ -62,7 +62,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Nov 05, 2014   3748     bkowal       Created validated msg dao based on mode.
  * Jan 02, 2014   3833     lvenable     Added funtionality to get unexpired messages.
  * Jan 06, 2015   3651     bkowal       Support AbstractBMHPersistenceLoggingDao.
- * 
+ * Apr 02, 2015   4248     rjpeter      Use ordered fragments.
  * </pre>
  * 
  * @author lvenable
@@ -204,7 +204,7 @@ public class InputMessageHandler extends
             /*
              * Verify that fragments exist.
              */
-            if (broadcastMsg.getFragments() == null
+            if ((broadcastMsg.getFragments() == null)
                     || broadcastMsg.getFragments().isEmpty()) {
                 throw new AudioRetrievalException(
                         "Unable to find audio information associated with broadcast msg: "
@@ -217,8 +217,8 @@ public class InputMessageHandler extends
                     .getTransmitterGroup().getName());
             List<byte[]> audioData = new LinkedList<>();
             int totalByteCount = 0;
-            for (int i = 0; i < broadcastMsg.getFragments().size(); i++) {
-                BroadcastFragment fragment = broadcastMsg.getFragments().get(i);
+            for (BroadcastFragment fragment : broadcastMsg
+                    .getOrderedFragments()) {
                 if (fragment.isSuccess() == false) {
                     /* audio generation failed - audio playback disabled */
                     audioDataRecord.setSuccess(false);
@@ -257,7 +257,7 @@ public class InputMessageHandler extends
             }
 
             /* calculate the duration in seconds */
-            final long playbackTimeMS = totalByteCount / 160L * 20L;
+            final long playbackTimeMS = (totalByteCount / 160L) * 20L;
             // swt component expects an Integer
             final int playbackTimeS = (int) playbackTimeMS / 1000;
             audioDataRecord.setAudioDuration(playbackTimeS);
@@ -304,7 +304,7 @@ public class InputMessageHandler extends
         /*
          * verify that the audio file has been set and that it exists.
          */
-        if (fragment.getOutputName() == null
+        if ((fragment.getOutputName() == null)
                 || fragment.getOutputName().trim().isEmpty()) {
             throw new AudioRetrievalException(
                     "Unable to find file information associated with broadcast fragment: "
