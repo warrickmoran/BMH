@@ -137,6 +137,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Mar 24, 2015 4301       bkowal      Support SSML paragraphs for block-formatted paragraphs.
  * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
  * Mar 27, 2015 4314       bkowal      Rate of speech is now included in time message audio location.
+ * Apr 01, 2015 4301       bkowal      Sanitize the text before adding it to the SSML.
  * 
  * </pre>
  * 
@@ -149,7 +150,11 @@ public class MessageTransformer implements IContextStateProcessor {
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(MessageTransformer.class);
 
-    private static final String PLATFORM_AGNOSTIC_NEWLINE_REGEX = "[\\r\\n|\\r|\\n][\\r\\n|\\r|\\n]+";
+    private static final String PLATFORM_AGNOSTIC_NEWLINE_REGEX = "[\\r\\n|\\r|\\n]";
+
+    private static final String PLATFORM_AGNOSTIC_BLOCK_PARAGRAPH_REGEX = String
+            .format("%s%s+", PLATFORM_AGNOSTIC_NEWLINE_REGEX,
+                    PLATFORM_AGNOSTIC_NEWLINE_REGEX);
 
     private static final String BLOCK_PARAGRAPH_NEWLINE = "\n\n";
 
@@ -704,7 +709,7 @@ public class MessageTransformer implements IContextStateProcessor {
          * Replace multiple new line characters with a single new line
          * character.
          */
-        content = content.replaceAll(PLATFORM_AGNOSTIC_NEWLINE_REGEX,
+        content = content.replaceAll(PLATFORM_AGNOSTIC_BLOCK_PARAGRAPH_REGEX,
                 BLOCK_PARAGRAPH_NEWLINE);
 
         return WordUtils.capitalizeFully(content);
@@ -969,7 +974,13 @@ public class MessageTransformer implements IContextStateProcessor {
                      * Add free text fragments to the current sentence as they
                      * are discovered.
                      */
-                    ssmlSentence.getContent().add(textPart);
+                    /*
+                     * Sanitize the text before it is added to the SSML.
+                     */
+                    ssmlSentence.getContent().add(
+                            textPart.replaceAll(
+                                    PLATFORM_AGNOSTIC_NEWLINE_REGEX, " ")
+                                    .trim());
                 }
                 currentSentence = StringUtils.difference(textPart,
                         currentSentence).trim();
