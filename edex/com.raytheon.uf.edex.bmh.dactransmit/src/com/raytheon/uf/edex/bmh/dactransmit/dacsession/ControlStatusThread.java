@@ -64,6 +64,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Oct 17, 2014  #3655     bkowal       Move tones to common.
  * Jan 19, 2015  #3912     bsteffen     Send events directly to a listener.
  * Jan 26, 2015  #3995     rjpeter      Fix heartbeat time out.
+ * Apr 02, 2015  #4325     bsteffen     Log sync events.
+ * 
  * </pre>
  * 
  * @author dgilling
@@ -240,6 +242,7 @@ public class ControlStatusThread extends Thread {
      */
     public RegainSyncEvent performInitialSync() {
         RegainSyncEvent retVal = null;
+        logger.info("Obtaining sync with DAC.");
 
         while (!hasSync && keepRunning) {
             try {
@@ -267,6 +270,8 @@ public class ControlStatusThread extends Thread {
                 }
             }
         }
+
+        logger.info("Obtained sync with DAC.");
 
         return retVal;
     }
