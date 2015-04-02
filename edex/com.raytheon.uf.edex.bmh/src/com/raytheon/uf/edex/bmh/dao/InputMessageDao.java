@@ -45,6 +45,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Jan 02, 2014   3833    lvenable    Added method to get unexpired messages.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
+ * Apr 01, 2015  4326     bsteffen    Allow reuse of MRD after old message expires.
  * 
  * </pre>
  * 
@@ -91,7 +92,11 @@ public class InputMessageDao extends
                 continue;
             }
             int mrd = message.getMrdId();
-            if (mrd != -1 && mrd == dup.getMrdId()) {
+            if (mrd != -1
+                    && mrd == dup.getMrdId()
+                    && (dup.getExpirationTime() == null || dup
+                            .getExpirationTime().after(
+                                    message.getEffectiveTime()))) {
                 return true;
             } else if (dup.getContent().equals(message.getContent())) {
                 return true;
