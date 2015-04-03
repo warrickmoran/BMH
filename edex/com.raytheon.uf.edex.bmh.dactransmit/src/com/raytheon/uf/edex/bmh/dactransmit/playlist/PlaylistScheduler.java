@@ -144,7 +144,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Mar 13, 2015  #4222     bkowal       Prevent Unsupported Operation Exception when
  *                                      an Interrupt arrives.
  * Mar 25, 2015  #4290     bsteffen     Switch to global replacement.
- * 
+ * Apr 03, 2015  #4222     rjpeter      Fix discarding of bad messages.
  * </pre>
  * 
  * @author dgilling
@@ -390,13 +390,13 @@ public final class PlaylistScheduler implements
                         e.getMessage(), e);
                 this.eventBus.post(event);
                 synchronized (playlistMessgeLock) {
-                    messageIndex -= 1;
                     /*
                      * It is possible that the DacPlaylistMessageId that we want
                      * to remove may be NULL or not exist when an interrupt is
                      * triggered.
                      */
-                    if (this.currentMessages.contains(messageIndex)) {
+                    if (this.currentMessages.size() > 0) {
+                        messageIndex -= 1;
                         DacPlaylistMessageId messageIdToRemove = this.currentMessages
                                 .remove(messageIndex);
                         if (messageIdToRemove != null) {
@@ -530,8 +530,8 @@ public final class PlaylistScheduler implements
                         DacPlaylistMessage message = cache
                                 .getMessage(currentMessages.get(i));
                         Calendar lastTime = message.getLastTransmitTime();
-                        if (lastTime != null
-                                && (latestLastTime == null || lastTime
+                        if ((lastTime != null)
+                                && ((latestLastTime == null) || lastTime
                                         .after(latestLastTime))) {
                             messageIndex = i + 1;
                             latestLastTime = lastTime;
@@ -894,7 +894,7 @@ public final class PlaylistScheduler implements
                             .getMessage(messageId);
                     if (messageData.isValid()
                             && (!messageData.isPeriodic()
-                                    || messageData.getPlayCount() == 0 || forceSchedulePeriodic)) {
+                                    || (messageData.getPlayCount() == 0) || forceSchedulePeriodic)) {
                         newUnperiodicMessages.add(messageId);
                     }
                 }
@@ -911,7 +911,8 @@ public final class PlaylistScheduler implements
         for (DacPlaylistMessageId id : playlistMessages) {
             if (!past.contains(id)) {
                 DacPlaylistMessage messageData = cache.getMessage(id);
-                if (messageData.isPeriodic() && messageData.getPlayCount() > 0
+                if (messageData.isPeriodic()
+                        && (messageData.getPlayCount() > 0)
                         && !forceSchedulePeriodic) {
                     long nextPlayTime = messageData.getLastTransmitTime()
                             .getTimeInMillis()
@@ -951,15 +952,15 @@ public final class PlaylistScheduler implements
              * If a message is playing now move the nextMessageTime to after
              * that message.
              */
-            if (lastTransmitTime != null
-                    && lastTransmitTime.getTimeInMillis() + playbackTime > nextMessageTime) {
+            if ((lastTransmitTime != null)
+                    && ((lastTransmitTime.getTimeInMillis() + playbackTime) > nextMessageTime)) {
                 nextMessageTime = lastTransmitTime.getTimeInMillis()
                         + playbackTime;
             }
         }
         for (DacPlaylistMessageId messageId : unperiodicMessages) {
             while (!periodicMessages.isEmpty()
-                    && periodicMessages.firstKey() <= nextMessageTime) {
+                    && (periodicMessages.firstKey() <= nextMessageTime)) {
                 DacPlaylistMessageId periodicId = periodicMessages
                         .remove(periodicMessages.firstKey());
                 DacPlaylistMessage messageData = cache.getMessage(periodicId);
@@ -992,7 +993,7 @@ public final class PlaylistScheduler implements
              * warning.
              */
             if ((playlist.isInterrupt() || messageData.isWarning())
-                    && this.delayInterrupts && this.type == BROADCASTTYPE.BL) {
+                    && this.delayInterrupts && (this.type == BROADCASTTYPE.BL)) {
                 final String expire = (messageData.getExpire() == null) ? StringUtils.EMPTY
                         : messageData.getExpire().getTime().toString();
                 MessageDelayedBroadcastNotification notification = new MessageDelayedBroadcastNotification(
@@ -1030,8 +1031,8 @@ public final class PlaylistScheduler implements
         if (predictions.size() == past.size()) {
             if (predictions.isEmpty()) {
                 return false;
-            } else if (currentMessages.size() != messageIndex
-                    && messageIndex != predictions.size()) {
+            } else if ((currentMessages.size() != messageIndex)
+                    && (messageIndex != predictions.size())) {
                 /*
                  * If there are no new messages and the last message isn't
                  * playing right now then attempt to generate a fresh list
