@@ -103,6 +103,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Mar 05, 2015  #4229     bkowal       Include the broadcast id of the broadcast that could not
  *                                      be serviced because the dac was busy in the status.
  * Mar 06, 2015  #4188     bsteffen     Track interrupts only in PlaylistScheduler.
+ * Apr 02, 2015  #4325     bsteffen     Do not sync on main thread.
  * 
  * </pre>
  * 
@@ -211,14 +212,9 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
 
         logger.info("Starting audio playback.");
         logger.info("Session configuration: " + config.toString());
-        logger.info("Obtaining sync with DAC.");
-
+        
         commsManager.start();
         eventBus.register(this);
-
-        controlThread.performInitialSync();
-
-        logger.info("Obtained sync with DAC and beginning transmission.");
 
         dataThread.start();
         controlThread.start();

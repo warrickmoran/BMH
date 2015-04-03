@@ -108,11 +108,8 @@ public class DacMaintenanceSession implements IDacSession {
 
         logger.info("Running in MAINTENANCE MODE. Running in MAINTENANCE MODE. Running in MAINTENANCE MODE.");
         logger.info("Session configuration: " + config.toString());
-        logger.info("Obtaining sync with DAC.");
 
         this.controlThread.performInitialSync();
-
-        logger.info("Obtained sync with DAC and beginning transmission.");
 
         this.transmitThread.playAudio(this.segmentAudio());
         this.transmitThread.start();
