@@ -1578,8 +1578,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         VizApp.runAsync(new Runnable() {
             @Override
             public void run() {
-                boolean zeroSelection = false;
-                populateTransmitters(zeroSelection);
+                boolean selectionRemoved = false;
+                populateTransmitters(false);
                 /*
                  * does it affect the transmitter that we are currently
                  * listening to?
@@ -1605,7 +1605,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                      * group?
                      */
                     if (grp.equals(selectedTransmitterGrp)) {
-                        zeroSelection = true;
+                        selectionRemoved = true;
                     }
 
                     /*
@@ -1619,9 +1619,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                  * provided that there are transmitters available to select.
                  */
                 if (transmitterList.getItemCount() > 0) {
-                    if (zeroSelection) {
+                    if (selectionRemoved || (selectedTransmitterGrp == null)) {
                         transmitterList.select(0);
                         closeChangeSuiteDlg();
+                        updateOnTransmitterChange(true);
                     } else {
                         /*
                          * select the transmitter that is "currently" selected
@@ -1629,12 +1630,28 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                          */
                         transmitterList.select(transmitterList
                                 .indexOf(selectedTransmitterGrp));
+                        updateOnTransmitterChange(false);
                     }
 
-                    updateOnTransmitterChange(zeroSelection);
+                } else {
+                    clearTransmitterGroupSelection();
                 }
             }
         });
+    }
+
+    /**
+     * Clear all transmitter group information.
+     */
+    private void clearTransmitterGroupSelection() {
+        selectedTransmitterGrp = null;
+        programObj = null;
+        dacValueLbl.setText("");
+        portValueLbl.setText("");
+        tableComp
+                .populateTable(new TableData(new ArrayList<TableColumnData>()));
+        messageTextArea.setText("");
+        handleMonitorInlineEvent();
     }
 
     /**
