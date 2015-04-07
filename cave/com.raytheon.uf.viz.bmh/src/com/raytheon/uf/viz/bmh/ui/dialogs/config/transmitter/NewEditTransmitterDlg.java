@@ -97,6 +97,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 18, 2015     4289   bkowal      Do not allow the user to remove the dac and/or port from
  *                                     a Transmitter in the enabled or maintenance state.
  * Mar 25, 2015     4305   rferrel     Check for unique FIPS codes.
+ * Apr 07, 2015     4371   bkowal      Ensure that the selected program is defined for the
+ *                                     {@link TransmitterLanguageComp} when working with groups.
  * </pre>
  * 
  * @author mpduff
@@ -703,6 +705,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             int groupProgramId = -1;
             if (origProgram != null) {
                 groupProgramId = origProgram.getId();
+                this.transmitterLanguageComp.setSelectedProgram(origProgram);
             }
 
             String[] programs = new String[programList.size()];
