@@ -56,6 +56,7 @@ import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
  * ------------- -------- ----------- --------------------------
  * Mar 16, 2015  4244     bsteffen     Initial creation
  * Mar 18, 2015  4282     rferrel      Added method setAllowEnableTransmitters.
+ * Aor 07, 2014  4304     rferrel      Added {@link #getAffectedTransmitters(boolean)}.
  * 
  * </pre>
  * 
@@ -180,14 +181,31 @@ public class SAMETransmitterSelector {
      * interrupt, and is not determined by user interaction. This determination
      * must be done internally to determine which check boxes to enable and is
      * made public for convenience.
+     * 
+     * @return affectedTransmitters
      */
     public Set<Transmitter> getAffectedTransmitters() {
+        return getAffectedTransmitters(false);
+    }
+
+    /**
+     * Get the transmitters which are affected by the current state of this
+     * object. This is determined based off the area data, message type and
+     * interrupt, and is not determined by user interaction. This determination
+     * must be done internally to determine which check boxes to enable and is
+     * made public for convenience.
+     * 
+     * @param ignoreInterrupt
+     *            - do not consider the interrupt state
+     * @return affectedTransmitters
+     */
+    public Set<Transmitter> getAffectedTransmitters(boolean ignoreInterrupt) {
         /*
          * ensure that the user will only be able to select Transmitters for
          * SAME tone playback associated with the area that was selected.
          */
         Set<Transmitter> affected = getTransmittersInArea();
-        if (!interrupt) {
+        if (ignoreInterrupt || !interrupt) {
             /* Not an interrupt, further limit selection by program */
             affected.retainAll(getTransmittersWithMessageType());
         }

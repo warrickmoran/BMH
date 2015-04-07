@@ -106,6 +106,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 07, 2014  3958      bkowal       Added {@link #verifyMsgRebroadcast(List)}.
  * Feb 25, 2015  4122      rferrel      Save Area data in order to populate Area Selection dialog.
  * Mar 16, 2015  4244      bsteffen     Use only selected areas/same tone transmitters.
+ * Apr 07, 2015  4304      rferrel      {@link #verifyMsgRebroadcast()} no longer modifies {@link #sameTransmitters}.
  * 
  * </pre>
  * 
@@ -584,9 +585,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     private Set<Transmitter> verifyMsgRebroadcast() {
         Set<Transmitter> interruptTransmitters = sameTransmitters
                 .getAffectedTransmitters();
-        sameTransmitters.setInterrupt(false);
         Set<Transmitter> rescheduleCandidates = sameTransmitters
-                .getAffectedTransmitters();
+                .getAffectedTransmitters(true);
 
         Set<Transmitter> excludedTransmitters = new HashSet<>(
                 interruptTransmitters);
@@ -767,8 +767,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
         InputMessage inputMsg = new InputMessage();
         inputMsg.setName(generatedMsgName);
-        inputMsg.setLanguage(messageType.getVoice()
-                .getLanguage());
+        inputMsg.setLanguage(messageType.getVoice().getLanguage());
         inputMsg.setAfosid(messageType.getAfosid());
         inputMsg.setCreationTime(TimeUtil.newGmtCalendar());
         inputMsg.setEffectiveTime(settingsBuilder.getEffectiveTime());
