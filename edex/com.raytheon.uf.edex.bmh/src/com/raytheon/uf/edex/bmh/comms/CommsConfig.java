@@ -50,7 +50,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Sep 29, 2014  3291     bkowal      Updated to use the bmh home directory.
  * Oct 10, 2014  3656     bkowal      Added broadcastLivePort
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
- * 
+ * Apr 07, 2015  4370     rjpeter     Added hashCode, equals, toString.
  * </pre>
  * 
  * @author bsteffen
@@ -68,7 +68,7 @@ public class CommsConfig {
 
     @XmlAttribute
     private int lineTapPort = 58260;
-    
+
     @XmlAttribute
     private int broadcastLivePort = 58269;
 
@@ -125,7 +125,8 @@ public class CommsConfig {
     }
 
     /**
-     * @param broadcastLivePort the broadcastLivePort to set
+     * @param broadcastLivePort
+     *            the broadcastLivePort to set
      */
     public void setBroadcastLivePort(int broadcastLivePort) {
         this.broadcastLivePort = broadcastLivePort;
@@ -180,4 +181,87 @@ public class CommsConfig {
 
     }
 
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = (prime * result) + broadcastLivePort;
+        result = (prime * result)
+                + ((clusterHosts == null) ? 0 : clusterHosts.hashCode());
+        result = (prime * result) + clusterPort;
+        result = (prime * result) + dacTransmitPort;
+        result = (prime * result)
+                + ((dacTransmitStarter == null) ? 0 : dacTransmitStarter
+                        .hashCode());
+        result = (prime * result) + ((dacs == null) ? 0 : dacs.hashCode());
+        result = (prime * result)
+                + ((jmsConnection == null) ? 0 : jmsConnection.hashCode());
+        result = (prime * result) + lineTapPort;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        CommsConfig other = (CommsConfig) obj;
+        if (broadcastLivePort != other.broadcastLivePort) {
+            return false;
+        }
+        if (clusterHosts == null) {
+            if (other.clusterHosts != null) {
+                return false;
+            }
+        } else if (!clusterHosts.equals(other.clusterHosts)) {
+            return false;
+        }
+        if (clusterPort != other.clusterPort) {
+            return false;
+        }
+        if (dacTransmitPort != other.dacTransmitPort) {
+            return false;
+        }
+        if (dacTransmitStarter == null) {
+            if (other.dacTransmitStarter != null) {
+                return false;
+            }
+        } else if (!dacTransmitStarter.equals(other.dacTransmitStarter)) {
+            return false;
+        }
+        if (dacs == null) {
+            if (other.dacs != null) {
+                return false;
+            }
+        } else if (!dacs.equals(other.dacs)) {
+            return false;
+        }
+        if (jmsConnection == null) {
+            if (other.jmsConnection != null) {
+                return false;
+            }
+        } else if (!jmsConnection.equals(other.jmsConnection)) {
+            return false;
+        }
+        if (lineTapPort != other.lineTapPort) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        return "CommsConfig [clusterPort=" + clusterPort + ", dacTransmitPort="
+                + dacTransmitPort + ", lineTapPort=" + lineTapPort
+                + ", broadcastLivePort=" + broadcastLivePort
+                + ", dacTransmitStarter=" + dacTransmitStarter
+                + ", jmsConnection=" + jmsConnection + ", dacs=" + dacs
+                + ", clusterHosts=" + clusterHosts + "]";
+    }
 }

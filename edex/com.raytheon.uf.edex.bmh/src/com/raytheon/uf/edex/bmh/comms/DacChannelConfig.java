@@ -28,7 +28,6 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 
 /**
- * 
  * Config for a single group on the DAC.
  * 
  * <pre>
@@ -44,7 +43,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * Oct 2, 2014   3642     bkowal      Added transmitter timezone.
  * Oct 16, 2014  3687     bsteffen    Add playlistDirectory to xml.
  * Nov 26, 2014  3821     bsteffen    Add deadAirAlarm
- * 
+ * Apr 07, 2015  4370     rjpeter     Added toString.
  * </pre>
  * 
  * @author bsteffen
@@ -160,64 +159,88 @@ public class DacChannelConfig {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result
+        result = (prime * result)
                 + ((controlPort == null) ? 0 : controlPort.hashCode());
-        result = prime * result + dataPort;
+        result = (prime * result) + dataPort;
         long temp;
         temp = Double.doubleToLongBits(dbTarget);
-        result = prime * result + (int) (temp ^ (temp >>> 32));
-        result = prime
-                * result
+        result = (prime * result) + (int) (temp ^ (temp >>> 32));
+        result = (prime * result)
                 + ((playlistDirectory == null) ? 0 : playlistDirectory
                         .hashCode());
-        result = prime * result + Arrays.hashCode(radios);
-        result = prime * result + (deadAirAlarm ? 1231 : 1237);
-        result = prime * result
+        result = (prime * result) + Arrays.hashCode(radios);
+        result = (prime * result) + (deadAirAlarm ? 1231 : 1237);
+        result = (prime * result)
                 + ((timezone == null) ? 0 : timezone.hashCode());
-        result = prime
-                * result
+        result = (prime * result)
                 + ((transmitterGroup == null) ? 0 : transmitterGroup.hashCode());
         return result;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         DacChannelConfig other = (DacChannelConfig) obj;
         if (controlPort == null) {
-            if (other.controlPort != null)
+            if (other.controlPort != null) {
                 return false;
-        } else if (!controlPort.equals(other.controlPort))
+            }
+        } else if (!controlPort.equals(other.controlPort)) {
             return false;
-        if (dataPort != other.dataPort)
+        }
+        if (dataPort != other.dataPort) {
             return false;
+        }
         if (Double.doubleToLongBits(dbTarget) != Double
-                .doubleToLongBits(other.dbTarget))
+                .doubleToLongBits(other.dbTarget)) {
             return false;
+        }
         if (playlistDirectory == null) {
-            if (other.playlistDirectory != null)
+            if (other.playlistDirectory != null) {
                 return false;
-        } else if (!playlistDirectory.equals(other.playlistDirectory))
+            }
+        } else if (!playlistDirectory.equals(other.playlistDirectory)) {
             return false;
-        if (!Arrays.equals(radios, other.radios))
+        }
+        if (!Arrays.equals(radios, other.radios)) {
             return false;
-        if (deadAirAlarm != other.deadAirAlarm)
+        }
+        if (deadAirAlarm != other.deadAirAlarm) {
             return false;
+        }
         if (timezone == null) {
-            if (other.timezone != null)
+            if (other.timezone != null) {
                 return false;
-        } else if (!timezone.equals(other.timezone))
+            }
+        } else if (!timezone.equals(other.timezone)) {
             return false;
+        }
         if (transmitterGroup == null) {
-            if (other.transmitterGroup != null)
+            if (other.transmitterGroup != null) {
                 return false;
-        } else if (!transmitterGroup.equals(other.transmitterGroup))
+            }
+        } else if (!transmitterGroup.equals(other.transmitterGroup)) {
             return false;
+        }
         return true;
     }
+
+    @Override
+    public String toString() {
+        return "DacChannelConfig [transmitterGroup=" + transmitterGroup
+                + ", playlistDirectory=" + playlistDirectory + ", dbTarget="
+                + dbTarget + ", timezone=" + timezone + ", radios="
+                + Arrays.toString(radios) + ", dataPort=" + dataPort
+                + ", controlPort=" + controlPort + ", deadAirAlarm="
+                + deadAirAlarm + "]";
+    }
+
 }

@@ -56,7 +56,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  *                                    types to cluster members.
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * Feb 10, 2015  4071     bsteffen    Synchronize State.
- * 
+ * Apr 07, 2015  4370     rjpeter     Added sendConfigCheck.
  * </pre>
  * 
  * @author bsteffen
@@ -79,7 +79,7 @@ public class ClusterServer extends AbstractServerThread {
 
     private Set<InetAddress> configuredAddresses;
 
-    private ClusterStateMessage state = new ClusterStateMessage();
+    private final ClusterStateMessage state = new ClusterStateMessage();
 
     private long requestTimeout = Long.MAX_VALUE;
 
@@ -285,13 +285,13 @@ public class ClusterServer extends AbstractServerThread {
         synchronized (state) {
             boolean pendingRequest = state.hasRequestedKey();
             boolean requestFailed = System.currentTimeMillis() > requestTimeout;
-            if (allDacsRunning && pendingRequest == false
-                    && requestFailed == false) {
+            if (allDacsRunning && (pendingRequest == false)
+                    && (requestFailed == false)) {
                 String overloadId = null;
                 ClusterStateMessage overloaded = state;
                 for (ClusterCommunicator communicator : communicators.values()) {
                     ClusterStateMessage other = communicator.getClusterState();
-                    if (other == null || other.hasRequestedKey()) {
+                    if ((other == null) || other.hasRequestedKey()) {
                         return;
                     }
                     if (other.getKeys().size() > overloaded.getKeys().size()) {
@@ -299,7 +299,7 @@ public class ClusterServer extends AbstractServerThread {
                         overloadId = communicator.getClusterId();
                     }
                 }
-                if (overloaded.getKeys().size() - 1 > state.getKeys().size()) {
+                if ((overloaded.getKeys().size() - 1) > state.getKeys().size()) {
                     logger.info(
                             "To balance the load 1 dac transmit has been requested from {}",
                             overloadId);
@@ -321,5 +321,12 @@ public class ClusterServer extends AbstractServerThread {
                 sendStateToAll();
             }
         }
+    }
+
+    /**
+     * Tells the cluster members that a new config was read.
+     */
+    public void sendConfigCheck() {
+        sendDataToAll(new ClusterConfigMessage());
     }
 }

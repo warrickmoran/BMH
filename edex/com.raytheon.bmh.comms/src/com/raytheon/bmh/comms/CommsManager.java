@@ -54,6 +54,7 @@ import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.bmh.comms.linetap.LineTapServer;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.notify.config.CommsConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
 import com.raytheon.uf.common.bmh.notify.status.CommsManagerStatus;
@@ -109,7 +110,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Jan 22, 2015  3912     bsteffen    Add isConnectedRemote.
  * Jan 23, 2015  3912     bsteffen    Sleep more when starting many dac transmits.
  * Mar 11, 2015  4186     bsteffen    Report silence alarms in status
- * 
+ * Apr 07, 2015  4370     rjpeter     Add jms and cluster listener for config changes.
  * </pre>
  * 
  * @author bsteffen
@@ -323,6 +324,7 @@ public class CommsManager {
         broadcastStreamServer.start();
         if (jms != null) {
             jms.connect();
+            addJmsConfigListener();
             addPracticeJmsShutdownListener();
         }
         clusterServer.attempClusterConnections(config);
@@ -381,16 +383,13 @@ public class CommsManager {
                         modFile = configPath.resolveSibling(modFile);
                         if (Files.exists(modFile) && Files.exists(configPath)
                                 && Files.isSameFile(configPath, modFile)) {
-                            logger.info("Reloading configuration file.");
-                            CommsConfig config = JAXB.unmarshal(
-                                    configPath.toFile(), CommsConfig.class);
-                            reconfigure(config);
+                            reloadConfig(true);
                         }
                     } catch (Throwable t) {
                         logger.error("Cannot read new config file", t);
                     }
-
                 }
+
                 wkey.reset();
             }
         }
@@ -404,11 +403,39 @@ public class CommsManager {
         mainThread = null;
     }
 
-    protected void reconfigure(CommsConfig newConfig) {
+    /**
+     * Reloads the configuration from disk and optionally notifies other cluster
+     * members.
+     * 
+     * @param notify
+     */
+    public void reloadConfig(boolean notify) {
+        try {
+            if (Files.size(configPath) > 0) {
+                CommsConfig newConfig = JAXB.unmarshal(configPath.toFile(),
+                        CommsConfig.class);
+                reconfigure(newConfig);
+
+                if (notify) {
+                    clusterServer.sendConfigCheck();
+                }
+            }
+        } catch (Throwable t) {
+            logger.error("Cannot read new config file", t);
+        }
+    }
+
+    protected synchronized void reconfigure(CommsConfig newConfig) {
+        logger.info("Checking configuration file.");
+
         validateConfig(newConfig);
         if (newConfig.equals(this.config)) {
+            logger.info("Configuration file has not changed.");
             return;
         }
+
+        logger.info("Reloading configuration file.");
+
         if (newConfig.getDacTransmitPort() != config.getDacTransmitPort()) {
             try {
                 transmitServer.changePort(newConfig.getDacTransmitPort());
@@ -436,19 +463,21 @@ public class CommsManager {
                 newConfig.setClusterPort(config.getClusterPort());
             }
         }
-        if (jms != null
+        if ((jms != null)
                 && !config.getJmsConnection().equals(
                         newConfig.getJmsConnection())) {
             jms.close();
             jms = null;
         }
+
         this.config = newConfig;
         transmitServer.reconfigure(config);
         lineTapServer.reconfigure(config);
-        if (jms == null && config.getJmsConnection() != null) {
+        if ((jms == null) && (config.getJmsConnection() != null)) {
             try {
                 jms = new JmsCommunicator(config, operational);
                 jms.connect();
+                addJmsConfigListener();
                 addPracticeJmsShutdownListener();
             } catch (URLSyntaxException e) {
                 logger.error(
@@ -740,8 +769,33 @@ public class CommsManager {
         }
     }
 
+    private void addJmsConfigListener() {
+        if (jms != null) {
+            jms.addObserver(CommsConfigNotification.getTopicName(operational),
+                    new INotificationObserver() {
+                        @Override
+                        public void notificationArrived(
+                                NotificationMessage[] messages) {
+                            for (NotificationMessage message : messages) {
+                                try {
+                                    Object payload = message
+                                            .getMessagePayload();
+                                    if (payload instanceof CommsConfigNotification) {
+                                        reloadConfig(false);
+                                    }
+                                } catch (NotificationException e) {
+                                    logger.error("Cannot handle notification",
+                                            e);
+                                }
+                            }
+
+                        }
+                    });
+        }
+    }
+
     private void addPracticeJmsShutdownListener() {
-        if (jms != null && !operational) {
+        if ((jms != null) && !operational) {
             jms.addObserver("BMH.Practice.Config", new INotificationObserver() {
 
                 @Override

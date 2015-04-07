@@ -40,7 +40,7 @@ import javax.xml.bind.annotation.XmlElement;
  * Jul 16, 2014  3399     bsteffen    Initial creation
  * Aug 04, 2014  2487     bsteffen    Add receivePort
  * Sep 25, 2014  3485     bsteffen    Add multicast options
- * 
+ * Apr 07, 2015  4370     rjpeter     Added toString.
  * </pre>
  * 
  * @author bsteffen
@@ -104,43 +104,59 @@ public class DacConfig {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result
+        result = (prime * result)
                 + ((channels == null) ? 0 : channels.hashCode());
-        result = prime * result
+        result = (prime * result)
                 + ((ipAddress == null) ? 0 : ipAddress.hashCode());
-        result = prime * result
+        result = (prime * result)
                 + ((receiveAddress == null) ? 0 : receiveAddress.hashCode());
-        result = prime * result + receivePort;
+        result = (prime * result) + receivePort;
         return result;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         DacConfig other = (DacConfig) obj;
         if (channels == null) {
-            if (other.channels != null)
+            if (other.channels != null) {
                 return false;
-        } else if (!channels.equals(other.channels))
+            }
+        } else if (!channels.equals(other.channels)) {
             return false;
+        }
         if (ipAddress == null) {
-            if (other.ipAddress != null)
+            if (other.ipAddress != null) {
                 return false;
-        } else if (!ipAddress.equals(other.ipAddress))
+            }
+        } else if (!ipAddress.equals(other.ipAddress)) {
             return false;
+        }
         if (receiveAddress == null) {
-            if (other.receiveAddress != null)
+            if (other.receiveAddress != null) {
                 return false;
-        } else if (!receiveAddress.equals(other.receiveAddress))
+            }
+        } else if (!receiveAddress.equals(other.receiveAddress)) {
             return false;
-        if (receivePort != other.receivePort)
+        }
+        if (receivePort != other.receivePort) {
             return false;
+        }
         return true;
     }
 
+    @Override
+    public String toString() {
+        return "DacConfig [ipAddress=" + ipAddress + ", receivePort="
+                + receivePort + ", receiveAddress=" + receiveAddress
+                + ", channels=" + channels + "]";
+    }
 }

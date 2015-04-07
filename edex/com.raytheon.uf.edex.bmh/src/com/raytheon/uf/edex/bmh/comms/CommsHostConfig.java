@@ -39,7 +39,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Sep 25, 2014  3485     bsteffen    Initial creation
- * 
+ * Apr 07, 2015  4370     rjpeter     Added toString.
  * </pre>
  * 
  * @author bsteffen
@@ -80,7 +80,7 @@ public class CommsHostConfig {
 
     public NetworkInterface getDacNetworkInterface()
             throws UnknownHostException, SocketException {
-        if (dacInterface == null || dacInterface.isEmpty()) {
+        if ((dacInterface == null) || dacInterface.isEmpty()) {
             return null;
         } else {
             try {
@@ -97,33 +97,46 @@ public class CommsHostConfig {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result
+        result = (prime * result)
                 + ((dacInterface == null) ? 0 : dacInterface.hashCode());
-        result = prime * result
+        result = (prime * result)
                 + ((ipAddress == null) ? 0 : ipAddress.hashCode());
         return result;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         CommsHostConfig other = (CommsHostConfig) obj;
         if (dacInterface == null) {
-            if (other.dacInterface != null)
+            if (other.dacInterface != null) {
                 return false;
-        } else if (!dacInterface.equals(other.dacInterface))
+            }
+        } else if (!dacInterface.equals(other.dacInterface)) {
             return false;
+        }
         if (ipAddress == null) {
-            if (other.ipAddress != null)
+            if (other.ipAddress != null) {
                 return false;
-        } else if (!ipAddress.equals(other.ipAddress))
+            }
+        } else if (!ipAddress.equals(other.ipAddress)) {
             return false;
+        }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return "CommsHostConfig [ipAddress=" + ipAddress + ", dacInterface="
+                + dacInterface + "]";
     }
 
 }
