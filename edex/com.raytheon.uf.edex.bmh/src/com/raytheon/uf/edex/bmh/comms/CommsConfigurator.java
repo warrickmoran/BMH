@@ -38,11 +38,19 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.notify.config.CommsConfigNotification;
+import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
+import com.raytheon.uf.edex.core.EdexException;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
+import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
+import com.raytheon.uf.edex.database.cluster.ClusterLocker;
+import com.raytheon.uf.edex.database.cluster.ClusterTask;
 
 /**
  * 
@@ -69,7 +77,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * Nov 26, 2014  3821     bsteffen    Write silence alarm
  * Feb 09, 2015  4095     bsteffen    Remove Transmitter Name.
- * 
+ * Apr 07, 2015  4370     rjpeter     Update CommsConfigurator to have cluster lock and send jms notification.
  * </pre>
  * 
  * @author bsteffen
@@ -86,79 +94,109 @@ public class CommsConfigurator implements IContextStateProcessor {
 
     private TransmitterGroupDao transmitterGroupDao;
 
+    private final ClusterLocker locker;
+
     public CommsConfigurator() {
         this(true);
     }
 
     public CommsConfigurator(boolean operational) {
         this.operational = operational;
+        locker = new ClusterLocker(AbstractBMHDao.getDatabaseName(operational));
     }
-
 
     public CommsConfig configure() {
         Path configFilePath = CommsConfig.getDefaultPath(operational);
-        List<Dac> dacs = dacDao.getAll();
-        Map<Integer, DacConfig> dacMap = createDacConfigs(dacs);
-        populateChannels(dacMap);
-        Map<String, DacConfig> prevDacMap = new HashMap<>();
+        ClusterTask ct = null;
+        try {
+            do {
+                ct = locker.lock("configure", configFilePath.getFileName()
+                        .toString(), 30000, true);
+            } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
 
-        CommsConfig prevConfig = null;
-        if (Files.exists(configFilePath)) {
-            try {
-                prevConfig = JAXB.unmarshal(configFilePath.toFile(),
-                        CommsConfig.class);
-            } catch (DataBindingException e) {
-                statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
-                        "Cannot load existing comms config file.", e);
-            }
-        } else {
-            try {
-                Files.createDirectories(configFilePath.getParent());
-            } catch (IOException e) {
-                statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
-                        "Cannot save comms config file.", e);
-                return null;
-            }
-        }
-        CommsConfig config = new CommsConfig();
-        if (prevConfig != null) {
-            config.setDacTransmitPort(prevConfig.getDacTransmitPort());
-            config.setLineTapPort(prevConfig.getLineTapPort());
-            config.setClusterPort(prevConfig.getClusterPort());
-            config.setBroadcastLivePort(prevConfig.getBroadcastLivePort());
-            config.setDacTransmitStarter(prevConfig.getDacTransmitStarter());
-            config.setClusterHosts(prevConfig.getClusterHosts());
-            if (prevConfig.getDacs() != null) {
-                for (DacConfig dconf : prevConfig.getDacs()) {
-                    prevDacMap.put(dconf.getIpAddress(), dconf);
+            List<Dac> dacs = dacDao.getAll();
+            Map<Integer, DacConfig> dacMap = createDacConfigs(dacs);
+            populateChannels(dacMap);
+            Map<String, DacConfig> prevDacMap = new HashMap<>();
+
+            CommsConfig prevConfig = null;
+            if (Files.exists(configFilePath)) {
+                try {
+                    prevConfig = JAXB.unmarshal(configFilePath.toFile(),
+                            CommsConfig.class);
+                } catch (DataBindingException e) {
+                    statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
+                            "Cannot load existing comms config file.", e);
+                }
+            } else {
+                try {
+                    Files.createDirectories(configFilePath.getParent());
+                } catch (IOException e) {
+                    statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
+                            "Cannot save comms config file.", e);
+                    return null;
                 }
             }
-        } else if (!operational) {
-            /* Change the default ports so it does not conflict with operational mode.*/
-            config.setDacTransmitPort(config.getDacTransmitPort() + 100);
-            config.setLineTapPort(config.getLineTapPort() + 100);
-            config.setClusterPort(config.getClusterPort() + 100);
-            config.setBroadcastLivePort(config.getBroadcastLivePort() + 100);
-        }
-        assignPorts(dacs, dacMap, prevDacMap);
-        config.setJmsConnection(BMHConstants
-                .getJmsConnectionString("commsmanager"));
-        if (!dacMap.isEmpty()) {
-            config.setDacs(new HashSet<>(dacMap.values()));
-        }
-        if (prevConfig == null || !prevConfig.equals(config)) {
-            if (dacMap.isEmpty()) {
-                statusHandler.warn(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
-                        "Writing comms conf file with no dacs.");
+            CommsConfig config = new CommsConfig();
+            if (prevConfig != null) {
+                config.setDacTransmitPort(prevConfig.getDacTransmitPort());
+                config.setLineTapPort(prevConfig.getLineTapPort());
+                config.setClusterPort(prevConfig.getClusterPort());
+                config.setBroadcastLivePort(prevConfig.getBroadcastLivePort());
+                config.setDacTransmitStarter(prevConfig.getDacTransmitStarter());
+                config.setClusterHosts(prevConfig.getClusterHosts());
+                if (prevConfig.getDacs() != null) {
+                    for (DacConfig dconf : prevConfig.getDacs()) {
+                        prevDacMap.put(dconf.getIpAddress(), dconf);
+                    }
+                }
+            } else if (!operational) {
+                /*
+                 * Change the default ports so it does not conflict with
+                 * operational mode.
+                 */
+                config.setDacTransmitPort(config.getDacTransmitPort() + 100);
+                config.setLineTapPort(config.getLineTapPort() + 100);
+                config.setClusterPort(config.getClusterPort() + 100);
+                config.setBroadcastLivePort(config.getBroadcastLivePort() + 100);
             }
-            try {
-                JAXB.marshal(config, configFilePath.toFile());
-            } catch (DataBindingException e) {
-                statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
-                        "Cannot save comms config file.", e);
+            assignPorts(dacs, dacMap, prevDacMap);
+            config.setJmsConnection(BMHConstants
+                    .getJmsConnectionString("commsmanager"));
+            if (!dacMap.isEmpty()) {
+                config.setDacs(new HashSet<>(dacMap.values()));
+            }
+            if ((prevConfig == null) || !prevConfig.equals(config)) {
+                if (dacMap.isEmpty()) {
+                    statusHandler.warn(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
+                            "Writing comms conf file with no dacs.");
+                }
+
+                statusHandler.info("Writing new comms config.  Prev ["
+                        + prevConfig + "], new [" + config + "]");
+
+                try {
+                    JAXB.marshal(config, configFilePath.toFile());
+
+                    BmhMessageProducer.sendConfigMessage(
+                            new CommsConfigNotification(), operational);
+                } catch (DataBindingException e) {
+                    statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
+                            "Cannot save comms config file.", e);
+                } catch (EdexException | SerializationException e) {
+                    statusHandler
+                            .error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
+                                    "Unable to send comms config file notification.",
+                                    e);
+                }
+            }
+
+            return config;
+        } finally {
+            if (ct != null) {
+                locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
             }
         }
-        return config;
     }
 
     /**
@@ -248,7 +286,7 @@ public class CommsConfigurator implements IContextStateProcessor {
         for (Dac dac : dacs) {
             DacConfig dconfig = dacMap.get(dac.getId());
             List<DacChannelConfig> channels = dconfig.getChannels();
-            if (channels == null || channels.isEmpty()
+            if ((channels == null) || channels.isEmpty()
                     || dac.getDataPorts().isEmpty()) {
                 dacMap.remove(dac.getId());
                 continue;

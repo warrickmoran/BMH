@@ -5,7 +5,7 @@
                       http://camel.apache.org/schema/spring
                       http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-  <bean id="practice_commsConfigurator" class="com.raytheon.uf.edex.bmh.comms.CommsConfigurator">
+  <bean id="practice_commsConfigurator" class="com.raytheon.uf.edex.bmh.comms.CommsConfigurator" depends-on="bmh_practiceTxTemplate">
     <constructor-arg value="false" />
     <property name="dacDao" ref="practice_dacDao" />
     <property name="transmitterGroupDao" ref="practice_transmitterGroupDao" />
@@ -26,6 +26,10 @@
               <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.ResetNotification"</simple>
               <bean ref="practice_commsConfigurator" method="configure" />
           </filter>
+          <filter>
+              <simple>${body} is "com.raytheon.uf.common.bmh.notify.config.DacConfigNotification"</simple>
+              <bean ref="practice_commsConfigurator" method="configure" />
+          </filter>
         <doCatch>
           <exception>java.lang.Throwable</exception>
           <to uri="log:bmh?level=ERROR" />
@@ -38,5 +42,9 @@
   <bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
     <constructor-arg ref="practice_bmhCommsConfigurator" />
     <constructor-arg ref="practice_commsConfigurator" />
+  </bean>
+
+  <bean factory-bean="contextManager" factory-method="registerClusteredContext">
+    <constructor-arg ref="practice_bmhCommsConfigurator" />
   </bean>
 </beans>

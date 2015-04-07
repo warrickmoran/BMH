@@ -49,7 +49,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Dec 1, 2014   3797     bkowal      Support broadcast clustering.
  * Jan 14, 2015  3869     bsteffen    Log a shorter message for disconnect.
  * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil.
- * 
+ * Apr 07, 2015  4370     rjpeter     Add handling of ClusterConfigMessage.
  * </pre>
  * 
  * @author bsteffen
@@ -148,6 +148,8 @@ public class ClusterCommunicator extends Thread {
                 send(new ClusterShutdownMessage(true));
                 disconnect();
             }
+        } else if (message instanceof ClusterConfigMessage) {
+            this.manager.reloadConfig(false);
         } else if (message instanceof ILiveBroadcastMessage) {
             this.manager
                     .forwardDacBroadcastMsg((ILiveBroadcastMessage) message);
@@ -185,8 +187,8 @@ public class ClusterCommunicator extends Thread {
     }
 
     private boolean isConnected() {
-        return this.socket != null && this.socket.isClosed() == false
-                && this.socket.isOutputShutdown() == false;
+        return (this.socket != null) && (this.socket.isClosed() == false)
+                && (this.socket.isOutputShutdown() == false);
     }
 
     public void disconnect() {
@@ -206,14 +208,14 @@ public class ClusterCommunicator extends Thread {
     }
 
     public boolean isConnected(DacTransmitKey key) {
-        if (state == null || socket.isClosed()) {
+        if ((state == null) || socket.isClosed()) {
             return false;
         }
         return state.contains(key);
     }
 
     public boolean isRequested(DacTransmitKey key) {
-        if (state == null || socket.isClosed()) {
+        if ((state == null) || socket.isClosed()) {
             return false;
         }
         return state.isRequestedKey(key);
