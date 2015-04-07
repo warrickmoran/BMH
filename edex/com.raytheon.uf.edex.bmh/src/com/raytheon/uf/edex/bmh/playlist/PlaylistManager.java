@@ -158,6 +158,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Mar 31, 2015  4339     bkowal      Distinguish between areas that cannot be added because
  *                                    they are invalid and areas that are over the allowed limit.
  * Apr 02, 2015  4248     rjpeter     Get ordered messages when needed.
+ * Apr 07, 2015  4339     bkowal      Only notify the user when invalid areas or over the limit areas
+ *                                    are NOT empty Strings.
  * </pre>
  * 
  * @author bsteffen
@@ -550,7 +552,6 @@ public class PlaylistManager implements IContextStateProcessor {
             SuiteMessage suiteMessage = new SuiteMessage();
             suiteMessage.setMsgTypeSummary(summary);
             suite.addSuiteMessage(suiteMessage);
-            suite.addSuiteMessage(new SuiteMessage());
             Playlist playlist = new Playlist();
             playlist.setTransmitterGroup(group);
             playlist.setSuite(suite);
@@ -879,12 +880,12 @@ public class PlaylistManager implements IContextStateProcessor {
                         String invalidAreas = builder.summarizeInvalidAreas();
                         String overLimitAreas = builder
                                 .summarizeOverLimitAreas();
-                        if (overLimitAreas.isEmpty()) {
+                        if (overLimitAreas.isEmpty() == false) {
                             statusHandler.error(BMH_CATEGORY.SAME_TRUNCATION,
                                     "Failed to all all areas to the SAME Message. "
                                             + overLimitAreas);
                         }
-                        if (invalidAreas.isEmpty()) {
+                        if (invalidAreas.isEmpty() == false) {
                             statusHandler.error(
                                     BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                                     "Failed to all all areas to the SAME Message. "
