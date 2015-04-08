@@ -119,6 +119,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
  * Mar 27, 2015 4314       bkowal      {@link TimeMessagesGenerator} updates.
  * Mar 30, 2015 4314       bkowal      Cluster lock static message generation to ensure
  *                                     multiple cluster members do not generate messages.
+ * Apr 07, 2015 4293       bkowal      Persist the generated static messages while within
+ *                                     the cluster lock.
  * 
  * </pre>
  * 
@@ -677,8 +679,6 @@ public class StaticMessageGenerator implements IContextStateProcessor {
          */
         boolean complete = existingMsg != null
                 && existingMsg.isSuccess()
-                && existingMsg.getFragments() != null
-                && !existingMsg.getFragments().isEmpty()
                 && (existingMsg.getInputMessage().getActive() != null && existingMsg
                         .getInputMessage().getActive());
         /*
@@ -695,7 +695,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
              */
             final String formattedSpeechRate = SpeechRateFormatter
                     .formatSpeechRate(language.getSpeechRate());
-            for (BroadcastFragment fragment : existingMsg.getFragments()) {
+            for (BroadcastFragment fragment : existingMsg
+                    .getLatestBroadcastContents().getFragments()) {
                 String output = fragment.getOutputName();
                 complete &= output != null && !output.isEmpty()
                         && Files.exists(Paths.get(output));
@@ -849,6 +850,9 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         validMsg.setLdadStatus(LdadStatus.ERROR);
         validMsg.setTransmissionStatus(TransmissionStatus.ACCEPTED);
         validMsg.setTransmitterGroups(groupSet);
+
+        this.validatedMessageDao.persistCascade(validMsg);
+
         return validMsg;
     }
 
@@ -879,6 +883,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
          */
         inputMsg.setActive(Boolean.TRUE);
         validMsg.setInputMessage(inputMsg);
+
+        this.validatedMessageDao.persistCascade(validMsg);
 
         return validMsg;
     }

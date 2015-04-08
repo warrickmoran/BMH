@@ -66,6 +66,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 05, 2015  4222     bkowal      Handle messages that never expire.
  * Mar 13, 2015  4222     bkowal      Prevent NPE for messages that do not expire.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
+ * Apr 07, 2015  4293     bkowal      Added get/set methods for {@link #messageBroadcastNotificationSent}.
  * 
  * </pre>
  * 
@@ -84,9 +85,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     @XmlElement
     private String name;
 
-    @XmlElement
-    private String messageType;
-
     @XmlElement(name = "soundFile")
     private List<String> soundFiles;
 
@@ -99,6 +97,9 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
 
     @XmlElement
     private String messageText;
+
+    @XmlElement
+    private String messageType;
 
     @XmlElement
     private String SAMEtone;
@@ -179,8 +180,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         StringBuilder builder = new StringBuilder();
         builder.append("DACPlaylistMessage [broadcastId=").append(broadcastId)
                 .append(", messageType=").append(messageType)
-                .append(", start=").append(start).append(", expire=")
-                .append(expire).append("]");
+                .append(", expire=").append(expire).append("]");
         return builder.toString();
     }
 
@@ -208,47 +208,55 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     }
 
     public List<String> getSoundFiles() {
-        return soundFiles;
-    }
-
-    public void setSoundFiles(List<String> soundFiles) {
-        this.soundFiles = soundFiles;
+        return this.soundFiles;
     }
 
     public void addSoundFile(String soundFile) {
         if (this.soundFiles == null) {
-            this.soundFiles = new ArrayList<>();
+            this.soundFiles = new ArrayList<>(1);
         }
         this.soundFiles.add(soundFile);
     }
 
-    public Calendar getStart() {
-        return start;
+    /**
+     * @param soundFiles
+     *            the soundFiles to set
+     */
+    public void setSoundFiles(List<String> soundFiles) {
+        this.soundFiles = soundFiles;
     }
 
+    public Calendar getStart() {
+        return this.start;
+    }
+
+    /**
+     * @param start
+     *            the start to set
+     */
     public void setStart(Calendar start) {
         this.start = start;
     }
 
     public String getPeriodicity() {
-        return periodicity;
+        return this.periodicity;
     }
 
+    /**
+     * @param periodicity
+     *            the periodicity to set
+     */
     public void setPeriodicity(String periodicity) {
         this.periodicity = periodicity;
     }
 
     public boolean isPeriodic() {
         return periodicity != null && !periodicity.isEmpty()
-                && NO_PERIODICTY.equals(this.periodicity) == false;
+                && NO_PERIODICTY.equals(periodicity) == false;
     }
 
     public String getMessageText() {
-        return messageText;
-    }
-
-    public void setMessageText(String messageText) {
-        this.messageText = messageText;
+        return this.messageText;
     }
 
     public String getSAMEtone() {
@@ -300,6 +308,14 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     }
 
     /**
+     * @param messageText
+     *            the messageText to set
+     */
+    public void setMessageText(String messageText) {
+        this.messageText = messageText;
+    }
+
+    /**
      * Determine whether this message is within its valid playback period based
      * on the current time.
      * 
@@ -322,7 +338,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      *         {@code false}.
      */
     public boolean isValid(long currentTime) {
-        boolean started = currentTime >= start.getTimeInMillis();
+        boolean started = currentTime >= this.start.getTimeInMillis();
         boolean ended = (this.expire != null && currentTime >= expire
                 .getTimeInMillis());
         return started && !ended;
@@ -338,10 +354,10 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      */
     public long getPlaybackInterval() {
         if (isPeriodic()) {
-            int days = Integer.parseInt(this.periodicity.substring(0, 2));
-            int hours = Integer.parseInt(this.periodicity.substring(2, 4));
-            int minutes = Integer.parseInt(this.periodicity.substring(4, 6));
-            int seconds = Integer.parseInt(this.periodicity.substring(6, 8));
+            int days = Integer.parseInt(periodicity.substring(0, 2));
+            int hours = Integer.parseInt(periodicity.substring(2, 4));
+            int minutes = Integer.parseInt(periodicity.substring(4, 6));
+            int seconds = Integer.parseInt(periodicity.substring(6, 8));
             return (seconds + (60 * (minutes + (60 * (hours + (24 * days))))))
                     * TimeUtil.MILLIS_PER_SECOND;
         }
@@ -524,5 +540,21 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
             this.messageBroadcastNotificationSent = true;
         }
         return result;
+    }
+
+    /**
+     * @param messageBroadcastNotificationSent
+     *            the messageBroadcastNotificationSent to set
+     */
+    public void setMessageBroadcastNotificationSent(
+            boolean messageBroadcastNotificationSent) {
+        this.messageBroadcastNotificationSent = messageBroadcastNotificationSent;
+    }
+
+    /**
+     * @return the messageBroadcastNotificationSent
+     */
+    public boolean isMessageBroadcastNotificationSent() {
+        return messageBroadcastNotificationSent;
     }
 }

@@ -31,6 +31,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
@@ -55,6 +56,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Dec 08, 2014  3864     bsteffen    Redo some of the playlist manager queries.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
+ * Apr 07, 2015  4293     bkowal      Added {@link #getMessageByInputMessageAndGroup(InputMessage, TransmitterGroup)}.
  * 
  * </pre>
  * 
@@ -132,10 +134,23 @@ public class BroadcastMsgDao extends
 
     public List<BroadcastMsg> getMessageByBroadcastId(Long broadcastMessageId) {
         BroadcastMsg msg = this.getByID(broadcastMessageId);
-        List<BroadcastMsg> results = new ArrayList<>();
+        List<BroadcastMsg> results = new ArrayList<>(1);
         results.add(msg);
 
         return results;
+    }
+
+    public BroadcastMsg getMessageByInputMessageAndGroup(
+            final InputMessage inputMsg, final TransmitterGroup group) {
+        List<?> returnedObjects = this.findByNamedQueryAndNamedParam(
+                BroadcastMsg.GET_MSG_BY_INPUT_MSG_AND_GROUP, new String[] {
+                        "inputMsgId", "group" },
+                new Object[] { inputMsg.getId(), group });
+        if (returnedObjects == null || returnedObjects.isEmpty()) {
+            return null;
+        }
+
+        return (BroadcastMsg) returnedObjects.get(0);
     }
 
     public BroadcastMsg getMessageByFragmentPath(Path path) {
@@ -188,5 +203,22 @@ public class BroadcastMsgDao extends
         }
         return group;
 
+    }
+
+    public List<BroadcastMsg> getMessagesWithOldContents(final long purgeMillis) {
+        List<?> returnObjects = this.findByNamedQueryAndNamedParam(
+                BroadcastMsg.GET_MSG_WITH_MULTI_OLD_CONTENT, "purgeMillis",
+                purgeMillis);
+        if (returnObjects == null || returnObjects.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<BroadcastMsg> broadcastMessages = new ArrayList<>(
+                returnObjects.size());
+        for (Object object : returnObjects) {
+            broadcastMessages.add((BroadcastMsg) object);
+        }
+
+        return broadcastMessages;
     }
 }

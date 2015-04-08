@@ -11,6 +11,7 @@
 		<property name="ldadConfigDao" ref="ldadConfigDao" />
 		<property name="dictionaryDao" ref="dictionaryDao" />
 		<property name="staticMessageTypeDao" ref="staticMessageTypeDao" />
+		<property name="broadcastMsgDao" ref="broadcastMsgDao" />
 	</bean>
 	
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">

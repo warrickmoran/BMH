@@ -27,6 +27,7 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,6 +41,7 @@ import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastContents;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
@@ -49,6 +51,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -64,6 +67,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
+import com.raytheon.uf.edex.bmh.dao.BroadcastContentsDao;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
@@ -105,6 +109,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Jan 26, 2015  3928     bsteffen    Copy audio files.
  * Mar 26, 2015  4213     bkowal      Fixed copying of static message types.
  * APr 02, 2015  4248     rjpeter     Use PositionComparator.
+ * Apr 07, 2015  4293     bkowal      Copy broadcast message contents and fragments.
  * </pre>
  * 
  * @author bsteffen
@@ -149,6 +154,7 @@ public class BmhDatabaseCopier {
         copySuites();
         copyPrograms();
         copyInputMessages();
+        this.copyValidatedMessages();
         copyBroadcastMsgs();
         BmhMessageProducer.sendConfigMessage(new ResetNotification(), false);
     }
@@ -424,10 +430,36 @@ public class BmhDatabaseCopier {
         this.inputMessageMap = inputMessageMap;
     }
 
+    private void copyValidatedMessages() {
+        ValidatedMessageDao opDao = new ValidatedMessageDao(true,
+                this.opMessageLogger);
+        ValidatedMessageDao prDao = new ValidatedMessageDao(false,
+                this.pracMessageLogger);
+        List<ValidatedMessage> validatedMsgs = opDao.getAll();
+        for (ValidatedMessage validatedMsg : validatedMsgs) {
+            validatedMsg.setInputMessage(this.inputMessageMap.get(validatedMsg
+                    .getInputMessage().getId()));
+            validatedMsg.setId(0);
+            if (validatedMsg.getTransmitterGroups().isEmpty()) {
+                continue;
+            }
+            Set<TransmitterGroup> validMsgTransmitterGroups = new HashSet<>(
+                    validatedMsg.getTransmitterGroups().size(), 1.0f);
+            for (TransmitterGroup tg : validatedMsg.getTransmitterGroups()) {
+                validMsgTransmitterGroups.add(this.transmitterGroupMap.get(tg
+                        .getId()));
+            }
+            validatedMsg.setTransmitterGroups(validMsgTransmitterGroups);
+        }
+
+        prDao.persistAll(validatedMsgs);
+    }
+
     private void copyBroadcastMsgs() throws IOException {
         BroadcastMsgDao opDao = new BroadcastMsgDao(true, this.opMessageLogger);
         BroadcastMsgDao prDao = new BroadcastMsgDao(false,
                 this.pracMessageLogger);
+        BroadcastContentsDao prContentsDao = new BroadcastContentsDao(false);
 
         Path opAudioDir = BMHConstants.getBmhDataDirectory(true).resolve(
                 BMHConstants.AUDIO_DATA_DIRECTORY);
@@ -435,13 +467,41 @@ public class BmhDatabaseCopier {
                 BMHConstants.AUDIO_DATA_DIRECTORY);
 
         List<BroadcastMsg> broadcastMsgs = opDao.getAll();
+        Map<Long, BroadcastMsg> broadcastMsgMap = new HashMap<>(
+                broadcastMsgs.size(), 1.0f);
+        List<BroadcastContents> contentsToCopy = new ArrayList<>();
+
         for (BroadcastMsg broadcastMsg : broadcastMsgs) {
             broadcastMsg.setTransmitterGroup(transmitterGroupMap
                     .get(broadcastMsg.getTransmitterGroup().getId()));
             broadcastMsg.setInputMessage(inputMessageMap.get(broadcastMsg
                     .getInputMessage().getId()));
-            for (BroadcastFragment broadcastFragment : broadcastMsg
-                    .getFragments()) {
+            broadcastMsgMap.put(broadcastMsg.getId(), broadcastMsg);
+            broadcastMsg.setId(0);
+            if (broadcastMsg.getContents() == null
+                    || broadcastMsg.getContents().isEmpty()) {
+                continue;
+            }
+
+            /*
+             * Only the latest Broadcast Contents are copied to the practice
+             * database instead of all broadcast contents.
+             */
+            contentsToCopy.add(broadcastMsg.getLatestBroadcastContents());
+            /*
+             * Initially save the message without any contents.
+             */
+            broadcastMsg.getContents().clear();
+        }
+        prDao.persistAll(broadcastMsgs);
+
+        for (BroadcastContents contents : contentsToCopy) {
+            if (contents.getFragments() == null
+                    || contents.getFragments().isEmpty()) {
+                continue;
+            }
+
+            for (BroadcastFragment broadcastFragment : contents.getFragments()) {
                 Path output = Paths.get(broadcastFragment.getOutputName());
                 if (output.startsWith(opAudioDir)) {
                     Path newOutput = prAudioDir.resolve(opAudioDir
@@ -458,9 +518,15 @@ public class BmhDatabaseCopier {
                 }
                 broadcastFragment.setId(0);
             }
-            broadcastMsg.setId(0);
+
+            /*
+             * No reason to alter the timestamp because we do not alter the
+             * timestamped file path or name.
+             */
+            contents.setBroadcastMsg(broadcastMsgMap.get(contents.getId()
+                    .getBroadcastId()));
         }
-        prDao.persistAll(broadcastMsgs);
+        prContentsDao.persistAll(contentsToCopy);
     }
 
     /**

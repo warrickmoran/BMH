@@ -55,7 +55,6 @@
 				<bean ref="practice_staticMessageGenerator" method="process" />
 				<split>
 					<simple>${body}</simple>
-					<bean ref="practice_validatedMessageDao" method="persistCascade" />
 					<setBody>
 						<simple>${body.getId}</simple>
 					</setBody>

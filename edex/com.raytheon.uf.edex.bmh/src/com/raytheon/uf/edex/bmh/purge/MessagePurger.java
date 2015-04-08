@@ -31,6 +31,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastContents;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
@@ -52,6 +53,8 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Jan 26, 2015  3928     bsteffen    Allow creation of a practice purger.
  * Feb 24, 2015  4160     bsteffen    Purge message files.
+ * Apr 07, 205   4293     bkowal      Purge all audio generated for a single
+ *                                    Broadcast Message.
  * 
  * </pre>
  * 
@@ -94,7 +97,7 @@ public class MessagePurger {
         purgeDatabase(purgeTime);
         purgeAudioFiles(purgeTime);
         purgeMessageFiles(purgeTime);
-
+        this.purgeOldAudioContents(purgeTime);
     }
 
     protected void purgeDatabase(Calendar purgeTime) {
@@ -107,9 +110,20 @@ public class MessagePurger {
         for (InputMessage inputMessage : inputMessages) {
             for (BroadcastMsg broadcastMessage : broadcastMessageDao
                     .getMessagesByInputMsgId(inputMessage.getId())) {
-                for (BroadcastFragment fragment : broadcastMessage
-                        .getFragments()) {
-                    audioFilesToDelete.add(Paths.get(fragment.getOutputName()));
+                if (broadcastMessage.getContents() == null
+                        || broadcastMessage.getContents().isEmpty()) {
+                    continue;
+                }
+                for (BroadcastContents contents : broadcastMessage
+                        .getContents()) {
+                    if (contents.getFragments() == null
+                            || contents.getFragments().isEmpty()) {
+                        continue;
+                    }
+                    for (BroadcastFragment fragment : contents.getFragments()) {
+                        audioFilesToDelete.add(Paths.get(fragment
+                                .getOutputName()));
+                    }
                 }
                 Path messagePath = playlistPath
                         .resolve(
@@ -200,8 +214,7 @@ public class MessagePurger {
                 for (Path playlistDir : stream) {
                     Path messageDir = playlistDir.resolve("messages");
                     if (Files.exists(messageDir)) {
-                        purgeMessageFilesForTransmitter(messageDir,
-                                purgeTime);
+                        purgeMessageFilesForTransmitter(messageDir, purgeTime);
                     }
                 }
             } catch (IOException e) {
@@ -247,4 +260,45 @@ public class MessagePurger {
         }
     }
 
+    protected void purgeOldAudioContents(Calendar purgeTime) {
+        long purgeMillis = purgeTime.getTimeInMillis();
+        List<BroadcastMsg> broadcastMessages = this.broadcastMessageDao
+                .getMessagesWithOldContents(purgeMillis);
+        if (broadcastMessages.isEmpty()) {
+            return;
+        }
+
+        for (BroadcastMsg msg : broadcastMessages) {
+            List<Path> filesToDelete = new ArrayList<>();
+            BroadcastContents contents = msg.getAndRemovePreviousContents();
+            while (contents != null) {
+                for (BroadcastFragment fragment : contents
+                        .getOrderedFragments()) {
+                    final Path outputPath = Paths.get(fragment.getOutputName());
+                    if (Files.isDirectory(outputPath)) {
+                        /*
+                         * indicates a time fragment directory.
+                         */
+                        continue;
+                    }
+
+                    if (Files.exists(outputPath)) {
+                        filesToDelete.add(outputPath);
+                    }
+                }
+
+                contents = msg.getAndRemovePreviousContents();
+            }
+            this.broadcastMessageDao.saveOrUpdate(msg);
+
+            for (Path fileToDelete : filesToDelete) {
+                try {
+                    Files.delete(fileToDelete);
+                } catch (IOException e) {
+                    logger.error("Failed to delete audio file: {}.",
+                            fileToDelete, e);
+                }
+            }
+        }
+    }
 }

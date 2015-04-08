@@ -44,6 +44,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastContents;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
@@ -70,6 +71,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SpeechRateFormatter;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
+import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
@@ -138,6 +140,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
  * Mar 27, 2015 4314       bkowal      Rate of speech is now included in time message audio location.
  * Apr 01, 2015 4301       bkowal      Sanitize the text before adding it to the SSML.
+ * Apr 07, 2015 4293       bkowal      Determine if new audio actually needs to be generated for
+ *                                     an updated message - was it just a metadata update?
  * 
  * </pre>
  * 
@@ -177,6 +181,8 @@ public class MessageTransformer implements IContextStateProcessor {
 
     /* Used to retrieve defined static message types */
     private StaticMessageTypeDao staticMessageTypeDao;
+
+    private BroadcastMsgDao broadcastMsgDao;
 
     /* Used to retrieve directory paths associated with time audio. */
     private final TimeMessagesGenerator tmGenerator;
@@ -689,19 +695,73 @@ public class MessageTransformer implements IContextStateProcessor {
             broadcastFragments.add(fragment);
         }
 
-        /* Create the Broadcast Message */
-        BroadcastMsg message = new BroadcastMsg();
+        /*
+         * Determine if a broadcast message needs to be created or updated.
+         */
+        BroadcastMsg message = this.broadcastMsgDao
+                .getMessageByInputMessageAndGroup(inputMessage, group);
         final Calendar current = TimeUtil.newGmtCalendar();
-        message.setCreationDate(current);
+        boolean updatedMessage = false;
+        if (message == null) {
+            message = new BroadcastMsg();
+            message.setCreationDate(current);
+        } else {
+            statusHandler.info("Updating existing broadcast message: "
+                    + message.getId() + ".");
+            updatedMessage = true;
+        }
         message.setUpdateDate(current);
         /* Message Header */
         message.setTransmitterGroup(group);
         message.setInputMessage(inputMessage);
+
+        if (updatedMessage
+                && this.noUpdatesRequired(message, broadcastFragments,
+                        fragmentVoice)) {
+            message.setUpdateDate(TimeUtil.newGmtCalendar());
+            return message;
+        }
+
+        BroadcastContents contents = new BroadcastContents();
         for (BroadcastFragment fragment : broadcastFragments) {
             fragment.setVoice(fragmentVoice);
-            message.addFragment(fragment);
         }
+        contents.setOrderedFragments(broadcastFragments);
+        message.addBroadcastContents(contents);
+
         return message;
+    }
+
+    private boolean noUpdatesRequired(BroadcastMsg message,
+            List<BroadcastFragment> broadcastFragments, TtsVoice selectedVoice) {
+        if (message.getLatestBroadcastContents() == null) {
+            return false;
+        }
+
+        List<BroadcastFragment> existingFragments = message
+                .getLatestBroadcastContents().getOrderedFragments();
+        if (existingFragments.isEmpty()
+                || existingFragments.size() != broadcastFragments.size()) {
+            return false;
+        }
+
+        for (int i = 0; i < broadcastFragments.size(); i++) {
+            BroadcastFragment originalFragment = existingFragments.get(i);
+            BroadcastFragment generatedFragment = broadcastFragments.get(i);
+
+            if (originalFragment.getVoice() == null
+                    || (originalFragment.getVoice().getVoiceNumber() != selectedVoice
+                            .getVoiceNumber())) {
+                return false;
+            }
+
+            if (originalFragment.getSsml().trim()
+                    .equals(generatedFragment.getSsml().trim()) == false) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private String formatText(String content) {
@@ -1184,6 +1244,21 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     /**
+     * @return the broadcastMsgDao
+     */
+    public BroadcastMsgDao getBroadcastMsgDao() {
+        return broadcastMsgDao;
+    }
+
+    /**
+     * @param broadcastMsgDao
+     *            the broadcastMsgDao to set
+     */
+    public void setBroadcastMsgDao(BroadcastMsgDao broadcastMsgDao) {
+        this.broadcastMsgDao = broadcastMsgDao;
+    }
+
+    /**
      * Validate all DAOs are set correctly and throw an exception if any are not
      * set.
      * 
@@ -1205,6 +1280,9 @@ public class MessageTransformer implements IContextStateProcessor {
         } else if (this.staticMessageTypeDao == null) {
             throw new IllegalStateException(
                     "StaticMessageTypeDao has not been set on the MessageTransformer");
+        } else if (this.broadcastMsgDao == null) {
+            throw new IllegalStateException(
+                    "BroadcastMsgDao has not been set on the MessageTransformer");
         }
     }
 

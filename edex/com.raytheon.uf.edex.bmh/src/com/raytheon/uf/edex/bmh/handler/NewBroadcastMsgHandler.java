@@ -36,11 +36,11 @@ import java.util.Set;
 import java.util.TimeZone;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.builder.EqualsBuilder;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastContents;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
@@ -51,14 +51,14 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionSta
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
+import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BMHJmsDestinations;
-import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.audio.EdexAudioConverterManager;
+import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
@@ -96,6 +96,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Feb 09, 2015  #4091     bkowal      Use {@link EdexAudioConverterManager}.
  * Mar 05, 2015  #4208     bsteffen    Throw Exception when message is submitted without changes.
  * Mar 10, 2015  #4255     bsteffen    Delay inactivating previous until new validates.
+ * Apr 07, 2015  #4293     bkowal      Update existing input messages in every case.
  * 
  * </pre>
  * 
@@ -165,20 +166,27 @@ public class NewBroadcastMsgHandler extends
             throws Exception {
         // TODO: logging
         InputMessage inputMessage = request.getInputMessage();
+        inputMessage = updateInputMessage(request);
 
-        InputMessage previous = checkPrevious(request);
-        if (previous == inputMessage) {
-            return previous.getId();
+        /*
+         * Determine if we need to create a new Validated Message or if we need
+         * to retrieve and update the existing Validated Message.
+         */
+        ValidatedMessageDao validatedMsgDao = new ValidatedMessageDao(
+                request.isOperational(), this.getMessageLogger(request));
+        ValidatedMessage validMsg = null;
+        if (inputMessage.getId() != 0) {
+            validMsg = validatedMsgDao.getValidatedMsgByInputMsg(inputMessage);
+        }
+        if (validMsg == null) {
+            validMsg = new ValidatedMessage();
         }
 
-        LdadValidator ldadCheck = this.getLdadValidator(request);
-
-        // Build a validated message.
-        ValidatedMessage validMsg = new ValidatedMessage();
         List<String> unacceptableWords = UnacceptableWordFilter
                 .check(inputMessage);
         validMsg.setInputMessage(inputMessage);
         if (unacceptableWords.isEmpty()) {
+            LdadValidator ldadCheck = this.getLdadValidator(request);
             ldadCheck.validate(validMsg);
             validMsg.setTransmissionStatus(TransmissionStatus.ACCEPTED);
         } else {
@@ -189,11 +197,7 @@ public class NewBroadcastMsgHandler extends
                 .retrieveTransmitterGroups(request);
 
         validMsg.setTransmitterGroups(transmitterGroups);
-
-        ValidatedMessageDao validatedMsgDao = new ValidatedMessageDao(
-                request.isOperational(), this.getMessageLogger(request));
         if (!validMsg.isAccepted()) {
-            validatedMsgDao.persistCascade(validMsg);
             throw new IllegalArgumentException(
                     inputMessage.getName()
                             + "("
@@ -208,14 +212,6 @@ public class NewBroadcastMsgHandler extends
             this.sendToDestination(
                     BMHJmsDestinations.getBMHTransformDestination(request),
                     validMsg.getId());
-            if (previous != null) {
-                InputMessageDao inputMessageDao = new InputMessageDao(
-                        request.isOperational(), this.getMessageLogger(request));
-                inputMessageDao.persist(previous);
-                BmhMessageProducer.sendConfigMessage(
-                        new MessageActivationNotification(previous),
-                        request.isOperational());
-            }
             return inputMessage.getId();
         }
 
@@ -229,7 +225,7 @@ public class NewBroadcastMsgHandler extends
 
         /* build broadcast messages. */
         List<BroadcastMsg> broadcastRecords = this.buildBroadcastRecords(
-                validMsg, transmitterGroups, recordedAudioOutputPath);
+                validMsg, transmitterGroups, recordedAudioOutputPath, request);
 
         // persist all entities.
         List<Object> entitiesToPersist = new LinkedList<Object>();
@@ -251,14 +247,6 @@ public class NewBroadcastMsgHandler extends
         this.sendToDestination(
                 BMHJmsDestinations.getBMHScheduleDestination(request),
                 SerializationUtil.transformToThrift(messagesToSend));
-        if (previous != null) {
-            InputMessageDao inputMessageDao = new InputMessageDao(
-                    request.isOperational(), this.getMessageLogger(request));
-            inputMessageDao.persist(previous);
-            BmhMessageProducer.sendConfigMessage(
-                    new MessageActivationNotification(previous),
-                    request.isOperational());
-        }
 
         /*
          * we only reach this point if the message is a completely new recorded
@@ -411,85 +399,48 @@ public class NewBroadcastMsgHandler extends
     }
 
     /**
-     * Check if this is a modification of a previous message and if so, does it
-     * need to be persisted as a new message. Returns null if there is no
-     * previous message, returns request.getInputMessage() if there is a
-     * previous message and there is no need to create a new message, otherwise
-     * returns the previous message, which should be made inactive if the new
-     * message passes all validation checks.
+     * Check if this is a modification of a previous message. Returns the
+     * original message if there is no previous message. Returns an updated
+     * version of the previous message when one is found.
      */
-    private InputMessage checkPrevious(NewBroadcastMsgRequest request)
+    private InputMessage updateInputMessage(NewBroadcastMsgRequest request)
             throws EdexException, SerializationException {
         InputMessage inputMessage = request.getInputMessage();
-
-        if (inputMessage.getId() != 0) {
+        if (inputMessage.getId() == 0) {
             /*
-             * This is an update need to check what changed, if it is only the
-             * active/inactive flag then apply the change directly to this
-             * entry, if it is any other change then need to mark the old
-             * message as inactive and then process the change as a new message.
+             * Completely new input message - nothing to update.
              */
-            InputMessageDao inputMessageDao = new InputMessageDao(
-                    request.isOperational(), this.getMessageLogger(request));
-            InputMessage previous = inputMessageDao.getByID(inputMessage
-                    .getId());
-            if (inputMessage.equals(previous)) {
-                throw new IllegalStateException(
-                        "Duplicate message will be ignored.");
-            }
-            boolean activeChanged = false;
-            if (inputMessage.getActive() != null) {
-                activeChanged = !inputMessage.getActive().equals(
-                        previous.getActive());
-            } else if (previous.getActive() != null) {
-                activeChanged = true;
-            }
-            boolean nothingElseChanged = true;
-            if (activeChanged) {
-                EqualsBuilder builder = new EqualsBuilder();
-                builder.append(previous.getName(), inputMessage.getName());
-                builder.append(previous.getLanguage(),
-                        inputMessage.getLanguage());
-                builder.append(previous.getAfosid(), inputMessage.getAfosid());
-                builder.append(previous.getCreationTime(),
-                        inputMessage.getCreationTime());
-                builder.append(previous.getEffectiveTime(),
-                        inputMessage.getEffectiveTime());
-                builder.append(previous.getPeriodicity(),
-                        inputMessage.getPeriodicity());
-                builder.append(previous.getMrd(), inputMessage.getMrd());
-                builder.append(previous.getConfirm(), inputMessage.getConfirm());
-                builder.append(previous.getInterrupt(),
-                        inputMessage.getInterrupt());
-                builder.append(previous.getAlertTone(),
-                        inputMessage.getAlertTone());
-                builder.append(previous.getNwrsameTone(),
-                        inputMessage.getNwrsameTone());
-                builder.append(previous.getAreaCodes(),
-                        inputMessage.getAreaCodes());
-                builder.append(previous.getSelectedTransmitters(),
-                        inputMessage.getSelectedTransmitters());
-                builder.append(previous.getExpirationTime(),
-                        inputMessage.getExpirationTime());
-                builder.append(previous.getContent(), inputMessage.getContent());
-                builder.append(previous.isValidHeader(),
-                        inputMessage.isValidHeader());
-                nothingElseChanged = builder.isEquals();
-            }
-            if (activeChanged && nothingElseChanged) {
-                inputMessageDao.persist(inputMessage);
-                BmhMessageProducer.sendConfigMessage(
-                        new MessageActivationNotification(inputMessage),
-                        request.isOperational());
-                return inputMessage;
-            } else if (!Boolean.FALSE.equals(previous.getActive())) {
-                inputMessage.setId(0);
-                previous.setActive(false);
-                return previous;
-            }
-            inputMessage.setId(0);
+            return inputMessage;
         }
-        return null;
+
+        /*
+         * Retrieve the currently persisted input message for the id.
+         */
+        InputMessageDao inputMessageDao = new InputMessageDao(
+                request.isOperational(), this.getMessageLogger(request));
+        InputMessage previous = inputMessageDao.getByID(inputMessage.getId());
+        if (inputMessage.equals(previous)) {
+            throw new IllegalStateException(
+                    "Duplicate message will be ignored.");
+        }
+
+        /*
+         * The original input message has been modified. Update the originally
+         * persisted input message.
+         */
+        // The expiration date/time can be modified.
+        previous.setExpirationTime(inputMessage.getExpirationTime());
+
+        // The periodicity can be modified.
+        previous.setPeriodicity(inputMessage.getPeriodicity());
+
+        // The message can be activated or deactivated.
+        previous.setActive(inputMessage.getActive());
+
+        // The message contents can be altered.
+        previous.setContent(inputMessage.getContent());
+
+        return previous;
     }
 
     private LdadValidator getLdadValidator(NewBroadcastMsgRequest request) {
@@ -500,14 +451,21 @@ public class NewBroadcastMsgHandler extends
     private List<BroadcastMsg> buildBroadcastRecords(
             final ValidatedMessage validMsg,
             final Set<TransmitterGroup> transmitterGroups,
-            Path recordedAudioOutputPath) {
+            Path recordedAudioOutputPath, final AbstractBMHServerRequest request) {
         List<BroadcastMsg> broadcastRecords = new ArrayList<>(
                 transmitterGroups.size());
+        BroadcastMsgDao broadcastMsgDao = new BroadcastMsgDao(
+                request.isOperational(), this.getMessageLogger(request));
         for (TransmitterGroup transmitterGroup : transmitterGroups) {
             Calendar current = TimeUtil.newGmtCalendar();
 
-            BroadcastMsg broadcastMsg = new BroadcastMsg();
-            broadcastMsg.setCreationDate(current);
+            BroadcastMsg broadcastMsg = broadcastMsgDao
+                    .getMessageByInputMessageAndGroup(
+                            validMsg.getInputMessage(), transmitterGroup);
+            if (broadcastMsg == null) {
+                broadcastMsg = new BroadcastMsg();
+                broadcastMsg.setCreationDate(current);
+            }
             broadcastMsg.setUpdateDate(current);
             broadcastMsg.setTransmitterGroup(transmitterGroup);
             broadcastMsg.setInputMessage(validMsg.getInputMessage());
@@ -515,14 +473,15 @@ public class NewBroadcastMsgHandler extends
             // Build the fragment.
             BroadcastFragment fragment = new BroadcastFragment();
             fragment.setSsml(StringUtils.EMPTY);
-            // TODO: handle voice. Allow NULL values? Should we have a constant
-            // for user voice?
             fragment.setVoice(null);
             fragment.setSuccess(true);
 
             fragment.setOutputName(recordedAudioOutputPath.toString());
 
-            broadcastMsg.addFragment(fragment);
+            BroadcastContents contents = new BroadcastContents();
+            contents.addFragment(fragment);
+            broadcastMsg.addBroadcastContents(contents);
+
             broadcastRecords.add(broadcastMsg);
         }
 

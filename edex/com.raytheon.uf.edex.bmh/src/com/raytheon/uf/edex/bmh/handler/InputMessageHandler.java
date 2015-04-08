@@ -32,6 +32,7 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 
 import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastContents;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
@@ -63,6 +64,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Jan 02, 2014   3833     lvenable     Added funtionality to get unexpired messages.
  * Jan 06, 2015   3651     bkowal       Support AbstractBMHPersistenceLoggingDao.
  * Apr 02, 2015   4248     rjpeter      Use ordered fragments.
+ * Apr 07, 2015   4293     bkowal       Return audio from the latest broadcast contents.
  * </pre>
  * 
  * @author lvenable
@@ -202,10 +204,17 @@ public class InputMessageHandler extends
                 msgs.size());
         OUTER_LOOP: for (BroadcastMsg broadcastMsg : msgs) {
             /*
+             * Want to retrieve the audio associated with the latest broadcast
+             * contents.
+             */
+            BroadcastContents contents = broadcastMsg
+                    .getLatestBroadcastContents();
+
+            /*
              * Verify that fragments exist.
              */
-            if ((broadcastMsg.getFragments() == null)
-                    || broadcastMsg.getFragments().isEmpty()) {
+            if (contents == null || contents.getFragments() == null
+                    || contents.getFragments().isEmpty()) {
                 throw new AudioRetrievalException(
                         "Unable to find audio information associated with broadcast msg: "
                                 + broadcastMsg.getId() + " for input msg: "
@@ -217,8 +226,7 @@ public class InputMessageHandler extends
                     .getTransmitterGroup().getName());
             List<byte[]> audioData = new LinkedList<>();
             int totalByteCount = 0;
-            for (BroadcastFragment fragment : broadcastMsg
-                    .getOrderedFragments()) {
+            for (BroadcastFragment fragment : contents.getOrderedFragments()) {
                 if (fragment.isSuccess() == false) {
                     /* audio generation failed - audio playback disabled */
                     audioDataRecord.setSuccess(false);

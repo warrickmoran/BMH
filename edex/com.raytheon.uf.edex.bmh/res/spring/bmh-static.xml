@@ -50,7 +50,6 @@
 				<bean ref="staticMessageGenerator" method="process" />
 				<split>
 					<simple>${body}</simple>
-					<bean ref="validatedMessageDao" method="persistCascade" />
 					<setBody>
 						<simple>${body.getId}</simple>
 					</setBody>

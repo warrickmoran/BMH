@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.playlist;
 
+import java.io.IOException;
+import java.io.Writer;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -98,6 +101,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Mar 09, 2015  #4170     bsteffen     Throw exceptions from getAudio.
  * Mar 13, 2015  4251      bkowal       Limit messages accompanied by tones to 2 minutes.
  * Mar 25, 2015  4290      bsteffen     Switch to global replacement.
+ * Apr 07, 2015  4293      bkowal       Updated to allow reading in new message files based on
+ *                                      timestamp. Will also check for new audio based on file name.
  * 
  * </pre>
  * 
@@ -172,16 +177,94 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     public void retrieveAudio(DacPlaylist playlist) {
         int index = 0;
         for (DacPlaylistMessageId message : playlist.getMessages()) {
-            /*
-             * This is intended to cause higher priority lists to get scheduled
-             * before lower priority lists and also to get messages at the
-             * beginning of the list scheduled before messages at the end of the
-             * list.
-             */
-            int priority = PriorityBasedExecutorService.PRIORITY_NORMAL
-                    + playlist.getPriority() * 100 + index;
-            retrieveAudio(message, priority);
-            index += 1;
+            if (!cacheStatus.containsKey(message)) {
+                /*
+                 * Always retrieve the audio when it has not been previously
+                 * retrieved.
+                 */
+                logger.info("Completing initial load of {}.",
+                        message.toString());
+
+                /*
+                 * This is intended to cause higher priority lists to get
+                 * scheduled before lower priority lists and also to get
+                 * messages at the beginning of the list scheduled before
+                 * messages at the end of the list.
+                 */
+                int priority = PriorityBasedExecutorService.PRIORITY_NORMAL
+                        + playlist.getPriority() * 100 + index;
+                retrieveAudio(message, priority);
+                index += 1;
+            } else {
+                /*
+                 * If the audio has been previously retrieved. Determine if any
+                 * metadata updates are required.
+                 */
+                DacPlaylistMessage dacMessage = this.cachedMessages
+                        .get(message);
+                if (message.getTimestamp() != dacMessage.getTimestamp()) {
+                    logger.info("Updating metadata for {}.", message.toString());
+
+                    /*
+                     * a metadata update is required.
+                     */
+                    DacPlaylistMessage updatedDacMessage = this
+                            .readMessageMetadata(message);
+                    /*
+                     * Override all information that is not persisted across
+                     * metadata writes.
+                     */
+                    updatedDacMessage.setPlayCount(dacMessage.getPlayCount());
+                    updatedDacMessage.setLastTransmitTime(dacMessage
+                            .getLastTransmitTime());
+                    updatedDacMessage
+                            .setMessageBroadcastNotificationSent(dacMessage
+                                    .isMessageBroadcastNotificationSent());
+                    updatedDacMessage.setPlayedAlertTone(dacMessage
+                            .isPlayedAlertTone());
+                    updatedDacMessage.setPlayedSameTone(dacMessage
+                            .isPlayedSameTone());
+
+                    try {
+                        this.persistMergedMessageMetadata(message,
+                                updatedDacMessage);
+                    } catch (IOException e) {
+                        logger.error(
+                                "Failed to write updated metadata for {}.",
+                                message.toString(), e);
+                    }
+
+                    this.cachedMessages.replace(message, updatedDacMessage);
+
+                    /*
+                     * Determine if an audio re-retrieval is necessary.
+                     */
+                    if (dacMessage.getSoundFiles().equals(
+                            updatedDacMessage.getSoundFiles()) == false) {
+                        logger.info("Updating audio for {}.",
+                                message.toString());
+
+                        Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
+                                PriorityBasedExecutorService.PRIORITY_NORMAL
+                                        + playlist.getPriority() * 100 + index,
+                                message);
+                        this.cacheStatus.replace(message, jobStatus);
+                        IAudioFileBuffer removedBuffer = this.cachedFiles
+                                .remove(dacMessage);
+                        if (removedBuffer == null) {
+                            logger.warn(
+                                    "No cached files have been removed for broadcast: {}.",
+                                    message.toString());
+                        } else {
+                            logger.warn(
+                                    "Successfully removed cache file for broadcast: {}.",
+                                    message.toString());
+                        }
+
+                        index = index + 1;
+                    }
+                }
+            }
         }
     }
 
@@ -192,11 +275,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      *            Message to cache.
      */
     private void retrieveAudio(final DacPlaylistMessageId id, int priority) {
-        if (!cacheStatus.containsKey(id)) {
-            Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
-                    priority, id);
-            cacheStatus.put(id, jobStatus);
-        }
+        Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(priority, id);
+        cacheStatus.put(id, jobStatus);
     }
 
     /**
@@ -311,8 +391,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * @return true if the file does exist; false, otherwise
      */
     public boolean doesMessageFileExist(DacPlaylistMessageId id) {
-        Path messagePath = messageDirectory.resolve(id.getBroadcastId()
-                + ".xml");
+        Path messagePath = messageDirectory.resolve(id.getBroadcastId() + "_"
+                + id.getTimestamp() + ".xml");
         return Files.exists(messagePath);
     }
 
@@ -327,15 +407,33 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     public DacPlaylistMessage getMessage(DacPlaylistMessageId id) {
         DacPlaylistMessage message = cachedMessages.get(id);
         if (message == null) {
-            Path messagePath = messageDirectory.resolve(id.getBroadcastId()
-                    + ".xml");
-            message = JAXB.unmarshal(messagePath.toFile(),
-                    DacPlaylistMessage.class);
-            message.setPath(messagePath);
+            message = this.readMessageMetadata(id);
+
             cachedMessages.put(id, message);
         }
         message.setExpire(id.getExpire());
+        message.setTimestamp(id.getTimestamp());
         return message;
+    }
+
+    private DacPlaylistMessage readMessageMetadata(DacPlaylistMessageId id) {
+        Path messagePath = messageDirectory.resolve(id.getBroadcastId() + "_"
+                + id.getTimestamp() + ".xml");
+        DacPlaylistMessage message = JAXB.unmarshal(messagePath.toFile(),
+                DacPlaylistMessage.class);
+        message.setPath(messagePath);
+
+        return message;
+    }
+
+    private void persistMergedMessageMetadata(DacPlaylistMessageId id,
+            DacPlaylistMessage message) throws IOException {
+        Path messagePath = messageDirectory.resolve(id.getBroadcastId() + "_"
+                + id.getTimestamp() + ".xml");
+        try (Writer writer = Files.newBufferedWriter(messagePath,
+                Charset.defaultCharset())) {
+            JAXB.marshal(message, writer);
+        }
     }
 
     /**

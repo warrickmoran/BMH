@@ -30,6 +30,8 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import org.hibernate.annotations.ForeignKey;
+
 import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -47,6 +49,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 11, 2014  3588     bsteffen    Initial creation
  * Oct 23, 2014  3748     bkowal      Make the TTS Voice optional
  * Mar 31, 2015  4248     rjpeter     Implement PositionOrdered.
+ * Apr 07, 2015  4293     bkowal      Will now be mapped to a {@link BroadcastContents}.
  * </pre>
  * 
  * @author bsteffen
@@ -55,7 +58,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Entity
 @DynamicSerialize
 @Table(name = "broadcast_fragment", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
-        "message_id", "position" }) })
+        "contents_broadcast_id", "contents_timestamp", "position" }) })
 @SequenceGenerator(initialValue = 1, name = BroadcastFragment.GEN, sequenceName = "broadcast_fragment_seq")
 public class BroadcastFragment implements PositionOrdered {
     public static final String GEN = "Broadcast Msg Fragment Generator";
@@ -67,8 +70,9 @@ public class BroadcastFragment implements PositionOrdered {
     private long id;
 
     @ManyToOne(optional = false)
+    @ForeignKey(name = "fk_broadcast_fragment_to_broadcast_contents")
     // No dynamic serialize due to bi-directional relationship
-    private BroadcastMsg message;
+    private BroadcastContents contents;
 
     /* ===== Message Header ===== */
 
@@ -110,12 +114,6 @@ public class BroadcastFragment implements PositionOrdered {
     private int position;
 
     /**
-     * 
-     */
-    public BroadcastFragment() {
-    }
-
-    /**
      * @return the id
      */
     public long getId() {
@@ -130,12 +128,19 @@ public class BroadcastFragment implements PositionOrdered {
         this.id = id;
     }
 
-    public BroadcastMsg getMessage() {
-        return message;
+    /**
+     * @return the contents
+     */
+    public BroadcastContents getContents() {
+        return contents;
     }
 
-    public void setMessage(BroadcastMsg message) {
-        this.message = message;
+    /**
+     * @param contents
+     *            the contents to set
+     */
+    public void setContents(BroadcastContents contents) {
+        this.contents = contents;
     }
 
     /**

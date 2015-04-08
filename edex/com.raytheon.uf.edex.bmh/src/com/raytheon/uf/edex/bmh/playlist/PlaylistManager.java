@@ -41,6 +41,7 @@ import org.apache.commons.io.FileUtils;
 
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastContents;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
@@ -157,6 +158,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Mar 31, 2015  4339     bkowal      Distinguish between areas that cannot be added because
  *                                    they are invalid and areas that are over the allowed limit.
+ * Apr 07, 2015  4293     bkowal      Include a timestamp based on the broadcast message last update date/time
+ *                                    in the message xml file.
  * Apr 02, 2015  4248     rjpeter     Get ordered messages when needed.
  * Apr 07, 2015  4339     bkowal      Only notify the user when invalid areas or over the limit areas
  *                                    are NOT empty Strings.
@@ -758,29 +761,35 @@ public class PlaylistManager implements IContextStateProcessor {
         return dac;
     }
 
-    private Path determineMessageFile(BroadcastMsg broadcast)
-            throws IOException {
+    private Path determineMessageFile(BroadcastMsg broadcast,
+            long metadataTimestamp) throws IOException {
         Path playlistDir = this.playlistDir.resolve(broadcast
                 .getTransmitterGroup().getName());
         Path messageDir = playlistDir.resolve("messages");
         Files.createDirectories(messageDir);
-        return messageDir.resolve(broadcast.getId() + ".xml");
+        return messageDir.resolve(broadcast.getId() + "_" + metadataTimestamp
+                + ".xml");
     }
 
     private DacPlaylistMessageId convertMessageForDAC(BroadcastMsg broadcast) {
         long id = broadcast.getId();
+        final long metadataTimestamp = broadcast.getUpdateDate()
+                .getTimeInMillis();
         DacPlaylistMessage dac = new DacPlaylistMessage();
         try {
-            Path messageFile = this.determineMessageFile(broadcast);
+            final BroadcastContents contents = broadcast
+                    .getLatestBroadcastContents();
+            Path messageFile = this.determineMessageFile(broadcast,
+                    metadataTimestamp);
             if (!Files.exists(messageFile)) {
                 dac.setBroadcastId(id);
-                for (BroadcastFragment fragment : broadcast
-                        .getOrderedFragments()) {
-                    dac.addSoundFile(fragment.getOutputName());
-                }
                 InputMessage input = broadcast.getInputMessage();
                 String afosid = input.getAfosid();
                 dac.setName(input.getName());
+                for (BroadcastFragment fragment : contents
+                        .getOrderedFragments()) {
+                    dac.addSoundFile(fragment.getOutputName());
+                }
                 dac.setMessageType(afosid);
                 MessageType messageType = messageTypeDao.getByAfosId(afosid);
                 if (messageType != null) {
@@ -804,10 +813,10 @@ public class PlaylistManager implements IContextStateProcessor {
                     dac.setToneBlackoutEnd(messageType.getToneBlackOutEnd());
                 }
 
-                dac.setStart(input.getEffectiveTime());
+                dac.setStart(broadcast.getEffectiveTime());
+                dac.setPeriodicity(broadcast.getInputMessage().getPeriodicity());
+                dac.setMessageText(broadcast.getInputMessage().getContent());
                 dac.setExpire(input.getExpirationTime());
-                dac.setPeriodicity(input.getPeriodicity());
-                dac.setMessageText(input.getContent());
                 dac.setAlertTone(input.getAlertTone());
                 if (((input.getAreaCodes() != null) || (input
                         .getSelectedTransmitters() != null))
@@ -911,7 +920,9 @@ public class PlaylistManager implements IContextStateProcessor {
             this.messageLogger.logError(BMH_COMPONENT.PLAYLIST_MANAGER,
                     BMH_ACTIVITY.PLAYLIST_WRITE, dac);
         }
-        return new DacPlaylistMessageId(id);
+        DacPlaylistMessageId playlistId = new DacPlaylistMessageId(id);
+        playlistId.setTimestamp(metadataTimestamp);
+        return playlistId;
     }
 
     public void setPlaylistDao(PlaylistDao playlistDao) {

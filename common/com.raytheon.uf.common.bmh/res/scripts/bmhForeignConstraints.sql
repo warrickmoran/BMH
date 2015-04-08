@@ -60,10 +60,14 @@ alter table bmh.playlist_msg drop constraint fk_jb1sgxp01q5km5lk986o3tyjf;
 alter table bmh.playlist_msg add constraint fk_jb1sgxp01q5km5lk986o3tyjf
     foreign key (message_id) references bmh.broadcast_msg (id) on delete cascade;
 
-alter table bmh.broadcast_fragment drop constraint fk_m87w4p7uk2l0vyjb1es2xs4vm;
-alter table bmh.broadcast_fragment add constraint fk_m87w4p7uk2l0vyjb1es2xs4vm
-    foreign key (message_id) references bmh.broadcast_msg (id) on delete cascade;
+alter table bmh.broadcast_msg_contents drop constraint fk_broadcast_contents_to_broadcast_msg;
+alter table bmh.broadcast_msg_contents add constraint fk_broadcast_contents_to_broadcast_msg
+    foreign key (broadcast_id) references bmh.broadcast_msg (id) on delete cascade;
 
+alter table bmh.broadcast_fragment drop constraint fk_broadcast_fragment_to_broadcast_contents;
+alter table bmh.broadcast_fragment add constraint fk_broadcast_fragment_to_broadcast_contents
+    foreign key (contents_broadcast_id, contents_timestamp) references bmh.broadcast_msg_contents (broadcast_id, "timestamp") 
+    on delete cascade;
 
 /**
  * Suite Message to Message Type

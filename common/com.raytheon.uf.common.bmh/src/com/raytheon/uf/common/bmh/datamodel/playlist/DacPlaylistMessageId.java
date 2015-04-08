@@ -26,6 +26,8 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+
 /**
  * 
  * Xml representation of a playlist message that is sent from the playlist
@@ -42,6 +44,8 @@ import javax.xml.bind.annotation.XmlElement;
  * Aug 18, 2014  3540     dgilling    Implement toString().
  * Jan 05, 2015  3913     bsteffen    Handle future replacements.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
+ * Apr 07, 2015  4293     bkowal      Added {@link #timestamp} to be written
+ *                                    to the playlist.
  * 
  * </pre>
  * 
@@ -53,6 +57,13 @@ public class DacPlaylistMessageId {
 
     @XmlAttribute
     protected long broadcastId;
+
+    /**
+     * Broadcast timestamp - Indicates when the associated {@link BroadcastMsg}
+     * was last updated.
+     */
+    @XmlAttribute
+    private Long timestamp;
 
     @XmlElement
     protected Calendar expire;
@@ -73,6 +84,21 @@ public class DacPlaylistMessageId {
         this.broadcastId = broadcastId;
     }
 
+    /**
+     * @return the timestamp
+     */
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    /**
+     * @param timestamp
+     *            the timestamp to set
+     */
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+
     public Calendar getExpire() {
         return expire;
     }
@@ -86,6 +112,10 @@ public class DacPlaylistMessageId {
         StringBuilder builder = new StringBuilder();
         builder.append("DacPlaylistMessageId [broadcastId=");
         builder.append(broadcastId);
+        if (this.timestamp != null) {
+            builder.append(", timestamp=");
+            builder.append(this.timestamp);
+        }
         if (expire != null) {
             builder.append(",expire=");
             builder.append(expire);

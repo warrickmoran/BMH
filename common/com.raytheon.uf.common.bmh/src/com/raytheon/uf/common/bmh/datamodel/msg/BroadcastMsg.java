@@ -20,10 +20,10 @@
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import java.util.Calendar;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -39,12 +39,14 @@ import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
+import org.hibernate.annotations.Sort;
+import org.hibernate.annotations.SortType;
 
-import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage.ReplacementType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -77,6 +79,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 17, 2015  4160     bsteffen    Add booleans for tone status.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 02, 2015  4248     rjpeter     Made BroadcastFragment database relation a set and add ordered return methods.
+ * Apr 07, 2015  4293     bkowal      Updated to include a {@link List} of {@link BroadcastContents}s.
  * </pre>
  * 
  * @author bkowal
@@ -87,10 +90,13 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_IDS_AND_GROUP, query = BroadcastMsg.GET_UNEXPIRED_MSGS_BY_AFOS_IDS_AND_GROUP_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE, query = BroadcastMsg.GET_MSGS_BY_AFOS_ID_GROUP_AND_LANGUAGE_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_INPUT_MSG, query = BroadcastMsg.GET_MSGS_BY_INPUT_MSG_QUERY),
-        @NamedQuery(name = BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH, query = BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH_QUERY) })
+        @NamedQuery(name = BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH, query = BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH_QUERY),
+        @NamedQuery(name = BroadcastMsg.GET_MSG_BY_INPUT_MSG_AND_GROUP, query = BroadcastMsg.GET_MSG_BY_INPUT_MSG_AND_GROUP_QUERY),
+        @NamedQuery(name = BroadcastMsg.GET_MSG_WITH_MULTI_OLD_CONTENT, query = BroadcastMsg.GET_MSG_WITH_MULTI_OLD_CONTENT_QUERY) })
 @Entity
 @DynamicSerialize
-@Table(name = "broadcast_msg", schema = "bmh")
+@Table(name = "broadcast_msg", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
+        "transmitter_group_id", "input_message_id" }) })
 @SequenceGenerator(initialValue = 1, name = BroadcastMsg.GEN, sequenceName = "broadcast_msg_seq")
 public class BroadcastMsg {
     public static final String GEN = "Broadcast Msg Generator";
@@ -109,7 +115,15 @@ public class BroadcastMsg {
 
     public static final String GET_MSG_BY_FRAGMENT_PATH = "getBroadcastMsgsByFragmentPath";
 
-    protected static final String GET_MSG_BY_FRAGMENT_PATH_QUERY = "SELECT m FROM BroadcastMsg m inner join m.fragments fragment where fragment.outputName = :path";
+    protected static final String GET_MSG_BY_FRAGMENT_PATH_QUERY = "SELECT m FROM BroadcastMsg m inner join m.contents c inner join c.fragments f where f.outputName = :path";
+
+    public static final String GET_MSG_BY_INPUT_MSG_AND_GROUP = "getBroadcastMsgByInputMsgAndGroup";
+
+    public static final String GET_MSG_BY_INPUT_MSG_AND_GROUP_QUERY = "FROM BroadcastMsg m WHERE m.inputMessage.id = :inputMsgId AND m.transmitterGroup = :group";
+
+    public static final String GET_MSG_WITH_MULTI_OLD_CONTENT = "getMsgWithMultiOldContent";
+
+    protected static final String GET_MSG_WITH_MULTI_OLD_CONTENT_QUERY = "SELECT DISTINCT m FROM BroadcastMsg m inner join m.contents c WHERE c.id.timestamp < :purgeMillis and size(c) > 1";
 
     /* A unique auto-generated numerical id. Long = SQL BIGINT */
     @Id
@@ -129,13 +143,6 @@ public class BroadcastMsg {
 
     /* ===== Message Header ===== */
 
-    /*
-     * The transmitter group associated with the record. Transmitter Groups will
-     * have a dictionary associated with them based on the language (voice
-     * determines the language). So, a separate broadcast message will be
-     * generated for each { transmitter group, dictionary } combination and this
-     * field is set to the transmitter group in that combination.
-     */
     @ManyToOne(optional = false)
     @JoinColumn(name = "transmitter_group_id")
     @ForeignKey(name = "broadcast_msg_to_tx_group")
@@ -147,10 +154,11 @@ public class BroadcastMsg {
     @DynamicSerializeElement
     private InputMessage inputMessage;
 
-    @OneToMany(mappedBy = "message", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "broadcastMsg", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @Fetch(FetchMode.SELECT)
+    @Sort(type = SortType.NATURAL)
     @DynamicSerializeElement
-    private Set<BroadcastFragment> fragments;
+    private SortedSet<BroadcastContents> contents;
 
     @Column
     @DynamicSerializeElement
@@ -159,12 +167,6 @@ public class BroadcastMsg {
     @Column
     @DynamicSerializeElement
     private boolean playedAlertTone = false;
-
-    /**
-     * 
-     */
-    public BroadcastMsg() {
-    }
 
     /**
      * @return the id
@@ -242,72 +244,70 @@ public class BroadcastMsg {
     }
 
     /**
-     * Returns BroadcastFragments in position order.
-     * 
-     * @return
+     * @return the contents
      */
-    public List<BroadcastFragment> getOrderedFragments() {
-        if (fragments == null) {
-            return Collections.emptyList();
+    public Set<BroadcastContents> getContents() {
+        return contents;
+    }
+
+    public BroadcastContents getLatestBroadcastContents() {
+        if (this.contents == null || this.contents.isEmpty()) {
+            return null;
         }
 
-        return PositionUtil.order(fragments);
+        return this.contents.first();
     }
 
     /**
-     * Sets the BroadcastFragments in the specified position order.
+     * Retrieves and removes previous {@link BroadcastContents} records until
+     * there is only one record left. Returns {@code null} when only one or no
+     * records remain. Primarily exists for purging old audio files associated
+     * with messages that do not have an expiration date/time.
      * 
-     * @param fragments
+     * @return the previous {@link BroadcastContents} record that was removed.
      */
-    public void setOrderedFragments(List<BroadcastFragment> fragments) {
-        if (fragments == null) {
-            this.fragments = null;
-            return;
+    public BroadcastContents getAndRemovePreviousContents() {
+        if (this.contents == null || this.contents.isEmpty()
+                || this.contents.size() == 1) {
+            return null;
         }
 
-        PositionUtil.updatePositions(fragments);
-        setFragments(new HashSet<>(fragments));
+        BroadcastContents lastContents = this.contents.last();
+        this.contents.remove(lastContents);
+        return lastContents;
+    }
+
+    public void addBroadcastContents(BroadcastContents broadcastContents) {
+        if (this.contents == null) {
+            this.contents = new TreeSet<>();
+        }
+        broadcastContents.setBroadcastMsg(this);
+        this.contents.add(broadcastContents);
     }
 
     /**
-     * Returns the BroadcastFragments
-     * 
-     * @return
+     * @param contents
+     *            the contents to set
      */
-    public Set<BroadcastFragment> getFragments() {
-        return fragments;
-    }
-
-    /**
-     * 
-     * @param fragments
-     */
-    public void setFragments(Set<BroadcastFragment> fragments) {
-        this.fragments = fragments;
-
-        if (this.fragments != null) {
-            for (BroadcastFragment fragment : this.fragments) {
-                fragment.setMessage(this);
+    public void setContents(SortedSet<BroadcastContents> contents) {
+        this.contents = contents;
+        if (this.contents != null && this.contents.isEmpty() == false) {
+            for (BroadcastContents broadcastContents : this.contents) {
+                broadcastContents.setBroadcastMsg(this);
             }
         }
-    }
-
-    public void addFragment(BroadcastFragment fragment) {
-        if (this.fragments == null) {
-            this.fragments = new HashSet<>(2, 1);
-        }
-
-        PositionUtil.updatePositions(fragments);
-        fragment.setPosition(this.fragments.size());
-        fragment.setMessage(this);
-        this.fragments.add(fragment);
     }
 
     /**
      * @return the success
      */
     public boolean isSuccess() {
-        for (BroadcastFragment fragment : fragments) {
+        BroadcastContents contents = this.getLatestBroadcastContents();
+        if (contents == null || contents.getFragments() == null
+                || contents.getFragments().isEmpty()) {
+            return false;
+        }
+        for (BroadcastFragment fragment : contents.getFragments()) {
             if (!fragment.isSuccess()) {
                 return false;
             }

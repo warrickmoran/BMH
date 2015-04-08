@@ -107,6 +107,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Feb 03, 2015 4175       bkowal      Use the required and guaranteed Paul voice for
  *                                     TTS Availability Verification.
  * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
+ * Apr 07, 2015 4293       bkowal      Support {@link BroadcastMsg} reuse by adding to the
+ *                                     message contents.
  * 
  * </pre>
  * 
@@ -407,7 +409,11 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      *         file location when synthesis is successful
      */
     public BroadcastMsg process(BroadcastMsg message) throws Exception {
-        if (message == null) {
+        if (message == null
+                || message.getLatestBroadcastContents() == null
+                || message.getLatestBroadcastContents().getFragments() == null
+                || message.getLatestBroadcastContents().getFragments()
+                        .isEmpty()) {
             /* Do not send a NULL downstream. */
             throw new Exception(
                     "Receieved an uninitialized or incomplete Broadcast Message to process!");
@@ -416,7 +422,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         if (this.disabled) {
             statusHandler
                     .info("TTS Manager is currently disabled. No messages can be processed.");
-            for (BroadcastFragment fragment : message.getFragments()) {
+            for (BroadcastFragment fragment : message
+                    .getLatestBroadcastContents().getFragments()) {
                 fragment.setSuccess(false);
             }
             return message;
@@ -425,7 +432,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         statusHandler
                 .info("Performing Text-to-Speech Transformation for message: "
                         + message.getId() + ".");
-        for (BroadcastFragment fragment : message.getFragments()) {
+        for (BroadcastFragment fragment : message.getLatestBroadcastContents()
+                .getFragments()) {
             if (fragment.isSuccess()
                     && Files.exists(Paths.get(fragment.getOutputName()))) {
                 continue;

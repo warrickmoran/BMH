@@ -19,12 +19,10 @@
  **/
 package com.raytheon.uf.edex.bmh.test.tts;
 
-import java.io.File;
 import java.util.List;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConversionException;
-import org.apache.commons.io.FilenameUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
@@ -62,6 +60,7 @@ import com.raytheon.uf.edex.bmh.test.TestProcessingFailedException;
  *                                     'tts.volume.adjust' property.
  * Sep 12, 2014 3588       bsteffen    Support audio fragments.
  * Apr 02, 2015 4248       rjpeter     Support PositionOrdered.
+ * Apr 02, 2015 4293       bkowal      Deprecated.
  * </pre>
  * 
  * @author bkowal
@@ -213,7 +212,6 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
         BroadcastFragment fragment = new BroadcastFragment();
         fragment.setSsml(ssmlMessage);
         fragment.setVoice(voice);
-        message.addFragment(fragment);
 
         return message;
     }
@@ -264,42 +262,6 @@ public class TTSManagerTester extends AbstractWavFileGeneratingTest {
             return;
         }
 
-        if ((message.getFragments() == null)
-                || message.getFragments().isEmpty()) {
-            statusHandler.error("Message has no fragments; skipping message ["
-                    + messageID + "]!");
-            return;
-        }
-
-        for (BroadcastFragment fragment : message.getOrderedFragments()) {
-            if ((fragment.getOutputName() == null)
-                    || fragment.getOutputName().trim().isEmpty()) {
-                statusHandler
-                        .error("Output file name has not been set on the message; skipping message ["
-                                + messageID + "]!");
-                return;
-            }
-
-            File outputUlawFile = new File(fragment.getOutputName().trim());
-            if (outputUlawFile.exists() == false) {
-                statusHandler.error("Specified output file: "
-                        + outputUlawFile.getAbsolutePath()
-                        + " does not exist; skipping message [" + messageID
-                        + "]!");
-                return;
-            }
-
-            /* Get the name of the file, itself. */
-            String filename = FilenameUtils.getBaseName(outputUlawFile
-                    .getAbsolutePath());
-
-            boolean success = super.writeWavData(outputUlawFile, filename);
-            if (!success) {
-                statusHandler.error("Failed to process message: " + messageID
-                        + "!");
-                return;
-            }
-        }
         statusHandler
                 .info("Successfully processed message: " + messageID + ".");
     }
