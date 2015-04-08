@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -67,6 +68,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Feb 19, 2015 4142       bkowal      Added {@link #speechRate}.
  * Mar 12, 2015 4213       bkowal      Added {@link #staticMessageTypes}.
  * Apr 02, 2015 4248       rjpeter     Updated staticMessageTypes database relation to a set, added ordered returns.
+ * Apr 08, 2015 4248       bkowal      Added {@link #removeStaticMessageType(StaticMessageType)}. Update positions
+ *                                     on add and remove.
  * </pre>
  * 
  * @author rjpeter
@@ -110,9 +113,28 @@ public class TransmitterLanguage {
             this.staticMessageTypes = new HashSet<>();
         }
 
+        PositionUtil.updatePositions(staticMessageTypes);
+
         staticMsgType.setTransmitterLanguage(this);
         staticMsgType.setPosition(this.staticMessageTypes.size());
         this.staticMessageTypes.add(staticMsgType);
+    }
+
+    public void removeStaticMessageType(StaticMessageType staticMsgType) {
+        if (this.staticMessageTypes == null) {
+            return;
+        }
+
+        Iterator<StaticMessageType> stmIter = this.staticMessageTypes
+                .iterator();
+        while (stmIter.hasNext()) {
+            if (stmIter.next().getMsgTypeSummary().getAfosid()
+                    .equals(staticMsgType.getMsgTypeSummary().getAfosid())) {
+                stmIter.remove();
+                break;
+            }
+        }
+        PositionUtil.updatePositions(staticMessageTypes);
     }
 
     /**

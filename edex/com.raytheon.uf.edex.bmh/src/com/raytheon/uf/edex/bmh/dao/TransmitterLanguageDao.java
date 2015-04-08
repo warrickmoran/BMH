@@ -21,6 +21,10 @@ package com.raytheon.uf.edex.bmh.dao;
 
 import java.util.List;
 
+import org.hibernate.Session;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
@@ -37,6 +41,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
  * Jul 28, 2014  3175     rjpeter     Initial creation
  * Aug 29, 2014  3568     bkowal      Added getLanguagesForTransmitterGroup
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Apr 08, 2015  4248     bkowal      Override {@link #saveOrUpdate(Object)} to handle
+ *                                    re-numbering static msg type positions.
  * 
  * </pre>
  * 
@@ -51,6 +57,38 @@ public class TransmitterLanguageDao extends
 
     public TransmitterLanguageDao(boolean operational) {
         super(operational, TransmitterLanguage.class);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.database.dao.CoreDao#saveOrUpdate(java.lang.Object)
+     */
+    @Override
+    public void saveOrUpdate(final Object obj) {
+        txTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            public void doInTransactionWithoutResult(TransactionStatus status) {
+                Session session = getCurrentSession();
+                if (obj instanceof TransmitterLanguage) {
+                    saveOrUpdateTransmitterLanguage(session,
+                            (TransmitterLanguage) obj);
+                } else {
+                    session.saveOrUpdate(obj);
+                }
+            }
+        });
+    }
+
+    private void saveOrUpdateTransmitterLanguage(Session session,
+            TransmitterLanguage language) {
+        session.createQuery(
+                "delete from StaticMessageType where transmittergroup_id = ? and language = ?")
+                .setParameter(0, language.getTransmitterGroup().getId())
+                .setParameter(1, language.getLanguage().name()).executeUpdate();
+
+        session.saveOrUpdate(language);
     }
 
     @SuppressWarnings("unchecked")

@@ -53,6 +53,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 11, 2015 4213       bkowal      Initial creation
+ * Apr 08, 2015 4248       bkowal      Static Message Types are now only changed when the user saves
+ *                                     the associated Transmitter Language.
  * 
  * </pre>
  * 
@@ -78,25 +80,21 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
 
     private DateTimeFields periodicityDTF;
 
-    private final boolean saveCapable;
-
     public CreateEditStaticMsgTypeDialog(Shell parentShell,
-            StaticMessageType staticMessageType, boolean saveEnabled) {
+            StaticMessageType staticMessageType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
         this.staticMessageType = staticMessageType;
-        this.saveCapable = saveEnabled;
         this.setText(EDIT_TITLE);
     }
 
     public CreateEditStaticMsgTypeDialog(Shell parentShell,
-            MessageType messageType, boolean saveEnabled) {
+            MessageType messageType) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
         this.staticMessageType = new StaticMessageType();
         this.staticMessageType.setMsgTypeSummary(messageType.getSummary());
         this.staticMessageType.setPeriodicity(messageType.getPeriodicity());
-        this.saveCapable = saveEnabled;
         this.setText(CREATE_TITLE);
     }
 
@@ -222,8 +220,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
 
         gd = new GridData(75, SWT.DEFAULT);
         Button saveUpdateBtn = new Button(comp, SWT.PUSH);
-        final String saveText = (this.saveCapable) ? "Save" : "OK";
-        saveUpdateBtn.setText(saveText);
+        saveUpdateBtn.setText("OK");
         saveUpdateBtn.setLayoutData(gd);
         saveUpdateBtn.addSelectionListener(new SelectionAdapter() {
             @Override

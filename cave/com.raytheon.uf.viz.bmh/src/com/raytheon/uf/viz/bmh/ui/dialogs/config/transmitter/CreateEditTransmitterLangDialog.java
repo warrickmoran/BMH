@@ -85,6 +85,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 12, 2015 4213       bkowal      Support static message types.
  * Mar 26, 2015 4213       bkowal      Handle the case when no static message types exist.
  * Mar 31, 2015 4248       rjpeter     Update to use PositionOrdered returns.
+ * Apr 08, 2015 4248       bkowal      Static Message Types are now only changed when the user saves
+ *                                     the associated Transmitter Language.
  * </pre>
  * 
  * @author bkowal
@@ -480,7 +482,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
 
     private void newStaticMsgTypeSelected(MessageType messageType) {
         CreateEditStaticMsgTypeDialog staticMsgTypeDlg = new CreateEditStaticMsgTypeDialog(
-                this.shell, messageType, this.transmitterLanguage != null);
+                this.shell, messageType);
         staticMsgTypeDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -499,7 +501,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         StaticMessageType staticMessageType = (StaticMessageType) this.staticMsgTable
                 .getSelection().get(0).getData();
         CreateEditStaticMsgTypeDialog staticMsgTypeDlg = new CreateEditStaticMsgTypeDialog(
-                this.shell, staticMessageType, this.transmitterLanguage != null);
+                this.shell, staticMessageType);
         staticMsgTypeDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -531,7 +533,6 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
                 /*
                  * this is a new static message type.
                  */
-                staticMsgType.setTransmitterLanguage(this.transmitterLanguage);
                 update = false;
             }
 
@@ -576,41 +577,12 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
                         "Transmitter Language - Static Message Types", msg);
             }
 
-            // save the new / updated static message type now.
-            TransmitterLanguageDataManager tldm = new TransmitterLanguageDataManager();
-            try {
-                staticMsgType = tldm.saveStaticMessageType(staticMsgType);
-            } catch (Exception e) {
-
-                statusHandler.error("Failed to save static message type: "
-                        + staticMsgType.getMsgTypeSummary().getAfosid() + ".",
-                        e);
-                return;
-            }
-
+            this.transmitterLanguage.addStaticMessageType(staticMsgType);
             if (update) {
                 this.updateStaticMsgTypeToTable(staticMsgType);
-                /*
-                 * Replace the static message type that is associated with the
-                 * Transmitter Language.
-                 */
-                Iterator<StaticMessageType> staticMsgTypeIterator = this.transmitterLanguage
-                        .getStaticMessageTypes().iterator();
-                while (staticMsgTypeIterator.hasNext()) {
-                    if (staticMsgTypeIterator
-                            .next()
-                            .getMsgTypeSummary()
-                            .getAfosid()
-                            .equals(staticMsgType.getMsgTypeSummary()
-                                    .getAfosid())) {
-                        staticMsgTypeIterator.remove();
-                        break;
-                    }
-                }
             } else {
                 this.addStaticMsgTypeToTable(staticMsgType);
             }
-            this.transmitterLanguage.addStaticMessageType(staticMsgType);
         }
     }
 
@@ -651,30 +623,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
                 }
             }
         } else {
-            TransmitterLanguageDataManager tldm = new TransmitterLanguageDataManager();
-
-            try {
-                tldm.deleteStaticMessageType(staticMessageType);
-            } catch (Exception e) {
-                statusHandler.error("Failed to delete static message type: "
-                        + staticMessageType.getMsgTypeSummary().getAfosid()
-                        + ".", e);
-                return;
-            }
-
-            Iterator<StaticMessageType> staticMsgIterator = this.transmitterLanguage
-                    .getStaticMessageTypes().iterator();
-            while (staticMsgIterator.hasNext()) {
-                if (staticMsgIterator
-                        .next()
-                        .getMsgTypeSummary()
-                        .getAfosid()
-                        .equals(staticMessageType.getMsgTypeSummary()
-                                .getAfosid())) {
-                    staticMsgIterator.remove();
-                    break;
-                }
-            }
+            this.transmitterLanguage.removeStaticMessageType(staticMessageType);
         }
 
         this.removeStaticMsgTypeFromTable(staticMessageType);
@@ -716,7 +665,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
     private void populateStaticMsgTypes() {
         TableData tableData = this.staticMsgTable.getTableData();
         for (StaticMessageType smt : this.transmitterLanguage
-                .getStaticMessageTypes()) {
+                .getOrderedStaticMessageTypes()) {
             MessageTypeSummary messageTypeSummary = smt.getMsgTypeSummary();
 
             TableRowData trd = new TableRowData();
