@@ -244,7 +244,8 @@ public class ProgramSuite implements Serializable, PositionOrdered {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = (prime * result) + ((id == null) ? 0 : id.hashCode());
+        result = prime * result + ((program == null) ? 0 : program.hashCode());
+        result = prime * result + ((suite == null) ? 0 : suite.hashCode());
         return result;
     }
 
@@ -260,11 +261,18 @@ public class ProgramSuite implements Serializable, PositionOrdered {
             return false;
         }
         ProgramSuite other = (ProgramSuite) obj;
-        if (id == null) {
-            if (other.id != null) {
+        if (program == null) {
+            if (other.program != null) {
                 return false;
             }
-        } else if (!id.equals(other.id)) {
+        } else if (!program.equals(other.program)) {
+            return false;
+        }
+        if (suite == null) {
+            if (other.suite != null) {
+                return false;
+            }
+        } else if (!suite.equals(other.suite)) {
             return false;
         }
         return true;
