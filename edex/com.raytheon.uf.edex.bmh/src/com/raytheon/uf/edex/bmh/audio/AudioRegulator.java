@@ -19,15 +19,14 @@
  **/
 package com.raytheon.uf.edex.bmh.audio;
 
-import java.nio.ByteBuffer;
-
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang.math.Range;
 
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.BMHAudioConstants;
-import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
+import com.raytheon.uf.common.bmh.audio.impl.algorithm.PCMToUlawAlgorithm;
+import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
 
 /**
  * BMH Audio Regulator.
@@ -47,7 +46,8 @@ import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
  *                                     a range.
  * Nov 24, 2014 3863       bkowal      Use {@link BMHAudioConstants}.
  * Feb 09, 2015 4091       bkowal      Use {@link EdexAudioConverterManager}.
- * 
+ * Apr 09, 2015 4365       bkowal      Eliminated unnecessary byte[] creation. Reuse arrays
+ *                                     during conversions and regulation.
  * 
  * </pre>
  * 
@@ -62,11 +62,17 @@ public class AudioRegulator {
      * Adjusts the regulated audio data according to the specified volume
      * adjustment amount
      * 
+     * @param sample
+     *            the audio byte data to regulate
      * @param volumeAdjustment
      *            the specified volume adjustment amount ( < 1.0 will decrease
      *            the audio level; > 1.0 will increase the audio level).
-     * @param convertUlaw
-     *            the adjusted audio data will be converted to ulaw when TRUE
+     * @param offset
+     *            the offset within the sample byte array to start the
+     *            regulation
+     * @param length
+     *            the number of bytes in the sample array to regulate after the
+     *            offset
      * @return the adjusted audio data
      * @throws AudioConversionException
      *             when the final adjusted pcm to ulaw conversion fails
@@ -76,13 +82,11 @@ public class AudioRegulator {
      *             if the requested volume adjustment would generate invalid
      *             audio samples
      */
-    private byte[] regulateAudioVolume(final byte[] sample,
-            final double volumeAdjustment)
+    private void regulateAudioVolume(byte[] sample,
+            final double volumeAdjustment, int offset, int length)
             throws UnsupportedAudioFormatException, AudioConversionException,
             AudioOverflowException {
-        byte[] adjustedPCMData = new byte[sample.length];
-
-        for (int i = 0; i < adjustedPCMData.length; i += 2) {
+        for (int i = offset; i < (offset + length); i += 2) {
             short audioSample = (short) (((sample[i + 1] & 0xff) << 8) | (sample[i] & 0xff));
             audioSample = (short) (audioSample * volumeAdjustment);
             if (Math.abs(audioSample) > BMHAudioConstants.MAX_AMPLITUDE) {
@@ -90,11 +94,9 @@ public class AudioRegulator {
                         Math.abs(audioSample));
             }
 
-            adjustedPCMData[i] = (byte) audioSample;
-            adjustedPCMData[i + 1] = (byte) (audioSample >> 8);
+            sample[i] = (byte) audioSample;
+            sample[i + 1] = (byte) (audioSample >> 8);
         }
-
-        return adjustedPCMData;
     }
 
     public byte[] regulateAudioVolume(final byte[] ulawData,
@@ -102,48 +104,50 @@ public class AudioRegulator {
             throws AudioOverflowException, UnsupportedAudioFormatException,
             AudioConversionException {
         long start = System.currentTimeMillis();
-        final byte[] pcmData = EdexAudioConverterManager
-                .getInstance()
-                .convertAudio(ulawData, BMHAudioFormat.ULAW, BMHAudioFormat.PCM);
-        final int scaledSampleSize = sampleSize * 2;
-        ByteBuffer buffer = ByteBuffer.allocate(pcmData.length);
 
-        final int overflowCount = pcmData.length % scaledSampleSize;
-        final int numberSamples = (pcmData.length - overflowCount)
-                / scaledSampleSize;
-        byte[] sample = new byte[scaledSampleSize];
+        final int overflowCount = ulawData.length % sampleSize;
+        final int numberSamples = (ulawData.length - overflowCount)
+                / sampleSize;
+        byte[] pcmData = new byte[sampleSize * 2];
         for (int i = 0; i < numberSamples; i++) {
-            System.arraycopy(pcmData, i * scaledSampleSize, sample, 0,
-                    scaledSampleSize);
-            byte[] adjustedSample = this.regulateAudioSamplePCM(sample,
-                    dbTarget);
-            buffer.put(adjustedSample);
+            UlawToPCMAlgorithm.convert(ulawData, i * sampleSize, sampleSize,
+                    pcmData);
+
+            this.regulateAudioSamplePCM(pcmData, dbTarget);
+
+            PCMToUlawAlgorithm.convert(pcmData, ulawData, i * sampleSize);
         }
         if (overflowCount > 0) {
-            sample = new byte[overflowCount];
-            System.arraycopy(pcmData, numberSamples * scaledSampleSize, sample,
-                    0, overflowCount);
-            byte[] adjustedSample = this.regulateAudioSamplePCM(sample,
-                    dbTarget);
-            buffer.put(adjustedSample);
+            UlawToPCMAlgorithm.convert(ulawData, numberSamples * sampleSize,
+                    overflowCount, pcmData);
+
+            this.regulateAudioSamplePCM(pcmData, dbTarget, 0, overflowCount * 2);
+
+            PCMToUlawAlgorithm.convert(pcmData, 0, overflowCount * 2, ulawData,
+                    numberSamples * sampleSize);
         }
 
-        byte[] convertedAudio = EdexAudioConverterManager.getInstance()
-                .convertAudio(buffer.array(), BMHAudioFormat.PCM,
-                        BMHAudioFormat.ULAW);
         this.duration = System.currentTimeMillis() - start;
-        return convertedAudio;
+        return ulawData;
     }
 
-    private byte[] regulateAudioSamplePCM(final byte[] sample,
+    private void regulateAudioSamplePCM(final byte[] sample,
             final double dbTarget) throws UnsupportedAudioFormatException,
             AudioConversionException, AudioOverflowException {
-        Range decibelRange = this.calculateBoundarySignals(sample);
+        this.regulateAudioSamplePCM(sample, dbTarget, 0, sample.length);
+    }
+
+    private void regulateAudioSamplePCM(final byte[] sample,
+            final double dbTarget, int offset, int length)
+            throws UnsupportedAudioFormatException, AudioConversionException,
+            AudioOverflowException {
+        Range decibelRange = this.calculateBoundarySignals(sample, offset,
+                length);
 
         if ((decibelRange.getMinimumDouble() == Double.NEGATIVE_INFINITY && decibelRange
                 .getMaximumDouble() == Double.NEGATIVE_INFINITY)
                 || decibelRange.getMaximumDouble() <= dbTarget) {
-            return sample;
+            return;
         }
 
         double difference = dbTarget - decibelRange.getMaximumDouble();
@@ -151,7 +155,7 @@ public class AudioRegulator {
                 BMHAudioConstants.DB_ALTERATION_CONSTANT,
                 (difference / BMHAudioConstants.AMPLITUDE_TO_DB_CONSTANT));
 
-        return this.regulateAudioVolume(sample, adjustmentRate);
+        this.regulateAudioVolume(sample, adjustmentRate, offset, length);
     }
 
     /**
@@ -160,13 +164,20 @@ public class AudioRegulator {
      * 
      * @param audio
      *            the managed audio data
+     * @param offset
+     *            determines the first index in the managed audio array that
+     *            should be used when calculating the boundary signals
+     * @param length
+     *            the number of bytes from the offset to use when calculating
+     *            the boundary signals
      * @return the calculated decibel range
      */
-    private Range calculateBoundarySignals(final byte[] audio) {
+    private Range calculateBoundarySignals(final byte[] audio, int offset,
+            int length) {
         double runningMinAmplitude = 0.0;
         double runningMaxAmplitude = 0.0;
 
-        for (int i = 0; i < audio.length; i += 2) {
+        for (int i = offset; i < (offset + length); i += 2) {
             short amplitude = (short) (((audio[i + 1] & 0xff) << 8) | (audio[i] & 0xff));
             amplitude = (short) Math.abs(amplitude);
 

@@ -32,8 +32,7 @@ import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.audio.impl.algorithm.AlgorithmicAudioUtils;
-import com.raytheon.uf.common.bmh.audio.impl.algorithm.DecompressInputStream;
-import com.raytheon.uf.common.bmh.audio.impl.algorithm.DecompressInputStream.DECOMPRESSION_TYPE;
+import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
 
 /**
  * The Pcm audio converter. Used to convert ULAW audio to PCM audio.
@@ -46,6 +45,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.DecompressInputStream.DEC
  * ------------ ---------- ----------- --------------------------
  * Jul 21, 2014 3383       bkowal      Initial creation
  * Dec 3, 2014  3880       bkowal      Extend JavaRecognizedAudioConverter.
+ * Apr 09, 2015 4365       bkowal      Updated to use {@link UlawToPCMAlgorithm}.
  * 
  * </pre>
  * 
@@ -106,14 +106,6 @@ public class PcmAudioConverter extends JavaRecognizedAudioConverter {
         }
 
         /* Complete the ulaw to pcm conversion. */
-        try (DecompressInputStream inputStream = new DecompressInputStream(
-                new ByteArrayInputStream(src), DECOMPRESSION_TYPE.ULAW);) {
-            byte[] pcmArray = new byte[src.length << 1];
-            inputStream.read(pcmArray);
-            return pcmArray;
-        } catch (IOException e) {
-            throw new AudioConversionException("Failed to convert the "
-                    + srcFormat.toString() + " audio to pcm audio!", e);
-        }
+        return UlawToPCMAlgorithm.convert(src);
     }
 }
