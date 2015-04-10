@@ -46,6 +46,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
  *                                     regex and determining if rules apply.
  * Feb 24, 2015 4157       bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * Mar 24, 2015 4301       bkowal      Provide better support for plain text rules.
+ * Apr 10, 2015 4356       bkowal      Use the end index of the group of interest.
  * 
  * </pre>
  * 
@@ -127,7 +128,7 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
         Matcher matcher = this.transformationRegex.matcher(candidate.getText()
                 .toLowerCase());
         while (matcher.find()) {
-            final int endIndex = matcher.end();
+            final int endIndex = matcher.end(this.matchGroup);
             final String matchText = matcher.group(this.matchGroup);
             final int beginIndex = endIndex - matchText.length();
 

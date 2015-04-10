@@ -40,6 +40,8 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
  * Jul 7, 2014  3302       bkowal      Implemented the transformation method.
  * Mar 24, 2015 4301       bkowal      Provide better support for basic text substitutions.
  *                                     Ensure that matches are not found within words.
+ * Apr 10, 2015 4356       bkowal      Based on the regex padding that is added to all rules, ensure
+ *                                     that the second matching group is used.
  * 
  * </pre>
  * 
@@ -67,6 +69,7 @@ public class SimpleTextTransformation extends AbstractTextTransformation {
         super(text, ssmlReplacement);
         this.determineDefaultReplacement();
         this.originalText = text.toLowerCase();
+        super.setMatchGroup(2);
     }
 
     private void determineDefaultReplacement() throws SSMLConversionException {

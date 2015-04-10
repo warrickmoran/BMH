@@ -142,6 +142,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Apr 01, 2015 4301       bkowal      Sanitize the text before adding it to the SSML.
  * Apr 07, 2015 4293       bkowal      Determine if new audio actually needs to be generated for
  *                                     an updated message - was it just a metadata update?
+ * Apr 10, 2015 4356       bkowal      Clean up newlines at the paragraph level of separation. Handle the case
+ *                                     when a period is directly against text that matches a dict rule. 
  * 
  * </pre>
  * 
@@ -959,6 +961,9 @@ public class MessageTransformer implements IContextStateProcessor {
 
         String[] paragraphs = content.split(BLOCK_PARAGRAPH_NEWLINE);
         for (String paragraph : paragraphs) {
+            paragraph = paragraph.replaceAll(PLATFORM_AGNOSTIC_NEWLINE_REGEX,
+                    StringUtils.EMPTY);
+
             /*
              * Analyze one paragraph worth of text at a time.
              */
@@ -972,7 +977,7 @@ public class MessageTransformer implements IContextStateProcessor {
             }
 
             Paragraph ssmlParagraph = this.applyTransformations(objectFactory,
-                    transformationCandidates, content);
+                    transformationCandidates, paragraph);
             ssmlProsody.getContent().add(ssmlParagraph);
         }
 
@@ -1034,17 +1039,16 @@ public class MessageTransformer implements IContextStateProcessor {
                      * Add free text fragments to the current sentence as they
                      * are discovered.
                      */
-                    /*
-                     * Sanitize the text before it is added to the SSML.
-                     */
-                    ssmlSentence.getContent().add(
-                            textPart.replaceAll(
-                                    PLATFORM_AGNOSTIC_NEWLINE_REGEX, " ")
-                                    .trim());
+                    ssmlSentence.getContent().add(textPart);
                 }
                 currentSentence = StringUtils.difference(textPart,
                         currentSentence).trim();
-                if (currentSentence.isEmpty()
+                /*
+                 * Only a period may remain when there is a dictionary rule that
+                 * applies to all text immediately before the period.
+                 */
+                boolean periodRemains = ".".equals(currentSentence.trim());
+                if ((periodRemains || currentSentence.isEmpty())
                         && (approximateSentences.isEmpty() == false)) {
                     ssmlParagraph.getContent().add(ssmlSentence);
                     ssmlSentence = objectFactory.createSentence();
