@@ -99,6 +99,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 25, 2015     4305   rferrel     Check for unique FIPS codes.
  * Apr 07, 2015     4371   bkowal      Ensure that the selected program is defined for the
  *                                     {@link TransmitterLanguageComp} when working with groups.
+ * Apr 10, 2015     4373   rferrel     Purged ITransmitterStatusChange now handled by INotificationObserver.
  * </pre>
  * 
  * @author mpduff
@@ -196,7 +197,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      */
     public NewEditTransmitterDlg(Shell parentShell, Transmitter transmitter,
             TransmitterGroup group, TransmitterEditType type,
-            ICloseCallback callback, ITransmitterStatusChange statusChange) {
+            ICloseCallback callback) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.type = type;
@@ -232,8 +233,8 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      * @param parentShell
      */
     public NewEditTransmitterDlg(Shell parentShell, TransmitterEditType type,
-            ICloseCallback callback, ITransmitterStatusChange statusChange) {
-        this(parentShell, null, null, type, callback, statusChange);
+            ICloseCallback callback) {
+        this(parentShell, null, null, type, callback);
     }
 
     @Override

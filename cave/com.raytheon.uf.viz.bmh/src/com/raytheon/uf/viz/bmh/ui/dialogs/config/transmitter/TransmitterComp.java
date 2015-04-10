@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.MenuAdapter;
 import org.eclipse.swt.events.MenuEvent;
 import org.eclipse.swt.events.MouseAdapter;
@@ -59,16 +61,23 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransferToneRequest;
+import com.raytheon.uf.common.jms.notification.INotificationObserver;
+import com.raytheon.uf.common.jms.notification.NotificationException;
+import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DetailsDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.NewEditTransmitterDlg.TransmitterEditType;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -101,13 +110,13 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 10, 2015    4258    rferrel     Change Mode confirmation message when no DAC/Port.
  * Mar 11, 2015    4249    rferrel     Enable all menu items and display dialog.
  * Mar 31, 2015 4248       rjpeter     Use PositionComparator.
+ * Apr 10, 2014    4373    rferrel     Implemented {@link INotificationObserver}.
  * </pre>
  * 
  * @author mpduff
  * @version 1.0
  */
-public class TransmitterComp extends Composite implements
-        ITransmitterStatusChange {
+public class TransmitterComp extends Composite implements INotificationObserver {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(TransmitterComp.class);
 
@@ -185,6 +194,8 @@ public class TransmitterComp extends Composite implements
 
     private final Image disableImage;
 
+    private Object selectObject = null;
+
     /**
      * Call back for NewEditTranmitterDlg.
      */
@@ -192,7 +203,7 @@ public class TransmitterComp extends Composite implements
         @Override
         public void dialogClosed(Object returnValue) {
             if (returnValue != null) {
-                populateTree(returnValue);
+                selectObject = returnValue;
             }
             getShell().setCursor(null);
         }
@@ -211,6 +222,19 @@ public class TransmitterComp extends Composite implements
 
     private void init() {
         dataManager = new TransmitterDataManager();
+
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
+
+        getShell().addDisposeListener(new DisposeListener() {
+
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                NotificationManagerJob.removeObserver(
+                        BMHJmsDestinations.getBMHConfigDestination(),
+                        TransmitterComp.this);
+            }
+        });
 
         createTree();
         createPopupMenu();
@@ -648,7 +672,7 @@ public class TransmitterComp extends Composite implements
             }
 
             newEditDlg = new NewEditTransmitterDlg(getShell(), null, group,
-                    TransmitterEditType.NEW_TRANSMITTER, callback, this);
+                    TransmitterEditType.NEW_TRANSMITTER, callback);
         } else {
             TreeItem selectedItem = tree.getSelection()[0];
             Transmitter t = null;
@@ -664,7 +688,7 @@ public class TransmitterComp extends Composite implements
             }
 
             newEditDlg = new NewEditTransmitterDlg(getShell(), t, group,
-                    TransmitterEditType.EDIT_TRANSMITTER, callback, this);
+                    TransmitterEditType.EDIT_TRANSMITTER, callback);
         }
         newEditDlg.open();
     }
@@ -680,12 +704,12 @@ public class TransmitterComp extends Composite implements
         shell.setCursor(shell.getDisplay().getSystemCursor(SWT.CURSOR_WAIT));
         if (newGroup) {
             newEditDlg = new NewEditTransmitterDlg(getShell(),
-                    TransmitterEditType.NEW_TRANSMITTER_GROUP, callback, this);
+                    TransmitterEditType.NEW_TRANSMITTER_GROUP, callback);
         } else {
             TreeItem selectedItem = tree.getSelection()[0];
             TransmitterGroup group = (TransmitterGroup) selectedItem.getData();
             newEditDlg = new NewEditTransmitterDlg(getShell(), null, group,
-                    TransmitterEditType.EDIT_TRANSMITTER_GROUP, callback, this);
+                    TransmitterEditType.EDIT_TRANSMITTER_GROUP, callback);
         }
 
         newEditDlg.open();
@@ -746,7 +770,6 @@ public class TransmitterComp extends Composite implements
 
         try {
             dataManager.saveTransmitterGroups(groups);
-            populateTree();
         } catch (Exception e) {
             statusHandler.error("Error saving group reorder", e);
             return;
@@ -758,6 +781,7 @@ public class TransmitterComp extends Composite implements
      */
     private void reorderTransmitters() {
         if (tree.getSelectionCount() > 0) {
+            selectObject = tree.getSelection()[0].getData();
             TreeItem parent = tree.getSelection()[0].getParentItem();
             if (parent == null) {
                 reorderGroups();
@@ -789,7 +813,6 @@ public class TransmitterComp extends Composite implements
 
             try {
                 dataManager.saveTransmitterGroup(group);
-                populateTree();
             } catch (Exception e) {
                 statusHandler.error("Error saving reorder", e);
             }
@@ -812,7 +835,6 @@ public class TransmitterComp extends Composite implements
 
             try {
                 dataManager.deleteTransmitterGroup(toDelete);
-                populateTree();
             } catch (Exception e) {
                 statusHandler.error("Error deleting Transmitter Group: "
                         + toDelete.getName(), e);
@@ -834,7 +856,6 @@ public class TransmitterComp extends Composite implements
                 } else {
                     dataManager.deleteTransmitter(transmitter);
                 }
-                populateTree();
             } catch (Exception e) {
                 statusHandler.handle(
                         Priority.PROBLEM,
@@ -872,7 +893,6 @@ public class TransmitterComp extends Composite implements
             }
             try {
                 dataManager.saveTransmitter(transmitter);
-                populateTree(data);
             } catch (Exception e) {
                 statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
                         e);
@@ -932,7 +952,7 @@ public class TransmitterComp extends Composite implements
                     TransmitterMaintenanceThread.runAndReportResult(
                             statusHandler, this.getShell(), command);
                 }
-                populateTree(data);
+                selectObject = data;
             } catch (Exception e) {
                 statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
                         e);
@@ -1276,7 +1296,53 @@ public class TransmitterComp extends Composite implements
     }
 
     @Override
-    public void statusChanged() {
-        populateTree();
+    public void notificationArrived(NotificationMessage[] messages) {
+        for (NotificationMessage m : messages) {
+            try {
+                Object obj = m.getMessagePayload();
+                if (obj instanceof TransmitterGroupConfigNotification) {
+                    VizApp.runAsync(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            Object o = null;
+                            if (selectObject != null) {
+                                o = selectObject;
+                                selectObject = null;
+                            } else if (tree.getSelectionCount() > 0) {
+                                o = tree.getSelection()[0].getData();
+                                if (o instanceof TransmitterGroup) {
+                                    TransmitterGroup tg = (TransmitterGroup) o;
+                                    List<Transmitter> tl = tg
+                                            .getTransmitterList();
+
+                                    /*
+                                     * Use transmitter if it is standalone in
+                                     * order to pick up a transmitter moved to a
+                                     * group.
+                                     */
+                                    if ((tl != null) && (tl.size() == 1)) {
+                                        Transmitter t = tl.get(0);
+                                        if (t.getMnemonic()
+                                                .equals(tg.getName())) {
+                                            o = t;
+                                        }
+                                    }
+                                }
+                            }
+                            populateTree(o);
+                        }
+                    });
+                    break;
+                }
+            } catch (NotificationException e) {
+                DialogUtility
+                        .showMessageBox(
+                                getShell(),
+                                SWT.ERROR,
+                                "Notification Error",
+                                "Problem handling notification. Transmitter\nConfiguration Display may be corrrupted.");
+            }
+        }
     }
 }
