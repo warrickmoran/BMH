@@ -58,6 +58,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacMaintenanceArgParser;
  * Dec 1, 2014  3797       bkowal      Implement getTransmitterGroups and dac
  *                                     connection methods.
  * Dec 12, 2014 3603       bsteffen    Rename for use with transfer tones.
+ * Apr 09, 2015 4364       bkowal      Add the broadcast timeout to the dac maintenance
+ *                                     command line.
  * 
  * </pre>
  * 
@@ -224,6 +226,8 @@ public class MaintenanceTask extends AbstractBroadcastingTask {
         args.add(Double.toString(this.command.getDecibelTarget()));
         args.add("-" + DacMaintenanceArgParser.MAINT_AUDIO_LENGTH_KEY);
         args.add(Integer.toString(this.command.getBroadcastDuration()));
+        args.add("-" + DacMaintenanceArgParser.MAINT_EXEC_TIMEOUT);
+        args.add(Integer.toString(this.command.getBroadcastTimeout()));
         args.add("-" + DacMaintenanceArgParser.INPUT_AUDIO_OPTION_KEY);
         args.add(this.command.getInputAudioFile());
 

@@ -44,6 +44,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacMaintenanceConfig;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
+ * Apr 09, 2015 4364       bkowal      Defined the {@link #MAINT_EXEC_TIMEOUT} argument.
  * 
  * </pre>
  * 
@@ -56,6 +57,8 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
     public static final char INPUT_AUDIO_OPTION_KEY = 'i';
 
     public static final char MAINT_AUDIO_LENGTH_KEY = 'l';
+
+    public static final char MAINT_EXEC_TIMEOUT = 'o';
 
     public DacMaintenanceArgParser() {
         super(true);
@@ -79,13 +82,21 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
         Option audioDuration = OptionBuilder
                 .withDescription(
                         "The duration of the audio that will be streamed to the dac in seconds. The input audio will be replicated or cut as needed to meet the duration requirement.")
-                .hasArg().withArgName("audio").withType(Integer.class)
+                .hasArg().withArgName("duration").withType(Integer.class)
                 .create(MAINT_AUDIO_LENGTH_KEY);
         audioDuration.setRequired(true);
+
+        Option executionTimeout = OptionBuilder
+                .withDescription(
+                        "The maximum amount of time (in minutes) the session can run before it will be automatically terminated. An attempt will be made to allow all tones to finish broadcasting (when applicable).")
+                .hasArg().withArgName("timeout").withType(Integer.class)
+                .create(MAINT_EXEC_TIMEOUT);
+        executionTimeout.setRequired(true);
 
         List<Option> options = new ArrayList<>();
         options.add(inputAudio);
         options.add(audioDuration);
+        options.add(executionTimeout);
 
         return options;
     }
@@ -99,6 +110,10 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
         Integer duration = Integer.parseInt(cmd
                 .getOptionValue(MAINT_AUDIO_LENGTH_KEY));
 
-        return new DacMaintenanceConfig(commonConfig, inputAudio, duration);
+        Integer timeout = Integer.parseInt(cmd
+                .getOptionValue(MAINT_EXEC_TIMEOUT));
+
+        return new DacMaintenanceConfig(commonConfig, inputAudio, duration,
+                timeout);
     }
 }

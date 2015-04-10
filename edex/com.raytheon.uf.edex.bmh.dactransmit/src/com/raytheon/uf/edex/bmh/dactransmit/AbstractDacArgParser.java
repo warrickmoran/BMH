@@ -48,6 +48,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacCommonConfig;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
+ * Apr 09, 2015 4364       bkowal      Fix the usage output.
  * 
  * </pre>
  * 
@@ -189,6 +190,7 @@ public abstract class AbstractDacArgParser {
         options.addOption(modeOption);
         options.addOption(dacAddress);
         options.addOption(dataPort);
+        options.addOption(controlPort);
         options.addOption(transmitter);
         options.addOption(dbRange);
         for (Option contributedOption : this.getOptions()) {

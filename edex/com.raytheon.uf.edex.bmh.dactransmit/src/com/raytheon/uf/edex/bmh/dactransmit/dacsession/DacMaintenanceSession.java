@@ -27,6 +27,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +53,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Dec 12, 2014 3603       bsteffen    Allow negative duration of maintenance messages to run full audio.
  * Jan 19, 2015 3912       bsteffen    Use new control thread constructor
+ * Apr 09, 2015 4364       bkowal      Utilize the {@link DacMaintenanceReaper}.
  * 
  * </pre>
  * 
@@ -71,9 +74,14 @@ public class DacMaintenanceSession implements IDacSession {
 
     private final ControlStatusThread controlThread;
 
-    private final BroadcastTransmitThread transmitThread;
+    private final MaintenanceBroadcastTransmitThread transmitThread;
 
     private final byte[] originalMaintenanceAudio;
+
+    private ScheduledThreadPoolExecutor reaperExecutor = new ScheduledThreadPoolExecutor(
+            1);
+
+    private volatile boolean initialSyncCompleted = false;
 
     /**
      * 
@@ -85,7 +93,7 @@ public class DacMaintenanceSession implements IDacSession {
                 .newSingleThreadExecutor(new NamedThreadFactory("EventBus"));
         this.eventBus = new AsyncEventBus("DAC-Maintenance",
                 notificationExecutor);
-        this.transmitThread = new BroadcastTransmitThread(
+        this.transmitThread = new MaintenanceBroadcastTransmitThread(
                 "MaintenanceBroadcastTransmitThread", this.eventBus,
                 this.config.getDacAddress(), this.config.getDataPort(),
                 this.config.getTransmitters(), this.config.getDbTarget());
@@ -109,9 +117,25 @@ public class DacMaintenanceSession implements IDacSession {
         logger.info("Running in MAINTENANCE MODE. Running in MAINTENANCE MODE. Running in MAINTENANCE MODE.");
         logger.info("Session configuration: " + config.toString());
 
+        /*
+         * Initialize the reaper to ensure that the process will not run forever
+         * if any part of the initialization fails.
+         */
+        DacMaintenanceReaper reaper = new DacMaintenanceReaper(this,
+                this.transmitThread, this.controlThread);
+
+        /*
+         * Determine the total number of packets that will need to be broadcast.
+         */
+        this.transmitThread.playAudio(this.segmentAudio());
+
+        this.reaperExecutor.schedule(reaper, this.config.getExecutionTimeout(),
+                TimeUnit.MINUTES);
+
         this.controlThread.performInitialSync();
 
-        this.transmitThread.playAudio(this.segmentAudio());
+        this.initialSyncCompleted = true;
+
         this.transmitThread.start();
         this.controlThread.start();
     }
@@ -184,6 +208,7 @@ public class DacMaintenanceSession implements IDacSession {
         }
 
         this.notificationExecutor.shutdown();
+        this.reaperExecutor.shutdown();
 
         logger.info("Exiting MAINTENANCE MODE. Exiting MAINTENANCE MODE. Exiting MAINTENANCE MODE.");
     }
@@ -207,6 +232,13 @@ public class DacMaintenanceSession implements IDacSession {
 
         return this.transmitThread.isError() ? SHUTDOWN_STATUS.FAILURE
                 : SHUTDOWN_STATUS.SUCCESS;
+    }
+
+    /**
+     * @return the initialSyncCompleted
+     */
+    public boolean isInitialSyncCompleted() {
+        return initialSyncCompleted;
     }
 
 }

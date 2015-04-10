@@ -46,6 +46,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.BroadcastException;
  * ------------ ---------- ----------- --------------------------
  * Nov 13, 2014 3630       bkowal      Initial creation
  * Dec 12, 2014 3603       bsteffen    Rename and add runAndReportResult
+ * Apr 09, 2015 4364       bkowal      Accurately report Comms Manager communication errors.
  * 
  * 
  * </pre>
@@ -61,7 +62,7 @@ public class TransmitterMaintenanceThread extends
         UNKNOWN, SUCCESS, FAIL
     }
 
-    private static final int MAINTENANCE_TIMEOUT = 60000;
+    public static final int MAINTENANCE_TIMEOUT = 60000;
 
     private MAINTENANCE_STATUS status = MAINTENANCE_STATUS.UNKNOWN;
 
@@ -85,6 +86,7 @@ public class TransmitterMaintenanceThread extends
         } catch (CommsCommunicationException e) {
             statusHandler.error("Failed to connect to the Comms Manager!", e);
             this.status = MAINTENANCE_STATUS.FAIL;
+            this.statusDetails = "Failed to connect to the Comms Manager!";
             return;
         }
 
@@ -95,6 +97,8 @@ public class TransmitterMaintenanceThread extends
                     "Failed to start the " + command.getMaintenanceDetails()
                             + "!", e);
             this.status = MAINTENANCE_STATUS.FAIL;
+            this.statusDetails = "Failed to start the "
+                    + command.getMaintenanceDetails() + "!";
             return;
         }
 
@@ -104,6 +108,9 @@ public class TransmitterMaintenanceThread extends
         } catch (BroadcastException e) {
             statusHandler.error(
                     "Failed to receive a response from Comms Manager!", e);
+            this.status = MAINTENANCE_STATUS.FAIL;
+            this.statusDetails = "Failed to receive a response from Comms Manager!";
+            return;
         }
 
         if (object == null) {
@@ -117,6 +124,9 @@ public class TransmitterMaintenanceThread extends
              */
             statusHandler.warn("Received unexpected message type: "
                     + object.getClass().getName());
+            this.status = MAINTENANCE_STATUS.FAIL;
+            this.statusDetails = "Received unexpected message type: "
+                    + object.getClass().getName() + " from Comms Manager!";
             return;
         }
 

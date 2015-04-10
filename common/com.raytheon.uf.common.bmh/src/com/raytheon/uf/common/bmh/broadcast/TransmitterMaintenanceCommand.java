@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 7, 2014  3630       bkowal      Initial creation
  * Nov 15, 2014 3630       bkowal      Added allowedDataPorts
  * Dec 12, 2014 3603       bsteffen    Rename and add maintenanceDetails
+ * Apr 09, 2015 4364       bkowal      Added {@link #broadcastTimeout}.
  * 
  * </pre>
  * 
@@ -68,6 +69,9 @@ public class TransmitterMaintenanceCommand extends
 
     @DynamicSerializeElement
     private int broadcastDuration;
+
+    @DynamicSerializeElement
+    private int broadcastTimeout;
 
     public TransmitterMaintenanceCommand() {
     }
@@ -170,6 +174,21 @@ public class TransmitterMaintenanceCommand extends
         this.broadcastDuration = broadcastDuration;
     }
 
+    /**
+     * @return the broadcastTimeout (in minutes)
+     */
+    public int getBroadcastTimeout() {
+        return broadcastTimeout;
+    }
+
+    /**
+     * @param broadcastTimeout
+     *            the broadcastTimeout to set (in minutes)
+     */
+    public void setBroadcastTimeout(int broadcastTimeout) {
+        this.broadcastTimeout = broadcastTimeout;
+    }
+
     @Override
     public String toString() {
         StringBuilder stringBuilder = new StringBuilder(
@@ -208,6 +227,8 @@ public class TransmitterMaintenanceCommand extends
         stringBuilder.append(this.inputAudioFile);
         stringBuilder.append(", broadcastDuration=");
         stringBuilder.append(this.broadcastDuration);
+        stringBuilder.append(", broadcastTimeout=");
+        stringBuilder.append(this.broadcastTimeout);
         stringBuilder.append("]");
 
         return stringBuilder.toString();

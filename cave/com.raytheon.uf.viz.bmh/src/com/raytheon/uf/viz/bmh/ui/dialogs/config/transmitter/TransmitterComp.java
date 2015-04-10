@@ -70,6 +70,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DetailsDlg;
@@ -110,6 +111,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 10, 2015    4258    rferrel     Change Mode confirmation message when no DAC/Port.
  * Mar 11, 2015    4249    rferrel     Enable all menu items and display dialog.
  * Mar 31, 2015 4248       rjpeter     Use PositionComparator.
+ * Apr 09, 2015    4364    bkowal      Set the maintenance broadcast timeout.
  * Apr 10, 2014    4373    rferrel     Implemented {@link INotificationObserver}.
  * </pre>
  * 
@@ -949,6 +951,7 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                             .getAudioDBTarget());
                     command.setInputAudioFile(inputAudioFile);
                     command.setBroadcastDuration(-1);
+                    command.setBroadcastTimeout((int) (TransmitterMaintenanceThread.MAINTENANCE_TIMEOUT / TimeUtil.MILLIS_PER_MINUTE));
                     TransmitterMaintenanceThread.runAndReportResult(
                             statusHandler, this.getShell(), command);
                 }

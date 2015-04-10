@@ -53,6 +53,7 @@ import com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest;
 import com.raytheon.uf.common.bmh.request.MaintenanceMessageResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
@@ -82,6 +83,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 12, 2014 3603       bsteffen    Move backgrounded execution out for reuse by transfer tones.
  * Mar 02, 2015    3962    rferrel     Changes for MAINT status.
  * Mar 31, 2015 4248       rjpeter     Removed TransmitterGroupPositionComparator.
+ * Apr 09, 2015    4364    bkowal      Set the maintenance broadcast timeout.
  * </pre>
  * 
  * @author mpduff
@@ -652,6 +654,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         command.setDecibelTarget(Double.parseDouble(this.dbValueLbl.getText()));
         command.setInputAudioFile(audioLocation);
         command.setBroadcastDuration(this.durScaleComp.getSelectedValue());
+        command.setBroadcastTimeout((int) (TransmitterMaintenanceThread.MAINTENANCE_TIMEOUT / TimeUtil.MILLIS_PER_MINUTE));
 
         return command;
     }

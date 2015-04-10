@@ -34,6 +34,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
+ * Apr 09, 2015 4364       bkowal      Added {@link #executionTimeout}.
  * 
  * </pre>
  * 
@@ -47,15 +48,18 @@ public class DacMaintenanceConfig extends AbstractDacConfig {
 
     private final int testDuration;
 
+    private final int executionTimeout;
+
     /**
      * @param mode
      * @param commonConfig
      */
     public DacMaintenanceConfig(DacCommonConfig commonConfig, Path inputAudio,
-            int testDuration) {
+            int testDuration, int executionTimeout) {
         super(DAC_MODE.MAINTENANCE, commonConfig);
         this.inputAudio = inputAudio;
         this.testDuration = testDuration;
+        this.executionTimeout = executionTimeout;
     }
 
     /**
@@ -72,21 +76,31 @@ public class DacMaintenanceConfig extends AbstractDacConfig {
         return testDuration;
     }
 
+    /**
+     * @return the executionTimeout
+     */
+    public int getExecutionTimeout() {
+        return executionTimeout;
+    }
+
     @Override
     public IDacSession buildDacSession() throws IOException {
         return new DacMaintenanceSession(this);
     }
-    
+
     @Override
     public String toString() {
-        StringBuilder stringBuilder = new StringBuilder("DacMaintenanceConfig [");
+        StringBuilder stringBuilder = new StringBuilder(
+                "DacMaintenanceConfig [");
         stringBuilder.append(super.toString());
         stringBuilder.append(", inputAudio=");
         stringBuilder.append(this.inputAudio.toString());
         stringBuilder.append(", testDuration=");
         stringBuilder.append(this.testDuration);
+        stringBuilder.append(", executionTimeout=");
+        stringBuilder.append(this.executionTimeout);
         stringBuilder.append("]");
-        
+
         return stringBuilder.toString();
     }
 }
