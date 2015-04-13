@@ -40,6 +40,10 @@
 		<constructor-arg ref="practice_bmh-static-msg-gen" />
 		<constructor-arg ref="practice_staticMessageGenerator" />
 	</bean>
+	
+	<bean factory-bean="contextManager" factory-method="registerClusteredContext">
+		<constructor-arg ref="practice_bmh-static-msg-gen" />
+	</bean>
 
 	<camelContext id="practice_bmh-static-msg-gen" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
