@@ -38,6 +38,7 @@ import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterStateMessage.ClusterDacTransmitKey;
 import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
 
@@ -57,6 +58,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * Feb 10, 2015  4071     bsteffen    Synchronize State.
  * Apr 07, 2015  4370     rjpeter     Added sendConfigCheck.
+ * Apr 08, 2015  4368     rjpeter     Fix ClusterCommunicator race condition.
  * </pre>
  * 
  * @author bsteffen
@@ -77,7 +79,9 @@ public class ClusterServer extends AbstractServerThread {
 
     private final Map<InetAddress, ClusterCommunicator> communicators = new ConcurrentHashMap<>();
 
-    private Set<InetAddress> configuredAddresses;
+    private final Object communicatorLock = new Object();
+
+    private final Set<InetAddress> configuredAddresses = new CopyOnWriteArraySet<>();
 
     private final ClusterStateMessage state = new ClusterStateMessage();
 
@@ -108,19 +112,32 @@ public class ClusterServer extends AbstractServerThread {
             communicators.clear();
             return;
         }
-        Set<InetAddress> configuredAddresses = new CopyOnWriteArraySet<>();
-        boolean localFound = false;
+        Set<InetAddress> configuredAddresses = new HashSet<>();
+        String localIp = null;
         for (CommsHostConfig host : config.getClusterHosts()) {
             try {
                 if (host.isLocalHost()) {
-                    localFound = true;
-                    continue;
+                    localIp = host.getIpAddress();
+                    break;
                 }
             } catch (IOException e) {
                 logger.error("Unable to check location of cluster member: {}",
                         host.getIpAddress(), e);
                 continue;
             }
+        }
+
+        if (localIp == null) {
+            logger.error("Local host was not found in the cluster configuration, shutting down.");
+            manager.shutdown();
+            return;
+        }
+
+        for (CommsHostConfig host : config.getClusterHosts()) {
+            if (localIp.equals(host.getIpAddress())) {
+                continue;
+            }
+
             InetAddress address = null;
             try {
                 address = InetAddress.getByName(host.getIpAddress());
@@ -129,30 +146,35 @@ public class ClusterServer extends AbstractServerThread {
                         host.getIpAddress(), e);
                 continue;
             }
+
             configuredAddresses.add(address);
+
             if (communicators.containsKey(address)) {
                 continue;
             }
+
+            ClusterCommunicator communicator = null;
             try {
+                logger.info("Initiating cluster communication with {}",
+                        host.getIpAddress());
                 Socket socket = new Socket(address, config.getClusterPort());
                 socket.setTcpNoDelay(true);
-                ClusterCommunicator communicator = new ClusterCommunicator(
-                        manager, socket);
-                communicator.start();
-                synchronized (state) {
-                    communicator.sendState(state);
+                communicator = new ClusterCommunicator(manager, socket, localIp);
+                if (communicator.send(localIp)) {
+                    addCommunicator(communicator, address);
                 }
-                ClusterCommunicator prev = communicators.put(address,
-                        communicator);
-                if (prev != null) {
-                    prev.disconnect();
-                }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 logger.warn("Unable to connect to cluster member: {}",
                         host.getIpAddress());
+                if (communicator != null) {
+                    communicator.disconnect();
+                }
             }
         }
-        this.configuredAddresses = configuredAddresses;
+
+        this.configuredAddresses.addAll(configuredAddresses);
+        this.configuredAddresses.retainAll(configuredAddresses);
+
         Set<InetAddress> disconnectSet = new HashSet<>(communicators.keySet());
         disconnectSet.removeAll(configuredAddresses);
         for (InetAddress address : disconnectSet) {
@@ -160,10 +182,6 @@ public class ClusterServer extends AbstractServerThread {
             if (communicator != null) {
                 communicator.shutdown();
             }
-        }
-        if (!localFound) {
-            logger.error("Local host was not found in the cluster configuration, shutting down.");
-            manager.shutdown();
         }
     }
 
@@ -203,8 +221,58 @@ public class ClusterServer extends AbstractServerThread {
             throws SerializationException, IOException {
         InetAddress address = socket.getInetAddress();
         if (configuredAddresses.contains(address)) {
-            ClusterCommunicator communicator = new ClusterCommunicator(manager,
-                    socket);
+            String id = getRemoteServerUniqueId(socket);
+            if (id != null) {
+                logger.info("Received new cluster request from {}", id);
+                ClusterCommunicator communicator = new ClusterCommunicator(
+                        manager, socket, id);
+                addCommunicator(communicator, address);
+            } else {
+                logger.warn(
+                        "Cluster request did not send server id as first message, rejecting request from {}",
+                        address.getHostName());
+                socket.close();
+            }
+        } else {
+            // reject socket, not from known host
+            logger.warn(
+                    "Cluster request from unknown host, rejecting request from {}",
+                    address.getHostName());
+            socket.close();
+        }
+    }
+
+    protected String getRemoteServerUniqueId(Socket socket) {
+        try {
+            // first message from socket is to be its id
+            return SerializationUtil.transformFromThrift(String.class,
+                    socket.getInputStream());
+        } catch (Throwable e) {
+            logger.error(
+                    "Error getting server id from remote server: {}.  Rejecting cluster request",
+                    socket.getInetAddress().getHostAddress(), e);
+            return null;
+        }
+    }
+
+    protected void addCommunicator(ClusterCommunicator communicator,
+            InetAddress address) {
+        synchronized (communicatorLock) {
+            ClusterCommunicator prev = communicators.get(address);
+
+            if (prev != null) {
+                // reject new communicator
+                if (prev.remoteAccepted()
+                        || prev.getUniqueId().compareTo(
+                                communicator.getUniqueId()) < 0) {
+                    communicator.disconnect();
+                    return;
+                }
+
+                // new communicator better, close prev
+                prev.disconnect();
+            }
+
             communicators.put(address, communicator);
             communicator.start();
             synchronized (state) {

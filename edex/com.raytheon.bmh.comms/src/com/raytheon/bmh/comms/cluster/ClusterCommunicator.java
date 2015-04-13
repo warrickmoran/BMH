@@ -50,6 +50,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Jan 14, 2015  3869     bsteffen    Log a shorter message for disconnect.
  * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil.
  * Apr 07, 2015  4370     rjpeter     Add handling of ClusterConfigMessage.
+ * Apr 08, 2015  4368     rjpeter     Add uniqueId and remoteAccepted.
  * </pre>
  * 
  * @author bsteffen
@@ -67,10 +68,14 @@ public class ClusterCommunicator extends Thread {
 
     private ClusterStateMessage state;
 
-    public ClusterCommunicator(CommsManager manager, Socket socket) {
+    private final String uniqueId;
+
+    public ClusterCommunicator(CommsManager manager, Socket socket,
+            String uniqueId) {
         super("ClusterCommunicator-" + socket.getRemoteSocketAddress());
         this.socket = socket;
         this.manager = manager;
+        this.uniqueId = uniqueId;
     }
 
     @Override
@@ -191,6 +196,16 @@ public class ClusterCommunicator extends Thread {
                 && (this.socket.isOutputShutdown() == false);
     }
 
+    /**
+     * True if the remote server has accepted the connection and the connection
+     * is still valid.
+     * 
+     * @return
+     */
+    public boolean remoteAccepted() {
+        return state != null && isConnected();
+    }
+
     public void disconnect() {
         try {
             if (socket != null) {
@@ -227,6 +242,10 @@ public class ClusterCommunicator extends Thread {
 
     public ClusterStateMessage getClusterState() {
         return state;
+    }
+
+    public String getUniqueId() {
+        return uniqueId;
     }
 
     /**
