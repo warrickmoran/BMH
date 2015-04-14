@@ -56,6 +56,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Feb 09, 2015  4095     bsteffen    Remove Name.
  * Mar 25, 2015  4305     rferrel     Added query for transmitters by FIPS code.
  * Apr 02, 2015  4248     rjpeter     Implement PositionOrdered.
+ * Apr 14, 2015  4390     rferrel     Removed constraint on position to allow reordering using PositionOrdered.
  * </pre>
  * 
  * @author rjpeter
@@ -63,9 +64,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  */
 @NamedQueries({ @NamedQuery(name = Transmitter.GET_TRANSMITTERS_FOR_FIPS, query = Transmitter.GET_TRANSMITTERS_FOR_FIPS_QUERY) })
 @Entity
-@Table(name = "transmitter", schema = "bmh", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "mnemonic" }),
-        @UniqueConstraint(columnNames = { "transmittergroup_id", "position" }) })
+@Table(name = "transmitter", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "mnemonic" }), })
 @SequenceGenerator(initialValue = 1, name = Transmitter.GEN, sequenceName = "transmitter_seq")
 @DynamicSerialize
 @DynamicSerializeTypeAdapter(factory = TransmitterAdapter.class)

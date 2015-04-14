@@ -58,6 +58,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Feb 09, 2015    4082    bkowal      Added {@link #saveTransmitterGroup(TransmitterGroup, List)}.
  * Mar 25, 2015    4305    rferrel     Added {@link #getTransmittersByFips(String)}.
  * Mar 31, 2015    4248    rjpeter     Use PositionOrdered.
+ * Apr 14, 2015    4390    rferrel     Added {@link #saveTransmitterGroups(List, boolean)} to allow reordering.
  * </pre>
  * 
  * @author mpduff
@@ -263,8 +264,23 @@ public class TransmitterDataManager {
      */
     public List<TransmitterGroup> saveTransmitterGroups(
             List<TransmitterGroup> groupList) throws Exception {
+        return saveTransmitterGroups(groupList, false);
+    }
+
+    /**
+     * Save the list of {@link TransmitterGroup}s. When reodering is true it is
+     * assumed the list contains all transmitter groups.
+     * 
+     * @param groupList
+     * @param reorder
+     * @return groupList
+     * @throws Exception
+     */
+    public List<TransmitterGroup> saveTransmitterGroups(
+            List<TransmitterGroup> groupList, boolean reorder) throws Exception {
         TransmitterRequest request = new TransmitterRequest();
         request.setAction(TransmitterRequestAction.SaveGroupList);
+        request.setReorder(reorder);
         request.setTransmitterGroupList(groupList);
 
         TransmitterResponse response = (TransmitterResponse) BmhUtils

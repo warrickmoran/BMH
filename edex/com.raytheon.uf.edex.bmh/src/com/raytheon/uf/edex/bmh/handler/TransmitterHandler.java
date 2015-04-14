@@ -62,6 +62,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  * Feb 09, 2015  4082     bkowal      Added support for creating languages with a new
  *                                    Transmitter Group.
  * Mar 25, 2015   4305    rferrel     Added GetTransmittersByFips.
+ * Apr 14, 2015   4390    rferrel     {@link #saveTransmitterGroups(TransmitterRequest)} checks for reorder.
  * </pre>
  * 
  * @author mpduff
@@ -314,7 +315,11 @@ public class TransmitterHandler extends
         TransmitterGroupDao dao = new TransmitterGroupDao(
                 request.isOperational());
         List<TransmitterGroup> groupList = request.getTransmitterGroupList();
-        dao.persistAll(groupList);
+        if (request.isReorder()) {
+            dao.reorderTransmitterGroup(groupList);
+        } else {
+            dao.persistAll(groupList);
+        }
         response.setTransmitterGroupList(groupList);
 
         return response;

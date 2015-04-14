@@ -93,6 +93,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Mar 03, 2015 3962       rferrel     Added logic for MAINT status.
  * Mar 18, 2015 4298       bkowal      Added {@link #getTransmitterWithStatus(TxStatus)}.
  * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered.
+ * Apr 14, 2015 4390       rferrel     Removed constraint on position to allow reordering using PositionOrdered.
  * </pre>
  * 
  * @author rjpeter
@@ -104,9 +105,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER, query = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION, query = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY) })
 @Entity
-@Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "name" }),
-        @UniqueConstraint(columnNames = { "position" }) })
+@Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }), })
 @SequenceGenerator(initialValue = 1, name = TransmitterGroup.GEN, sequenceName = "zone_seq")
 @DynamicSerialize
 @DynamicSerializeTypeAdapter(factory = TransmitterGroupAdapter.class)

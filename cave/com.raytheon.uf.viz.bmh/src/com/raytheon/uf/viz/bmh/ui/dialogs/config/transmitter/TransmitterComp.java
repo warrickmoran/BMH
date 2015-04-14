@@ -54,6 +54,7 @@ import org.eclipse.swt.widgets.Widget;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
+import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
@@ -114,6 +115,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 09, 2015    4364    bkowal      Set the maintenance broadcast timeout.
  * Apr 10, 2015    4373    rferrel     Implemented {@link INotificationObserver}.
  * Apr 15, 2015    4398    rjpeter     Persist mode changes.
+ * Apr 14, 2015    4390    rferrel     Reordering of groups/transmitters now use {@link PositionUtil}.
  * </pre>
  * 
  * @author mpduff
@@ -765,14 +767,15 @@ public class TransmitterComp extends Composite implements INotificationObserver 
             return;
         }
 
+        List<TransmitterGroup> tgList = new ArrayList<>(groupNameArray.length);
+
         for (int i = 0; i < groupNameArray.length; i++) {
             String s = groupNameArray[i];
-            TransmitterGroup g = groupMap.get(s);
-            g.setPosition(i);
+            tgList.add(groupMap.get(s));
         }
 
         try {
-            dataManager.saveTransmitterGroups(groups);
+            dataManager.saveTransmitterGroups(tgList, tgList.size() > 1);
         } catch (Exception e) {
             statusHandler.error("Error saving group reorder", e);
             return;
@@ -809,10 +812,13 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                 return;
             }
 
+            List<Transmitter> tList = new ArrayList<>(
+                    transmitterNameList.length);
             for (int i = 0; i < transmitterNameList.length; i++) {
                 Transmitter t = transmitterMap.get(transmitterNameList[i]);
-                t.setPosition(i);
+                tList.add(t);
             }
+            PositionUtil.updatePositions(tList);
 
             try {
                 dataManager.saveTransmitterGroup(group);

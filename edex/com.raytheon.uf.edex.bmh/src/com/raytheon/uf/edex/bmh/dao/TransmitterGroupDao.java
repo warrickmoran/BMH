@@ -23,9 +23,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.hibernate.Session;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 
@@ -45,6 +47,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * Nov 21, 2014  3845     bkowal      Added getTransmitterGroupWithTransmitter
  * Jan 22, 2015  3995     rjpeter     Added getNextPosition()
  * Feb 09, 2015  4082     bkowal      Added {@link #createGroupAndLanguages(TransmitterGroup, Collection)}.
+ * Apr 14, 2015  4390     rferrel     Added {@link #reorderTransmitterGroup(List)}.
  * </pre>
  * 
  * @author bkowal
@@ -154,6 +157,26 @@ public class TransmitterGroupDao extends
                 for (TransmitterLanguage tl : languages) {
                     tl.getId().setTransmitterGroup(tg);
                     persist(tl);
+                }
+            }
+        });
+    }
+
+    /**
+     * Change the order of Transmitter groups to match the order in the list. It
+     * is assumed the contains all the transmitter groups.
+     * 
+     * @param tgList
+     */
+    public void reorderTransmitterGroup(final List<TransmitterGroup> tgList) {
+        txTemplate.execute(new TransactionCallbackWithoutResult() {
+
+            @Override
+            protected void doInTransactionWithoutResult(TransactionStatus status) {
+                Session session = getCurrentSession();
+                PositionUtil.updatePositions(tgList);
+                for (TransmitterGroup tg : tgList) {
+                    session.saveOrUpdate(tg);
                 }
             }
         });

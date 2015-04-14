@@ -43,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Feb 09, 2015  4082     bkowal      It is now possible to specify languages to
  *                                    create alongside a Transmitter Group.
  * Mar 25, 2015  4305     rferrel     Added GetTransmittersByFips and argument element.
+ * Apr 14, 2015  4390     rferrel     Added {@link #reorder}.
  * 
  * </pre>
  * 
@@ -79,6 +80,9 @@ public class TransmitterRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private String argument;
+
+    @DynamicSerializeElement
+    private boolean reorder = false;
 
     /**
      * @return the action
@@ -162,5 +166,13 @@ public class TransmitterRequest extends AbstractBMHServerRequest {
 
     public void setArgument(String argument) {
         this.argument = argument;
+    }
+
+    public boolean isReorder() {
+        return reorder;
+    }
+
+    public void setReorder(boolean reorder) {
+        this.reorder = reorder;
     }
 }
