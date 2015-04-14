@@ -270,12 +270,12 @@ public class SystemStatusMonitor {
                 .containsConnectedTransmitterGroup(transmitterGroupName);
     }
 
-    public boolean isTransmitterGroupSilent(final String dacHost,
-            String transmitterGroupName) {
+    public boolean isTransmitterGroupSilent(String transmitterGroupName) {
         Map<String, CommsManagerStatus> commsStatus = getCommsStatus();
-        if (commsStatus.containsKey(dacHost)) {
-            return commsStatus.get(dacHost).containsSilentTransmitterGroup(
-                    transmitterGroupName);
+        for (CommsManagerStatus status : commsStatus.values()) {
+            if (status.containsSilentTransmitterGroup(transmitterGroupName)) {
+                return true;
+            }
         }
         return false;
     }

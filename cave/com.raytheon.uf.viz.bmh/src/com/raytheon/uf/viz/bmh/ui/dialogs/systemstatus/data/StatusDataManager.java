@@ -129,8 +129,8 @@ public class StatusDataManager {
                 } else {
                     dtsd.addTranmitterWithNoDac(tgi);
                 }
-                tgi.setSilenceAlarm(statusMonitor.isTransmitterGroupSilent(
-                        di.getDacAddress(), tg.getName()));
+                tgi.setSilenceAlarm(statusMonitor.isTransmitterGroupSilent(tg
+                        .getName()));
             } else {
                 dtsd.addTranmitterWithNoDac(tgi);
             }
