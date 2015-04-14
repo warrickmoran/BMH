@@ -24,7 +24,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
@@ -52,7 +51,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
  * ------------- -------- ----------- --------------------------
  * Dec 10, 2014  3603     bsteffen     Initial creation
  * Jan 26, 2015  3359     bsteffen     Use site id for same tones.
- * 
+ * Apr 14, 2015  4398     rjpeter      Only send TXB/TXP for mode switch.
  * </pre>
  * 
  * @author bsteffen
@@ -60,10 +59,6 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
  */
 public class TransferToneHandler extends
         AbstractBMHServerRequestHandler<TransferToneRequest> {
-
-    private static final String TRANSMITTER_CARRIER_OFF = "TXF";
-
-    private static final String TRANSMITTER_CARRIER_ON = "TXO";
 
     private static final String TRANSMITTER_PRIMARY_ON = "TXP";
 
@@ -113,34 +108,11 @@ public class TransferToneHandler extends
                 if (request.getTxMode() == TxMode.SECONDARY) {
                     onEvent = TRANSMITTER_BACKUP_ON;
                 }
-                /*
-                 * Each command is encoded as an independent message, so there
-                 * are three messages. Each message repeats the SAME tones 3
-                 * times, so the total audio is fairly large for such simple
-                 * commands.
-                 */
-                String[] eventSequence = { TRANSMITTER_CARRIER_OFF, onEvent,
-                        TRANSMITTER_CARRIER_ON };
-                /* No transition silence first time through the loop. */
-                byte[] silence = null;
-                for (String event : eventSequence) {
-                    if (silence == null) {
-                        /*
-                         * 2 seconds is the typical silence between messages,
-                         * since this isn't a real message its not clear if its
-                         * ok to make this silence shorter.
-                         */
-                        silence = new byte[2 * 8000];
-                        Arrays.fill(silence, (byte) 0xFF);
-                    } else {
-                        os.write(silence);
-                    }
-                    sameBuilder.setEvent(event);
-                    ByteBuffer same = TonesGenerator.getSAMEAlertTones(
-                            sameBuilder.build().toString(), false, false);
-                    os.write(same.array());
-                    os.write(TonesGenerator.getEndOfMessageTones().array());
-                }
+                sameBuilder.setEvent(onEvent);
+                ByteBuffer same = TonesGenerator.getSAMEAlertTones(sameBuilder
+                        .build().toString(), false, true);
+                os.write(same.array());
+                os.write(TonesGenerator.getEndOfMessageTones().array());
             }
         } else {
             TRANSFER_TYPE transferType = null;

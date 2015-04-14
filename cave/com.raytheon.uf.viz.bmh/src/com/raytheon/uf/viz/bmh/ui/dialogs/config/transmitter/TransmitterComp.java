@@ -69,8 +69,8 @@ import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DetailsDlg;
@@ -112,7 +112,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 11, 2015    4249    rferrel     Enable all menu items and display dialog.
  * Mar 31, 2015 4248       rjpeter     Use PositionComparator.
  * Apr 09, 2015    4364    bkowal      Set the maintenance broadcast timeout.
- * Apr 10, 2014    4373    rferrel     Implemented {@link INotificationObserver}.
+ * Apr 10, 2015    4373    rferrel     Implemented {@link INotificationObserver}.
+ * Apr 15, 2015    4398    rjpeter     Persist mode changes.
  * </pre>
  * 
  * @author mpduff
@@ -883,7 +884,6 @@ public class TransmitterComp extends Composite implements INotificationObserver 
      */
     private void changeTxStatus(TxStatus status) {
         Transmitter transmitter = getSelectedTransmitter();
-        Object data = tree.getSelection()[0].getData();
         if (confirmChangeTxStatus(transmitter, status)) {
             transmitter.setTxStatus(status);
             if (status == TxStatus.DECOMM) {
@@ -929,12 +929,12 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                 DacDataManager dacDataManager = new DacDataManager();
                 Dac dac = dacDataManager.getDacById(transmitterGroup.getDac());
                 Integer port = transmitter.getDacPort();
-                if ((dac == null) || (port == null)) {
-                    if (mode != transmitter.getTxMode()) {
-                        transmitter.setTxMode(mode);
-                        dataManager.saveTransmitter(transmitter);
-                    }
-                } else {
+                if (mode != transmitter.getTxMode()) {
+                    transmitter.setTxMode(mode);
+                    dataManager.saveTransmitter(transmitter);
+                }
+
+                if ((dac != null) && (port != null)) {
                     TransferToneRequest request = new TransferToneRequest(
                             transmitter.getId(), mode);
                     String inputAudioFile = (String) BmhUtils
@@ -954,6 +954,13 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     command.setBroadcastTimeout((int) (TransmitterMaintenanceThread.MAINTENANCE_TIMEOUT / TimeUtil.MILLIS_PER_MINUTE));
                     TransmitterMaintenanceThread.runAndReportResult(
                             statusHandler, this.getShell(), command);
+                } else {
+                    DialogUtility
+                            .showMessageBox(
+                                    this.getShell(),
+                                    SWT.ICON_WARNING | SWT.OK,
+                                    "No Transfer Tones Sent",
+                                    "Transmitter does not have a DAC and Port assigned.  No transfer tones were sent.");
                 }
                 selectObject = data;
             } catch (Exception e) {
