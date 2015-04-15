@@ -64,6 +64,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
+import com.raytheon.uf.common.bmh.notify.config.MessageForcedExpirationNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
@@ -163,6 +164,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Apr 02, 2015  4248     rjpeter     Get ordered messages when needed.
  * Apr 07, 2015  4339     bkowal      Only notify the user when invalid areas or over the limit areas
  *                                    are NOT empty Strings.
+ * Apr 15, 2015  4293     bkowal      Handle {@link MessageForcedExpirationNotification}.
  * </pre>
  * 
  * @author bsteffen
@@ -301,32 +303,54 @@ public class PlaylistManager implements IContextStateProcessor {
                 needsRefresh.addAll(replacementManager.replace(messages.get(0)
                         .getInputMessage()));
             }
-            for (BroadcastMsg message : messages) {
-                TransmitterGroup group = message.getTransmitterGroup();
-                if (!group.isEnabled()) {
-                    continue;
-                }
-                Program program = programDao
-                        .getProgramForTransmitterGroup(group);
-                if (program == null) {
-                    statusHandler
-                            .info("Skipping playlist refresh: No program assigned to transmitter group ["
-                                    + group.getName() + "]");
-                    continue;
-                }
-                if (Boolean.TRUE.equals(message.getInputMessage().getActive())) {
-                    this.messageLogger.logActivationActivity(message);
-                }
-                for (ProgramSuite programSuite : program.getProgramSuites()) {
-                    if (programSuite.getSuite().containsSuiteMessage(
-                            message.getAfosid())) {
-                        refreshPlaylist(group, programSuite, false);
-                        break;
-                    }
+            this.checkRefreshForBroadcastMsgs(messages);
+        }
+        refreshReplaced(needsRefresh);
+    }
+
+    public void processMessageForcedExpiration(
+            MessageForcedExpirationNotification notification) {
+        if (notification.getBroadcastIds().isEmpty()) {
+            return;
+        }
+
+        List<BroadcastMsg> messages = new ArrayList<>(notification
+                .getBroadcastIds().size());
+        for (Long id : notification.getBroadcastIds()) {
+            BroadcastMsg broadcastMsg = this.broadcastMsgDao.getByID(id);
+            if (broadcastMsg == null) {
+                continue;
+            }
+            messages.add(broadcastMsg);
+        }
+        this.checkRefreshForBroadcastMsgs(messages);
+    }
+
+    private void checkRefreshForBroadcastMsgs(List<BroadcastMsg> messages) {
+        for (BroadcastMsg message : messages) {
+            TransmitterGroup group = message.getTransmitterGroup();
+            if (!group.isEnabled()) {
+                continue;
+            }
+            Program program = programDao.getProgramForTransmitterGroup(group);
+            if (program == null) {
+                statusHandler
+                        .info("Skipping playlist refresh: No program assigned to transmitter group ["
+                                + group.getName() + "]");
+                continue;
+            }
+            if (Boolean.TRUE.equals(message.getInputMessage().getActive())
+                    && message.getForcedExpiration() == false) {
+                this.messageLogger.logActivationActivity(message);
+            }
+            for (ProgramSuite programSuite : program.getProgramSuites()) {
+                if (programSuite.getSuite().containsSuiteMessage(
+                        message.getAfosid())) {
+                    refreshPlaylist(group, programSuite, false);
+                    break;
                 }
             }
         }
-        refreshReplaced(needsRefresh);
     }
 
     public boolean processForceSuiteSwitch(final TransmitterGroup group,
@@ -535,6 +559,9 @@ public class PlaylistManager implements IContextStateProcessor {
         if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
             return;
         }
+        if (msg.getForcedExpiration()) {
+            return;
+        }
         Program program = programDao.getProgramForTransmitterGroup(group);
         if (program == null) {
             statusHandler
@@ -684,6 +711,9 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private void mergeMessage(Playlist playlist, BroadcastMsg msg) {
         if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
+            return;
+        }
+        if (msg.getForcedExpiration()) {
             return;
         }
         playlist.addBroadcastMessage(msg);

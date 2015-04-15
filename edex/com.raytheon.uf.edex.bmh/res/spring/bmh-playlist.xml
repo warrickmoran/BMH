@@ -71,6 +71,12 @@
                     </simple>
                     <bean ref="playlistManager" method="processMessageActivationChange" />
                 </filter>
+                <filter>
+                	<simple>${body} is
+                        "com.raytheon.uf.common.bmh.notify.config.MessageForcedExpirationNotification"
+                	</simple>
+                	<bean ref="playlistManager" method="processMessageForcedExpiration" />
+                </filter>
 				<doCatch>
 					<exception>java.lang.Throwable</exception>
 					<to uri="log:bmh?level=ERROR" />

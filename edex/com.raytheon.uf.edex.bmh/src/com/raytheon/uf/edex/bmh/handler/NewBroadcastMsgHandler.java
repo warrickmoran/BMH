@@ -51,12 +51,14 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionSta
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BMHJmsDestinations;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.audio.EdexAudioConverterManager;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
@@ -97,6 +99,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Mar 05, 2015  #4208     bsteffen    Throw Exception when message is submitted without changes.
  * Mar 10, 2015  #4255     bsteffen    Delay inactivating previous until new validates.
  * Apr 07, 2015  #4293     bkowal      Update existing input messages in every case.
+ * Apr 15, 2015  #4293     bkowal      Notify the playlist manager when a message has been expired.
  * 
  * </pre>
  * 
@@ -167,6 +170,7 @@ public class NewBroadcastMsgHandler extends
         // TODO: logging
         InputMessage inputMessage = request.getInputMessage();
         inputMessage = updateInputMessage(request);
+        final boolean newInputMsg = inputMessage.getId() == 0;
 
         /*
          * Determine if we need to create a new Validated Message or if we need
@@ -205,8 +209,28 @@ public class NewBroadcastMsgHandler extends
                             + ") failed to validate because it contains the following unacceptable words: "
                             + unacceptableWords.toString());
         } else if (request.getMessageAudio() == null) {
-            validatedMsgDao.persistCascade(validMsg);
 
+            validatedMsgDao.persistCascade(validMsg);
+            if (newInputMsg == false
+                    && Boolean.FALSE.equals(inputMessage.getActive())) {
+                /*
+                 * If an existing message is in the inactive state, ensure that
+                 * the playlist manager knows that it needs to be removed from
+                 * any existing playlists. Any other updates will still be
+                 * processed as-is; however, the playlist manager ignores all
+                 * inactive messages by default.
+                 */
+                BmhMessageProducer.sendConfigMessage(
+                        new MessageActivationNotification(inputMessage),
+                        request.isOperational());
+                /*
+                 * If the message transitioned from active to inactive. Now that
+                 * all edits are in-place, the normal update procedure will
+                 * handle the message updates correctly. If an inactive message
+                 * was updated, the message will be updated as it should be and
+                 * the message will be ignored by the playlist manager.
+                 */
+            }
             // we are finished, send the validated message to the message
             // transformer.
             this.sendToDestination(
@@ -236,6 +260,14 @@ public class NewBroadcastMsgHandler extends
         // any broadcast message(s) last
         entitiesToPersist.addAll(broadcastRecords);
         validatedMsgDao.persistAll(entitiesToPersist);
+
+        validatedMsgDao.persistCascade(validMsg);
+        if (newInputMsg == false
+                && Boolean.FALSE.equals(inputMessage.getActive())) {
+            BmhMessageProducer.sendConfigMessage(
+                    new MessageActivationNotification(inputMessage),
+                    request.isOperational());
+        }
 
         // send the broadcast message(s) to the playlist scheduler.
         List<Long> messageIdsToSend = new ArrayList<>();

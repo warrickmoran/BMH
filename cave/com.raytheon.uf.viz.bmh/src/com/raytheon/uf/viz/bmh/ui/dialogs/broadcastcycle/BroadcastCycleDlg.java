@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -54,6 +55,7 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.bmh.broadcast.ExpireBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
@@ -73,6 +75,7 @@ import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
+import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
@@ -167,6 +170,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     selected suite.
  * Apr 01, 2015  4349      rferrel     Checks to prevent exceptions when no enabled transmitters.
  * Apr 02, 2015  4248      rjpeter     Removed TransmitterGroupPositionComparator.
+ * Apr 15, 2015  4293      bkowal      Use {@link ExpireBroadcastMsgRequest} when only specific
+ *                                     broadcast messages have been expired.
  * </pre>
  * 
  * @author mpduff
@@ -1102,6 +1107,16 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             final InputMessage inputMessage = broadcastMsg.getInputMessage();
             List<BroadcastMsg> messages = dataManager
                     .getBroadcastMessagesForInputMessage(inputMessage.getId());
+            Iterator<BroadcastMsg> it = messages.iterator();
+            while (it.hasNext()) {
+                if (it.next().getForcedExpiration()) {
+                    /*
+                     * Exclude individual broadcast messages that have already
+                     * been expired.
+                     */
+                    it.remove();
+                }
+            }
             if (messages.size() == 1) {
                 String message = "Are you sure you want to Expire/Delete "
                         + inputMessage.getName();
@@ -1122,15 +1137,14 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 return;
             }
 
-            final Map<String, TransmitterGroup> transmitterGroupMap = new HashMap<>();
-
             CheckListData cld = new CheckListData();
 
+            final Map<String, BroadcastMsg> transmitterGrpToBroadcastMsgMap = new HashMap<>();
             for (BroadcastMsg message : messages) {
                 TransmitterGroup transmitterGroup = message
                         .getTransmitterGroup();
-                transmitterGroupMap.put(transmitterGroup.getName(),
-                        transmitterGroup);
+                transmitterGrpToBroadcastMsgMap.put(transmitterGroup.getName(),
+                        message);
                 cld.addDataItem(transmitterGroup.getName(), true);
             }
 
@@ -1146,7 +1160,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                             && (returnValue instanceof CheckListData)) {
                         handleExpireDialogCallback(inputMessage,
                                 (CheckListData) returnValue,
-                                transmitterGroupMap);
+                                transmitterGrpToBroadcastMsgMap);
                     }
                 }
 
@@ -1159,30 +1173,31 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     }
 
     private void handleExpireDialogCallback(InputMessage inputMessage,
-            CheckListData data, Map<String, TransmitterGroup> transmitterGroups) {
-        NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
+            CheckListData data,
+            Map<String, BroadcastMsg> transmitterGrpToBroadcastMsgMap) {
         if (data.allChecked()) {
+            NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
             inputMessage.setActive(false);
             request.setInputMessage(inputMessage);
-            List<Transmitter> selectedTransmitters = new ArrayList<>();
-            for (TransmitterGroup transmitterGroup : transmitterGroups.values()) {
-                selectedTransmitters.addAll(transmitterGroup.getTransmitters());
-            }
-            request.setSelectedTransmitters(selectedTransmitters);
+            this.sendExpireRequest(request);
         } else {
-            request.setInputMessage(inputMessage);
-            List<Transmitter> selectedTransmitters = new ArrayList<>();
+            List<BroadcastMsg> messagesToExpire = new ArrayList<>();
             for (Entry<String, Boolean> entry : data.getDataMap().entrySet()) {
-                if (!entry.getValue()) {
-                    selectedTransmitters.addAll(transmitterGroups.get(
-                            entry.getKey()).getTransmitters());
+                if (entry.getValue()) {
+                    messagesToExpire.add(transmitterGrpToBroadcastMsgMap
+                            .get(entry.getKey()));
                 }
             }
-            if (selectedTransmitters.isEmpty()) {
+            if (messagesToExpire.isEmpty()) {
                 return;
             }
-            request.setSelectedTransmitters(selectedTransmitters);
+            ExpireBroadcastMsgRequest request = new ExpireBroadcastMsgRequest();
+            request.setExpiredBroadcastMsgs(messagesToExpire);
+            this.sendExpireRequest(request);
         }
+    }
+
+    private void sendExpireRequest(AbstractBMHServerRequest request) {
         try {
             BmhUtils.sendRequest(request);
         } catch (Exception e) {

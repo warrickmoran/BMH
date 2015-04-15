@@ -80,6 +80,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 02, 2015  4248     rjpeter     Made BroadcastFragment database relation a set and add ordered return methods.
  * Apr 07, 2015  4293     bkowal      Updated to include a {@link List} of {@link BroadcastContents}s.
+ * Apr 15, 2015  4293     bkowal      Added {@link #forcedExpiration}.
  * </pre>
  * 
  * @author bkowal
@@ -167,6 +168,10 @@ public class BroadcastMsg {
     @Column
     @DynamicSerializeElement
     private boolean playedAlertTone = false;
+
+    @Column(nullable = false)
+    @DynamicSerializeElement
+    private boolean forcedExpiration = false;
 
     /**
      * @return the id
@@ -342,6 +347,14 @@ public class BroadcastMsg {
 
     public void setPlayedAlertTone(boolean playedAlertTone) {
         this.playedAlertTone = playedAlertTone;
+    }
+
+    public boolean getForcedExpiration() {
+        return forcedExpiration;
+    }
+
+    public void setForcedExpiration(boolean forcedExpiration) {
+        this.forcedExpiration = forcedExpiration;
     }
 
     public Calendar getEffectiveTime() {

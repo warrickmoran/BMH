@@ -90,6 +90,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 12, 2015  4207     bsteffen    Do not preserve start/end time when triggers are present.
  * Mar 12, 2015  4193     bsteffen    Always keep replacements in the list.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
+ * Apr 15, 2015  4293     bkowal      Handle the case when a single broadcast message has been
+ *                                    expired.
  * 
  * </pre>
  * 
@@ -245,7 +247,7 @@ public class Playlist {
                 it.remove();
             } else if (modTime.after(existing.getExpirationTime())) {
                 it.remove();
-            } else if (!existing.isActive()) {
+            } else if (!existing.isActive() || existing.getForcedExpiration()) {
                 for (MessageTypeSummary summary : triggers) {
                     if (summary.getAfosid().equals(existing.getAfosid())) {
                         /*

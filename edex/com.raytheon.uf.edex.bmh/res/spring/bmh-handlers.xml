@@ -145,6 +145,17 @@
         <constructor-arg ref="newBroadcastMsgHandler" />
     </bean>
     
+    <bean id="expireBroadcastMsgHandler" 
+    	class="com.raytheon.uf.edex.bmh.handler.ExpireBroadcastMsgHandler">
+    	<constructor-arg ref="edexMessageLogger" />
+    	<constructor-arg ref="practice_edexMessageLogger" />
+    </bean>
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.broadcast.ExpireBroadcastMsgRequest" />
+        <constructor-arg ref="expireBroadcastMsgHandler" />
+    </bean>
+    
     <bean id="bmhAuthorization"
         class="com.raytheon.uf.edex.bmh.handler.BmhAuthorizationRequestHandler" />
         
