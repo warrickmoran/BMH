@@ -1,0 +1,27 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+                      http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+                      http://camel.apache.org/schema/spring
+                      http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<bean id="statisticsAccumulator" class="com.raytheon.uf.edex.bmh.stats.StatisticsAccumulator" />
+
+	<camelContext id="bmhStatisticContext" xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+
+		<route id="bmhStatisticRoute">
+			<from uri="jms-durable:topic:BMH.Statistic" />
+			<doTry>
+				<bean ref="serializationUtil" method="transformFromThrift" />
+				<bean ref="statisticsAccumulator" method="accumulateStatEvent" />
+				<doCatch>
+					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR" />
+				</doCatch>
+			</doTry>
+		</route>
+
+	</camelContext>
+
+</beans>

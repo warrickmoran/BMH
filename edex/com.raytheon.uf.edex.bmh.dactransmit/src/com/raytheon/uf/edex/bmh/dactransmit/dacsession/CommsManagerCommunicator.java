@@ -43,6 +43,7 @@ import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.common.stats.StatisticsEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
@@ -92,6 +93,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
  * Feb 16, 2015  4107     bsteffen    Manually scan for playlist changes when the comms manager
  *                                    is down or has not sent a command to stop scanning.
  * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil, detect self connection.
+ * Apr 15, 2015  4397     bkowal      Added {@link #forwardStatistics(StatisticsEvent)}.
  * 
  * </pre>
  * 
@@ -127,8 +129,8 @@ public final class CommsManagerCommunicator extends Thread {
         this.config = dacSession.getConfig();
         this.eventBus = dacSession.getEventBus();
         this.executorService = dacSession.getAsyncExecutor();
-        backupPlaylistTask = new ScanPlaylistDirectoryTask(eventBus,
-                dacSession.getConfig().getInputDirectory());
+        backupPlaylistTask = new ScanPlaylistDirectoryTask(eventBus, dacSession
+                .getConfig().getInputDirectory());
         /*
          * Allow the task to prepopulate the playlist, this is not important
          * enough to delay startup.
@@ -276,6 +278,10 @@ public final class CommsManagerCommunicator extends Thread {
 
     public void sendDacLiveBroadcastMsg(ILiveBroadcastMessage msg) {
         sendMessageToCommsManager(msg);
+    }
+
+    public void forwardStatistics(StatisticsEvent event) {
+        sendMessageToCommsManager(event);
     }
 
     @Subscribe

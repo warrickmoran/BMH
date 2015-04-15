@@ -13,6 +13,7 @@ Export-Package: com.raytheon.uf.edex.bmh,
  com.raytheon.uf.edex.bmh.handler,
  com.raytheon.uf.edex.bmh.msg,
  com.raytheon.uf.edex.bmh.msg.logging,
+ com.raytheon.uf.edex.bmh.stats,
  com.raytheon.uf.edex.bmh.status,
  com.raytheon.uf.edex.bmh.tts
 Require-Bundle: com.raytheon.uf.common.bmh,
