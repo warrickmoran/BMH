@@ -59,6 +59,8 @@ import org.eclipse.swt.widgets.Label;
  * Mar 16, 2015 #4244      bsteffen     Disable select controls when all boxes are disabled.
  * Mar 18, 2015 #4282      rferrel      Added allowEnabled flag.
  * Mar 31, 2015 #4304      rferrel      Added {@link #reset(Set, Set)}.
+ * Apr 15, 2015 #4396      rferrel      {@link #reset(boolean)} restores selections to defaults by
+ *                                       using {@link #checkListData}.
  * 
  * </pre>
  * 
@@ -338,22 +340,23 @@ public class CheckScrollListComp extends Composite {
     }
 
     /**
-     * Used to reset the controls back to their default state - enabled and
-     * unchecked.
+     * Used to reset the controls back to their default state.
      */
     public void reset() {
         reset(true);
     }
 
     /**
-     * Reset controls to the desired enable state and clear all selections.
+     * Reset controls to the desired enable state and selection based on
+     * {@link #checkListData}..
      * 
      * @param enableState
      */
     private void reset(boolean enableState) {
+        Map<String, Boolean> dataMap = checkListData.getDataMap();
         for (Button btn : checkboxArray) {
             btn.setEnabled(allowEnable && enableState);
-            btn.setSelection(false);
+            btn.setSelection(dataMap.get(btn.getText()));
         }
         setHelpText(null);
     }
