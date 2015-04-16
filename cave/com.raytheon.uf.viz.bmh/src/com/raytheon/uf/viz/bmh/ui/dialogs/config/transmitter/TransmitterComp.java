@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -116,6 +117,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 10, 2015    4373    rferrel     Implemented {@link INotificationObserver}.
  * Apr 15, 2015    4398    rjpeter     Persist mode changes.
  * Apr 14, 2015    4390    rferrel     Reordering of groups/transmitters now use {@link PositionUtil}.
+ * Apr 16, 2015    4398    rjpeter     Check all transmitter in daisy chain before sending transfer tone.
  * </pre>
  * 
  * @author mpduff
@@ -468,13 +470,59 @@ public class TransmitterComp extends Composite implements INotificationObserver 
 
                 enableItem = !transmitterDecomissioned && !transmitterEnabled
                         && !transmitterMaint;
+                String disableMsg = null;
 
-                MenuItem modeMenuItem = createItem(
-                        menu,
-                        SWT.CASCADE,
-                        enableItem,
-                        transmitterMaint ? "Cannot change mode of transmitter in maintenace. Use Transmitter Alignment to enable."
-                                : "Can only set mode of DISABLED transmitter.");
+                if (enableItem) {
+                    if (groupTransmitter != null) {
+                        /*
+                         * if not standalone, need to ensure all transmitters on
+                         * same port are disabled
+                         */
+                        List<Transmitter> problemTransmitters = new LinkedList<>();
+                        for (Transmitter t : groupTransmitter
+                                .getTransmitterGroup().getTransmitters()) {
+                            if (t.getDacPort() == groupTransmitter.getDacPort()) {
+                                TxStatus status = t.getTxStatus();
+
+                                if (TxStatus.ENABLED.equals(status)
+                                        || TxStatus.MAINT.equals(status)) {
+                                    problemTransmitters.add(t);
+                                }
+                            }
+                        }
+
+                        if (!problemTransmitters.isEmpty()) {
+                            enableItem = false;
+                            StringBuilder msg = new StringBuilder(80);
+                            msg.append("Cannot change mode of daisy chained transmitters unless all are disabled.  Transmitter");
+
+                            if (problemTransmitters.size() > 1) {
+                                msg.append("s (");
+                            } else {
+                                msg.append(" ");
+                            }
+                            for (Transmitter t : problemTransmitters) {
+                                msg.append(t.getMnemonic()).append(", ");
+                            }
+
+                            msg.delete(msg.length() - 2, msg.length());
+
+                            if (problemTransmitters.size() > 1) {
+                                msg.append(") are not disabled.");
+                            } else {
+                                msg.append(" is not disabled.");
+                            }
+                            disableMsg = msg.toString();
+                        }
+                    }
+                } else if (transmitterMaint) {
+                    disableMsg = "Cannot change mode of transmitter in maintenace. Use Transmitter Alignment to enable.";
+                } else {
+                    disableMsg = "Can only set mode of DISABLED transmitter.";
+                }
+
+                MenuItem modeMenuItem = createItem(menu, SWT.CASCADE,
+                        enableItem, disableMsg);
                 modeMenuItem.setText("Transmitter Mode");
 
                 if (!enableItem) {
@@ -769,8 +817,7 @@ public class TransmitterComp extends Composite implements INotificationObserver 
 
         List<TransmitterGroup> tgList = new ArrayList<>(groupNameArray.length);
 
-        for (int i = 0; i < groupNameArray.length; i++) {
-            String s = groupNameArray[i];
+        for (String s : groupNameArray) {
             tgList.add(groupMap.get(s));
         }
 
@@ -814,8 +861,8 @@ public class TransmitterComp extends Composite implements INotificationObserver 
 
             List<Transmitter> tList = new ArrayList<>(
                     transmitterNameList.length);
-            for (int i = 0; i < transmitterNameList.length; i++) {
-                Transmitter t = transmitterMap.get(transmitterNameList[i]);
+            for (String element : transmitterNameList) {
+                Transmitter t = transmitterMap.get(element);
                 tList.add(t);
             }
             PositionUtil.updatePositions(tList);
@@ -960,14 +1007,8 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     command.setBroadcastTimeout((int) (TransmitterMaintenanceThread.MAINTENANCE_TIMEOUT / TimeUtil.MILLIS_PER_MINUTE));
                     TransmitterMaintenanceThread.runAndReportResult(
                             statusHandler, this.getShell(), command);
-                } else {
-                    DialogUtility
-                            .showMessageBox(
-                                    this.getShell(),
-                                    SWT.ICON_WARNING | SWT.OK,
-                                    "No Transfer Tones Sent",
-                                    "Transmitter does not have a DAC and Port assigned.  No transfer tones were sent.");
                 }
+
                 selectObject = data;
             } catch (Exception e) {
                 statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
