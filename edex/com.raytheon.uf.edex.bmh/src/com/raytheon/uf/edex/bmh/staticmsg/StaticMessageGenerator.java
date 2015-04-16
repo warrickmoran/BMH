@@ -121,6 +121,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
  *                                     multiple cluster members do not generate messages.
  * Apr 07, 2015 4293       bkowal      Persist the generated static messages while within
  *                                     the cluster lock.
+ * Apr 16, 2015 3809       bkowal      The time generator is now initialized by Spring.
  * 
  * </pre>
  * 
@@ -1034,16 +1035,6 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
     private void initialize() {
         this.validateDaos();
-
-        try {
-            this.tmGenerator.initialize();
-        } catch (BMHConfigurationException e) {
-            statusHandler.fatal(BMH_CATEGORY.TTS_CONFIGURATION_ERROR,
-                    "Time Messages Generator initialization failed!", e);
-            /* Halt the context startup. */
-            throw new RuntimeException(
-                    "Time Messages Generator initialization failed!");
-        }
 
         try {
             this.alignmentTestGenerator.initialize();

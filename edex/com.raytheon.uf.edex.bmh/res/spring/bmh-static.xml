@@ -4,7 +4,8 @@
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
 	<bean id="timeMessagesGenerator"
-		class="com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator">
+		class="com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator"
+		init-method="initialize">
 		<constructor-arg ref="ttsHandler" />
 		<constructor-arg value="${BMH_DATA}" />
 	</bean>
