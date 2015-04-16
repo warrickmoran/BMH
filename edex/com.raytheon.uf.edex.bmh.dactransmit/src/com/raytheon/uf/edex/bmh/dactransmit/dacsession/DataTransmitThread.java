@@ -81,7 +81,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Feb 11, 2015  #4098     bsteffen     Allow pause to maintain packet sequence numbers.
  * Feb 26, 2015  #4187     rjpeter      Added keepRunning check to allow shutdown when thread doesn't have sync.
  * Mar 06, 2015  #4188     bsteffen     Track interrupts only in PlaylistScheduler.
- * 
+ * Apr 16, 2015  #4405     rjpeter      Update to have hasSync initialized.
  * </pre>
  * 
  * @author dgilling
@@ -128,14 +128,18 @@ public final class DataTransmitThread extends AbstractTransmitThread {
      *            {@code InetAddress} of DAC IP endpoint.
      * @param dataPort
      *            Port to send data over.
+     * @param hasSync
+     *            If currently sync'd to DAC.
      * @throws SocketException
      *             If the socket could not be opened.
      */
     public DataTransmitThread(DacSession dacSession,
-            final PlaylistScheduler playlistMgr) throws SocketException {
+            final PlaylistScheduler playlistMgr, boolean hasSync)
+            throws SocketException {
         super("DataTransmitThread", dacSession.getEventBus(), dacSession
                 .getConfig().getDacAddress(), dacSession.getConfig()
-                .getDataPort(), dacSession.getConfig().getTransmitters());
+                .getDataPort(), dacSession.getConfig().getTransmitters(),
+                hasSync);
         this.playlistMgr = playlistMgr;
         this.executorService = dacSession.getAsyncExecutor();
         this.keepRunning = true;

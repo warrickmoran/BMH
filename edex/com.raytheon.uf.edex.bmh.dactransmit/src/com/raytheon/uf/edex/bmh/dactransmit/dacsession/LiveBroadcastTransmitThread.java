@@ -76,7 +76,7 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * Nov 21, 2014 3845       bkowal      Transition to transmitter group complete.
  * Feb 11, 2015 4098       bsteffen    Maintain jitter buffer during broadcast.
  * Apr 15, 2015 4397       bkowal      Added {@link #generateStatistics()}.
- * 
+ * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
  * </pre>
  * 
  * @author bkowal
@@ -108,9 +108,9 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             final CommsManagerCommunicator commsManager,
             final BroadcastTransmitterConfiguration config,
             final double dbTarget, final BROADCASTTYPE type,
-            final long requestTime) throws IOException {
+            final long requestTime, final boolean hasSync) throws IOException {
         super("LiveBroadcastTransmitThread", eventBus, address, port,
-                transmitters, dbTarget);
+                transmitters, dbTarget, hasSync);
         this.broadcastId = broadcastId;
         this.dataThread = dataThread;
         this.commsManager = commsManager;

@@ -46,7 +46,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Feb 11, 2015 4098       bsteffen    Maintain jitter buffer during broadcast.
- * 
+ * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
  * </pre>
  * 
  * @author bkowal
@@ -71,8 +71,8 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
      */
     public BroadcastTransmitThread(String name, EventBus eventBus,
             InetAddress address, int port, Collection<Integer> transmitters,
-            final double dbTarget) throws SocketException {
-        super(name, eventBus, address, port, transmitters);
+            final double dbTarget, boolean hasSync) throws SocketException {
+        super(name, eventBus, address, port, transmitters, hasSync);
         this.dbTarget = dbTarget;
     }
 
