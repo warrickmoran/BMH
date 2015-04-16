@@ -65,7 +65,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Jan 19, 2015  #3912     bsteffen     Send events directly to a listener.
  * Jan 26, 2015  #3995     rjpeter      Fix heartbeat time out.
  * Apr 02, 2015  #4325     bsteffen     Log sync events.
- * 
+ * Apr 16, 2015  #4405     rjpeter      Added isSynced.
  * </pre>
  * 
  * @author dgilling
@@ -301,5 +301,14 @@ public class ControlStatusThread extends Thread {
 
     private DatagramPacket buildPacket(byte[] buf) {
         return new DatagramPacket(buf, buf.length, dacAddress, port);
+    }
+
+    /**
+     * True if this control thread has the sync with the DAC.
+     * 
+     * @return
+     */
+    public boolean isSynced() {
+        return hasSync;
     }
 }

@@ -54,7 +54,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketInFactory;
  * Jan 09, 2015 3942       rjpeter     Made nextCycleTime volatile, updated to set limits on cycle intervals.
  * Jan 19, 2015 3912       bsteffen    Receive sync, status directly instead of subscribing.
  * Feb 06, 2015 4071       bsteffen    Consolidate threading.
- * 
+ * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
  * </pre>
  * 
  * @author bkowal
@@ -89,12 +89,10 @@ public class AbstractTransmitThread extends Thread implements
 
     protected volatile boolean onSyncRestartMessage;
 
-    /**
-     * 
-     */
     public AbstractTransmitThread(final String name, final EventBus eventBus,
             final InetAddress address, final int port,
-            Collection<Integer> transmitters) throws SocketException {
+            Collection<Integer> transmitters, boolean hasSync)
+            throws SocketException {
         super(name);
         this.eventBus = eventBus;
         this.address = address;
@@ -104,7 +102,7 @@ public class AbstractTransmitThread extends Thread implements
         this.previousPacket = null;
         this.packetInterval = DataTransmitConstants.INITIAL_CYCLE_TIME;
         this.watermarkPackets = DataTransmitConstants.WATERMARK_PACKETS_IN_BUFFER;
-        this.hasSync = true;
+        this.hasSync = hasSync;
         this.onSyncRestartMessage = false;
     }
 

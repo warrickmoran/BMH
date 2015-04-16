@@ -54,7 +54,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Dec 12, 2014 3603       bsteffen    Allow negative duration of maintenance messages to run full audio.
  * Jan 19, 2015 3912       bsteffen    Use new control thread constructor
  * Apr 09, 2015 4364       bkowal      Utilize the {@link DacMaintenanceReaper}.
- * 
+ * Apr 16, 2015 4405       rjpeter     Initialize isSync'd.
  * </pre>
  * 
  * @author bkowal
@@ -78,7 +78,7 @@ public class DacMaintenanceSession implements IDacSession {
 
     private final byte[] originalMaintenanceAudio;
 
-    private ScheduledThreadPoolExecutor reaperExecutor = new ScheduledThreadPoolExecutor(
+    private final ScheduledThreadPoolExecutor reaperExecutor = new ScheduledThreadPoolExecutor(
             1);
 
     private volatile boolean initialSyncCompleted = false;
@@ -96,7 +96,7 @@ public class DacMaintenanceSession implements IDacSession {
         this.transmitThread = new MaintenanceBroadcastTransmitThread(
                 "MaintenanceBroadcastTransmitThread", this.eventBus,
                 this.config.getDacAddress(), this.config.getDataPort(),
-                this.config.getTransmitters(), this.config.getDbTarget());
+                this.config.getTransmitters(), this.config.getDbTarget(), true);
         this.controlThread = new ControlStatusThread(this.transmitThread,
                 this.config.getDacAddress(), this.config.getControlPort());
         this.originalMaintenanceAudio = Files.readAllBytes(this.config

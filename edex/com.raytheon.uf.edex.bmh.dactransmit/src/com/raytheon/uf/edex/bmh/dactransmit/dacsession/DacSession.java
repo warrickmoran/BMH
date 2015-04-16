@@ -105,7 +105,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Mar 06, 2015  #4188     bsteffen     Track interrupts only in PlaylistScheduler.
  * Apr 02, 2015  #4325     bsteffen     Do not sync on main thread.
  * Apr 15, 2015  #4397     bkowal       Provide additional information to the live broadcast thread.
- * 
+ * Apr 16, 2015  #4405     rjpeter      Fail live broadcast if we don't have sync to dac.
  * </pre>
  * 
  * @author dgilling
@@ -138,7 +138,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
 
     private final PlaylistDirectoryObserver newPlaylistObserver;
 
-    private CommsManagerCommunicator commsManager;
+    private final CommsManagerCommunicator commsManager;
 
     private final Semaphore shutdownSignal;
 
@@ -163,7 +163,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         this.playlistMgr = new PlaylistScheduler(this);
         this.controlThread = new ControlStatusThread(this,
                 this.config.getDacAddress(), this.config.getControlPort());
-        this.dataThread = new DataTransmitThread(this, playlistMgr);
+        this.dataThread = new DataTransmitThread(this, playlistMgr, false);
         this.commsManager = new CommsManagerCommunicator(this);
         if (Boolean.getBoolean("enableDirectoryObserver")) {
             this.newPlaylistObserver = new PlaylistDirectoryObserver(this);
@@ -382,6 +382,18 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         }
 
         /*
+         * Don't have sync to dac
+         */
+        if (this.controlThread.isSynced() == false) {
+            logger.info("Unable to fulfill live broadcast request; do not currently have dac sync.");
+            this.notifyLiveClientFailure(startCommand.getBroadcastId(),
+                    startCommand.getTransmitterGroups(),
+                    "Do no have sync to DAC for Transmitter Group "
+                            + transmitterName + ".", null);
+            return;
+        }
+
+        /*
          * Delay any further interrupts ...
          */
         this.playlistMgr.lockInterrupts(startCommand.getType());
@@ -395,7 +407,7 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                     this.config.getDataPort(), this.config.getTransmitters(),
                     startCommand.getBroadcastId(), this.dataThread,
                     this.commsManager, config, this.config.getDbTarget(),
-                    startCommand.getType(), startCommand.getRequestTime());
+                    startCommand.getType(), startCommand.getRequestTime(), true);
         } catch (IOException e) {
             logger.error("Failed to create a thread for broadcast "
                     + startCommand.getBroadcastId() + "!", e);
