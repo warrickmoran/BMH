@@ -57,6 +57,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 07, 2015  4293     bkowal      Added {@link #getMessageByInputMessageAndGroup(InputMessage, TransmitterGroup)}.
+ * Apr 16, 2014  4395     rferrel     Added {@link #getAllUnexpiredMessages(Calendar)}.
  * 
  * </pre>
  * 
@@ -220,5 +221,11 @@ public class BroadcastMsgDao extends
         }
 
         return broadcastMessages;
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<BroadcastMsg> getAllUnexpiredMessages(Calendar currentTime) {
+        return (List<BroadcastMsg>) findByNamedQueryAndNamedParam(
+                BroadcastMsg.ALL_UNEXPIRED_MSGS, "currentTime", currentTime);
     }
 }

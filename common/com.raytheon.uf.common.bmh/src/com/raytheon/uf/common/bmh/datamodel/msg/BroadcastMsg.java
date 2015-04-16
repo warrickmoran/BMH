@@ -81,6 +81,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 02, 2015  4248     rjpeter     Made BroadcastFragment database relation a set and add ordered return methods.
  * Apr 07, 2015  4293     bkowal      Updated to include a {@link List} of {@link BroadcastContents}s.
  * Apr 15, 2015  4293     bkowal      Added {@link #forcedExpiration}.
+ * Apr 16, 2015  4395     rferrel     Added {@link #ALL_UNEXPIRED_MSGS_QUERY}.
  * </pre>
  * 
  * @author bkowal
@@ -93,7 +94,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = BroadcastMsg.GET_MSGS_BY_INPUT_MSG, query = BroadcastMsg.GET_MSGS_BY_INPUT_MSG_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH, query = BroadcastMsg.GET_MSG_BY_FRAGMENT_PATH_QUERY),
         @NamedQuery(name = BroadcastMsg.GET_MSG_BY_INPUT_MSG_AND_GROUP, query = BroadcastMsg.GET_MSG_BY_INPUT_MSG_AND_GROUP_QUERY),
-        @NamedQuery(name = BroadcastMsg.GET_MSG_WITH_MULTI_OLD_CONTENT, query = BroadcastMsg.GET_MSG_WITH_MULTI_OLD_CONTENT_QUERY) })
+        @NamedQuery(name = BroadcastMsg.GET_MSG_WITH_MULTI_OLD_CONTENT, query = BroadcastMsg.GET_MSG_WITH_MULTI_OLD_CONTENT_QUERY),
+        @NamedQuery(name = BroadcastMsg.ALL_UNEXPIRED_MSGS, query = BroadcastMsg.ALL_UNEXPIRED_MSGS_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "broadcast_msg", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
@@ -125,6 +127,10 @@ public class BroadcastMsg {
     public static final String GET_MSG_WITH_MULTI_OLD_CONTENT = "getMsgWithMultiOldContent";
 
     protected static final String GET_MSG_WITH_MULTI_OLD_CONTENT_QUERY = "SELECT DISTINCT m FROM BroadcastMsg m inner join m.contents c WHERE c.id.timestamp < :purgeMillis and size(c) > 1";
+
+    public static final String ALL_UNEXPIRED_MSGS = "getAllUnexpiredMessages";
+
+    protected static final String ALL_UNEXPIRED_MSGS_QUERY = "SELECT bm FROM BroadcastMsg bm INNER JOIN bm.inputMessage m WHERE m.expirationTime IS NULL or m.expirationTime >= :currentTime";
 
     /* A unique auto-generated numerical id. Long = SQL BIGINT */
     @Id

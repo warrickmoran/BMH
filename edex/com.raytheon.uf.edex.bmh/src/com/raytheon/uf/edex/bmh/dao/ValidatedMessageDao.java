@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.Calendar;
 import java.util.List;
 
 import org.springframework.transaction.TransactionStatus;
@@ -41,6 +42,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Jun 23, 2014  3283     bsteffen    Initial creation
  * Sep 02, 2014  3568     bkowal      Added getValidatedMsgByInputMsg
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Apr 16, 2015  4396     rferrel     Added {@link #getAllUnexpiredMessages(Calendar)}.
  * 
  * 
  * </pre>
@@ -85,5 +87,12 @@ public class ValidatedMessageDao extends
         }
 
         return (ValidatedMessage) messages.get(0);
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<ValidatedMessage> getAllUnexpiredMessages(Calendar currentTime) {
+        return (List<ValidatedMessage>) findByNamedQueryAndNamedParam(
+                ValidatedMessage.ALL_UNEXPIRED_VALIDATED_MSGS, "currentTime",
+                currentTime);
     }
 }

@@ -28,6 +28,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -61,6 +62,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.edex.bmh.BMHConstants;
@@ -110,6 +112,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Mar 26, 2015  4213     bkowal      Fixed copying of static message types.
  * APr 02, 2015  4248     rjpeter     Use PositionComparator.
  * Apr 07, 2015  4293     bkowal      Copy broadcast message contents and fragments.
+ * Apr 16, 2015  4395     rferrel     No longer copy expired {@link InputMessage}s.
  * </pre>
  * 
  * @author bsteffen
@@ -143,6 +146,7 @@ public class BmhDatabaseCopier {
 
     public void copyAll() throws EdexException, SerializationException,
             IOException {
+        Calendar currentTime = TimeUtil.newGmtCalendar();
         clearAllPracticeTables();
         copyDictionaries();
         copyTtsVoices();
@@ -153,9 +157,9 @@ public class BmhDatabaseCopier {
         copyTransmitterLanguage();
         copySuites();
         copyPrograms();
-        copyInputMessages();
-        this.copyValidatedMessages();
-        copyBroadcastMsgs();
+        copyInputMessages(currentTime);
+        this.copyValidatedMessages(currentTime);
+        copyBroadcastMsgs(currentTime);
         BmhMessageProducer.sendConfigMessage(new ResetNotification(), false);
     }
 
@@ -415,11 +419,13 @@ public class BmhDatabaseCopier {
         prDao.persistAll(dictionaries);
     }
 
-    private void copyInputMessages() {
+    private void copyInputMessages(Calendar currentTime) {
         InputMessageDao opDao = new InputMessageDao(true, this.opMessageLogger);
         InputMessageDao prDao = new InputMessageDao(false,
                 this.pracMessageLogger);
-        List<InputMessage> inputMessages = opDao.getAll();
+        List<InputMessage> inputMessages = opDao
+                .getAllUnexpiredInputMessages(currentTime);
+
         Map<Integer, InputMessage> inputMessageMap = new HashMap<>(
                 inputMessages.size(), 1.0f);
         for (InputMessage inputMessage : inputMessages) {
@@ -430,12 +436,13 @@ public class BmhDatabaseCopier {
         this.inputMessageMap = inputMessageMap;
     }
 
-    private void copyValidatedMessages() {
+    private void copyValidatedMessages(Calendar currentTime) {
         ValidatedMessageDao opDao = new ValidatedMessageDao(true,
                 this.opMessageLogger);
         ValidatedMessageDao prDao = new ValidatedMessageDao(false,
                 this.pracMessageLogger);
-        List<ValidatedMessage> validatedMsgs = opDao.getAll();
+        List<ValidatedMessage> validatedMsgs = opDao
+                .getAllUnexpiredMessages(currentTime);
         for (ValidatedMessage validatedMsg : validatedMsgs) {
             validatedMsg.setInputMessage(this.inputMessageMap.get(validatedMsg
                     .getInputMessage().getId()));
@@ -455,7 +462,7 @@ public class BmhDatabaseCopier {
         prDao.persistAll(validatedMsgs);
     }
 
-    private void copyBroadcastMsgs() throws IOException {
+    private void copyBroadcastMsgs(Calendar currentTime) throws IOException {
         BroadcastMsgDao opDao = new BroadcastMsgDao(true, this.opMessageLogger);
         BroadcastMsgDao prDao = new BroadcastMsgDao(false,
                 this.pracMessageLogger);
@@ -466,7 +473,8 @@ public class BmhDatabaseCopier {
         Path prAudioDir = BMHConstants.getBmhDataDirectory(false).resolve(
                 BMHConstants.AUDIO_DATA_DIRECTORY);
 
-        List<BroadcastMsg> broadcastMsgs = opDao.getAll();
+        List<BroadcastMsg> broadcastMsgs = opDao
+                .getAllUnexpiredMessages(currentTime);
         Map<Long, BroadcastMsg> broadcastMsgMap = new HashMap<>(
                 broadcastMsgs.size(), 1.0f);
         List<BroadcastContents> contentsToCopy = new ArrayList<>();

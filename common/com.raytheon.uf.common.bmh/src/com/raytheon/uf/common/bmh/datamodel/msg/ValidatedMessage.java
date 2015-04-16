@@ -66,13 +66,16 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 02, 2014  3785     mpduff      Added DynamicSerialize annotations.
  * Nov 19, 2014  3385     bkowal      Added {@link LdadStatus#NONE}
  * Dec 02, 2014  3614     bsteffen    Add Unacceptable status.
+ * Apr 16, 2015  4396     rferrel     Added {@link #ALL_UNEXPIRED_VALIDATED_MSGS_QUERY}.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-@NamedQueries({ @NamedQuery(name = ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG, query = ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG_QUERY) })
+@NamedQueries({
+        @NamedQuery(name = ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG, query = ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG_QUERY),
+        @NamedQuery(name = ValidatedMessage.ALL_UNEXPIRED_VALIDATED_MSGS, query = ValidatedMessage.ALL_UNEXPIRED_VALIDATED_MSGS_QUERY) })
 @Entity
 @Table(name = "validated_msg", schema = "bmh")
 @SequenceGenerator(initialValue = 1, schema = "bmh", name = ValidatedMessage.GEN, sequenceName = "validated_msg_seq")
@@ -82,6 +85,10 @@ public class ValidatedMessage {
     public static final String GET_VALIDATED_MSG_FOR_INPUT_MSG = "getValidatedMsgForInputMsg";
 
     protected static final String GET_VALIDATED_MSG_FOR_INPUT_MSG_QUERY = "FROM ValidatedMessage vm WHERE vm.inputMessage = :inputMessage";
+
+    public static final String ALL_UNEXPIRED_VALIDATED_MSGS = "getAllUnExpiredValidatedMsgs";
+
+    protected static final String ALL_UNEXPIRED_VALIDATED_MSGS_QUERY = "SELECT vm FROM ValidatedMessage vm INNER JOIN vm.inputMessage  m  WHERE m.expirationTime IS NULL or m.expirationTime >= :currentTime";
 
     public static enum TransmissionStatus {
         /** This status must be set for a message to continue processing. */

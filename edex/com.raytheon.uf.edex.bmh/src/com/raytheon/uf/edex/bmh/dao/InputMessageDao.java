@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 01, 2015  4326     bsteffen    Allow reuse of MRD after old message expires.
+ * Apr 16, 2015  4395     rferrel     Added {@link #getAllUnexpiredInputMessages(Calendar)}.
  * 
  * </pre>
  * 
@@ -215,8 +216,16 @@ public class InputMessageDao extends
         return createInputMessageIdNameAfosCreation(objectList);
     }
 
-    public List<InputMessage> getActiveWithAfosidAndAreaCodes(
-            String afosid, String areaCodes, Calendar expireAfter) {
+    @SuppressWarnings("unchecked")
+    public List<InputMessage> getAllUnexpiredInputMessages(
+            final Calendar currentTime) {
+        return (List<InputMessage>) findByNamedQueryAndNamedParam(
+                InputMessage.ALL_UNEXPIRED_QUERY_NAME, "currentTime",
+                currentTime);
+    }
+
+    public List<InputMessage> getActiveWithAfosidAndAreaCodes(String afosid,
+            String areaCodes, Calendar expireAfter) {
         String[] names = { "afosid", "areaCodes", "expireAfter" };
         Object[] values = { afosid, areaCodes, expireAfter };
         @SuppressWarnings("unchecked")
@@ -232,10 +241,7 @@ public class InputMessageDao extends
         Object[] values = { mrdLike, expireAfter };
         @SuppressWarnings("unchecked")
         List<InputMessage> result = (List<InputMessage>) findByNamedQueryAndNamedParam(
-                InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME,
-                names, values);
+                InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME, names, values);
         return result;
     }
-
-
 }

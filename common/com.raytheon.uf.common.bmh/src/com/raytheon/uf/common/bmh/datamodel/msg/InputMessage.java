@@ -90,6 +90,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                     equal, hashCode and toString methods. Clone all
  *                                     Calendar elements.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
+ * Apr 16, 2015  4395     rferrel     Added {@link #ALL_UNEXPIRED_QUERY}.
  * 
  * </pre>
  * 
@@ -102,7 +103,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = InputMessage.PURGE_QUERY_NAME, query = InputMessage.PURGE_QUERY),
         @NamedQuery(name = InputMessage.UNEXPIRED_QUERY_NAME, query = InputMessage.UNEXPIRED_QUERY),
         @NamedQuery(name = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME, query = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY),
-        @NamedQuery(name = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME, query = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY) })
+        @NamedQuery(name = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME, query = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY),
+        @NamedQuery(name = InputMessage.ALL_UNEXPIRED_QUERY_NAME, query = InputMessage.ALL_UNEXPIRED_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "input_msg", schema = "bmh")
@@ -148,6 +150,10 @@ public class InputMessage {
     public static final String ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME = "getActiveInputMessagesWithAfosidAndAreaCodes";
 
     protected static final String ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid and m.areaCodes = :areaCodes and m.mrd IS NULL and m.expirationTime >= :expireAfter and m.active = true";
+
+    public static final String ALL_UNEXPIRED_QUERY_NAME = "getALLNonExpiredMessages";
+
+    protected static final String ALL_UNEXPIRED_QUERY = "FROM InputMessage m where m.expirationTime IS NULL or m.expirationTime >= :currentTime";
 
     /**
      * Named query to retrieve messages that have an mrd matching a like
