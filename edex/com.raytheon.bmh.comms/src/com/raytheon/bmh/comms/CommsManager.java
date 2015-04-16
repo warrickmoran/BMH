@@ -62,6 +62,7 @@ import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
+import com.raytheon.uf.common.stats.StatisticsEvent;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
@@ -111,6 +112,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Jan 23, 2015  3912     bsteffen    Sleep more when starting many dac transmits.
  * Mar 11, 2015  4186     bsteffen    Report silence alarms in status
  * Apr 07, 2015  4370     rjpeter     Add jms and cluster listener for config changes.
+ * Apr 15, 2015  4397     bkowal      Added {@link #transmitBMHStat(StatisticsEvent)}.
  * </pre>
  * 
  * @author bsteffen
@@ -713,6 +715,19 @@ public class CommsManager {
         if (statusObject instanceof DacHardwareStatusNotification) {
             silenceAlarm
                     .handleDacHardwareStatus((DacHardwareStatusNotification) statusObject);
+        }
+    }
+
+    /**
+     * This method should be used to forward a {@link StatisticsEvent} to EDEX
+     * for storage.
+     * 
+     * @param event
+     *            the {@link StatisticsEvent} to forward.
+     */
+    public void transmitBMHStat(StatisticsEvent event) {
+        if (jms != null) {
+            jms.sendBmhStat(event);
         }
     }
 

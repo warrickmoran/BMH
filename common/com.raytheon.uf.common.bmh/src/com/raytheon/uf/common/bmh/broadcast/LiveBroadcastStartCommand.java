@@ -38,7 +38,8 @@ import java.util.HashMap;
  * Oct 20, 2014 3655       bkowal      Initial creation
  * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
- * Dec 1, 2014  3797       bkowal      Aded get/set tonesDuration
+ * Dec 1, 2014  3797       bkowal      Added get/set tonesDuration
+ * Apr 15, 2015 4397       bkowal      Added {@link #requestTime}.
  * 
  * </pre>
  * 
@@ -55,6 +56,13 @@ public class LiveBroadcastStartCommand extends LiveBroadcastCommand {
         BL
     }
 
+    /*
+     * Used to keep track of when the request was originally made for auditing
+     * purposes.
+     */
+    @DynamicSerializeElement
+    private long requestTime;
+
     @DynamicSerializeElement
     private BROADCASTTYPE type = BROADCASTTYPE.EO;
 
@@ -70,6 +78,7 @@ public class LiveBroadcastStartCommand extends LiveBroadcastCommand {
     public LiveBroadcastStartCommand() {
         super();
         super.setAction(ACTION.PREPARE);
+        this.requestTime = System.currentTimeMillis();
     }
 
     public void addTransmitterConfiguration(
@@ -77,6 +86,21 @@ public class LiveBroadcastStartCommand extends LiveBroadcastCommand {
         this.transmitterGroupConfigurationMap.put(
                 configuration.getTransmitterGroup(), configuration);
         super.addTransmitterGroup(configuration.getTransmitterGroup());
+    }
+
+    /**
+     * @return the requestTime
+     */
+    public long getRequestTime() {
+        return requestTime;
+    }
+
+    /**
+     * @param requestTime
+     *            the requestTime to set
+     */
+    public void setRequestTime(long requestTime) {
+        this.requestTime = requestTime;
     }
 
     public BROADCASTTYPE getType() {

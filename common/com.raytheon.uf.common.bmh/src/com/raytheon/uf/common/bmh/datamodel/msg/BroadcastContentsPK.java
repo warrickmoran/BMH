@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 2, 2015  4293       bkowal      Initial creation
+ * Apr 15, 2015 4397       bkowal      Added {@link #hashCode()} and {@link #equals(Object)}.
  * 
  * </pre>
  * 
@@ -108,5 +109,40 @@ public class BroadcastContentsPK implements Serializable,
          * Note: we want the most recent time to be first in the list.
          */
         return Long.compare(o.getTimestamp(), this.timestamp);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (int) (broadcastId ^ (broadcastId >>> 32));
+        result = prime * result + (int) (timestamp ^ (timestamp >>> 32));
+        return result;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        BroadcastContentsPK other = (BroadcastContentsPK) obj;
+        if (broadcastId != other.broadcastId)
+            return false;
+        if (timestamp != other.timestamp)
+            return false;
+        return true;
     }
 }

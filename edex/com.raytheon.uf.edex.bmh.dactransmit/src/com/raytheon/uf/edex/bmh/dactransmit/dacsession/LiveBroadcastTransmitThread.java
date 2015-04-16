@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.eventbus.EventBus;
@@ -39,6 +40,7 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
+import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
 
 /**
  * Transmits audio from a live data source (rather than a pre-recorded data
@@ -73,6 +75,7 @@ import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
  *                                     transmitter group.
  * Nov 21, 2014 3845       bkowal      Transition to transmitter group complete.
  * Feb 11, 2015 4098       bsteffen    Maintain jitter buffer during broadcast.
+ * Apr 15, 2015 4397       bkowal      Added {@link #generateStatistics()}.
  * 
  * </pre>
  * 
@@ -92,7 +95,11 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
     private final BROADCASTTYPE type;
 
+    private final long requestTime;
+
     private volatile boolean streaming;
+
+    private boolean bytesReceived = false;
 
     public LiveBroadcastTransmitThread(final EventBus eventBus,
             final InetAddress address, final int port,
@@ -100,7 +107,8 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             final DataTransmitThread dataThread,
             final CommsManagerCommunicator commsManager,
             final BroadcastTransmitterConfiguration config,
-            final double dbTarget, final BROADCASTTYPE type) throws IOException {
+            final double dbTarget, final BROADCASTTYPE type,
+            final long requestTime) throws IOException {
         super("LiveBroadcastTransmitThread", eventBus, address, port,
                 transmitters, dbTarget);
         this.broadcastId = broadcastId;
@@ -108,6 +116,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         this.commsManager = commsManager;
         this.config = config;
         this.type = type;
+        this.requestTime = requestTime;
     }
 
     @Override
@@ -170,6 +179,15 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         this.dataThread.resumePlayback(previousPacket);
     }
 
+    @Override
+    public void playAudio(List<byte[]> data) {
+        if (this.bytesReceived == false) {
+            this.bytesReceived = true;
+            this.generateStatistics();
+        }
+        super.playAudio(data);
+    }
+
     private void playTones(byte[] toneAudio, final String toneType) {
         AudioPacketLogger packetLog = new AudioPacketLogger(
                 "Live Broadcast Tones", getClass(), 30);
@@ -191,7 +209,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         packetLog.close();
     }
 
-    private void waitForAudio(){
+    private void waitForAudio() {
         /*
          * Stream silence until the first audio packet arrives to keep the
          * jitter buffer full to the watermark level.
@@ -224,6 +242,13 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         status.setMessage(detail);
         status.setException(e);
         this.commsManager.sendDacLiveBroadcastMsg(status);
+    }
+
+    private void generateStatistics() {
+        LiveBroadcastLatencyEvent event = new LiveBroadcastLatencyEvent();
+        event.setBroadcastIdentifier(this.broadcastId);
+        event.setLatency(System.currentTimeMillis() - this.requestTime);
+        this.commsManager.forwardStatistics(event);
     }
 
     public void shutdown() {

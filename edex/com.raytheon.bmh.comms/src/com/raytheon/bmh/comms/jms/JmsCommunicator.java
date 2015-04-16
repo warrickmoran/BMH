@@ -45,6 +45,7 @@ import com.raytheon.uf.common.jms.notification.JmsNotificationManager;
 import com.raytheon.uf.common.message.StatusMessage;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.common.stats.StatisticsEvent;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 
 /**
@@ -65,6 +66,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Nov 03, 2014  3525     bsteffen    Allow sending of status messages to alert topic.
  * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
  * Feb 16, 2015  4107     bsteffen    Notify the playlist observer when it is successfully observing.
+ * Apr 15, 2015  4397     bkowal      Added {@link #bmhStatisticProducer}.
  * 
  * </pre>
  * 
@@ -84,6 +86,8 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     private final ProducerWrapper bmhStatusProducer;
 
+    private final ProducerWrapper bmhStatisticProducer;
+
     private final ProducerWrapper alertProducer;
 
     public JmsCommunicator(CommsConfig config, boolean operational)
@@ -97,6 +101,13 @@ public class JmsCommunicator extends JmsNotificationManager {
         this.bmhStatusProducer = new ProducerWrapper(topic,
                 BMH_STATUS_QUEUE_SIZE);
 
+        if (operational) {
+            this.bmhStatisticProducer = new ProducerWrapper("BMH.Statistic",
+                    BMH_STATUS_QUEUE_SIZE);
+        } else {
+            this.bmhStatisticProducer = null;
+        }
+
         this.alertProducer = new ProducerWrapper("edex.alerts.msg");
         JmsStatusMessageAppender.setJmsCommunicator(this);
     }
@@ -104,6 +115,14 @@ public class JmsCommunicator extends JmsNotificationManager {
     public void sendBmhStatus(Object notification) {
         bmhStatusProducer.enqueue(notification);
         bmhStatusProducer.sendQueued();
+    }
+
+    public void sendBmhStat(StatisticsEvent event) {
+        if (this.operational == false) {
+            return;
+        }
+        bmhStatisticProducer.enqueue(event);
+        bmhStatisticProducer.sendQueued();
     }
 
     public void sendStatusMessage(StatusMessage message) throws JMSException,

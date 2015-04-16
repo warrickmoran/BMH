@@ -45,6 +45,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitScanPlaylists;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
+import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
 
 /**
  * 
@@ -78,6 +79,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Feb 16, 2015  4107     bsteffen    Add updatePlaylistListener
  * Mar 10, 2015  4228     bsteffen    Track disconnected state more carefully.
  * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil.
+ * Apr 15, 2015  4397     bkowal      Handle {@link LiveBroadcastLatencyEvent}.
  * 
  * </pre>
  * 
@@ -189,6 +191,12 @@ public class DacTransmitCommunicator extends Thread {
             MessageDelayedBroadcastNotification notification = (MessageDelayedBroadcastNotification) message;
             notification.setTransmitterGroup(this.groupName);
             broadcastDelayAlarm.notifyDelay(notification);
+        } else if (message instanceof LiveBroadcastLatencyEvent) {
+            LiveBroadcastLatencyEvent event = (LiveBroadcastLatencyEvent) message;
+            event.setTransmitterGroup(this.groupName);
+            logger.info("Forwarding live broadcast latency statistic: {}.",
+                    event.toString());
+            manager.transmitBMHStat(event);
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",
                     message.getClass().getSimpleName());
@@ -250,7 +258,7 @@ public class DacTransmitCommunicator extends Thread {
         send(msg);
     }
 
-    public void updatePlaylistListener(boolean active){
+    public void updatePlaylistListener(boolean active) {
         send(new DacTransmitScanPlaylists(!active));
     }
 

@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 9, 2015  4213       bkowal      Initial creation
+ * Apr 15, 2015 4397       bkowal      Added {@link #hashCode()} and {@link #equals(Object)}.
  * 
  * </pre>
  * 
@@ -102,5 +103,42 @@ public class StaticMessageTypePK implements Serializable {
         sb.append(", msgTypeId=").append(this.msgTypeId).append("]");
 
         return sb.toString();
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + msgTypeId;
+        result = prime
+                * result
+                + ((transmitterLanguagePK == null) ? 0 : transmitterLanguagePK
+                        .hashCode());
+        return result;
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        StaticMessageTypePK other = (StaticMessageTypePK) obj;
+        if (msgTypeId != other.msgTypeId)
+            return false;
+        if (transmitterLanguagePK == null) {
+            if (other.transmitterLanguagePK != null)
+                return false;
+        } else if (!transmitterLanguagePK.equals(other.transmitterLanguagePK))
+            return false;
+        return true;
     }
 }
