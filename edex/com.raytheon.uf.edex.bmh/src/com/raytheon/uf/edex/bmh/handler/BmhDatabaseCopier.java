@@ -113,6 +113,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * APr 02, 2015  4248     rjpeter     Use PositionComparator.
  * Apr 07, 2015  4293     bkowal      Copy broadcast message contents and fragments.
  * Apr 16, 2015  4395     rferrel     No longer copy expired {@link InputMessage}s.
+ * Apr 16, 2015  4350     rferrel     Fix selected transmitters in {@link #copyInputMessages(Calendar)}.
  * </pre>
  * 
  * @author bsteffen
@@ -431,6 +432,17 @@ public class BmhDatabaseCopier {
         for (InputMessage inputMessage : inputMessages) {
             inputMessageMap.put(inputMessage.getId(), inputMessage);
             inputMessage.setId(0);
+            if (!CollectionUtil.isNullOrEmpty(inputMessage
+                    .getSelectedTransmitters())) {
+                Set<Transmitter> opSelected = inputMessage
+                        .getSelectedTransmitters();
+                Set<Transmitter> prSelected = new HashSet<>(opSelected.size(),
+                        1.0f);
+                for (Transmitter t : opSelected) {
+                    prSelected.add(transmitterMap.get(t.getId()));
+                }
+                inputMessage.setSelectedTransmitters(prSelected);
+            }
         }
         prDao.persistAll(inputMessages);
         this.inputMessageMap = inputMessageMap;
