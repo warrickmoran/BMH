@@ -4,8 +4,9 @@
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
 	<bean id="practice_timeMessagesGenerator"
-		class="com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator">
-		<constructor-arg ref="ttsHandler" />
+		class="com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator"
+		init-method="initialize">
+		<constructor-arg ref="practice_ttsManager" />
 		<constructor-arg value="${BMH_DATA}/practice" />
 	</bean>
 	

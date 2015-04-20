@@ -33,17 +33,16 @@ import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.BMHTimeZone;
-import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.SpeechRateFormatter;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
-import com.raytheon.uf.edex.bmh.handler.TextToSpeechHandler;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
-import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
+import com.raytheon.uf.edex.bmh.tts.TTSManager;
+import com.raytheon.uf.edex.bmh.tts.TTSReturn;
 
 /**
  * Pre-synthesizes time messages in segments for a specifc {@link TtsVoice} and
@@ -66,6 +65,8 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * Feb 24, 2015    4157    bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * Mar 27, 2015 4314       bkowal      Time messages are now generated based on {@link Language}
  *                                     and rate of speech.
+ * Apr 20, 2015 4314       bkowal      Use {@link TTSManager} synthesis to verify that the
+ *                                     retry logic will be utilized.
  * 
  * </pre>
  * 
@@ -78,7 +79,7 @@ public class TimeMessagesGenerator {
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(TimeMessagesGenerator.class);
 
-    private final TextToSpeechHandler ttsHandler;
+    private final TTSManager ttsManager;
 
     /* Output root subdirectories */
     private final String bmhDataDirectory;
@@ -110,9 +111,9 @@ public class TimeMessagesGenerator {
 
     private Path audioTimePath;
 
-    public TimeMessagesGenerator(final TextToSpeechHandler ttsHandler,
+    public TimeMessagesGenerator(final TTSManager ttsManager,
             final String bmhDataDirectory) {
-        this.ttsHandler = ttsHandler;
+        this.ttsManager = ttsManager;
         this.bmhDataDirectory = bmhDataDirectory;
     }
 
@@ -151,36 +152,33 @@ public class TimeMessagesGenerator {
     }
 
     private boolean generateStaticTimeMsg(final String ssml,
-            final Path timeFilePath, final TtsVoice voice)
-            throws StaticGenerationException {
+            final Path timeFilePath, final TtsVoice voice,
+            final String logIdentifier) throws StaticGenerationException {
         ITimer fileTimer = TimeUtil.getTimer();
         fileTimer.start();
         if (Files.exists(timeFilePath)) {
             return false;
         }
 
-        TextToSpeechRequest request = new TextToSpeechRequest();
-        request.setVoice(voice.getVoiceNumber());
-        request.setPhoneme(ssml);
-        request.setTimeout(TTSSynthesisFactory.NO_TIMEOUT);
-        try {
-            request = (TextToSpeechRequest) this.ttsHandler
-                    .handleRequest(request);
-        } catch (Exception e) {
+        TTSReturn ttsReturn = this.ttsManager.attemptAudioSynthesis(ssml,
+                voice.getVoiceNumber(), logIdentifier);
+        if (ttsReturn.isIoFailed()) {
             throw new StaticGenerationException(
                     "Failed to generate a static time message: "
                             + timeFilePath.toString() + " with voice "
-                            + voice.getVoiceNumber() + "!", e);
+                            + voice.getVoiceNumber() + "!",
+                    ttsReturn.getIoFailureCause());
         }
-        if (request.getByteData() == null) {
+        if (ttsReturn.isSynthesisSuccess() == false
+                || ttsReturn.getVoiceData() == null) {
             throw new StaticGenerationException(
                     "Failed to generate a static time message: "
                             + timeFilePath.toString() + " with voice "
                             + voice.getVoiceNumber() + " due to TTS Error "
-                            + request.getStatus() + "!");
+                            + ttsReturn.getReturnValue().getDescription() + "!");
         }
         try {
-            Files.write(timeFilePath, request.getByteData());
+            Files.write(timeFilePath, ttsReturn.getVoiceData());
         } catch (IOException e) {
             throw new StaticGenerationException(
                     "Failed to write static time message: "
@@ -234,9 +232,11 @@ public class TimeMessagesGenerator {
                 .getHourIteratorForSpeechRate(speechRate);
         while (hoursIterator.hasNext()) {
             int hh = hoursIterator.next();
+            final String logIdentifier = ttsVoice.getLanguage().name()
+                    + " Hour " + hh + " (Speech Rate: " + speechRate + ")";
             if (this.generateStaticTimeMsg(cache.getHourSSML(speechRate, hh),
                     this.getTimeVoiceHourFilePath(ttsVoice, speechRate, hh),
-                    ttsVoice)) {
+                    ttsVoice, logIdentifier)) {
                 ++totalFilesWritten;
             }
         }
@@ -245,18 +245,23 @@ public class TimeMessagesGenerator {
                 .getMinuteIteratorForSpeechRate(speechRate);
         while (minutesIterator.hasNext()) {
             int mm = minutesIterator.next();
+            final String logIdentifier = ttsVoice.getLanguage().name()
+                    + " Minute " + mm + " (Speech Rate: " + speechRate + ")";
             if (this.generateStaticTimeMsg(cache.getMinuteSSML(speechRate, mm),
                     this.getTimeVoiceMinuteFilePath(ttsVoice, speechRate, mm),
-                    ttsVoice)) {
+                    ttsVoice, logIdentifier)) {
                 ++totalFilesWritten;
             }
         }
 
         for (String period : TIME_PERIODS) {
+            final String logIdentifier = ttsVoice.getLanguage().name()
+                    + " Period " + period + " (Speech Rate: " + speechRate
+                    + ")";
             if (this.generateStaticTimeMsg(
                     cache.getPeriodSSML(speechRate, period),
                     this.getTimePeriodFilePath(ttsVoice, speechRate, period),
-                    ttsVoice)) {
+                    ttsVoice, logIdentifier)) {
                 ++totalFilesWritten;
             }
         }
@@ -267,10 +272,13 @@ public class TimeMessagesGenerator {
         Iterator<String> timezoneIterator = timezones.iterator();
         while (timezoneIterator.hasNext()) {
             final String timezone = timezoneIterator.next();
+            final String logIdentifier = ttsVoice.getLanguage().name()
+                    + " Timezone " + timezone + " (Speech Rate: " + speechRate
+                    + ")";
             if (this.generateStaticTimeMsg(
                     cache.getTimezoneSSML(speechRate, timezone),
                     this.getTimeVoiceTZFilePath(ttsVoice, speechRate, timezone),
-                    ttsVoice)) {
+                    ttsVoice, logIdentifier)) {
                 ++totalFilesWritten;
             }
         }

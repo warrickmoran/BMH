@@ -6,7 +6,7 @@
 	<bean id="timeMessagesGenerator"
 		class="com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator"
 		init-method="initialize">
-		<constructor-arg ref="ttsHandler" />
+		<constructor-arg ref="ttsManager" />
 		<constructor-arg value="${BMH_DATA}" />
 	</bean>
 	

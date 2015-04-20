@@ -109,6 +109,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
  * Apr 07, 2015 4293       bkowal      Support {@link BroadcastMsg} reuse by adding to the
  *                                     message contents.
+ * Apr 20, 2015 4314       bkowal      Made {@link #attemptAudioSynthesis(String, int, String)}
+ *                                     public.
  * 
  * </pre>
  * 
@@ -606,7 +608,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      *            logging purposes.
      * @return a {@link TTSReturn} with all applicable synthesis results
      */
-    private TTSReturn attemptAudioSynthesis(final String ssml,
+    public TTSReturn attemptAudioSynthesis(final String ssml,
             final int voiceNumber, final String logIdentifier) {
 
         int attempt = 0;
