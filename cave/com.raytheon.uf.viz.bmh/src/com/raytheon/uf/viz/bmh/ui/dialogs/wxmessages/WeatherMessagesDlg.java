@@ -163,6 +163,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 18, 2015  4282     rferrel     Added Close button and editStatus flag.
  *                                    Add modification checks.
  *                                    Keep in edit mode when Next/Prev fails to retrieve message.
+ * Apr 16, 2014  4408     rferrel     Put in edit state after submitting a new message.
  * 
  * </pre>
  * 
@@ -1110,6 +1111,18 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             Object result = BmhUtils.sendRequest(request);
             if (result instanceof Integer) {
                 userInputMessage.setId((Integer) result);
+                if (!editStatus) {
+                    /*
+                     * Put in edit mode filtered to just the newly submited
+                     * message.
+                     */
+                    messageSequence = new InputMessageSequence(0,
+                            new int[] { userInputMessage.getId() });
+                    setEditStatus(true);
+                    loadMessageFromSequence();
+                    nextSequenceBtn.forceFocus();
+                }
+
             }
         } catch (Exception e) {
             String msg = ExceptionUtils.getRootCauseMessage(e);
