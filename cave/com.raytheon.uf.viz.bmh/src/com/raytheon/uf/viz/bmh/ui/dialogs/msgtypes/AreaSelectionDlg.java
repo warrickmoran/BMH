@@ -82,7 +82,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 09, 2015   4095     bsteffen    Remove Transmitter Name.
  * Feb 10, 2015   4104     bkowal      Specify the table height so that it does not extend past the
  *                                     edge of the dialog when loaded with a large number of items.
- * Feb 25, 2015  4122      rferrel     Message type constructor now take data to populate table.
+ * Feb 25, 2015   4122     rferrel     Message type constructor now take data to populate table.
+ * Apr 20, 2015   4420     rferrell    Allow Read Only display of the dialog.
  * 
  * </pre>
  * 
@@ -109,6 +110,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     private final String[] COLUMN_NAMES = { "ID", "Name", "Type" };
 
     private final int MOVE_BUTTON_WIDTH = 45;
+
+    private boolean readOnly = false;
 
     /** Main display composite */
     private Composite mainComp;
@@ -182,13 +185,27 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     private AreaSelectionSaveData data = null;
 
     /**
-     * Constructor.
+     * Constructor to create editable dialog with desired message type and data.
      * 
      * @param parentShell
      *            The parent shell
      */
     public AreaSelectionDlg(Shell parentShell, MessageType messageType,
             AreaSelectionSaveData data) {
+        this(parentShell, messageType, data, false);
+    }
+
+    /**
+     * Constructor to create editable or read only dialog with desired message
+     * type a data.
+     * 
+     * @param parentShell
+     * @param messageType
+     * @param data
+     * @param readOnly
+     */
+    public AreaSelectionDlg(Shell parentShell, MessageType messageType,
+            AreaSelectionSaveData data, boolean readOnly) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
         if (messageType == null) {
@@ -198,11 +215,12 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
         this.messageType = messageType;
         this.data = data;
+        this.readOnly = readOnly;
     }
 
     /**
-     * Constructor that take a string of area codes that will be parsed and
-     * displayed.
+     * Constructor to created editable dialog that takes a string of area codes
+     * that will be parsed and displayed.
      * 
      * Example of area code string: "NEZ024-NEZ005-NEZ023-NEZ025-NEZ036-NEZ094"
      * 
@@ -212,6 +230,21 @@ public class AreaSelectionDlg extends CaveSWTDialog {
      *            String of areas codes.
      */
     public AreaSelectionDlg(Shell parentShell, AreaSelectionSaveData data) {
+        this(parentShell, data, false);
+    }
+
+    /**
+     * Constructor to create and editable or read only dialog that takes a
+     * string of area codes that will be parsed and displayed.
+     * 
+     * Example of area code string: "NEZ024-NEZ005-NEZ023-NEZ025-NEZ036-NEZ094"
+     * 
+     * @param parentShell
+     * @param data
+     * @param readOnly
+     */
+    public AreaSelectionDlg(Shell parentShell, AreaSelectionSaveData data,
+            boolean readOnly) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
         if (data == null) {
@@ -219,6 +252,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                     "Required argument data can not be NULL.");
         }
         this.data = data;
+        this.readOnly = readOnly;
     }
 
     @Override
@@ -234,7 +268,11 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText("Area Selection");
+        if (readOnly) {
+            setText("Area Selection - READ ONLY");
+        } else {
+            setText("Area Selection");
+        }
 
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         GridLayout gl = new GridLayout(3, false);
@@ -333,6 +371,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 moveTransmitter(false);
             }
         });
+        xmitMoveBtn.setEnabled(!readOnly);
 
         Button xmitMoveAllBtn = new Button(moveComp, SWT.PUSH);
         xmitMoveAllBtn.setText(">>");
@@ -346,6 +385,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 moveTransmitter(true);
             }
         });
+        xmitMoveAllBtn.setEnabled(!readOnly);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
         gd.horizontalSpan = 2;
@@ -384,6 +424,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 moveTransmitterArea(false);
             }
         });
+        areaMoveBtn.setEnabled(!readOnly);
 
         Button areaMoveAllBtn = new Button(moveComp2, SWT.PUSH);
         areaMoveAllBtn.setText(">>");
@@ -396,6 +437,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 moveTransmitterArea(true);
             }
         });
+        areaMoveAllBtn.setEnabled(!readOnly);
     }
 
     /**
@@ -450,6 +492,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 moveZone(false);
             }
         });
+        zoneMoveBtn.setEnabled(!readOnly);
 
         Button zoneMoveAllBtn = new Button(moveComp, SWT.PUSH);
         zoneMoveAllBtn.setText(">>");
@@ -462,6 +505,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 moveZone(true);
             }
         });
+        zoneMoveAllBtn.setEnabled(!readOnly);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
         gd.horizontalSpan = 2;
@@ -499,6 +543,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 moveZoneArea(false);
             }
         });
+        areaMoveBtn.setEnabled(!readOnly);
 
         Button areaMoveAllBtn = new Button(moveComp2, SWT.PUSH);
         areaMoveAllBtn.setText(">>");
@@ -511,7 +556,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 moveZoneArea(true);
             }
         });
-
+        areaMoveAllBtn.setEnabled(!readOnly);
     }
 
     /**
@@ -560,6 +605,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 moveArea(false);
             }
         });
+        areaMoveBtn.setEnabled(!readOnly);
 
         Button areaMoveAllBtn = new Button(moveComp, SWT.PUSH);
         areaMoveAllBtn.setText(">>");
@@ -572,6 +618,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 moveArea(true);
             }
         });
+        areaMoveAllBtn.setEnabled(!readOnly);
     }
 
     /**
@@ -613,6 +660,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 removeSelectedItemsFromTable();
             }
         });
+        removeBtn.setEnabled(!readOnly);
     }
 
     /**
@@ -662,6 +710,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
                 close();
             }
         });
+        okBtn.setEnabled(!readOnly);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;

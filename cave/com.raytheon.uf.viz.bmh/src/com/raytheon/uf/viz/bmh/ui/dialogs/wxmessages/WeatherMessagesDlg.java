@@ -164,6 +164,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    Add modification checks.
  *                                    Keep in edit mode when Next/Prev fails to retrieve message.
  * Apr 16, 2014  4408     rferrel     Put in edit state after submitting a new message.
+ * Apr 20, 2015  4420     rferrel     When in edit mode display read only Area Selection dialog.
  * 
  * </pre>
  * 
@@ -459,9 +460,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             creationDTF.setEnabled(!editStatus);
             effectiveDTF.setEnabled(!editStatus);
             sameTransmitters.setAllowEnableTransmitters(!editStatus);
-            if (areaSelectionBtn.isEnabled()) {
-                areaSelectionBtn.setEnabled(!editStatus);
-            }
         }
     }
 
@@ -1084,7 +1082,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
         NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
 
-        this.areaSelectionBtn.setEnabled(!editStatus);
+        this.areaSelectionBtn.setEnabled(true);
         this.userInputMessage.setValidHeader(true);
 
         if (this.content.getContentType() == CONTENT_TYPE.AUDIO) {
@@ -1268,7 +1266,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
      * Handle the area selection action.
      */
     private void handleAreaSelectionAction() {
-        AreaSelectionDlg dlg = new AreaSelectionDlg(getShell(), this.areaData);
+        AreaSelectionDlg dlg = new AreaSelectionDlg(getShell(), this.areaData,
+                editStatus);
         dlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -1301,7 +1300,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         String eo = (selectedMessageType.isEmergencyOverride()) ? "Yes" : "No";
         emergenyOverrideLbl.setText(eo);
 
-        this.areaSelectionBtn.setEnabled(!editStatus);
+        this.areaSelectionBtn.setEnabled(true);
 
         String periodicityDateTimeStr = selectedMessageType.getPeriodicity();
 
@@ -1498,7 +1497,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             areaSelectionBtn.setEnabled(false);
             changeMsgTypeBtn.setEnabled(true);
         } else {
-            areaSelectionBtn.setEnabled(!editStatus);
+            areaSelectionBtn.setEnabled(true);
         }
 
         updateMessageTypeControls(vm);
