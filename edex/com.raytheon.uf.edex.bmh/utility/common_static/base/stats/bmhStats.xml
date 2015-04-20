@@ -1,0 +1,40 @@
+<statisticsConfig>
+    <!-- Event Type should be fully qualified name of stat event -->
+    <!-- raw and aggregate OfflineRetentionDays: Value less than zero disables saving of raw statistic, zero is never purge -->
+    <statisticsEvent type="com.raytheon.uf.edex.bmh.stats.DacStatisticEvent"
+        displayName="Dac Statistics" category="BMH Events"
+        rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
+        <statisticsGroup name="transmitterGroup" displayName="Transmitter Group" />
+        <statisticsAggregate field="bufferSize"
+            displayName="Jitter Buffer Size" displayUnit="packets" />
+        <statisticsAggregate field="recoverablePacketErrors"
+            displayName="Recoverable Packet Errors" displayUnit="packets" />
+        <statisticsAggregate field="unrecoverablePacketErrors"
+            displayName="Unrecoverable Packet Errors" displayUnit="packets" />
+    </statisticsEvent>
+    
+    <statisticsEvent type="com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent"
+        displayName="Live Broadcast Latency" category="BMH Events"
+        rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
+        <statisticsGroup name="transmitterGroup" displayName="Transmitter Group" />
+        <statisticsGroup name="broadcastIdentifier" displayName="Broadcast Identifier" />
+        <statisticsAggregate field="latency"
+            displayName="Latency" displayUnit="ms" />
+    </statisticsEvent>
+    
+    <statisticsEvent type="com.raytheon.uf.edex.bmh.stats.MessageExpirationProcessingEvent"
+        displayName="Expire Message Processing Time" category="BMH Events"
+        rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
+        <statisticsGroup name="transmitterGroup" displayName="Transmitter Group" />
+        <statisticsAggregate field="processingTime"
+            displayName="Processing Time" displayUnit="ms" />        
+    </statisticsEvent>
+    
+    <statisticsEvent type="com.raytheon.uf.edex.bmh.stats.SuiteChangeProcessingEvent"
+        displayName="Suite Change Processing Time" category="BMH Events"
+        rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
+        <statisticsGroup name="transmitterGroup" displayName="Transmitter Group" />
+        <statisticsAggregate field="processingTime"
+            displayName="Processing Time" displayUnit="ms" />        
+    </statisticsEvent>
+</statisticsConfig>

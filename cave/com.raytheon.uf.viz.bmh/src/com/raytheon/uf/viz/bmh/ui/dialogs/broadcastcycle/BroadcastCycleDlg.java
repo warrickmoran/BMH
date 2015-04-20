@@ -176,6 +176,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 14, 2015  4394      bkowal      Display all configured transmitters with color coding.
  * Apr 15, 2015  4293      bkowal      Use {@link ExpireBroadcastMsgRequest} when only specific
  *                                     broadcast messages have been expired.
+ * Apr 20, 2015  4397      bkowal      Set the expiration request time on the {@link NewBroadcastMsgRequest}.
  * </pre>
  * 
  * @author mpduff
@@ -1147,7 +1148,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 mb.setText("Confirm Expire/Delete");
                 mb.setMessage(message);
                 if (mb.open() == SWT.OK) {
-                    NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
+                    NewBroadcastMsgRequest request = new NewBroadcastMsgRequest(
+                            System.currentTimeMillis());
                     inputMessage.setActive(false);
                     request.setInputMessage(inputMessage);
                     request.setSelectedTransmitters(new ArrayList<>(
@@ -1197,7 +1199,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             CheckListData data,
             Map<String, BroadcastMsg> transmitterGrpToBroadcastMsgMap) {
         if (data.allChecked()) {
-            NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
+            NewBroadcastMsgRequest request = new NewBroadcastMsgRequest(
+                    System.currentTimeMillis());
             inputMessage.setActive(false);
             request.setInputMessage(inputMessage);
             this.sendExpireRequest(request);

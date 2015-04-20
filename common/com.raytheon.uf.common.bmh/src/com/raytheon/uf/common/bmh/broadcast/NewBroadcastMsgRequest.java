@@ -40,6 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 31, 2014  #3778     bsteffen    Do not clear the id when editing messages.
  * Nov 21, 2014  #3385     bkowal      Transmitter selection is valid in the case of
  *                                     Weather Msgs and Emergency Override
+ * Apr 20, 2015  #4397     bkowal      Added {@link #expireRequestTime}.
  * 
  * </pre>
  * 
@@ -48,6 +49,16 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @DynamicSerialize
 public class NewBroadcastMsgRequest extends AbstractBMHServerRequest {
+
+    /**
+     * Set to the current time in milliseconds when this request object is used
+     * to force the expiration of the specified {@link InputMessage}. Due to the
+     * fact that this request type is used for multiple purposes, this field
+     * should only be set if this request type is being used to force a message
+     * expiration. In all other cases, the field does not have any meaning.
+     */
+    @DynamicSerializeElement
+    private Long expireRequestTime;
 
     @DynamicSerializeElement
     private InputMessage inputMessage;
@@ -62,6 +73,25 @@ public class NewBroadcastMsgRequest extends AbstractBMHServerRequest {
 	 * 
 	 */
     public NewBroadcastMsgRequest() {
+    }
+
+    public NewBroadcastMsgRequest(final long expireRequestTime) {
+        this.expireRequestTime = expireRequestTime;
+    }
+
+    /**
+     * @return the expireRequestTime
+     */
+    public Long getExpireRequestTime() {
+        return expireRequestTime;
+    }
+
+    /**
+     * @param expireRequestTime
+     *            the expireRequestTime to set
+     */
+    public void setExpireRequestTime(Long expireRequestTime) {
+        this.expireRequestTime = expireRequestTime;
     }
 
     /**

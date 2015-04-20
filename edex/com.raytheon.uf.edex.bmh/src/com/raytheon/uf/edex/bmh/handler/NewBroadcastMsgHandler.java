@@ -100,6 +100,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Mar 10, 2015  #4255     bsteffen    Delay inactivating previous until new validates.
  * Apr 07, 2015  #4293     bkowal      Update existing input messages in every case.
  * Apr 15, 2015  #4293     bkowal      Notify the playlist manager when a message has been expired.
+ * Apr 20, 2015  #4397     bkowal      Forward the message expiration request time when applicable.
  * 
  * </pre>
  * 
@@ -221,8 +222,9 @@ public class NewBroadcastMsgHandler extends
                  * inactive messages by default.
                  */
                 BmhMessageProducer.sendConfigMessage(
-                        new MessageActivationNotification(inputMessage),
-                        request.isOperational());
+                        new MessageActivationNotification(inputMessage, request
+                                .getExpireRequestTime()), request
+                                .isOperational());
                 /*
                  * If the message transitioned from active to inactive. Now that
                  * all edits are in-place, the normal update procedure will
@@ -265,8 +267,8 @@ public class NewBroadcastMsgHandler extends
         if (newInputMsg == false
                 && Boolean.FALSE.equals(inputMessage.getActive())) {
             BmhMessageProducer.sendConfigMessage(
-                    new MessageActivationNotification(inputMessage),
-                    request.isOperational());
+                    new MessageActivationNotification(inputMessage, request
+                            .getExpireRequestTime()), request.isOperational());
         }
 
         // send the broadcast message(s) to the playlist scheduler.

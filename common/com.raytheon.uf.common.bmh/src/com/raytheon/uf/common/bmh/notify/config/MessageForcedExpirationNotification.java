@@ -29,29 +29,55 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * been expired.
  * 
  * <pre>
- *
+ * 
  * SOFTWARE HISTORY
- *
+ * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 15, 2015 4293       bkowal      Initial creation
- *
+ * Apr 20, 2015 4397       bkowal      Added {@link #requestTime}.
+ * 
  * </pre>
- *
+ * 
  * @author bkowal
- * @version 1.0	
+ * @version 1.0
  */
 @DynamicSerialize
 public class MessageForcedExpirationNotification extends ConfigNotification {
 
     @DynamicSerializeElement
+    private long requestTime;
+
+    @DynamicSerializeElement
     private List<Long> broadcastIds;
-    
-    /**
-     * Constructor.
+
+    /*
+     * No argument constructor for DynamicSerialize
      */
     public MessageForcedExpirationNotification() {
         super(ConfigChangeType.Delete);
+    }
+
+    /**
+     * Constructor.
+     */
+    public MessageForcedExpirationNotification(long requestTime) {
+        super(ConfigChangeType.Delete);
+        this.requestTime = requestTime;
+    }
+
+    /**
+     * @return the requestTime
+     */
+    public long getRequestTime() {
+        return requestTime;
+    }
+
+    /**
+     * @param requestTime the requestTime to set
+     */
+    public void setRequestTime(long requestTime) {
+        this.requestTime = requestTime;
     }
 
     /**
@@ -62,7 +88,8 @@ public class MessageForcedExpirationNotification extends ConfigNotification {
     }
 
     /**
-     * @param broadcastIds the broadcastIds to set
+     * @param broadcastIds
+     *            the broadcastIds to set
      */
     public void setBroadcastIds(List<Long> broadcastIds) {
         this.broadcastIds = broadcastIds;

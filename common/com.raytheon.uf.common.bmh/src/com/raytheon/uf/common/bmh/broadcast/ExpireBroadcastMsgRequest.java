@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 15, 2015 4293       bkowal      Initial creation
+ * Apr 20, 2015 4397       bkowal      Added {@link #requestTime}.
  * 
  * </pre>
  * 
@@ -45,6 +46,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @DynamicSerialize
 public class ExpireBroadcastMsgRequest extends AbstractBMHServerRequest {
+
+    @DynamicSerializeElement
+    private long requestTime;
 
     /*
      * The Broadcast Messages to forcefully expire.
@@ -56,6 +60,22 @@ public class ExpireBroadcastMsgRequest extends AbstractBMHServerRequest {
      * 
      */
     public ExpireBroadcastMsgRequest() {
+        this.requestTime = System.currentTimeMillis();
+    }
+
+    /**
+     * @return the requestTime
+     */
+    public long getRequestTime() {
+        return requestTime;
+    }
+
+    /**
+     * @param requestTime
+     *            the requestTime to set
+     */
+    public void setRequestTime(long requestTime) {
+        this.requestTime = requestTime;
     }
 
     public List<BroadcastMsg> getExpiredBroadcastMsgs() {

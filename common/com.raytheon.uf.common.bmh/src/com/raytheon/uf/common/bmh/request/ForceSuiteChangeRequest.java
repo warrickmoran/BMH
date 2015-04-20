@@ -36,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Sep 25, 2014  3589     dgilling    Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
+ * Apr 20, 2015  4397     bkowal      Added {@link #requestTime}.
  * 
  * </pre>
  * 
@@ -45,6 +46,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 @DynamicSerialize
 public final class ForceSuiteChangeRequest extends AbstractBMHServerRequest {
+
+    @DynamicSerializeElement
+    private long requestTime;
 
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
@@ -57,6 +61,7 @@ public final class ForceSuiteChangeRequest extends AbstractBMHServerRequest {
     }
 
     public ForceSuiteChangeRequest(TransmitterGroup group, Suite suite) {
+        this.requestTime = System.currentTimeMillis();
         this.transmitterGroup = group;
         this.selectedSuite = suite;
     }
@@ -70,6 +75,21 @@ public final class ForceSuiteChangeRequest extends AbstractBMHServerRequest {
         builder.append(selectedSuite.getName());
         builder.append("]");
         return builder.toString();
+    }
+
+    /**
+     * @return the requestTime
+     */
+    public long getRequestTime() {
+        return requestTime;
+    }
+
+    /**
+     * @param requestTime
+     *            the requestTime to set
+     */
+    public void setRequestTime(long requestTime) {
+        this.requestTime = requestTime;
     }
 
     public TransmitterGroup getTransmitterGroup() {

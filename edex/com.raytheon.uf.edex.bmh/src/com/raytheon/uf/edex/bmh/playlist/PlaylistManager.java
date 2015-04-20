@@ -70,6 +70,7 @@ import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
+import com.raytheon.uf.common.event.EventBus;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.ITimer;
@@ -89,6 +90,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.replace.ReplacementManager;
+import com.raytheon.uf.edex.bmh.stats.AbstractBMHProcessingTimeEvent;
+import com.raytheon.uf.edex.bmh.stats.MessageExpirationProcessingEvent;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
 import com.raytheon.uf.edex.core.EdexException;
@@ -165,6 +168,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Apr 07, 2015  4339     bkowal      Only notify the user when invalid areas or over the limit areas
  *                                    are NOT empty Strings.
  * Apr 15, 2015  4293     bkowal      Handle {@link MessageForcedExpirationNotification}.
+ * Apr 20, 2015  4397     bkowal      Generate and submit a {@link AbstractBMHProcessingTimeEvent} when
+ *                                    applicable.
  * </pre>
  * 
  * @author bsteffen
@@ -229,14 +234,14 @@ public class PlaylistManager implements IContextStateProcessor {
             if (programSuite == null) {
                 continue;
             }
-            refreshPlaylist(group, programSuite, false);
+            refreshPlaylist(group, programSuite, false, null);
         }
     }
 
     public void processProgramChange(ProgramConfigNotification notification) {
         Program program = programDao.getByID(notification.getId());
         for (TransmitterGroup group : program.getTransmitterGroups()) {
-            refreshTransmitterGroup(group, program, null);
+            refreshTransmitterGroup(group, program, null, null);
         }
     }
 
@@ -288,7 +293,7 @@ public class PlaylistManager implements IContextStateProcessor {
                             sb.toString(), e);
                 }
             } else {
-                refreshTransmitterGroup(group, null, null);
+                refreshTransmitterGroup(group, null, null, null);
             }
         }
     }
@@ -303,7 +308,12 @@ public class PlaylistManager implements IContextStateProcessor {
                 needsRefresh.addAll(replacementManager.replace(messages.get(0)
                         .getInputMessage()));
             }
-            this.checkRefreshForBroadcastMsgs(messages);
+            MessageExpirationProcessingEvent event = null;
+            if (notification.getExpireRequestTime() != null) {
+                event = new MessageExpirationProcessingEvent(
+                        notification.getExpireRequestTime());
+            }
+            this.checkRefreshForBroadcastMsgs(messages, event);
         }
         refreshReplaced(needsRefresh);
     }
@@ -323,10 +333,14 @@ public class PlaylistManager implements IContextStateProcessor {
             }
             messages.add(broadcastMsg);
         }
-        this.checkRefreshForBroadcastMsgs(messages);
+        this.checkRefreshForBroadcastMsgs(
+                messages,
+                new MessageExpirationProcessingEvent(notification
+                        .getRequestTime()));
     }
 
-    private void checkRefreshForBroadcastMsgs(List<BroadcastMsg> messages) {
+    private void checkRefreshForBroadcastMsgs(List<BroadcastMsg> messages,
+            AbstractBMHProcessingTimeEvent event) {
         for (BroadcastMsg message : messages) {
             TransmitterGroup group = message.getTransmitterGroup();
             if (!group.isEnabled()) {
@@ -346,7 +360,7 @@ public class PlaylistManager implements IContextStateProcessor {
             for (ProgramSuite programSuite : program.getProgramSuites()) {
                 if (programSuite.getSuite().containsSuiteMessage(
                         message.getAfosid())) {
-                    refreshPlaylist(group, programSuite, false);
+                    refreshPlaylist(group, programSuite, false, event);
                     break;
                 }
             }
@@ -354,11 +368,11 @@ public class PlaylistManager implements IContextStateProcessor {
     }
 
     public boolean processForceSuiteSwitch(final TransmitterGroup group,
-            final Suite suite) {
+            final Suite suite, AbstractBMHProcessingTimeEvent event) {
         statusHandler.info("User requested transmitter group ["
                 + group.getName() + "] switch to suite [" + suite.getName()
                 + "].");
-        return refreshTransmitterGroup(group, null, suite);
+        return refreshTransmitterGroup(group, null, suite, event);
     }
 
     public void processResetNotification() {
@@ -367,7 +381,7 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private void refreshAll() {
         for (TransmitterGroup group : transmitterGroupDao.getAll()) {
-            refreshTransmitterGroup(group, null, null);
+            refreshTransmitterGroup(group, null, null, null);
         }
     }
 
@@ -385,7 +399,8 @@ public class PlaylistManager implements IContextStateProcessor {
      *            triggered or general suites will be written.
      */
     protected boolean refreshTransmitterGroup(TransmitterGroup group,
-            Program program, Suite forcedSuite) {
+            Program program, Suite forcedSuite,
+            AbstractBMHProcessingTimeEvent event) {
         /*
          * Start with the assumption that all lists should be deleted. Analyze
          * the programs and find lists that should exist, refresh only those
@@ -410,7 +425,8 @@ public class PlaylistManager implements IContextStateProcessor {
                     ProgramSuite forcedProgramSuite = program
                             .getProgramSuite(forcedSuite);
                     if (forcedProgramSuite != null) {
-                        if (!refreshPlaylist(group, forcedProgramSuite, true)) {
+                        if (!refreshPlaylist(group, forcedProgramSuite, true,
+                                event)) {
                             return false;
                         }
                     }
@@ -422,7 +438,7 @@ public class PlaylistManager implements IContextStateProcessor {
                         continue;
                     }
                     if (!programSuite.getSuite().equals(forcedSuite)) {
-                        refreshPlaylist(group, programSuite, false);
+                        refreshPlaylist(group, programSuite, false, event);
                     }
                     Iterator<Playlist> listIterator = listsToDelete.iterator();
                     while (listIterator.hasNext()) {
@@ -462,7 +478,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
                 playlist.getMessages().clear();
-                persistPlaylist(playlist, programSuite, false);
+                persistPlaylist(playlist, programSuite, false, null);
             }
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
@@ -478,7 +494,8 @@ public class PlaylistManager implements IContextStateProcessor {
      * combination.
      */
     protected boolean refreshPlaylist(TransmitterGroup group,
-            ProgramSuite programSuite, boolean forced) {
+            ProgramSuite programSuite, boolean forced,
+            AbstractBMHProcessingTimeEvent event) {
         ClusterTask ct = null;
         do {
             ct = locker.lock("playlist", group.getName() + "-"
@@ -500,7 +517,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
                 DacPlaylist dacPlaylist = persistPlaylist(playlist,
-                        programSuite, forced);
+                        programSuite, forced, event);
                 return !dacPlaylist.isEmpty();
             } else {
                 return false;
@@ -534,7 +551,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 for (ProgramSuite programSuite : program.getProgramSuites()) {
                     if (programSuite.getSuite().containsSuiteMessage(
                             message.getAfosid())) {
-                        refreshPlaylist(group, programSuite, false);
+                        refreshPlaylist(group, programSuite, false, null);
                         break;
                     }
                 }
@@ -589,7 +606,7 @@ public class PlaylistManager implements IContextStateProcessor {
             playlist.setModTime(TimeUtil.newGmtCalendar());
             playlist.setStartTime(msg.getInputMessage().getEffectiveTime());
             playlist.setEndTime(msg.getInputMessage().getExpirationTime());
-            writePlaylistFile(playlist, playlist.getStartTime());
+            writePlaylistFile(playlist, playlist.getStartTime(), null);
         }
 
         for (ProgramSuite programSuite : program.getProgramSuites()) {
@@ -630,7 +647,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 mergeMessage(playlist, msg);
             }
             DacPlaylist dacPlaylist = persistPlaylist(playlist, programSuite,
-                    false);
+                    false, null);
             if ((dacPlaylist != null) && isTrigger) {
                 this.messageLogger.logTriggerActivity(msg, dacPlaylist);
             }
@@ -640,7 +657,8 @@ public class PlaylistManager implements IContextStateProcessor {
     }
 
     private DacPlaylist persistPlaylist(Playlist playlist,
-            ProgramSuite programSuite, boolean forced) {
+            ProgramSuite programSuite, boolean forced,
+            AbstractBMHProcessingTimeEvent event) {
         List<Calendar> triggerTimes = playlist.setTimes(
                 programSuite.getTriggers(), forced);
         if (triggerTimes.isEmpty()) {
@@ -653,9 +671,9 @@ public class PlaylistManager implements IContextStateProcessor {
             playlistDao.saveOrUpdate(playlist);
         }
         if (triggerTimes.isEmpty()) {
-            return writePlaylistFile(playlist, playlist.getModTime());
+            return writePlaylistFile(playlist, playlist.getModTime(), event);
         } else if (triggerTimes.size() == 1) {
-            return writePlaylistFile(playlist, triggerTimes.get(0));
+            return writePlaylistFile(playlist, triggerTimes.get(0), event);
         } else {
             /*
              * If there are multiple triggers, need to write one file per
@@ -665,11 +683,11 @@ public class PlaylistManager implements IContextStateProcessor {
             Calendar endTime = playlist.getEndTime();
             for (int i = 0; i < (triggerTimes.size() - 1); i += 1) {
                 playlist.setEndTime(triggerTimes.get(0));
-                writePlaylistFile(playlist, triggerTimes.get(i));
+                writePlaylistFile(playlist, triggerTimes.get(i), event);
                 playlist.setStartTime(triggerTimes.get(i));
             }
             playlist.setEndTime(endTime);
-            return writePlaylistFile(playlist, playlist.getStartTime());
+            return writePlaylistFile(playlist, playlist.getStartTime(), event);
         }
     }
 
@@ -720,7 +738,7 @@ public class PlaylistManager implements IContextStateProcessor {
     }
 
     private DacPlaylist writePlaylistFile(Playlist playlist,
-            Calendar latestTriggerTime) {
+            Calendar latestTriggerTime, AbstractBMHProcessingTimeEvent event) {
         DacPlaylist dacList = convertPlaylistForDAC(playlist);
         dacList.setLatestTrigger(latestTriggerTime);
         PlaylistUpdateNotification notif = new PlaylistUpdateNotification(
@@ -765,6 +783,13 @@ public class PlaylistManager implements IContextStateProcessor {
         } catch (EdexException | SerializationException e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to send playlist notification.", e);
+        } finally {
+            if (event != null && this.operational) {
+                event.finalizeEvent();
+                event.setTransmitterGroup(playlist.getTransmitterGroup()
+                        .getName());
+                EventBus.publish(event);
+            }
         }
         return dacList;
     }

@@ -39,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 31, 2014  3778     bsteffen    Initial creation
  * Jan 19, 2015  4011     bkowal      Support de-activating/activating
  *                                    multiple messages at once.
+ * Apr 20, 2015  4397     bkowal      Added {@link #expireRequestTime}.
  * 
  * </pre>
  * 
@@ -51,13 +52,18 @@ public class MessageActivationNotification extends ConfigNotification {
     @DynamicSerializeElement
     private List<Integer> inputMessageIds;
 
+    @DynamicSerializeElement
+    private Long expireRequestTime;
+
     public MessageActivationNotification() {
 
     }
 
-    public MessageActivationNotification(InputMessage inputMessage) {
+    public MessageActivationNotification(InputMessage inputMessage,
+            Long expireRequestTime) {
         super(getType(inputMessage.getActive()));
         this.addInputMessageId(inputMessage.getId());
+        this.expireRequestTime = expireRequestTime;
     }
 
     public MessageActivationNotification(List<InputMessage> inputMessages,
@@ -96,6 +102,21 @@ public class MessageActivationNotification extends ConfigNotification {
      */
     public void setInputMessageIds(List<Integer> inputMessageIds) {
         this.inputMessageIds = inputMessageIds;
+    }
+
+    /**
+     * @return the expireRequestTime
+     */
+    public Long getExpireRequestTime() {
+        return expireRequestTime;
+    }
+
+    /**
+     * @param expireRequestTime
+     *            the expireRequestTime to set
+     */
+    public void setExpireRequestTime(Long expireRequestTime) {
+        this.expireRequestTime = expireRequestTime;
     }
 
 }
