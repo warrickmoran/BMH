@@ -63,6 +63,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  *                                    Transmitter Group.
  * Mar 25, 2015   4305    rferrel     Added GetTransmittersByFips.
  * Apr 14, 2015   4390    rferrel     {@link #saveTransmitterGroups(TransmitterRequest)} checks for reorder.
+ * Apr 14, 2015  4394     bkowal      Added {@link #getConfiguredTransmitterGroups(TransmitterRequest)}.
  * </pre>
  * 
  * @author mpduff
@@ -85,6 +86,9 @@ public class TransmitterHandler extends
             break;
         case GetEnabledTransmitterGroups:
             response = getEnabledTransmitterGroups(request);
+            break;
+        case GetConfiguredTransmitterGroups:
+            response = getConfiguredTransmitterGroups(request);
             break;
         case GetTransmitterGroupWithTransmitter:
             response = this.getTransmitterGroupWithTransmitter(request);
@@ -286,6 +290,17 @@ public class TransmitterHandler extends
         TransmitterGroupDao dao = new TransmitterGroupDao(
                 request.isOperational());
         List<TransmitterGroup> groups = dao.getEnabledTransmitterGroups();
+        response.setTransmitterGroupList(groups);
+
+        return response;
+    }
+
+    private TransmitterResponse getConfiguredTransmitterGroups(
+            TransmitterRequest request) {
+        TransmitterResponse response = new TransmitterResponse();
+        TransmitterGroupDao dao = new TransmitterGroupDao(
+                request.isOperational());
+        List<TransmitterGroup> groups = dao.getConfiguredTransmitterGroups();
         response.setTransmitterGroupList(groups);
 
         return response;

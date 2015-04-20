@@ -52,6 +52,8 @@ import com.raytheon.uf.viz.bmh.BMHServers;
  * Oct 10, 2014  3656     bkowal      Use the BMH Servers constants.
  * Oct 17, 2014  3687     bsteffen    Support practice servers.
  * Oct 29, 2014  3774     bsteffen    Log Packets
+ * Apr 14, 2015  4394     bkowal      Updated constructor to require information that is
+ *                                    already known.
  * 
  * </pre>
  * 
@@ -65,13 +67,24 @@ public class MonitorInlineThread extends Thread {
 
     private final String transmitterGroup;
 
+    private final String dacReceiveAddress;
+
+    private final int receivePort;
+
+    private final int channel;
+
     private volatile boolean running = true;
 
     private Set<DisconnectListener> listeners = new CopyOnWriteArraySet<>();
 
-    public MonitorInlineThread(String transmitterGroup) {
+    public MonitorInlineThread(String transmitterGroup,
+            final String dacReceiveAddress, final int receivePort,
+            final int channel) {
         super("MonitorInlineThread-" + transmitterGroup);
         this.transmitterGroup = transmitterGroup;
+        this.dacReceiveAddress = dacReceiveAddress;
+        this.receivePort = receivePort;
+        this.channel = channel;
     }
 
     @Override
@@ -105,7 +118,8 @@ public class MonitorInlineThread extends Thread {
             InputStream inputStream = socket.getInputStream();
             OutputStream outputStream = socket.getOutputStream();
             SerializationUtil.transformToThriftUsingStream(new LineTapRequest(
-                    transmitterGroup), outputStream);
+                    transmitterGroup, this.dacReceiveAddress, this.receivePort,
+                    this.channel), outputStream);
             byte[] payload = new byte[160];
             listener = new DacLiveStreamer(0);
             while (running) {

@@ -25,11 +25,9 @@ import java.net.NetworkInterface;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,8 +39,6 @@ import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
-import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
-import com.raytheon.uf.edex.bmh.comms.DacConfig;
 
 /**
  * 
@@ -56,6 +52,8 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * ------------- -------- ----------- --------------------------
  * Aug 04, 2014  2487     bsteffen    Initial creation
  * Sep 23, 2014  3485     bsteffen    Enable multicast
+ * Apr 14, 2015  4394     bkowal      Eliminated the need to iteratively search for
+ *                                    dac configuration information.
  * 
  * </pre>
  * 
@@ -69,8 +67,6 @@ public class LineTapServer extends AbstractServerThread {
 
     private final Map<ReceiveKey, DacReceiveThread> receivers = new HashMap<>();
 
-    private volatile Set<DacConfig> dacs;
-
     private volatile NetworkInterface multicastInterface;
 
     public LineTapServer(CommsConfig config) throws IOException {
@@ -79,11 +75,6 @@ public class LineTapServer extends AbstractServerThread {
     }
 
     public void reconfigure(CommsConfig config) {
-        Set<DacConfig> dacs = config.getDacs();
-        if (dacs == null) {
-            dacs = Collections.emptySet();
-        }
-        this.dacs = dacs;
         try {
             CommsHostConfig localHost = config.getLocalClusterHost();
             if (localHost == null) {
@@ -104,34 +95,23 @@ public class LineTapServer extends AbstractServerThread {
             throws SerializationException, IOException {
         LineTapRequest message = SerializationUtil.transformFromThrift(
                 LineTapRequest.class, socket.getInputStream());
-        String group = message.getTransmitterGroup();
-        for (DacConfig dac : dacs) {
-            for (DacChannelConfig channel : dac.getChannels()) {
-                if (channel.getTransmitterGroup().equals(group)) {
-                    DacReceiveThread receiver = getReceiver(dac);
-                    if (receiver == null) {
-                        socket.close();
-                    } else {
-                        LineTapCommunicator comms = new LineTapCommunicator(
-                                this, group, channel.getRadios()[0], socket);
-                        receiver.subscribe(comms);
-                        comms.start();
-                    }
-                    return;
-                }
-            }
+        DacReceiveThread receiver = getReceiver(message);
+        if (receiver != null) {
+            LineTapCommunicator comms = new LineTapCommunicator(this,
+                    message.getTransmitterGroup(), message.getChannel(), socket);
+            receiver.subscribe(comms);
+            comms.start();
+        } else {
+            socket.close();
         }
-        logger.error("Unable to tap line of {} because it is not configured.",
-                group);
-        socket.close();
     }
 
-    private DacReceiveThread getReceiver(DacConfig dac)
+    private DacReceiveThread getReceiver(LineTapRequest request)
             throws UnknownHostException, SocketException {
         synchronized (receivers) {
-            int receivePort = dac.getReceivePort();
+            int receivePort = request.getReceivePort();
             DacReceiveThread receiver = null;
-            String receiverAddress = dac.getReceiveAddress();
+            String receiverAddress = request.getDacReceiveAddress();
             if (receiverAddress != null) {
                 InetAddress address = InetAddress.getByName(receiverAddress);
                 if (address.isMulticastAddress()) {

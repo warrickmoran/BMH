@@ -34,6 +34,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Aug 01, 2014  2487     bsteffen    Initial creation
+ * Apr 14, 2015  4394     bkowal      Added {@link #dacReceiveAddress}, {@link #receivePort},
+ *                                    and {@link #channels}. {@link #transmitterGroup} is just
+ *                                    descriptive text now.
  * 
  * </pre>
  * 
@@ -47,11 +50,24 @@ public class LineTapRequest {
     @DynamicSerializeElement
     private String transmitterGroup;
 
+    @DynamicSerializeElement
+    private String dacReceiveAddress;
+
+    @DynamicSerializeElement
+    private int receivePort;
+
+    @DynamicSerializeElement
+    private int channel;
+
     public LineTapRequest() {
     }
 
-    public LineTapRequest(String transmitterGroup) {
+    public LineTapRequest(String transmitterGroup, String dacReceiveAddress,
+            int receivePort, int channel) {
         this.transmitterGroup = transmitterGroup;
+        this.dacReceiveAddress = dacReceiveAddress;
+        this.receivePort = receivePort;
+        this.channel = channel;
     }
 
     public String getTransmitterGroup() {
@@ -60,6 +76,51 @@ public class LineTapRequest {
 
     public void setTransmitterGroup(String transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    /**
+     * @return the dacReceiveAddress
+     */
+    public String getDacReceiveAddress() {
+        return dacReceiveAddress;
+    }
+
+    /**
+     * @param dacReceiveAddress
+     *            the dacReceiveAddress to set
+     */
+    public void setDacReceiveAddress(String dacReceiveAddress) {
+        this.dacReceiveAddress = dacReceiveAddress;
+    }
+
+    /**
+     * @return the receivePort
+     */
+    public int getReceivePort() {
+        return receivePort;
+    }
+
+    /**
+     * @param receivePort
+     *            the receivePort to set
+     */
+    public void setReceivePort(int receivePort) {
+        this.receivePort = receivePort;
+    }
+
+    /**
+     * @return the channels
+     */
+    public int getChannel() {
+        return channel;
+    }
+
+    /**
+     * @param channels
+     *            the channels to set
+     */
+    public void setChannel(int channel) {
+        this.channel = channel;
     }
 
 }

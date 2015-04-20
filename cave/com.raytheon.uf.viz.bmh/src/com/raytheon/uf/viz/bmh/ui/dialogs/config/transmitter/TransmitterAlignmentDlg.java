@@ -84,6 +84,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 02, 2015    3962    rferrel     Changes for MAINT status.
  * Mar 31, 2015 4248       rjpeter     Removed TransmitterGroupPositionComparator.
  * Apr 09, 2015    4364    bkowal      Set the maintenance broadcast timeout.
+ * Apr 14, 2015    4394    bkowal      Alignment Tests can now only be completed when the Transmitter
+ *                                     is in Maintenance mode.
  * </pre>
  * 
  * @author mpduff
@@ -321,7 +323,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                 return;
             }
 
-            disableTransmitterGroup();
+            transmitterGroupMaintenanceMode();
             changeStatusBtn.setText(enableStr);
         } else {
             int answer = DialogUtility.showMessageBox(getShell(),
@@ -443,11 +445,11 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                 this.statusLbl.setText(STATUS_PREFIX
                         + selectedTransmitterGrp.getName() + " "
                         + TxStatus.DISABLED.toString());
-                this.testBtn
+                this.testBtn.setEnabled(false);
+                this.changeStatusBtn.setText(maintStr);
+                this.changeStatusBtn
                         .setEnabled(this
                                 .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
-                this.changeStatusBtn.setText(maintStr);
-                this.changeStatusBtn.setEnabled(false);
             }
         }
     }
@@ -486,8 +488,6 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
      * enabled.
      */
     private void enableTransmitterGroup() {
-        selectedTransmitterGrp.enableGroup();
-
         try {
             updateTransmitterGroup(TxStatus.ENABLED, selectedTransmitterGrp);
             testBtn.setEnabled(false);
@@ -513,7 +513,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     private void updateTransmitterGroup(TxStatus status, TransmitterGroup tg)
             throws Exception {
         for (Transmitter transmitter : tg.getTransmitterList()) {
-            if (transmitter.getTxStatus() == status) {
+            if (transmitter.getTxStatus() != status) {
+                transmitter.setTxStatus(status);
                 dataManager.saveTransmitter(transmitter);
             }
         }
@@ -523,9 +524,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
      * In the selected group change status of enabled transmitters to
      * maintenance.
      */
-    private void disableTransmitterGroup() {
-        selectedTransmitterGrp.maintenanceGroup();
-
+    private void transmitterGroupMaintenanceMode() {
         try {
             // Update status of transmitters changed to maintenance.
             updateTransmitterGroup(TxStatus.MAINT, selectedTransmitterGrp);
@@ -716,7 +715,6 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             for (String groupName : maintGroups) {
                 TransmitterGroup tg = transmitterGroupNameMap.get(groupName);
                 try {
-                    tg.enableGroup();
                     updateTransmitterGroup(TxStatus.ENABLED, tg);
                 } catch (Exception e) {
                     statusHandler.error("Error enabling Transmitter Group", e);

@@ -78,6 +78,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Dec 18, 2014    3865    bsteffen    add getBroadcastMessagesForInputMessage.
  * Jan 12, 2015    3843    bsteffen    Move Periodic message table creation to playlist data.
  * Jan 13, 2015    3844    bsteffen    Add getPlaylist
+ * Apr 14, 2015    4394    bkowal      Added {@link #getConfiguredTransmitterGroupList()}.
  * 
  * </pre>
  * 
@@ -107,6 +108,22 @@ public class BroadcastCycleDataManager {
             throws Exception {
         TransmitterRequest request = new TransmitterRequest();
         request.setAction(TransmitterRequestAction.GetEnabledTransmitterGroups);
+
+        TransmitterResponse response = (TransmitterResponse) BmhUtils
+                .sendRequest(request);
+        return response.getTransmitterGroupList();
+    }
+
+    /**
+     * Get a list of the currently configured transmitter groups.
+     * 
+     * @return a {@link List} of configured {@link TransmitterGroup}s.
+     * @throws Exception
+     */
+    public List<TransmitterGroup> getConfiguredTransmitterGroupList()
+            throws Exception {
+        TransmitterRequest request = new TransmitterRequest();
+        request.setAction(TransmitterRequestAction.GetConfiguredTransmitterGroups);
 
         TransmitterResponse response = (TransmitterResponse) BmhUtils
                 .sendRequest(request);

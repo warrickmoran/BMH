@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -46,6 +47,7 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.diff.DiffString;
@@ -94,6 +96,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Mar 18, 2015 4298       bkowal      Added {@link #getTransmitterWithStatus(TxStatus)}.
  * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered.
  * Apr 14, 2015 4390       rferrel     Removed constraint on position to allow reordering using PositionOrdered.
+ * Apr 14, 2015 4394       bkowal      Added {@link #GET_CONFIGURED_TRANSMITTER_GROUPS}.
  * </pre>
  * 
  * @author rjpeter
@@ -103,6 +106,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME, query = TransmitterGroup.GET_TRANSMITTER_GROUP_FOR_NAME_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER, query = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER_QUERY),
+        @NamedQuery(name = TransmitterGroup.GET_CONFIGURED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_CONFIGURED_TRANSMITTER_GROUPS_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION, query = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY) })
 @Entity
 @Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }), })
@@ -120,6 +124,10 @@ public class TransmitterGroup implements PositionOrdered {
     public static final String GET_ENABLED_TRANSMITTER_GROUPS = "getEnabledTransmitterGroups";
 
     protected static final String GET_ENABLED_TRANSMITTER_GROUPS_QUERY = "select distinct tg FROM TransmitterGroup tg inner join tg.transmitters t WHERE t.txStatus = 'ENABLED'";
+
+    public static final String GET_CONFIGURED_TRANSMITTER_GROUPS = "getConfiguredTransmitterGroups";
+
+    protected static final String GET_CONFIGURED_TRANSMITTER_GROUPS_QUERY = "select distinct tg FROM TransmitterGroup tg inner join tg.transmitters t WHERE tg.dac is not null AND t.dacPort is not null";
 
     public static final String GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER = "getTransmitterGroupContainsTransmitter";
 
@@ -270,9 +278,36 @@ public class TransmitterGroup implements PositionOrdered {
 
     public Set<Transmitter> getTransmitters() {
         if (transmitters == null) {
-            transmitters = new HashSet<Transmitter>();
+            transmitters = new HashSet<>();
         }
         return transmitters;
+    }
+
+    /**
+     * Returns a {@link List} of {@link Transmitter}s that have been configured
+     * sorted by position.
+     * 
+     * @return a {@link List} of {@link Transmitter}s sorted by position.
+     */
+    public List<Transmitter> getOrderedConfiguredTransmittersList() {
+        if (transmitters == null) {
+            return Collections.emptyList();
+        }
+
+        List<Transmitter> configuredTransmitters = new ArrayList<>(
+                this.transmitters.size());
+        for (Transmitter transmitter : this.transmitters) {
+            if (transmitter.getDacPort() == null) {
+                continue;
+            }
+            configuredTransmitters.add(transmitter);
+        }
+
+        if (configuredTransmitters.size() > 1) {
+            Collections.sort(configuredTransmitters, new PositionComparator());
+        }
+
+        return configuredTransmitters;
     }
 
     public Set<Transmitter> getTransmitterWithStatus(final TxStatus status) {
@@ -353,6 +388,16 @@ public class TransmitterGroup implements PositionOrdered {
     public boolean isMaint() {
         for (Transmitter t : getTransmitters()) {
             if (t.getTxStatus() == TxStatus.MAINT) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public boolean isDisabled() {
+        for (Transmitter t : getTransmitters()) {
+            if (t.getTxStatus() == TxStatus.DISABLED) {
                 return true;
             }
         }

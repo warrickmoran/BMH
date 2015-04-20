@@ -28,10 +28,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -53,6 +52,8 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableItem;
 
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.broadcast.ExpireBroadcastMsgRequest;
@@ -61,6 +62,7 @@ import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
+import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -68,6 +70,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
@@ -170,6 +173,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     selected suite.
  * Apr 01, 2015  4349      rferrel     Checks to prevent exceptions when no enabled transmitters.
  * Apr 02, 2015  4248      rjpeter     Removed TransmitterGroupPositionComparator.
+ * Apr 14, 2015  4394      bkowal      Display all configured transmitters with color coding.
  * Apr 15, 2015  4293      bkowal      Use {@link ExpireBroadcastMsgRequest} when only specific
  *                                     broadcast messages have been expired.
  * </pre>
@@ -190,20 +194,20 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     /** Table Data */
     private TableData tableData;
 
-    /** Transmitter name -> TransmitterGroup map */
-    private final Map<String, TransmitterGroup> transmitterGroupNameMap = new HashMap<>();;
-
     /** A Program Object */
     private Program programObj;
 
     /** The data manager */
     private final BroadcastCycleDataManager dataManager;
 
+    /** The dac data manager */
+    private final DacDataManager dacDataManager;
+
     /** The table composite */
     private BroadcastCycleTableComp tableComp;
 
     /** The list of transmitters */
-    private org.eclipse.swt.widgets.List transmitterList;
+    private Table transmitterTable;
 
     /** The checkbox to enable inline monitoring. */
     private Button monitorBtn;
@@ -256,6 +260,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     /** The currently selected transmitter */
     private String selectedTransmitterGrp;
 
+    private String selectedTransmitter;
+
     /** Cycle duration value label */
     private Label cycleDurValueLbl;
 
@@ -302,6 +308,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
                         | CAVE.PERSPECTIVE_INDEPENDENT);
         this.dataManager = new BroadcastCycleDataManager();
+        this.dacDataManager = new DacDataManager();
         setText(DlgInfo.BROADCAST_CYCLE.getTitle());
     }
 
@@ -428,17 +435,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.widthHint = 125;
-        transmitterList = new org.eclipse.swt.widgets.List(transGrp,
-                SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE | SWT.BORDER);
-        transmitterList.setLayoutData(gd);
-        transmitterList.addSelectionListener(new SelectionAdapter() {
+        this.transmitterTable = new Table(transGrp, SWT.V_SCROLL | SWT.H_SCROLL
+                | SWT.SINGLE | SWT.BORDER);
+        this.transmitterTable.setLayoutData(gd);
+        transmitterTable.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                /*
-                 * Close the Change Suite Dialog if it is opened. The suites
-                 * listed in the dialog no longer correspond to the selected
-                 * transmitter group.
-                 */
                 closeChangeSuiteDlg();
                 updateOnTransmitterChange(true);
             }
@@ -773,15 +775,18 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 if (selectedTransmitterGrp != null) {
                     playlistData.setData(selectedTransmitterGrp, dataStruct);
                 }
-                String suiteName = dataStruct.getSuiteName();
-                if (suiteName != null) {
-                    this.selectedSuite = suiteName;
-                }
+                this.selectedSuite = dataStruct.getSuiteName();
             }
 
             if ((notification == null) && (dataStruct != null)) {
                 if (this.selectedSuite != null) {
                     suiteValueLbl.setText(this.selectedSuite);
+                } else {
+                    /*
+                     * A Transmitter in maintenance mode or that is disabled
+                     * will not have an associated suite.
+                     */
+                    suiteValueLbl.setText(StringUtils.EMPTY);
                 }
                 cycleDurValueLbl.setText(timeFormatter.format(new Date(
                         dataStruct.getPlaybackCycleTime())));
@@ -815,24 +820,39 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private void populateTransmitters(boolean select0thTransmitter) {
         try {
             List<TransmitterGroup> transmitterGroupObjectList = dataManager
-                    .getEnabledTransmitterGroupList();
+                    .getConfiguredTransmitterGroupList();
             Collections.sort(transmitterGroupObjectList,
                     new PositionComparator());
-            String[] tNames = new String[transmitterGroupObjectList.size()];
-            int idx = 0;
-            for (TransmitterGroup tg : transmitterGroupObjectList) {
-                tNames[idx] = tg.getName();
-                idx++;
-                transmitterGroupNameMap.put(tg.getName(), tg);
+            if (this.transmitterTable.getItemCount() > 0) {
+                this.transmitterTable.removeAll();
             }
+            for (TransmitterGroup tg : transmitterGroupObjectList) {
+                List<Transmitter> transmitterObjectList = tg
+                        .getOrderedConfiguredTransmittersList();
 
-            transmitterList.setItems(tNames);
+                for (Transmitter t : transmitterObjectList) {
+                    TableItem ti = new TableItem(this.transmitterTable, 0);
+                    ti.setText(t.getMnemonic());
+                    ti.setData(t);
+                    if (t.getTxStatus() == TxStatus.DISABLED) {
+                        ti.setBackground(this.getDisplay().getSystemColor(
+                                SWT.COLOR_RED));
+                        ti.setForeground(this.getDisplay().getSystemColor(
+                                SWT.COLOR_LIST_FOREGROUND));
+                    } else if (t.getTxStatus() == TxStatus.MAINT) {
+                        ti.setBackground(this.getDisplay().getSystemColor(
+                                SWT.COLOR_DARK_BLUE));
+                        ti.setForeground(this.getDisplay().getSystemColor(
+                                SWT.COLOR_WHITE));
+                    }
+                }
+            }
         } catch (Exception e) {
             statusHandler.error("Error accessing BMH database.", e);
         }
         if (select0thTransmitter) {
-            if (transmitterList.getItemCount() > 0) {
-                transmitterList.select(0);
+            if (this.transmitterTable.getItemCount() > 0) {
+                this.transmitterTable.select(0);
                 updateOnTransmitterChange(select0thTransmitter);
             }
         }
@@ -910,12 +930,16 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      *            monitor inline checkbox
      */
     private void updateOnTransmitterChange(boolean reloadAudioStream) {
-        String selection = transmitterList.getItem(transmitterList
-                .getSelectionIndex());
-        String[] parts = selection.split(" - ");
-        selectedTransmitterGrp = parts[0];
+        if (this.transmitterTable.getSelectionCount() <= 0) {
+            return;
+        }
+        Transmitter transmitter = (Transmitter) this.transmitterTable.getItem(
+                this.transmitterTable.getSelectionIndex()).getData();
+        selectedTransmitterGrp = transmitter.getTransmitterGroup().getName();
+        this.selectedTransmitter = transmitter.getMnemonic();
         setText(DlgInfo.BROADCAST_CYCLE.getTitle() + ": "
-                + selectedTransmitterGrp);
+                + selectedTransmitterGrp + " - Channel "
+                + transmitter.getDacPort());
         transmitterNameLbl.setText(selectedTransmitterGrp);
 
         if ((selectedTransmitterGrp != null)
@@ -925,26 +949,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             transmitterNameLbl.setToolTipText(null);
         }
 
-        selectedTransmitterGroupObject = transmitterGroupNameMap
-                .get(selectedTransmitterGrp);
+        selectedTransmitterGroupObject = transmitter.getTransmitterGroup();
 
-        Set<Integer> portSet = new TreeSet<>();
-        for (Transmitter t : selectedTransmitterGroupObject.getTransmitters()) {
-            if (t.getDacPort() != null) {
-                portSet.add(t.getDacPort());
-            }
-        }
-
-        StringBuilder sb = new StringBuilder();
-        for (int i : portSet) {
-            if (sb.length() > 0) {
-                sb.append(", ");
-            }
-            sb.append(i);
-        }
-
-        String dacPort = sb.toString();
-        this.portValueLbl.setText(dacPort);
+        this.portValueLbl.setText(Integer.toString(transmitter.getDacPort()));
 
         String dac = null;
         try {
@@ -1052,13 +1059,27 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 return;
             }
             if (monitorBtn.getSelection()
-                    && (transmitterList.getSelectionCount() != 0)) {
-                String tName = transmitterList.getSelection()[0];
-                tName = tName.split("-")[0];
-                TransmitterGroup selectedTransmitterGroup = transmitterGroupNameMap
-                        .get(tName.trim());
-                monitorThread = new MonitorInlineThread(
-                        selectedTransmitterGroup.getName());
+                    && (this.transmitterTable.getSelectionCount() != 0)) {
+                Transmitter transmitter = (Transmitter) this.transmitterTable
+                        .getItem(this.transmitterTable.getSelectionIndex())
+                        .getData();
+                final int dacId = transmitter.getTransmitterGroup().getDac();
+
+                final Dac dac;
+                try {
+                    dac = this.dacDataManager.getDacById(dacId);
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "Failed to retrieve the information for dac: "
+                                    + dacId + ".", e);
+                    this.monitorBtn.setSelection(false);
+                    return;
+                }
+
+                monitorThread = new MonitorInlineThread(transmitter
+                        .getTransmitterGroup().getName(),
+                        dac.getReceiveAddress(), dac.getReceivePort(),
+                        transmitter.getDacPort());
                 monitorThread.addDisconnectListener(BroadcastCycleDlg.this);
                 monitorThread.start();
             }
@@ -1603,7 +1624,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 for (TransmitterGroupIdentifier identifier : notification
                         .getIdentifiers()) {
                     final String grp = identifier.getName();
-                    int indx = transmitterList.indexOf(grp);
+                    int indx = getIndexOfTransmitterInTable(grp);
                     if (indx != -1) {
                         /*
                          * The group already in the list. Update if it is the
@@ -1634,9 +1655,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                  * determine which transmitter in the list should be selected
                  * provided that there are transmitters available to select.
                  */
-                if (transmitterList.getItemCount() > 0) {
+                if (transmitterTable.getItemCount() > 0) {
                     if (selectionRemoved || (selectedTransmitterGrp == null)) {
-                        transmitterList.select(0);
+                        transmitterTable.select(0);
                         closeChangeSuiteDlg();
                         updateOnTransmitterChange(true);
                     } else {
@@ -1644,8 +1665,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                          * select the transmitter that is "currently" selected
                          * at its "new" location.
                          */
-                        transmitterList.select(transmitterList
-                                .indexOf(selectedTransmitterGrp));
+
+                        transmitterTable
+                                .select(getIndexOfTransmitterInTable(selectedTransmitter));
                         updateOnTransmitterChange(false);
                     }
 
@@ -1656,11 +1678,25 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         });
     }
 
+    private int getIndexOfTransmitterInTable(final String grp) {
+        int indx = -1;
+        for (int i = 0; i < transmitterTable.getItemCount(); i++) {
+            if (transmitterTable.getItem(i).getText(0)
+                    .equals(selectedTransmitter)) {
+                indx = i;
+                break;
+            }
+        }
+
+        return indx;
+    }
+
     /**
      * Clear all transmitter group information.
      */
     private void clearTransmitterGroupSelection() {
         selectedTransmitterGrp = null;
+        this.selectedTransmitter = null;
         programObj = null;
         dacValueLbl.setText("");
         portValueLbl.setText("");

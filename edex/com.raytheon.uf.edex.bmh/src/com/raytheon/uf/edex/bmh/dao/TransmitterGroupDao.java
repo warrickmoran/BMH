@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -48,6 +49,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * Jan 22, 2015  3995     rjpeter     Added getNextPosition()
  * Feb 09, 2015  4082     bkowal      Added {@link #createGroupAndLanguages(TransmitterGroup, Collection)}.
  * Apr 14, 2015  4390     rferrel     Added {@link #reorderTransmitterGroup(List)}.
+ * Apr 14, 2015  4394     bkowal      Added {@link #getConfiguredTransmitterGroups()}.
  * </pre>
  * 
  * @author bkowal
@@ -95,6 +97,21 @@ public class TransmitterGroupDao extends
     @SuppressWarnings("unchecked")
     public List<TransmitterGroup> getEnabledTransmitterGroups() {
         return (List<TransmitterGroup>) findByNamedQuery(TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS);
+    }
+
+    public List<TransmitterGroup> getConfiguredTransmitterGroups() {
+        List<?> results = this
+                .findByNamedQuery(TransmitterGroup.GET_CONFIGURED_TRANSMITTER_GROUPS);
+        if (results == null || results.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<TransmitterGroup> groups = new ArrayList<>(results.size());
+        for (Object object : results) {
+            groups.add((TransmitterGroup) object);
+        }
+
+        return groups;
     }
 
     public TransmitterGroup getTransmitterGroupWithTransmitter(
