@@ -89,6 +89,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 25, 2015 4213      bkowal      Added {@link #GET_PROGRAM_FOR_TRANSMITTER_GROUP} and
  *                                    {@link #VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP}.
  * Apr 02, 2015 4248      rjpeter     Made ProgramSuite database relation a set, added ordered return methods.
+ * Apr 21, 2015 4248      rjpeter     Updated setProgramSuites to fix hash issue.
  * </pre>
  * 
  * @author rjpeter
@@ -411,13 +412,18 @@ public class Program {
      *            the programSuites to set
      */
     public void setProgramSuites(Set<ProgramSuite> programSuites) {
-        this.programSuites = programSuites;
 
-        if (this.programSuites != null) {
-            for (ProgramSuite ps : this.programSuites) {
+        if (programSuites != null) {
+            for (ProgramSuite ps : programSuites) {
+                /*
+                 * this changes the hashCode, have to create a new set
+                 */
                 ps.setProgram(this);
             }
+            programSuites = new HashSet<>(programSuites);
         }
+
+        this.programSuites = programSuites;
     }
 
     public void addProgramSuite(ProgramSuite programSuite) {

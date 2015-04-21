@@ -78,6 +78,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 13, 2014 3717      bsteffen    Add containsSuiteMessage
  * Dec 07, 2014 3752      mpduff      Add getSuiteByName
  * Apr 02, 2015 4248      rjpeter     Made suiteMessages database relation a set, added ordered return methods.
+ * Apr 21, 2015 4248      rjpeter     Updated setSuiteMessages to fix hash issue.
  * </pre>
  * 
  * @author rjpeter
@@ -195,13 +196,19 @@ public class Suite {
     }
 
     public void setSuiteMessages(Set<SuiteMessage> suiteMessages) {
-        this.suiteMessages = suiteMessages;
 
-        if (this.suiteMessages != null) {
-            for (SuiteMessage sm : this.suiteMessages) {
+        if (suiteMessages != null) {
+            for (SuiteMessage sm : suiteMessages) {
+                /*
+                 * this changes the hashCode, have to create a new set
+                 */
                 sm.setSuite(this);
             }
+
+            suiteMessages = new HashSet<>(suiteMessages);
         }
+
+        this.suiteMessages = suiteMessages;
     }
 
     public void addSuiteMessage(SuiteMessage suiteMessage) {
