@@ -178,6 +178,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 15, 2015  4293      bkowal      Use {@link ExpireBroadcastMsgRequest} when only specific
  *                                     broadcast messages have been expired.
  * Apr 20, 2015  4397      bkowal      Set the expiration request time on the {@link NewBroadcastMsgRequest}.
+ * Apr 21, 2015  4423      rferrel     Added {@link #timeZoneValueLbl} to display transmitter's time zone.
  * Apr 21, 2015  4394      bkowal      Purge any cached playlist information whenever a
  *                                     {@link DacTransmitShutdownNotification} is received.
  * </pre>
@@ -251,6 +252,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     /** Selected transmitter */
     private Label transmitterNameLbl;
+
+    /** Selected transmitter's time zone. */
+    private Label timeZoneValueLbl;
 
     /** The selected transmitterGroup object */
     private TransmitterGroup selectedTransmitterGroupObject;
@@ -504,9 +508,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
         gd.widthHint = 125;
-        Label timeZoneValueLbl = new Label(tzComp, SWT.NONE);
+        timeZoneValueLbl = new Label(tzComp, SWT.NONE);
         timeZoneValueLbl.setLayoutData(gd);
-        timeZoneValueLbl.setText("GMT");
 
         // Transmitter DAC
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, false);
@@ -912,12 +915,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      */
     private List<TableColumnData> getColumns() {
         List<TableColumnData> columns = new ArrayList<>(8);
-        columns.add(new TableColumnData("Transmit Time", 125));
+        columns.add(new TableColumnData("Transmit Time (UTC)", 125));
         columns.add(new TableColumnData("Message Id", 100));
         columns.add(new TableColumnData("Message Title", 225));
         columns.add(new TableColumnData("Message Name", 175));
         columns.add(new TableColumnData("MRD"));
-        columns.add(new TableColumnData("Expiration Time", 125));
+        columns.add(new TableColumnData("Expiration Time (UTC)", 125));
         columns.add(new TableColumnData("Alert"));
         columns.add(new TableColumnData("SAME"));
         columns.add(new TableColumnData("Play Count"));
@@ -939,12 +942,14 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         }
         Transmitter transmitter = (Transmitter) this.transmitterTable.getItem(
                 this.transmitterTable.getSelectionIndex()).getData();
-        selectedTransmitterGrp = transmitter.getTransmitterGroup().getName();
+        selectedTransmitterGroupObject = transmitter.getTransmitterGroup();
+        selectedTransmitterGrp = selectedTransmitterGroupObject.getName();
         this.selectedTransmitter = transmitter.getMnemonic();
         setText(DlgInfo.BROADCAST_CYCLE.getTitle() + ": "
                 + selectedTransmitterGrp + " - Channel "
                 + transmitter.getDacPort());
         transmitterNameLbl.setText(selectedTransmitterGrp);
+        timeZoneValueLbl.setText(selectedTransmitterGroupObject.getTimeZone());
 
         if ((selectedTransmitterGrp != null)
                 && (selectedTransmitterGrp.isEmpty() == false)) {
@@ -952,8 +957,6 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         } else {
             transmitterNameLbl.setToolTipText(null);
         }
-
-        selectedTransmitterGroupObject = transmitter.getTransmitterGroup();
 
         this.portValueLbl.setText(Integer.toString(transmitter.getDacPort()));
 
