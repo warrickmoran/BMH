@@ -44,6 +44,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 23, 2014  3728     lvenable    Added GetAfosDesignation and designation variable.
  * Mar 13, 2015  4213     bkowal      Added {@link MessageTypeAction#GetByDesignationAndLanguage}
  *                                    and {@link #language}.
+ * Apr 22, 2015  4397     bkowal      Extend {@link AbstractBMHSystemConfigRequest}.
  * 
  * </pre>
  * 
@@ -51,7 +52,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class MessageTypeRequest extends AbstractBMHServerRequest {
+public class MessageTypeRequest extends AbstractBMHSystemConfigRequest {
     public enum MessageTypeAction {
         AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle, GetEmergencyOverrideMsgTypes, GetAfosDesignation, GetByDesignationAndLanguage;
     }
@@ -159,5 +160,15 @@ public class MessageTypeRequest extends AbstractBMHServerRequest {
      */
     public void setLanguage(Language language) {
         this.language = language;
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest#isSystemConfigChange()
+     */
+    @Override
+    public boolean isSystemConfigChange() {
+        return this.action == MessageTypeAction.Delete
+                || this.action == MessageTypeAction.Save;
     }
 }

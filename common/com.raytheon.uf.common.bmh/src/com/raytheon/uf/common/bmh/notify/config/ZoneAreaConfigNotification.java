@@ -19,15 +19,14 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
-import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 
 /**
- * 
- * Notification that is used when a {@link Program} is created, updated or
- * deleted.
+ * Notification that is used when an {@link Area} or {@link Zone} is created,
+ * updated or deleted.
  * 
  * <pre>
  * 
@@ -35,37 +34,34 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Sep 04, 2014  3554      bsteffen    Initial creation
- * Apr 22, 2015  4397      bkowal      Extend {@link AbstractTraceableSystemConfigNotification}.
+ * Apr 22, 2015 4397       bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author bkowal
  * @version 1.0
  */
 @DynamicSerialize
-public class ProgramConfigNotification extends
+public class ZoneAreaConfigNotification extends
         AbstractTraceableSystemConfigNotification {
 
-    @DynamicSerializeElement
-    private int id;
+    /*
+     * No additional fields for now. Nothing else currently cares about which
+     * specific areas and/or zones were modified.
+     */
 
-    public ProgramConfigNotification() {
-        super();
+    /**
+     * Empty constructor for {@link DynamicSerialize}.
+     */
+    public ZoneAreaConfigNotification() {
     }
 
-    public ProgramConfigNotification(ConfigChangeType type,
-            AbstractBMHSystemConfigRequest request, Program program) {
+    /**
+     * @param type
+     * @param request
+     */
+    public ZoneAreaConfigNotification(ConfigChangeType type,
+            AbstractBMHSystemConfigRequest request) {
         super(type, request);
-        this.id = program.getId();
     }
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
 }

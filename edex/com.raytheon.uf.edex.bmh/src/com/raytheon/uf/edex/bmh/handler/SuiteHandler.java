@@ -25,6 +25,7 @@ import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.AbstractTraceableSystemConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.request.SuiteRequest;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
@@ -56,6 +57,8 @@ import com.raytheon.uf.edex.bmh.dao.SuiteDao;
  * Dec 07, 2014  3752     mpduff      Add getSuiteByName
  * Mar 25, 2015  4213     bkowal      Added affected Transmitter Group(s) to the 
  *                                    {@link SuiteConfigNotification} for deletes.
+ * Apr 22, 2015  4397     bkowal      Construct a {@link AbstractTraceableSystemConfigNotification}
+ *                                    notification when database changes occur.
  * 
  * </pre>
  * 
@@ -82,14 +85,14 @@ public class SuiteHandler extends AbstractBMHServerRequestHandler<SuiteRequest> 
             break;
         case Delete:
             notification = new SuiteConfigNotification(ConfigChangeType.Delete,
-                    request.getSuite(),
+                    request, request.getSuite(),
                     this.getAffectedEnabledTransmitterGroups(request));
             deleteSuite(request);
             break;
         case Save:
             suiteResponse = saveSuite(request);
             notification = new SuiteConfigNotification(ConfigChangeType.Update,
-                    request.getSuite());
+                    request, request.getSuite());
             break;
         case GetSuiteByName:
             suiteResponse = getSuiteByName(request);

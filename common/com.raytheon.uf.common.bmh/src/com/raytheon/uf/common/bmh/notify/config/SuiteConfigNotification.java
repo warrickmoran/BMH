@@ -23,6 +23,7 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -39,6 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Sep 04, 2014  3554     bsteffen    Initial creation
  * Mar 25, 2015  4213     bkowal      Added {@link #associatedEnabledTransmitterGroups}.
+ * Apr 22, 2015  4397     bkowal      Extend {@link AbstractTraceableSystemConfigNotification}.
  * 
  * </pre>
  * 
@@ -46,7 +48,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class SuiteConfigNotification extends ConfigNotification {
+public class SuiteConfigNotification extends
+        AbstractTraceableSystemConfigNotification {
 
     @DynamicSerializeElement
     private int id;
@@ -64,14 +67,16 @@ public class SuiteConfigNotification extends ConfigNotification {
         super();
     }
 
-    public SuiteConfigNotification(ConfigChangeType type, Suite suite) {
-        super(type);
+    public SuiteConfigNotification(ConfigChangeType type,
+            AbstractBMHSystemConfigRequest request, Suite suite) {
+        super(type, request);
         this.id = suite.getId();
     }
 
-    public SuiteConfigNotification(ConfigChangeType type, Suite suite,
+    public SuiteConfigNotification(ConfigChangeType type,
+            AbstractBMHSystemConfigRequest request, Suite suite,
             List<TransmitterGroup> associatedEnabledTransmitterGroups) {
-        this(type, suite);
+        this(type, request, suite);
         this.associatedEnabledTransmitterGroups = associatedEnabledTransmitterGroups;
     }
 

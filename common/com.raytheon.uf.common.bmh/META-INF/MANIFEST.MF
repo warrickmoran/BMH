@@ -20,7 +20,9 @@ Require-Bundle: com.raytheon.uf.common.time,
  org.apache.commons.beanutils;bundle-version="1.8.3",
  org.slf4j;bundle-version="1.7.5",
  org.apache.commons.lang;bundle-version="2.3.0",
- com.raytheon.uf.common.localization;bundle-version="1.14.1"
+ com.raytheon.uf.common.localization;bundle-version="1.14.1",
+ com.raytheon.uf.common.stats;bundle-version="1.0.0",
+ com.raytheon.uf.common.event;bundle-version="1.14.0"
 Export-Package: com.raytheon.uf.common.bmh,
  com.raytheon.uf.common.bmh.audio,
  com.raytheon.uf.common.bmh.audio.impl,
@@ -41,5 +43,6 @@ Export-Package: com.raytheon.uf.common.bmh,
  com.raytheon.uf.common.bmh.notify.status,
  com.raytheon.uf.common.bmh.request,
  com.raytheon.uf.common.bmh.same,
+ com.raytheon.uf.common.bmh.stats,
  com.raytheon.uf.common.bmh.systemstatus,
  com.raytheon.uf.common.bmh.tones

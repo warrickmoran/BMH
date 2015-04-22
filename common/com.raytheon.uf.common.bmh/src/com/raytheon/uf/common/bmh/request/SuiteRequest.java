@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 17, 2014  3490     lvenable    Added suite and getter/setters.
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Dec 07, 2014  3752     mpduff      Add getSuiteByName
+ * Apr 22, 2015  4397     bkowal      Extend {@link AbstractBMHSystemConfigRequest}.
  * 
  * </pre>
  * 
@@ -44,7 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class SuiteRequest extends AbstractBMHServerRequest {
+public class SuiteRequest extends AbstractBMHSystemConfigRequest {
 
     public enum SuiteAction {
         Save, ListSuitesCats, AllSuites, SuitesMsgTypes, Delete, GetSuiteByName;
@@ -99,5 +100,11 @@ public class SuiteRequest extends AbstractBMHServerRequest {
      */
     public void setSuiteName(String suiteName) {
         this.suiteName = suiteName;
+    }
+
+    @Override
+    public boolean isSystemConfigChange() {
+        return this.action == SuiteAction.Save
+                || this.action == SuiteAction.Delete;
     }
 }
