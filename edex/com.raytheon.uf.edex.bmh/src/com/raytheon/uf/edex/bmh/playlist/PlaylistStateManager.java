@@ -32,6 +32,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
@@ -71,6 +72,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Mar 17, 2015   4160     bsteffen    Persist state of tones.
  * Mar 25, 2015   4290     bsteffen    Switch to global replacement.
  * Apr 01, 2015   4349     rferrel     Checks to prevent exceptions when no enabled transmitters.
+ * Apr 20, 2015   4394     bkowal      Ensure that playlist information does not remain in the
+ *                                     cache for disabled transmitters that are no longer transmitting.
  * 
  * </pre>
  * 
@@ -112,6 +115,34 @@ public class PlaylistStateManager {
                         .info("Evicting Live Broadcast information for Transmitter "
                                 + notification.getTransmitterGroup() + ".");
             }
+        }
+    }
+
+    public synchronized void handleDacTransmitShutdown(
+            DacTransmitShutdownNotification notification) {
+        statusHandler
+                .info("Received a Dac Transmit Shutdown Notification for Transmitter "
+                        + notification.getTransmitterGroup() + ".");
+
+        /*
+         * Determine if the Transmitter Group has actually been disabled or if a
+         * load-balancing may have occurred.
+         */
+        final String name = notification.getTransmitterGroup();
+        if (this.liveBroadcastDataMap.remove(name) != null) {
+            statusHandler
+                    .info("Evicting Live Broadcast information for Disabled Transmitter "
+                            + name + ".");
+        }
+
+        /*
+         * Ensure that all requests for playlist information accurately reflect
+         * that the 'Off the Air' message should be playing.
+         */
+        if (this.playlistDataMap.remove(name) != null) {
+            statusHandler
+                    .info("Evicting Playlist information for Disabled Transmitter "
+                            + name + ".");
         }
     }
 
@@ -353,5 +384,4 @@ public class PlaylistStateManager {
     public void setBroadcastMsgDao(BroadcastMsgDao broadcastMsgDao) {
         this.broadcastMsgDao = broadcastMsgDao;
     }
-
 }

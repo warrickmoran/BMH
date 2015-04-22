@@ -54,6 +54,7 @@ import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.bmh.comms.linetap.LineTapServer;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.config.CommsConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
@@ -113,6 +114,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Mar 11, 2015  4186     bsteffen    Report silence alarms in status
  * Apr 07, 2015  4370     rjpeter     Add jms and cluster listener for config changes.
  * Apr 15, 2015  4397     bkowal      Added {@link #transmitBMHStat(StatisticsEvent)}.
+ * Apr 20, 2015  4394     bkowal      Handle {@link DacTransmitShutdownNotification}.
  * </pre>
  * 
  * @author bsteffen
@@ -728,6 +730,27 @@ public class CommsManager {
     public void transmitBMHStat(StatisticsEvent event) {
         if (jms != null) {
             jms.sendBmhStat(event);
+        }
+    }
+
+    /**
+     * This method should be used to forward a
+     * {@link DacTransmitShutdownNotification} to EDEX to potentially trigger an
+     * update of the playlist state.
+     * 
+     * @param notification
+     *            the {@link DacTransmitShutdownNotification} to forward.
+     */
+    public void transmitDacShutdown(
+            DacTransmitShutdownNotification notification, DacTransmitKey key) {
+        if (this.jms != null) {
+            /*
+             * Verify that another cluster member does not own the dac transmit.
+             */
+            if (!clusterServer.isConnected(key)
+                    && !clusterServer.isRequested(key)) {
+                this.jms.sendBmhStatus(notification);
+            }
         }
     }
 

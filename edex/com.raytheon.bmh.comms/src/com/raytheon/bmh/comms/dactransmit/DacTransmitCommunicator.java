@@ -31,6 +31,7 @@ import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.broadcast.BroadcastDelayAlarm;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
@@ -80,6 +81,8 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * Mar 10, 2015  4228     bsteffen    Track disconnected state more carefully.
  * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil.
  * Apr 15, 2015  4397     bkowal      Handle {@link LiveBroadcastLatencyEvent}.
+ * Apr 20, 2015  4394     bkowal      Generate a {@link DacTransmitShutdownNotification}
+ *                                    to indicate that a dac transmit has shutdown.
  * 
  * </pre>
  * 
@@ -286,5 +289,7 @@ public class DacTransmitCommunicator extends Thread {
         if (wasConnectedToDac) {
             manager.dacDisconnectedLocal(key, groupName);
         }
+        this.manager.transmitDacShutdown(new DacTransmitShutdownNotification(
+                this.groupName), this.key);
     }
 }

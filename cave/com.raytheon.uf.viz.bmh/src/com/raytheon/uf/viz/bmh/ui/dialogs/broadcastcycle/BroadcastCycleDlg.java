@@ -73,6 +73,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
+import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
@@ -177,6 +178,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 15, 2015  4293      bkowal      Use {@link ExpireBroadcastMsgRequest} when only specific
  *                                     broadcast messages have been expired.
  * Apr 20, 2015  4397      bkowal      Set the expiration request time on the {@link NewBroadcastMsgRequest}.
+ * Apr 21, 2015  4394      bkowal      Purge any cached playlist information whenever a
+ *                                     {@link DacTransmitShutdownNotification} is received.
  * </pre>
  * 
  * @author mpduff
@@ -1547,6 +1550,19 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 } else if (o instanceof TransmitterGroupConfigNotification) {
                     TransmitterGroupConfigNotification notification = (TransmitterGroupConfigNotification) o;
                     this.updateDisplayForTransmitterGrpConfigChange(notification);
+                } else if (o instanceof DacTransmitShutdownNotification) {
+                    DacTransmitShutdownNotification notification = (DacTransmitShutdownNotification) o;
+                    final String group = notification.getTransmitterGroup();
+
+                    playlistData.purgeData(group);
+                    if (group.equals(selectedTransmitterGroupObject)) {
+                        VizApp.runAsync(new Runnable() {
+                            @Override
+                            public void run() {
+                                initialTablePopulation();
+                            }
+                        });
+                    }
                 }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing update notification", e);
