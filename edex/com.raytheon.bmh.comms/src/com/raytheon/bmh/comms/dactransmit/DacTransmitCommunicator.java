@@ -83,6 +83,8 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * Apr 15, 2015  4397     bkowal      Handle {@link LiveBroadcastLatencyEvent}.
  * Apr 20, 2015  4394     bkowal      Generate a {@link DacTransmitShutdownNotification}
  *                                    to indicate that a dac transmit has shutdown.
+ * Apr 21, 2015  4407     bkowal      Made {@link #lastStatus} and {@link #disconnected}
+ *                                    volatile.
  * 
  * </pre>
  * 
@@ -107,9 +109,9 @@ public class DacTransmitCommunicator extends Thread {
 
     private double dbTarget;
 
-    private DacTransmitStatus lastStatus;
+    private volatile DacTransmitStatus lastStatus;
 
-    private boolean disconnected = false;
+    private volatile boolean disconnected = false;
 
     private static final BroadcastDelayAlarm broadcastDelayAlarm = new BroadcastDelayAlarm();
 

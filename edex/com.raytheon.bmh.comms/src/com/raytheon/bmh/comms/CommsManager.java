@@ -39,6 +39,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXB;
@@ -48,6 +50,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MarkerFactory;
 
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.bmh.comms.broadcast.BroadcastStreamServer;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
@@ -115,6 +118,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Apr 07, 2015  4370     rjpeter     Add jms and cluster listener for config changes.
  * Apr 15, 2015  4397     bkowal      Added {@link #transmitBMHStat(StatisticsEvent)}.
  * Apr 20, 2015  4394     bkowal      Handle {@link DacTransmitShutdownNotification}.
+ * Apr 21, 2015  4407     bkowal      Restart a dac transmit process if it does not
+ *                                    reconnect to a dac after a configurable amount of time.
  * </pre>
  * 
  * @author bsteffen
@@ -150,6 +155,13 @@ public class CommsManager {
      */
     private static final int NORMAL_SLEEP_TIME = Integer.getInteger(
             "CommsSleepInterval", 30000);
+
+    /**
+     * The amount of time (in ms) that a dac transmit process cannot have a
+     * connection to the dac before it is killed (and potentially restarted).
+     */
+    private static final long MAX_DAC_DISCONNECT_TIME = Long.getLong(
+            "MaxDacDisconnectTime", TimeUtil.MILLIS_PER_MINUTE);
 
     /** NOT THREAD SAFE: only use from the run method */
     private final SimpleDateFormat logDateFormat = new SimpleDateFormat(
@@ -189,6 +201,8 @@ public class CommsManager {
     private volatile CommsConfig config;
 
     private final Map<DacTransmitKey, Process> startedProcesses = new HashMap<>();
+
+    private final ConcurrentMap<DacTransmitKey, Long> disconnectedDacProcesses = new ConcurrentHashMap<>();
 
     /**
      * Create a comms manager, this will fail if there are problems starting
@@ -353,12 +367,47 @@ public class CommsManager {
                         for (DacChannelConfig channel : dac.getChannels()) {
                             DacTransmitKey key = new DacTransmitKey(dac,
                                     channel);
+                            /*
+                             * Verify that there is a dac transmit process that
+                             * has connected to a Comms Manager. - ELSE - Verify
+                             * that if a dac transmit process is connected to
+                             * THIS Comms Manager that it has sync with the dac.
+                             * If not, the countdown starts.
+                             */
                             if (!transmitServer.isConnectedToDacTransmit(key)
                                     && !clusterServer.isConnected(key)
                                     && !clusterServer.isRequested(key)) {
-                                launchDacTransmit(key, channel);
+                                launchDacTransmit(key, channel, false);
                                 sleeptime += DAC_START_SLEEP_TIME;
                                 allDacsRunning = false;
+                            } else if (this.transmitServer
+                                    .isConnectedToDacTransmit(key)
+                                    && this.transmitServer
+                                            .isConnectedToDac(key) == false) {
+                                Long start = this.disconnectedDacProcesses
+                                        .get(key);
+                                long duration = 0;
+                                if (start != null) {
+                                    duration = System.currentTimeMillis()
+                                            - start;
+                                } else {
+                                    this.disconnectedDacProcesses.put(key,
+                                            System.currentTimeMillis());
+                                }
+                                logger.warn(
+                                        "Dac Transmit for {} does not currently have sync with the dac (duration: {} ms).",
+                                        channel.getTransmitterGroup(), duration);
+                                /*
+                                 * Determine if it is time to restart the
+                                 * process based on how long the process has not
+                                 * been connected to the dac.
+                                 */
+                                if (duration >= MAX_DAC_DISCONNECT_TIME) {
+                                    this.disconnectedDacProcesses.remove(key);
+                                    launchDacTransmit(key, channel, true);
+                                    sleeptime += DAC_START_SLEEP_TIME;
+                                    allDacsRunning = false;
+                                }
                             }
                         }
                     }
@@ -502,19 +551,37 @@ public class CommsManager {
     }
 
     protected void launchDacTransmit(DacTransmitKey key,
-            DacChannelConfig channel) {
-        boolean force = false;
+            DacChannelConfig channel, boolean force) {
         String group = channel.getTransmitterGroup();
-        Process p = startedProcesses.get(key);
-        if (p != null) {
-            try {
-                int status = p.exitValue();
-                logger.error("Dac transmit process has unexpectedly exited for "
-                        + group + " with a status of " + status);
-            } catch (IllegalThreadStateException e) {
-                logger.info("Dac transmit process is running but unconnected for "
-                        + group);
-                force = true;
+        /*
+         * If force has already been set. There is no need to determine if any
+         * existing processed need to be terminated.
+         */
+        Process p = null;
+        if (force == false) {
+            p = startedProcesses.get(key);
+            if (p != null) {
+                try {
+                    int status = p.exitValue();
+                    if (status == 1) {
+                        /*
+                         * If we reach this point, a dac transmit process is
+                         * already running that we have no way to interact with.
+                         * So, the only option is to kill it and restart it.
+                         */
+                        logger.error(
+                                "Dac transmit process existed because there is already an unconnected dac transmit process running for {}.",
+                                group);
+                        force = true;
+                    } else {
+                        logger.error("Dac transmit process has unexpectedly exited for "
+                                + group + " with a status of " + status);
+                    }
+                } catch (IllegalThreadStateException e) {
+                    logger.info("Dac transmit process is running but unconnected for "
+                            + group);
+                    force = true;
+                }
             }
         }
         logger.info("Starting dac transmit for: " + group);
@@ -629,6 +696,7 @@ public class CommsManager {
      */
     public void dacConnectedLocal(DacTransmitKey key, String group) {
         logger.info("{} is now connected to the dac", group);
+        this.disconnectedDacProcesses.remove(key);
         if (jms != null) {
             jms.listenForPlaylistChanges(key, group, transmitServer);
         }

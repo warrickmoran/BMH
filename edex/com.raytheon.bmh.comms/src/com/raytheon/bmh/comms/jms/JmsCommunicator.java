@@ -67,6 +67,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Nov 19, 2014  3817     bsteffen    Updates to send system status messages.
  * Feb 16, 2015  4107     bsteffen    Notify the playlist observer when it is successfully observing.
  * Apr 15, 2015  4397     bkowal      Added {@link #bmhStatisticProducer}.
+ * Apr 20, 2015  4407     bkowal      Cleanup of {@link PlaylistUpdateNotification}.
  * 
  * </pre>
  * 
@@ -160,8 +161,7 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     public void listenForPlaylistChanges(DacTransmitKey key, String group,
             DacTransmitServer server) {
-        String topic = PlaylistUpdateNotification.getTopicName(group,
-                operational);
+        String topic = PlaylistUpdateNotification.getTopicName(operational);
         PlaylistNotificationObserver observer = new PlaylistNotificationObserver(
                 server, key);
         addObserver(topic, observer);
@@ -175,8 +175,7 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     public void unlistenForPlaylistChanges(DacTransmitKey key, String group,
             DacTransmitServer server) {
-        String topic = PlaylistUpdateNotification.getTopicName(group,
-                operational);
+        String topic = PlaylistUpdateNotification.getTopicName(operational);
         PlaylistNotificationObserver observer = new PlaylistNotificationObserver(
                 server, key);
         synchronized (playlistObservers) {

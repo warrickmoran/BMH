@@ -44,6 +44,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 26, 2014  3554     bsteffen    Change path to be more unique
  * Sep 23, 2014  3485     bsteffen    Add static method for defining queues consistently.
  * Feb 09, 2015  4071     bsteffen    Consolidate Queues.
+ * Apr 21, 2015  4407     bkowal      Cleanup of {@link #getTopicName(boolean)}.
  * 
  * </pre>
  * 
@@ -107,8 +108,7 @@ public class PlaylistUpdateNotification {
             formatter.format("%1$tY%1$tm%1$td%1$tH%1$tM%1$tS%1$tL",
                     playlist.getCreationTime());
             result.append("_T");
-            formatter.format("%1$td%1$tH%1$tM",
-                    playlist.getLatestTrigger());
+            formatter.format("%1$td%1$tH%1$tM", playlist.getLatestTrigger());
             result.append(".xml");
         }
         return result;
@@ -156,7 +156,7 @@ public class PlaylistUpdateNotification {
         return playlist;
     }
 
-    public static String getTopicName(String group, boolean operational) {
+    public static String getTopicName(boolean operational) {
         if (operational) {
             return "BMH.Playlist";
         } else {

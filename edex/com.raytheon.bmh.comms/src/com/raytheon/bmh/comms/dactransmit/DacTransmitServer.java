@@ -69,6 +69,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Jan 22, 2015  3912     bsteffen    Shutdown dac transmit when it connects after a remote dac transmit
  *                                    has already established a connection with the dac.
  * Jan 23, 2015  3912     bsteffen    More logging and detection of disconnected dac transmits.
+ * Apr 21, 2015  4407     bkowal      {@link #isConnectedToDacTransmit(DacTransmitKey)} will now only
+ *                                    verify a connection to dac transmit.
  * 
  * </pre>
  * 
@@ -169,7 +171,7 @@ public class DacTransmitServer extends AbstractServerThread {
                 .get(key);
         if (communicators != null) {
             for (DacTransmitCommunicator communicator : communicators) {
-                if (communicator.isConnectedToDacTransmit()) {
+                if (communicator.isDisconnectedFromDacTransmit() == false) {
                     return true;
                 }
             }

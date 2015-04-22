@@ -774,8 +774,7 @@ public class PlaylistManager implements IContextStateProcessor {
                     BMH_ACTIVITY.PLAYLIST_WRITE, playlist, e);
             return null;
         }
-        String topic = PlaylistUpdateNotification.getTopicName(playlist
-                .getTransmitterGroup().getName(), operational);
+        String topic = PlaylistUpdateNotification.getTopicName(operational);
         try {
             EDEXUtil.getMessageProducer().sendAsyncUri(
                     "jms-generic:topic:" + topic,
