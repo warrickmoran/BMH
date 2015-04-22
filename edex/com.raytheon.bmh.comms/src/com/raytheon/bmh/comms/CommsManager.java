@@ -120,6 +120,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Apr 20, 2015  4394     bkowal      Handle {@link DacTransmitShutdownNotification}.
  * Apr 21, 2015  4407     bkowal      Restart a dac transmit process if it does not
  *                                    reconnect to a dac after a configurable amount of time.
+ * Apr 22, 2015  4404     bkowal      Trigger a silence alarm when connection to a dac is lost.
+ *                                    Clear any existing silence alarms on dac transmit shutdown.
  * </pre>
  * 
  * @author bsteffen
@@ -750,6 +752,7 @@ public class CommsManager {
         }
         clusterServer.dacDisconnectedLocal(key);
         broadcastStreamServer.dacDisconnected(key, group);
+        this.silenceAlarm.handleDacDisconnect(group);
         attemptLaunchDacTransmits();
         sendStatus();
     }
@@ -818,6 +821,13 @@ public class CommsManager {
             if (!clusterServer.isConnected(key)
                     && !clusterServer.isRequested(key)) {
                 this.jms.sendBmhStatus(notification);
+
+                /*
+                 * Clear the silence alarm to ensure that silence will not be
+                 * reported for a dac transmit that is not currently running.
+                 */
+                this.silenceAlarm.clearSilenceAlarm(notification
+                        .getTransmitterGroup());
             }
         }
     }

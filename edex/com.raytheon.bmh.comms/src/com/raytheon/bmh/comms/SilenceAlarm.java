@@ -48,6 +48,8 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Jan 08, 2015  3821     bsteffen    Rename silenceAlarm to deadAirAlarm
  * Feb 26, 2015  4187     rjpeter     Make thread daemon so jvm can stop.
  * Mar 11, 2015  4186     bsteffen    Notify comms manager of silence changes.
+ * Apr 22, 2015  4404     bkowal      Added {@link #handleDacDisconnect(String)} and
+ *                                    {@link #clearSilenceAlarm(String)}.
  * 
  * </pre>
  * 
@@ -127,16 +129,7 @@ public class SilenceAlarm {
         synchronized (silenceTimes) {
             for (DacVoiceStatus voiceStatus : status.getVoiceStatus()) {
                 if (voiceStatus != DacVoiceStatus.IP_AUDIO) {
-                    if (!silenceTimes.containsKey(group)) {
-                        silenceTimes.put(group, new SilenceTime(group));
-                        if (thread == null) {
-                            thread = new SilenceAlarmThread();
-                            thread.setDaemon(true);
-                            thread.start();
-                        } else {
-                            thread.interrupt();
-                        }
-                    }
+                    this.initiateSilenceThread(group);
                     return;
                 }
             }
@@ -145,7 +138,56 @@ public class SilenceAlarm {
         if (canceledAlarm != null && canceledAlarm.isAlarming()) {
             commsManager.silenceStatusChanged();
         }
+    }
 
+    /**
+     * Triggers a silence alarm in response to the loss of a connection to the
+     * dac for the specified Transmitter Group.
+     * 
+     * @param group
+     *            the specified Transmitter Group.
+     */
+    public void handleDacDisconnect(final String group) {
+        synchronized (this.silenceTimes) {
+            this.initiateSilenceThread(group);
+        }
+    }
+
+    /**
+     * Instantiates and starts a {@link SilenceAlarmThread} for the specified
+     * Transmitter Group if one did not already exist.
+     * 
+     * @param group
+     *            the specified Transmitter Group.
+     */
+    private void initiateSilenceThread(final String group) {
+        if (!silenceTimes.containsKey(group)) {
+            silenceTimes.put(group, new SilenceTime(group));
+            if (thread == null) {
+                thread = new SilenceAlarmThread();
+                thread.setDaemon(true);
+                thread.start();
+            } else {
+                thread.interrupt();
+            }
+        }
+    }
+
+    /**
+     * Removes any existing Silence Alarm(s) for the specified Transmitter
+     * Group.
+     * 
+     * @param group
+     *            the specified Transmitter Group.
+     */
+    public void clearSilenceAlarm(final String group) {
+        SilenceTime canceledAlarm = null;
+        synchronized (this.silenceTimes) {
+            canceledAlarm = silenceTimes.remove(group);
+        }
+        if (canceledAlarm != null && canceledAlarm.isAlarming()) {
+            commsManager.silenceStatusChanged();
+        }
     }
 
     public Set<String> getAlarmingGroups() {
@@ -237,7 +279,6 @@ public class SilenceAlarm {
         public boolean isAlarming() {
             return lastAlarm != 0;
         }
-
 
     }
 }
