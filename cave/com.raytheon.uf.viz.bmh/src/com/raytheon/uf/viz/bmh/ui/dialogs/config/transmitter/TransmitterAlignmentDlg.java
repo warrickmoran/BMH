@@ -50,7 +50,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest;
-import com.raytheon.uf.common.bmh.request.MaintenanceMessageResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -86,6 +85,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 09, 2015    4364    bkowal      Set the maintenance broadcast timeout.
  * Apr 14, 2015    4394    bkowal      Alignment Tests can now only be completed when the Transmitter
  *                                     is in Maintenance mode.
+ * Apr 24, 2015    4394    bkowal      Eliminated MaintenanceMessageResponse.
  * </pre>
  * 
  * @author mpduff
@@ -581,7 +581,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         String audioLocation = null;
 
         try {
-            audioLocation = this.retrieveAudioLocation();
+            audioLocation = this.constructMessageFile();
         } catch (Exception e) {
             throw new TransmitterAlignmentException(
                     "Failed to retrieve / generate audio required to complete the transmitter alignment test.",
@@ -659,15 +659,16 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     }
 
     /**
-     * Retrieves the location of the maintenance audio that will be transmitted
-     * to the dac.
+     * Sends a {@link MaintenanceMessageRequest} to request the construction of
+     * a dac maintenance message file.
      * 
-     * @return the location of the maintenance audio
+     * @return the location of the maintenance message XML
      * @throws Exception
      *             if the request to EDEX fails for any reason
      */
-    private String retrieveAudioLocation() throws Exception {
+    private String constructMessageFile() throws Exception {
         MaintenanceMessageRequest request = new MaintenanceMessageRequest();
+        request.setDuration(this.durScaleComp.getSelectedValue());
 
         if (this.sameRdo.getSelection()) {
             request.setType(MaintenanceMessageRequest.AUDIOTYPE.SAME);
@@ -677,10 +678,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             request.setType(MaintenanceMessageRequest.AUDIOTYPE.TEXT);
         }
 
-        MaintenanceMessageResponse response = (MaintenanceMessageResponse) BmhUtils
-                .sendRequest(request);
-
-        return response.getMaintenanceAudioFileLocation();
+        return (String) BmhUtils.sendRequest(request);
     }
 
     @Override

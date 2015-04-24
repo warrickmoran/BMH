@@ -27,7 +27,7 @@ import org.apache.commons.configuration.Configuration;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.bmh.tones.TonesManager;
-import com.raytheon.uf.common.bmh.tones.TonesManager.TRANSFER_TYPE;
+import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.edex.bmh.test.AbstractWavFileGeneratingTest;
@@ -63,7 +63,7 @@ public class ToneGenerationTester extends AbstractWavFileGeneratingTest {
 
     private static final Map<String, TONE_TYPE> toneTypeLookupMap;
 
-    private static final Map<String, TRANSFER_TYPE> transferTypeLookupMap;
+    private static final Map<String, TransferType> transferTypeLookupMap;
 
     private static final String TONE_DIRECTORY_INPUT_PROPERTY = "bmh.util.tones.test.directory.input";
 
@@ -79,8 +79,8 @@ public class ToneGenerationTester extends AbstractWavFileGeneratingTest {
             toneTypeLookupMap.put(toneType.toString(), toneType);
         }
 
-        transferTypeLookupMap = new HashMap<String, TRANSFER_TYPE>();
-        for (TRANSFER_TYPE transferType : TRANSFER_TYPE.values()) {
+        transferTypeLookupMap = new HashMap<String, TransferType>();
+        for (TransferType transferType : TransferType.values()) {
             transferTypeLookupMap.put(transferType.toString(), transferType);
         }
     }
@@ -159,7 +159,7 @@ public class ToneGenerationTester extends AbstractWavFileGeneratingTest {
             String transferTypeSpecifier = super.getStringProperty(
                     configuration, INPUT_PROPERTIES.TONE_TRANSFER_PROPERTY,
                     inputFileName);
-            TRANSFER_TYPE transferType = transferTypeLookupMap
+            TransferType transferType = transferTypeLookupMap
                     .get(transferTypeSpecifier);
             if (transferType == null) {
                 throw new TestProcessingFailedException(

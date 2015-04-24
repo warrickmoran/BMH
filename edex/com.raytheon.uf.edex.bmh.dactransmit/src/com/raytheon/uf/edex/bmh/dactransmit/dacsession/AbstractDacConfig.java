@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collection;
 
@@ -36,6 +35,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
+ * Apr 24, 2015 4394       bkowal      {@link #buildDacSession()} may now throw an
+ *                                     {@link Exception}.
  * 
  * </pre>
  * 
@@ -58,7 +59,7 @@ public abstract class AbstractDacConfig {
         this.commonConfig = commonConfig;
     }
 
-    public abstract IDacSession buildDacSession() throws IOException;
+    public abstract IDacSession buildDacSession() throws Exception;
 
     /**
      * @return the mode

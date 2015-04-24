@@ -26,6 +26,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.commons.lang.WordUtils;
+
 import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
@@ -54,6 +56,7 @@ import com.raytheon.uf.common.bmh.tones.data.Tone;
  * Mar 23, 2015 4299       bkowal      Add the premable and the specified amount of
  *                                     padding to all generated tones. 
  *                                     Use {@link FskTonesEncoder}.
+ * Apr 24, 2015 4394       bkowal      Renamed TRANSFER_TYPE to {@link TransferType}.
  * 
  * </pre>
  * 
@@ -84,8 +87,20 @@ public class TonesManager {
 
     private static final double TRANSFER_TONE_DURATION = 5.0;
 
-    public static enum TRANSFER_TYPE {
-        PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY
+    public static enum TransferType {
+        PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY;
+
+        private final String text;
+
+        private TransferType() {
+            this.text = WordUtils.capitalizeFully(this.name().replace("_TO_",
+                    " -> "));
+        }
+
+        @Override
+        public String toString() {
+            return this.text;
+        }
     }
 
     /**
@@ -175,7 +190,7 @@ public class TonesManager {
      * @throws IOException
      *             when Transfer tone generation fails
      */
-    public static byte[] generateTransferTone(TRANSFER_TYPE transferType)
+    public static byte[] generateTransferTone(TransferType transferType)
             throws ToneGenerationException {
         Tone primaryTone = new Tone();
         primaryTone.setFrequency(TRANSFER_TONE_PRIMARY_FREQUENCY);

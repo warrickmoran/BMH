@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
 import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
 
 /**
@@ -57,6 +59,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  * Jan 06, 2015  3651      bkowal      Implemented {@link #logDaoError(BMH_ACTIVITY, Object, Throwable)}.
  * Jan 27, 2015  4037      bkowal      Message identifiers are no longer optional.
  * Mar 25, 2015  4290      bsteffen    Switch to global replacement.
+ * Apr 24, 2015  4394      bkowal      Added {@link #logMaintenanceTonesActivity(TONE_TYPE, DacMaintenanceMessage)}
+ *                                     and {@link #getMsgId(DacMaintenanceMessage)}.
  * 
  * </pre>
  * 
@@ -141,8 +145,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     public void logReplacementActivity(InputMessage newMsg,
             InputMessage replacedMsg) {
         final String expire = this
-                .getExpirationDate(newMsg
-                .getExpirationTime());
+                .getExpirationDate(newMsg.getExpirationTime());
         Object[] logDetails = new Object[] { this.getMsgId(newMsg),
                 this.getMsgId(replacedMsg), expire };
         this.logActivity(MESSAGE_ACTIVITY.REPLACEMENT, logDetails);
@@ -201,6 +204,32 @@ public class DefaultMessageLogger implements IMessageLogger {
             activity = MESSAGE_ACTIVITY.TONE;
             logDetails = new Object[] { toneType.toString(),
                     this.getMsgId(msg), expire };
+        }
+        this.logActivity(activity, logDetails);
+    }
+
+    /**
+     * Logs that the specified {@link TONE_TYPE} has just been broadcast for the
+     * specified {@link DacMaintenanceMessage}. This method is only used by DAC
+     * maintenance sessions.
+     * 
+     * @param toneType
+     *            the specified {@link TONE_TYPE}
+     * @param msg
+     *            the specified {@link DacMaintenanceMessage}
+     */
+    public void logMaintenanceTonesActivity(TONE_TYPE toneType,
+            DacMaintenanceMessage msg) {
+        MESSAGE_ACTIVITY activity = null;
+        Object[] logDetails = null;
+        if (toneType == TONE_TYPE.SAME) {
+            activity = MESSAGE_ACTIVITY.SAME_TONE;
+            logDetails = new Object[] { toneType.toString(),
+                    this.getMsgId(msg), msg.getSAMEtone(), NO_EXPIRATION };
+        } else {
+            activity = MESSAGE_ACTIVITY.TONE;
+            logDetails = new Object[] { toneType.toString(),
+                    this.getMsgId(msg), NO_EXPIRATION };
         }
         this.logActivity(activity, logDetails);
     }
@@ -549,6 +578,19 @@ public class DefaultMessageLogger implements IMessageLogger {
         sb.append(", afosid=");
         sb.append(msg.getMessageType());
         sb.append(", name=");
+        sb.append(msg.getName());
+        sb.append("]");
+
+        return sb.toString();
+    }
+
+    private String getMsgId(DacMaintenanceMessage msg) {
+        if (msg == null) {
+            throw new IllegalArgumentException(
+                    "Required argument msg can not be NULL.");
+        }
+
+        StringBuilder sb = new StringBuilder("DacMaintenanceMessage [name=");
         sb.append(msg.getName());
         sb.append("]");
 

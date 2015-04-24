@@ -22,8 +22,8 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest;
-import com.raytheon.uf.common.bmh.request.MaintenanceMessageResponse;
 import com.raytheon.uf.edex.bmh.staticmsg.AlignmentTestGenerator;
 import com.raytheon.uf.edex.bmh.staticmsg.StaticGenerationException;
 
@@ -39,6 +39,7 @@ import com.raytheon.uf.edex.bmh.staticmsg.StaticGenerationException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 5, 2014  3630       bkowal      Initial creation
+ * Apr 24, 2015 4394       bkowal      Updated to use {@link DacMaintenanceMessage}.
  * 
  * </pre>
  * 
@@ -67,7 +68,11 @@ public class MaintenanceMessageHandler extends
             generator = this.practiceAlignmentTestGenerator;
         }
 
-        MaintenanceMessageResponse response = new MaintenanceMessageResponse();
+        DacMaintenanceMessage message = new DacMaintenanceMessage();
+        StringBuilder sb = new StringBuilder(request.getType().name());
+        sb.append(" Alignment Audio (Duration: ").append(request.getDuration())
+                .append("s)");
+        message.setName(sb.toString());
 
         Path audioPath = null;
         switch (request.getType()) {
@@ -82,11 +87,12 @@ public class MaintenanceMessageHandler extends
             break;
         }
 
-        response.setMaintenanceAudioFileLocation(audioPath.toString());
+        message.setSoundFile(audioPath.toString());
 
         // does the file exist?
         if (Files.exists(audioPath)) {
-            return response;
+            return MaintenanceMessageWriter.writeMaintenanceMessage(message,
+                    request);
         }
 
         // Attempt to create the file.
@@ -94,7 +100,8 @@ public class MaintenanceMessageHandler extends
 
         // does the file exist now?
         if (Files.exists(audioPath)) {
-            return response;
+            return MaintenanceMessageWriter.writeMaintenanceMessage(message,
+                    request);
         }
 
         throw new StaticGenerationException("Failed to generate / access "

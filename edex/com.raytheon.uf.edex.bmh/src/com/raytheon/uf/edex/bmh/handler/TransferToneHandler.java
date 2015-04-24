@@ -20,23 +20,16 @@
 package com.raytheon.uf.edex.bmh.handler;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import com.raytheon.edex.site.SiteUtil;
-import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
-import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
 import com.raytheon.uf.common.bmh.request.TransferToneRequest;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
-import com.raytheon.uf.common.bmh.tones.TonesManager;
-import com.raytheon.uf.common.bmh.tones.TonesManager.TRANSFER_TYPE;
+import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 
 /**
@@ -52,6 +45,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
  * Dec 10, 2014  3603     bsteffen     Initial creation
  * Jan 26, 2015  3359     bsteffen     Use site id for same tones.
  * Apr 14, 2015  4398     rjpeter      Only send TXB/TXP for mode switch.
+ * Apr 24, 2015  4394     bkowal       Updated to use {@link DacMaintenanceMessage}.
  * </pre>
  * 
  * @author bsteffen
@@ -84,16 +78,8 @@ public class TransferToneHandler extends
                 break;
             }
         }
-        StringBuilder fileName = new StringBuilder(48);
-        fileName.append("transferTone-");
-        fileName.append(transmitter.getMnemonic());
-        fileName.append("-");
-        fileName.append(request.getTxMode());
-        fileName.append(BMHAudioFormat.ULAW.getExtension());
-        Path output = BMHConstants.getBmhDataDirectory(request.isOperational())
-                .resolve(BMHConstants.AUDIO_DATA_DIRECTORY)
-                .resolve(BMHConstants.MAINTENANCE_DATA_DIRECTORY)
-                .resolve(fileName.toString());
+
+        DacMaintenanceMessage message = new DacMaintenanceMessage();
 
         if (daisychain) {
             SAMEToneTextBuilder sameBuilder = new SAMEToneTextBuilder();
@@ -102,29 +88,28 @@ public class TransferToneHandler extends
             sameBuilder.setPurgeTime(0, 30);
             sameBuilder.setEffectiveTime(TimeUtil.newGmtCalendar());
             sameBuilder.setNwsSiteId(SiteUtil.getSite());
+            String onEvent = TRANSMITTER_PRIMARY_ON;
+            if (request.getTxMode() == TxMode.SECONDARY) {
+                onEvent = TRANSMITTER_BACKUP_ON;
+            }
+            sameBuilder.setEvent(onEvent);
+            message.setName(onEvent + " SAME Tones");
 
-            try (OutputStream os = Files.newOutputStream(output)) {
-                String onEvent = TRANSMITTER_PRIMARY_ON;
-                if (request.getTxMode() == TxMode.SECONDARY) {
-                    onEvent = TRANSMITTER_BACKUP_ON;
-                }
-                sameBuilder.setEvent(onEvent);
-                ByteBuffer same = TonesGenerator.getSAMEAlertTones(sameBuilder
-                        .build().toString(), false, true);
-                os.write(same.array());
-                os.write(TonesGenerator.getEndOfMessageTones().array());
-            }
+            message.setSAMEtone(sameBuilder.build().toString());
         } else {
-            TRANSFER_TYPE transferType = null;
+            TransferType transferType = null;
             if (request.getTxMode() == TxMode.PRIMARY) {
-                transferType = TRANSFER_TYPE.SECONDARY_TO_PRIMARY;
+                transferType = TransferType.SECONDARY_TO_PRIMARY;
             } else {
-                transferType = TRANSFER_TYPE.PRIMARY_TO_SECONDARY;
+                transferType = TransferType.PRIMARY_TO_SECONDARY;
             }
-            byte[] audio = TonesManager.generateTransferTone(transferType);
-            Files.write(output, audio);
+            message.setName(transferType.toString() + " Transfer Tones");
+
+            message.setTransferToneType(transferType);
         }
-        return output.toAbsolutePath().toString();
+
+        return MaintenanceMessageWriter.writeMaintenanceMessage(message,
+                request);
     }
 
 }

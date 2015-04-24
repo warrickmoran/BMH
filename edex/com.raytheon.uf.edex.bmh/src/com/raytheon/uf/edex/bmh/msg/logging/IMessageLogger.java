@@ -49,6 +49,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jan 05, 2015 3651       bkowal      Defined methods for playlist error logging
  * Jan 06, 2015 3651       bkowal      Defined {@link #logDaoError(BMH_ACTIVITY, Object, Throwable)}.
  * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
+ * Apr 24, 2015 4394       bkowal      Added {@link TONE_TYPE#TRANSFER}.
  * 
  * 
  * </pre>
@@ -75,7 +76,7 @@ public interface IMessageLogger {
      * @version 1.0
      */
     public static enum TONE_TYPE {
-        SAME, ALERT, END
+        SAME, ALERT, END, TRANSFER
     }
 
     /**

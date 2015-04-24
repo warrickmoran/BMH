@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
-import java.io.IOException;
 import java.nio.file.Path;
 
 import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
@@ -35,6 +34,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Apr 09, 2015 4364       bkowal      Added {@link #executionTimeout}.
+ * Apr 24, 2015 4394       bkowal      Field renaming based on usage.
  * 
  * </pre>
  * 
@@ -44,9 +44,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
 
 public class DacMaintenanceConfig extends AbstractDacConfig {
 
-    private final Path inputAudio;
+    private final Path messageFilePath;
 
-    private final int testDuration;
+    private final Integer testDuration;
 
     private final int executionTimeout;
 
@@ -54,25 +54,25 @@ public class DacMaintenanceConfig extends AbstractDacConfig {
      * @param mode
      * @param commonConfig
      */
-    public DacMaintenanceConfig(DacCommonConfig commonConfig, Path inputAudio,
-            int testDuration, int executionTimeout) {
+    public DacMaintenanceConfig(DacCommonConfig commonConfig,
+            Path messageFilePath, int testDuration, int executionTimeout) {
         super(DAC_MODE.MAINTENANCE, commonConfig);
-        this.inputAudio = inputAudio;
+        this.messageFilePath = messageFilePath;
         this.testDuration = testDuration;
         this.executionTimeout = executionTimeout;
     }
 
     /**
-     * @return the inputAudio
+     * @return the messageFilePath
      */
-    public Path getInputAudio() {
-        return inputAudio;
+    public Path getMessageFilePath() {
+        return messageFilePath;
     }
 
     /**
      * @return the testDuration
      */
-    public int getTestDuration() {
+    public Integer getTestDuration() {
         return testDuration;
     }
 
@@ -84,7 +84,7 @@ public class DacMaintenanceConfig extends AbstractDacConfig {
     }
 
     @Override
-    public IDacSession buildDacSession() throws IOException {
+    public IDacSession buildDacSession() throws Exception {
         return new DacMaintenanceSession(this);
     }
 
@@ -94,7 +94,7 @@ public class DacMaintenanceConfig extends AbstractDacConfig {
                 "DacMaintenanceConfig [");
         stringBuilder.append(super.toString());
         stringBuilder.append(", inputAudio=");
-        stringBuilder.append(this.inputAudio.toString());
+        stringBuilder.append(this.messageFilePath.toString());
         stringBuilder.append(", testDuration=");
         stringBuilder.append(this.testDuration);
         stringBuilder.append(", executionTimeout=");

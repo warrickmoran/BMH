@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -30,13 +31,21 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import javax.xml.bind.JAXB;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
+import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
+import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
+import com.raytheon.uf.common.bmh.tones.TonesManager;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
+import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
 
 /**
  * A Dac Session in maintenance mode will stream audio bytes read from an input
@@ -55,13 +64,16 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jan 19, 2015 3912       bsteffen    Use new control thread constructor
  * Apr 09, 2015 4364       bkowal      Utilize the {@link DacMaintenanceReaper}.
  * Apr 16, 2015 4405       rjpeter     Initialize isSync'd.
+ * Apr 24, 2015 4394       bkowal      Updated to use {@link DacMaintenanceMessage}. Log tone
+ *                                     playback.
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
 
-public class DacMaintenanceSession implements IDacSession {
+public class DacMaintenanceSession implements IDacSession,
+        IBroadcastBufferListener {
 
     private static final Logger logger = LoggerFactory
             .getLogger(DacMaintenanceSession.class);
@@ -76,18 +88,27 @@ public class DacMaintenanceSession implements IDacSession {
 
     private final MaintenanceBroadcastTransmitThread transmitThread;
 
-    private final byte[] originalMaintenanceAudio;
+    private final DacMaintenanceMessage message;
+
+    private final byte[] audio;
 
     private final ScheduledThreadPoolExecutor reaperExecutor = new ScheduledThreadPoolExecutor(
             1);
 
     private volatile boolean initialSyncCompleted = false;
 
+    /*
+     * Scenario-specific. Used to fulfill the tones logging requirement. Keeps
+     * track of the first packet that contains end tones.
+     */
+    private int endTonesStartPacket;
+
     /**
+     * @throws ToneGenerationException
      * 
      */
     public DacMaintenanceSession(final DacMaintenanceConfig config)
-            throws IOException {
+            throws Exception {
         this.config = config;
         this.notificationExecutor = Executors
                 .newSingleThreadExecutor(new NamedThreadFactory("EventBus"));
@@ -97,10 +118,73 @@ public class DacMaintenanceSession implements IDacSession {
                 "MaintenanceBroadcastTransmitThread", this.eventBus,
                 this.config.getDacAddress(), this.config.getDataPort(),
                 this.config.getTransmitters(), this.config.getDbTarget(), true);
+        this.transmitThread.setListener(this);
         this.controlThread = new ControlStatusThread(this.transmitThread,
                 this.config.getDacAddress(), this.config.getControlPort());
-        this.originalMaintenanceAudio = Files.readAllBytes(this.config
-                .getInputAudio());
+
+        /*
+         * Read the message file.
+         */
+        message = JAXB.unmarshal(
+                Files.newInputStream(this.config.getMessageFilePath()),
+                DacMaintenanceMessage.class);
+        /*
+         * Ensure that a duration has been specified for audio maintenance
+         * messages.
+         */
+        if (this.message.isAudio() && this.config.getTestDuration() == null) {
+            throw new Exception(
+                    "A duration must be specified to broadcast alignment test audio. Specify duration using the -d command line argument.");
+
+        } else if (this.message.isTones()
+                && this.config.getTestDuration() != null) {
+            logger.info("Ignoring duration: {} for Tone Maintenance Messages.",
+                    this.config.getTestDuration());
+        }
+        message.setPath(this.config.getMessageFilePath());
+
+        /*
+         * Determine if we will be reading or generating the maintenance audio.
+         */
+        if (this.message.isAudio()) {
+            this.audio = Files.readAllBytes(Paths.get(this.message
+                    .getSoundFile()));
+        } else {
+            /*
+             * Determine what type of tones are required.
+             */
+            if (this.message.getSAMEtone() != null) {
+                byte[] same = TonesGenerator.getSAMEAlertTones(
+                        this.message.getSAMEtone(), false, true).array();
+                /*
+                 * Based on the length of the tones, determine which packet
+                 * would mark the beginning of the end tones.
+                 */
+                int endPacket = same.length
+                        / DacSessionConstants.SINGLE_PAYLOAD_SIZE;
+                /*
+                 * will the SAME tones be within the packet or in the next
+                 * packet.
+                 */
+                if (same.length % DacSessionConstants.SINGLE_PAYLOAD_SIZE == 0) {
+                    /*
+                     * next packet.
+                     */
+                    ++endPacket;
+                }
+                this.endTonesStartPacket = endPacket;
+
+                byte[] endTones = TonesGenerator.getEndOfMessageTones().array();
+                ByteBuffer tonesAudioBuffer = ByteBuffer.allocate(same.length
+                        + endTones.length);
+                tonesAudioBuffer.put(same);
+                tonesAudioBuffer.put(endTones);
+                this.audio = tonesAudioBuffer.array();
+            } else {
+                this.audio = TonesManager.generateTransferTone(this.message
+                        .getTransferToneType());
+            }
+        }
     }
 
     /*
@@ -145,12 +229,8 @@ public class DacMaintenanceSession implements IDacSession {
          * Based on the requested duration, determine how many bits of audio are
          * required.
          */
-        int requiredBytes = ((this.config.getTestDuration() * 1000) / 20) * 160;
-
-        if (requiredBytes < 0) {
-            /* Allow negative duration to be interpreted as full message. */
-            requiredBytes = this.originalMaintenanceAudio.length;
-        }
+        final int requiredBytes = (this.message.isAudio()) ? ((this.config
+                .getTestDuration() * 1000) / 20) * 160 : this.audio.length;
 
         /*
          * Stage the playback audio for segmentation.
@@ -159,24 +239,21 @@ public class DacMaintenanceSession implements IDacSession {
         /*
          * Determine if the audio that was read need to be sliced or replicated.
          */
-        if (this.originalMaintenanceAudio.length >= requiredBytes) {
-            stagingBuffer.put(this.originalMaintenanceAudio, 0, requiredBytes);
+        if (this.audio.length >= requiredBytes) {
+            stagingBuffer.put(this.audio, 0, requiredBytes);
         } else {
             while (stagingBuffer.remaining() > 0) {
-                if (stagingBuffer.remaining() >= this.originalMaintenanceAudio.length) {
-                    stagingBuffer.put(this.originalMaintenanceAudio);
+                if (stagingBuffer.remaining() >= this.audio.length) {
+                    stagingBuffer.put(this.audio);
                 } else {
-                    stagingBuffer.put(this.originalMaintenanceAudio, 0,
-                            stagingBuffer.remaining());
+                    stagingBuffer.put(this.audio, 0, stagingBuffer.remaining());
                 }
             }
         }
         stagingBuffer.rewind();
 
         /*
-         * Determine how many segments there will be. At this time, we believe
-         * that there is no reason to check for partial segments based on the
-         * fact that partial seconds are now allowed.
+         * Determine how many segments there will be.
          */
         final int segmentCount = requiredBytes
                 / DacSessionConstants.SINGLE_PAYLOAD_SIZE;
@@ -210,6 +287,18 @@ public class DacMaintenanceSession implements IDacSession {
         this.notificationExecutor.shutdown();
         this.reaperExecutor.shutdown();
 
+        /*
+         * We have finished. Attempt to purge the maintenance message file.
+         */
+        logger.info("Deleting maintenance message file: "
+                + this.message.getPath() + " ...");
+        try {
+            Files.delete(this.message.getPath());
+        } catch (IOException e) {
+            logger.error("Failed to delete maintenance message file: "
+                    + this.message.getPath() + ".", e);
+        }
+
         logger.info("Exiting MAINTENANCE MODE. Exiting MAINTENANCE MODE. Exiting MAINTENANCE MODE.");
     }
 
@@ -241,4 +330,40 @@ public class DacMaintenanceSession implements IDacSession {
         return initialSyncCompleted;
     }
 
+    @Override
+    public void packetStreamed(int packetCount) {
+        /*
+         * If tones are not included in the broadcast, we do not care.
+         */
+        if (this.message.isAudio()) {
+            return;
+        }
+
+        /*
+         * Complete the tone logging requirement.
+         */
+        if (this.message.getSAMEtone() != null) {
+            if (packetCount == 1) {
+                /*
+                 * SAME Tones have started.
+                 */
+                DefaultMessageLogger.getInstance().logMaintenanceTonesActivity(
+                        TONE_TYPE.SAME, this.message);
+            } else if (packetCount == this.endTonesStartPacket) {
+                /*
+                 * End Tones have started.
+                 */
+                DefaultMessageLogger.getInstance().logMaintenanceTonesActivity(
+                        TONE_TYPE.END, this.message);
+            }
+        } else {
+            if (packetCount == 1) {
+                /*
+                 * Transfer tones have started.
+                 */
+                DefaultMessageLogger.getInstance().logMaintenanceTonesActivity(
+                        TONE_TYPE.TRANSFER, this.message);
+            }
+        }
+    }
 }

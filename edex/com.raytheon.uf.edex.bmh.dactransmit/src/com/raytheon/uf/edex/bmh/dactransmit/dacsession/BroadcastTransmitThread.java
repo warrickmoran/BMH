@@ -47,6 +47,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Feb 11, 2015 4098       bsteffen    Maintain jitter buffer during broadcast.
  * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
+ * Apr 24, 2015 4394       bkowal      Updated to support {@link IBroadcastBufferListener}.
  * </pre>
  * 
  * @author bkowal
@@ -60,6 +61,10 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
     protected LinkedBlockingQueue<byte[]> audioBuffer = new LinkedBlockingQueue<>();
 
     protected volatile boolean error;
+
+    private IBroadcastBufferListener listener;
+
+    private int packetCount = 0;
 
     /**
      * @param name
@@ -126,6 +131,10 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
         RtpPacketIn rtpPacket = buildRtpPacket(previousPacket, regulatedAudio);
 
         sendPacket(rtpPacket);
+        if (this.listener != null) {
+            ++this.packetCount;
+            this.listener.packetStreamed(this.packetCount);
+        }
 
         previousPacket = rtpPacket;
 
@@ -160,5 +169,20 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
      */
     public boolean isError() {
         return error;
+    }
+
+    /**
+     * @return the listener
+     */
+    public IBroadcastBufferListener getListener() {
+        return listener;
+    }
+
+    /**
+     * @param listener
+     *            the listener to set
+     */
+    public void setListener(IBroadcastBufferListener listener) {
+        this.listener = listener;
     }
 }

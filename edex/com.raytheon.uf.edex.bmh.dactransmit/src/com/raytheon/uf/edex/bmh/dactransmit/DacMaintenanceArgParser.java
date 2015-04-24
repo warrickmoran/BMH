@@ -45,6 +45,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacMaintenanceConfig;
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Apr 09, 2015 4364       bkowal      Defined the {@link #MAINT_EXEC_TIMEOUT} argument.
+ * Apr 24, 2015 4394       bkowal      Updated argument descriptions based on new usage.
  * 
  * </pre>
  * 
@@ -75,16 +76,16 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
     protected List<Option> getOptions() {
         Option inputAudio = OptionBuilder
                 .withDescription(
-                        "File containing the audio that will be streamed to the DAC.")
-                .hasArg().withArgName("audio").create(INPUT_AUDIO_OPTION_KEY);
+                        "Message file containing metadata that will be used to prepare the maintenance audio.")
+                .hasArg().withArgName("message").create(INPUT_AUDIO_OPTION_KEY);
         inputAudio.setRequired(true);
 
         Option audioDuration = OptionBuilder
                 .withDescription(
-                        "The duration of the audio that will be streamed to the dac in seconds. The input audio will be replicated or cut as needed to meet the duration requirement.")
+                        "The duration (in seconds) of the alignment audio that will be streamed to the dac. The input audio will be replicated or cut as needed to meet the duration requirement.")
                 .hasArg().withArgName("duration").withType(Integer.class)
                 .create(MAINT_AUDIO_LENGTH_KEY);
-        audioDuration.setRequired(true);
+        audioDuration.setRequired(false);
 
         Option executionTimeout = OptionBuilder
                 .withDescription(
@@ -105,15 +106,19 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
     protected AbstractDacConfig parseCommandLineInternal(final CommandLine cmd,
             final DacCommonConfig commonConfig) throws ParseException {
 
-        Path inputAudio = Paths.get(cmd.getOptionValue(INPUT_AUDIO_OPTION_KEY));
+        Path messageFilePath = Paths.get(cmd
+                .getOptionValue(INPUT_AUDIO_OPTION_KEY));
 
-        Integer duration = Integer.parseInt(cmd
-                .getOptionValue(MAINT_AUDIO_LENGTH_KEY));
+        Integer duration = null;
+        if (cmd.getOptionValue(MAINT_AUDIO_LENGTH_KEY, null) != null) {
+            duration = Integer.parseInt(cmd
+                    .getOptionValue(MAINT_AUDIO_LENGTH_KEY));
+        }
 
         Integer timeout = Integer.parseInt(cmd
                 .getOptionValue(MAINT_EXEC_TIMEOUT));
 
-        return new DacMaintenanceConfig(commonConfig, inputAudio, duration,
-                timeout);
+        return new DacMaintenanceConfig(commonConfig, messageFilePath,
+                duration, timeout);
     }
 }

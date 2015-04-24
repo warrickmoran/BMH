@@ -33,6 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 5, 2014  3630       bkowal      Initial creation
+ * Apr 24, 2015 4394       bkowal      Added {@link #duration}.
  * 
  * </pre>
  * 
@@ -50,6 +51,9 @@ public class MaintenanceMessageRequest extends AbstractBMHServerRequest {
     @DynamicSerializeElement
     private AUDIOTYPE type;
 
+    @DynamicSerializeElement
+    private int duration;
+
     /**
      * Empty constructor for dynamicserialize.
      */
@@ -62,5 +66,20 @@ public class MaintenanceMessageRequest extends AbstractBMHServerRequest {
 
     public void setType(AUDIOTYPE type) {
         this.type = type;
+    }
+
+    /**
+     * @return the duration
+     */
+    public int getDuration() {
+        return duration;
+    }
+
+    /**
+     * @param duration
+     *            the duration to set
+     */
+    public void setDuration(int duration) {
+        this.duration = duration;
     }
 }

@@ -17,13 +17,13 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.request;
-
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
 /**
- * Response object for {@link MaintenanceMessageRequest} requests.
+ * Notifies the implementor as packets are streamed. The implementor has the
+ * option of running a SIMPLE procedure in response. Note: SIMPLE is emphasized
+ * because longer running procedures will have an adverse affect on the audio
+ * playbacking timing.
  * 
  * <pre>
  * 
@@ -31,31 +31,22 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Nov 5, 2014  3630       bkowal      Initial creation
+ * Apr 24, 2015 4394       bkowal      Initial creation
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
-@DynamicSerialize
-public class MaintenanceMessageResponse {
 
-    @DynamicSerializeElement
-    private String maintenanceAudioFileLocation;
+public interface IBroadcastBufferListener {
 
     /**
-     * Empty constructor for dynamicserialize.
+     * Notifies the listener that the xth (x increases with every packet that is
+     * streamed) packet has been streamed
+     * 
+     * @param packetCount
+     *            indicates the number of packets that have been streamed.
      */
-    public MaintenanceMessageResponse() {
-    }
-
-    public String getMaintenanceAudioFileLocation() {
-        return maintenanceAudioFileLocation;
-    }
-
-    public void setMaintenanceAudioFileLocation(
-            String maintenanceAudioFileLocation) {
-        this.maintenanceAudioFileLocation = maintenanceAudioFileLocation;
-    }
+    public void packetStreamed(final int packetCount);
 }

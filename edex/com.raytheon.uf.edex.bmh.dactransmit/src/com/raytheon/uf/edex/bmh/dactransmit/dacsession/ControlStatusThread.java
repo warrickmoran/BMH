@@ -66,6 +66,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.exceptions.MalformedDacStatusExcepti
  * Jan 26, 2015  #3995     rjpeter      Fix heartbeat time out.
  * Apr 02, 2015  #4325     bsteffen     Log sync events.
  * Apr 16, 2015  #4405     rjpeter      Added isSynced.
+ * Apr 24, 2015  #4394     bkowal       Log message update.
  * </pre>
  * 
  * @author dgilling
@@ -242,7 +243,7 @@ public class ControlStatusThread extends Thread {
      */
     public RegainSyncEvent performInitialSync() {
         RegainSyncEvent retVal = null;
-        logger.info("Obtaining sync with DAC.");
+        logger.info("Obtaining sync with DAC ...");
 
         while (!hasSync && keepRunning) {
             try {
