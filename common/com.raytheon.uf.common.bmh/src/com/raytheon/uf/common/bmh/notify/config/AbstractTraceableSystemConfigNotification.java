@@ -19,15 +19,14 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
-import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * 
- * Notification that is used when a {@link Program} is created, updated or
- * deleted.
+ * Further abstraction of {@link ConfigNotification} used to indicate the
+ * statistic associated with the {@link #statisticKey} should be finalized and
+ * persisted.
  * 
  * <pre>
  * 
@@ -35,37 +34,47 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Sep 04, 2014  3554      bsteffen    Initial creation
- * Apr 22, 2015  4397      bkowal      Extend {@link AbstractTraceableSystemConfigNotification}.
+ * Apr 21, 2015 4397       bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author bkowal
  * @version 1.0
  */
 @DynamicSerialize
-public class ProgramConfigNotification extends
-        AbstractTraceableSystemConfigNotification {
+public class AbstractTraceableSystemConfigNotification extends
+        ConfigNotification {
 
     @DynamicSerializeElement
-    private int id;
+    private String statisticKey;
 
-    public ProgramConfigNotification() {
-        super();
+    /**
+     * Empty constructor for {@link DynamicSerialize}.
+     */
+    public AbstractTraceableSystemConfigNotification() {
     }
 
-    public ProgramConfigNotification(ConfigChangeType type,
-            AbstractBMHSystemConfigRequest request, Program program) {
-        super(type, request);
-        this.id = program.getId();
+    /**
+     * @param type
+     */
+    public AbstractTraceableSystemConfigNotification(ConfigChangeType type,
+            AbstractBMHSystemConfigRequest request) {
+        super(type);
+        this.statisticKey = request.getStatisticKey();
     }
 
-    public int getId() {
-        return id;
+    /**
+     * @return the statisticKey
+     */
+    public String getStatisticKey() {
+        return statisticKey;
     }
 
-    public void setId(int id) {
-        this.id = id;
+    /**
+     * @param statisticKey
+     *            the statisticKey to set
+     */
+    public void setStatisticKey(String statisticKey) {
+        this.statisticKey = statisticKey;
     }
-
 }

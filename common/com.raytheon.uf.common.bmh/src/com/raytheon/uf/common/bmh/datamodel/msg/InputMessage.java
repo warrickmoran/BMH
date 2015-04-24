@@ -52,6 +52,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
  * 
@@ -91,6 +92,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                     Calendar elements.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 16, 2015  4395     rferrel     Added {@link #ALL_UNEXPIRED_QUERY}.
+ * Apr 21, 2015  4397     bkowal      Added {@link #updateDate}.
  * 
  * </pre>
  * 
@@ -316,6 +318,16 @@ public class InputMessage {
     @Enumerated(EnumType.STRING)
     @DynamicSerializeElement
     private ReplacementType replacementType;
+
+    /**
+     * The date that this {@link InputMessage} record was last updated. This
+     * field has been added just for statistics tracking. This information will
+     * be included in the playlist files so that dac transmit will be able to
+     * generate the BMH Delivery Time statistic.
+     */
+    @Column(nullable = false)
+    @DynamicSerializeElement
+    private Calendar updateDate = TimeUtil.newGmtCalendar();
 
     public InputMessage() {
         super();
@@ -667,6 +679,21 @@ public class InputMessage {
 
     public void setReplacementType(ReplacementType replacementType) {
         this.replacementType = replacementType;
+    }
+
+    /**
+     * @return the updateDate
+     */
+    public Calendar getUpdateDate() {
+        return updateDate;
+    }
+
+    /**
+     * @param updateDate
+     *            the updateDate to set
+     */
+    public void setUpdateDate(Calendar updateDate) {
+        this.updateDate = updateDate;
     }
 
     @Override

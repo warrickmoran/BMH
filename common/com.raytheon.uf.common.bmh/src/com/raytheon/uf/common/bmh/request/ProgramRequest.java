@@ -48,13 +48,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 07, 2015  3958     bkowal      Added {@link ProgramAction#GetTransmittersForMsgType} and
  *                                    {@link #messageType}.
  * Mar 13, 2015  4213     bkowal      Added {@link ProgramAction#GetStaticMsgTypesForProgram}.
+ * Apr 22, 2015  4397     bkowal      Extend {@link AbstractBMHSystemConfigRequest}.
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
 @DynamicSerialize
-public class ProgramRequest extends AbstractBMHServerRequest {
+public class ProgramRequest extends AbstractBMHSystemConfigRequest {
 
     public enum ProgramAction {
         Save, AllProgramSummaries, AllPrograms,
@@ -191,5 +192,18 @@ public class ProgramRequest extends AbstractBMHServerRequest {
      */
     public void setProgramId(int programId) {
         this.programId = programId;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest#
+     * isSystemConfigChange()
+     */
+    @Override
+    public boolean isSystemConfigChange() {
+        return this.action == ProgramAction.Delete
+                || this.action == ProgramAction.Save
+                || this.action == ProgramAction.AddGroup;
     }
 }

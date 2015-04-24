@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.notify.config;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -34,7 +35,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Sep 05, 2014  3554     bsteffen    Initial creation
+ * Sep 05, 2014  3554     bsteffen     Initial creation
+ * Apr 22, 2015  4397     bkowal       Extend {@link AbstractTraceableSystemConfigNotification}
  * 
  * </pre>
  * 
@@ -42,7 +44,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class MessageTypeConfigNotification extends ConfigNotification {
+public class MessageTypeConfigNotification extends
+        AbstractTraceableSystemConfigNotification {
 
     @DynamicSerializeElement
     private int id;
@@ -52,8 +55,8 @@ public class MessageTypeConfigNotification extends ConfigNotification {
     }
 
     public MessageTypeConfigNotification(ConfigChangeType type,
-            MessageType mtype) {
-        super(type);
+            AbstractBMHSystemConfigRequest request, MessageType mtype) {
+        super(type, request);
         this.id = mtype.getId();
     }
 

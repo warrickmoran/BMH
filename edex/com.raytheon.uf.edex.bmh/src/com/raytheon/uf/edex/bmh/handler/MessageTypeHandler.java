@@ -25,6 +25,7 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.AbstractTraceableSystemConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
 import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
@@ -55,6 +56,8 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * Oct 20, 2014  3636     rferrel     Implement Logging.
  * Oct 23, 2014  3728     lvenable    Added method to get AFOS IDs by designation.
  * Mar 13, 2015  4213     bkowal      Added {@link #getByDesignationAndLanguage(MessageTypeRequest)}.
+ * Apr 22, 2015  4397     bkowal      Construct a {@link AbstractTraceableSystemConfigNotification}
+ *                                    notification when database changes occur.
  * 
  * </pre>
  * 
@@ -76,7 +79,7 @@ public class MessageTypeHandler extends
         case Delete:
             deleteMessageType(request);
             notification = new MessageTypeConfigNotification(
-                    ConfigChangeType.Delete, request.getMessageType());
+                    ConfigChangeType.Delete, request, request.getMessageType());
             break;
         case GetAfosIdTitle:
             response = getMessageTypeAfosIdTitle(request);
@@ -84,7 +87,7 @@ public class MessageTypeHandler extends
         case Save:
             response = saveMessageType(request);
             notification = new MessageTypeConfigNotification(
-                    ConfigChangeType.Update, request.getMessageType());
+                    ConfigChangeType.Update, request, request.getMessageType());
             break;
         case GetByAfosId:
             response = getByAfosId(request);

@@ -37,4 +37,12 @@
         <statisticsAggregate field="processingTime"
             displayName="Processing Time" displayUnit="ms" />        
     </statisticsEvent>
+    
+    <statisticsEvent type="com.raytheon.uf.common.bmh.stats.SystemConfigProcessingTimeEvent"
+        displayName="System Configuration Processing Time" category="BMH Events"
+        rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
+        <statisticsGroup name="configurationType" displayName="Configuration Type" />
+        <statisticsAggregate field="processingTime"
+            displayName="Processing Time" displayUnit="ms" />        
+    </statisticsEvent>
 </statisticsConfig>

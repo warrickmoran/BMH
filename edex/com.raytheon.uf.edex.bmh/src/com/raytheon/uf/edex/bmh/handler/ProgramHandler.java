@@ -28,6 +28,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.AbstractTraceableSystemConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
 import com.raytheon.uf.common.bmh.request.ProgramResponse;
@@ -60,6 +61,8 @@ import com.raytheon.uf.edex.bmh.dao.ProgramDao;
  * Dec 07, 2014  3846     mpduff      Added getProgramById
  * Jan 07, 2015  3958     bkowal      Added {@link #getTransmittersForMsgType(ProgramRequest)}.
  * Mar 13, 2015  4213     bkowal      Added {@link #getStaticMessageTypesForProgram(ProgramRequest)}.
+ * Apr 22, 2015  4397     bkowal      Construct a {@link AbstractTraceableSystemConfigNotification}
+ *                                    notification when database changes occur.
  * 
  * </pre>
  * 
@@ -88,12 +91,12 @@ public class ProgramHandler extends
         case Delete:
             deleteProgram(request);
             notification = new ProgramConfigNotification(
-                    ConfigChangeType.Delete, request.getProgram());
+                    ConfigChangeType.Delete, request, request.getProgram());
             break;
         case Save:
             programResponse = saveProgram(request);
             notification = new ProgramConfigNotification(
-                    ConfigChangeType.Update, request.getProgram());
+                    ConfigChangeType.Update, request, request.getProgram());
             break;
         case GetProgramForTransmitterGroup:
             programResponse = getProgramForTransmitterGroup(request);
@@ -104,7 +107,7 @@ public class ProgramHandler extends
         case AddGroup:
             programResponse = addGroup(request);
             notification = new ProgramConfigNotification(
-                    ConfigChangeType.Update, request.getProgram());
+                    ConfigChangeType.Update, request, request.getProgram());
             break;
         case SuitePrograms:
             programResponse = getSuitePrograms(request);

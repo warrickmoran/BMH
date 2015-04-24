@@ -58,6 +58,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessageExpiredNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
+import com.raytheon.uf.common.bmh.notify.config.AbstractTraceableSystemConfigNotification;
 import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
@@ -65,6 +66,7 @@ import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
+import com.raytheon.uf.viz.bmh.BMHConfigStatisticsGenerator;
 import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
@@ -147,6 +149,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  *                                     and removed the menu items for the status monitor and alert monitor.
  * Feb 19, 2015   4143     bsteffen    Add demo message dialog.
  * Mar 02, 2015   4141     bkowal      Use the {@link SilenceAlarmDelegate} to manage silence alarms.
+ * Apr 22, 2015   4397     bkowal      Listen for {@link AbstractTraceableSystemConfigNotification} and
+ *                                     publish statistics when received.
  * 
  * </pre>
  * 
@@ -307,6 +311,8 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
         NotificationManagerJob.removeObserver(
                 BMHJmsDestinations.getStatusDestination(), this);
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
     }
 
     @Override
@@ -315,6 +321,8 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
         NotificationManagerJob.addObserver(
                 BMHJmsDestinations.getStatusDestination(), this);
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
     }
 
     @Override
@@ -1321,6 +1329,9 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     sb.append(notification.getTransmitterGroup()).append(".");
 
                     statusHandler.info(sb.toString());
+                } else if (o instanceof AbstractTraceableSystemConfigNotification) {
+                    BMHConfigStatisticsGenerator
+                            .publishStatistic((AbstractTraceableSystemConfigNotification) o);
                 }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing BMH Notification!", e);

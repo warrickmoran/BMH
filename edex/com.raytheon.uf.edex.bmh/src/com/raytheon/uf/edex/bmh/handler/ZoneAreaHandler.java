@@ -25,10 +25,14 @@ import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.AbstractTraceableSystemConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ZoneAreaConfigNotification;
 import com.raytheon.uf.common.bmh.request.ZoneAreaRequest;
 import com.raytheon.uf.common.bmh.request.ZoneAreaResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
@@ -48,6 +52,8 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 24, 2014  3636     rferrel     Implement logging.
  * Nov 21, 2014  3845     bkowal      Added getAreasForTransmitter
+ * Apr 22, 2015  4397     bkowal      Construct a {@link AbstractTraceableSystemConfigNotification}
+ *                                    notification when database changes occur.
  * 
  * </pre>
  * 
@@ -61,6 +67,7 @@ public class ZoneAreaHandler extends
     @Override
     public Object handleRequest(ZoneAreaRequest request) throws Exception {
         ZoneAreaResponse response = null;
+        ZoneAreaConfigNotification notification = null;
         switch (request.getAction()) {
         case GetAreas:
             response = getAreas(request);
@@ -76,15 +83,23 @@ public class ZoneAreaHandler extends
             break;
         case SaveAreas:
             response = saveAreas(request);
+            notification = new ZoneAreaConfigNotification(
+                    ConfigChangeType.Update, request);
             break;
         case SaveZones:
             response = saveZones(request);
+            notification = new ZoneAreaConfigNotification(
+                    ConfigChangeType.Update, request);
             break;
         case DeleteArea:
             deleteArea(request);
+            notification = new ZoneAreaConfigNotification(
+                    ConfigChangeType.Delete, request);
             break;
         case DeleteZone:
             deleteZone(request);
+            notification = new ZoneAreaConfigNotification(
+                    ConfigChangeType.Delete, request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -92,6 +107,9 @@ public class ZoneAreaHandler extends
                     + " cannot handle action "
                     + request.getAction());
         }
+
+        BmhMessageProducer.sendConfigMessage(notification,
+                request.isOperational());
         return response;
     }
 

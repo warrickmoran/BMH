@@ -40,6 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 15, 2014  3406     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Nov 21, 2014  3845     bkowal      Added GetAreasForTransmitter
+ * Apr 22, 2015  4397     bkowal      Extend {@link AbstractBMHSystemConfigRequest}.
  * 
  * </pre>
  * 
@@ -47,7 +48,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class ZoneAreaRequest extends AbstractBMHServerRequest {
+public class ZoneAreaRequest extends AbstractBMHSystemConfigRequest {
 
     public enum ZoneAreaAction {
         GetZones, GetAreas, GetAreasForTransmitter, GetTransmitters, SaveZones, SaveAreas, DeleteArea, DeleteZone;
@@ -130,7 +131,8 @@ public class ZoneAreaRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @param transmitter the transmitter to set
+     * @param transmitter
+     *            the transmitter to set
      */
     public void setTransmitter(Transmitter transmitter) {
         this.transmitter = transmitter;
@@ -156,5 +158,19 @@ public class ZoneAreaRequest extends AbstractBMHServerRequest {
         }
 
         zoneList.add(zone);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest#
+     * isSystemConfigChange()
+     */
+    @Override
+    public boolean isSystemConfigChange() {
+        return this.action == ZoneAreaAction.SaveZones
+                || this.action == ZoneAreaAction.SaveAreas
+                || this.action == ZoneAreaAction.DeleteZone
+                || this.action == ZoneAreaAction.DeleteArea;
     }
 }

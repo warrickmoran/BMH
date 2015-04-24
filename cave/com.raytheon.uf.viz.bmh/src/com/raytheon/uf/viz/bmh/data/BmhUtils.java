@@ -48,6 +48,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
+import com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest;
 import com.raytheon.uf.common.bmh.request.BmhAuthorizationRequest;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
 import com.raytheon.uf.common.bmh.schemas.ssml.Phoneme;
@@ -56,6 +57,7 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.BMHConfigStatisticsGenerator;
 import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
@@ -96,6 +98,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Mar 16, 2015   4283      bkowal      Handle playback for a combination of phonemes
  *                                      and other sound elements.
  * Mar 25, 2015   4305      rferrel     Added {@link #getRootCauseMessage(Throwable)}.
+ * Apr 22, 2015   4397      bkowal      Trigger statistic generation when a 
+ *                                      {@link AbstractBMHSystemConfigRequest} is encountered.
  * </pre>
  * 
  * @author mpduff
@@ -352,6 +356,10 @@ public class BmhUtils {
     public static Object sendRequest(AbstractBMHServerRequest request)
             throws Exception {
         request.setOperational(CAVEMode.getMode() == CAVEMode.OPERATIONAL);
+        if (request instanceof AbstractBMHSystemConfigRequest) {
+            request = BMHConfigStatisticsGenerator
+                    .prepareStatistic((AbstractBMHSystemConfigRequest) request);
+        }
         Object obj = RequestRouter.route(request, BMHServers.BMH_SERVER);
         if (obj instanceof SuccessfulExecution) {
             SuccessfulExecution se = (SuccessfulExecution) obj;
