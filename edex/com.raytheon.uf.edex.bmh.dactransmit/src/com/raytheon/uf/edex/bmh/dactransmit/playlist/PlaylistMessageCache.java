@@ -55,6 +55,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -103,6 +104,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Mar 25, 2015  4290      bsteffen     Switch to global replacement.
  * Apr 07, 2015  4293      bkowal       Updated to allow reading in new message files based on
  *                                      timestamp. Will also check for new audio based on file name.
+ * Apr 24, 2015  4423      rferrel      Added {@link #changeTimezone(ChangeTimeZone)}.
  * 
  * </pre>
  * 
@@ -147,7 +149,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private double dbTarget;
 
-    private TimeZone timezone;
+    private volatile TimeZone timezone;
 
     private final PlaylistScheduler scheduler;
 
@@ -166,6 +168,11 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         this.timezone = config.getTimezone();
         this.scheduler = playlistScheduler;
         this.executorService = dacSession.getAsyncExecutor();
+        /*
+         * Assume this Last for duration of the spring container. No need to
+         * unregister.
+         */
+        this.eventBus.register(this);
     }
 
     /**
@@ -563,6 +570,18 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         }
 
         logger.info("Updated transmitter decibel target to: " + this.dbTarget);
+    }
+
+    /**
+     * Set the new time zone value and log the event.
+     * 
+     * @param changeEvent
+     */
+    @Subscribe
+    public void changeTimezone(ChangeTimeZone changeEvent) {
+        this.timezone = TimeZone.getTimeZone(changeEvent.getTimeZone());
+        logger.info("Updated transmitter time zone to: "
+                + this.timezone.getID());
     }
 
     /*

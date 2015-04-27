@@ -47,6 +47,7 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
@@ -94,6 +95,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
  *                                    is down or has not sent a command to stop scanning.
  * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil, detect self connection.
  * Apr 15, 2015  4397     bkowal      Added {@link #forwardStatistics(StatisticsEvent)}.
+ * Apr 24, 2015  4423     rferrel     Post {@link ChangeTimeZone} messages.
  * 
  * </pre>
  * 
@@ -256,6 +258,8 @@ public final class CommsManagerCommunicator extends Thread {
             eventBus.post(message);
         } else if (message instanceof DacTransmitScanPlaylists) {
             scan = ((DacTransmitScanPlaylists) message).isScan();
+        } else if (message instanceof ChangeTimeZone) {
+            eventBus.post(message);
         } else {
             logger.error("Unrecognized message from comms manager of type "
                     + message.getClass().getSimpleName());

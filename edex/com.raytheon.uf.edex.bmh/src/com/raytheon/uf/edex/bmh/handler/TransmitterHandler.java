@@ -22,19 +22,24 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.util.CollectionUtils;
+
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.common.bmh.notify.config.ChangeTimeZoneConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
+import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
+import com.raytheon.uf.edex.core.EdexException;
 
 /**
  * Thrift handler for {@link Transmitter} and {@link TransmitterGroup} objects
@@ -64,6 +69,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
  * Mar 25, 2015   4305    rferrel     Added GetTransmittersByFips.
  * Apr 14, 2015   4390    rferrel     {@link #saveTransmitterGroups(TransmitterRequest)} checks for reorder.
  * Apr 14, 2015  4394     bkowal      Added {@link #getConfiguredTransmitterGroups(TransmitterRequest)}.
+ * Apr 24, 2015  4423     rferrel     Issue {@link ChangeTimeZoneConfigNotification}.
  * </pre>
  * 
  * @author mpduff
@@ -176,7 +182,8 @@ public class TransmitterHandler extends
         return response;
     }
 
-    private TransmitterResponse saveTransmitterGroup(TransmitterRequest request) {
+    private TransmitterResponse saveTransmitterGroup(TransmitterRequest request)
+            throws EdexException, SerializationException {
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         TransmitterResponse response = new TransmitterResponse();
         TransmitterGroup group = request.getTransmitterGroup();
@@ -211,6 +218,15 @@ public class TransmitterHandler extends
             }
         } else {
             tgDao.saveOrUpdate(group);
+            if ((oldGroup != null)
+                    && !oldGroup.getTimeZone().equals(group.getTimeZone())
+                    && (group.getDac() != null)
+                    && !CollectionUtils.isEmpty(group.getTransmitterList())) {
+                ChangeTimeZoneConfigNotification notification = new ChangeTimeZoneConfigNotification(
+                        group.getTimeZone(), group.getName());
+                BmhMessageProducer.sendConfigMessage(notification,
+                        request.isOperational());
+            }
         }
         List<TransmitterGroup> list = new ArrayList<TransmitterGroup>(1);
         list.add(group);

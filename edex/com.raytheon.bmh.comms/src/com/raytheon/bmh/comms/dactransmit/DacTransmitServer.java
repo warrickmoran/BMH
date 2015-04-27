@@ -71,6 +71,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Jan 23, 2015  3912     bsteffen    More logging and detection of disconnected dac transmits.
  * Apr 21, 2015  4407     bkowal      {@link #isConnectedToDacTransmit(DacTransmitKey)} will now only
  *                                    verify a connection to dac transmit.
+ * Apr 24, 2015  4423     rferrel     Added {@link #changeTimeZone}.
  * 
  * </pre>
  * 
@@ -156,6 +157,27 @@ public class DacTransmitServer extends AbstractServerThread {
                 for (DacTransmitCommunicator communicator : entry.getValue()) {
                     communicator.setRadios(channel.getRadios());
                     communicator.setTransmitterDBTarget(channel.getDbTarget());
+                }
+            }
+        }
+    }
+
+    /**
+     * Adjust time zone for communicators for the transmitter group.
+     * 
+     * @param timeZone
+     * @param transmitterGroup
+     */
+    public void changeTimeZone(String timeZone, String transmitterGroup) {
+        for (DacTransmitKey key : channels.keySet()) {
+            DacChannelConfig channel = channels.get(key);
+            if (transmitterGroup.equals(channel.getTransmitterGroup())) {
+                if (!timeZone.equals(channel.getTimezone())) {
+                    channel.setTimezone(timeZone);
+                    for (DacTransmitCommunicator communicator : communicators
+                            .get(key)) {
+                        communicator.setTimeZone(timeZone);
+                    }
                 }
             }
         }

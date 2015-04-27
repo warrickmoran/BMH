@@ -58,6 +58,7 @@ import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.bmh.comms.linetap.LineTapServer;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
+import com.raytheon.uf.common.bmh.notify.config.ChangeTimeZoneConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.CommsConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
@@ -122,6 +123,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  *                                    reconnect to a dac after a configurable amount of time.
  * Apr 22, 2015  4404     bkowal      Trigger a silence alarm when connection to a dac is lost.
  *                                    Clear any existing silence alarms on dac transmit shutdown.
+ * Apr 23, 2015  4423     rferrel     Added {@link #changeTimeZone(String, String)}.
  * </pre>
  * 
  * @author bsteffen
@@ -478,6 +480,17 @@ public class CommsManager {
         } catch (Throwable t) {
             logger.error("Cannot read new config file", t);
         }
+    }
+
+    /**
+     * Set the time zone for server of the transmitter group.
+     * 
+     * @param timeZone
+     * @param transmitterGroup
+     */
+    public synchronized void changeTimeZone(String timeZone,
+            String transmitterGroup) {
+        transmitServer.changeTimeZone(timeZone, transmitterGroup);
     }
 
     protected synchronized void reconfigure(CommsConfig newConfig) {
@@ -898,6 +911,10 @@ public class CommsManager {
                                             .getMessagePayload();
                                     if (payload instanceof CommsConfigNotification) {
                                         reloadConfig(false);
+                                    } else if (payload instanceof ChangeTimeZoneConfigNotification) {
+                                        ChangeTimeZoneConfigNotification n = (ChangeTimeZoneConfigNotification) payload;
+                                        changeTimeZone(n.getTimeZone(),
+                                                n.getTransmitterGroup());
                                     }
                                 } catch (NotificationException e) {
                                     logger.error("Cannot handle notification",

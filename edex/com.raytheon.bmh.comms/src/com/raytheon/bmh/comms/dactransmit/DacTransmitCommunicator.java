@@ -41,6 +41,7 @@ import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitScanPlaylists;
@@ -85,6 +86,7 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  *                                    to indicate that a dac transmit has shutdown.
  * Apr 21, 2015  4407     bkowal      Made {@link #lastStatus} and {@link #disconnected}
  *                                    volatile.
+ * Apr 24, 2015  4423     rferrel     Send {@link ChangeTimeZone} when time zone changes value.
  * 
  * </pre>
  * 
@@ -110,6 +112,8 @@ public class DacTransmitCommunicator extends Thread {
     private double dbTarget;
 
     private volatile DacTransmitStatus lastStatus;
+    private String timeZone;
+
 
     private volatile boolean disconnected = false;
 
@@ -253,6 +257,24 @@ public class DacTransmitCommunicator extends Thread {
             this.send(new ChangeDecibelTarget(dbTarget));
             this.dbTarget = dbTarget;
         }
+    }
+
+    /**
+     * When time zone value changes send out the new value.
+     * 
+     * @param timeZone
+     */
+    public void setTimeZone(String timeZone) {
+        if (timeZone == null) {
+            if (this.timeZone == null) {
+                return;
+            }
+        } else if (timeZone.equals(this.timeZone)) {
+            return;
+        }
+
+        this.send(new ChangeTimeZone(timeZone));
+        this.timeZone = timeZone;
     }
 
     public void sendPlaylistUpdate(PlaylistUpdateNotification notification) {
