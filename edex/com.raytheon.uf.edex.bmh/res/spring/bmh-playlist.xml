@@ -119,6 +119,12 @@
 						</simple>
 						<bean ref="playlistStateManager" method="handleDacTransmitShutdown" />
 					</filter>
+                    <filter>
+                        <simple>${body} is
+                            "com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification"
+                        </simple>
+                        <bean ref="playlistStateManager" method="processNoPlaybackMessageNotification" />
+                    </filter>
 				</pipeline>
 				<doCatch>
 					<exception>java.lang.Throwable</exception>

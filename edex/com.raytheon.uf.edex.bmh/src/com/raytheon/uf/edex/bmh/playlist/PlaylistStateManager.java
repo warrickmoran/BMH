@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
@@ -82,6 +83,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * May 08, 2015   4478     bkowal      Prevent NPE in {@link #setToneFlags(PlaylistDataStructure, long)}.
  * May 21, 2015   4397     bkowal      Update the broadcast flag on {@link BroadcastMsg}.
  * May 22, 2015   4481     bkowal      Set the dynamic flag on the {@link MessagePlaybackPrediction}.
+ * Jun 02, 2016   4369     rferrel     Added method {@link #processNoPlaybackMessageNotification(NoPlaybackMessageNotification)}.
  * 
  * </pre>
  * 
@@ -132,6 +134,24 @@ public class PlaylistStateManager {
                 .info("Received a Maintenance Message Playback notification for Transmitter "
                         + playback.getTransmitterGroup() + ".");
         this.broadcastOverrideMap.put(playback.getTransmitterGroup(), playback);
+    }
+
+    public synchronized void processNoPlaybackMessageNotification(
+            NoPlaybackMessageNotification notification) {
+        String group = notification.getGroupName();
+        statusHandler
+                .info("Received a No Playback Message notification for Transmitter "
+                        + group);
+        if (this.broadcastOverrideMap.remove(group) != null) {
+            statusHandler
+                    .info("Evicting Live Braodcast information for No Playback on Transmitter "
+                            + group);
+        }
+        if (this.playlistDataMap.remove(group) != null) {
+            statusHandler
+                    .info("Evicting Playlist information for No Playback on Transmitter "
+                            + group);
+        }
     }
 
     public synchronized void handleDacTransmitShutdown(

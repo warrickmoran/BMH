@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
@@ -95,6 +96,7 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * May 04, 2015  4452     bkowal      Handle {@link SAMEMessageTruncatedNotification}.
  * Jun 01, 2015  4490     bkowal      Added {@link #sameDurationTruncatedAlarm} and
  *                                    {@link #wtchOrWrnNotBroadcastAlarm}.
+ * Jun 02, 2015  4369     rferrel     Handle {@link NoPlaybackMessageNotification}.
  * 
  * </pre>
  * 
@@ -208,6 +210,10 @@ public class DacTransmitCommunicator extends Thread {
             MessageNotBroadcastNotification notification = (MessageNotBroadcastNotification) message;
             notification.setTransmitterGroup(this.groupName);
             wtchOrWrnNotBroadcastAlarm.notify(notification);
+        } else if (message instanceof NoPlaybackMessageNotification) {
+            NoPlaybackMessageNotification notification = (NoPlaybackMessageNotification) message;
+            notification.setGroupName(groupName);
+            manager.transmitDacStatus(notification);
         } else if (message instanceof MessageDelayedBroadcastNotification) {
             MessageDelayedBroadcastNotification notification = (MessageDelayedBroadcastNotification) message;
             notification.setTransmitterGroup(this.groupName);

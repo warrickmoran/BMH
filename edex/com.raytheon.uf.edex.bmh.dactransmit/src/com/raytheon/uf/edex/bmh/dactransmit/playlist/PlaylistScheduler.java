@@ -59,6 +59,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
+import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -152,6 +153,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      {@link DacMessagePlaybackData}.
  * May 28, 2015  4429      rjpeter      Updated log statements.
  * Jun 01, 2015  4490      bkowal       Use new {@link SAMEMessageTruncatedNotification} constructor.
+ * Jun 02, 2016  #4369     rferrel      Added method {@link #sendNoPlaybackNotification()}.
  * </pre>
  * 
  * @author dgilling
@@ -1273,5 +1275,12 @@ public final class PlaylistScheduler implements
         }
 
         this.eventBus.post(new MessageNotBroadcastNotification(message));
+    }
+
+    /**
+     * Post a No Playback Message Notification.
+     */
+    public void sendNoPlaybackNotification() {
+        this.eventBus.post(new NoPlaybackMessageNotification());
     }
 }

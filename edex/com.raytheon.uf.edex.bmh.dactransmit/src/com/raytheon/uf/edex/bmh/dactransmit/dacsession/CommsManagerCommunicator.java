@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
@@ -100,6 +101,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
  * Apr 27, 2015  4397     bkowal      Initiate the transfer of {@link StatisticsEvent}s cached
  *                                    during startup to Comms Manager.
  * May 04, 2015  4452     bkowal      Handle {@link SAMEMessageTruncatedNotification}.
+ * Jun 02, 2015  4369     rferrel     Handle {@link NoPlaybackMessageNotification}.
  * 
  * </pre>
  * 
@@ -334,6 +336,12 @@ public final class CommsManagerCommunicator extends Thread {
     @Subscribe
     public void handleMsgNotBroadcastNotification(
             MessageNotBroadcastNotification notification) {
+        executorService.submit(new SendToCommsManagerTask(notification));
+    }
+
+    @Subscribe
+    public void handleNoPlaybackMessageNotification(
+            NoPlaybackMessageNotification notification) {
         executorService.submit(new SendToCommsManagerTask(notification));
     }
 
