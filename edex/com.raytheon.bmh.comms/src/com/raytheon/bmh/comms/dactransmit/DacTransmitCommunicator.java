@@ -47,6 +47,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitScanPlaylists;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
+import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
 import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
 
 /**
@@ -87,6 +88,7 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * Apr 21, 2015  4407     bkowal      Made {@link #lastStatus} and {@link #disconnected}
  *                                    volatile.
  * Apr 24, 2015  4423     rferrel     Send {@link ChangeTimeZone} when time zone changes value.
+ * Apr 27, 2015  4397     bkowal      Handle {@link DeliveryTimeEvent}.
  * 
  * </pre>
  * 
@@ -203,8 +205,10 @@ public class DacTransmitCommunicator extends Thread {
         } else if (message instanceof LiveBroadcastLatencyEvent) {
             LiveBroadcastLatencyEvent event = (LiveBroadcastLatencyEvent) message;
             event.setTransmitterGroup(this.groupName);
-            logger.info("Forwarding live broadcast latency statistic: {}.",
-                    event.toString());
+            manager.transmitBMHStat(event);
+        } else if (message instanceof DeliveryTimeEvent) {
+            DeliveryTimeEvent event = (DeliveryTimeEvent) message;
+            event.setTransmitterGroup(this.groupName);
             manager.transmitBMHStat(event);
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",

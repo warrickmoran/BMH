@@ -107,6 +107,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 25, 2015  4122      rferrel      Save Area data in order to populate Area Selection dialog.
  * Mar 16, 2015  4244      bsteffen     Use only selected areas/same tone transmitters.
  * Apr 07, 2015  4304      rferrel      {@link #verifyMsgRebroadcast()} no longer modifies {@link #sameTransmitters}.
+ * Apr 27, 2015  4397      bkowal       Set the {@link InputMessage} update date.
  * 
  * </pre>
  * 
@@ -766,6 +767,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                 + Long.toString(System.currentTimeMillis());
 
         InputMessage inputMsg = new InputMessage();
+        inputMsg.setUpdateDate(TimeUtil.newGmtCalendar());
         inputMsg.setName(generatedMsgName);
         inputMsg.setLanguage(messageType.getVoice().getLanguage());
         inputMsg.setAfosid(messageType.getAfosid());

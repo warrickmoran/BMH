@@ -122,6 +122,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
  * Apr 07, 2015 4293       bkowal      Persist the generated static messages while within
  *                                     the cluster lock.
  * Apr 16, 2015 3809       bkowal      The time generator is now initialized by Spring.
+ * Apr 27, 2015 4397       bkowal      Set the {@link InputMessage} update date.
  * 
  * </pre>
  * 
@@ -818,6 +819,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
         /* create an InputMessage */
         InputMessage inputMsg = new InputMessage();
+        inputMsg.setUpdateDate(TimeUtil.newGmtCalendar());
 
         String inputMsgName = this.getStaticMsgName(groupSet, staticMsgType);
         // TODO: use annotation scanning to get the max field length

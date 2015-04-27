@@ -67,6 +67,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 13, 2015  4222     bkowal      Prevent NPE for messages that do not expire.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 07, 2015  4293     bkowal      Added get/set methods for {@link #messageBroadcastNotificationSent}.
+ * Apr 27, 2015  4397     bkowal      Added {@link #initialRecognitionTime} and {@link #recognized}.
  * 
  * </pre>
  * 
@@ -163,6 +164,21 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      * version of the containing playlist is read.
      */
     private boolean messageBroadcastNotificationSent;
+
+    /**
+     * {@link #initialRecognitionTime} and {@link #recognized} only exist to
+     * fulfill the statistics requirements. The {@link #initialRecognitionTime}
+     * represents the time that the {@link InputMessage} was last recognized for
+     * processing. The word last is used because a message can be processed more
+     * than once as a result of the in-place edit. The {@link #recognized}
+     * exists to ensure that a version of the message will only be recognized
+     * once.
+     */
+    @XmlElement
+    private long initialRecognitionTime;
+
+    @XmlElement
+    private boolean recognized = false;
 
     private transient Path path;
 
@@ -362,6 +378,36 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
                     * TimeUtil.MILLIS_PER_SECOND;
         }
         return -1;
+    }
+
+    /**
+     * @return the initialRecognitionTime
+     */
+    public long getInitialRecognitionTime() {
+        return initialRecognitionTime;
+    }
+
+    /**
+     * @param initialRecognitionTime
+     *            the initialRecognitionTime to set
+     */
+    public void setInitialRecognitionTime(long initialRecognitionTime) {
+        this.initialRecognitionTime = initialRecognitionTime;
+    }
+
+    /**
+     * @return the recognized
+     */
+    public boolean isRecognized() {
+        return recognized;
+    }
+
+    /**
+     * @param recognized
+     *            the recognized to set
+     */
+    public void setRecognized(boolean recognized) {
+        this.recognized = recognized;
     }
 
     public Path getPath() {

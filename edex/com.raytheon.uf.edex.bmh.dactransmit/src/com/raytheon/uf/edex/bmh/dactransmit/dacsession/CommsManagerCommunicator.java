@@ -96,6 +96,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
  * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil, detect self connection.
  * Apr 15, 2015  4397     bkowal      Added {@link #forwardStatistics(StatisticsEvent)}.
  * Apr 24, 2015  4423     rferrel     Post {@link ChangeTimeZone} messages.
+ * Apr 27, 2015  4397     bkowal      Initiate the transfer of {@link StatisticsEvent}s cached
+ *                                    during startup to Comms Manager.
  * 
  * </pre>
  * 
@@ -126,8 +128,11 @@ public final class CommsManagerCommunicator extends Thread {
 
     private transient boolean running = true;
 
+    private final DacSession dacSession;
+
     public CommsManagerCommunicator(DacSession dacSession) {
         super("CommsManagerReaderThread");
+        this.dacSession = dacSession;
         this.config = dacSession.getConfig();
         this.eventBus = dacSession.getEventBus();
         this.executorService = dacSession.getAsyncExecutor();
@@ -189,6 +194,7 @@ public final class CommsManagerCommunicator extends Thread {
                                 SerializationUtil.transformToThriftUsingStream(
                                         statusToSend, outputStream);
                             }
+                            this.dacSession.deliverAllStartupStats();
                         } catch (Throwable e) {
                             logger.error(
                                     "Unable to communicate with comms manager",

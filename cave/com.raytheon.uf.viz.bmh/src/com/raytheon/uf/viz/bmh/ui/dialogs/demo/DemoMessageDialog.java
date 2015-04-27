@@ -85,6 +85,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Mar 31, 2015  4342     bkowal      Ensure that the generated afos id matches the required
  *                                    format.
  * Mar 31, 2015  4248     rjpeter     Use PositionComparator.
+ * Apr 27, 2015  4397     bkowal      Set the {@link InputMessage} update date.
  * </pre>
  * 
  * @author bsteffen
@@ -359,6 +360,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         TransmitterGroup selection = getSelectedTransmitterGroup();
         request.setSelectedTransmitters(selection.getTransmitterList());
         InputMessage inputMessage = new InputMessage();
+        inputMessage.setUpdateDate(TimeUtil.newGmtCalendar());
         MessageType messageType = null;
         try {
             messageType = getMessageType(selection);
