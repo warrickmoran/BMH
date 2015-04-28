@@ -87,6 +87,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 09, 2014  3906      lvenable     Added method to change the grid data.
  * Dec 13, 2014  3833      lvenable     Fixed selection to get items from correct list.
  * Mar 24, 2015  4307      rferrel      Do not create filter controls for new program.
+ * Apr 28, 2015  4428      rferrel      Clean up CreateEditSuiteDlg constructors
  * 
  * </pre>
  * 
@@ -439,12 +440,10 @@ public class SuiteConfigGroup extends Composite {
                         existingNames = new HashSet<String>();
                     }
 
-                    boolean forNewProgram = (suiteGroupType == SuiteGroupType.NEW_PROGRAM);
-
                     CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
                             .getShell(), DialogType.CREATE,
                             showProgramControls, selectedProgram, null,
-                            existingNames, forNewProgram);
+                            existingNames);
                     csd.setCloseCallback(new ICloseCallback() {
                         @Override
                         public void dialogClosed(Object returnValue) {
@@ -564,7 +563,7 @@ public class SuiteConfigGroup extends Composite {
                     boolean showProgramControls = (suiteGroupType == SuiteGroupType.SUITE_MGR);
                     CreateEditSuiteDlg csd = new CreateEditSuiteDlg(parentComp
                             .getShell(), DialogType.EDIT, showProgramControls,
-                            selectedProgram, selectedSuite, null, false);
+                            selectedProgram, selectedSuite, null);
 
                     csd.setCloseCallback(new ICloseCallback() {
                         @Override

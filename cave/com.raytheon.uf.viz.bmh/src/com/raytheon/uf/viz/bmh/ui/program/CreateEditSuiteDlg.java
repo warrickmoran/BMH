@@ -20,7 +20,6 @@
 package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -115,6 +114,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 26, 2015   3749     rferrel     Message type only in the available or selected table.
  * Mar 10, 2015   4250     rferrel     Confirm removal of Message Types only when editing existing suite.
  * Mar 31, 2015   4248     rjpeter     Use ordered view of suite messages.
+ * Apr 28, 2015   4428     rferrel     Track changes to trigger message summary types and apply at save/create.
  * </pre>
  * 
  * @author lvenable
@@ -141,7 +141,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      **/
     private final List<SuiteMessagePk> triggerSuiteMsgsRemoved = new ArrayList<SuiteMessagePk>();
 
-    private final Set<String> msgTypeNames = new HashSet<String>();
+    /**
+     * Current list of message type summary with triggers.
+     */
+    private final List<MessageTypeSummary> triggerMessageTypes;
 
     /** Message type table data. */
     private TableData selectedMsgTypeTableData;
@@ -194,7 +197,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     };
 
     /** Type of dialog (Create or Edit). */
-    private DialogType dialogType = DialogType.CREATE;
+    private final DialogType dialogType;
 
     /** Show program information flag. */
     private boolean showProgramControls = true;
@@ -203,10 +206,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private TableMoveAction tableMoveAction;
 
     /** The selected program for this suite. */
-    private Program selectedProgram = null;
+    private final Program selectedProgram;
 
     /** The selected suite (for editing) */
-    private Suite selectedSuite = null;
+    private final Suite selectedSuite;
 
     /** List of program and associated data. */
     private List<Program> programsArray = new ArrayList<Program>();
@@ -223,8 +226,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     /** Assign program names to the current suite. */
     private final Set<String> assignedProgramNames = new TreeSet<String>();
 
-    private boolean forNewProgram = false;
-
     /**
      * 
      * @param parentShell
@@ -240,17 +241,22 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      */
     public CreateEditSuiteDlg(Shell parentShell, DialogType dlgType,
             boolean showProgramControls, Program selectedProgram,
-            Suite selectedSuite, Set<String> existingSuiteNames,
-            boolean forNewProgram) {
+            Suite selectedSuite, Set<String> existingSuiteNames) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.dialogType = dlgType;
         this.showProgramControls = showProgramControls;
         this.selectedProgram = selectedProgram;
-        this.selectedSuite = selectedSuite;
+        if (dialogType == DialogType.CREATE) {
+            this.selectedSuite = new Suite();
+            this.triggerMessageTypes = new ArrayList<>();
+        } else {
+            this.selectedSuite = selectedSuite;
+            this.triggerMessageTypes = selectedProgram
+                    .getTriggerMsgType(selectedSuite);
+        }
         this.existingSuiteNames = existingSuiteNames;
-        this.forNewProgram = forNewProgram;
     }
 
     @Override
@@ -607,10 +613,15 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private void displaySetTiggersDlg() {
         CheckListData cld = new CheckListData();
 
+        List<String> triggerAfosids = new ArrayList<>(
+                triggerMessageTypes.size());
+        for (MessageTypeSummary mts : triggerMessageTypes) {
+            triggerAfosids.add(mts.getAfosid());
+        }
+
         for (SuiteMessage sm : msgTypesInSuiteList) {
-            cld.addDataItem(sm.getAfosid(), this.selectedProgram
-                    .isTriggerMsgType(this.selectedSuite,
-                            sm.getMsgTypeSummary()));
+            cld.addDataItem(sm.getAfosid(),
+                    triggerAfosids.contains(sm.getAfosid()));
         }
 
         CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
@@ -619,20 +630,18 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         checkListDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if ((returnValue != null)
-                        && (returnValue instanceof CheckListData)) {
+                if (returnValue instanceof CheckListData) {
                     CheckListData listData = (CheckListData) returnValue;
                     Map<String, Boolean> dataMap = listData.getDataMap();
 
-                    selectedProgram.clearTriggerMsgTypes(selectedSuite);
+                    triggerMessageTypes.clear();
 
                     for (SuiteMessage sm : msgTypesInSuiteList) {
                         if (dataMap.containsKey(sm.getAfosid())) {
                             if (dataMap.get(sm.getAfosid()) == false) {
                                 continue;
                             }
-                            selectedProgram.addTriggerMsgType(selectedSuite,
-                                    sm.getMsgTypeSummary());
+                            triggerMessageTypes.add(sm.getMsgTypeSummary());
                         }
                     }
 
@@ -795,6 +804,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         Suite savedSuite = null;
         try {
+            if (selectedProgram != null) {
+                selectedProgram.setTriggerMsgType(selectedSuite,
+                        triggerMessageTypes);
+            }
             selectedSuite.setOrderedSuiteMessages(msgTypesInSuiteList);
             selectedSuite.setType(suiteType);
             SuiteResponse suiteReponse = sdm.saveSuite(selectedSuite);
@@ -834,17 +847,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         if (!validMessageTypes(this.selectedSuite.getType())) {
             return;
         }
-        List<SuiteMessage> suiteMsgs = selectedSuite.getOrderedSuiteMessages();
-        List<MessageTypeSummary> newTriggerMsgTypes = new ArrayList<>();
-        if ((suiteMsgs != null) && (this.selectedProgram != null)) {
-            for (SuiteMessage suiteMsg : suiteMsgs) {
-                if (this.selectedProgram.isTriggerMsgType(this.selectedSuite,
-                        suiteMsg.getMsgTypeSummary())) {
-                    newTriggerMsgTypes.add(suiteMsg.getMsgTypeSummary());
-                }
-            }
-        }
-
         try {
             if ((selectedProgram != null)
                     && (getSelectedSuiteType() == SuiteType.GENERAL)) {
@@ -890,8 +892,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             return;
         }
 
-        if (newTriggerMsgTypes.isEmpty() == false) {
-            savedSuite.setNewTriggerSuiteMessages(newTriggerMsgTypes);
+        if (triggerMessageTypes.isEmpty() == false) {
+            savedSuite.setNewTriggerSuiteMessages(triggerMessageTypes);
         }
 
         /*
@@ -914,10 +916,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     }
 
     private void createNewSuite() {
-        if (this.selectedSuite == null) {
-            this.selectedSuite = new Suite();
-        }
-
         this.selectedSuite.setName(suiteNameTF.getText().trim());
         this.selectedSuite.setType(getSelectedSuiteType());
 
@@ -1259,9 +1257,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                 }
             }
             if ((this.selectedProgram != null) && (this.selectedSuite != null)) {
-                trd.addTableCellData(new TableCellData(this.selectedProgram
-                        .isTriggerMsgType(this.selectedSuite,
-                                sm.getMsgTypeSummary()) ? "Yes" : "No"));
+                trd.addTableCellData(new TableCellData(triggerMessageTypes
+                        .contains(sm.getMsgTypeSummary()) ? "Yes" : "No"));
             }
 
             selectedMsgTypeTableData.addDataRow(trd);

@@ -53,6 +53,7 @@ import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.util.CollectionUtil;
 
 /**
  * Program object. Has little to no data to itself, merely a collection of
@@ -90,6 +91,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                    {@link #VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP}.
  * Apr 02, 2015 4248      rjpeter     Made ProgramSuite database relation a set, added ordered return methods.
  * Apr 21, 2015 4248      rjpeter     Updated setProgramSuites to fix hash issue.
+ * Apr 28, 2015 4428      rferrel     Added {@link #getTriggerMsgType(Suite)} and {@link #setTriggerMsgType(Suite, List)}.
  * </pre>
  * 
  * @author rjpeter
@@ -323,6 +325,36 @@ public class Program {
             return;
         }
         this.suiteToProgramSuiteMap.get(suite).removeTrigger(msgType);
+    }
+
+    /**
+     * List of the current trigger message types for the suite.
+     * 
+     * @param suite
+     * @return triggerMsgTypes
+     */
+    public List<MessageTypeSummary> getTriggerMsgType(Suite suite) {
+        ProgramSuite programSuite = this.suiteToProgramSuiteMap.get(suite);
+        if (programSuite == null) {
+            return new ArrayList<>(0);
+        }
+        return new ArrayList<>(programSuite.getTriggers());
+    }
+
+    /**
+     * Set the suites trigger messages types.
+     * 
+     * @param suite
+     * @param triggerMsgtypes
+     */
+    public void setTriggerMsgType(Suite suite,
+            List<MessageTypeSummary> triggerMsgtypes) {
+        clearTriggerMsgTypes(suite);
+        if (!CollectionUtil.isNullOrEmpty(triggerMsgtypes)) {
+            for (MessageTypeSummary mts : triggerMsgtypes) {
+                addTriggerMsgType(suite, mts);
+            }
+        }
     }
 
     /*
