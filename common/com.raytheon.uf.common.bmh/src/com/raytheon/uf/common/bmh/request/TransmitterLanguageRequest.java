@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
@@ -38,7 +39,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Jan 19, 2015  4011     bkowal      Added 
  *                                    {@link TransmitterLanguageRequestAction#DeleteTransmitterLanguage}.
- * Mar 13, 2015  4213     bkowal      Added fields to support saving and deleting static message types.                                   
+ * Mar 13, 2015  4213     bkowal      Added fields to support saving and deleting static message types.
+ * Apr 28, 2015  4248     bkowal      Added {@link TransmitterLanguageRequestAction#ValidateStaticMsgType} and
+ *                                    {@link #language}.
  * 
  * </pre>
  * 
@@ -52,7 +55,7 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
      * yet-to-be-implemented dialog
      */
     public enum TransmitterLanguageRequestAction {
-        GetTransmitterLanguagesForTransmitterGrp, UpdateTransmitterLanguage, DeleteTransmitterLanguage, SaveStaticMsgType, DeleteStaticMsgType
+        GetTransmitterLanguagesForTransmitterGrp, UpdateTransmitterLanguage, DeleteTransmitterLanguage, ValidateStaticMsgType, DeleteStaticMsgType
     }
 
     @DynamicSerializeElement
@@ -63,9 +66,12 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private TransmitterLanguage transmitterLanguage;
-    
+
     @DynamicSerializeElement
     private StaticMessageType staticMsgType;
+
+    @DynamicSerializeElement
+    private Language language;
 
     /**
      * 
@@ -126,9 +132,25 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @param staticMsgType the staticMsgType to set
+     * @param staticMsgType
+     *            the staticMsgType to set
      */
     public void setStaticMsgType(StaticMessageType staticMsgType) {
         this.staticMsgType = staticMsgType;
+    }
+
+    /**
+     * @return the language
+     */
+    public Language getLanguage() {
+        return language;
+    }
+
+    /**
+     * @param language
+     *            the language to set
+     */
+    public void setLanguage(Language language) {
+        this.language = language;
     }
 }

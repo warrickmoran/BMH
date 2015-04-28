@@ -87,6 +87,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 31, 2015 4248       rjpeter     Update to use PositionOrdered returns.
  * Apr 08, 2015 4248       bkowal      Static Message Types are now only changed when the user saves
  *                                     the associated Transmitter Language.
+ * Apr 28, 2015 4248       bkowal      Provide the {@link Language} to the
+ *                                     {@link CreateEditStaticMsgTypeDialog}.
  * </pre>
  * 
  * @author bkowal
@@ -482,7 +484,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
 
     private void newStaticMsgTypeSelected(MessageType messageType) {
         CreateEditStaticMsgTypeDialog staticMsgTypeDlg = new CreateEditStaticMsgTypeDialog(
-                this.shell, messageType);
+                this.shell, messageType, this.selectedLanguage);
         staticMsgTypeDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
@@ -501,7 +503,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         StaticMessageType staticMessageType = (StaticMessageType) this.staticMsgTable
                 .getSelection().get(0).getData();
         CreateEditStaticMsgTypeDialog staticMsgTypeDlg = new CreateEditStaticMsgTypeDialog(
-                this.shell, staticMessageType);
+                this.shell, staticMessageType, this.selectedLanguage);
         staticMsgTypeDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {

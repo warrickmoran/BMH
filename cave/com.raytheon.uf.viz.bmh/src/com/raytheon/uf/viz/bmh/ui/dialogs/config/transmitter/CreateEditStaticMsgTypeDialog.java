@@ -34,9 +34,12 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
@@ -55,6 +58,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 11, 2015 4213       bkowal      Initial creation
  * Apr 08, 2015 4248       bkowal      Static Message Types are now only changed when the user saves
  *                                     the associated Transmitter Language.
+ * Apr 28, 2015 4248       bkowal      Validate message contents before allowing people to
+ *                                     confirm message alterations.
  * 
  * </pre>
  * 
@@ -64,11 +69,18 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
 
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(CreateEditStaticMsgTypeDialog.class);
+
+    private final String CREATE_TITLE = "Create Static Message Type";
+
+    private final String EDIT_TITLE = "Edit Static Message Type";
+
+    private final TransmitterLanguageDataManager tldm = new TransmitterLanguageDataManager();
+
+    private final Language language;
+
     private StaticMessageType staticMessageType;
-
-    private static final String CREATE_TITLE = "Create Static Message Type";
-
-    private static final String EDIT_TITLE = "Edit Static Message Type";
 
     private Label txtMsg1Label;
 
@@ -81,20 +93,22 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
     private DateTimeFields periodicityDTF;
 
     public CreateEditStaticMsgTypeDialog(Shell parentShell,
-            StaticMessageType staticMessageType) {
+            StaticMessageType staticMessageType, final Language language) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
         this.staticMessageType = staticMessageType;
+        this.language = language;
         this.setText(EDIT_TITLE);
     }
 
     public CreateEditStaticMsgTypeDialog(Shell parentShell,
-            MessageType messageType) {
+            MessageType messageType, final Language language) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT);
         this.staticMessageType = new StaticMessageType();
         this.staticMessageType.setMsgTypeSummary(messageType.getSummary());
         this.staticMessageType.setPeriodicity(messageType.getPeriodicity());
+        this.language = language;
         this.setText(CREATE_TITLE);
     }
 
@@ -256,6 +270,17 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
         this.staticMessageType.setTextMsg1(msg1Text);
         this.staticMessageType.setTextMsg2(msg2Text);
         this.staticMessageType.setPeriodicity(periodicity);
+
+        /*
+         * Verify that the message contents are allowed.
+         */
+        try {
+            this.tldm.validateStaticMessageType(this.staticMessageType,
+                    this.language);
+        } catch (Exception e) {
+            statusHandler.error("Static Message validation has failed.", e);
+            return;
+        }
 
         setReturnValue(this.staticMessageType);
 

@@ -55,6 +55,7 @@ import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
  * Jan 19, 2015  4011     bkowal      Added {@link #deleteTransmitterLanguage(TransmitterLanguageRequest)}.
  * Feb 09, 2015  4096     bsteffen    Filter Unacceptable Words.
  * Mar 13, 2015  4213     bkowal      Added support for saving and deleting {@link StaticMessageType}s.
+ * Apr 28, 2015  4248     bkowal      Added {@link #validateStaticMessageType(TransmitterLanguageRequest)}.
  * 
  * </pre>
  * 
@@ -89,16 +90,9 @@ public class TransmitterLanguageRequestHandler extends
                     ConfigChangeType.Delete, request.getTransmitterLanguage());
             this.deleteTransmitterLanguage(request);
             break;
-        case SaveStaticMsgType:
-            response = new TransmitterLanguageResponse();
-
-            response = this.saveStaticMessageType(request);
-            notification = new StaticMsgTypeConfigNotification(
-                    ConfigChangeType.Update, request.getTransmitterLanguage()
-                            .getTransmitterGroup(), request
-                            .getTransmitterLanguage().getLanguage(), request
-                            .getStaticMsgType().getMsgTypeSummary().getAfosid());
-            break;
+        case ValidateStaticMsgType:
+            this.validateStaticMessageType(request);
+            return null;
         case DeleteStaticMsgType:
             notification = new StaticMsgTypeConfigNotification(
                     ConfigChangeType.Delete, request.getTransmitterLanguage()
@@ -167,16 +161,11 @@ public class TransmitterLanguageRequestHandler extends
         return response;
     }
 
-    private TransmitterLanguageResponse saveStaticMessageType(
-            TransmitterLanguageRequest request) {
-        StaticMessageTypeDao dao = new StaticMessageTypeDao(
-                request.isOperational());
-        TransmitterLanguageResponse response = new TransmitterLanguageResponse();
+    private void validateStaticMessageType(TransmitterLanguageRequest request) {
         StaticMessageType staticMsgType = request.getStaticMsgType();
-        staticMsgType.setTransmitterLanguage(request.getTransmitterLanguage());
 
-        UnacceptableWordFilter uwf = UnacceptableWordFilter
-                .getFilter(staticMsgType.getTransmitterLanguage().getLanguage());
+        UnacceptableWordFilter uwf = UnacceptableWordFilter.getFilter(request
+                .getLanguage());
         List<String> uw = uwf.check(staticMsgType.getTextMsg1());
         if (uw.isEmpty() == false) {
             final String textFieldName = (staticMsgType.getMsgTypeSummary()
@@ -200,11 +189,6 @@ public class TransmitterLanguageRequestHandler extends
                                 + uw.toString());
             }
         }
-
-        dao.saveOrUpdate(staticMsgType);
-        response.setStaticMsgType(staticMsgType);
-
-        return response;
     }
 
     private void deleteTransmitterLanguage(TransmitterLanguageRequest request) {
