@@ -253,8 +253,12 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             this.triggerMessageTypes = new ArrayList<>();
         } else {
             this.selectedSuite = selectedSuite;
-            this.triggerMessageTypes = selectedProgram
-                    .getTriggerMsgType(selectedSuite);
+            if (selectedProgram == null) {
+                this.triggerMessageTypes = new ArrayList<>();
+            } else {
+                this.triggerMessageTypes = selectedProgram
+                        .getTriggerMsgType(selectedSuite);
+            }
         }
         this.existingSuiteNames = existingSuiteNames;
     }
