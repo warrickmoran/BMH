@@ -170,6 +170,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Apr 15, 2015  4293     bkowal      Handle {@link MessageForcedExpirationNotification}.
  * Apr 20, 2015  4397     bkowal      Generate and submit a {@link AbstractBMHProcessingTimeEvent} when
  *                                    applicable.
+ * Apr 27, 2015  4397     bkowal      Add additional information to the {@link DacPlaylistMessage}
+ *                                    required to calculate the stats information.
  * </pre>
  * 
  * @author bsteffen
@@ -838,6 +840,8 @@ public class PlaylistManager implements IContextStateProcessor {
             if (!Files.exists(messageFile)) {
                 dac.setBroadcastId(id);
                 InputMessage input = broadcast.getInputMessage();
+                dac.setInitialRecognitionTime(input.getUpdateDate()
+                        .getTimeInMillis());
                 String afosid = input.getAfosid();
                 dac.setName(input.getName());
                 for (BroadcastFragment fragment : contents

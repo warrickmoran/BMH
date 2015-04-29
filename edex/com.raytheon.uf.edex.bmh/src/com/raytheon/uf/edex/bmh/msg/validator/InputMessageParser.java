@@ -65,6 +65,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Feb 27, 2015  4182     rferrel     Corrected spelling in messages.
  * Mar 05, 2015  4222     bkowal      Use null for messages that never expire.
  * Mar 05, 2015  4199     rferrel     The afosidPattern excepts valid spaces in the id.
+ * Apr 27, 2015  4397     bkowal      Set the {@link InputMessage} update date.
  * 
  * </pre>
  * 
@@ -117,6 +118,7 @@ public class InputMessageParser {
     CharSequence text, @Headers
     Map<String, Object> headers) {
         InputMessage message = new InputMessage();
+        message.setUpdateDate(TimeUtil.newGmtCalendar());
         String fileName = headers.get("CamelFileNameOnly").toString();
         message.setName(fileName);
         message.setValidHeader(true);

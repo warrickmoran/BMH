@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
+import com.raytheon.uf.common.stats.StatisticsEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
@@ -47,6 +49,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistDirectoryObserver;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PriorityBasedExecutorService;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
+import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
 
 /**
  * Manages a transmission session to the DAC. Class pre-buffers all audio data
@@ -106,6 +109,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Apr 02, 2015  #4325     bsteffen     Do not sync on main thread.
  * Apr 15, 2015  #4397     bkowal       Provide additional information to the live broadcast thread.
  * Apr 16, 2015  #4405     rjpeter      Fail live broadcast if we don't have sync to dac.
+ * Apr 27, 2015  #4397     bkowal       Added {@link #handleDeliveryTimeStat(DeliveryTimeEvent)} and
+ *                                      {@link #deliverAllStartupStats()}.
  * </pre>
  * 
  * @author dgilling
@@ -143,6 +148,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     private final Semaphore shutdownSignal;
 
     private DacStatusMessage previousStatus;
+
+    private final List<StatisticsEvent> undeliveredStatsList = new ArrayList<>();
 
     private long nextSendHardwareStatusTime = 0;
 
@@ -223,7 +230,6 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
             newPlaylistObserver.start();
         }
         eventBus.register(playlistMgr);
-
     }
 
     /**
@@ -330,6 +336,37 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
     public void handleShutdownRequest(ShutdownRequestedEvent e) {
         dataThread.shutdown(e.isNow());
         shutdownSignal.release();
+    }
+
+    /**
+     * Will either send the specified {@link DeliveryTimeEvent} directly to the
+     * Comms Manager or cache it until communication has been established with
+     * the Comms Manager.
+     * 
+     * @param event
+     *            the specified {@link DeliveryTimeEvent}
+     */
+    public void handleDeliveryTimeStat(DeliveryTimeEvent event) {
+        if (this.commsManager != null && this.commsManager.isAlive()) {
+            this.commsManager.forwardStatistics(event);
+        } else {
+            synchronized (this.undeliveredStatsList) {
+                this.undeliveredStatsList.add(event);
+            }
+        }
+    }
+
+    /**
+     * Used to forward any @{link StatisticsEvent} to the Comms Manager that
+     * were cached during initial startup of the dac transmit session.
+     */
+    public void deliverAllStartupStats() {
+        synchronized (this.undeliveredStatsList) {
+            for (int i = 0; i < this.undeliveredStatsList.size(); i++) {
+                StatisticsEvent event = this.undeliveredStatsList.remove(i);
+                this.commsManager.forwardStatistics(event);
+            }
+        }
     }
 
     /*

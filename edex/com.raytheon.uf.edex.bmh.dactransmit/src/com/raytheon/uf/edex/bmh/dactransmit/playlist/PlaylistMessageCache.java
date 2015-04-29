@@ -59,6 +59,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
+import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
 
 /**
  * Cache for {@code PlaylistMessage} objects. Stores the contents of each audio
@@ -105,6 +106,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Apr 07, 2015  4293      bkowal       Updated to allow reading in new message files based on
  *                                      timestamp. Will also check for new audio based on file name.
  * Apr 24, 2015  4423      rferrel      Added {@link #changeTimezone(ChangeTimeZone)}.
+ * Apr 27, 2015  4397      bkowal       Create a {@link DeliveryTimeEvent} for newly processed
+ *                                      messages.
  * 
  * </pre>
  * 
@@ -153,10 +156,13 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private final PlaylistScheduler scheduler;
 
+    private final DacSession dacSession;
+
     private long lastPurgeTime;
 
     public PlaylistMessageCache(DacSession dacSession,
             PlaylistScheduler playlistScheduler) {
+        this.dacSession = dacSession;
         DacSessionConfig config = dacSession.getConfig();
         this.messageDirectory = config.getInputDirectory().resolve("messages");
         this.cachedMessages = new ConcurrentHashMap<>();
@@ -216,7 +222,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                      * a metadata update is required.
                      */
                     DacPlaylistMessage updatedDacMessage = this
-                            .readMessageMetadata(message);
+                            .readMessageMetadata(message, false);
                     /*
                      * Override all information that is not persisted across
                      * metadata writes.
@@ -414,7 +420,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     public DacPlaylistMessage getMessage(DacPlaylistMessageId id) {
         DacPlaylistMessage message = cachedMessages.get(id);
         if (message == null) {
-            message = this.readMessageMetadata(id);
+            message = this.readMessageMetadata(id, true);
 
             cachedMessages.put(id, message);
         }
@@ -423,12 +429,42 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         return message;
     }
 
-    private DacPlaylistMessage readMessageMetadata(DacPlaylistMessageId id) {
+    private DacPlaylistMessage readMessageMetadata(DacPlaylistMessageId id,
+            final boolean persistUpdates) {
         Path messagePath = messageDirectory.resolve(id.getBroadcastId() + "_"
                 + id.getTimestamp() + ".xml");
         DacPlaylistMessage message = JAXB.unmarshal(messagePath.toFile(),
                 DacPlaylistMessage.class);
         message.setPath(messagePath);
+        /*
+         * Fulfill the statistics requirement.
+         */
+        if (message.isRecognized()) {
+            /*
+             * Statistics have already been generated for this version of the
+             * message.
+             */
+            return message;
+        }
+
+        /*
+         * Generate a Delivery Time statistic.
+         */
+        DeliveryTimeEvent event = new DeliveryTimeEvent();
+        event.setDeliveryTime(TimeUtil.newGmtCalendar().getTimeInMillis()
+                - message.getInitialRecognitionTime());
+
+        this.dacSession.handleDeliveryTimeStat(event);
+
+        message.setRecognized(true);
+        if (persistUpdates) {
+            try {
+                this.persistMergedMessageMetadata(id, message);
+            } catch (IOException e) {
+                logger.error("Failed to write updated metadata for {}.",
+                        id.toString(), e);
+            }
+        }
 
         return message;
     }

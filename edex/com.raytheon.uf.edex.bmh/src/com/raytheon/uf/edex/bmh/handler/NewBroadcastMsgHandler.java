@@ -101,6 +101,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Apr 07, 2015  #4293     bkowal      Update existing input messages in every case.
  * Apr 15, 2015  #4293     bkowal      Notify the playlist manager when a message has been expired.
  * Apr 20, 2015  #4397     bkowal      Forward the message expiration request time when applicable.
+ * Apr 27, 2015  #4397     bkowal      Set the {@link InputMessage} update date.
  * 
  * </pre>
  * 
@@ -171,6 +172,7 @@ public class NewBroadcastMsgHandler extends
         // TODO: logging
         InputMessage inputMessage = request.getInputMessage();
         inputMessage = updateInputMessage(request);
+        inputMessage.setUpdateDate(TimeUtil.newGmtCalendar());
         final boolean newInputMsg = inputMessage.getId() == 0;
 
         /*
