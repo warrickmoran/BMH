@@ -24,10 +24,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -181,6 +183,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 21, 2015  4423      rferrel     Added {@link #timeZoneValueLbl} to display transmitter's time zone.
  * Apr 21, 2015  4394      bkowal      Purge any cached playlist information whenever a
  *                                     {@link DacTransmitShutdownNotification} is received.
+ * Apr 29, 2015  4449      bkowal      Specify all {@link Transmitter}s in the {@link NewBroadcastMsgRequest}
+ *                                     when a message is expired on all.
  * </pre>
  * 
  * @author mpduff
@@ -1168,6 +1172,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
             CheckListData cld = new CheckListData();
 
+            final Set<Transmitter> allTransmittersSet = new HashSet<>();
             final Map<String, BroadcastMsg> transmitterGrpToBroadcastMsgMap = new HashMap<>();
             for (BroadcastMsg message : messages) {
                 TransmitterGroup transmitterGroup = message
@@ -1175,6 +1180,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 transmitterGrpToBroadcastMsgMap.put(transmitterGroup.getName(),
                         message);
                 cld.addDataItem(transmitterGroup.getName(), true);
+                allTransmittersSet.addAll(transmitterGroup.getTransmitters());
             }
 
             String dialogText = "Expiring " + inputMessage.getName()
@@ -1189,7 +1195,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                             && (returnValue instanceof CheckListData)) {
                         handleExpireDialogCallback(inputMessage,
                                 (CheckListData) returnValue,
-                                transmitterGrpToBroadcastMsgMap);
+                                transmitterGrpToBroadcastMsgMap,
+                                allTransmittersSet);
                     }
                 }
 
@@ -1203,12 +1210,14 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     private void handleExpireDialogCallback(InputMessage inputMessage,
             CheckListData data,
-            Map<String, BroadcastMsg> transmitterGrpToBroadcastMsgMap) {
+            Map<String, BroadcastMsg> transmitterGrpToBroadcastMsgMap,
+            Set<Transmitter> allTransmittersSet) {
         if (data.allChecked()) {
             NewBroadcastMsgRequest request = new NewBroadcastMsgRequest(
                     System.currentTimeMillis());
             inputMessage.setActive(false);
             request.setInputMessage(inputMessage);
+            request.setSelectedTransmitters(new ArrayList<>(allTransmittersSet));
             this.sendExpireRequest(request);
         } else {
             List<BroadcastMsg> messagesToExpire = new ArrayList<>();
