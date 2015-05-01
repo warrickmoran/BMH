@@ -30,6 +30,8 @@ import java.util.Set;
 
 import javax.xml.bind.JAXBElement;
 
+import org.springframework.util.CollectionUtils;
+
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
@@ -123,6 +125,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
  *                                     the cluster lock.
  * Apr 16, 2015 3809       bkowal      The time generator is now initialized by Spring.
  * Apr 27, 2015 4397       bkowal      Set the {@link InputMessage} update date.
+ * Apr 29, 2015 4450       bkowal      Re-activate any inactive time messages that were
+ *                                     previously generated successfully.
  * 
  * </pre>
  * 
@@ -501,8 +505,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
     private List<ValidatedMessage> generateStaticMessages(TransmitterGroup group) {
         /* Is the group currently enabled? */
-        if (group.getEnabledTransmitters() == null
-                || group.getEnabledTransmitters().isEmpty()) {
+        if (CollectionUtils.isEmpty(group.getEnabledTransmitters())) {
             statusHandler
                     .info("Skipping message generation. Transmitter group "
                             + group.getId()
@@ -679,10 +682,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
          * Does an associated broadcast message exist. And, if one does exist,
          * is it complete?
          */
-        boolean complete = existingMsg != null
-                && existingMsg.isSuccess()
-                && (existingMsg.getInputMessage().getActive() != null && existingMsg
-                        .getInputMessage().getActive());
+        boolean complete = existingMsg != null && existingMsg.isSuccess();
         /*
          * technically, this flag should really be set during the content
          * verification instead of during the test for completeness; however, we
@@ -763,6 +763,11 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         boolean equivalentPeriodicity = (mtPeriodicity == null && msgPeriodicity == null)
                 || (mtPeriodicity != null && msgPeriodicity != null && mtPeriodicity
                         .equals(msgPeriodicity));
+
+        final boolean messageActivationChanged = Boolean.TRUE
+                .equals(existingMsg.getInputMessage().getActive()) == false;
+        existingMsg.getInputMessage().setActive(Boolean.TRUE);
+
         if (text.equals(existingMsg.getInputMessage().getContent()) == false
                 || equivalentPeriodicity == false
                 || oneSpeechRateMatch == false) {
@@ -781,6 +786,36 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             logMsg.append(".");
             statusHandler.info(logMsg.toString());
             return this.update(existingMsg, staticMsgType, text);
+        }
+
+        /*
+         * Determine if the message had to be re-activated.
+         */
+        if (messageActivationChanged) {
+            StringBuilder logMsg = new StringBuilder(
+                    "Activating existing static message for transmitter group ");
+            logMsg.append(group.getId());
+            logMsg.append(" with afos id ");
+            logMsg.append(staticMsgType.getMsgTypeSummary().getAfosid());
+            logMsg.append(" and language ");
+            logMsg.append(language.getLanguage().toString());
+            logMsg.append(".");
+            statusHandler.info(logMsg.toString());
+
+            this.inputMessageDao.persist(existingMsg.getInputMessage());
+
+            List<InputMessage> activatedMessageList = new ArrayList<>(1);
+            activatedMessageList.add(existingMsg.getInputMessage());
+            try {
+                BmhMessageProducer.sendConfigMessage(
+                        new MessageActivationNotification(activatedMessageList,
+                                true), this.operational);
+            } catch (Exception e) {
+                statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
+                        "Failed to notify subscribers that message: "
+                                + existingMsg.getInputMessage().toString()
+                                + " has been activated.", e);
+            }
         }
 
         /*
