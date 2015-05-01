@@ -58,6 +58,8 @@ import com.raytheon.uf.viz.core.VizApp;
  * Dec 9, 2014  3883       bkowal      Initial creation
  * Feb 16, 2015 4112       bkowal      Publish a {@link AudioPlaybackCompleteNotification} when
  *                                     playback concludes.
+ * Apr 29, 2015 4451       bkowal      Synthesize the message text using the Voice
+ *                                     associated with the selected message type.
  * 
  * </pre>
  * 
@@ -124,6 +126,8 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
      **/
     private volatile boolean disposing;
 
+    private final int voiceNumber;
+
     /**
      * Constructor
      * 
@@ -142,7 +146,7 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
      */
     public TextAudioPlaybackDelegate(final Shell shell,
             final Button startPauseButton, final Button stopButton,
-            RecordImages recordImages) {
+            RecordImages recordImages, final int voiceNumber) {
         this.shell = shell;
 
         this.playPauseButton = startPauseButton;
@@ -150,6 +154,8 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
         this.stopButton = stopButton;
 
         this.recordImages = recordImages;
+
+        this.voiceNumber = voiceNumber;
 
         this.playText = this.playPauseButton.getText();
         this.playTooltip = this.playPauseButton.getToolTipText();
@@ -319,7 +325,7 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
                 monitor.beginTask("Generating Audio ...",
                         IProgressMonitor.UNKNOWN);
                 try {
-                    textAudio = BmhUtils.textToAudio(inputText);
+                    textAudio = BmhUtils.textToAudio(inputText, voiceNumber);
                 } catch (Exception e) {
                     pMonitorSynException = e;
                 }

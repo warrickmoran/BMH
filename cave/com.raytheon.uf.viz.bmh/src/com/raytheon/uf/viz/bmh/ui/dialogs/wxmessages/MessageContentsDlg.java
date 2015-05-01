@@ -86,6 +86,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      prior to the start of audio playback.
  * Feb 11, 2015  #3908     bkowal       Removed the "Edit" button.
  * Feb 16, 2015  #4118     bkowal       Added an option to import audio.
+ * Apr 29, 2015  #4551     bkowal       Added {@link #voiceNumber}.
  * 
  * </pre>
  * 
@@ -139,6 +140,11 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
 
     private CONTENT_TYPE contentType;
 
+    /*
+     * Identifier of the voice to use when synthesizing the audio for preview.
+     */
+    private final int voiceNumber;
+
     /**
      * Constructor.
      * 
@@ -147,13 +153,15 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
      */
     public MessageContentsDlg(Shell parentShell,
             List<InputMessageAudioData> audioDataList,
-            final String existingMessageContent, final CONTENT_TYPE contentType) {
+            final String existingMessageContent,
+            final CONTENT_TYPE contentType, final int voiceNumber) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL
                 | SWT.RESIZE, CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         this.audioDataList = audioDataList;
         this.originalMessageContent = existingMessageContent;
         this.contentType = contentType;
+        this.voiceNumber = voiceNumber;
     }
 
     @Override
@@ -240,7 +248,7 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         stopBtn.setToolTipText("Stop message playback");
 
         delegate = new TextAudioPlaybackDelegate(this.getShell(), this.playBtn,
-                stopBtn, this.recordImages);
+                stopBtn, this.recordImages, this.voiceNumber);
 
         /*
          * add text change listener and set the text now that the play button

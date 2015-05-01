@@ -165,6 +165,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    Keep in edit mode when Next/Prev fails to retrieve message.
  * Apr 16, 2014  4408     rferrel     Put in edit state after submitting a new message.
  * Apr 20, 2015  4420     rferrel     When in edit mode display read only Area Selection dialog.
+ * Apr 29, 2015  4451     bkowal      Message contents will now only be accessible when a Message
+ *                                    Type has been selected.
  * 
  * </pre>
  * 
@@ -572,6 +574,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                         } else {
                             if (selectedMessageType == null) {
                                 areaSelectionBtn.setEnabled(false);
+                                contentsBtn.setEnabled(false);
                             }
                         }
                     }
@@ -866,6 +869,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         contentsBtn = new Button(controlComp, SWT.PUSH);
         contentsBtn.setLayoutData(gd);
+        /*
+         * Disable the Contents button until a message type has been selected.
+         */
+        this.contentsBtn.setEnabled(false);
 
         FontData fd = contentsBtn.getFont().getFontData()[0];
         fd.setStyle(SWT.BOLD);
@@ -879,7 +886,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             public void widgetSelected(SelectionEvent e) {
                 MessageContentsDlg mcd = new MessageContentsDlg(shell, content
                         .getAudioDataList(), content.getText(), content
-                        .getContentType());
+                        .getContentType(), selectedMessageType.getVoice()
+                        .getVoiceNumber());
                 mcd.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
@@ -1301,6 +1309,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         emergenyOverrideLbl.setText(eo);
 
         this.areaSelectionBtn.setEnabled(true);
+        this.contentsBtn.setEnabled(true);
 
         String periodicityDateTimeStr = selectedMessageType.getPeriodicity();
 
