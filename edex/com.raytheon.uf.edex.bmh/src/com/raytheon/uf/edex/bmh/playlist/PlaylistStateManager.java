@@ -33,8 +33,10 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
+import com.raytheon.uf.common.bmh.notify.INonStandardBroadcast;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
+import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
@@ -74,6 +76,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Apr 01, 2015   4349     rferrel     Checks to prevent exceptions when no enabled transmitters.
  * Apr 20, 2015   4394     bkowal      Ensure that playlist information does not remain in the
  *                                     cache for disabled transmitters that are no longer transmitting.
+ * Apr 29, 2015   4394     bkowal      Support {@link INonStandardBroadcast}.
  * 
  * </pre>
  * 
@@ -88,7 +91,7 @@ public class PlaylistStateManager {
     /** Map of Transmitter -> PlaylistData for that transmitter */
     private final Map<String, PlaylistDataStructure> playlistDataMap = new HashMap<>();
 
-    private final ConcurrentMap<String, LiveBroadcastSwitchNotification> liveBroadcastDataMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, INonStandardBroadcast> broadcastOverrideMap = new ConcurrentHashMap<>();
 
     private PlaylistDao playlistDao;
 
@@ -106,16 +109,24 @@ public class PlaylistStateManager {
                 .info("Received a Live Broadcast Switch Notification for Transmitter "
                         + notification.getTransmitterGroup() + ".");
         if (notification.getBroadcastState() == STATE.STARTED) {
-            this.liveBroadcastDataMap.put(notification.getTransmitterGroup()
+            this.broadcastOverrideMap.put(notification.getTransmitterGroup()
                     .getName(), notification);
         } else {
-            if (this.liveBroadcastDataMap.remove(notification
+            if (this.broadcastOverrideMap.remove(notification
                     .getTransmitterGroup().getName()) != null) {
                 statusHandler
                         .info("Evicting Live Broadcast information for Transmitter "
                                 + notification.getTransmitterGroup() + ".");
             }
         }
+    }
+
+    public synchronized void processMaintenanceMessagePlayback(
+            MaintenanceMessagePlayback playback) {
+        statusHandler
+                .info("Received a Maintenance Message Playback notification for Transmitter "
+                        + playback.getTransmitterGroup() + ".");
+        this.broadcastOverrideMap.put(playback.getTransmitterGroup(), playback);
     }
 
     public synchronized void handleDacTransmitShutdown(
@@ -129,7 +140,7 @@ public class PlaylistStateManager {
          * load-balancing may have occurred.
          */
         final String name = notification.getTransmitterGroup();
-        if (this.liveBroadcastDataMap.remove(name) != null) {
+        if (this.broadcastOverrideMap.remove(name) != null) {
             statusHandler
                     .info("Evicting Live Broadcast information for Disabled Transmitter "
                             + name + ".");
@@ -172,7 +183,7 @@ public class PlaylistStateManager {
          * state because all playlist / message switching is paused during a
          * live broadcast.
          */
-        if (this.liveBroadcastDataMap.remove(tg) != null) {
+        if (this.broadcastOverrideMap.remove(tg) != null) {
             statusHandler
                     .info("Evicting Live Broadcast information for Transmitter "
                             + tg + ".");
@@ -275,7 +286,7 @@ public class PlaylistStateManager {
          * state because all playlist / message switching is paused during a
          * live broadcast.
          */
-        if (this.liveBroadcastDataMap
+        if (this.broadcastOverrideMap
                 .remove(notification.getTransmitterGroup()) != null) {
             statusHandler
                     .info("Evicting Live Broadcast information for Transmitter "
@@ -353,13 +364,26 @@ public class PlaylistStateManager {
         }
 
         if ((transmitterGrpName != null)
-                && this.liveBroadcastDataMap.containsKey(transmitterGrpName)) {
-            return new LiveBroadcastSwitchNotification(
-                    this.liveBroadcastDataMap.get(transmitterGrpName),
-                    playlistData);
+                && this.broadcastOverrideMap.containsKey(transmitterGrpName)) {
+            return this.getBroadcastOverride(transmitterGrpName, playlistData);
         }
 
         return playlistData;
+    }
+
+    private synchronized INonStandardBroadcast getBroadcastOverride(
+            String transmitterGrpName, PlaylistDataStructure playlistData) {
+        INonStandardBroadcast broadcast = this.broadcastOverrideMap
+                .get(transmitterGrpName);
+        if (broadcast instanceof LiveBroadcastSwitchNotification) {
+            return new LiveBroadcastSwitchNotification(
+                    (LiveBroadcastSwitchNotification) broadcast, playlistData);
+        } else if (broadcast instanceof MaintenanceMessagePlayback) {
+            return new MaintenanceMessagePlayback(
+                    (MaintenanceMessagePlayback) broadcast);
+        }
+
+        return null;
     }
 
     public void setPlaylistDao(PlaylistDao playlistDao) {

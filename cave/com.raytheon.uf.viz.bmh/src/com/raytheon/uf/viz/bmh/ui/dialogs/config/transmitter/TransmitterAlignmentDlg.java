@@ -86,6 +86,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 14, 2015    4394    bkowal      Alignment Tests can now only be completed when the Transmitter
  *                                     is in Maintenance mode.
  * Apr 24, 2015    4394    bkowal      Eliminated MaintenanceMessageResponse.
+ * Apr 29, 2015    4394    bkowal      Include the transmitter group in the
+ *                                     {@link MaintenanceMessageRequest}.
  * </pre>
  * 
  * @author mpduff
@@ -669,6 +671,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     private String constructMessageFile() throws Exception {
         MaintenanceMessageRequest request = new MaintenanceMessageRequest();
         request.setDuration(this.durScaleComp.getSelectedValue());
+        request.setTransmitterGroup(this.selectedTransmitterGrp.getName());
 
         if (this.sameRdo.getSelection()) {
             request.setType(MaintenanceMessageRequest.AUDIOTYPE.SAME);

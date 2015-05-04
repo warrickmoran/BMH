@@ -29,6 +29,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
+ * Apr 29, 2015 4394       bkowal      Added {@link #managerPort}.
  * 
  * </pre>
  * 
@@ -53,15 +54,18 @@ public class DacCommonConfig {
 
     protected final double dbTarget;
 
+    private final int managerPort;
+
     public DacCommonConfig(String dacHostname, InetAddress dacAddress,
             int dataPort, int controlPort, Collection<Integer> transmitters,
-            double dbTarget) {
+            double dbTarget, int managerPort) {
         this.dacHostname = dacHostname;
         this.dacAddress = dacAddress;
         this.dataPort = dataPort;
         this.controlPort = controlPort;
         this.transmitters = transmitters;
         this.dbTarget = dbTarget;
+        this.managerPort = managerPort;
     }
 
     /**
@@ -105,6 +109,13 @@ public class DacCommonConfig {
      */
     public double getDbTarget() {
         return dbTarget;
+    }
+
+    /**
+     * @return the managerPort
+     */
+    public int getManagerPort() {
+        return managerPort;
     }
 
     /*

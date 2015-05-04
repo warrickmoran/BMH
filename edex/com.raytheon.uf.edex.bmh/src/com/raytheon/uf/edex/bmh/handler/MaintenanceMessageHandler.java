@@ -40,6 +40,8 @@ import com.raytheon.uf.edex.bmh.staticmsg.StaticGenerationException;
  * ------------ ---------- ----------- --------------------------
  * Nov 5, 2014  3630       bkowal      Initial creation
  * Apr 24, 2015 4394       bkowal      Updated to use {@link DacMaintenanceMessage}.
+ * Apr 29, 2015 4394       bkowal      Include the Transmitter Group Name in the
+ *                                     {@link DacMaintenanceMessage}.
  * 
  * </pre>
  * 
@@ -73,6 +75,7 @@ public class MaintenanceMessageHandler extends
         sb.append(" Alignment Audio (Duration: ").append(request.getDuration())
                 .append("s)");
         message.setName(sb.toString());
+        message.setTransmitterGroup(request.getTransmitterGroup());
 
         Path audioPath = null;
         switch (request.getType()) {

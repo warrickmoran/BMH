@@ -46,6 +46,8 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
  * Jan 26, 2015  3359     bsteffen     Use site id for same tones.
  * Apr 14, 2015  4398     rjpeter      Only send TXB/TXP for mode switch.
  * Apr 24, 2015  4394     bkowal       Updated to use {@link DacMaintenanceMessage}.
+ * Apr 29, 2015  4394     bkowal       Include the Transmitter Group Name in the
+ *                                     {@link DacMaintenanceMessage}.
  * </pre>
  * 
  * @author bsteffen
@@ -80,6 +82,7 @@ public class TransferToneHandler extends
         }
 
         DacMaintenanceMessage message = new DacMaintenanceMessage();
+        message.setTransmitterGroup(transmitter.getTransmitterGroup().getName());
 
         if (daisychain) {
             SAMEToneTextBuilder sameBuilder = new SAMEToneTextBuilder();
@@ -93,7 +96,8 @@ public class TransferToneHandler extends
                 onEvent = TRANSMITTER_BACKUP_ON;
             }
             sameBuilder.setEvent(onEvent);
-            message.setName(onEvent + " SAME Tones");
+            final String group = transmitter.getTransmitterGroup().getName();
+            message.setName(group + " " + onEvent + " SAME Tones");
 
             message.setSAMEtone(sameBuilder.build().toString());
         } else {
@@ -103,7 +107,8 @@ public class TransferToneHandler extends
             } else {
                 transferType = TransferType.PRIMARY_TO_SECONDARY;
             }
-            message.setName(transferType.toString() + " Transfer Tones");
+            message.setName(transmitter.getMnemonic() + " "
+                    + transferType.toString() + " Transfer Tones");
 
             message.setTransferToneType(transferType);
         }

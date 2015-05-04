@@ -102,6 +102,16 @@
 			</simple>
 			<bean ref="practice_playlistStateManager" method="processLiveBroadcastSwitchNotification" />
 		 </filter>
+		  <filter>
+			<simple>${body} is "com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback"
+			</simple>
+			<bean ref="practice_playlistStateManager" method="processMaintenanceMessagePlayback" />
+		 </filter>
+		  <filter>
+			<simple>${body} is "com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification"
+			</simple>
+			<bean ref="practice_playlistStateManager" method="handleDacTransmitShutdown" />
+		 </filter>
         </pipeline>
         <doCatch>
           <exception>java.lang.Throwable</exception>

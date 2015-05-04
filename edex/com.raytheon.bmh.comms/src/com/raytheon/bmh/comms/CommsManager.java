@@ -124,6 +124,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Apr 22, 2015  4404     bkowal      Trigger a silence alarm when connection to a dac is lost.
  *                                    Clear any existing silence alarms on dac transmit shutdown.
  * Apr 23, 2015  4423     rferrel     Added {@link #changeTimeZone(String, String)}.
+ * Apr 29, 2015  4394     bkowal      Handle shutdown notifications from non-clustered
+ *                                    entities.
  * </pre>
  * 
  * @author bsteffen
@@ -765,7 +767,20 @@ public class CommsManager {
         }
         clusterServer.dacDisconnectedLocal(key);
         broadcastStreamServer.dacDisconnected(key, group);
-        this.silenceAlarm.handleDacDisconnect(group);
+        /*
+         * ensure that the dac was not shutdown at the request of another member
+         * of the cluster.
+         */
+        if (!clusterServer.isConnected(key) && !clusterServer.isRequested(key)) {
+            this.silenceAlarm.handleDacDisconnect(group);
+        } else {
+            /*
+             * maybe this should always be done when a dactransmit shuts down
+             * regardless of it it will be started on a different cluster or
+             * not?
+             */
+            this.silenceAlarm.clearSilenceAlarm(group);
+        }
         attemptLaunchDacTransmits();
         sendStatus();
     }
@@ -827,22 +842,34 @@ public class CommsManager {
      */
     public void transmitDacShutdown(
             DacTransmitShutdownNotification notification, DacTransmitKey key) {
-        if (this.jms != null) {
-            /*
-             * Verify that another cluster member does not own the dac transmit.
-             */
-            if (!clusterServer.isConnected(key)
-                    && !clusterServer.isRequested(key)) {
-                this.jms.sendBmhStatus(notification);
-
-                /*
-                 * Clear the silence alarm to ensure that silence will not be
-                 * reported for a dac transmit that is not currently running.
-                 */
-                this.silenceAlarm.clearSilenceAlarm(notification
-                        .getTransmitterGroup());
-            }
+        /*
+         * Verify that another cluster member does not own the dac transmit.
+         */
+        if (!clusterServer.isConnected(key) && !clusterServer.isRequested(key)) {
+            this.transmitDacShutdown(notification);
         }
+    }
+
+    /**
+     * This method should be used to forward a
+     * {@link DacTransmitShutdownNotification} to EDEX to potentially trigger an
+     * update of the playlist state. This version of the method should only be
+     * used when there is NO possibility of clustering influencing the
+     * management of a dac transmit process.
+     * 
+     * @param notification
+     *            the {@link DacTransmitShutdownNotification} to forward.
+     */
+    public void transmitDacShutdown(DacTransmitShutdownNotification notification) {
+        if (this.jms != null) {
+            this.jms.sendBmhStatus(notification);
+        }
+
+        /*
+         * Clear the silence alarm to ensure that silence will not be reported
+         * for a dac transmit that is not currently running.
+         */
+        this.silenceAlarm.clearSilenceAlarm(notification.getTransmitterGroup());
     }
 
     /**

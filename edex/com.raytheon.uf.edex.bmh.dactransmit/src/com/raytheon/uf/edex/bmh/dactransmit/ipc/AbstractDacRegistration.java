@@ -17,14 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.request;
+package com.raytheon.uf.edex.bmh.dactransmit.ipc;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Used to request the location(s) of the maintenance audio files - will also
- * verify that the maintenance audio actually exists.
+ * Abstraction of the registration records that allow a dac transmit to interface
+ * with the comms manager.
  * 
  * <pre>
  * 
@@ -32,9 +32,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Nov 5, 2014  3630       bkowal      Initial creation
- * Apr 24, 2015 4394       bkowal      Added {@link #duration}.
- * Apr 29, 2015 4394       bkowal      Added {@link #transmitterGroup}.
+ * Apr 28, 2015 4394       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -42,63 +40,69 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class MaintenanceMessageRequest extends AbstractBMHServerRequest {
-
-    /* simplified name for dynamicserialize */
-    public static enum AUDIOTYPE {
-        TEXT, ALERT, SAME
-    }
+public abstract class AbstractDacRegistration {
 
     @DynamicSerializeElement
-    private AUDIOTYPE type;
+    private int dataPort;
 
     @DynamicSerializeElement
-    private int duration;
+    private String dacAddress;
 
     @DynamicSerializeElement
-    private String transmitterGroup;
+    private int[] transmitters;
 
     /**
-     * Empty constructor for dynamicserialize.
+     * Empty constructor for {@link DynamicSerialize}.
      */
-    public MaintenanceMessageRequest() {
+    public AbstractDacRegistration() {
     }
 
-    public AUDIOTYPE getType() {
-        return type;
-    }
-
-    public void setType(AUDIOTYPE type) {
-        this.type = type;
-    }
-
-    /**
-     * @return the duration
-     */
-    public int getDuration() {
-        return duration;
+    public AbstractDacRegistration(int dataPort, String dacAddress,
+            int[] transmitters) {
+        this.dataPort = dataPort;
+        this.dacAddress = dacAddress;
+        this.transmitters = transmitters;
     }
 
     /**
-     * @param duration
-     *            the duration to set
+     * @return the dataPort
      */
-    public void setDuration(int duration) {
-        this.duration = duration;
+    public int getDataPort() {
+        return dataPort;
     }
 
     /**
-     * @return the transmitterGroup
+     * @param dataPort the dataPort to set
      */
-    public String getTransmitterGroup() {
-        return transmitterGroup;
+    public void setDataPort(int dataPort) {
+        this.dataPort = dataPort;
     }
 
     /**
-     * @param transmitterGroup
-     *            the transmitterGroup to set
+     * @return the dacAddress
      */
-    public void setTransmitterGroup(String transmitterGroup) {
-        this.transmitterGroup = transmitterGroup;
+    public String getDacAddress() {
+        return dacAddress;
+    }
+
+    /**
+     * @param dacAddress the dacAddress to set
+     */
+    public void setDacAddress(String dacAddress) {
+        this.dacAddress = dacAddress;
+    }
+
+    /**
+     * @return the transmitters
+     */
+    public int[] getTransmitters() {
+        return transmitters;
+    }
+
+    /**
+     * @param transmitters the transmitters to set
+     */
+    public void setTransmitters(int[] transmitters) {
+        this.transmitters = transmitters;
     }
 }

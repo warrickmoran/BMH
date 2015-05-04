@@ -17,14 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.request;
+package com.raytheon.uf.edex.bmh.dactransmit.ipc;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Used to request the location(s) of the maintenance audio files - will also
- * verify that the maintenance audio actually exists.
+ * The registration message sent by a Dac Transmit running in Maintenance Mode
+ * to the Comms Manager.
  * 
  * <pre>
  * 
@@ -32,9 +32,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Nov 5, 2014  3630       bkowal      Initial creation
- * Apr 24, 2015 4394       bkowal      Added {@link #duration}.
- * Apr 29, 2015 4394       bkowal      Added {@link #transmitterGroup}.
+ * Apr 28, 2015 4394           bkowal     Initial creation
  * 
  * </pre>
  * 
@@ -42,49 +40,40 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class MaintenanceMessageRequest extends AbstractBMHServerRequest {
-
-    /* simplified name for dynamicserialize */
-    public static enum AUDIOTYPE {
-        TEXT, ALERT, SAME
-    }
+public class DacMaintenanceRegister extends AbstractDacRegistration {
 
     @DynamicSerializeElement
-    private AUDIOTYPE type;
-
-    @DynamicSerializeElement
-    private int duration;
+    private String messageFile;
 
     @DynamicSerializeElement
     private String transmitterGroup;
 
     /**
-     * Empty constructor for dynamicserialize.
+     * Empty constructor for {@link DynamicSerialize}.
      */
-    public MaintenanceMessageRequest() {
+    public DacMaintenanceRegister() {
     }
 
-    public AUDIOTYPE getType() {
-        return type;
-    }
-
-    public void setType(AUDIOTYPE type) {
-        this.type = type;
+    public DacMaintenanceRegister(int dataPort, String dacAddress,
+            int[] transmitters, String messageFile, String transmitterGroup) {
+        super(dataPort, dacAddress, transmitters);
+        this.messageFile = messageFile;
+        this.transmitterGroup = transmitterGroup;
     }
 
     /**
-     * @return the duration
+     * @return the messageFile
      */
-    public int getDuration() {
-        return duration;
+    public String getMessageFile() {
+        return messageFile;
     }
 
     /**
-     * @param duration
-     *            the duration to set
+     * @param messageFile
+     *            the messageFile to set
      */
-    public void setDuration(int duration) {
-        this.duration = duration;
+    public void setMessageFile(String messageFile) {
+        this.messageFile = messageFile;
     }
 
     /**

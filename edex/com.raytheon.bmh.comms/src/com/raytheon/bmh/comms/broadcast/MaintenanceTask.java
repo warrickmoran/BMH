@@ -41,6 +41,7 @@ import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
 import com.raytheon.uf.edex.bmh.dactransmit.DacMaintenanceArgParser;
+import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
 
 /**
  * Starts a comms manager in maintenance mode to play a maintenance message.
@@ -60,6 +61,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacMaintenanceArgParser;
  * Dec 12, 2014 3603       bsteffen    Rename for use with transfer tones.
  * Apr 09, 2015 4364       bkowal      Add the broadcast timeout to the dac maintenance
  *                                     command line.
+ * Apr 29, 2015 4394       bkowal      Add the management port to the command line arguments.
  * 
  * </pre>
  * 
@@ -230,6 +232,8 @@ public class MaintenanceTask extends AbstractBroadcastingTask {
         args.add(Integer.toString(this.command.getBroadcastTimeout()));
         args.add("-" + DacMaintenanceArgParser.INPUT_AUDIO_OPTION_KEY);
         args.add(this.command.getInputAudioFile());
+        args.add("-" + DacTransmitArgParser.COMMS_MANAGER_PORT_OPTION_KEY);
+        args.add(Integer.toString(commsConfig.getDacTransmitPort()));
 
         return args;
     }

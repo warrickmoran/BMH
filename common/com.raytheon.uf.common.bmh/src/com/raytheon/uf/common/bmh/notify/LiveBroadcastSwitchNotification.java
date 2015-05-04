@@ -22,7 +22,6 @@ package com.raytheon.uf.common.bmh.notify;
 import java.util.Calendar;
 
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
-import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -43,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
  * Feb 10, 2015 4106       bkowal      Added {@link #actualPlaylist}.
+ * Apr 29, 2015 4394       bkowal      Implement {@link INonStandardBroadcast}.
  * 
  * </pre>
  * 
@@ -51,7 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 
 @DynamicSerialize
-public class LiveBroadcastSwitchNotification implements IPlaylistData {
+public class LiveBroadcastSwitchNotification implements INonStandardBroadcast {
 
     public static enum STATE {
         STARTED, FINISHED

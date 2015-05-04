@@ -35,8 +35,10 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
+import com.raytheon.uf.common.bmh.notify.INonStandardBroadcast;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
+import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
@@ -83,6 +85,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Mar 10, 2015   4252     bkowal      Attempt to retrieve {@link BroadcastMsg}s that are not
  *                                     available in the playlist cache.
  * Mar 25, 2015   4290     bsteffen    Switch to global replacement.
+ * Apr 29, 2015   4394     bkowal      Support {@link INonStandardBroadcast}.
  * 
  * </pre>
  * 
@@ -113,7 +116,7 @@ public class PlaylistData {
      * Map of Transmitter(s) that have an active live broadcast used to override
      * the state of the {@link #playlistDataMap}.
      */
-    private final ConcurrentMap<String, LiveBroadcastSwitchNotification> broadcastOverrideMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, INonStandardBroadcast> broadcastOverrideMap = new ConcurrentHashMap<>();
 
     /** The data manager */
     private final BroadcastCycleDataManager dataManager = new BroadcastCycleDataManager();
@@ -294,8 +297,12 @@ public class PlaylistData {
         }
     }
 
-    public LiveBroadcastSwitchNotification getLiveBroadcastNotification(
-            final String tg) {
+    public void handleMaintenanceNotification(
+            MaintenanceMessagePlayback notification) {
+        this.broadcastOverrideMap.put(notification.getName(), notification);
+    }
+
+    public INonStandardBroadcast getNonStandardBroadcast(final String tg) {
         return this.broadcastOverrideMap.get(tg);
     }
 
@@ -308,7 +315,7 @@ public class PlaylistData {
      */
     public TableData getUpdatedTableData(String transmitterGroupName) {
         if (this.broadcastOverrideMap.containsKey(transmitterGroupName)) {
-            return this.getLiveTableData(this.broadcastOverrideMap
+            return this.getNonStandardTableData(this.broadcastOverrideMap
                     .get(transmitterGroupName));
         }
 
@@ -461,16 +468,33 @@ public class PlaylistData {
         return tableData;
     }
 
-    public TableData getLiveTableData(
-            LiveBroadcastSwitchNotification notification) {
+    public TableData getNonStandardTableData(INonStandardBroadcast notification) {
         TableData liveTableData = new TableData(columns);
 
-        final String[] columnText = new String[] {
-                sdf.format(notification.getTransitTime().getTime()),
-                notification.getMessageId(), notification.getMessageTitle(),
-                notification.getMessageName(), notification.getMrd(),
-                notification.getExpirationTime(), notification.getAlertTone(),
-                notification.getSameTone(), notification.getPlayCount() };
+        String[] columnText = new String[0];
+        if (notification instanceof LiveBroadcastSwitchNotification) {
+            LiveBroadcastSwitchNotification broadcastNotification = (LiveBroadcastSwitchNotification) notification;
+            columnText = new String[] {
+                    sdf.format(broadcastNotification.getTransitTime().getTime()),
+                    broadcastNotification.getMessageId(),
+                    broadcastNotification.getMessageTitle(),
+                    broadcastNotification.getMessageName(),
+                    broadcastNotification.getMrd(),
+                    broadcastNotification.getExpirationTime(),
+                    broadcastNotification.getAlertTone(),
+                    broadcastNotification.getSameTone(),
+                    broadcastNotification.getPlayCount() };
+        } else if (notification instanceof MaintenanceMessagePlayback) {
+            final String contentFiller = "-";
+
+            MaintenanceMessagePlayback broadcastNotification = (MaintenanceMessagePlayback) notification;
+            columnText = new String[] {
+                    sdf.format(broadcastNotification.getTransitTime().getTime()),
+                    contentFiller, contentFiller,
+                    broadcastNotification.getName(), contentFiller,
+                    UNKNOWN_TIME_STR, contentFiller,
+                    broadcastNotification.getSameTone(), contentFiller };
+        }
         TableRowData tableRowData = new TableRowData();
         for (String text : columnText) {
             TableCellData tableCellData = new TableCellData(text);

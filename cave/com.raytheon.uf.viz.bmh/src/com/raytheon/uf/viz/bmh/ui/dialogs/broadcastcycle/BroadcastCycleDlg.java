@@ -73,9 +73,11 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
+import com.raytheon.uf.common.bmh.notify.INonStandardBroadcast;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
+import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
@@ -183,6 +185,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 21, 2015  4423      rferrel     Added {@link #timeZoneValueLbl} to display transmitter's time zone.
  * Apr 21, 2015  4394      bkowal      Purge any cached playlist information whenever a
  *                                     {@link DacTransmitShutdownNotification} is received.
+ * Apr 29, 2015  4394      bkowal      Support {@link INonStandardBroadcast}.
  * Apr 29, 2015  4449      bkowal      Specify all {@link Transmitter}s in the {@link NewBroadcastMsgRequest}
  *                                     when a message is expired on all.
  * </pre>
@@ -816,9 +819,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 playlistData
                         .handleLiveBroadcastSwitchNotification(notification);
                 TableData tableData = playlistData
-                        .getLiveTableData(notification);
-                this.updateDisplayForLiveBroadcast(tableData,
-                        notification.getType());
+                        .getNonStandardTableData(notification);
+                this.updateDisplayForNonStandardBroadcast(tableData,
+                        notification);
             }
         } catch (Exception e) {
             statusHandler.error("Error getting initial playback data", e);
@@ -980,8 +983,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         this.retrieveProgram();
 
         messageTextArea.setText("");
-        LiveBroadcastSwitchNotification notification = playlistData
-                .getLiveBroadcastNotification(selectedTransmitterGrp);
+        INonStandardBroadcast notification = playlistData
+                .getNonStandardBroadcast(selectedTransmitterGrp);
         if (notification == null) {
             initialTablePopulation();
             tableData = playlistData
@@ -989,9 +992,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             tableComp.populateTable(tableData);
             handleTableSelection();
         } else {
-            tableData = playlistData.getLiveTableData(notification);
-            this.updateDisplayForLiveBroadcast(tableData,
-                    notification.getType());
+            tableData = playlistData.getNonStandardTableData(notification);
+            this.updateDisplayForNonStandardBroadcast(tableData, notification);
         }
         if (reloadAudioStream) {
             handleMonitorInlineEvent();
@@ -1340,6 +1342,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 this.messageTextArea
                         .setText("*** Unable to load message text. ***");
             }
+        } else {
+            this.messageTextArea.setText(StringUtils.EMPTY);
         }
     }
 
@@ -1517,7 +1521,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
                     if (notification.getBroadcastState() == STATE.STARTED) {
                         final TableData liveTableData = this.playlistData
-                                .getLiveTableData(notification);
+                                .getNonStandardTableData(notification);
 
                         VizApp.runAsync(new Runnable() {
                             @Override
@@ -1526,8 +1530,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                     return;
                                 }
 
-                                updateDisplayForLiveBroadcast(liveTableData,
-                                        notification.getType());
+                                updateDisplayForNonStandardBroadcast(
+                                        liveTableData, notification);
                             }
                         });
                     } else {
@@ -1567,7 +1571,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     final String group = notification.getTransmitterGroup();
 
                     playlistData.purgeData(group);
-                    if (group.equals(selectedTransmitterGroupObject)) {
+                    if (group.equals(this.selectedTransmitterGrp)) {
                         VizApp.runAsync(new Runnable() {
                             @Override
                             public void run() {
@@ -1575,6 +1579,31 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                             }
                         });
                     }
+                } else if (o instanceof MaintenanceMessagePlayback) {
+                    final MaintenanceMessagePlayback notification = (MaintenanceMessagePlayback) o;
+
+                    this.playlistData
+                            .handleMaintenanceNotification(notification);
+
+                    if (notification.getTransmitterGroup().equals(
+                            this.selectedTransmitterGrp) == false) {
+                        return;
+                    }
+
+                    final TableData liveTableData = this.playlistData
+                            .getNonStandardTableData(notification);
+
+                    VizApp.runAsync(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (isDisposed()) {
+                                return;
+                            }
+
+                            updateDisplayForNonStandardBroadcast(liveTableData,
+                                    notification);
+                        }
+                    });
                 }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing update notification", e);
@@ -1620,25 +1649,35 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         return suiteCategory;
     }
 
-    private void updateDisplayForLiveBroadcast(final TableData liveTableData,
-            final BROADCASTTYPE type) {
+    private void updateDisplayForNonStandardBroadcast(
+            final TableData broadcastTableData,
+            final INonStandardBroadcast notification) {
         this.messageDetailBtn.setEnabled(false);
         suiteValueLbl.setText("N/A");
         cycleDurValueLbl.setText("N/A");
         suiteCatValueLbl.setText("");
-        if (type == BROADCASTTYPE.EO) {
-            setProgramLabelTextFontAndColor(eoText);
-        } else if (type == BROADCASTTYPE.BL) {
-            setProgramLabelTextFontAndColor(blText);
+        if (notification instanceof LiveBroadcastSwitchNotification) {
+            BROADCASTTYPE type = ((LiveBroadcastSwitchNotification) notification)
+                    .getType();
+            if (type == BROADCASTTYPE.EO) {
+                setProgramLabelTextFontAndColor(eoText);
+            } else if (type == BROADCASTTYPE.BL) {
+                setProgramLabelTextFontAndColor(blText);
+            }
+        } else if (notification instanceof MaintenanceMessagePlayback) {
+            cycleDurationTime = timeFormatter.format(new Date(
+                    ((MaintenanceMessagePlayback) notification)
+                            .getMessageDuration()));
+            cycleDurValueLbl.setText(cycleDurationTime);
         }
 
-        tableComp.populateTable(liveTableData);
+        tableComp.populateTable(broadcastTableData);
         if (tableComp.getSelectedIndex() == -1) {
             tableComp.select(selectedRow);
         }
         // Do NOT invoke handleTableSelection.
 
-        messageTextArea.setText("*** LIVE BROADCAST MESSAGE - NO TEXT ***");
+        messageTextArea.setText(StringUtils.EMPTY);
     }
 
     private void updateDisplayForTransmitterGrpConfigChange(

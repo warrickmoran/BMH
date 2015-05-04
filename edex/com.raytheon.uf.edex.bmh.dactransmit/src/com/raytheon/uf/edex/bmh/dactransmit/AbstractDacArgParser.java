@@ -49,6 +49,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacCommonConfig;
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Apr 09, 2015 4364       bkowal      Fix the usage output.
+ * Apr 29, 2015 4394       bkowal      Now handles the management port argument.
  * 
  * </pre>
  * 
@@ -81,6 +82,8 @@ public abstract class AbstractDacArgParser {
     public static final char TRANSMISSION_DB_TARGET_KEY = 'r';
 
     public static final char CONTROL_PORT_OPTION_KEY = 'c';
+
+    public static final char COMMS_MANAGER_PORT_OPTION_KEY = 'm';
 
     protected String usageStatement;
 
@@ -127,8 +130,12 @@ public abstract class AbstractDacArgParser {
         double dbTarget = Double.parseDouble(cmd
                 .getOptionValue(TRANSMISSION_DB_TARGET_KEY));
 
+        int managerPort = Integer.parseInt(cmd
+                .getOptionValue(COMMS_MANAGER_PORT_OPTION_KEY));
+
         DacCommonConfig commonConfig = new DacCommonConfig(dacHostname,
-                dacAddress, dataPort, controlPort, transmitters, dbTarget);
+                dacAddress, dataPort, controlPort, transmitters, dbTarget,
+                managerPort);
         return this.parseCommandLineInternal(cmd, commonConfig);
     }
 
@@ -185,6 +192,14 @@ public abstract class AbstractDacArgParser {
         dbRange.setRequired(true);
         this.addUsageOption(dbRange, usageStmtBuilder);
 
+        Option managerPort = OptionBuilder
+                .withDescription(
+                        "TCP/IP port for communicating with the Comms Manager")
+                .hasArg().withArgName("port").withType(Integer.class)
+                .create(COMMS_MANAGER_PORT_OPTION_KEY);
+        managerPort.setRequired(true);
+        this.addUsageOption(managerPort, usageStmtBuilder);
+
         Options options = new Options();
         options.addOption(DacCliArgParser.getHelpOption());
         options.addOption(modeOption);
@@ -193,6 +208,7 @@ public abstract class AbstractDacArgParser {
         options.addOption(controlPort);
         options.addOption(transmitter);
         options.addOption(dbRange);
+        options.addOption(managerPort);
         for (Option contributedOption : this.getOptions()) {
             this.addUsageOption(contributedOption, usageStmtBuilder);
             options.addOption(contributedOption);

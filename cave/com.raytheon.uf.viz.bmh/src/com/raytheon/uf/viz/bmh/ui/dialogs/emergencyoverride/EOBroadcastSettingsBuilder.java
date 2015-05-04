@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import com.raytheon.uf.common.bmh.notify.INonStandardBroadcast;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -67,6 +68,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Apr 01, 2015 4339       bkowal      Notify users when EO Same Tones will be truncated.
  * Apr 02, 2015 4352       rferrel     When no area specified for a transmitter include all
  *                                      its areas.
+ * May 4, 2015  4394       bkowal      Tone playback text is now in
+ *                                     {@link INonStandardBroadcast}.
  * 
  * </pre>
  * 
@@ -296,9 +299,9 @@ public class EOBroadcastSettingsBuilder extends
         config.setMessageTitle(this.messageType.getTitle());
         config.setMessageName("EMERGENCY OVERRIDE");
         config.setExpirationTime(sdf.format(this.expireTime.getTime()));
-        config.setAlert((this.playAlertTones) ? BroadcastTransmitterConfiguration.TONE_SENT
-                : BroadcastTransmitterConfiguration.TONE_NONE);
-        config.setSame(BroadcastTransmitterConfiguration.TONE_SENT);
+        config.setAlert((this.playAlertTones) ? INonStandardBroadcast.TONE_SENT
+                : INonStandardBroadcast.TONE_NONE);
+        config.setSame(INonStandardBroadcast.TONE_SENT);
         config.setToneAudio(this.transmitterGroupToneMap.get(tg));
         /*
          * calculate audio duration. calculate delay based on audio duration.

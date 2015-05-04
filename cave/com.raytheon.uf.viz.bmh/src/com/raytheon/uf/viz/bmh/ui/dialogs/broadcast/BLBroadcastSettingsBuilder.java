@@ -24,6 +24,7 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.notify.INonStandardBroadcast;
 import com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride.AbstractBroadcastSettingsBuilder;
 
 /**
@@ -37,6 +38,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride.AbstractBroadcastSet
  * ------------ ---------- ----------- --------------------------
  * Nov 19, 2014 3845       bkowal      Initial creation
  * Dec 1, 2014  3797       bkowal      Implemented getTonesDuration.
+ * May 4, 2015  4394       bkowal      Tone playback text is now in
+ *                                     {@link INonStandardBroadcast}.
  * 
  * </pre>
  * 
@@ -69,8 +72,8 @@ public class BLBroadcastSettingsBuilder extends
         config.setMessageTitle(DEFAULT_FILLER);
         config.setMessageName("BROADCAST LIVE");
         config.setExpirationTime(DEFAULT_FILLER);
-        config.setAlert(BroadcastTransmitterConfiguration.TONE_NONE);
-        config.setSame(BroadcastTransmitterConfiguration.TONE_NONE);
+        config.setAlert(INonStandardBroadcast.TONE_NONE);
+        config.setSame(INonStandardBroadcast.TONE_NONE);
 
         return config;
     }

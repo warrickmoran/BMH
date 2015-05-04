@@ -41,8 +41,13 @@ import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
+import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.bmh.tones.TonesManager;
+import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
+import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEventHandler;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
@@ -66,6 +71,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  * Apr 16, 2015 4405       rjpeter     Initialize isSync'd.
  * Apr 24, 2015 4394       bkowal      Updated to use {@link DacMaintenanceMessage}. Log tone
  *                                     playback.
+ * Apr 29, 2015 4394       bkowal      Connect to the Comms Manager. Submit a
+ *                                     {@link MaintenanceMessagePlayback} when playback begins.
  * </pre>
  * 
  * @author bkowal
@@ -73,7 +80,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  */
 
 public class DacMaintenanceSession implements IDacSession,
-        IBroadcastBufferListener {
+        IBroadcastBufferListener, IDacStatusUpdateEventHandler {
 
     private static final Logger logger = LoggerFactory
             .getLogger(DacMaintenanceSession.class);
@@ -95,7 +102,11 @@ public class DacMaintenanceSession implements IDacSession,
     private final ScheduledThreadPoolExecutor reaperExecutor = new ScheduledThreadPoolExecutor(
             1);
 
+    private final CommsManagerMaintenanceCommunicator commsManager;
+
     private volatile boolean initialSyncCompleted = false;
+
+    private long playbackTime;
 
     /*
      * Scenario-specific. Used to fulfill the tones logging requirement. Keeps
@@ -185,6 +196,9 @@ public class DacMaintenanceSession implements IDacSession,
                         .getTransferToneType());
             }
         }
+
+        this.commsManager = new CommsManagerMaintenanceCommunicator(this,
+                this.message.getTransmitterGroup());
     }
 
     /*
@@ -196,6 +210,7 @@ public class DacMaintenanceSession implements IDacSession,
      */
     @Override
     public void startPlayback() throws IOException {
+        this.commsManager.start();
         this.eventBus.register(this);
 
         logger.info("Running in MAINTENANCE MODE. Running in MAINTENANCE MODE. Running in MAINTENANCE MODE.");
@@ -220,6 +235,10 @@ public class DacMaintenanceSession implements IDacSession,
 
         this.initialSyncCompleted = true;
 
+        this.commsManager
+                .forwardPlaybackNotification(new MaintenanceMessagePlayback(
+                        this.message, this.playbackTime));
+
         this.transmitThread.start();
         this.controlThread.start();
     }
@@ -231,6 +250,10 @@ public class DacMaintenanceSession implements IDacSession,
          */
         final int requiredBytes = (this.message.isAudio()) ? ((this.config
                 .getTestDuration() * 1000) / 20) * 160 : this.audio.length;
+        /*
+         * Calculate the duration of the audio in ms.
+         */
+        playbackTime = (requiredBytes / 160) * 20;
 
         /*
          * Stage the playback audio for segmentation.
@@ -286,6 +309,7 @@ public class DacMaintenanceSession implements IDacSession,
 
         this.notificationExecutor.shutdown();
         this.reaperExecutor.shutdown();
+        this.commsManager.shutdown();
 
         /*
          * We have finished. Attempt to purge the maintenance message file.
@@ -365,5 +389,27 @@ public class DacMaintenanceSession implements IDacSession,
                         TONE_TYPE.TRANSFER, this.message);
             }
         }
+    }
+
+    /**
+     * @return the config
+     */
+    public DacMaintenanceConfig getConfig() {
+        return config;
+    }
+
+    @Override
+    public void receivedDacStatus(DacStatusUpdateEvent e) {
+        // Ignore.
+    }
+
+    @Override
+    public void lostDacSync(LostSyncEvent e) {
+        commsManager.sendConnectionStatus(false);
+    }
+
+    @Override
+    public void regainDacSync(RegainSyncEvent e) {
+        commsManager.sendConnectionStatus(true);
     }
 }

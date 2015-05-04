@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 12, 2014  3486     bsteffen    Remove tranmistter group name
  * Aug 18, 2014  3532     bkowal      Support transmitter decibel range
  * Sep 5, 2014   3532     bkowal      Use a decibel target instead of a range.
+ * Apr 29, 2015  4394     bkowal      Extend {@link AbstractDacRegistration}.
  * 
  * </pre>
  * 
@@ -44,16 +45,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class DacTransmitRegister {
+public class DacTransmitRegister extends AbstractDacRegistration {
 
     @DynamicSerializeElement
     private String inputDirectory;
-
-    @DynamicSerializeElement
-    private int dataPort;
-
-    @DynamicSerializeElement
-    private String dacAddress;
 
     @DynamicSerializeElement
     private int[] transmitters;
@@ -62,15 +57,12 @@ public class DacTransmitRegister {
     private double dbTarget;
 
     public DacTransmitRegister() {
-
     }
 
     public DacTransmitRegister(String inputDirectory, int dataPort,
             String dacAddress, int[] transmitters, double dbTarget) {
-        super();
+        super(dataPort, dacAddress, transmitters);
         this.inputDirectory = inputDirectory;
-        this.dataPort = dataPort;
-        this.dacAddress = dacAddress;
         this.transmitters = transmitters;
         this.dbTarget = dbTarget;
     }
@@ -81,22 +73,6 @@ public class DacTransmitRegister {
 
     public void setInputDirectory(String inputDirectory) {
         this.inputDirectory = inputDirectory;
-    }
-
-    public int getDataPort() {
-        return dataPort;
-    }
-
-    public void setDataPort(int dataPort) {
-        this.dataPort = dataPort;
-    }
-
-    public String getDacAddress() {
-        return dacAddress;
-    }
-
-    public void setDacAddress(String dacAddress) {
-        this.dacAddress = dacAddress;
     }
 
     public int[] getTransmitters() {

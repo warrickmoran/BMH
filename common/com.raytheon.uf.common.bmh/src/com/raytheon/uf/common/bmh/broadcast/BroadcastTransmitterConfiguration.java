@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.broadcast;
 
+import com.raytheon.uf.common.bmh.notify.INonStandardBroadcast;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -39,7 +40,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 1, 2014  3655       bkowal      Added end of message tones.
  * Nov 17, 2014 3808       bkowal      Initial support for transmitter groups.
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
- * 
+ * May 04, 2015 4394       bkowal      Relocated tone playback text to
+ *                                     {@link INonStandardBroadcast}.
  * </pre>
  * 
  * @author bkowal
@@ -47,10 +49,6 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @DynamicSerialize
 public class BroadcastTransmitterConfiguration {
-
-    public static final String TONE_SENT = "SENT";
-
-    public static final String TONE_NONE = "NONE";
 
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;

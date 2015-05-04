@@ -44,6 +44,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  * Oct 2, 2014   #3642     bkowal       Add transmitter timezone.
  * Oct 22, 2014  #3687     bsteffen    keep original dac hostname
  * Nov 7, 2014   #3630     bkowal       Refactor for maintenance mode.
+ * Apr 29, 2015  #4394     bkowal       The manager port is now required for all
+ *                                      dac modes.
  * </pre>
  * 
  * @author dgilling
@@ -54,15 +56,12 @@ public final class DacSessionConfig extends AbstractDacConfig {
 
     private final Path inputDirectory;
 
-    private final int managerPort;
-
     private final TimeZone timezone;
 
     public DacSessionConfig(DacCommonConfig commonConfig, Path inputDirectory,
-            int managerPort, TimeZone timezone) {
+            TimeZone timezone) {
         super(DAC_MODE.OPERATIONAL, commonConfig);
         this.inputDirectory = inputDirectory;
-        this.managerPort = managerPort;
         this.timezone = timezone;
     }
 
@@ -77,8 +76,6 @@ public final class DacSessionConfig extends AbstractDacConfig {
         stringBuilder.append(super.toString());
         stringBuilder.append(", inputDirectory=");
         stringBuilder.append(this.inputDirectory);
-        stringBuilder.append(", managerPort=");
-        stringBuilder.append(this.managerPort);
         stringBuilder.append(", timezone=");
         stringBuilder.append(this.timezone.getID());
         stringBuilder.append("]");
@@ -88,10 +85,6 @@ public final class DacSessionConfig extends AbstractDacConfig {
 
     public Path getInputDirectory() {
         return inputDirectory;
-    }
-
-    public int getManagerPort() {
-        return managerPort;
     }
 
     public TimeZone getTimezone() {

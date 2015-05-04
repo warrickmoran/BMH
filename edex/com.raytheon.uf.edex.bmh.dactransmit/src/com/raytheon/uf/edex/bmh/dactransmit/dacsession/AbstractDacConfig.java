@@ -37,6 +37,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Apr 24, 2015 4394       bkowal      {@link #buildDacSession()} may now throw an
  *                                     {@link Exception}.
+ * Apr 29, 2015 4394       bkowal      Added {@link #getManagerPort()}.
  * 
  * </pre>
  * 
@@ -106,6 +107,10 @@ public abstract class AbstractDacConfig {
      */
     public double getDbTarget() {
         return this.commonConfig.getDbTarget();
+    }
+
+    public int getManagerPort() {
+        return this.commonConfig.getManagerPort();
     }
 
     @Override

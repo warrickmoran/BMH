@@ -44,6 +44,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacMaintenanceRegister;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
 
 /**
@@ -72,6 +73,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Apr 21, 2015  4407     bkowal      {@link #isConnectedToDacTransmit(DacTransmitKey)} will now only
  *                                    verify a connection to dac transmit.
  * Apr 24, 2015  4423     rferrel     Added {@link #changeTimeZone}.
+ * Apr 29, 2015  4394     bkowal      Handle {@link DacMaintenanceRegister}.
  * 
  * </pre>
  * 
@@ -338,8 +340,24 @@ public class DacTransmitServer extends AbstractServerThread {
     @Override
     protected void handleConnection(Socket socket)
             throws SerializationException, IOException {
-        DacTransmitRegister message = SerializationUtil.transformFromThrift(
-                DacTransmitRegister.class, socket.getInputStream());
+        Object registrationMessage = SerializationUtil.transformFromThrift(
+                Object.class, socket.getInputStream());
+        if (registrationMessage instanceof DacTransmitRegister) {
+            this.handleDacTransmitConnection(
+                    (DacTransmitRegister) registrationMessage, socket);
+        } else if (registrationMessage instanceof DacMaintenanceRegister) {
+            this.handleDacMaintenanceConnection(
+                    (DacMaintenanceRegister) registrationMessage, socket);
+        } else {
+            logger.warn("Received unexpected message with type: "
+                    + registrationMessage.getClass().getName()
+                    + " from an unknown entity. Disconnecting ...");
+            socket.close();
+        }
+    }
+
+    private void handleDacTransmitConnection(DacTransmitRegister message,
+            Socket socket) {
         DacTransmitKey key = new DacTransmitKey(message.getInputDirectory(),
                 message.getDataPort(), message.getDacAddress());
         DacChannelConfig channel = channels.get(key);
@@ -385,7 +403,12 @@ public class DacTransmitServer extends AbstractServerThread {
         } else {
             comms.shutdown(true);
         }
-
     }
 
+    private void handleDacMaintenanceConnection(DacMaintenanceRegister message,
+            Socket socket) {
+        DacMaintenanceCommunicator comms = new DacMaintenanceCommunicator(
+                this.manager, message.getTransmitterGroup(), socket);
+        comms.start();
+    }
 }

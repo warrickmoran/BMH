@@ -56,6 +56,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * Oct 2, 2014   #3642     bkowal       Added transmitter timezone argument.
  * Oct 22, 2014  #3687     bsteffen    keep original dac hostname
  * Nov 7, 2014   #3630     bkowal      Refactor for maintenance mode.
+ * Apr 29, 2015  #4394     bkowal      No longer manages the management port argument.
  * 
  * 
  * </pre>
@@ -67,8 +68,6 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 public final class DacTransmitArgParser extends AbstractDacArgParser {
 
     public static final char INPUT_DIR_OPTION_KEY = 'i';
-
-    public static final char COMMS_MANAGER_PORT_OPTION_KEY = 'm';
 
     public static final char TIMEZONE_KEY = 'z';
 
@@ -84,12 +83,6 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
                         "Directory containing playlist files to stream to DAC.")
                 .hasArg().withArgName("directory").create(INPUT_DIR_OPTION_KEY);
         inputDirectory.setRequired(true);
-        Option managerPort = OptionBuilder
-                .withDescription(
-                        "TCP/IP port for communicating with the Comms Manager")
-                .hasArg().withArgName("port").withType(Integer.class)
-                .create(COMMS_MANAGER_PORT_OPTION_KEY);
-        managerPort.setRequired(true);
         Option timezone = OptionBuilder
                 .withDescription(
                         "The timezone associated with the transmitter.")
@@ -98,7 +91,6 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
 
         List<Option> options = new ArrayList<>();
         options.add(inputDirectory);
-        options.add(managerPort);
         options.add(timezone);
 
         return options;
@@ -110,9 +102,6 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
 
         Path inputDirectory = FileSystems.getDefault().getPath(
                 cmd.getOptionValue(INPUT_DIR_OPTION_KEY));
-
-        int managerPort = Integer.parseInt(cmd
-                .getOptionValue(COMMS_MANAGER_PORT_OPTION_KEY));
 
         String timezoneStr = cmd.getOptionValue(TIMEZONE_KEY, null);
         if (timezoneStr == null) {
@@ -131,7 +120,6 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
                             + timezoneStr + ".");
         }
 
-        return new DacSessionConfig(commonConfig, inputDirectory, managerPort,
-                timeZone);
+        return new DacSessionConfig(commonConfig, inputDirectory, timeZone);
     }
 }

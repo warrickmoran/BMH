@@ -43,6 +43,7 @@ import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 22, 2015 4394       bkowal      Initial creation
+ * Apr 29, 2015 4394       bkowal      Added {@link #transmitterGroup}.
  * 
  * </pre>
  * 
@@ -64,6 +65,9 @@ public class DacMaintenanceMessage {
 
     @XmlElement
     private TransferType transferToneType;
+
+    @XmlElement
+    private String transmitterGroup;
 
     private transient Path path;
 
@@ -139,6 +143,21 @@ public class DacMaintenanceMessage {
      */
     public void setTransferToneType(TransferType transferToneType) {
         this.transferToneType = transferToneType;
+    }
+
+    /**
+     * @return the transmitterGroup
+     */
+    public String getTransmitterGroup() {
+        return transmitterGroup;
+    }
+
+    /**
+     * @param transmitterGroup
+     *            the transmitterGroup to set
+     */
+    public void setTransmitterGroup(String transmitterGroup) {
+        this.transmitterGroup = transmitterGroup;
     }
 
     /**
