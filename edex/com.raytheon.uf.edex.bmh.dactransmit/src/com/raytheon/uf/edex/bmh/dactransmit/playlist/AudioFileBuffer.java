@@ -58,6 +58,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  * Feb 02, 2015  4093      bsteffen     Add position()
  * Mar 13, 2015  4251      bkowal       Limit messages accompanied by tones to 2 minutes.
  * Mar 17, 2015  4251      bkowal       Handle shorter interrupts without buffer underflows.
+ * May 04, 2015  4452      bkowal       Added {@link #toneTruncationRequired()}.
  * 
  * </pre>
  * 
@@ -290,6 +291,11 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
     public boolean isToneTruncated() {
         return this.returnTones
                 && (this.messageBuffer.position() >= MAX_TONES_MSG_AUDIO_BYTE_COUNT);
+    }
+
+    public boolean toneTruncationRequired() {
+        return this.returnTones
+                && this.messageBuffer.capacity() > MAX_TONES_MSG_AUDIO_BYTE_COUNT;
     }
 
     public int getTruncatedBytesRemaining() {
