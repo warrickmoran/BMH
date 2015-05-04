@@ -19,7 +19,12 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
+
+import org.springframework.util.CollectionUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
@@ -38,6 +43,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Sep 09, 2014  3554     bsteffen    Add getByGroupName
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * May 04, 2015  4449     bkowal      Added {@link #getByMsgAndTransmitter(Calendar, String, long)}.
  * 
  * </pre>
  * 
@@ -74,4 +80,20 @@ public class PlaylistDao extends
         }
     }
 
+    public List<Playlist> getByMsgAndTransmitter(final Calendar currentTime,
+            final String transmitterGroup, final long broadcastId) {
+        List<?> objects = findByNamedQueryAndNamedParam(
+                Playlist.QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER,
+                new String[] { "currentTime", "groupName", "msgId" },
+                new Object[] { currentTime, transmitterGroup, broadcastId });
+        if (CollectionUtils.isEmpty(objects)) {
+            return Collections.emptyList();
+        }
+
+        List<Playlist> playlists = new ArrayList<>(objects.size());
+        for (Object object : objects) {
+            playlists.add((Playlist) object);
+        }
+        return playlists;
+    }
 }

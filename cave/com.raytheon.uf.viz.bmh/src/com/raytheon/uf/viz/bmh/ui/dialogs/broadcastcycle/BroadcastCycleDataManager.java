@@ -24,6 +24,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.collections.CollectionUtils;
+
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -79,6 +81,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Jan 12, 2015    3843    bsteffen    Move Periodic message table creation to playlist data.
  * Jan 13, 2015    3844    bsteffen    Add getPlaylist
  * Apr 14, 2015    4394    bkowal      Added {@link #getConfiguredTransmitterGroupList()}.
+ * May 04, 2015    4449    bkowal      Added {@link #isMessageScheduledForBroadcast(String, long)}.
  * 
  * </pre>
  * 
@@ -225,6 +228,19 @@ public class BroadcastCycleDataManager {
                 .sendRequest(req);
 
         return response.getMessageList();
+    }
+
+    public boolean isMessageScheduledForBroadcast(String transmitterGroup,
+            long broadcastId) throws Exception {
+        BroadcastMsgRequest req = new BroadcastMsgRequest();
+        req.setAction(BroadcastMessageAction.GET_ACTIVE_PLAYLISTS_WITH_MESSAGE);
+        req.setTransmitterGroup(transmitterGroup);
+        req.setMessageId(broadcastId);
+
+        BroadcastMsgResponse response = (BroadcastMsgResponse) BmhUtils
+                .sendRequest(req);
+
+        return CollectionUtils.isEmpty(response.getPlaylist()) == false;
     }
 
     /**
