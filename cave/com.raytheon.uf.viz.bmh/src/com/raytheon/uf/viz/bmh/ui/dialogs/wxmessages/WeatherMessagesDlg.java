@@ -167,6 +167,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 20, 2015  4420     rferrel     When in edit mode display read only Area Selection dialog.
  * Apr 29, 2015  4451     bkowal      Message contents will now only be accessible when a Message
  *                                    Type has been selected.
+ * May 04, 2015  4447     bkowal      SAME Transmitters assigned to an existing {@link InputMessage}
+ *                                    will override SAME Transmitters assigned to a {@link MessageType}.
  * 
  * </pre>
  * 
@@ -1393,7 +1395,15 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
         sameTransmitters.setAreaData(areaData);
         sameTransmitters.setMessageType(selectedMessageType);
-
+        if (this.userInputMessage.getId() != 0) {
+            /*
+             * this is an existing input message. use the SAME transmitters
+             * specified in the input message instead of the transmitters
+             * specified for the message type.
+             */
+            this.sameTransmitters.overrideMessageTypeSAME(this.userInputMessage
+                    .getSameTransmitterSet());
+        }
     }
 
     /**

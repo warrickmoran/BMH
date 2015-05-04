@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.swt.widgets.Composite;
@@ -56,7 +57,8 @@ import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
  * ------------- -------- ----------- --------------------------
  * Mar 16, 2015  4244     bsteffen     Initial creation
  * Mar 18, 2015  4282     rferrel      Added method setAllowEnableTransmitters.
- * Aor 07, 2014  4304     rferrel      Added {@link #getAffectedTransmitters(boolean)}.
+ * Apr 07, 2014  4304     rferrel      Added {@link #getAffectedTransmitters(boolean)}.
+ * May 04, 2015  4447     bkowal       Added {@link #overrideMessageTypeSAME(Set)}.
  * 
  * </pre>
  * 
@@ -280,6 +282,18 @@ public class SAMETransmitterSelector {
             }
             checks.selectCheckboxes(cld);
         }
+    }
+
+    public void overrideMessageTypeSAME(Set<String> sameTransmitterSet) {
+        this.checks.selectCheckboxes(false);
+        if (CollectionUtils.isEmpty(sameTransmitterSet)) {
+            return;
+        }
+        CheckListData cld = new CheckListData();
+        for (String sameTransmitter : sameTransmitterSet) {
+            cld.addDataItem(sameTransmitter, true);
+        }
+        this.checks.selectCheckboxes(cld);
     }
 
     protected void refreshDisabled() {
