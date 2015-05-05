@@ -172,6 +172,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    applicable.
  * Apr 27, 2015  4397     bkowal      Add additional information to the {@link DacPlaylistMessage}
  *                                    required to calculate the stats information.
+ * May 05, 2015  4463     bkowal      Attempt to use the originator associated with the specified
+ *                                    {@link MessageType}.
  * </pre>
  * 
  * @author bsteffen
@@ -893,6 +895,9 @@ public class PlaylistManager implements IContextStateProcessor {
 
                     if (!sameTransmitters.isEmpty()) {
                         SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
+                        if (messageType != null) {
+                            builder.setOriginator(messageType.getOriginator());
+                        }
                         builder.setEventFromAfosid(broadcast.getAfosid());
                         Set<String> areaCodeSet = new HashSet<>();
                         if (input.getAreaCodes() != null) {

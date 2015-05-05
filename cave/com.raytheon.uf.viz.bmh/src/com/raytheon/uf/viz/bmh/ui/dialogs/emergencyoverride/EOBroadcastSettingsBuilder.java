@@ -70,6 +70,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  *                                      its areas.
  * May 4, 2015  4394       bkowal      Tone playback text is now in
  *                                     {@link INonStandardBroadcast}.
+ * MAy 05, 2015 4463       bkowal      Use the originator associated with the selected
+ *                                     {@link MessageType}.
  * 
  * </pre>
  * 
@@ -272,6 +274,7 @@ public class EOBroadcastSettingsBuilder extends
             ugcs.add(area.getAreaCode());
         }
         toneBuilder.setEventFromAfosid(this.messageType.getAfosid());
+        toneBuilder.setOriginator(this.messageType.getOriginator());
         toneBuilder.addAreasFromUGC(ugcs);
         String invalidAreas = toneBuilder.summarizeInvalidAreas();
         String overLimitAreas = toneBuilder.summarizeOverLimitAreas();

@@ -82,6 +82,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Feb 05, 2015  4085      bkowal      Designations are no longer static.
  * Feb 23, 2015  4140      rjpeter     Renamed foreign constraints.
  * Mar 25, 2015  4290      bsteffen    Switch to global replacement.
+ * May 05, 2015  4463      bkowal      Added {@link #originator}.
  * 
  * </pre>
  * 
@@ -189,9 +190,9 @@ public class MessageType {
     @DynamicSerializeElement
     private TtsVoice voice;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 3)
     @DynamicSerializeElement
-    private boolean wxr = true;
+    private String originator;
 
     @Column(nullable = false)
     @DynamicSerializeElement
@@ -304,12 +305,19 @@ public class MessageType {
         this.designation = designation;
     }
 
-    public boolean isWxr() {
-        return wxr;
+    /**
+     * @return the originator
+     */
+    public String getOriginator() {
+        return originator;
     }
 
-    public void setWxr(boolean wxr) {
-        this.wxr = wxr;
+    /**
+     * @param originator
+     *            the originator to set
+     */
+    public void setOriginator(String originator) {
+        this.originator = originator;
     }
 
     public boolean isToneBlackoutEnabled() {
@@ -543,7 +551,7 @@ public class MessageType {
             sb.append(voice.getVoiceName());
         }
 
-        sb.append(", wxr=").append(wxr);
+        sb.append(", originator=").append(originator);
         sb.append(", toneBlackoutEnabled=").append(toneBlackoutEnabled);
 
         sb.append(", toneBlackOutStart=");
