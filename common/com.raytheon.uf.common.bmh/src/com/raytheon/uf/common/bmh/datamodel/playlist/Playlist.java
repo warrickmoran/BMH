@@ -92,6 +92,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 15, 2015  4293     bkowal      Handle the case when a single broadcast message has been
  *                                    expired.
+ * May 04, 2015  4449     bkowal      Added {@link #QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER}.
  * 
  * </pre>
  * 
@@ -100,7 +101,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  */
 @NamedQueries({
         @NamedQuery(name = Playlist.QUERY_BY_SUITE_GROUP_NAMES, query = Playlist.QUERY_BY_SUITE_GROUP_NAMES_HQL),
-        @NamedQuery(name = Playlist.QUERY_BY_GROUP_NAME, query = Playlist.QUERY_BY_GROUP_NAME_HQL) })
+        @NamedQuery(name = Playlist.QUERY_BY_GROUP_NAME, query = Playlist.QUERY_BY_GROUP_NAME_HQL),
+        @NamedQuery(name = Playlist.QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER, query = Playlist.QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER_HQL) })
 @Entity
 @Table(name = "playlist", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
         "transmitter_group_id", "suite_id" }) })
@@ -121,6 +123,10 @@ public class Playlist {
     public static final String QUERY_BY_GROUP_NAME = "getPlaylistByGroupName";
 
     protected static final String QUERY_BY_GROUP_NAME_HQL = "select p FROM Playlist p inner join p.transmitterGroup tg WHERE tg.name = :groupName";
+
+    public static final String QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER = "getUnexpiredPlaylistsWithMessageOnTransmitter";
+
+    protected static final String QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER_HQL = "select p FROM Playlist p inner join p.transmitterGroup tg inner join p.messages m WHERE (p.endTime is null OR p.endTime >= :currentTime) AND tg.name = :groupName and m.id = :msgId";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)

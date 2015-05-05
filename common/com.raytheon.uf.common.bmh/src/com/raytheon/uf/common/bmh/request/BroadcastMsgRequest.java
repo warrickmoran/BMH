@@ -19,8 +19,11 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import java.util.Calendar;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
  * Broadcast message request object.
@@ -34,6 +37,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 15, 2014  3432     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Dec 18, 2014  3865     bsteffen    Add GET_MESSAGE_BY_INPUT_ID Action
+ * May 04, 2015  4449     bkowal      Added {@link BroadcastMessageAction#GET_ACTIVE_PLAYLISTS_WITH_MESSAGE},
+ *                                    and {@link #time}, and {@link #transmitterGroup}.
  * 
  * </pre>
  * 
@@ -43,7 +48,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class BroadcastMsgRequest extends AbstractBMHServerRequest {
     public enum BroadcastMessageAction {
-        GET_MESSAGE_BY_ID, GET_MESSAGE_BY_INPUT_ID
+        GET_MESSAGE_BY_ID, GET_MESSAGE_BY_INPUT_ID, GET_ACTIVE_PLAYLISTS_WITH_MESSAGE
     }
 
     @DynamicSerializeElement
@@ -51,6 +56,12 @@ public class BroadcastMsgRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private Long messageId;
+
+    @DynamicSerializeElement
+    private Calendar time = TimeUtil.newGmtCalendar();
+
+    @DynamicSerializeElement
+    private String transmitterGroup;
 
     /**
      * @return the messageId
@@ -80,5 +91,35 @@ public class BroadcastMsgRequest extends AbstractBMHServerRequest {
      */
     public void setAction(BroadcastMessageAction action) {
         this.action = action;
+    }
+
+    /**
+     * @return the time
+     */
+    public Calendar getTime() {
+        return time;
+    }
+
+    /**
+     * @param time
+     *            the time to set
+     */
+    public void setTime(Calendar time) {
+        this.time = time;
+    }
+
+    /**
+     * @return the transmitterGroup
+     */
+    public String getTransmitterGroup() {
+        return transmitterGroup;
+    }
+
+    /**
+     * @param transmitterGroup
+     *            the transmitterGroup to set
+     */
+    public void setTransmitterGroup(String transmitterGroup) {
+        this.transmitterGroup = transmitterGroup;
     }
 }

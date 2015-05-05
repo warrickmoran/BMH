@@ -22,9 +22,11 @@ package com.raytheon.uf.edex.bmh.handler;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgResponse;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
+import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
@@ -40,6 +42,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * May 04, 2015  4449     bkowal      Added {@link #getActivePlaylistsWithMessage(BroadcastMsgRequest)}.
  * 
  * </pre>
  * 
@@ -65,6 +68,9 @@ public class BroadcastMessageHandler extends
             break;
         case GET_MESSAGE_BY_INPUT_ID:
             response = getMessagesByInputId(request);
+            break;
+        case GET_ACTIVE_PLAYLISTS_WITH_MESSAGE:
+            response = getActivePlaylistsWithMessage(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -95,6 +101,19 @@ public class BroadcastMessageHandler extends
         List<BroadcastMsg> list = dao.getMessagesByInputMsgId(request
                 .getMessageId().intValue());
         response.setMessageList(list);
+
+        return response;
+    }
+
+    private BroadcastMsgResponse getActivePlaylistsWithMessage(
+            BroadcastMsgRequest request) {
+        BroadcastMsgResponse response = new BroadcastMsgResponse();
+        PlaylistDao dao = new PlaylistDao(request.isOperational(),
+                this.getMessageLogger(request));
+        List<Playlist> playlists = dao.getByMsgAndTransmitter(
+                request.getTime(), request.getTransmitterGroup(),
+                request.getMessageId());
+        response.setPlaylist(playlists);
 
         return response;
     }

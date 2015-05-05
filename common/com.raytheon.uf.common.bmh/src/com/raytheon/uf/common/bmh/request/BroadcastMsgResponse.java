@@ -22,6 +22,7 @@ package com.raytheon.uf.common.bmh.request;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -35,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 15, 2014    3432    mpduff      Initial creation
+ * May 04, 2015    4449    bkowal      Added {@link #playlist}.
  * 
  * </pre>
  * 
@@ -46,6 +48,9 @@ public class BroadcastMsgResponse {
 
     @DynamicSerializeElement
     private List<BroadcastMsg> messageList;
+
+    @DynamicSerializeElement
+    private List<Playlist> playlist;
 
     /**
      * @return the messageList
@@ -60,5 +65,20 @@ public class BroadcastMsgResponse {
      */
     public void setMessageList(List<BroadcastMsg> messageList) {
         this.messageList = messageList;
+    }
+
+    /**
+     * @return the playlist
+     */
+    public List<Playlist> getPlaylist() {
+        return playlist;
+    }
+
+    /**
+     * @param playlist
+     *            the playlist to set
+     */
+    public void setPlaylist(List<Playlist> playlist) {
+        this.playlist = playlist;
     }
 }
