@@ -54,6 +54,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
+import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
@@ -104,6 +105,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     station id or time announcement designation.
  * Mar 31, 2015   4304     rferrel     Populate selectedMessage Same Transmitters.
  *                                      Only enable same transmitters in affected area.
+ * May 05, 2015   4463     bkowal      Update the new originator field in the {@link MessageType}.
  * 
  * </pre>
  * 
@@ -549,7 +551,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         wxrRdo.setLayoutData(gd);
 
         if (selectedMsgType != null) {
-            if (selectedMsgType.isWxr()) {
+            if (SAMEToneTextBuilder.NWS_ORIGINATOR.equals(this.selectedMsgType
+                    .getOriginator())) {
                 wxrRdo.setSelection(true);
             } else {
                 civRdo.setSelection(true);
@@ -863,7 +866,13 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             }
         }
 
-        selectedMsgType.setWxr(wxrRdo.getSelection());
+        if (this.wxrRdo.getSelection()) {
+            this.selectedMsgType
+                    .setOriginator(SAMEToneTextBuilder.NWS_ORIGINATOR);
+        } else {
+            this.selectedMsgType
+                    .setOriginator(SAMEToneTextBuilder.CIVIL_ORIGINATOR);
+        }
 
         if (areaData != null) {
             if (areaData.getAreas() != null) {

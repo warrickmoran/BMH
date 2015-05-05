@@ -60,6 +60,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.legacy.ascii.data.Ascii;
 import com.raytheon.uf.common.bmh.legacy.ascii.data.MessageGroupData;
 import com.raytheon.uf.common.bmh.legacy.ascii.data.StationIdData;
+import com.raytheon.uf.common.bmh.same.SAMEOriginatorMapper;
 import com.raytheon.uf.common.util.CollectionUtil;
 
 /**
@@ -90,6 +91,8 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * Mar 13, 2015 4213       bkowal      Create {@link TransmitterMessages}s.
  * Mar 27, 2015  #4315     rferrel     Removed no longer used voiceMsg.
  * Mar 31, 2015 4248       rjpeter     Use set view of program suites and suite messages.
+ * May 05, 2015 4463       bkowal      Use the {@link SAMEOriginatorMapper} to set the initial originator
+ *                                     for {@link MessageType}s that are created.
  * </pre>
  * 
  * @author rjpeter
@@ -718,6 +721,10 @@ public class AsciiFileTranslator {
                 }
 
                 data.setAfosid(afosId);
+                String eventCode = (afosId.length() >= 6) ? afosId.substring(3,
+                        6) : null;
+                data.setOriginator(SAMEOriginatorMapper.DEFAULT
+                        .getOriginator(eventCode));
                 map.put(afosId, data);
                 data.setTitle(reader.nextField());
                 parseInt(reader); // skip listening area override
