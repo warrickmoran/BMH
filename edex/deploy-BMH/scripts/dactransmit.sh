@@ -42,6 +42,8 @@
 #    01/09/15        3942          rjpeter        Set memory parameters, added USE_POSITION_STREAM.
 #    03/04/15        4224          bkowal         Added DISABLE_AUDIO_ATTENUATION to optionally disable
 #                                                 audio attenuation / amplification before transmit.
+#    05/05/2015      4464          bkowal         Added SAME_PADDING and SAME_EOM_PADDING to optionally
+#                                                 alter the padding bytes after a SAME Tone.
 ##############################################################################
 
 
@@ -56,6 +58,9 @@ preservedArgs=()
 USE_POSITION_STREAM=false
 #Disabled audio attenuation. Exists primarily for debugging purposes. This does not affect live audio streams.
 DISABLE_AUDIO_ATTENUATION=false
+# Use to adjust the amount of padding bytes at the end of the SAME Tones.
+SAME_PADDING=4
+SAME_EOM_PADDING=2
 
 # This loop processes the command line args. We need to extract DAC_ADDRESS(-d)
 # and DAC_PORT(-p). To make it easier to grab the argument to flags $prev will
@@ -120,7 +125,9 @@ for dependency in $DEPENDENCIES; do
 done;
 
 JVM_ARGS="-Xms16m -Xmx48m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode -XX:NewSize=8m -XX:MaxNewSize=8m -XX:SurvivorRatio=6 -XX:MaxPermSize=24m -XX:ReservedCodeCacheSize=8m"
-JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml -DusePositionStream=${USE_POSITION_STREAM} -DdisableAudioAttenuation=${DISABLE_AUDIO_ATTENUATION}"
+JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml"
+JVM_PROPS="${JVM_PROPS} -DusePositionStream=${USE_POSITION_STREAM} -DdisableAudioAttenuation=${DISABLE_AUDIO_ATTENUATION}"
+JVM_PROPS="${JVM_PROPS} -DsamePaddingOverride=${SAME_PADDING} -DsameEomPaddingOverride=${SAME_EOM_PADDING}"
 
 
 java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "${preservedArgs[@]}"
