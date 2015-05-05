@@ -27,7 +27,7 @@ then
 #EOF
 
 	# Issue the command to reset the default source/sink.
-	nohup su $pulseUser /usr/share/shure/setShure.sh &
+	su $pulseUser -c "nohup /bin/sh /usr/share/shure/setShure.sh &"
 
 fi
 exit 0
