@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
@@ -89,6 +90,7 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  *                                    volatile.
  * Apr 24, 2015  4423     rferrel     Send {@link ChangeTimeZone} when time zone changes value.
  * Apr 27, 2015  4397     bkowal      Handle {@link DeliveryTimeEvent}.
+ * May 04, 2015  4452     bkowa       Handle {@link SAMEMessageTruncatedNotification}.
  * 
  * </pre>
  * 
@@ -114,8 +116,8 @@ public class DacTransmitCommunicator extends Thread {
     private double dbTarget;
 
     private volatile DacTransmitStatus lastStatus;
-    private String timeZone;
 
+    private String timeZone;
 
     private volatile boolean disconnected = false;
 
@@ -210,6 +212,10 @@ public class DacTransmitCommunicator extends Thread {
             DeliveryTimeEvent event = (DeliveryTimeEvent) message;
             event.setTransmitterGroup(this.groupName);
             manager.transmitBMHStat(event);
+        } else if (message instanceof SAMEMessageTruncatedNotification) {
+            SAMEMessageTruncatedNotification notification = (SAMEMessageTruncatedNotification) message;
+            notification.setTransmitterGroup(this.groupName);
+            manager.transmitDacStatus(notification);
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",
                     message.getClass().getSimpleName());

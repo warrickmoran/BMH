@@ -67,6 +67,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  * Feb 06, 2015  #4071     bsteffen     Consolidate threading.
  * Mar 09, 2015  #4170     bsteffen     Avoid NPE
  * Mar 25, 2015  #4290     bsteffen     Switch to global replacement.
+ * May 04, 2015  #4452     bkowal       Added {@link #requiresToneTruncationNotification()}.
  * 
  * </pre>
  * 
@@ -361,5 +362,10 @@ public final class DacMessagePlaybackData {
      */
     public boolean requiresConfirmation() {
         return this.message.isConfirm() && this.message.getPlayCount() == 0;
+    }
+
+    public boolean requiresToneTruncationNotification() {
+        return this.message.getPlayCount() == 0
+                && this.audio.toneTruncationRequired();
     }
 }

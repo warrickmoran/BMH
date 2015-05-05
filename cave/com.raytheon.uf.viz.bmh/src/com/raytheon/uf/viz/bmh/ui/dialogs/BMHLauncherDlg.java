@@ -58,6 +58,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessageExpiredNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
+import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.bmh.notify.config.AbstractTraceableSystemConfigNotification;
 import com.raytheon.uf.common.bmh.request.CopyOperationalDbRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
@@ -151,6 +152,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * Mar 02, 2015   4141     bkowal      Use the {@link SilenceAlarmDelegate} to manage silence alarms.
  * Apr 22, 2015   4397     bkowal      Listen for {@link AbstractTraceableSystemConfigNotification} and
  *                                     publish statistics when received.
+ * May 04, 2015   4452     bkowal      Handle {@link SAMEMessageTruncatedNotification}.
  * 
  * </pre>
  * 
@@ -1296,28 +1298,17 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                 } else if (o instanceof MessageNotBroadcastNotification) {
                     MessageNotBroadcastNotification notification = (MessageNotBroadcastNotification) o;
 
-                    /*
-                     * Retrieve the broadcast message associated with the
-                     * notification.
-                     */
-                    BroadcastMsg msg = null;
+                    final String identification;
                     try {
-                        msg = this.dataManager.getBroadcastMessage(notification
-                                .getBroadcastId());
+                        identification = this
+                                .getNotificationMessageIdentifier(notification
+                                        .getBroadcastId());
                     } catch (Exception e) {
                         statusHandler.error(
                                 "Failed to retrieve the broadcast message associated with notification: "
                                         + notification.toString() + ".", e);
                         return;
                     }
-                    /*
-                     * Broadcast message has been successfully retrieved.
-                     * Construct the Input Message identifier;
-                     */
-                    final String identification = this
-                            .buildInputMessageIdentifier(msg.getInputMessage()
-                                    .getId(), msg.getInputMessage().getName(),
-                                    msg.getInputMessage().getAfosid());
 
                     /*
                      * construct the AlertViz message.
@@ -1332,11 +1323,53 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                 } else if (o instanceof AbstractTraceableSystemConfigNotification) {
                     BMHConfigStatisticsGenerator
                             .publishStatistic((AbstractTraceableSystemConfigNotification) o);
+                } else if (o instanceof SAMEMessageTruncatedNotification) {
+                    SAMEMessageTruncatedNotification notification = (SAMEMessageTruncatedNotification) o;
+
+                    final String identification;
+                    try {
+                        identification = this
+                                .getNotificationMessageIdentifier(notification
+                                        .getBroadcastId());
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "Failed to retrieve the broadcast message associated with notification: "
+                                        + notification.toString() + ".", e);
+                        return;
+                    }
+                    StringBuilder sb = new StringBuilder("SAME Message ");
+                    sb.append(identification).append(
+                            " scheduled for broadcast on Transmitter ");
+                    sb.append(notification.getTransmitterGroup())
+                            .append(" has been truncated to fit within the 2 minute limit.");
+
+                    statusHandler.info(sb.toString());
                 }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing BMH Notification!", e);
             }
         }
+    }
+
+    private String getNotificationMessageIdentifier(final long broadcastId)
+            throws Exception {
+        /*
+         * Retrieve the broadcast message associated with the notification.
+         */
+        BroadcastMsg msg = this.dataManager.getBroadcastMessage(broadcastId);
+        if (msg == null) {
+            throw new Exception(
+                    "Failed to find the Broadcast Message for Broadcast Id "
+                            + broadcastId + ".");
+        }
+
+        /*
+         * Broadcast message has been successfully retrieved. Construct the
+         * Input Message identifier;
+         */
+        return this.buildInputMessageIdentifier(msg.getInputMessage().getId(),
+                msg.getInputMessage().getName(), msg.getInputMessage()
+                        .getAfosid());
     }
 
     private String buildInputMessageIdentifier(final int id, final String name,

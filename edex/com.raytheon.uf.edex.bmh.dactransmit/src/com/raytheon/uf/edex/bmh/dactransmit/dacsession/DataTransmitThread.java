@@ -27,6 +27,7 @@ import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.DacMessagePlaybackData;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
@@ -82,6 +83,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Feb 26, 2015  #4187     rjpeter      Added keepRunning check to allow shutdown when thread doesn't have sync.
  * Mar 06, 2015  #4188     bsteffen     Track interrupts only in PlaylistScheduler.
  * Apr 16, 2015  #4405     rjpeter      Update to have hasSync initialized.
+ * May 04, 2015  #4452     bkowal       Post a {@link SAMEMessageTruncatedNotification} when a SAME
+ *                                      Message will be truncated during broadcast.
  * </pre>
  * 
  * @author dgilling
@@ -238,6 +241,15 @@ public final class DataTransmitThread extends AbstractTransmitThread {
                          */
                         this.eventBus.post(new MessageBroadcastNotifcation(
                                 playbackData.getMessage().getBroadcastId()));
+                    }
+                    if (playbackData.requiresToneTruncationNotification()) {
+                        /*
+                         * SAME Message truncation notification.
+                         */
+                        this.eventBus
+                                .post(new SAMEMessageTruncatedNotification(
+                                        playbackData.getMessage()
+                                                .getBroadcastId()));
                     }
                     while ((playbackData.hasRemaining())
                             && (playingInterrupt || (!playlistMgr
