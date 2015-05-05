@@ -41,6 +41,7 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  * Mar 23, 2015  #4299     bkowal       Generate the SAME tone with the preamble.
  *                                      Add padding to the end of the preamble + SAME
  *                                      tones.
+ * May 05, 2015  #4464     bkowal       SAME Tone Padding is now configurable via a system property.
  * 
  * </pre>
  * 
@@ -49,6 +50,15 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  */
 
 public final class TonesGenerator {
+
+    /**
+     * Overridable SAME Tones padding constant. This is the number of 0 bytes
+     * that will be placed at the end of the SAME Tone bytes array that is
+     * generated. This property may no longer be overridable after we
+     * transitional to operational builds.
+     */
+    private static final int SAME_PADDING = Integer.getInteger(
+            "samePaddingOverride", 4);
 
     private static StaticTones defaultTonesInstance;
 
@@ -84,7 +94,8 @@ public final class TonesGenerator {
 
         byte[] betweenPause = staticTones.getBetweenPreambleOrClosingPause();
         byte[] beforeMessagePause = staticTones.getBeforeMessagePause();
-        byte[] preambleHeader = TonesManager.generateSAMETone(sameHeader, 4);
+        byte[] preambleHeader = TonesManager.generateSAMETone(sameHeader,
+                SAME_PADDING);
 
         int bufferSize = (3 * (preambleHeader.length))
                 + (2 * betweenPause.length) + beforeMessagePause.length;
