@@ -77,6 +77,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Apr 20, 2015   4394     bkowal      Ensure that playlist information does not remain in the
  *                                     cache for disabled transmitters that are no longer transmitting.
  * Apr 29, 2015   4394     bkowal      Support {@link INonStandardBroadcast}.
+ * May 05, 2015   4456     bkowal      Update the interrupt flag associated with a {@link BroadcastMsg}
+ *                                     after it has played as an interrupt.
  * 
  * </pre>
  * 
@@ -321,24 +323,39 @@ public class PlaylistStateManager {
 
     private void setToneFlags(PlaylistDataStructure playlistData,
             long broadcastId) {
+        final boolean interrupt = playlistData.getSuiteName().startsWith(
+                "Interrupt");
         MessagePlaybackPrediction prediction = playlistData.getPredictionMap()
                 .get(broadcastId);
-        if (prediction.isPlayedAlertTone() || prediction.isPlayedSameTone()) {
+        if (prediction.isPlayedAlertTone() || prediction.isPlayedSameTone()
+                || interrupt) {
             BroadcastMsg broadcastMessage = playlistData.getPlaylistMap().get(
                     broadcastId);
             if (broadcastMessage != null) {
-                if (tonesMatch(prediction, broadcastMessage)) {
+                if (tonesMatch(prediction, broadcastMessage)
+                        && interrupt == false) {
                     return;
                 }
             }
             broadcastMessage = broadcastMsgDao.getByID(broadcastId);
-            if (broadcastMessage != null
-                    && !tonesMatch(prediction, broadcastMessage)) {
-                broadcastMessage.setPlayedAlertTone(prediction
-                        .isPlayedAlertTone());
-                broadcastMessage.setPlayedSameTone(prediction
-                        .isPlayedSameTone());
-                broadcastMsgDao.persist(broadcastMessage);
+            if (broadcastMessage != null) {
+                boolean updated = false;
+
+                if (!tonesMatch(prediction, broadcastMessage)) {
+                    broadcastMessage.setPlayedAlertTone(prediction
+                            .isPlayedAlertTone());
+                    broadcastMessage.setPlayedSameTone(prediction
+                            .isPlayedSameTone());
+                    updated = true;
+                }
+                if (interrupt
+                        && interrupt != broadcastMessage.isPlayedInterrupt()) {
+                    broadcastMessage.setPlayedInterrupt(interrupt);
+                    updated = true;
+                }
+                if (updated) {
+                    broadcastMsgDao.persist(broadcastMessage);
+                }
             }
         }
     }

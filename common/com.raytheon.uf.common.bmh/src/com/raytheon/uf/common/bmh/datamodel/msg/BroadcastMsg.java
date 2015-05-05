@@ -82,6 +82,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 07, 2015  4293     bkowal      Updated to include a {@link List} of {@link BroadcastContents}s.
  * Apr 15, 2015  4293     bkowal      Added {@link #forcedExpiration}.
  * Apr 16, 2015  4395     rferrel     Added {@link #ALL_UNEXPIRED_MSGS_QUERY}.
+ * May 05, 2015  4456     bkowal      Added {@link #playedInterrupt}.
  * </pre>
  * 
  * @author bkowal
@@ -174,6 +175,10 @@ public class BroadcastMsg {
     @Column
     @DynamicSerializeElement
     private boolean playedAlertTone = false;
+
+    @Column(nullable = false)
+    @DynamicSerializeElement
+    private boolean playedInterrupt = false;
 
     @Column(nullable = false)
     @DynamicSerializeElement
@@ -353,6 +358,21 @@ public class BroadcastMsg {
 
     public void setPlayedAlertTone(boolean playedAlertTone) {
         this.playedAlertTone = playedAlertTone;
+    }
+
+    /**
+     * @return the playedInterrupt
+     */
+    public boolean isPlayedInterrupt() {
+        return playedInterrupt;
+    }
+
+    /**
+     * @param playedInterrupt
+     *            the playedInterrupt to set
+     */
+    public void setPlayedInterrupt(boolean playedInterrupt) {
+        this.playedInterrupt = playedInterrupt;
     }
 
     public boolean getForcedExpiration() {

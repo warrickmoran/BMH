@@ -174,6 +174,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    required to calculate the stats information.
  * May 05, 2015  4463     bkowal      Attempt to use the originator associated with the specified
  *                                    {@link MessageType}.
+ * May 05, 2015  4456     bkowal      Do not write an interrupt playlist for a {@link BroadcastMsg}
+ *                                    that has already played as an interrupt.
  * </pre>
  * 
  * @author bsteffen
@@ -594,7 +596,8 @@ public class PlaylistManager implements IContextStateProcessor {
             return;
         }
 
-        if (msg.getInputMessage().getInterrupt()) {
+        if (msg.getInputMessage().getInterrupt()
+                && msg.isPlayedInterrupt() == false) {
             Suite suite = new Suite();
             suite.setName("Interrupt" + msg.getId());
             suite.setType(SuiteType.INTERRUPT);
