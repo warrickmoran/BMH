@@ -57,6 +57,7 @@ import com.raytheon.viz.ui.widgets.duallist.IUpdate;
  * Jul 17, 2014    3406    mpduff      Initial creation
  * Feb 09, 2015    4095    bsteffen    Remove Transmitter Name.
  * Mar 09, 2015    4247    rferrel     Now use SAMEStateCodes to validate state abbreviation.
+ * Apr 20, 2015    4413    rferrel     Order dual lists.
  * 
  * </pre>
  * 
@@ -228,6 +229,7 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
      */
     private DualListConfig getDualListConfig() {
         DualListConfig dlc = new DualListConfig();
+        dlc.setSortList(true);
         List<String> fullList = new ArrayList<String>(transmitterList.size());
         for (Transmitter t : transmitterList) {
             fullList.add(t.getMnemonic().trim() + " - "

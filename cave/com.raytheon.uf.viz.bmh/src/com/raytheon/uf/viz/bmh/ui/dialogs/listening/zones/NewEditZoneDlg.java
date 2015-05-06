@@ -58,6 +58,7 @@ import com.raytheon.viz.ui.widgets.duallist.IUpdate;
  * ------------ ---------- ----------- --------------------------
  * Jul 14, 2014    3406    mpduff      Initial creation
  * Mar 09, 2015    4247    rferrel     Now use SAMEStateCodes to validate state abbreviation.
+ * Apr 20, 2015    4413    rferrel     Order dual lists.
  * 
  * </pre>
  * 
@@ -243,6 +244,7 @@ public class NewEditZoneDlg extends CaveSWTDialog implements IUpdate {
         dlc.setSelectedListLabel("Selected Areas:");
         dlc.setListWidth(150);
         dlc.setFullList(fullList);
+        dlc.setSortList(true);
 
         return dlc;
     }
