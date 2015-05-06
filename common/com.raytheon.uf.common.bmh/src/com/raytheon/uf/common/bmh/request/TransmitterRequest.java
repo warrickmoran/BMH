@@ -45,6 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 25, 2015  4305     rferrel     Added GetTransmittersByFips and argument element.
  * Apr 14, 2015  4390     rferrel     Added {@link #reorder}.
  * Apr 14, 2015  4394     bkowal      Added {@link TransmitterRequestAction#GetConfiguredTransmitterGroups}.
+ * May 06, 2015  4470     bkowal      Added {@link TransmitterRequestAction#DisableTransmitterGroup}.
  * 
  * </pre>
  * 
@@ -58,7 +59,7 @@ public class TransmitterRequest extends AbstractBMHServerRequest {
 
         GetTransmitterGroupWithTransmitter, SaveTransmitter, SaveTransmitterDeleteGroup,
 
-        SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup, GetTransmittersByFips;
+        SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup, GetTransmittersByFips, DisableTransmitterGroup;
     }
 
     /**

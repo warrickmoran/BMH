@@ -59,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Mar 25, 2015    4305    rferrel     Added {@link #getTransmittersByFips(String)}.
  * Mar 31, 2015    4248    rjpeter     Use PositionOrdered.
  * Apr 14, 2015    4390    rferrel     Added {@link #saveTransmitterGroups(List, boolean)} to allow reordering.
+ * May 06, 2015    4470    bkowal      Added {@link #disableTransmitterGroup(TransmitterGroup)}.
  * </pre>
  * 
  * @author mpduff
@@ -216,6 +217,15 @@ public class TransmitterDataManager {
         TransmitterRequest request = new TransmitterRequest();
         request.setAction(TransmitterRequestAction.DeleteTransmitterGroup);
         request.setTransmitterGroup(toDelete);
+
+        BmhUtils.sendRequest(request);
+    }
+
+    public void disableTransmitterGroup(TransmitterGroup group)
+            throws Exception {
+        TransmitterRequest request = new TransmitterRequest();
+        request.setAction(TransmitterRequestAction.DisableTransmitterGroup);
+        request.setTransmitterGroup(group);
 
         BmhUtils.sendRequest(request);
     }
