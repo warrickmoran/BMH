@@ -176,6 +176,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    {@link MessageType}.
  * May 05, 2015  4456     bkowal      Do not write an interrupt playlist for a {@link BroadcastMsg}
  *                                    that has already played as an interrupt.
+ * May 06, 2015  4471     bkowal      Added support for Demo Message SAME Tones.
  * </pre>
  * 
  * @author bsteffen
@@ -881,96 +882,115 @@ public class PlaylistManager implements IContextStateProcessor {
                 dac.setMessageText(broadcast.getInputMessage().getContent());
                 dac.setExpire(input.getExpirationTime());
                 dac.setAlertTone(input.getAlertTone());
-                if (((input.getAreaCodes() != null) || (input
-                        .getSelectedTransmitters() != null))
-                        && Boolean.TRUE.equals(input.getNwrsameTone())) {
-                    Set<String> sameTransmittersNames = input
-                            .getSameTransmitterSet();
-                    Set<Transmitter> sameTransmitters = new HashSet<>();
-                    Set<Transmitter> groupTransmitters = broadcast
-                            .getTransmitterGroup().getTransmitters();
-                    for (Transmitter transmitter : groupTransmitters) {
-                        if (sameTransmittersNames.contains(transmitter
-                                .getMnemonic())) {
-                            sameTransmitters.add(transmitter);
-                        }
-                    }
 
-                    if (!sameTransmitters.isEmpty()) {
+                if (Boolean.TRUE.equals(input.getNwrsameTone())) {
+                    if (input.getAfosid().length() >= 6
+                            && SAMEToneTextBuilder.DEMO_EVENT.equals(input
+                                    .getAfosid().substring(3, 6))) {
+                        // Build a Demo SAME Tone.
                         SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
+                        builder.setEvent(SAMEToneTextBuilder.DEMO_EVENT);
                         if (messageType != null) {
                             builder.setOriginator(messageType.getOriginator());
                         }
-                        builder.setEventFromAfosid(broadcast.getAfosid());
-                        Set<String> areaCodeSet = new HashSet<>();
-                        if (input.getAreaCodes() != null) {
-                            areaCodeSet.addAll(input.getAreaCodeList());
-                        }
-                        if (input.getSelectedTransmitters() != null) {
-                            for (Transmitter t : input
-                                    .getSelectedTransmitters()) {
-                                /*
-                                 * in this case, we only actually care about the
-                                 * area(s) if the selected Transmitter is a SAME
-                                 * Transmitter.
-                                 */
-                                if (sameTransmitters.contains(t) == false) {
-                                    /*
-                                     * not a SAME transmitter, will not need the
-                                     * areas.
-                                     */
-                                    continue;
-                                }
-                                List<Area> transmitterAreas = this.areaDao
-                                        .getAreasForTransmitter(t.getId());
-                                for (Area a : transmitterAreas) {
-                                    areaCodeSet.add(a.getAreaCode());
-                                }
-                            }
-                        }
-
-                        List<String> ugcs = new ArrayList<>();
-                        for (String ugc : areaCodeSet) {
-                            if (ugc.charAt(2) == 'Z') {
-                                Zone z = zoneDao.getByZoneCode(ugc);
-                                if (z != null) {
-                                    for (Area area : z.getAreas()) {
-                                        if (!Collections.disjoint(
-                                                area.getTransmitters(),
-                                                sameTransmitters)) {
-                                            ugcs.add(area.getAreaCode());
-                                        }
-                                    }
-                                }
-                            } else {
-                                Area area = areaDao.getByAreaCode(ugc);
-                                if (!Collections.disjoint(
-                                        area.getTransmitters(),
-                                        sameTransmitters)) {
-                                    ugcs.add(area.getAreaCode());
-                                }
-                            }
-                        }
-                        builder.addAreasFromUGC(ugcs);
-                        String invalidAreas = builder.summarizeInvalidAreas();
-                        String overLimitAreas = builder
-                                .summarizeOverLimitAreas();
-                        if (overLimitAreas.isEmpty() == false) {
-                            statusHandler.error(BMH_CATEGORY.SAME_TRUNCATION,
-                                    "Failed to all all areas to the SAME Message. "
-                                            + overLimitAreas);
-                        }
-                        if (invalidAreas.isEmpty() == false) {
-                            statusHandler.error(
-                                    BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                                    "Failed to all all areas to the SAME Message. "
-                                            + invalidAreas);
-                        }
-
                         builder.setEffectiveTime(input.getEffectiveTime());
                         builder.setExpireTime(input.getExpirationTime());
                         builder.setNwsSiteId(SiteUtil.getSite());
                         dac.setSAMEtone(builder.build().toString());
+                    } else if (((input.getAreaCodes() != null) || (input
+                            .getSelectedTransmitters() != null))) {
+                        // Build a Standard SAME Tone.
+                        Set<String> sameTransmittersNames = input
+                                .getSameTransmitterSet();
+                        Set<Transmitter> sameTransmitters = new HashSet<>();
+                        Set<Transmitter> groupTransmitters = broadcast
+                                .getTransmitterGroup().getTransmitters();
+                        for (Transmitter transmitter : groupTransmitters) {
+                            if (sameTransmittersNames.contains(transmitter
+                                    .getMnemonic())) {
+                                sameTransmitters.add(transmitter);
+                            }
+                        }
+
+                        if (!sameTransmitters.isEmpty()) {
+                            SAMEToneTextBuilder builder = new SAMEToneTextBuilder();
+                            if (messageType != null) {
+                                builder.setOriginator(messageType
+                                        .getOriginator());
+                            }
+                            builder.setEventFromAfosid(broadcast.getAfosid());
+                            Set<String> areaCodeSet = new HashSet<>();
+                            if (input.getAreaCodes() != null) {
+                                areaCodeSet.addAll(input.getAreaCodeList());
+                            }
+                            if (input.getSelectedTransmitters() != null) {
+                                for (Transmitter t : input
+                                        .getSelectedTransmitters()) {
+                                    /*
+                                     * in this case, we only actually care about
+                                     * the area(s) if the selected Transmitter
+                                     * is a SAME Transmitter.
+                                     */
+                                    if (sameTransmitters.contains(t) == false) {
+                                        /*
+                                         * not a SAME transmitter, will not need
+                                         * the areas.
+                                         */
+                                        continue;
+                                    }
+                                    List<Area> transmitterAreas = this.areaDao
+                                            .getAreasForTransmitter(t.getId());
+                                    for (Area a : transmitterAreas) {
+                                        areaCodeSet.add(a.getAreaCode());
+                                    }
+                                }
+                            }
+
+                            List<String> ugcs = new ArrayList<>();
+                            for (String ugc : areaCodeSet) {
+                                if (ugc.charAt(2) == 'Z') {
+                                    Zone z = zoneDao.getByZoneCode(ugc);
+                                    if (z != null) {
+                                        for (Area area : z.getAreas()) {
+                                            if (!Collections.disjoint(
+                                                    area.getTransmitters(),
+                                                    sameTransmitters)) {
+                                                ugcs.add(area.getAreaCode());
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Area area = areaDao.getByAreaCode(ugc);
+                                    if (!Collections.disjoint(
+                                            area.getTransmitters(),
+                                            sameTransmitters)) {
+                                        ugcs.add(area.getAreaCode());
+                                    }
+                                }
+                            }
+                            builder.addAreasFromUGC(ugcs);
+                            String invalidAreas = builder
+                                    .summarizeInvalidAreas();
+                            String overLimitAreas = builder
+                                    .summarizeOverLimitAreas();
+                            if (overLimitAreas.isEmpty() == false) {
+                                statusHandler.error(
+                                        BMH_CATEGORY.SAME_TRUNCATION,
+                                        "Failed to all all areas to the SAME Message. "
+                                                + overLimitAreas);
+                            }
+                            if (invalidAreas.isEmpty() == false) {
+                                statusHandler.error(
+                                        BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                                        "Failed to all all areas to the SAME Message. "
+                                                + invalidAreas);
+                            }
+
+                            builder.setEffectiveTime(input.getEffectiveTime());
+                            builder.setExpireTime(input.getExpirationTime());
+                            builder.setNwsSiteId(SiteUtil.getSite());
+                            dac.setSAMEtone(builder.build().toString());
+                        }
                     }
                 }
                 try (Writer writer = Files.newBufferedWriter(messageFile,

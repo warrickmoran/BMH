@@ -74,6 +74,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 31, 2015  4339     bkowal      Added {@link #addAreasFromUGC(List)} to keep track
  *                                    of all areas that cannot be added as well as summary methods
  *                                    for reporting the areas that cannot be added.
+ * May 06, 2015  4471     bkowal      Made {@link #DEMO_EVENT} public.
  * 
  * </pre>
  * 
@@ -86,7 +87,7 @@ public class SAMEToneTextBuilder {
 
     private static final String SEP = "-";
 
-    private static final String DEMO_EVENT = "DMO";
+    public static final String DEMO_EVENT = "DMO";
 
     private static final String DEMO_AREA_CODE = "999000";
 

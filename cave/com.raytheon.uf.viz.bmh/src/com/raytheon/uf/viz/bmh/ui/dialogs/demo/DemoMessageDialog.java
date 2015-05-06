@@ -86,6 +86,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  *                                    format.
  * Mar 31, 2015  4248     rjpeter     Use PositionComparator.
  * Apr 27, 2015  4397     bkowal      Set the {@link InputMessage} update date.
+ * May 06, 2015  4471     bkowal      Set the SAME Tone Flag in {@link InputMessage} to
+ *                                    {@link Boolean#TRUE}.
  * </pre>
  * 
  * @author bsteffen
@@ -380,6 +382,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         inputMessage.setEffectiveTime(TimeUtil.newGmtCalendar());
         inputMessage.setInterrupt(true);
         inputMessage.setAlertTone(false);
+        inputMessage.setNwrsameTone(Boolean.TRUE);
         StringBuilder transmittersBuilder = new StringBuilder();
         for (Transmitter transmitter : selection.getTransmitters()) {
             if (transmittersBuilder.length() > 0) {
