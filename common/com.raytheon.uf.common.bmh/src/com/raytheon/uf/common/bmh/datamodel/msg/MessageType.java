@@ -50,6 +50,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
+import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -83,6 +84,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Feb 23, 2015  4140      rjpeter     Renamed foreign constraints.
  * Mar 25, 2015  4290      bsteffen    Switch to global replacement.
  * May 05, 2015  4463      bkowal      Added {@link #originator}.
+ * May 06, 2015  4463      bkowal      Default {@link #originator} to 'WXR'.
  * 
  * </pre>
  * 
@@ -192,7 +194,7 @@ public class MessageType {
 
     @Column(nullable = false, length = 3)
     @DynamicSerializeElement
-    private String originator;
+    private String originator = SAMEToneTextBuilder.NWS_ORIGINATOR;
 
     @Column(nullable = false)
     @DynamicSerializeElement
