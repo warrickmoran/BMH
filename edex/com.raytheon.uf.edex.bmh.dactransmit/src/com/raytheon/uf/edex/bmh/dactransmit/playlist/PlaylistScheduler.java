@@ -145,6 +145,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      an Interrupt arrives.
  * Mar 25, 2015  #4290     bsteffen     Switch to global replacement.
  * Apr 03, 2015  #4222     rjpeter      Fix discarding of bad messages.
+ * May 06, 2015  #4466     bkowal       No longer crash when invalid / incomplete playlists are
+ *                                      read during startup.
  * </pre>
  * 
  * @author dgilling
@@ -157,6 +159,17 @@ public final class PlaylistScheduler implements
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private static final String PLAYLIST_EXT = "*.xml";
+
+    /**
+     * The amount of time (in hours) before an invalid playlist will be deleted.
+     * If the system encounters an invalid playlist, it will only be purged it
+     * the difference between its last modification time and the current time is
+     * greater than the specified grace period. The grace period is used to
+     * ensure that we do not purge a playlist that is currently being written
+     * (specifically during startup).
+     */
+    private static final long INVALID_PLAYLIST_GRACE_PERIOD = (Integer
+            .getInteger("invalidPlaylistGracePeriod", 1) * TimeUtil.MILLIS_PER_HOUR);
 
     private static final Comparator<DacPlaylist> PLAYBACK_ORDER = new Comparator<DacPlaylist>() {
 
@@ -276,8 +289,20 @@ public final class PlaylistScheduler implements
         try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(
                 this.playlistDirectory, PLAYLIST_EXT)) {
             for (Path entry : dirStream) {
-                DacPlaylist playlist = JAXB.unmarshal(entry.toFile(),
-                        DacPlaylist.class);
+                DacPlaylist playlist = null;
+                try {
+                    playlist = JAXB
+                            .unmarshal(entry.toFile(), DacPlaylist.class);
+                } catch (Exception e) {
+                    logger.error(
+                            "Unable to parse playlist file: "
+                                    + entry.toString() + ".", e);
+                    DefaultMessageLogger.getInstance().logPlaylistError(
+                            BMH_COMPONENT.PLAYLIST_MANAGER,
+                            BMH_ACTIVITY.PLAYLIST_READ, entry.toString(), e);
+                    this.checkPurgeUnusablePlaylist(entry);
+                    continue;
+                }
                 playlist.setPath(entry);
 
                 if (playlist.isValid()) {
@@ -358,6 +383,36 @@ public final class PlaylistScheduler implements
         this.playlistMessgeLock = new Object();
 
         this.warnNoMessages = true;
+    }
+
+    private void checkPurgeUnusablePlaylist(final Path playlistPath) {
+        if (Files.exists(playlistPath) == false) {
+            return;
+        }
+        final long lastModifiedTime;
+        try {
+            lastModifiedTime = Files.getLastModifiedTime(playlistPath)
+                    .toMillis();
+        } catch (IOException e) {
+            logger.error(
+                    "Failed to determine the last modification time of playlist: "
+                            + playlistPath.toString() + ".", e);
+            return;
+        }
+        if ((System.currentTimeMillis() - lastModifiedTime) > INVALID_PLAYLIST_GRACE_PERIOD) {
+            /*
+             * Grace period exceeded - purge the playlist file.
+             */
+            logger.info("Attempting to purge unusable playlist: {} ...",
+                    playlistPath.toString());
+            try {
+                Files.deleteIfExists(playlistPath);
+            } catch (IOException e) {
+                logger.error(
+                        "Failed to purge playlist file: "
+                                + playlistPath.toString() + ".", e);
+            }
+        }
     }
 
     public boolean hasInterrupt() {
@@ -675,13 +730,13 @@ public final class PlaylistScheduler implements
                 newPlaylist = JAXB.unmarshal(playlistPath.toFile(),
                         DacPlaylist.class);
             } catch (Throwable e) {
-                logger.error("Unable to parse playlistfile: ",
-                        notification.getPlaylistPath(), e);
-                if (newPlaylist != null) {
-                    DefaultMessageLogger.getInstance().logError(
-                            BMH_COMPONENT.DAC_TRANSMIT,
-                            BMH_ACTIVITY.PLAYLIST_READ, newPlaylist, e);
-                }
+                logger.error(
+                        "Unable to parse playlist file: "
+                                + playlistPath.toString() + ".", e);
+                DefaultMessageLogger.getInstance().logPlaylistError(
+                        BMH_COMPONENT.PLAYLIST_MANAGER,
+                        BMH_ACTIVITY.PLAYLIST_READ, playlistPath.toString(), e);
+                this.checkPurgeUnusablePlaylist(playlistPath);
                 return;
             }
             newPlaylist.setPath(playlistPath);
