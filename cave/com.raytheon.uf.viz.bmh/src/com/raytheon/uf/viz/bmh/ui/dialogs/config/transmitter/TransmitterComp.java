@@ -118,6 +118,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 15, 2015    4398    rjpeter     Persist mode changes.
  * Apr 14, 2015    4390    rferrel     Reordering of groups/transmitters now use {@link PositionUtil}.
  * Apr 16, 2015    4398    rjpeter     Check all transmitter in daisy chain before sending transfer tone.
+ * May 06, 2015    4470    bkowal      Added a content menu item for {@link TransmitterGroup}s that will
+ *                                     allow users to disable all {@link Transmitter}s within the group.
  * </pre>
  * 
  * @author mpduff
@@ -333,6 +335,21 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     public void widgetSelected(SelectionEvent e) {
                         if (enabledWidget(e.widget)) {
                             deleteGroup();
+                        }
+                    }
+                });
+
+                boolean disableGroupEnabled = group.getEnabledTransmitters()
+                        .isEmpty() == false;
+                MenuItem disableGroupItem = this
+                        .createItem(menu, SWT.PUSH, disableGroupEnabled,
+                                "No Transmitter(s) in the group are currently enabled.");
+                disableGroupItem.setText("Disable Group...");
+                disableGroupItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        if (enabledWidget(e.widget)) {
+                            disableGroup();
                         }
                     }
                 });
@@ -895,6 +912,43 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                 statusHandler.error("Error deleting Transmitter Group: "
                         + toDelete.getName(), e);
             }
+        }
+    }
+
+    /**
+     * Disable {@link TransmitterGroup} menu action. Used to disable all
+     * currently enabled {@link Transmitter}s in the selected
+     * {@link TransmitterGroup}.
+     */
+    private void disableGroup() {
+        TreeItem selectedItem = tree.getSelection()[0];
+        TransmitterGroup group = (TransmitterGroup) selectedItem.getData();
+
+        StringBuilder sb = new StringBuilder(
+                "Are you sure you want to diable Transmitter(s): ");
+        int count = 0;
+        for (Transmitter transmitter : group.getEnabledTransmitters()) {
+            ++count;
+            if (count > 1) {
+                sb.append(", ");
+            }
+            sb.append(transmitter.getMnemonic());
+        }
+        sb.append(" in Transmitter Group ").append(group.getName()).append("?");
+        int answer = DialogUtility.showMessageBox(this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Group Disable",
+                sb.toString());
+        if (answer != SWT.YES) {
+            return;
+        }
+
+        try {
+            this.dataManager.disableTransmitterGroup(group);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to disable Transmitter Group: " + group.getName()
+                            + ".", e);
+            return;
         }
     }
 

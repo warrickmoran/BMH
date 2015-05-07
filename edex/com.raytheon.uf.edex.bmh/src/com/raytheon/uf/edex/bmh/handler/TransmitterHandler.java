@@ -20,7 +20,12 @@
 package com.raytheon.uf.edex.bmh.handler;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.springframework.util.CollectionUtils;
 
@@ -28,9 +33,11 @@ import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.notify.config.ChangeTimeZoneConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
+import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
 import com.raytheon.uf.common.serialization.SerializationException;
@@ -70,6 +77,8 @@ import com.raytheon.uf.edex.core.EdexException;
  * Apr 14, 2015   4390    rferrel     {@link #saveTransmitterGroups(TransmitterRequest)} checks for reorder.
  * Apr 14, 2015  4394     bkowal      Added {@link #getConfiguredTransmitterGroups(TransmitterRequest)}.
  * Apr 24, 2015  4423     rferrel     Issue {@link ChangeTimeZoneConfigNotification}.
+ * May 06, 2015  4470     bkowal      Added {@link #disableTransmitterGroup(TransmitterRequest)} and
+ *                                    {@link #saveTransmitters(Collection, AbstractBMHServerRequest)}.
  * </pre>
  * 
  * @author mpduff
@@ -120,6 +129,11 @@ public class TransmitterHandler extends
             notification = new TransmitterGroupConfigNotification(
                     ConfigChangeType.Delete, request.getTransmitterGroup());
             deleteTransmitterGroup(request);
+            break;
+        case DisableTransmitterGroup:
+            this.disableTransmitterGroup(request);
+            notification = new TransmitterGroupConfigNotification(
+                    ConfigChangeType.Update, request.getTransmitterGroup());
             break;
         case SaveGroupList:
             response = saveTransmitterGroups(request);
@@ -180,6 +194,51 @@ public class TransmitterHandler extends
         response.setTransmitter(newTrans);
 
         return response;
+    }
+
+    /**
+     * Saves all of the specified {@link Transmitter}s in a single transaction.
+     * 
+     * @param transmitters
+     *            the specified {@link Transmitter}s
+     * @param request
+     *            {@link AbstractBMHServerRequest} used to determine which dao
+     *            and logger to use
+     * @throws Exception
+     */
+    private void saveTransmitters(Collection<Transmitter> transmitters,
+            AbstractBMHServerRequest request) throws Exception {
+        if (CollectionUtils.isEmpty(transmitters)) {
+            return;
+        }
+
+        Map<Transmitter, Transmitter> updatedToOldTransmitterMap = Collections
+                .emptyMap();
+        IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
+        final TransmitterDao dao = new TransmitterDao(request.isOperational());
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            updatedToOldTransmitterMap = new HashMap<>(transmitters.size(),
+                    1.0f);
+            for (Transmitter transmitter : transmitters) {
+                if (transmitter.getId() == 0) {
+                    updatedToOldTransmitterMap.put(transmitter, null);
+                } else {
+                    updatedToOldTransmitterMap.put(transmitter,
+                            dao.getByID(transmitter.getId()));
+                }
+            }
+        }
+
+        dao.persistAll(transmitters);
+        if (CollectionUtils.isEmpty(updatedToOldTransmitterMap)) {
+            return;
+        }
+
+        final String user = BMHLoggerUtils.getUser(request);
+        for (Transmitter transmitter : updatedToOldTransmitterMap.keySet()) {
+            Transmitter old = updatedToOldTransmitterMap.get(transmitter);
+            BMHLoggerUtils.logSave(request, user, old, transmitter);
+        }
     }
 
     private TransmitterResponse saveTransmitterGroup(TransmitterRequest request)
@@ -280,6 +339,17 @@ public class TransmitterHandler extends
             String user = BMHLoggerUtils.getUser(request);
             BMHLoggerUtils.logDelete(request, user, group);
         }
+    }
+
+    private void disableTransmitterGroup(TransmitterRequest request)
+            throws Exception {
+        TransmitterGroup group = request.getTransmitterGroup();
+        Set<Transmitter> transmittersToDisable = group.getEnabledTransmitters();
+        for (Transmitter transmitter : transmittersToDisable) {
+            transmitter.setTxStatus(TxStatus.DISABLED);
+        }
+
+        this.saveTransmitters(transmittersToDisable, request);
     }
 
     private TransmitterResponse getTransmitters(TransmitterRequest request) {
