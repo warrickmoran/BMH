@@ -169,6 +169,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                    Type has been selected.
  * May 04, 2015  4447     bkowal      SAME Transmitters assigned to an existing {@link InputMessage}
  *                                    will override SAME Transmitters assigned to a {@link MessageType}.
+ * May 08, 2015  4477     bkowal      Disable the Contents button when a "New" message is started.
  * 
  * </pre>
  * 
@@ -1514,6 +1515,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         getMessageType(userInputMessage.getAfosid());
         if (selectedMessageType == null) {
             areaSelectionBtn.setEnabled(false);
+            this.contentsBtn.setEnabled(false);
             changeMsgTypeBtn.setEnabled(true);
         } else {
             areaSelectionBtn.setEnabled(true);
