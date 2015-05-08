@@ -67,6 +67,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSReturn;
  *                                     and rate of speech.
  * Apr 20, 2015 4314       bkowal      Use {@link TTSManager} synthesis to verify that the
  *                                     retry logic will be utilized.
+ * May 08, 2015 4465       bkowal      Generate audio for all recognized {@link BMHTimeZone}s.
  * 
  * </pre>
  * 
@@ -191,8 +192,8 @@ public class TimeMessagesGenerator {
         return true;
     }
 
-    public void process(final TtsVoice ttsVoice, final BMHTimeZone timeZone,
-            final int speechRate) throws StaticGenerationException {
+    public void process(final TtsVoice ttsVoice, final int speechRate)
+            throws StaticGenerationException {
         ITimer overallTimer = TimeUtil.getTimer();
         overallTimer.start();
 
@@ -266,20 +267,28 @@ public class TimeMessagesGenerator {
             }
         }
 
-        Set<String> timezones = new HashSet<>(2, 1.0f);
-        timezones.add(timeZone.getShortDisplayName(true));
-        timezones.add(timeZone.getShortDisplayName(false));
-        Iterator<String> timezoneIterator = timezones.iterator();
-        while (timezoneIterator.hasNext()) {
-            final String timezone = timezoneIterator.next();
-            final String logIdentifier = ttsVoice.getLanguage().name()
-                    + " Timezone " + timezone + " (Speech Rate: " + speechRate
-                    + ")";
-            if (this.generateStaticTimeMsg(
-                    cache.getTimezoneSSML(speechRate, timezone),
-                    this.getTimeVoiceTZFilePath(ttsVoice, speechRate, timezone),
-                    ttsVoice, logIdentifier)) {
-                ++totalFilesWritten;
+        /*
+         * Generate (or verify the existence of) audio for all possible time
+         * zones because the timezone can be dynamically changed at runtime. And
+         * we already generate all possibilities for other time fields.
+         */
+        for (BMHTimeZone bmhTimeZone : BMHTimeZone.values()) {
+            Set<String> timezones = new HashSet<>(2, 1.0f);
+            timezones.add(bmhTimeZone.getShortDisplayName(true));
+            timezones.add(bmhTimeZone.getShortDisplayName(false));
+
+            Iterator<String> timezoneIterator = timezones.iterator();
+            while (timezoneIterator.hasNext()) {
+                final String timezone = timezoneIterator.next();
+                final String logIdentifier = ttsVoice.getLanguage().name()
+                        + " Timezone " + timezone + " (Speech Rate: "
+                        + speechRate + ")";
+                if (this.generateStaticTimeMsg(cache.getTimezoneSSML(
+                        speechRate, timezone), this.getTimeVoiceTZFilePath(
+                        ttsVoice, speechRate, timezone), ttsVoice,
+                        logIdentifier)) {
+                    ++totalFilesWritten;
+                }
             }
         }
 

@@ -42,7 +42,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.BMHTimeZone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
@@ -127,6 +126,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
  * Apr 27, 2015 4397       bkowal      Set the {@link InputMessage} update date.
  * Apr 29, 2015 4450       bkowal      Re-activate any inactive time messages that were
  *                                     previously generated successfully.
+ * May 08, 2015 4465       bkowal      Generated time zone audio is no longer 
+ *                                     Transmitter specific.
  * 
  * </pre>
  * 
@@ -574,17 +575,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
         if (staticMsgType.getMsgTypeSummary().getDesignation() == Designation.TimeAnnouncement) {
             try {
-                BMHTimeZone tz = BMHTimeZone.getTimeZoneByID(group
-                        .getTimeZone());
-                if (tz == null) {
-                    statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
-                            "Failed to find the BMHTimeZone associated with identifier: "
-                                    + group.getTimeZone());
-
-                    return null;
-                }
-
-                this.tmGenerator.process(language.getVoice(), tz,
+                this.tmGenerator.process(language.getVoice(),
                         language.getSpeechRate());
             } catch (StaticGenerationException e) {
                 statusHandler
