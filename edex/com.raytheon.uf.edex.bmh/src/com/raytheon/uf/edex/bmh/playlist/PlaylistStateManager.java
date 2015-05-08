@@ -79,6 +79,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Apr 29, 2015   4394     bkowal      Support {@link INonStandardBroadcast}.
  * May 05, 2015   4456     bkowal      Update the interrupt flag associated with a {@link BroadcastMsg}
  *                                     after it has played as an interrupt.
+ * May 08, 2015   4478     bkowal      Prevent NPE in {@link #setToneFlags(PlaylistDataStructure, long)}.
  * 
  * </pre>
  * 
@@ -323,8 +324,8 @@ public class PlaylistStateManager {
 
     private void setToneFlags(PlaylistDataStructure playlistData,
             long broadcastId) {
-        final boolean interrupt = playlistData.getSuiteName().startsWith(
-                "Interrupt");
+        final boolean interrupt = (playlistData.getSuiteName() == null) ? false
+                : playlistData.getSuiteName().startsWith("Interrupt");
         MessagePlaybackPrediction prediction = playlistData.getPredictionMap()
                 .get(broadcastId);
         if (prediction.isPlayedAlertTone() || prediction.isPlayedSameTone()
