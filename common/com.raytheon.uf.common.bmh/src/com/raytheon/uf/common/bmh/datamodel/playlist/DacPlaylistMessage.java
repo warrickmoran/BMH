@@ -68,6 +68,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 07, 2015  4293     bkowal      Added get/set methods for {@link #messageBroadcastNotificationSent}.
  * Apr 27, 2015  4397     bkowal      Added {@link #initialRecognitionTime} and {@link #recognized}.
+ * May 11, 2015  4002     bkowal      Added {@link #initialBLDelayNotificationSent}.
  * 
  * </pre>
  * 
@@ -164,7 +165,14 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      * version of the containing playlist is read.
      */
     private boolean messageBroadcastNotificationSent;
-
+    
+    /**
+     * boolean used to ensure that once one delay notification is sent out for a
+     * single {@link DacPlaylistMessage} that may be associated with more than
+     * one delay scenario.
+     */
+    private transient boolean initialBLDelayNotificationSent;
+    
     /**
      * {@link #initialRecognitionTime} and {@link #recognized} only exist to
      * fulfill the statistics requirements. The {@link #initialRecognitionTime}
@@ -381,6 +389,22 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     }
 
     /**
+     * @return the initialBLDelayNotificationSent
+     */
+    public boolean isInitialBLDelayNotificationSent() {
+        return initialBLDelayNotificationSent;
+    }
+
+    /**
+     * @param initialBLDelayNotificationSent
+     *            the initialBLDelayNotificationSent to set
+     */
+    public void setInitialBLDelayNotificationSent(
+            boolean initialBLDelayNotificationSent) {
+        this.initialBLDelayNotificationSent = initialBLDelayNotificationSent;
+    }
+    
+    /**
      * @return the initialRecognitionTime
      */
     public long getInitialRecognitionTime() {
@@ -394,6 +418,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     public void setInitialRecognitionTime(long initialRecognitionTime) {
         this.initialRecognitionTime = initialRecognitionTime;
     }
+
 
     /**
      * @return the recognized

@@ -177,6 +177,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * May 05, 2015  4456     bkowal      Do not write an interrupt playlist for a {@link BroadcastMsg}
  *                                    that has already played as an interrupt.
  * May 06, 2015  4471     bkowal      Added support for Demo Message SAME Tones.
+ * May 11, 2015  4002     bkowal      Set the trigger message id in the playlist.
  * </pre>
  * 
  * @author bsteffen
@@ -654,6 +655,9 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.refresh(programSuite.getTriggers());
                 mergeMessage(playlist, msg);
             }
+            if (isTrigger) {
+                playlist.setTriggerBroadcastId(msg.getId());
+            }
             DacPlaylist dacPlaylist = persistPlaylist(playlist, programSuite,
                     false, null);
             if ((dacPlaylist != null) && isTrigger) {
@@ -820,6 +824,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 dac.addMessage(dacMessage);
             }
         }
+        dac.setTriggerBroadcastId(db.getTriggerBroadcastId());
         return dac;
     }
 

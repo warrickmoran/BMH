@@ -50,6 +50,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Sep 18, 2014  3554     bsteffen    Initialize messages to avoid null list.
  * Dec 16, 2014  3753     bsteffen    Add isEmpty()
  * Mar 05, 2015  4222     bkowal      Handle playlists that never expire.
+ * May 11, 2015  4002     bkowal      Added {@link #triggerBroadcastId}.
  * 
  * </pre>
  * 
@@ -80,6 +81,9 @@ public class DacPlaylist {
 
     @XmlAttribute
     private Calendar latestTrigger;
+
+    @XmlAttribute
+    private Long triggerBroadcastId = null;
 
     @XmlAttribute(name = "interrupt")
     private boolean interrupt;
@@ -183,6 +187,14 @@ public class DacPlaylist {
 
     public void setLatestTrigger(Calendar latestTrigger) {
         this.latestTrigger = latestTrigger;
+    }
+
+    public Long getTriggerBroadcastId() {
+        return triggerBroadcastId;
+    }
+
+    public void setTriggerBroadcastId(Long triggerBroadcastId) {
+        this.triggerBroadcastId = triggerBroadcastId;
     }
 
     public void addMessage(DacPlaylistMessageId message) {

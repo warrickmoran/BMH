@@ -43,6 +43,7 @@ import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
@@ -93,6 +94,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Apr 15, 2015  4293     bkowal      Handle the case when a single broadcast message has been
  *                                    expired.
  * May 04, 2015  4449     bkowal      Added {@link #QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER}.
+ * May 11, 2015  4002     bkowal      Added {@link #triggerBroadcastId}.
  * 
  * </pre>
  * 
@@ -151,6 +153,9 @@ public class Playlist {
     @Column
     private Calendar endTime;
 
+    @Transient
+    private Long triggerBroadcastId = null;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(schema = "bmh", name = "playlist_msg", joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "message_id", referencedColumnName = "id"))
     @Fetch(FetchMode.SUBSELECT)
@@ -203,6 +208,14 @@ public class Playlist {
 
     public Calendar getEndTime() {
         return endTime;
+    }
+
+    public Long getTriggerBroadcastId() {
+        return triggerBroadcastId;
+    }
+
+    public void setTriggerBroadcastId(Long triggerBroadcastId) {
+        this.triggerBroadcastId = triggerBroadcastId;
     }
 
     public void setEndTime(Calendar endTime) {

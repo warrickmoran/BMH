@@ -147,6 +147,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Apr 03, 2015  #4222     rjpeter      Fix discarding of bad messages.
  * May 06, 2015  #4466     bkowal       No longer crash when invalid / incomplete playlists are
  *                                      read during startup.
+ * May 11, 2015  #4002     bkowal       Handle all Broadcast Live message delay scenarios.
  * </pre>
  * 
  * @author dgilling
@@ -755,6 +756,11 @@ public final class PlaylistScheduler implements
 
                 if (newPlaylist.isInterrupt()) {
                     interrupts.add(newPlaylist);
+                    if (this.delayInterrupts && (this.type == BROADCASTTYPE.BL)) {
+                        final DacPlaylistMessage messageData = this.cache
+                                .getMessage(newPlaylist.getMessages().get(0));
+                        this.publishDelayedNotification(messageData, true);
+                    }
                     return;
                 }
 
@@ -830,6 +836,16 @@ public final class PlaylistScheduler implements
                                 toReplace.getCreationTime())) {
                             activePlaylists.remove(toReplace);
                             activePlaylists.add(newPlaylist);
+                            if (newPlaylist.getTriggerBroadcastId() != null
+                                    && newPlaylist.getTriggerBroadcastId()
+                                            .equals(toReplace
+                                                    .getTriggerBroadcastId()) == false) {
+                                /*
+                                 * The playlist is not currently playing; but,
+                                 * it will be triggered soon.
+                                 */
+                                this.handlePotentialDelayedTriggerNotification(newPlaylist);
+                            }
                             expired = toReplace;
                         } else {
                             logger.warn("Received an update to playlist "
@@ -850,6 +866,13 @@ public final class PlaylistScheduler implements
                         return;
                     } else {
                         activePlaylists.add(newPlaylist);
+                        if (newPlaylist.getTriggerBroadcastId() != null) {
+                            /*
+                             * The playlist is not currently playing; but, it
+                             * will be triggered soon.
+                             */
+                            this.handlePotentialDelayedTriggerNotification(newPlaylist);
+                        }
                     }
                 }
             }
@@ -897,6 +920,67 @@ public final class PlaylistScheduler implements
              */
             setCurrentPlaylist(playlist, update, true);
         }
+    }
+
+    /**
+     * This method will determine whether or not a
+     * {@link MessageDelayedBroadcastNotification} should be published for the
+     * specified {@link DacPlaylist}. A
+     * {@link MessageDelayedBroadcastNotification} will be published when the
+     * {@link DacPlaylist} includes a trigger message that is a Warning (and
+     * there is an active broadcast live session). This scenario is completely
+     * different from when a new playlist arrives for a warning message that is
+     * in the currently playing suite because in the case of the trigger message
+     * the switch over to the new suite has not already occurred; so, the active
+     * live broadcast is preventing the new suite from playing.
+     * 
+     * @param playlist
+     *            the specified {@link DacPlaylist}
+     */
+    private void handlePotentialDelayedTriggerNotification(
+            final DacPlaylist playlist) {
+        if (this.delayInterrupts == false || this.type != BROADCASTTYPE.BL
+                || playlist.isInterrupt()) {
+            return;
+        }
+
+        DacPlaylistMessageId id = null;
+        for (DacPlaylistMessageId dacId : playlist.getMessages()) {
+            if (dacId.getBroadcastId() == playlist.getTriggerBroadcastId()) {
+                id = dacId;
+                break;
+            }
+        }
+        if (id == null) {
+            return;
+        }
+        DacPlaylistMessage messageData = this.cache.getMessage(id);
+        if (messageData == null) {
+            logger.warn(
+                    "Failed to find a cached playlist message for playlist message id {}.",
+                    id.toString());
+            return;
+        }
+        if (messageData.isWarning() == false || messageData.getPlayCount() > 0
+                || messageData.isInitialBLDelayNotificationSent()
+                || messageData.isValid() == false) {
+            /*
+             * Not a Warning or already played once - no notification required.
+             */
+            return;
+        }
+
+        this.publishDelayedNotification(messageData, playlist.isInterrupt());
+    }
+
+    private void publishDelayedNotification(DacPlaylistMessage messageData,
+            final boolean interrupt) {
+        final String expire = (messageData.getExpire() == null) ? StringUtils.EMPTY
+                : messageData.getExpire().getTime().toString();
+        MessageDelayedBroadcastNotification notification = new MessageDelayedBroadcastNotification(
+                messageData.getBroadcastId(), interrupt, messageData.getName(),
+                messageData.getMessageType(), expire);
+        this.eventBus.post(notification);
     }
 
     /**
@@ -963,7 +1047,30 @@ public final class PlaylistScheduler implements
          * message).
          */
         List<DacPlaylistMessageId> unperiodicMessages = new ArrayList<>();
+        /*
+         * 
+         */
+        final boolean checkAllForDelay = this.delayInterrupts
+                && (this.type == BROADCASTTYPE.BL);
         for (DacPlaylistMessageId id : playlistMessages) {
+            if (checkAllForDelay) {
+                DacPlaylistMessage messageData = cache.getMessage(id);
+                if (messageData != null
+                        && (playlist.isInterrupt() == false && messageData
+                                .isWarning())
+                        && messageData.getPlayCount() == 0
+                        && messageData.isInitialBLDelayNotificationSent() == false
+                        && messageData.isValid()) {
+                    /*
+                     * Rqmt BMH0094: a user needs to be notified when an active
+                     * live broadcast is preventing the broadcast of another
+                     * interrupt or a warning.
+                     */
+                    this.publishDelayedNotification(messageData,
+                            playlist.isInterrupt());
+                    messageData.setInitialBLDelayNotificationSent(true);
+                }
+            }
             if (!past.contains(id)) {
                 DacPlaylistMessage messageData = cache.getMessage(id);
                 if (messageData.isPeriodic()
@@ -1041,24 +1148,6 @@ public final class PlaylistScheduler implements
             }
 
             DacPlaylistMessage messageData = cache.getMessage(messageId);
-
-            /**
-             * Rqmt BMH0094: a user needs to be notified when an active live
-             * broadcast is preventing the broadcast of another interrupt or a
-             * warning.
-             */
-            if ((playlist.isInterrupt() || messageData.isWarning())
-                    && this.delayInterrupts && (this.type == BROADCASTTYPE.BL)) {
-                final String expire = (messageData.getExpire() == null) ? StringUtils.EMPTY
-                        : messageData.getExpire().getTime().toString();
-                MessageDelayedBroadcastNotification notification = new MessageDelayedBroadcastNotification(
-                        messageData.getBroadcastId(), playlist.isInterrupt(),
-                        messageData.getName(), messageData.getMessageType(),
-                        expire);
-                logger.info("Notifying users of delayed broadcast: {}.",
-                        notification.toString());
-                this.eventBus.post(notification);
-            }
 
             /*
              * ignore start/expire times for interrupt playlists, we just want

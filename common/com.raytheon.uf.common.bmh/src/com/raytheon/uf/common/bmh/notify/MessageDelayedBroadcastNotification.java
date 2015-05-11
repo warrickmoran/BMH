@@ -26,7 +26,12 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * Allows non-EDEX components to send message broadcast delayed notifications to
- * AlertViz.
+ * AlertViz. This notification will be used in three scenarios:
+ * 
+ * 1) An interrupt associated with any message type is delayed. 2) A trigger
+ * message that is associated with a warning message type is delayed. 3) A
+ * non-trigger message that is part of the currently playing suite and it
+ * associated with a warning message type is delayed.
  * 
  * <pre>
  * 
@@ -36,6 +41,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Jan 19, 2015 4002       bkowal      Initial creation
  * Mar 03, 2015 4002       bkowal      Added {@link #toString()}.
+ * May 11, 2015 4002       bkowal      Improved JavaDoc.
  * 
  * </pre>
  * 
