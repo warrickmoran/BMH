@@ -93,6 +93,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 16, 2015  4395     rferrel     Added {@link #ALL_UNEXPIRED_QUERY}.
  * Apr 21, 2015  4397     bkowal      Added {@link #updateDate}.
+ * May 11, 2015  4476     bkowal      Added {@link #ALL_WITH_NAME_AND_AFOSID_QUERY}.
  * 
  * </pre>
  * 
@@ -106,7 +107,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
         @NamedQuery(name = InputMessage.UNEXPIRED_QUERY_NAME, query = InputMessage.UNEXPIRED_QUERY),
         @NamedQuery(name = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME, query = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY),
         @NamedQuery(name = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME, query = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY),
-        @NamedQuery(name = InputMessage.ALL_UNEXPIRED_QUERY_NAME, query = InputMessage.ALL_UNEXPIRED_QUERY) })
+        @NamedQuery(name = InputMessage.ALL_UNEXPIRED_QUERY_NAME, query = InputMessage.ALL_UNEXPIRED_QUERY),
+        @NamedQuery(name = InputMessage.ALL_WITH_NAME_AND_AFOSID, query = InputMessage.ALL_WITH_NAME_AND_AFOSID_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "input_msg", schema = "bmh")
@@ -164,6 +166,14 @@ public class InputMessage {
     public static final String ACTIVE_WITH_MRD_LIKE_QUERY_NAME = "getActiveInputMessagesWithMrdLike";
 
     protected static final String ACTIVE_WITH_MRD_LIKE_QUERY = "FROM InputMessage m WHERE m.mrd LIKE :mrdLike and m.expirationTime >= :expireAfter and m.active = true";
+
+    /**
+     * Used to retrieve all {@link InputMessage}s with the specified Afos Id and
+     * Name. Primarily only useful for static messages.
+     */
+    public static final String ALL_WITH_NAME_AND_AFOSID = "getAllWithNameAndAfosId";
+
+    protected static final String ALL_WITH_NAME_AND_AFOSID_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid AND m.name = :name";
 
     private static final int AREA_CODE_LENGTH = 4096;
 

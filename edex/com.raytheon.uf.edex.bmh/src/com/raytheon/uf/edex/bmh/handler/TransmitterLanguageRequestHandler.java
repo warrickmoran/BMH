@@ -21,6 +21,8 @@ package com.raytheon.uf.edex.bmh.handler;
 
 import java.util.List;
 
+import org.springframework.util.CollectionUtils;
+
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
@@ -34,7 +36,6 @@ import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
-import com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
 
@@ -56,6 +57,7 @@ import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
  * Feb 09, 2015  4096     bsteffen    Filter Unacceptable Words.
  * Mar 13, 2015  4213     bkowal      Added support for saving and deleting {@link StaticMessageType}s.
  * Apr 28, 2015  4248     bkowal      Added {@link #validateStaticMessageType(TransmitterLanguageRequest)}.
+ * May 11, 2015  4476     bkowal      Removed deprecated methods.
  * 
  * </pre>
  * 
@@ -93,14 +95,6 @@ public class TransmitterLanguageRequestHandler extends
         case ValidateStaticMsgType:
             this.validateStaticMessageType(request);
             return null;
-        case DeleteStaticMsgType:
-            notification = new StaticMsgTypeConfigNotification(
-                    ConfigChangeType.Delete, request.getTransmitterLanguage()
-                            .getTransmitterGroup(), request
-                            .getTransmitterLanguage().getLanguage(), request
-                            .getStaticMsgType().getMsgTypeSummary().getAfosid());
-            this.deleteStaticMsgType(request);
-            break;
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -149,6 +143,29 @@ public class TransmitterLanguageRequestHandler extends
             oldTl = transmitterLanguageDao.getByID(tl.getId());
         }
         transmitterLanguageDao.saveOrUpdate(tl);
+
+        /**
+         * Publish the required {@link StaticMsgTypeConfigNotification} if any
+         * {@link StaticMessageType}s have been removed as part of this update.
+         */
+        if (CollectionUtils.isEmpty(request.getTransmitterLanguage()
+                .getRemovedStaticMsgTypes()) == false) {
+            for (StaticMessageType staticMsgType : request
+                    .getTransmitterLanguage().getRemovedStaticMsgTypes()) {
+                /*
+                 * TODO: should update StaticMsgTypeConfigNotification to
+                 * support multiple afos ids simultaneously.
+                 */
+                BmhMessageProducer.sendConfigMessage(
+                        new StaticMsgTypeConfigNotification(
+                                ConfigChangeType.Delete, request
+                                        .getTransmitterLanguage()
+                                        .getTransmitterGroup(),
+                                request.getTransmitterLanguage().getLanguage(),
+                                staticMsgType.getMsgTypeSummary().getAfosid()),
+                        request.isOperational());
+            }
+        }
 
         TransmitterLanguageResponse response = new TransmitterLanguageResponse();
         response.addTransmitterLanguage(tl);
@@ -213,13 +230,5 @@ public class TransmitterLanguageRequestHandler extends
             String user = BMHLoggerUtils.getUser(request);
             BMHLoggerUtils.logDelete(request, user, oldTl);
         }
-    }
-
-    private void deleteStaticMsgType(TransmitterLanguageRequest request) {
-        StaticMessageTypeDao dao = new StaticMessageTypeDao(
-                request.isOperational());
-        StaticMessageType staticMsgType = request.getStaticMsgType();
-        staticMsgType.setTransmitterLanguage(request.getTransmitterLanguage());
-        dao.delete(staticMsgType);
     }
 }
