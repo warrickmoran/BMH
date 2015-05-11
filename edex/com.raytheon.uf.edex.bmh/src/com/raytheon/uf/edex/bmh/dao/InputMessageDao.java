@@ -24,6 +24,8 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.util.CollectionUtils;
+
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
@@ -47,6 +49,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 01, 2015  4326     bsteffen    Allow reuse of MRD after old message expires.
  * Apr 16, 2015  4395     rferrel     Added {@link #getAllUnexpiredInputMessages(Calendar)}.
+ * May 11, 2015  4476     bkowal      Added {@link #getAllWithAfosIdAndName(String, String)}.
  * 
  * </pre>
  * 
@@ -243,5 +246,21 @@ public class InputMessageDao extends
         List<InputMessage> result = (List<InputMessage>) findByNamedQueryAndNamedParam(
                 InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME, names, values);
         return result;
+    }
+
+    public List<InputMessage> getAllWithAfosIdAndName(String afosId, String name) {
+        final String[] names = { "afosid", "name" };
+        final String[] values = { afosId, name };
+        List<?> results = this.findByNamedQueryAndNamedParam(
+                InputMessage.ALL_WITH_NAME_AND_AFOSID, names, values);
+        if (CollectionUtils.isEmpty(results)) {
+            return Collections.emptyList();
+        }
+
+        List<InputMessage> inputMessages = new ArrayList<>(results.size());
+        for (Object object : results) {
+            inputMessages.add((InputMessage) object);
+        }
+        return inputMessages;
     }
 }

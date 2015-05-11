@@ -44,6 +44,8 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Jan 19, 2015 4011       bkowal      Added {@link #deleteLanguage(TransmitterLanguage)}.
  * Mar 12, 2015 4213       bkowal      Added methods to save / update static message types.
  * Apr 28, 2015 4248       bkowal      Added {@link #validateStaticMessageType(StaticMessageType, Language)}.
+ * May 11, 2015 4476       bkowal      Removed methods deprecated by positional ordering of
+ *                                     static message types.
  * 
  * </pre>
  * 
@@ -109,16 +111,6 @@ public class TransmitterLanguageDataManager {
         TransmitterLanguageRequest request = new TransmitterLanguageRequest();
         request.setAction(TransmitterLanguageRequestAction.ValidateStaticMsgType);
         request.setLanguage(language);
-        request.setStaticMsgType(staticMsgType);
-
-        BmhUtils.sendRequest(request);
-    }
-
-    public void deleteStaticMessageType(StaticMessageType staticMsgType)
-            throws Exception {
-        TransmitterLanguageRequest request = new TransmitterLanguageRequest();
-        request.setAction(TransmitterLanguageRequestAction.DeleteStaticMsgType);
-        request.setTransmitterLanguage(staticMsgType.getTransmitterLanguage());
         request.setStaticMsgType(staticMsgType);
 
         BmhUtils.sendRequest(request);

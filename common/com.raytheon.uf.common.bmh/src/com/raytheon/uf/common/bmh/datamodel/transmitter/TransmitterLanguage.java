@@ -35,6 +35,7 @@ import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
@@ -70,6 +71,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 02, 2015 4248       rjpeter     Updated staticMessageTypes database relation to a set, added ordered returns.
  * Apr 08, 2015 4248       bkowal      Added {@link #removeStaticMessageType(StaticMessageType)}. Update positions
  *                                     on add and remove.
+ * May 11, 2015 4476       bkowal      Added {@link #removedStaticMsgTypes}.
  * </pre>
  * 
  * @author rjpeter
@@ -108,6 +110,10 @@ public class TransmitterLanguage {
     @Fetch(FetchMode.SUBSELECT)
     private Set<StaticMessageType> staticMessageTypes;
 
+    @Transient
+    @DynamicSerializeElement
+    private Set<StaticMessageType> removedStaticMsgTypes;
+
     public void addStaticMessageType(StaticMessageType staticMsgType) {
         if (this.staticMessageTypes == null) {
             this.staticMessageTypes = new HashSet<>();
@@ -124,6 +130,11 @@ public class TransmitterLanguage {
         if (this.staticMessageTypes == null) {
             return;
         }
+
+        if (this.removedStaticMsgTypes == null) {
+            this.removedStaticMsgTypes = new HashSet<>();
+        }
+        this.removedStaticMsgTypes.add(staticMsgType);
 
         Iterator<StaticMessageType> stmIter = this.staticMessageTypes
                 .iterator();
@@ -284,6 +295,15 @@ public class TransmitterLanguage {
         for (StaticMessageType stm : this.staticMessageTypes) {
             stm.setTransmitterLanguage(this);
         }
+    }
+
+    public Set<StaticMessageType> getRemovedStaticMsgTypes() {
+        return removedStaticMsgTypes;
+    }
+
+    public void setRemovedStaticMsgTypes(
+            Set<StaticMessageType> removedStaticMsgTypes) {
+        this.removedStaticMsgTypes = removedStaticMsgTypes;
     }
 
     @Override

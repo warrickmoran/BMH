@@ -30,6 +30,7 @@ import java.util.Set;
 
 import javax.xml.bind.JAXBElement;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.util.CollectionUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
@@ -128,6 +129,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
  *                                     previously generated successfully.
  * May 08, 2015 4465       bkowal      Generated time zone audio is no longer 
  *                                     Transmitter specific.
+ * May 11, 2015 4476       bkowal      Inline replace {@link InputMessage}s that do not have an associated
+ *                                     {@link BroadcastMsg} or are associated with failure.
  * 
  * </pre>
  * 
@@ -192,7 +195,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                     + TransmitterLanguageConfigNotification.class
                     + " for key: " + notification.getKey());
             if (notification.getType() == ConfigChangeType.Delete) {
-                synchronized (this.configurationLock) {
+                synchronized (configurationLock) {
                     try {
                         this.deactivateTransmitterLanguageStaticMsgs(
                                 notification.getTransmitterGroup(),
@@ -347,7 +350,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                         .getProgramEnabledGroups(notification.getId()));
             } else if (notification.getType() == ConfigChangeType.Delete) {
                 /*
-                 * TODO? a Transmitter must be enabled before a Program can be
+                 * TODO? a Transmitter must be disabled before a Program can be
                  * deleted so there would not be any enabled associated
                  * Transmitters. All message de-activation would be initiated by
                  * the Transmitter Group Config notification.
@@ -460,7 +463,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             return Collections.emptyList();
         }
 
-        synchronized (this.configurationLock) {
+        synchronized (configurationLock) {
             List<MessageType> types = new ArrayList<>(1);
             types.add(type);
             List<ValidatedMessage> generatedMessages = new ArrayList<>();
@@ -499,7 +502,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         List<TransmitterLanguage> languages = new ArrayList<>(1);
         languages.add(language);
 
-        synchronized (this.configurationLock) {
+        synchronized (configurationLock) {
             return this.generateStaticMessages(group, languages);
         }
     }
@@ -524,7 +527,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         List<TransmitterLanguage> languages = this.transmitterLanguageDao
                 .getLanguagesForTransmitterGroup(group);
 
-        synchronized (this.configurationLock) {
+        synchronized (configurationLock) {
             return this.generateStaticMessages(group, languages);
         }
     }
@@ -739,7 +742,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             /*
              * an associated broadcast message does not exist or is incomplete.
              */
-            return this.create(language, staticMsgType, text, groupSet);
+            return this.createOrupdate(language, staticMsgType, text, groupSet);
         }
 
         /*
@@ -838,20 +841,43 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         return sb.toString();
     }
 
-    private ValidatedMessage create(TransmitterLanguage language,
+    private ValidatedMessage createOrupdate(TransmitterLanguage language,
             StaticMessageType staticMsgType, final String text,
             final Set<TransmitterGroup> groupSet) {
         Calendar now = TimeUtil.newCalendar();
-
-        /* create an InputMessage */
-        InputMessage inputMsg = new InputMessage();
-        inputMsg.setUpdateDate(TimeUtil.newGmtCalendar());
 
         String inputMsgName = this.getStaticMsgName(groupSet, staticMsgType);
         // TODO: use annotation scanning to get the max field length
         if (inputMsgName.length() > 40) {
             inputMsgName = inputMsgName.substring(0, 39);
         }
+
+        String logText = StringUtils.EMPTY;
+        InputMessage inputMsg = null;
+        ValidatedMessage validMsg = null;
+
+        List<InputMessage> existingInputMessages = this.inputMessageDao
+                .getAllWithAfosIdAndName(staticMsgType.getMsgTypeSummary()
+                        .getAfosid(), inputMsgName);
+        if (existingInputMessages.isEmpty()) {
+            inputMsg = new InputMessage();
+            validMsg = new ValidatedMessage();
+            logText = "Creating ";
+        } else {
+            /*
+             * With the implementation of inline message replace, there should
+             * always only be one when there is an existing input message.
+             */
+            inputMsg = existingInputMessages.iterator().next();
+            validMsg = this.validatedMessageDao
+                    .getValidatedMsgByInputMsg(inputMsg);
+            if (validMsg == null) {
+                validMsg = new ValidatedMessage();
+            }
+            logText = "Updating ";
+        }
+        inputMsg.setUpdateDate(TimeUtil.newGmtCalendar());
+
         inputMsg.setName(inputMsgName);
 
         inputMsg.setLanguage(language.getLanguage());
@@ -874,11 +900,20 @@ public class StaticMessageGenerator implements IContextStateProcessor {
          * included based on the ugcs associated with the specific transmitter
          * group.
          */
-        ValidatedMessage validMsg = new ValidatedMessage();
         validMsg.setInputMessage(inputMsg);
         validMsg.setLdadStatus(LdadStatus.ERROR);
         validMsg.setTransmissionStatus(TransmissionStatus.ACCEPTED);
         validMsg.setTransmitterGroups(groupSet);
+
+        StringBuilder logMsg = new StringBuilder(logText
+                + " static message for transmitter group ");
+        logMsg.append(groupSet.iterator().next().getName());
+        logMsg.append(" with afos id ");
+        logMsg.append(staticMsgType.getMsgTypeSummary().getAfosid());
+        logMsg.append(" and language ");
+        logMsg.append(language.getLanguage().toString());
+        logMsg.append(".");
+        statusHandler.info(logMsg.toString());
 
         this.validatedMessageDao.persistCascade(validMsg);
 

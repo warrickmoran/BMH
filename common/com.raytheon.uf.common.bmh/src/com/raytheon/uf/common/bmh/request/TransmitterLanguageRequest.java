@@ -42,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 13, 2015  4213     bkowal      Added fields to support saving and deleting static message types.
  * Apr 28, 2015  4248     bkowal      Added {@link TransmitterLanguageRequestAction#ValidateStaticMsgType} and
  *                                    {@link #language}.
+ * May 11, 2015  4476     bkowal      Removed deprecated fields.
  * 
  * </pre>
  * 
@@ -55,7 +56,7 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
      * yet-to-be-implemented dialog
      */
     public enum TransmitterLanguageRequestAction {
-        GetTransmitterLanguagesForTransmitterGrp, UpdateTransmitterLanguage, DeleteTransmitterLanguage, ValidateStaticMsgType, DeleteStaticMsgType
+        GetTransmitterLanguagesForTransmitterGrp, UpdateTransmitterLanguage, DeleteTransmitterLanguage, ValidateStaticMsgType
     }
 
     @DynamicSerializeElement
