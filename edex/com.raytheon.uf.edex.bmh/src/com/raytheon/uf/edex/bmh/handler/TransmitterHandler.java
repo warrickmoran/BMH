@@ -79,6 +79,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Apr 24, 2015  4423     rferrel     Issue {@link ChangeTimeZoneConfigNotification}.
  * May 06, 2015  4470     bkowal      Added {@link #disableTransmitterGroup(TransmitterRequest)} and
  *                                    {@link #saveTransmitters(Collection, AbstractBMHServerRequest)}.
+ * May 08, 2015  4470     bkowal      Added {@link #enableTransmitterGroup(TransmitterRequest)}.
  * </pre>
  * 
  * @author mpduff
@@ -132,6 +133,11 @@ public class TransmitterHandler extends
             break;
         case DisableTransmitterGroup:
             this.disableTransmitterGroup(request);
+            notification = new TransmitterGroupConfigNotification(
+                    ConfigChangeType.Update, request.getTransmitterGroup());
+            break;
+        case EnableTransmitterGroup:
+            this.enableTransmitterGroup(request);
             notification = new TransmitterGroupConfigNotification(
                     ConfigChangeType.Update, request.getTransmitterGroup());
             break;
@@ -350,6 +356,18 @@ public class TransmitterHandler extends
         }
 
         this.saveTransmitters(transmittersToDisable, request);
+    }
+
+    private void enableTransmitterGroup(TransmitterRequest request)
+            throws Exception {
+        TransmitterGroup group = request.getTransmitterGroup();
+        List<Transmitter> transmittersToEnable = group
+                .getOrderedConfiguredTransmittersList();
+        for (Transmitter transmitter : transmittersToEnable) {
+            transmitter.setTxStatus(TxStatus.ENABLED);
+        }
+
+        this.saveTransmitters(transmittersToEnable, request);
     }
 
     private TransmitterResponse getTransmitters(TransmitterRequest request) {

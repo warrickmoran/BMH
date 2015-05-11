@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -120,6 +121,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 16, 2015    4398    rjpeter     Check all transmitter in daisy chain before sending transfer tone.
  * May 06, 2015    4470    bkowal      Added a content menu item for {@link TransmitterGroup}s that will
  *                                     allow users to disable all {@link Transmitter}s within the group.
+ * May 08, 2015    4470    bkowal      It is now possible to enable all configured Transmitter(s) within
+ *                                     a group.
  * </pre>
  * 
  * @author mpduff
@@ -339,20 +342,59 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     }
                 });
 
-                boolean disableGroupEnabled = group.getEnabledTransmitters()
-                        .isEmpty() == false;
-                MenuItem disableGroupItem = this
-                        .createItem(menu, SWT.PUSH, disableGroupEnabled,
-                                "No Transmitter(s) in the group are currently enabled.");
-                disableGroupItem.setText("Disable Group...");
-                disableGroupItem.addSelectionListener(new SelectionAdapter() {
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        if (enabledWidget(e.widget)) {
-                            disableGroup();
-                        }
+                if (group.getEnabledTransmitters().isEmpty()) {
+                    final boolean containsGeneralSuite = this
+                            .containsGeneralSuite(group.getProgramSummary());
+                    final boolean dacPortsAssigned = group
+                            .getOrderedConfiguredTransmittersList().isEmpty() == false;
+                    final boolean enabled = containsGeneralSuite
+                            && dacPortsAssigned;
+                    String disabledMsg = StringUtils.EMPTY;
+                    /*
+                     * Determine which message to display if the menu item is
+                     * disabled. If both cases apply, the program assignment
+                     * message will take priority.
+                     */
+                    if (enabled == false && containsGeneralSuite == false) {
+                        disabledMsg = "No program has been assigned to the group and/or the assigned program does not contain a general suite.";
+                    } else if (enabled == false && dacPortsAssigned == false) {
+                        disabledMsg = "No dac has been assigned to the group and/or no ports have been assigned to the Transmitters.";
                     }
-                });
+
+                    /*
+                     * all transmitters are currently disabled. allow the user
+                     * to enable the entire group - limited to the Transmitters
+                     * that have actually been configured.
+                     */
+                    MenuItem enableGroupItem = this.createItem(menu, SWT.PUSH,
+                            enabled, disabledMsg);
+                    enableGroupItem.setText("Enable Group...");
+                    enableGroupItem
+                            .addSelectionListener(new SelectionAdapter() {
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    if (enabledWidget(e.widget)) {
+                                        enableGroup();
+                                    }
+                                }
+                            });
+                } else {
+                    /*
+                     * allow the user to disable all enabled transmitters.
+                     */
+                    MenuItem disableGroupItem = this.createItem(menu, SWT.PUSH,
+                            true, StringUtils.EMPTY);
+                    disableGroupItem.setText("Disable Group...");
+                    disableGroupItem
+                            .addSelectionListener(new SelectionAdapter() {
+                                @Override
+                                public void widgetSelected(SelectionEvent e) {
+                                    if (enabledWidget(e.widget)) {
+                                        disableGroup();
+                                    }
+                                }
+                            });
+                }
             } else {
                 transmitterMaint = ((groupTransmitter != null) && (groupTransmitter
                         .getTxStatus() == TxStatus.MAINT))
@@ -924,12 +966,16 @@ public class TransmitterComp extends Composite implements INotificationObserver 
         TreeItem selectedItem = tree.getSelection()[0];
         TransmitterGroup group = (TransmitterGroup) selectedItem.getData();
 
+        final String confirmEnding = (group.getEnabledTransmitters().size() == 1) ? ": "
+                : "s: ";
+
         StringBuilder sb = new StringBuilder(
-                "Are you sure you want to diable Transmitter(s): ");
-        int count = 0;
+                "Are you sure you want to disable Transmitter" + confirmEnding);
+        boolean first = true;
         for (Transmitter transmitter : group.getEnabledTransmitters()) {
-            ++count;
-            if (count > 1) {
+            if (first) {
+                first = false;
+            } else {
                 sb.append(", ");
             }
             sb.append(transmitter.getMnemonic());
@@ -948,7 +994,42 @@ public class TransmitterComp extends Composite implements INotificationObserver 
             statusHandler.error(
                     "Failed to disable Transmitter Group: " + group.getName()
                             + ".", e);
+        }
+    }
+
+    private void enableGroup() {
+        TreeItem selectedItem = tree.getSelection()[0];
+        TransmitterGroup group = (TransmitterGroup) selectedItem.getData();
+
+        final String confirmEnding = (group
+                .getOrderedConfiguredTransmittersList().size() == 1) ? ": "
+                : "s: ";
+        StringBuilder sb = new StringBuilder(
+                "Are you sure you want to enable Transmitter" + confirmEnding);
+        boolean first = true;
+        for (Transmitter transmitter : group
+                .getOrderedConfiguredTransmittersList()) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(", ");
+            }
+            sb.append(transmitter.getMnemonic());
+        }
+        sb.append(" in Transmitter Group ").append(group.getName()).append("?");
+        int answer = DialogUtility.showMessageBox(this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Group Enable",
+                sb.toString());
+        if (answer != SWT.YES) {
             return;
+        }
+
+        try {
+            this.dataManager.enableTransmitterGroup(group);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to enable Transmitter Group: " + group.getName()
+                            + ".", e);
         }
     }
 

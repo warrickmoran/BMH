@@ -54,6 +54,7 @@ import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
+import com.raytheon.uf.common.util.CollectionUtil;
 
 /**
  * Transmitter Group information. A transmitter group of one is usually named
@@ -97,6 +98,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered.
  * Apr 14, 2015 4390       rferrel     Removed constraint on position to allow reordering using PositionOrdered.
  * Apr 14, 2015 4394       bkowal      Added {@link #GET_CONFIGURED_TRANSMITTER_GROUPS}.
+ * May 08, 2015 4470       bkowal      Configured transmitters must have both an associated dac and port.
  * </pre>
  * 
  * @author rjpeter
@@ -290,7 +292,7 @@ public class TransmitterGroup implements PositionOrdered {
      * @return a {@link List} of {@link Transmitter}s sorted by position.
      */
     public List<Transmitter> getOrderedConfiguredTransmittersList() {
-        if (transmitters == null) {
+        if (this.dac == null || CollectionUtil.isNullOrEmpty(this.transmitters)) {
             return Collections.emptyList();
         }
 
