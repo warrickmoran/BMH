@@ -178,6 +178,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    that has already played as an interrupt.
  * May 06, 2015  4471     bkowal      Added support for Demo Message SAME Tones.
  * May 11, 2015  4002     bkowal      Set the trigger message id in the playlist.
+ * May 12, 2015  4248     rjpeter     Fixed misspelling.
  * </pre>
  * 
  * @author bsteffen
@@ -981,13 +982,13 @@ public class PlaylistManager implements IContextStateProcessor {
                             if (overLimitAreas.isEmpty() == false) {
                                 statusHandler.error(
                                         BMH_CATEGORY.SAME_TRUNCATION,
-                                        "Failed to all all areas to the SAME Message. "
+                                    "Failed to add all areas to the SAME Message. "
                                                 + overLimitAreas);
                             }
                             if (invalidAreas.isEmpty() == false) {
                                 statusHandler.error(
                                         BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                                        "Failed to all all areas to the SAME Message. "
+                                    "Failed to add all areas to the SAME Message. "
                                                 + invalidAreas);
                             }
 

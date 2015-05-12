@@ -39,6 +39,7 @@ import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
@@ -59,6 +60,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 14, 2014  3411      mpduff      Added zoneName to unique constraint
  * Oct 21, 2014 3746       rjpeter     Hibernate upgrade.
  * Oct 24, 2014  3636      rferrel     Implement logging.
+ * May 12, 2015  4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -66,10 +68,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @NamedQueries({ @NamedQuery(name = Zone.GET_ZONE_FOR_CODE, query = Zone.GET_ZONE_FOR_CODE_QUERY) })
 @Entity
-@Table(name = "zone", schema = "bmh", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "zoneCode" }),
-        @UniqueConstraint(columnNames = { "zoneName" }) })
-@SequenceGenerator(initialValue = 1, name = Zone.GEN, sequenceName = "zone_seq")
+@Table(name = "zone", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_zone_zonecode", columnNames = { "zoneCode" }),
+        @UniqueConstraint(name = "uk_zone_zonename", columnNames = { "zoneName" }) })
+@SequenceGenerator(initialValue = 1, allocationSize = 1, name = Zone.GEN, sequenceName = "zone_seq")
 @DynamicSerialize
 public class Zone {
     static final String GEN = "Zone Generator";
@@ -93,19 +95,20 @@ public class Zone {
      * NNN - zone code number
      * </pre>
      */
-    @Column(length = 6)
+    @Column(length = 6, nullable = false)
     @DynamicSerializeElement
     @DiffTitle(position = 1)
     @DiffString
     private String zoneCode;
 
-    @Column(length = 60)
+    @Column(length = 60, nullable = false)
     @DynamicSerializeElement
     private String zoneName;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "zone_area", schema = "bmh", joinColumns = { @JoinColumn(name = "zoneId") }, inverseJoinColumns = { @JoinColumn(name = "areaId") })
-    @Fetch(FetchMode.SELECT)
+    @JoinTable(name = "zone_area", joinColumns = { @JoinColumn(name = "zoneId") }, inverseJoinColumns = { @JoinColumn(name = "areaId") })
+    @ForeignKey(name = "fk_zone_area_to_zone", inverseName = "fk_zone_area_to_area")
+    @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Area> areas;
 

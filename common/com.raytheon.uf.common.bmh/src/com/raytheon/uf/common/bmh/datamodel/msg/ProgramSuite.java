@@ -63,6 +63,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 28, 2014 3636       rferrel     Implement Logging
  * Nov 13, 2014 3717       bsteffen    Remove forced field.
  * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered.
+ * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author bkowal
@@ -70,9 +71,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 
 @Entity
-@Table(name = "program_suite", schema = "bmh", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "program_id", "position" }),
-        @UniqueConstraint(columnNames = { "program_id", "suite_id" }) })
+@Table(name = "program_suite", uniqueConstraints = @UniqueConstraint(name = "uk_program_suite_position", columnNames = {
+        "program_id", "position" }))
 @DynamicSerialize
 public class ProgramSuite implements Serializable, PositionOrdered {
     private static final long serialVersionUID = -4911273921891786116L;
@@ -84,14 +84,14 @@ public class ProgramSuite implements Serializable, PositionOrdered {
 
     @ManyToOne(optional = false)
     @MapsId("programId")
-    @ForeignKey(name = "program_suite_to_program")
+    @ForeignKey(name = "fk_program_suite_to_program")
     // No dynamic serialize due to bi-directional relationship
     @DiffTitle(position = 2)
     private Program program;
 
     @ManyToOne(optional = false)
     @MapsId("suiteId")
-    @ForeignKey(name = "program_suite_to_suite")
+    @ForeignKey(name = "fk_program_suite_to_suite")
     @DynamicSerializeElement
     @DiffString
     @DiffTitle(position = 1)
@@ -103,12 +103,12 @@ public class ProgramSuite implements Serializable, PositionOrdered {
 
     @ManyToMany(fetch = FetchType.EAGER)
     @DynamicSerializeElement
-    @JoinTable(schema = "bmh", name = "program_trigger", joinColumns = {
+    @JoinTable(name = "program_trigger", joinColumns = {
             @JoinColumn(name = "program_id", referencedColumnName = "program_id"),
             @JoinColumn(name = "suite_id", referencedColumnName = "suite_id") }, inverseJoinColumns = @JoinColumn(name = "msgtype_id", referencedColumnName = "id"), uniqueConstraints = @UniqueConstraint(columnNames = {
             "program_id", "suite_id", "msgtype_id" }))
     @Fetch(FetchMode.SUBSELECT)
-    @ForeignKey(name = "program_trigger_to_program_suite", inverseName = "program_trigger_to_message_type")
+    @ForeignKey(name = "fk_program_trigger_to_program_suite", inverseName = "fk_program_trigger_to_msg_type")
     private Set<MessageTypeSummary> triggers;
 
     private void checkId() {

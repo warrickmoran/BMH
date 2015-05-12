@@ -25,8 +25,8 @@ import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
-import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.AbstractTraceableSystemConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.ZoneAreaConfigNotification;
 import com.raytheon.uf.common.bmh.request.ZoneAreaRequest;
 import com.raytheon.uf.common.bmh.request.ZoneAreaResponse;
@@ -54,7 +54,7 @@ import com.raytheon.uf.edex.bmh.dao.ZoneDao;
  * Nov 21, 2014  3845     bkowal      Added getAreasForTransmitter
  * Apr 22, 2015  4397     bkowal      Construct a {@link AbstractTraceableSystemConfigNotification}
  *                                    notification when database changes occur.
- * 
+ * May 12, 2015  4248     rjpeter     Normalized area id field.
  * </pre>
  * 
  * @author mpduff
@@ -214,7 +214,7 @@ public class ZoneAreaHandler extends
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
             for (Area a : request.getAreaList()) {
-                Area oldArea = dao.getByID(a.getAreaId());
+                Area oldArea = dao.getByID(a.getId());
                 dao.saveOrUpdate(a);
                 BMHLoggerUtils.logSave(request, user, oldArea, a);
             }

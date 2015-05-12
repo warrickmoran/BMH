@@ -46,6 +46,7 @@ import javax.persistence.Table;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
+import org.hibernate.annotations.Index;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
@@ -94,7 +95,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Apr 16, 2015  4395     rferrel     Added {@link #ALL_UNEXPIRED_QUERY}.
  * Apr 21, 2015  4397     bkowal      Added {@link #updateDate}.
  * May 11, 2015  4476     bkowal      Added {@link #ALL_WITH_NAME_AND_AFOSID_QUERY}.
- * 
+ * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author bsteffen
@@ -111,8 +112,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
         @NamedQuery(name = InputMessage.ALL_WITH_NAME_AND_AFOSID, query = InputMessage.ALL_WITH_NAME_AND_AFOSID_QUERY) })
 @Entity
 @DynamicSerialize
-@Table(name = "input_msg", schema = "bmh")
-@SequenceGenerator(initialValue = 1, schema = "bmh", name = InputMessage.GEN, sequenceName = "input_msg_seq")
+@Table(name = "input_msg")
+@SequenceGenerator(initialValue = 1, name = InputMessage.GEN, sequenceName = "input_msg_seq")
 public class InputMessage {
 
     public static enum ReplacementType {
@@ -296,7 +297,7 @@ public class InputMessage {
      * used for user-generated Weather Messages.
      */
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "input_msg_selected_transmitters", schema = "bmh", joinColumns = @JoinColumn(name = "input_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
+    @JoinTable(name = "input_msg_selected_transmitters", joinColumns = @JoinColumn(name = "input_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
     @ForeignKey(name = "fk_selected_tx_to_input_msg", inverseName = "fk_selected_tx_to_tx")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
@@ -307,6 +308,7 @@ public class InputMessage {
      * be deleted .
      */
     @Column
+    @Index(name = "input_msg_expirationtime_idx")
     @DynamicSerializeElement
     private Calendar expirationTime;
 

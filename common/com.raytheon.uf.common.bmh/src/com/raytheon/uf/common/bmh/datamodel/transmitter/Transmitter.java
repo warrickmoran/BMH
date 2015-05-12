@@ -33,6 +33,9 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import org.hibernate.annotations.ForeignKey;
+import org.hibernate.annotations.Index;
+
 import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -57,6 +60,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Mar 25, 2015  4305     rferrel     Added query for transmitters by FIPS code.
  * Apr 02, 2015  4248     rjpeter     Implement PositionOrdered.
  * Apr 14, 2015  4390     rferrel     Removed constraint on position to allow reordering using PositionOrdered.
+ * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -64,8 +68,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  */
 @NamedQueries({ @NamedQuery(name = Transmitter.GET_TRANSMITTERS_FOR_FIPS, query = Transmitter.GET_TRANSMITTERS_FOR_FIPS_QUERY) })
 @Entity
-@Table(name = "transmitter", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "mnemonic" }), })
-@SequenceGenerator(initialValue = 1, name = Transmitter.GEN, sequenceName = "transmitter_seq")
+@Table(name = "transmitter", uniqueConstraints = { @UniqueConstraint(name = "uk_tx_mnemonic", columnNames = { "mnemonic" }) })
+@SequenceGenerator(initialValue = 1, allocationSize = 1, name = Transmitter.GEN, sequenceName = "transmitter_seq")
 @DynamicSerialize
 @DynamicSerializeTypeAdapter(factory = TransmitterAdapter.class)
 public class Transmitter implements PositionOrdered {
@@ -107,6 +111,8 @@ public class Transmitter implements PositionOrdered {
      * Bi-directional relationship. Always serialized from the group side.
      */
     @ManyToOne(optional = false)
+    @ForeignKey(name = "fk_tx_to_tx_group")
+    @Index(name = "tx_tx_group_idx")
     private TransmitterGroup transmitterGroup;
 
     @Column(nullable = false)

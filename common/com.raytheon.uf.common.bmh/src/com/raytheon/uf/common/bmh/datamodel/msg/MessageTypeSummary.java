@@ -44,7 +44,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 10, 2014            rjpeter     Initial creation
  * Oct 23, 2014  #3728     lvenable    Added Enumerated tag for designation
  * Oct 29, 2014  #3636     rferrel     Implement logging.
- * 
+ * May 12, 2015  4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -52,7 +52,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Entity
 @DynamicSerialize
-@Table(name = "message_type", schema = "bmh")
+@Table(name = "msg_type")
 public class MessageTypeSummary {
     @DynamicSerializeElement
     protected int id;

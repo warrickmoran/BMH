@@ -29,6 +29,8 @@ import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
 
+import org.hibernate.annotations.ForeignKey;
+
 import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -50,6 +52,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 11, 2014 3618       bkowal      Added {@link #dictionary}.
  * Dec 16, 2014 3618       bkowal      Added {@link #GET_VOICE_IDENTIFIERS}.
  * Jan 13, 2015 3809       bkowal      Added {@link #GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY}.
+ * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -59,7 +62,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS, query = TtsVoice.GET_VOICE_IDENTIFIERS_QUERY),
         @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE, query = TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY) })
 @Entity
-@Table(name = "tts_voice", schema = "bmh")
+@Table(name = "tts_voice")
 @DynamicSerialize
 public class TtsVoice {
 
@@ -94,6 +97,7 @@ public class TtsVoice {
     private boolean male;
 
     @ManyToOne(optional = true)
+    @ForeignKey(name = "fk_tts_voice_to_dict")
     @DynamicSerializeElement
     private Dictionary dictionary;
 
@@ -154,15 +158,19 @@ public class TtsVoice {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         TtsVoice other = (TtsVoice) obj;
-        if (voiceNumber != other.voiceNumber)
+        if (voiceNumber != other.voiceNumber) {
             return false;
+        }
         return true;
     }
 

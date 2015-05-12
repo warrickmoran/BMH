@@ -62,7 +62,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * Nov 15, 2014 3808       bkowal      Initial creation
  * Nov 21, 2014 3845       bkowal      Use BLBroadcastSettingsBuilder
  * Feb 05, 2015 3743       bsteffen    Allow subclasses to override loading of available groups.
- * 
+ * May 12, 2015 4248       rjpeter     Fix misspelling.
  * </pre>
  * 
  * @author bkowal
@@ -194,7 +194,7 @@ public class BroadcastLiveDlg extends AbstractBMHDialog {
                         this.shell,
                         SWT.ICON_WARNING | SWT.YES | SWT.NO,
                         "Broadcast Live",
-                        "You are about go to live. You will interrupt all broadcasts that are currently playing on the selected transmitters. Would you like to continue?");
+                        "You are about to go live. You will interrupt all broadcasts that are currently playing on the selected transmitters. Would you like to continue?");
         if (option == SWT.NO) {
             return;
         }

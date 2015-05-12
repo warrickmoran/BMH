@@ -20,14 +20,16 @@
 package com.raytheon.uf.common.bmh.datamodel.transmitter;
 
 import javax.persistence.Column;
-import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinColumns;
 import javax.persistence.ManyToOne;
-import javax.persistence.MapsId;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
@@ -49,6 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Mar 9, 2015  4213       bkowal      Initial creation
  * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered
+ * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author bkowal
@@ -57,11 +60,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({ @NamedQuery(name = StaticMessageType.GET_STATIC_MSG_BY_MSG_TYPE_AND_GROUP, query = StaticMessageType.GET_STATIC_MSG_BY_MSG_TYPE_AND_GROUP_QUERY) })
 @Entity
 @DynamicSerialize
-@Table(name = "static_message_type", schema = "bmh", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "transmittergroup_id", "msgtype_id" }),
-        @UniqueConstraint(columnNames = { "transmittergroup_id", "language",
-                "position" }) })
+@Table(name = "static_msg_type", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_static_msg_type_tx_group_msg_type", columnNames = {
+                "transmittergroup_id", "msgtype_id" }),
+        @UniqueConstraint(name = "uk_static_msg_type_tx_lang_position", columnNames = {
+                "language", "transmittergroup_id", "position" }) })
+@SequenceGenerator(initialValue = 1, allocationSize = 1, name = StaticMessageType.GEN, sequenceName = "static_msg_type_seq")
 public class StaticMessageType implements PositionOrdered {
+    static final String GEN = "Transmitter Generator";
 
     public static final int MSG_LENGTH = 4096;
 
@@ -69,23 +75,24 @@ public class StaticMessageType implements PositionOrdered {
 
     public static final String GET_STATIC_MSG_BY_MSG_TYPE_AND_GROUP = "getStaticMsgTypeByMsgTypeAndGroup";
 
-    protected static final String GET_STATIC_MSG_BY_MSG_TYPE_AND_GROUP_QUERY = "FROM StaticMessageType s WHERE s.id.transmitterLanguagePK.transmitterGroup = :transmitterGroup AND s.msgTypeSummary.afosid = :afosid";
+    protected static final String GET_STATIC_MSG_BY_MSG_TYPE_AND_GROUP_QUERY = "FROM StaticMessageType s WHERE s.transmitterLanguage.id.transmitterGroup = :transmitterGroup AND s.msgTypeSummary.afosid = :afosid";
 
-    @EmbeddedId
-    private StaticMessageTypePK id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
+    protected int id;
 
     @ManyToOne(optional = false)
+    @ForeignKey(name = "fk_static_msg_type_to_tx_lang")
     @JoinColumns({
-            @JoinColumn(referencedColumnName = "language", name = "language", insertable = false, updatable = false),
-            @JoinColumn(referencedColumnName = "transmittergroup_id", name = "transmittergroup_id", insertable = false, updatable = false) })
+            @JoinColumn(name = "language", referencedColumnName = "language"),
+            @JoinColumn(name = "transmittergroup_id", referencedColumnName = "transmittergroup_id") })
     // avoid circular references for dynamic serialize.
     private TransmitterLanguage transmitterLanguage;
 
     @ManyToOne(optional = false)
-    @MapsId("msgTypeId")
     @JoinColumn(name = "msgtype_id")
     @DynamicSerializeElement
-    @ForeignKey(name = "static_message_type_to_message_type")
+    @ForeignKey(name = "fk_static_msg_type_to_msg_type")
     private MessageTypeSummary msgTypeSummary;
 
     /*
@@ -113,16 +120,10 @@ public class StaticMessageType implements PositionOrdered {
     @DynamicSerializeElement
     private int position;
 
-    private void checkId() {
-        if (this.id == null) {
-            this.id = new StaticMessageTypePK();
-        }
-    }
-
     /**
      * @return the id
      */
-    public StaticMessageTypePK getId() {
+    public int getId() {
         return id;
     }
 
@@ -130,7 +131,7 @@ public class StaticMessageType implements PositionOrdered {
      * @param id
      *            the id to set
      */
-    public void setId(StaticMessageTypePK id) {
+    public void setId(int id) {
         this.id = id;
     }
 
@@ -150,8 +151,6 @@ public class StaticMessageType implements PositionOrdered {
         if (this.transmitterLanguage == null) {
             return;
         }
-        this.checkId();
-        this.id.setTransmitterLanguagePK(this.transmitterLanguage.getId());
     }
 
     /**
@@ -170,8 +169,6 @@ public class StaticMessageType implements PositionOrdered {
         if (this.msgTypeSummary == null) {
             return;
         }
-        this.checkId();
-        this.id.setMsgTypeId(this.msgTypeSummary.getId());
     }
 
     /**

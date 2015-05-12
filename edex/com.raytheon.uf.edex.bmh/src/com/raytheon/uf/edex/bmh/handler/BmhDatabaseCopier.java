@@ -114,6 +114,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Apr 07, 2015  4293     bkowal      Copy broadcast message contents and fragments.
  * Apr 16, 2015  4395     rferrel     No longer copy expired {@link InputMessage}s.
  * Apr 16, 2015  4350     rferrel     Fix selected transmitters in {@link #copyInputMessages(Calendar)}.
+ * May 12, 2015  4248     rjpeter     Updated copying of static message type.
  * </pre>
  * 
  * @author bsteffen
@@ -252,14 +253,10 @@ public class BmhDatabaseCopier {
                     && (lang.getStaticMessageTypes().isEmpty() == false)) {
                 // update the message type references.
                 for (StaticMessageType stm : lang.getStaticMessageTypes()) {
-                    int opTrxGrpId = stm.getId().getTransmitterLanguagePK()
-                            .getTransmitterGroup().getId();
-                    int opMsgTypeId = stm.getId().getMsgTypeId();
-                    stm.getId()
-                            .getTransmitterLanguagePK()
-                            .setTransmitterGroup(
-                                    this.transmitterGroupMap.get(opTrxGrpId));
+                    MessageTypeSummary stmMsg = stm.getMsgTypeSummary();
+                    int opMsgTypeId = stmMsg.getId();
                     stm.setMsgTypeSummary(this.messageTypeMap.get(opMsgTypeId));
+                    stm.setId(0);
                 }
             }
         }
@@ -278,8 +275,8 @@ public class BmhDatabaseCopier {
                 transmitters.add(transmitterMap.get(transmitter.getId()));
             }
             area.setTransmitters(transmitters);
-            areaMap.put(area.getAreaId(), area);
-            area.setAreaId(0);
+            areaMap.put(area.getId(), area);
+            area.setId(0);
         }
         prDao.persistAll(areas);
         this.areaMap = areaMap;
@@ -293,7 +290,7 @@ public class BmhDatabaseCopier {
         for (Zone zone : zones) {
             Set<Area> areas = new HashSet<>(zone.getAreas().size(), 1.0f);
             for (Area area : zone.getAreas()) {
-                areas.add(areaMap.get(area.getAreaId()));
+                areas.add(areaMap.get(area.getId()));
             }
             zone.setAreas(areas);
             zoneMap.put(zone.getId(), zone);
@@ -321,7 +318,7 @@ public class BmhDatabaseCopier {
             Set<Area> areas = new HashSet<>(messageType.getDefaultAreas()
                     .size(), 1.0f);
             for (Area area : messageType.getDefaultAreas()) {
-                areas.add(areaMap.get(area.getAreaId()));
+                areas.add(areaMap.get(area.getId()));
             }
             messageType.setDefaultAreas(areas);
             Set<Zone> zones = new HashSet<>(messageType.getDefaultZones()

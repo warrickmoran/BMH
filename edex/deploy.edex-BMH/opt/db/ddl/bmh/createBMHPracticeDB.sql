@@ -22,5 +22,4 @@ DROP DATABASE IF EXISTS bmh_practice;
 DROP TABLESPACE IF EXISTS bmh_practice;
 CREATE TABLESPACE bmh_practice owner awips location '/awips2/data/bmh_practice';
 CREATE DATABASE bmh_practice OWNER awips TABLESPACE bmh_practice;
-\connect bmh_practice
-CREATE SCHEMA bmh AUTHORIZATION awips;
+

@@ -49,6 +49,7 @@ import javax.persistence.UniqueConstraint;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
+import org.hibernate.annotations.Index;
 
 import com.raytheon.uf.common.bmh.StaticMessageIdentifier;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -95,7 +96,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                    expired.
  * May 04, 2015  4449     bkowal      Added {@link #QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER}.
  * May 11, 2015  4002     bkowal      Added {@link #triggerBroadcastId}.
- * 
+ * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author bsteffen
@@ -106,8 +107,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
         @NamedQuery(name = Playlist.QUERY_BY_GROUP_NAME, query = Playlist.QUERY_BY_GROUP_NAME_HQL),
         @NamedQuery(name = Playlist.QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER, query = Playlist.QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER_HQL) })
 @Entity
-@Table(name = "playlist", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
-        "transmitter_group_id", "suite_id" }) })
+@Table(name = "playlist", uniqueConstraints = @UniqueConstraint(name = "uk_playlist_tx_group_suite", columnNames = {
+        "transmitter_group_id", "suite_id" }))
 @SequenceGenerator(initialValue = 1, name = Playlist.GEN, sequenceName = "playlist_seq")
 @DynamicSerialize
 public class Playlist {
@@ -136,12 +137,14 @@ public class Playlist {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "transmitter_group_id")
-    @ForeignKey(name = "playlist_to_tx_group")
+    @ForeignKey(name = "fk_playlist_to_tx_group")
+    @Index(name = "playlist_tx_group_idx")
     private TransmitterGroup transmitterGroup;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "suite_id")
-    @ForeignKey(name = "playlist_to_suite")
+    @ForeignKey(name = "fk_playlist_to_suite")
+    @Index(name = "playlist_tx_suite_idx")
     private Suite suite;
 
     @Column
@@ -157,7 +160,8 @@ public class Playlist {
     private Long triggerBroadcastId = null;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(schema = "bmh", name = "playlist_msg", joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "message_id", referencedColumnName = "id"))
+    @JoinTable(name = "playlist_msg", joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "message_id", referencedColumnName = "id"))
+    @ForeignKey(name = "fk_playlist_msg_to_broadcast_msg", inverseName = "fk_playlist_msg_to_playlist")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<BroadcastMsg> messages = new HashSet<>();
@@ -246,7 +250,7 @@ public class Playlist {
         this.messages = messages;
     }
 
-    /**
+/**
      * Update the modTime to be the currentTime and expire all messages who's
      * expiration is before that time. Also rechecks that all messages are
      * active and in the suite and removes any that are not. If a trigger is

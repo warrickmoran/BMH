@@ -46,6 +46,7 @@ import javax.persistence.UniqueConstraint;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
+import org.hibernate.annotations.Index;
 
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
@@ -99,6 +100,7 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * Apr 14, 2015 4390       rferrel     Removed constraint on position to allow reordering using PositionOrdered.
  * Apr 14, 2015 4394       bkowal      Added {@link #GET_CONFIGURED_TRANSMITTER_GROUPS}.
  * May 08, 2015 4470       bkowal      Configured transmitters must have both an associated dac and port.
+ * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -111,8 +113,8 @@ import com.raytheon.uf.common.util.CollectionUtil;
         @NamedQuery(name = TransmitterGroup.GET_CONFIGURED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_CONFIGURED_TRANSMITTER_GROUPS_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION, query = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY) })
 @Entity
-@Table(name = "transmitter_group", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }), })
-@SequenceGenerator(initialValue = 1, name = TransmitterGroup.GEN, sequenceName = "zone_seq")
+@Table(name = "transmitter_group", uniqueConstraints = { @UniqueConstraint(name = "uk_tx_group_name", columnNames = { "name" }) })
+@SequenceGenerator(initialValue = 1, allocationSize = 1, name = TransmitterGroup.GEN, sequenceName = "transmitter_group_seq")
 @DynamicSerialize
 @DynamicSerializeTypeAdapter(factory = TransmitterGroupAdapter.class)
 public class TransmitterGroup implements PositionOrdered {
@@ -178,8 +180,9 @@ public class TransmitterGroup implements PositionOrdered {
     private Set<Transmitter> transmitters;
 
     @ManyToOne
-    @ForeignKey(name = "transmitter_group_to_program")
+    @ForeignKey(name = "fk_tx_group_to_program")
     @JoinColumn(name = "program_id")
+    @Index(name = "tx_group_program_idx")
     private ProgramSummary programSummary;
 
     public TransmitterGroup() {

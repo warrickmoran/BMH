@@ -72,7 +72,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  *                                     {@link INonStandardBroadcast}.
  * MAy 05, 2015 4463       bkowal      Use the originator associated with the selected
  *                                     {@link MessageType}.
- * 
+ * May 12, 2015 4248       rjpeter     Fix misspelling.
  * </pre>
  * 
  * @author bkowal
@@ -88,7 +88,7 @@ public class EOBroadcastSettingsBuilder extends
     /*
      * Data Managers
      */
-    private TransmitterDataManager tdm = new TransmitterDataManager();
+    private final TransmitterDataManager tdm = new TransmitterDataManager();
 
     /*
      * Used to identify the emergency override broadcast, build same tones,
@@ -101,7 +101,7 @@ public class EOBroadcastSettingsBuilder extends
 
     private Calendar expireTime;
 
-    private boolean playAlertTones;
+    private final boolean playAlertTones;
 
     private String areaCodeString;
 
@@ -117,7 +117,7 @@ public class EOBroadcastSettingsBuilder extends
      * Groups that whose entry in transmitterGroupToneMap contains SAME tones,
      * these items need end tones.
      */
-    private Set<TransmitterGroup> sameGroups = new HashSet<>();
+    private final Set<TransmitterGroup> sameGroups = new HashSet<>();
 
     private byte[] endTonesAudio;
 
@@ -280,7 +280,7 @@ public class EOBroadcastSettingsBuilder extends
         String overLimitAreas = toneBuilder.summarizeOverLimitAreas();
         if (invalidAreas.isEmpty() == false
                 || overLimitAreas.isEmpty() == false) {
-            statusHandler.error("Failed to all all areas to the SAME Message. "
+            statusHandler.error("Failed to add all areas to the SAME Message. "
                     + overLimitAreas + " " + invalidAreas);
         }
 

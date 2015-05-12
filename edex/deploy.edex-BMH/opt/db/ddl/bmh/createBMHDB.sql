@@ -22,5 +22,4 @@ DROP DATABASE IF EXISTS bmh;
 DROP TABLESPACE IF EXISTS bmh;
 CREATE TABLESPACE bmh owner awips location '/awips2/data/bmh';
 CREATE DATABASE bmh OWNER awips TABLESPACE bmh;
-\connect bmh
-CREATE SCHEMA bmh AUTHORIZATION awips;
+

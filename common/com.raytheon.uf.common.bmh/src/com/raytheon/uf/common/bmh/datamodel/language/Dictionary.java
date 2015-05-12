@@ -68,6 +68,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Dec 15, 2014 3618       bkowal      Added {@link #GET_NATIONAL_DICTIONARY_FOR_LANGUAGE}.
  * Dec 16, 2014 3618       bkowal      Added {@link #GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE}.
  * Jan 06, 2015 3931       bkowal      Added XML JAXB Marshaling tags.
+ * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -79,7 +80,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
         @NamedQuery(name = Dictionary.GET_NATIONAL_DICTIONARY_FOR_LANGUAGE, query = Dictionary.GET_NATIONAL_DICTIONARY_FOR_LANGUAGE_QUERY),
         @NamedQuery(name = Dictionary.GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE, query = Dictionary.GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE_QUERY) })
 @Entity
-@Table(name = "dictionary", schema = "bmh")
+@Table(name = "dictionary")
 @XmlRootElement(name = "bmhDictionary")
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
@@ -113,7 +114,7 @@ public class Dictionary {
     private Language language = Language.ENGLISH;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "dictionary", fetch = FetchType.EAGER)
-    @Fetch(FetchMode.SELECT)
+    @Fetch(FetchMode.SUBSELECT)
     @XmlElement(name = "word")
     private Set<Word> words;
 
@@ -228,20 +229,26 @@ public class Dictionary {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         Dictionary other = (Dictionary) obj;
-        if (language != other.language)
+        if (language != other.language) {
             return false;
+        }
         if (name == null) {
-            if (other.name != null)
+            if (other.name != null) {
                 return false;
-        } else if (!name.equals(other.name))
+            }
+        } else if (!name.equals(other.name)) {
             return false;
+        }
         return true;
     }
 }

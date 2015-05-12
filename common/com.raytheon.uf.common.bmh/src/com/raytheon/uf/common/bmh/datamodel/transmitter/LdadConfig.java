@@ -40,9 +40,9 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
-import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
@@ -66,7 +66,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 19, 2014 3385       bkowal      Added {@link LdadConfig#SELECT_LDAD_CONFIG_BY_MSG_TYPE_QUERY}
  * Jan 07, 2015 3899       bkowal      Added {@link #enabled}.
  * Feb 19, 2015 4142       bkowal      Added {@link #speechRate}.
- * 
+ * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -78,9 +78,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = LdadConfig.SELECT_LDAD_CONFIG_REFERENCES, query = LdadConfig.SELECT_LDAD_CONFIG_REFERENCES_QUERY),
         @NamedQuery(name = LdadConfig.SELECT_LDAD_CONFIG_BY_NAME, query = LdadConfig.SELECT_LDAD_CONFIG_BY_NAME_QUERY),
         @NamedQuery(name = LdadConfig.SELECT_LDAD_CONFIG_BY_MSG_TYPE, query = LdadConfig.SELECT_LDAD_CONFIG_BY_MSG_TYPE_QUERY) })
-@Table(name = "ldad_config", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = { "name" }) })
-@SequenceGenerator(initialValue = 1, schema = "bmh", name = LdadConfig.GEN, sequenceName = "ldad_config_gen")
-@BatchSize(size = 100)
+@Table(name = "ldad_config", uniqueConstraints = { @UniqueConstraint(name = "uk_ldad_config_name", columnNames = { "name" }) })
+@SequenceGenerator(initialValue = 1, allocationSize = 1, name = LdadConfig.GEN, sequenceName = "ldad_config_seq")
 public class LdadConfig {
     protected static final String GEN = "Ldad Config Id Generator";
 
@@ -115,17 +114,20 @@ public class LdadConfig {
     private String directory;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "ldad_msg_type", schema = "bmh", joinColumns = @JoinColumn(name = "ldad_id"), inverseJoinColumns = @JoinColumn(name = "msg_type_id"))
+    @JoinTable(name = "ldad_config_msg_type", joinColumns = @JoinColumn(name = "ldad_id"), inverseJoinColumns = @JoinColumn(name = "msg_type_id"))
+    @ForeignKey(name = "fk_ldad_config_msg_type_to_ldad_config", inverseName = "fk_ldad_config_msg_type_to_msg_type")
     @DynamicSerializeElement
     @Fetch(FetchMode.SUBSELECT)
     private Set<MessageTypeSummary> messageTypes;
 
     @ManyToOne(optional = true)
+    @ForeignKey(name = "fk_ldad_config_to_dict")
     @DynamicSerializeElement
     private Dictionary dictionary;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "voiceNumber")
+    @ForeignKey(name = "fk_ldad_config_to_tts_voice")
     @DynamicSerializeElement
     private TtsVoice voice;
 

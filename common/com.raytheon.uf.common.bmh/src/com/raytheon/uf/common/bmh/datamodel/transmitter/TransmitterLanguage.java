@@ -39,6 +39,7 @@ import javax.persistence.Transient;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
@@ -72,6 +73,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 08, 2015 4248       bkowal      Added {@link #removeStaticMessageType(StaticMessageType)}. Update positions
  *                                     on add and remove.
  * May 11, 2015 4476       bkowal      Added {@link #removedStaticMsgTypes}.
+ * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -79,7 +81,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @NamedQueries({ @NamedQuery(name = TransmitterLanguage.GET_LANGUAGES_FOR_GROUP, query = TransmitterLanguage.GET_LANGUAGES_FOR_GROUP_QUERY) })
 @Entity
-@Table(name = "transmitter_language", schema = "bmh")
+@Table(name = "transmitter_language")
 @DynamicSerialize
 public class TransmitterLanguage {
 
@@ -93,10 +95,12 @@ public class TransmitterLanguage {
     private TransmitterLanguagePK id;
 
     @ManyToOne(optional = true)
+    @ForeignKey(name = "fk_tx_lang_to_dict")
     @DynamicSerializeElement
     private Dictionary dictionary;
 
     @ManyToOne(optional = false)
+    @ForeignKey(name = "fk_tx_lang_to_tts_voice")
     @JoinColumn(name = "voiceNumber")
     @DynamicSerializeElement
     private TtsVoice voice;
@@ -105,7 +109,7 @@ public class TransmitterLanguage {
     @DynamicSerializeElement
     private int speechRate = 0;
 
-    @OneToMany(mappedBy = "id.transmitterLanguagePK", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "transmitterLanguage", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @DynamicSerializeElement
     @Fetch(FetchMode.SUBSELECT)
     private Set<StaticMessageType> staticMessageTypes;

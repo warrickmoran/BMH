@@ -83,6 +83,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 15, 2015  4293     bkowal      Added {@link #forcedExpiration}.
  * Apr 16, 2015  4395     rferrel     Added {@link #ALL_UNEXPIRED_MSGS_QUERY}.
  * May 05, 2015  4456     bkowal      Added {@link #playedInterrupt}.
+ * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author bkowal
@@ -99,7 +100,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = BroadcastMsg.ALL_UNEXPIRED_MSGS, query = BroadcastMsg.ALL_UNEXPIRED_MSGS_QUERY) })
 @Entity
 @DynamicSerialize
-@Table(name = "broadcast_msg", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
+@Table(name = "broadcast_msg", uniqueConstraints = { @UniqueConstraint(name = "uk_broadcast_msg_tx_group_input_msg", columnNames = {
         "transmitter_group_id", "input_message_id" }) })
 @SequenceGenerator(initialValue = 1, name = BroadcastMsg.GEN, sequenceName = "broadcast_msg_seq")
 public class BroadcastMsg {
@@ -153,17 +154,18 @@ public class BroadcastMsg {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "transmitter_group_id")
-    @ForeignKey(name = "broadcast_msg_to_tx_group")
+    @ForeignKey(name = "fk_broadcast_msg_to_tx_group")
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "input_message_id")
+    @ForeignKey(name = "fk_broadcast_msg_to_input_msg")
     @DynamicSerializeElement
     private InputMessage inputMessage;
 
     @OneToMany(mappedBy = "broadcastMsg", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @Fetch(FetchMode.SELECT)
+    @Fetch(FetchMode.SUBSELECT)
     @Sort(type = SortType.NATURAL)
     @DynamicSerializeElement
     private SortedSet<BroadcastContents> contents;

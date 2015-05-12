@@ -63,6 +63,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 24, 2014  3636     rferrel     Implement logging.
  * Nov 21, 2014  3845     bkowal      Added getAreaForTransmitter
  * Feb 23, 2015  4140     rjpeter     Named foreign key constraints.
+ * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -72,10 +73,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = Area.GET_AREA_FOR_CODE, query = Area.GET_AREA_FOR_CODE_QUERY),
         @NamedQuery(name = Area.GET_AREAS_FOR_TRANSMITTER, query = Area.GET_AREAS_FOR_TRANSMITTER_QUERY) })
 @Entity
-@Table(name = "area", schema = "bmh", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "areaCode" }),
-        @UniqueConstraint(columnNames = { "areaName" }) })
-@SequenceGenerator(initialValue = 1, name = Area.GEN, sequenceName = "area_seq")
+@Table(name = "area", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_area_areaCode", columnNames = { "areaCode" }),
+        @UniqueConstraint(name = "uk_area_areaName", columnNames = { "areaName" }) })
+@SequenceGenerator(initialValue = 1, allocationSize = 1, name = Area.GEN, sequenceName = "area_seq")
 @DynamicSerialize
 public class Area {
     static final String GEN = "Area Generator";
@@ -92,7 +93,7 @@ public class Area {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     @DynamicSerializeElement
     @DiffTitle(position = 2)
-    protected int areaId;
+    protected int id;
 
     /**
      * SSXNNN - 6 digit UGC area code
@@ -103,7 +104,7 @@ public class Area {
      * NNN - county code number
      * </pre>
      */
-    @Column(length = 6)
+    @Column(length = 6, nullable = false)
     @DynamicSerializeElement
     @DiffTitle(position = 1)
     @DiffString
@@ -114,25 +115,25 @@ public class Area {
     private String areaName;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "area_tx", schema = "bmh", joinColumns = @JoinColumn(name = "areaId"), inverseJoinColumns = @JoinColumn(name = "transmitterId"))
-    @ForeignKey(name = "fk_area_tx_to_area", inverseName = "fk_area_tx_to_transmitter")
-    @Fetch(FetchMode.SELECT)
+    @JoinTable(name = "area_transmitter", joinColumns = @JoinColumn(name = "areaId"), inverseJoinColumns = @JoinColumn(name = "transmitterId"))
+    @ForeignKey(name = "fk_area_tx_to_area", inverseName = "fk_area_tx_to_tx")
+    @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Transmitter> transmitters;
 
     /**
-     * @return the areaId
+     * @return the id
      */
-    public int getAreaId() {
-        return areaId;
+    public int getId() {
+        return id;
     }
 
     /**
-     * @param areaId
+     * @param id
      *            the areaId to set
      */
-    public void setAreaId(int areaId) {
-        this.areaId = areaId;
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getAreaCode() {
@@ -203,7 +204,7 @@ public class Area {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Area [areaId=").append(areaId).append(", areaCode=")
+        sb.append("Area [id=").append(id).append(", areaCode=")
                 .append(areaCode).append(", areaName=").append(areaName)
                 .append(", transmitters=");
         if (transmitters == null) {

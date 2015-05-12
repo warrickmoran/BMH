@@ -56,7 +56,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 2, 2015  4293       bkowal      Initial creation
- * 
+ * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author bkowal
@@ -64,21 +64,21 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Entity
 @DynamicSerialize
-@Table(name = "broadcast_msg_contents", schema = "bmh")
+@Table(name = "broadcast_msg_contents")
 public class BroadcastContents implements Comparable<BroadcastContents> {
 
     @EmbeddedId
     private BroadcastContentsPK id;
 
     @OneToMany(mappedBy = "contents", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @Fetch(FetchMode.SELECT)
+    @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<BroadcastFragment> fragments;
 
     @ManyToOne(optional = false)
     @MapsId("broadcastId")
     @JoinColumn(name = "broadcast_id")
-    @ForeignKey(name = "fk_broadcast_contents_to_broadcast_msg")
+    @ForeignKey(name = "fk_broadcast_msg_contents_to_broadcast_msg")
     private BroadcastMsg broadcastMsg;
 
     public long getTimestamp() {

@@ -38,11 +38,12 @@ import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 
-import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
+import org.hibernate.annotations.Index;
 
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
@@ -85,7 +86,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 25, 2015  4290      bsteffen    Switch to global replacement.
  * May 05, 2015  4463      bkowal      Added {@link #originator}.
  * May 06, 2015  4463      bkowal      Default {@link #originator} to 'WXR'.
- * 
+ * May 12, 2015  4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -101,9 +102,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = MessageType.GET_REVERSE_REPLACEMENT_AFOSIDS, query = MessageType.GET_REVERSE_REPLACEMENT_AFOSIDS_QUERY) })
 @Entity
 @DynamicSerialize
-@Table(name = "message_type", schema = "bmh")
-@SequenceGenerator(initialValue = 1, schema = "bmh", name = MessageType.GEN, sequenceName = "message_type_seq")
-@BatchSize(size = 100)
+@Table(name = "msg_type", uniqueConstraints = @UniqueConstraint(name = "uk_msg_type_afosid", columnNames = "afosid"))
+@SequenceGenerator(initialValue = 1, allocationSize = 1, name = MessageType.GEN, sequenceName = "message_type_seq")
 public class MessageType {
     public enum Designation {
 
@@ -148,7 +148,8 @@ public class MessageType {
     @DiffTitle(position = 3)
     protected int id;
 
-    @Column(length = 9, unique = true)
+    @Column(length = 9)
+    @Index(name = "msg_type_afosid_idx")
     @DynamicSerializeElement
     @DiffTitle(position = 1)
     private String afosid;
@@ -176,6 +177,7 @@ public class MessageType {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Index(name = "msg_type_designation_idx")
     @DynamicSerializeElement
     private Designation designation;
 
@@ -189,6 +191,7 @@ public class MessageType {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "voice")
+    @ForeignKey(name = "fk_msg_type_to_tts_voice")
     @DynamicSerializeElement
     private TtsVoice voice;
 
@@ -209,8 +212,8 @@ public class MessageType {
     private String toneBlackOutEnd;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "message_same_tx", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
-    @ForeignKey(name = "fk_msg_same_tx_to_msg_type", inverseName = "fk_msg_same_tx_to_tx")
+    @JoinTable(name = "msg_type_same_transmitter", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
+    @ForeignKey(name = "fk_msg_type_same_tx_to_msg_type", inverseName = "fk_msg_type_same_tx_to_tx")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Transmitter> sameTransmitters;
@@ -218,27 +221,27 @@ public class MessageType {
     @ManyToMany(fetch = FetchType.EAGER)
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
-    @JoinTable(name = "message_replace", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "msgtype_replace_id"))
-    @ForeignKey(name = "fk_msg_replace_to_msg_type", inverseName = "fk_msg_replace_to_replaced_msgs")
+    @JoinTable(name = "msg_type_replace", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "msgtype_replace_id"))
+    @ForeignKey(name = "fk_msg_type_replace_to_msg_type", inverseName = "fk_msg_type_replace_to_replaced_msgs")
     private Set<MessageTypeSummary> replacementMsgs;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "message_default_areas", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "area_id"))
-    @ForeignKey(name = "fk_msg_def_areas_to_msg_type", inverseName = "fk_msg_def_areas_to_area")
+    @JoinTable(name = "msg_type_default_areas", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "area_id"))
+    @ForeignKey(name = "fk_msg_type_def_areas_to_msg_type", inverseName = "fk_msg_type_def_areas_to_area")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Area> defaultAreas;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "message_default_zones", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "zone_id"))
-    @ForeignKey(name = "fk_msg_def_zones_to_msg_type", inverseName = "fk_msg_def_zones_to_zone")
+    @JoinTable(name = "msg_type_default_zones", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "zone_id"))
+    @ForeignKey(name = "fk_msg_type_def_zones_to_msg_type", inverseName = "fk_msg_type_def_zones_to_zone")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Zone> defaultZones;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "message_default_transmitter_groups", schema = "bmh", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_id"))
-    @ForeignKey(name = "fk_msg_def_tx_to_msg_type", inverseName = "fk_msg_def_tx_to_tx_group")
+    @JoinTable(name = "msg_type_default_transmitter_groups", joinColumns = @JoinColumn(name = "msgtype_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_id"))
+    @ForeignKey(name = "fk_msg_type_def_tx_groups_to_msg_type", inverseName = "fk_msg_type_def_tx_groups_to_tx_group")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<TransmitterGroup> defaultTransmitterGroups;

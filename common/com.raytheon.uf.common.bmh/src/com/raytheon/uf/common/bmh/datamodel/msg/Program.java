@@ -42,9 +42,11 @@ import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.Transient;
+import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
@@ -92,6 +94,7 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * Apr 02, 2015 4248      rjpeter     Made ProgramSuite database relation a set, added ordered return methods.
  * Apr 21, 2015 4248      rjpeter     Updated setProgramSuites to fix hash issue.
  * Apr 28, 2015 4428      rferrel     Added {@link #getTriggerMsgType(Suite)} and {@link #setTriggerMsgType(Suite, List)}.
+ * May 12, 2015 4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -112,8 +115,8 @@ import com.raytheon.uf.common.util.CollectionUtil;
         @NamedQuery(name = Program.GET_PROGRAM_GENERAL_SUITE, query = Program.GET_PROGRAM_GENERAL_SUITE_QUERY),
         @NamedQuery(name = Program.VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP, query = Program.VERFIY_MSG_TYPE_HANDLED_BY_TRX_GRP_QUERY) })
 @Entity
-@Table(name = "program", schema = "bmh")
-@SequenceGenerator(initialValue = 1, schema = "bmh", name = Program.GEN, sequenceName = "program_seq")
+@Table(name = "program", uniqueConstraints = @UniqueConstraint(name = "uk_program_name", columnNames = "name"))
+@SequenceGenerator(initialValue = 1, allocationSize = 1, name = Program.GEN, sequenceName = "program_seq")
 @DynamicSerialize
 public class Program {
     static final String GEN = "Program Id Generator";
@@ -181,7 +184,7 @@ public class Program {
     @DiffTitle(position = 2)
     protected int id;
 
-    @Column(length = 40, unique = true, nullable = false)
+    @Column(length = 40, nullable = false)
     @DynamicSerializeElement
     @DiffTitle(position = 1)
     @DiffString
@@ -196,6 +199,7 @@ public class Program {
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     @JoinColumn(name = "program_id")
+    @ForeignKey(name = "fk_tx_group_to_program_delete_me")
     private Set<TransmitterGroup> transmitterGroups;
 
     /*

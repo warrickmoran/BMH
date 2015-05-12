@@ -28,7 +28,6 @@ import javax.persistence.MapsId;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
-import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
@@ -54,6 +53,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 13, 2014 3654       rjpeter     Updated to use MessageTypeSummary.
  * Oct 29, 2014 3636       rferrel     Implement logging.
  * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered.
+ * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -61,9 +61,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Entity
 @DynamicSerialize
-@Table(name = "suite_message", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
-        "suite_id", "position" }) })
-@BatchSize(size = 100)
+@Table(name = "suite_msg", uniqueConstraints = @UniqueConstraint(name = "uk_suite_msg_position", columnNames = {
+        "suite_id", "position" }))
 public class SuiteMessage implements PositionOrdered {
     @EmbeddedId
     @DynamicSerializeElement
@@ -72,6 +71,7 @@ public class SuiteMessage implements PositionOrdered {
 
     @ManyToOne(optional = false)
     @MapsId("suiteId")
+    @ForeignKey(name = "fk_suite_msg_to_suite")
     // No dynamic serialize due to bi-directional relationship
     @DiffTitle(position = 1)
     private Suite suite;
@@ -80,7 +80,7 @@ public class SuiteMessage implements PositionOrdered {
     @MapsId("msgTypeId")
     @JoinColumn(name = "msgtype_id")
     @DynamicSerializeElement
-    @ForeignKey(name = "suite_message_to_message_type")
+    @ForeignKey(name = "fk_suite_msg_to_msg_type")
     @DiffString
     private MessageTypeSummary msgTypeSummary;
 

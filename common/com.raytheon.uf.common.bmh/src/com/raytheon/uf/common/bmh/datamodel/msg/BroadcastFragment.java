@@ -50,6 +50,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 23, 2014  3748     bkowal      Make the TTS Voice optional
  * Mar 31, 2015  4248     rjpeter     Implement PositionOrdered.
  * Apr 07, 2015  4293     bkowal      Will now be mapped to a {@link BroadcastContents}.
+ * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author bsteffen
@@ -57,7 +58,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Entity
 @DynamicSerialize
-@Table(name = "broadcast_fragment", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
+@Table(name = "broadcast_fragment", uniqueConstraints = { @UniqueConstraint(name = "uk_broadcast_fragment_position", columnNames = {
         "contents_broadcast_id", "contents_timestamp", "position" }) })
 @SequenceGenerator(initialValue = 1, name = BroadcastFragment.GEN, sequenceName = "broadcast_fragment_seq")
 public class BroadcastFragment implements PositionOrdered {
@@ -70,7 +71,7 @@ public class BroadcastFragment implements PositionOrdered {
     private long id;
 
     @ManyToOne(optional = false)
-    @ForeignKey(name = "fk_broadcast_fragment_to_broadcast_contents")
+    @ForeignKey(name = "fk_broadcast_fragment_to_broadcast_msg_contents")
     // No dynamic serialize due to bi-directional relationship
     private BroadcastContents contents;
 
@@ -86,6 +87,7 @@ public class BroadcastFragment implements PositionOrdered {
     /* The Voice that should be used to transform the SSML text. */
     @ManyToOne(optional = true)
     @JoinColumn(name = "voice_id")
+    @ForeignKey(name = "fk_broadcast_fragment_to_tts_voice")
     @DynamicSerializeElement
     private TtsVoice voice;
 

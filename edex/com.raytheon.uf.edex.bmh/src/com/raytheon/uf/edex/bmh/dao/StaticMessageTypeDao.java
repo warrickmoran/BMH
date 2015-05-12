@@ -22,7 +22,6 @@ package com.raytheon.uf.edex.bmh.dao;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageTypePK;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
@@ -34,8 +33,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 11, 2015 4213           bkowal     Initial creation
- * 
+ * Mar 11, 2015 4213       bkowal      Initial creation
+ * May 12, 2015 4248       rjpeter     Updated primary key field.
  * </pre>
  * 
  * @author bkowal
@@ -43,7 +42,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  */
 
 public class StaticMessageTypeDao extends
-        AbstractBMHDao<StaticMessageType, StaticMessageTypePK> {
+        AbstractBMHDao<StaticMessageType, Integer> {
 
     /**
      * Constructor

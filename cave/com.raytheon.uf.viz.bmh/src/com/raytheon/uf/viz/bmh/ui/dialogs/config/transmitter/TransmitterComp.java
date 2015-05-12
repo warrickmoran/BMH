@@ -123,6 +123,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     allow users to disable all {@link Transmitter}s within the group.
  * May 08, 2015    4470    bkowal      It is now possible to enable all configured Transmitter(s) within
  *                                     a group.
+ * May 12, 2015 4248       rjpeter     Fix misspelling.
  * </pre>
  * 
  * @author mpduff
@@ -299,7 +300,7 @@ public class TransmitterComp extends Composite implements INotificationObserver 
         Transmitter groupTransmitter = null;
         boolean transmitterEnabled = false;
         boolean transmitterMaint = false;
-        boolean transmitterDecomissioned = false;
+        boolean transmitterDecommissioned = false;
         boolean transmitterPrimary = false;
 
         if (tree.getSelectionCount() > 0) {
@@ -419,7 +420,7 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                         || ((standaloneGroup != null) && (standaloneGroup
                                 .getTransmitterList().get(0).getTxStatus() == TxStatus.ENABLED));
                 if (transmitterEnabled == false) {
-                    transmitterDecomissioned = ((groupTransmitter != null) && (groupTransmitter
+                    transmitterDecommissioned = ((groupTransmitter != null) && (groupTransmitter
                             .getTxStatus() == TxStatus.DECOMM))
                             || ((standaloneGroup != null) && (standaloneGroup
                                     .getTransmitterList().get(0).getTxStatus() == TxStatus.DECOMM));
@@ -503,15 +504,15 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                                 }
                             });
                     disableStatusItem
-                            .setSelection(!(transmitterEnabled || transmitterDecomissioned));
+                            .setSelection(!(transmitterEnabled || transmitterDecommissioned));
 
                     new MenuItem(statusMenu, SWT.SEPARATOR);
 
-                    enableItem = !transmitterDecomissioned
+                    enableItem = !transmitterDecommissioned
                             && !transmitterEnabled;
                     MenuItem decommissionTransmitterItem = createItem(
                             statusMenu, SWT.RADIO, enableItem,
-                            "Only a disabled transmitter can be decomissioned");
+                            "Only a disabled transmitter can be decommissioned");
                     decommissionTransmitterItem
                             .setText("Decommission Transmitter");
                     decommissionTransmitterItem
@@ -524,10 +525,10 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                                 }
                             });
                     decommissionTransmitterItem
-                            .setSelection(transmitterDecomissioned);
+                            .setSelection(transmitterDecommissioned);
                 }
 
-                enableItem = !transmitterDecomissioned && !transmitterEnabled
+                enableItem = !transmitterDecommissioned && !transmitterEnabled
                         && !transmitterMaint;
                 String disableMsg = null;
 

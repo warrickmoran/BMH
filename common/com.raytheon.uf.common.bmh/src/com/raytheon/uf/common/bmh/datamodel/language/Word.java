@@ -33,6 +33,8 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 
+import org.hibernate.annotations.ForeignKey;
+
 import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -54,13 +56,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Oct 16, 2014 3636       rferrel     Added logging.
  * Jan 06, 2015 3931       bkowal      Added XML JAXB Marshaling tags.
  * Mar 31, 2015 4291       bkowal      Set word_seq allocationSize to 1.
+ * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
 @Entity
-@Table(name = "word", schema = "bmh", uniqueConstraints = { @UniqueConstraint(columnNames = {
+@Table(name = "word", uniqueConstraints = { @UniqueConstraint(name = "uk_word_dictionary", columnNames = {
         "word", "dictionary" }) })
 @SequenceGenerator(initialValue = 1, name = Word.GEN, sequenceName = "word_seq", allocationSize = 1)
 @DynamicSerialize
@@ -90,6 +93,7 @@ public class Word {
     /** An identifier used to link this Word to its Dictionary */
     @ManyToOne
     @JoinColumn(name = "dictionary", nullable = false)
+    @ForeignKey(name = "fk_word_to_dict")
     @DiffTitle(position = 1)
     private Dictionary dictionary;
 

@@ -27,6 +27,8 @@ import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.ManyToOne;
 
+import org.hibernate.annotations.ForeignKey;
+
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.diff.DiffString;
 import com.raytheon.uf.common.bmh.diff.DiffTitle;
@@ -46,7 +48,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 29, 2014 3636       rferrel     Implement logging.
  * Jan 13, 2015 3809       bkowal      Made {@link #transmitterGroup} a 
  *                                     {@link DynamicSerializeElement}.
- * 
+ * May 12, 2015  4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -59,6 +61,7 @@ public class TransmitterLanguagePK implements Serializable {
 
     // FK to transmitterGroup
     @ManyToOne(optional = false)
+    @ForeignKey(name = "fk_tx_language_to_tx_group")
     @DynamicSerializeElement
     private TransmitterGroup transmitterGroup;
 

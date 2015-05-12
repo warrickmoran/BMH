@@ -40,6 +40,7 @@ import javax.persistence.Table;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -67,7 +68,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 19, 2014  3385     bkowal      Added {@link LdadStatus#NONE}
  * Dec 02, 2014  3614     bsteffen    Add Unacceptable status.
  * Apr 16, 2015  4396     rferrel     Added {@link #ALL_UNEXPIRED_VALIDATED_MSGS_QUERY}.
- * 
+ * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author bsteffen
@@ -77,8 +78,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG, query = ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG_QUERY),
         @NamedQuery(name = ValidatedMessage.ALL_UNEXPIRED_VALIDATED_MSGS, query = ValidatedMessage.ALL_UNEXPIRED_VALIDATED_MSGS_QUERY) })
 @Entity
-@Table(name = "validated_msg", schema = "bmh")
-@SequenceGenerator(initialValue = 1, schema = "bmh", name = ValidatedMessage.GEN, sequenceName = "validated_msg_seq")
+@Table(name = "validated_msg")
+@SequenceGenerator(initialValue = 1, name = ValidatedMessage.GEN, sequenceName = "validated_msg_seq")
 @DynamicSerialize
 public class ValidatedMessage {
 
@@ -130,12 +131,14 @@ public class ValidatedMessage {
     @DynamicSerializeElement
     @OneToOne
     @JoinColumn(name = "input_msg_id")
+    @ForeignKey(name = "fk_validated_msg_to_input_msg")
     private InputMessage inputMessage;
 
     @DynamicSerializeElement
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(schema = "bmh", name = "validated_msg_transmitter_groups", joinColumns = @JoinColumn(name = "validated_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_id"))
-    @Fetch(FetchMode.SELECT)
+    @JoinTable(name = "validated_msg_transmitter_groups", joinColumns = @JoinColumn(name = "validated_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_group_id"))
+    @ForeignKey(name = "fk_valid_msg_tx_groups_to_tx_group", inverseName = "fk_valid_msg_tx_groups_to_validated_msg")
+    @Fetch(FetchMode.SUBSELECT)
     private Set<TransmitterGroup> transmitterGroups;
 
     @DynamicSerializeElement

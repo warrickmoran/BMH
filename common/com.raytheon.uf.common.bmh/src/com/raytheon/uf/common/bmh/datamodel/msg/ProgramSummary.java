@@ -39,7 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 13, 2014            rjpeter     Initial creation
- * 
+ * May 12, 2015  4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -47,7 +47,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Entity
 @DynamicSerialize
-@Table(name = "program", schema = "bmh")
+@Table(name = "program")
 public class ProgramSummary {
 
     @DynamicSerializeElement

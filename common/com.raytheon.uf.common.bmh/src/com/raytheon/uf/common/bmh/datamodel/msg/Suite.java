@@ -38,8 +38,8 @@ import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.Transient;
+import javax.persistence.UniqueConstraint;
 
-import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
@@ -79,6 +79,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 07, 2014 3752      mpduff      Add getSuiteByName
  * Apr 02, 2015 4248      rjpeter     Made suiteMessages database relation a set, added ordered return methods.
  * Apr 21, 2015 4248      rjpeter     Updated setSuiteMessages to fix hash issue.
+ * May 12, 2015 4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author rjpeter
@@ -90,9 +91,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = Suite.GET_SUITE_BY_NAME, query = Suite.GET_SUITE_BY_NAME_QUERY) })
 @Entity
 @DynamicSerialize
-@Table(name = "suite", schema = "bmh")
-@SequenceGenerator(initialValue = 1, schema = "bmh", name = Suite.GEN, sequenceName = "suite_seq")
-@BatchSize(size = 100)
+@Table(name = "suite", uniqueConstraints = @UniqueConstraint(name = "uk_suite_name", columnNames = "name"))
+@SequenceGenerator(initialValue = 1, allocationSize = 1, name = Suite.GEN, sequenceName = "suite_seq")
 public class Suite {
     public enum SuiteType {
         GENERAL, HIGH, EXCLUSIVE, INTERRUPT;
@@ -119,7 +119,7 @@ public class Suite {
     @DiffTitle(position = 2)
     protected int id;
 
-    @Column(length = 40, unique = true, nullable = false)
+    @Column(length = 40, nullable = false)
     @DynamicSerializeElement
     @DiffString
     @DiffTitle(position = 1)

@@ -35,6 +35,7 @@ import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -55,19 +56,18 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 25, 2014  3485     bsteffen    Add receiveAddress
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Feb 03, 2015  4056     bsteffen    Add DEFAULT_RECEIVE_ADDRESS
- * 
+ * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 @Entity
-@Table(name = "dac_address", schema = "bmh", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "id" }),
-        @UniqueConstraint(columnNames = { "name" }),
-        @UniqueConstraint(columnNames = { "address" }),
-        @UniqueConstraint(columnNames = { "receivePort" }) })
-@SequenceGenerator(initialValue = 1, name = Dac.GEN, sequenceName = "dac_seq", allocationSize = 1)
+@Table(name = "dac_address", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_dac_address_name", columnNames = { "name" }),
+        @UniqueConstraint(name = "uk_dac_address_address", columnNames = { "address" }),
+        @UniqueConstraint(name = "uk_dac_address_receivePort", columnNames = { "receivePort" }) })
+@SequenceGenerator(initialValue = 1, allocationSize = 1, name = Dac.GEN, sequenceName = "dac_seq")
 @DynamicSerialize
 public class Dac {
     static final String GEN = "DAC Generator";
@@ -98,9 +98,11 @@ public class Dac {
     private String receiveAddress;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "dac_ports", schema = "bmh")
+    @CollectionTable(name = "dac_ports", uniqueConstraints = @UniqueConstraint(name = "uk_dac_ports", columnNames = {
+            "dac_id", "dataPort" }))
+    @ForeignKey(name = "fk_dac_ports_to_dac")
     @Column(name = "dataPort")
-    @Fetch(FetchMode.SELECT)
+    @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
     private Set<Integer> dataPorts;
 
