@@ -42,6 +42,8 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
  *                                     Ensure that matches are not found within words.
  * Apr 10, 2015 4356       bkowal      Based on the regex padding that is added to all rules, ensure
  *                                     that the second matching group is used.
+ * May 13, 2015 4403       bkowal      Reversed {@link #NON_ALPHA_REGEX} to match any rules that
+ *                                     are not followed by alphanumeric characters or an apostrophe.
  * 
  * </pre>
  * 
@@ -51,7 +53,12 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 
 public class SimpleTextTransformation extends AbstractTextTransformation {
 
-    private static final String NON_ALPHA_REGEX = "([\\W|_]+)";
+    /*
+     * apostrophes allowed before the character.
+     */
+    private static final String NON_ALPHA_REGEX_APOSTROPHE = "([^\\w']+)";
+
+    private static final String NON_ALPHA_REGEX = "([^\\w]+)";
 
     private List<Serializable> appliedTransformation;
 
@@ -78,7 +85,7 @@ public class SimpleTextTransformation extends AbstractTextTransformation {
 
     @Override
     protected String prepareTransformationRegex(String text) {
-        return NON_ALPHA_REGEX + "(" + Pattern.quote(text) + ")"
+        return NON_ALPHA_REGEX_APOSTROPHE + "(" + Pattern.quote(text) + ")"
                 + NON_ALPHA_REGEX;
     }
 
