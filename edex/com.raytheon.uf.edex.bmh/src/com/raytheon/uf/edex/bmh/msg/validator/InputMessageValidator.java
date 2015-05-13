@@ -29,12 +29,13 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
 import com.raytheon.uf.common.bmh.notify.MessageExpiredNotification;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
-import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.core.EdexException;
 
@@ -54,6 +55,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Jan 14, 2015  3969     bkowal      Post a {@link MessageExpiredNotification} when a
  *                                    watch/warning fails validation because it expired.
+ * May 13, 2015  4429     rferrel     Set traceId.
  * 
  * </pre>
  * 
@@ -93,6 +95,7 @@ public class InputMessageValidator {
     public ValidatedMessage validate(InputMessage input) {
         ValidatedMessage valid = new ValidatedMessage();
         valid.setInputMessage(input);
+        valid.setTraceId(input.getName());
         List<String> unacceptableWords = UnacceptableWordFilter.check(input);
         if (unacceptableWords.isEmpty()) {
             transmissionCheck.validate(valid);
@@ -100,10 +103,10 @@ public class InputMessageValidator {
             if (!valid.isAccepted()) {
                 statusHandler
                         .error(BMH_CATEGORY.MESSAGE_VALIDATION_FAILED,
-                                input.getName()
-                                        + " failed to validate with transmission status: "
+                                TraceableUtil.createTraceMsgHeader(valid)
+                                        + "failed to validate with transmission status: "
                                         + valid.getTransmissionStatus());
-                this.messageLogger.logError(
+                this.messageLogger.logError(valid,
                         BMH_COMPONENT.INPUT_MESSAGE_VALIDATOR,
                         BMH_ACTIVITY.MESSAGE_VALIDATION, valid);
                 /*
@@ -140,7 +143,8 @@ public class InputMessageValidator {
                                     true);
                         } catch (EdexException | SerializationException e) {
                             statusHandler.error(BMH_CATEGORY.UNKNOWN,
-                                    "Failed to send notification: "
+                                    TraceableUtil.createTraceMsgHeader(valid)
+                                            + "Failed to send notification: "
                                             + notification.toString() + ".", e);
                         }
                     }
@@ -151,13 +155,20 @@ public class InputMessageValidator {
             valid.setLdadStatus(LdadStatus.UNACCEPTABLE);
             statusHandler
                     .error(BMH_CATEGORY.MESSAGE_VALIDATION_FAILED,
-                            input.getName()
+                            TraceableUtil.createTraceMsgHeader(valid)
                                     + "("
                                     + input.getAfosid()
                                     + ") failed to validate because it contains unacceptable words.");
-            this.messageLogger.logError(BMH_COMPONENT.INPUT_MESSAGE_VALIDATOR,
+            this.messageLogger.logError(valid,
+                    BMH_COMPONENT.INPUT_MESSAGE_VALIDATOR,
                     BMH_ACTIVITY.MESSAGE_VALIDATION, valid);
         }
+        StringBuilder sb = new StringBuilder();
+        sb.append(TraceableUtil.createTraceMsgHeader(valid)).append(
+                "input message validation status is ");
+        sb.append(" transmissionStatus=").append(valid.getTransmissionStatus());
+        sb.append(", ldadStatus=").append(valid.getLdadStatus());
+        statusHandler.info(sb.toString());
         return valid;
     }
 }

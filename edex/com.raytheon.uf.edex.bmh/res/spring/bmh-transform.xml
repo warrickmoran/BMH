@@ -24,7 +24,7 @@
 		<route id="bmhTransformer">
 			<from uri="jms-durable:queue:BMH.Transform" />
 			<doTry>
-				<bean ref="validatedMessageDao" method="getByID" />
+				<bean ref="validatedMessageDao" method="getByTraceableId" />
 				<bean ref="messageTransformer" method="process" />
 				<split>
 					<simple>${body}</simple>

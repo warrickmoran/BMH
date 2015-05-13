@@ -43,7 +43,7 @@
   						<stop />
 					</filter>
   					<setBody>
-  						<simple>${body.getId}</simple>
+  						<simple>${body.getTraceableId}</simple>
 					</setBody>
   					<to uri="jms-durable:queue:BMH.Transform" />
 				</pipeline>

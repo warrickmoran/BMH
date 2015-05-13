@@ -34,10 +34,11 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
-import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
 import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
 
 /**
@@ -62,6 +63,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  * Apr 24, 2015  4394      bkowal      Added {@link #logMaintenanceTonesActivity(TONE_TYPE, DacMaintenanceMessage)}
  *                                     and {@link #getMsgId(DacMaintenanceMessage)}.
  * May 07, 2015  4466      bkowal      Added {@link #logPlaylistError(BMH_COMPONENT, BMH_ACTIVITY, String, Throwable)}.
+ * May 13, 2015 4429       rferrel     Changes for traceId.
  * 
  * </pre>
  * 
@@ -128,10 +130,11 @@ public class DefaultMessageLogger implements IMessageLogger {
      * (com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage)
      */
     @Override
-    public void logBroadcastActivity(DacPlaylistMessage msg) {
+    public void logBroadcastActivity(ITraceable traceable,
+            DacPlaylistMessage msg) {
         final String expire = this.getExpirationDate(msg.getExpire());
         Object[] logDetails = new Object[] { this.getMsgId(msg), expire };
-        this.logActivity(MESSAGE_ACTIVITY.BROADCAST, logDetails);
+        this.logActivity(traceable, MESSAGE_ACTIVITY.BROADCAST, logDetails);
     }
 
     /*
@@ -143,13 +146,13 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.msg.InputMessage)
      */
     @Override
-    public void logReplacementActivity(InputMessage newMsg,
-            InputMessage replacedMsg) {
+    public void logReplacementActivity(ITraceable traceable,
+            InputMessage newMsg, InputMessage replacedMsg) {
         final String expire = this
                 .getExpirationDate(newMsg.getExpirationTime());
         Object[] logDetails = new Object[] { this.getMsgId(newMsg),
                 this.getMsgId(replacedMsg), expire };
-        this.logActivity(MESSAGE_ACTIVITY.REPLACEMENT, logDetails);
+        this.logActivity(traceable, MESSAGE_ACTIVITY.REPLACEMENT, logDetails);
     }
 
     /*
@@ -161,11 +164,12 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup)
      */
     @Override
-    public void logCreationActivity(DacPlaylistMessage msg, TransmitterGroup tg) {
+    public void logCreationActivity(ITraceable traceable,
+            DacPlaylistMessage msg, TransmitterGroup tg) {
         final String expire = this.getExpirationDate(msg.getExpire());
         Object[] logDetails = new Object[] { this.getMsgId(msg), tg.getName(),
                 expire };
-        this.logActivity(MESSAGE_ACTIVITY.CREATION, logDetails);
+        this.logActivity(traceable, MESSAGE_ACTIVITY.CREATION, logDetails);
     }
 
     /*
@@ -176,12 +180,12 @@ public class DefaultMessageLogger implements IMessageLogger {
      * (com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg)
      */
     @Override
-    public void logActivationActivity(BroadcastMsg msg) {
+    public void logActivationActivity(ITraceable traceable, BroadcastMsg msg) {
         final String expire = this.getExpirationDate(msg.getInputMessage()
                 .getExpirationTime());
         Object[] logDetails = new Object[] { this.getMsgId(msg),
                 msg.getTransmitterGroup().getName(), expire };
-        this.logActivity(MESSAGE_ACTIVITY.ACTIVATION, logDetails);
+        this.logActivity(traceable, MESSAGE_ACTIVITY.ACTIVATION, logDetails);
     }
 
     /*
@@ -193,7 +197,8 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage)
      */
     @Override
-    public void logTonesActivity(TONE_TYPE toneType, DacPlaylistMessage msg) {
+    public void logTonesActivity(ITraceable traceable, TONE_TYPE toneType,
+            DacPlaylistMessage msg) {
         final String expire = this.getExpirationDate(msg.getExpire());
         MESSAGE_ACTIVITY activity = null;
         Object[] logDetails = null;
@@ -206,7 +211,7 @@ public class DefaultMessageLogger implements IMessageLogger {
             logDetails = new Object[] { toneType.toString(),
                     this.getMsgId(msg), expire };
         }
-        this.logActivity(activity, logDetails);
+        this.logActivity(traceable, activity, logDetails);
     }
 
     /**
@@ -219,8 +224,8 @@ public class DefaultMessageLogger implements IMessageLogger {
      * @param msg
      *            the specified {@link DacMaintenanceMessage}
      */
-    public void logMaintenanceTonesActivity(TONE_TYPE toneType,
-            DacMaintenanceMessage msg) {
+    public void logMaintenanceTonesActivity(ITraceable traceable,
+            TONE_TYPE toneType, DacMaintenanceMessage msg) {
         MESSAGE_ACTIVITY activity = null;
         Object[] logDetails = null;
         if (toneType == TONE_TYPE.SAME) {
@@ -232,7 +237,7 @@ public class DefaultMessageLogger implements IMessageLogger {
             logDetails = new Object[] { toneType.toString(),
                     this.getMsgId(msg), NO_EXPIRATION };
         }
-        this.logActivity(activity, logDetails);
+        this.logActivity(traceable, activity, logDetails);
     }
 
     /*
@@ -244,12 +249,13 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist)
      */
     @Override
-    public void logTriggerActivity(BroadcastMsg msg, DacPlaylist playlist) {
+    public void logTriggerActivity(ITraceable traceable, BroadcastMsg msg,
+            DacPlaylist playlist) {
         final String expire = this.getExpirationDate(playlist.getExpired());
         Object[] logDetails = new Object[] { this.getMsgId(msg),
                 playlist.toString(), msg.getTransmitterGroup().getName(),
                 expire };
-        this.logActivity(MESSAGE_ACTIVITY.TRIGGER, logDetails);
+        this.logActivity(traceable, MESSAGE_ACTIVITY.TRIGGER, logDetails);
     }
 
     /*
@@ -260,11 +266,11 @@ public class DefaultMessageLogger implements IMessageLogger {
      * (com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist)
      */
     @Override
-    public void logPlaylistActivity(DacPlaylist playlist) {
+    public void logPlaylistActivity(ITraceable traceable, DacPlaylist playlist) {
         final String expire = (playlist.getExpired() == null) ? NO_EXPIRATION
                 : playlist.getExpired().getTime().toString();
         Object[] logDetails = new Object[] { playlist.toString(), expire };
-        this.logActivity(MESSAGE_ACTIVITY.PLAYLIST, logDetails);
+        this.logActivity(traceable, MESSAGE_ACTIVITY.PLAYLIST, logDetails);
     }
 
     /*
@@ -277,9 +283,17 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.msg.InputMessage)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, InputMessage msg) {
+        this.logError(traceable, component, activity, msg, null);
+    }
+
+    @Override
+    public void logMessageActivity(ITraceable traceable, MESSAGE_ACTIVITY activity,
             InputMessage msg) {
-        this.logError(component, activity, msg, null);
+        final String expire = this.getExpirationDate(msg.getExpirationTime());
+        Object[] logDetails = new Object[] { msg.getId(), expire };
+        logActivity(traceable, activity, logDetails);
     }
 
     /*
@@ -293,9 +307,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * java.lang.Exception)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            InputMessage msg, Throwable e) {
-        this.logError(component, activity, this.getMsgId(msg), e);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, InputMessage msg, Throwable e) {
+        this.logError(traceable, component, activity, this.getMsgId(msg), e);
     }
 
     /*
@@ -308,9 +322,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            ValidatedMessage msg) {
-        this.logError(component, activity, msg, null);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, ValidatedMessage msg) {
+        this.logError(traceable, component, activity, msg, null);
     }
 
     /*
@@ -324,9 +338,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * java.lang.Exception)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            ValidatedMessage msg, Throwable e) {
-        this.logError(component, activity, this.getMsgId(msg), e);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, ValidatedMessage msg, Throwable e) {
+        this.logError(traceable, component, activity, this.getMsgId(msg), e);
     }
 
     /*
@@ -339,9 +353,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            BroadcastMsg msg) {
-        this.logError(component, activity, msg, null);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, BroadcastMsg msg) {
+        this.logError(traceable, component, activity, msg, null);
     }
 
     /*
@@ -355,9 +369,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * java.lang.Exception)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            BroadcastMsg msg, Throwable e) {
-        this.logError(component, activity, this.getMsgId(msg), e);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, BroadcastMsg msg, Throwable e) {
+        this.logError(traceable, component, activity, this.getMsgId(msg), e);
     }
 
     /*
@@ -370,9 +384,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.edex.bmh.ldad.LdadMsg)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            LdadMsg msg) {
-        this.logError(component, activity, msg, null);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, LdadMsg msg) {
+        this.logError(traceable, component, activity, msg, null);
     }
 
     /*
@@ -385,9 +399,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.edex.bmh.ldad.LdadMsg, java.lang.Exception)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            LdadMsg msg, Throwable e) {
-        this.logError(component, activity, this.getMsgId(msg), e);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, LdadMsg msg, Throwable e) {
+        this.logError(traceable, component, activity, this.getMsgId(msg), e);
     }
 
     /*
@@ -400,9 +414,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            DacPlaylistMessage msg) {
-        this.logError(component, activity, msg, null);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, DacPlaylistMessage msg) {
+        this.logError(traceable, component, activity, msg, null);
     }
 
     /*
@@ -416,9 +430,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * java.lang.Exception)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            DacPlaylistMessage msg, Throwable e) {
-        this.logError(component, activity, this.getMsgId(msg), e);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, DacPlaylistMessage msg, Throwable e) {
+        this.logError(traceable, component, activity, this.getMsgId(msg), e);
     }
 
     /*
@@ -431,9 +445,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.playlist.Playlist)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            Playlist playlist) {
-        this.logError(component, activity, playlist, null);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, Playlist playlist) {
+        this.logError(traceable, component, activity, playlist, null);
     }
 
     /*
@@ -447,9 +461,10 @@ public class DefaultMessageLogger implements IMessageLogger {
      * java.lang.Throwable)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            Playlist playlist, Throwable e) {
-        this.logError(component, activity, this.getIdentifier(playlist), e);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, Playlist playlist, Throwable e) {
+        this.logError(traceable, component, activity,
+                this.getIdentifier(playlist), e);
     }
 
     /*
@@ -462,9 +477,9 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            DacPlaylist playlist) {
-        this.logError(component, activity, playlist, null);
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, DacPlaylist playlist) {
+        this.logError(traceable, component, activity, playlist, null);
     }
 
     /*
@@ -478,10 +493,10 @@ public class DefaultMessageLogger implements IMessageLogger {
      * java.lang.Throwable)
      */
     @Override
-    public void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            DacPlaylist playlist, Throwable e) {
+    public void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, DacPlaylist playlist, Throwable e) {
         final String identifier = "DacPlaylist [" + playlist.toString() + "]";
-        this.logError(component, activity, identifier, e);
+        this.logError(traceable, component, activity, identifier, e);
     }
 
     /**
@@ -503,7 +518,7 @@ public class DefaultMessageLogger implements IMessageLogger {
     public void logPlaylistError(BMH_COMPONENT component,
             BMH_ACTIVITY activity, String playlistFile, Throwable e) {
         final String identifier = "Playlist File [" + playlistFile + "]";
-        this.logError(component, activity, identifier, e);
+        this.logError(null, component, activity, identifier, e);
     }
 
     /*
@@ -515,7 +530,8 @@ public class DefaultMessageLogger implements IMessageLogger {
      * java.lang.Throwable)
      */
     @Override
-    public void logDaoError(BMH_ACTIVITY activity, Object object, Throwable e) {
+    public void logDaoError(ITraceable traceable, BMH_ACTIVITY activity,
+            Object object, Throwable e) {
         if (object == null) {
             return;
         }
@@ -526,16 +542,17 @@ public class DefaultMessageLogger implements IMessageLogger {
          * identification information for.
          */
         if (object instanceof InputMessage) {
-            this.logError(BMH_COMPONENT.BMH_DAO, activity,
+            this.logError(traceable, BMH_COMPONENT.BMH_DAO, activity,
                     (InputMessage) object, e);
         } else if (object instanceof ValidatedMessage) {
-            this.logError(BMH_COMPONENT.BMH_DAO, activity,
+            this.logError(traceable, BMH_COMPONENT.BMH_DAO, activity,
                     (ValidatedMessage) object, e);
         } else if (object instanceof BroadcastMsg) {
-            this.logError(BMH_COMPONENT.BMH_DAO, activity,
+            this.logError(traceable, BMH_COMPONENT.BMH_DAO, activity,
                     (BroadcastMsg) object, e);
         } else if (object instanceof Playlist) {
-            this.logError(BMH_COMPONENT.BMH_DAO, activity, (Playlist) object, e);
+            this.logError(traceable, BMH_COMPONENT.BMH_DAO, activity,
+                    (Playlist) object, e);
         } else {
             throw new IllegalArgumentException(
                     "The current logging implementation does not support or does not recognize the specified persistent object: "
@@ -543,10 +560,12 @@ public class DefaultMessageLogger implements IMessageLogger {
         }
     }
 
-    private void logActivity(final MESSAGE_ACTIVITY activityType,
-            final Object[] logDetails) {
-        StringBuilder sb = new StringBuilder("[");
-        sb.append(activityType.toString())
+    private void logActivity(final ITraceable traceable,
+            final MESSAGE_ACTIVITY activityType, final Object[] logDetails) {
+        StringBuilder sb = new StringBuilder(
+                TraceableUtil.createTraceMsgHeader(traceable));
+        sb.append("[")
+                .append(activityType.toString())
                 .append("] ")
                 .append(String.format(activityType.getLogMsgFormat(),
                         logDetails));
@@ -554,15 +573,16 @@ public class DefaultMessageLogger implements IMessageLogger {
         this.activityLogger.info(sb.toString());
     }
 
-    private void logError(BMH_COMPONENT component, BMH_ACTIVITY activity,
-            String msgId, Throwable e) {
-        final Object[] logDetails = new Object[] { component.prettyPrint(),
-                activity.toString(), msgId, this.host };
-        final String msg = String.format(ErrorActivity.LOG_FORMAT, logDetails);
+    private void logError(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, String msgId, Throwable e) {
+        final StringBuilder msg = new StringBuilder(
+                TraceableUtil.createTraceMsgHeader(traceable));
+        msg.append(String.format(ErrorActivity.LOG_FORMAT, component, activity,
+                msgId, this.host));
         if (e == null) {
-            this.errorLogger.error(msg);
+            this.errorLogger.error(msg.toString());
         } else {
-            this.errorLogger.error(msg, e);
+            this.errorLogger.error(msg.toString(), e);
         }
     }
 
@@ -690,6 +710,7 @@ public class DefaultMessageLogger implements IMessageLogger {
         sb.append(msg.getInputMessage().getAfosid());
         sb.append(", name=");
         sb.append(msg.getInputMessage().getName());
+        sb.append(", traceId=").append(TraceableUtil.getTraceId(msg));
         sb.append("]");
 
         return sb.toString();

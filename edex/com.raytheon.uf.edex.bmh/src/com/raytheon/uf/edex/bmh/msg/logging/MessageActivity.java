@@ -30,6 +30,7 @@ package com.raytheon.uf.edex.bmh.msg.logging;
  * ------------ ---------- ----------- --------------------------
  * Dec 10, 2014 3651       bkowal      Initial creation
  * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
+ * May 19, 2015 4429       rferrel     Added Transformer messages.
  * 
  * </pre>
  * 
@@ -86,6 +87,12 @@ public class MessageActivity {
     protected static final String PLAYLIST_FORMAT = PLAYLIST_FMT
             + " has been updated/created " + PLAYLIST_EXPIRES_FMT + ".";
 
+    protected static final String TRANSFORM_START_FORMAT = MESSAGE_FMT
+            + " start transforming message " + MESSAGE_EXPIRES_FMT;
+
+    protected static final String TRANSFORM_END_FORMAT = MESSAGE_FMT
+            + " transform successfully generated " + MESSAGE_EXPIRES_FMT;
+
     /**
      * Enum identifying the types of message activities that need to be logged.
      * 
@@ -118,7 +125,11 @@ public class MessageActivity {
         /* Automatic Playlist switch occurred due to a trigger message */
         TRIGGER(TRIGGER_FORMAT),
         /* A playlist was created / updated */
-        PLAYLIST(PLAYLIST_FORMAT);
+        PLAYLIST(PLAYLIST_FORMAT),
+        /* An input message starts transform. */
+        TRANSFORM_START(TRANSFORM_START_FORMAT),
+        /* An input message ends transform. */
+        TRANSFORM_END(TRANSFORM_END_FORMAT);
 
         private final String logMsgFormat;
 

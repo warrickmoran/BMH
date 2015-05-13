@@ -170,6 +170,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 04, 2015  4447     bkowal      SAME Transmitters assigned to an existing {@link InputMessage}
  *                                    will override SAME Transmitters assigned to a {@link MessageType}.
  * May 08, 2015  4477     bkowal      Disable the Contents button when a "New" message is started.
+ * May 08, 2015  4429     rferrel     {@link #handleSubmitAction()} now sets traceId for the request.
  * 
  * </pre>
  * 
@@ -1092,6 +1093,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         }
 
         NewBroadcastMsgRequest request = new NewBroadcastMsgRequest();
+        String traceId = BmhUtils.genererateTraceId(this.getClass());
+        request.setTraceId(traceId);
 
         this.areaSelectionBtn.setEnabled(true);
         this.userInputMessage.setValidHeader(true);

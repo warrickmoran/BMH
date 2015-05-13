@@ -68,6 +68,8 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.Sentence;
 import com.raytheon.uf.common.bmh.schemas.ssml.SpeechRateFormatter;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
@@ -81,6 +83,7 @@ import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
 import com.raytheon.uf.edex.bmh.staticmsg.StaticMessageIdentifierUtil;
 import com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator;
 import com.raytheon.uf.edex.bmh.staticmsg.TimeTextFragment;
@@ -143,7 +146,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Apr 07, 2015 4293       bkowal      Determine if new audio actually needs to be generated for
  *                                     an updated message - was it just a metadata update?
  * Apr 10, 2015 4356       bkowal      Clean up newlines at the paragraph level of separation. Handle the case
- *                                     when a period is directly against text that matches a dict rule. 
+ *                                     when a period is directly against text that matches a dict rule.
+ * May 13, 2015 4429       rferrel     Implement traceId.
  * 
  * </pre>
  * 
@@ -196,7 +200,7 @@ public class MessageTransformer implements IContextStateProcessor {
     private Table<TransmitterGroup, Language, TransmitterLanguage> transmitterLanguageTableCache = HashBasedTable
             .create();
 
-    /* Used to fullfil the message logging requirement. */
+    /* Used to fulfill the message logging requirement. */
     private final IMessageLogger messageLogger;
 
     /**
@@ -222,6 +226,8 @@ public class MessageTransformer implements IContextStateProcessor {
      */
     public List<Object> process(ValidatedMessage message) throws Exception {
         final String completionError = "Receieved an uninitialized or incomplete Validated Message to process!";
+        String traceId = TraceableUtil.getTraceId(message);
+        String msgHeader = TraceableUtil.createTraceMsgHeader(message);
 
         if (message == null) {
             /* Do not send a NULL downstream. */
@@ -239,11 +245,16 @@ public class MessageTransformer implements IContextStateProcessor {
 
         if (message.getInputMessage().getContent() == null
                 || message.getInputMessage().getContent().trim().isEmpty()) {
-            throw new Exception(completionError + " Missing Text to Transform.");
+            throw new Exception(TraceableUtil.createTraceMsgHeader(traceId)
+                    + completionError + " Missing Text to Transform.");
         }
 
         /* Retrieve the validation message associated with the message id. */
-        statusHandler.info("Transforming Message: " + message.getId() + ".");
+        statusHandler.info(msgHeader + "Transforming Message: "
+                + message.getId() + ".");
+
+        this.messageLogger.logMessageActivity(message,
+                MESSAGE_ACTIVITY.TRANSFORM_START, message.getInputMessage());
 
         /*
          * Format the text. Remove extra newlines and standardize
@@ -273,15 +284,17 @@ public class MessageTransformer implements IContextStateProcessor {
                 TransmitterLanguage tl = this.transmitterLanguageTableCache
                         .get(group, messageType.getVoice().getLanguage());
                 if (tl == null) {
-                    StringBuilder sb = new StringBuilder(
-                            "No Transmitter Language exists for transmitter group: ");
+                    StringBuilder sb = new StringBuilder(msgHeader);
+                    sb.append("No Transmitter Language exists for transmitter group: ");
                     sb.append(group.getName())
                             .append(" and language: ")
                             .append(messageType.getVoice().getLanguage()
                                     .toString());
                     sb.append("! [ Message = ");
                     sb.append(message.getId());
-                    sb.append("]");
+                    sb.append(", traceId=")
+                            .append(TraceableUtil.getTraceId(message))
+                            .append("]");
 
                     statusHandler.warn(BMH_CATEGORY.XFORM_MISSING_DICTIONARY,
                             sb.toString());
@@ -293,10 +306,11 @@ public class MessageTransformer implements IContextStateProcessor {
             try {
                 msg = this.transformText(message.getInputMessage(),
                         formattedText, transmitterDictionary, group,
-                        messageType);
+                        messageType, message);
             } catch (SSMLConversionException e) {
-                StringBuilder errorString = new StringBuilder(
-                        "Failed to generate a Broadcast Msg for Input Message: ");
+                StringBuilder errorString = new StringBuilder(msgHeader);
+                errorString
+                        .append("Failed to generate a Broadcast Msg for Input Message: ");
                 errorString.append(message.getId());
                 if (transmitterDictionary == null) {
                     errorString.append("!");
@@ -309,7 +323,8 @@ public class MessageTransformer implements IContextStateProcessor {
 
                 statusHandler.error(BMH_CATEGORY.XFORM_SSML_GENERATION_FAILED,
                         errorString.toString(), e);
-                this.messageLogger.logError(BMH_COMPONENT.MESSAGE_TRANSFORMER,
+                this.messageLogger.logError(null,
+                        BMH_COMPONENT.MESSAGE_TRANSFORMER,
                         BMH_ACTIVITY.SSML_GENERATION, message, e);
                 continue;
             }
@@ -324,7 +339,9 @@ public class MessageTransformer implements IContextStateProcessor {
              * terminate the camel route.
              */
             throw new Exception(
-                    "Failed to generate Broadcast Messages associated with Input Message: "
+                    TraceableUtil.createTraceMsgHeader(message)
+                            + msgHeader
+                            + "Failed to generate Broadcast Messages associated with Input Message: "
                             + message.getId() + "!");
         }
 
@@ -332,18 +349,23 @@ public class MessageTransformer implements IContextStateProcessor {
         result.add(new BroadcastMsgGroup(generatedMessages));
 
         /* Transformation complete. */
-        statusHandler.info("Transformation of message: " + message.getId()
-                + " was successful. Generated " + generatedMessages.size()
-                + " Broadcast Message(s).");
-
+        statusHandler.info(msgHeader + "Transformation of message: "
+                + message.getId() + " was successful. Generated "
+                + generatedMessages.size() + " Broadcast Message(s).");
+        this.messageLogger.logMessageActivity(message, MESSAGE_ACTIVITY.TRANSFORM_END,
+                message.getInputMessage());
         if (message.getLdadStatus() == LdadStatus.ACCEPTED) {
-            statusHandler.info("Building ldad message(s) for message: "
+            statusHandler.info(msgHeader
+                    + "Building ldad message(s) for message: "
                     + message.getId() + "...");
             try {
-                result.addAll(this.processLdad(messageType, formattedText));
+                result.addAll(this.processLdad(msgHeader, messageType,
+                        formattedText));
             } catch (SSMLConversionException e) {
-                StringBuilder errorString = new StringBuilder(
-                        "Failed to generate ldad message(s) for message: ");
+                StringBuilder errorString = new StringBuilder();
+                errorString.append(msgHeader);
+                errorString
+                        .append("Failed to generate ldad message(s) for message: ");
                 errorString.append(message.getId());
                 errorString.append(".");
 
@@ -353,7 +375,8 @@ public class MessageTransformer implements IContextStateProcessor {
                  */
                 statusHandler.error(BMH_CATEGORY.XFORM_SSML_GENERATION_FAILED,
                         errorString.toString(), e);
-                this.messageLogger.logError(BMH_COMPONENT.MESSAGE_TRANSFORMER,
+                this.messageLogger.logError(message,
+                        BMH_COMPONENT.MESSAGE_TRANSFORMER,
                         BMH_ACTIVITY.SSML_GENERATION, message, e);
             }
         }
@@ -361,9 +384,9 @@ public class MessageTransformer implements IContextStateProcessor {
         return result;
     }
 
-    private List<LdadMsg> processLdad(final MessageType messageType,
-            final String formattedText) throws SSMLConversionException,
-            TransformationException {
+    private List<LdadMsg> processLdad(final String msgHeader,
+            final MessageType messageType, final String formattedText)
+            throws SSMLConversionException, TransformationException {
         /*
          * Retrieve all ldad configuration(s) associated with the specified
          * message type.
@@ -378,7 +401,7 @@ public class MessageTransformer implements IContextStateProcessor {
             return Collections.emptyList();
         }
 
-        statusHandler.info("Found " + ldadConfigurations.size()
+        statusHandler.info(msgHeader + "Found " + ldadConfigurations.size()
                 + " ldad configuration(s) for message type: "
                 + messageType.getAfosid() + ".");
         List<LdadMsg> ldadMessages = new ArrayList<>(ldadConfigurations.size());
@@ -398,7 +421,8 @@ public class MessageTransformer implements IContextStateProcessor {
                 /**
                  * This {@link LdadConfig} is currently disabled. Skip it.
                  */
-                statusHandler.info("Skipping disabled ldad configuration: "
+                statusHandler.info(msgHeader
+                        + "Skipping disabled ldad configuration: "
                         + ldadConfig.getName() + " (id = " + ldadConfig.getId()
                         + ") for message type: " + messageType.getAfosid()
                         + ".");
@@ -469,9 +493,11 @@ public class MessageTransformer implements IContextStateProcessor {
              * the standard error handling procedure ...
              */
             statusHandler.error(BMH_CATEGORY.XFORM_MISSING_MSG_TYPE,
-                    "Failed to Transform Message: " + message.getId() + "!",
-                    exception);
-            this.messageLogger.logError(BMH_COMPONENT.MESSAGE_TRANSFORMER,
+                    TraceableUtil.createTraceMsgHeader(message)
+                            + "Failed to Transform Message: " + message.getId()
+                            + "!", exception);
+            this.messageLogger.logError(message,
+                    BMH_COMPONENT.MESSAGE_TRANSFORMER,
                     BMH_ACTIVITY.DATA_RETRIEVAL, message, exception);
 
             /*
@@ -556,9 +582,9 @@ public class MessageTransformer implements IContextStateProcessor {
      */
     private BroadcastMsg transformText(InputMessage inputMessage,
             final String formattedContent, Dictionary dictionary,
-            TransmitterGroup group, MessageType messageType)
-            throws SSMLConversionException, TransformationException,
-            BMHConfigurationException {
+            TransmitterGroup group, MessageType messageType,
+            ITraceable traceable) throws SSMLConversionException,
+            TransformationException, BMHConfigurationException {
 
         /* Create Transformation rules based on the dictionary. */
         List<ITextTransformation> textTransformations = this.mergeDictionaries(
@@ -573,7 +599,8 @@ public class MessageTransformer implements IContextStateProcessor {
         StaticMessageType staticMessageType = null;
         if (StaticMessageIdentifierUtil.isStaticMsgType(messageType)) {
             statusHandler
-                    .info("Afos Id "
+                    .info(TraceableUtil.createTraceMsgHeader(traceable)
+                            + "Afos Id "
                             + inputMessage.getAfosid()
                             + " is associated with a static message type. Retrieving associated static message type for transmitter group "
                             + group.getId() + " and language "
@@ -595,7 +622,8 @@ public class MessageTransformer implements IContextStateProcessor {
                                 + inputMessage.getLanguage().toString()
                                 + " for message type "
                                 + messageType.getAfosid() + "!");
-                this.messageLogger.logError(BMH_COMPONENT.MESSAGE_TRANSFORMER,
+                this.messageLogger.logError(traceable,
+                        BMH_COMPONENT.MESSAGE_TRANSFORMER,
                         BMH_ACTIVITY.DATA_RETRIEVAL, inputMessage);
                 throw configException;
             }
@@ -708,8 +736,9 @@ public class MessageTransformer implements IContextStateProcessor {
             message = new BroadcastMsg();
             message.setCreationDate(current);
         } else {
-            statusHandler.info("Updating existing broadcast message: "
-                    + message.getId() + ".");
+            statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
+                    + "Updating existing broadcast message: " + message.getId()
+                    + ".");
             updatedMessage = true;
         }
         message.setUpdateDate(current);

@@ -49,6 +49,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
@@ -110,6 +111,7 @@ import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
  *                                      messages.
  * May 14, 2015  4460      bkowal       Only update {@link DacPlaylistMessage} metadata when metadata
  *                                      is actually read.
+ * May 13, 2015 4429       rferrel      Changes to {@link DefaultMessageLogger} for traceId.
  * 
  * </pre>
  * 
@@ -357,7 +359,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 long time = System.currentTimeMillis() - startTime;
                 if (time > 1) {
                     logger.info(
-                            "Spent {}ms waiting for audio for message with id={}.",
+                            TraceableUtil.createTraceMsgHeader(message)
+                                    + "Spent {}ms waiting for audio for message with id={}.",
                             time, message.getBroadcastId());
                 }
                 cachedFiles.put(message, buffer);
@@ -384,7 +387,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             return dynamicBuffer.finalizeFileBuffer(transmission);
         } catch (NotTimeCachedException e) {
             logger.error("Failed to update dynamic time audio!", e);
-            DefaultMessageLogger.getInstance().logError(
+            DefaultMessageLogger.getInstance().logError(message,
                     BMH_COMPONENT.DAC_TRANSMIT, BMH_ACTIVITY.AUDIO_READ,
                     message, e);
             CriticalErrorEvent event = new CriticalErrorEvent(
@@ -602,6 +605,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         for (DacPlaylistMessage message : cachedFiles.keySet()) {
             DacPlaylistMessageId messageId = new DacPlaylistMessageId(
                     message.getBroadcastId());
+            messageId.setTraceId(message.getTraceId());
             Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
                     PriorityBasedExecutorService.PRIORITY_LOW, messageId);
             cacheStatus.replace(messageId, jobStatus);

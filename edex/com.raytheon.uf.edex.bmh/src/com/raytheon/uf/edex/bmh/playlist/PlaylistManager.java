@@ -75,6 +75,8 @@ import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.event.EventBus;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -184,6 +186,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * May 06, 2015  4471     bkowal      Added support for Demo Message SAME Tones.
  * May 11, 2015  4002     bkowal      Added {@link #applyMrdFollowsSorting(SortedSet, Map, DacPlaylist)}.
  * May 12, 2015  4248     rjpeter     Fixed misspelling.
+ * May 13, 2015  4429     rferrel     Changes for traceId.
  * </pre>
  * 
  * @author bsteffen
@@ -369,7 +372,7 @@ public class PlaylistManager implements IContextStateProcessor {
             }
             if (Boolean.TRUE.equals(message.getInputMessage().getActive())
                     && message.getForcedExpiration() == false) {
-                this.messageLogger.logActivationActivity(message);
+                this.messageLogger.logActivationActivity(null, message);
             }
             for (ProgramSuite programSuite : program.getProgramSuites()) {
                 if (programSuite.getSuite().containsSuiteMessage(
@@ -492,7 +495,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
                 playlist.getMessages().clear();
-                persistPlaylist(playlist, programSuite, false, null);
+                persistPlaylist(playlist, programSuite, false, null, null);
             }
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
@@ -531,7 +534,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
                 DacPlaylist dacPlaylist = persistPlaylist(playlist,
-                        programSuite, forced, event);
+                        programSuite, forced, event, null);
                 return !dacPlaylist.isEmpty();
             } else {
                 return false;
@@ -577,32 +580,44 @@ public class PlaylistManager implements IContextStateProcessor {
         Set<InputMessage> needsRefresh = replacementManager.replace(group
                 .getMessages().get(0).getInputMessage());
         for (BroadcastMsg message : group.getMessages()) {
-            newMessage(message);
+            newMessage(message, group);
         }
         refreshReplaced(needsRefresh);
     }
 
     public void newMessage(BroadcastMsg msg) {
+        newMessage(msg, null);
+    }
+
+    public void newMessage(BroadcastMsg msg, ITraceable traceable) {
         TransmitterGroup group = msg.getTransmitterGroup();
         if (!group.isEnabled()) {
+            statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
+                    + "group not enabled for new message.");
             return;
         }
         if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
+            statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
+                    + "new message not active.");
             return;
         }
         if (msg.getForcedExpiration()) {
+            statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
+                    + "forced expiration of new message.");
             return;
         }
         Program program = programDao.getProgramForTransmitterGroup(group);
         if (program == null) {
             statusHandler
-                    .info("No program is currently assigned to Transmitter Group: "
+                    .info(TraceableUtil.createTraceMsgHeader(traceable)
+                            + "No program is currently assigned to Transmitter Group: "
                             + group.getName()
-                            + ". Broadcast Message: "
-                            + msg.getId()
-                            + " will not be scheduled for broadcast.");
+                            + ". Broadcast Message will not be scheduled for broadcast.");
             return;
         }
+
+        statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
+                + "Creating new message.");
 
         if (msg.getInputMessage().getInterrupt()
                 && msg.isPlayedInterrupt() == false) {
@@ -621,18 +636,19 @@ public class PlaylistManager implements IContextStateProcessor {
             playlist.setModTime(TimeUtil.newGmtCalendar());
             playlist.setStartTime(msg.getInputMessage().getEffectiveTime());
             playlist.setEndTime(msg.getInputMessage().getExpirationTime());
-            writePlaylistFile(playlist, playlist.getStartTime(), null);
+            writePlaylistFile(playlist, playlist.getStartTime(), null,
+                    traceable);
         }
 
         for (ProgramSuite programSuite : program.getProgramSuites()) {
             if (programSuite.getSuite().containsSuiteMessage(msg.getAfosid())) {
-                addMessageToPlaylist(msg, group, programSuite);
+                addMessageToPlaylist(msg, group, programSuite, traceable);
             }
         }
     }
 
     private void addMessageToPlaylist(BroadcastMsg msg, TransmitterGroup group,
-            ProgramSuite programSuite) {
+            ProgramSuite programSuite, ITraceable traceable) {
         ClusterTask ct = null;
         do {
             ct = locker.lock("playlist", group.getName() + "-"
@@ -665,9 +681,10 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setTriggerBroadcastId(msg.getId());
             }
             DacPlaylist dacPlaylist = persistPlaylist(playlist, programSuite,
-                    false, null);
+                    false, null, traceable);
             if ((dacPlaylist != null) && isTrigger) {
-                this.messageLogger.logTriggerActivity(msg, dacPlaylist);
+                this.messageLogger.logTriggerActivity(traceable, msg,
+                        dacPlaylist);
             }
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
@@ -676,9 +693,10 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private DacPlaylist persistPlaylist(Playlist playlist,
             ProgramSuite programSuite, boolean forced,
-            AbstractBMHProcessingTimeEvent event) {
+            AbstractBMHProcessingTimeEvent event, ITraceable traceable) {
         List<Calendar> triggerTimes = playlist.setTimes(
                 programSuite.getTriggers(), forced);
+
         if (triggerTimes.isEmpty()) {
             /*
              * setTimes only returns no triggers if the list should not be
@@ -689,9 +707,11 @@ public class PlaylistManager implements IContextStateProcessor {
             playlistDao.saveOrUpdate(playlist);
         }
         if (triggerTimes.isEmpty()) {
-            return writePlaylistFile(playlist, playlist.getModTime(), event);
+            return writePlaylistFile(playlist, playlist.getModTime(), event,
+                    traceable);
         } else if (triggerTimes.size() == 1) {
-            return writePlaylistFile(playlist, triggerTimes.get(0), event);
+            return writePlaylistFile(playlist, triggerTimes.get(0), event,
+                    traceable);
         } else {
             /*
              * If there are multiple triggers, need to write one file per
@@ -701,11 +721,13 @@ public class PlaylistManager implements IContextStateProcessor {
             Calendar endTime = playlist.getEndTime();
             for (int i = 0; i < (triggerTimes.size() - 1); i += 1) {
                 playlist.setEndTime(triggerTimes.get(0));
-                writePlaylistFile(playlist, triggerTimes.get(i), event);
+                writePlaylistFile(playlist, triggerTimes.get(i), event,
+                        traceable);
                 playlist.setStartTime(triggerTimes.get(i));
             }
             playlist.setEndTime(endTime);
-            return writePlaylistFile(playlist, playlist.getStartTime(), event);
+            return writePlaylistFile(playlist, playlist.getStartTime(), event,
+                    traceable);
         }
     }
 
@@ -756,19 +778,21 @@ public class PlaylistManager implements IContextStateProcessor {
     }
 
     private DacPlaylist writePlaylistFile(Playlist playlist,
-            Calendar latestTriggerTime, AbstractBMHProcessingTimeEvent event) {
-        DacPlaylist dacList = convertPlaylistForDAC(playlist);
+            Calendar latestTriggerTime, AbstractBMHProcessingTimeEvent event,
+            ITraceable traceable) {
+        DacPlaylist dacList = convertPlaylistForDAC(playlist, traceable);
         dacList.setLatestTrigger(latestTriggerTime);
         PlaylistUpdateNotification notif = new PlaylistUpdateNotification(
                 dacList);
-        statusHandler.info("PlaylistManager writing new playlist to "
+        String traceMsg = TraceableUtil.createTraceMsgHeader(traceable);
+        statusHandler.info(traceMsg
+                + "PlaylistManager writing new playlist to "
                 + notif.getPlaylistPath());
         Path playlistPath = playlistDir.resolve(notif.getPlaylistPath());
         if (Files.exists(playlistPath)) {
-            statusHandler.warn(
-                    BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                    "Overwriting an existing playlist file at "
-                            + playlistPath.toAbsolutePath());
+            statusHandler.warn(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR, traceMsg
+                    + "Overwriting an existing playlist file at "
+                    + playlistPath.toAbsolutePath());
         }
         Path playlistDir = playlistPath.getParent();
         try {
@@ -777,18 +801,20 @@ public class PlaylistManager implements IContextStateProcessor {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to write playlist xml, cannot create directory:"
                             + playlistDir.toAbsolutePath(), e);
-            this.messageLogger.logError(BMH_COMPONENT.PLAYLIST_MANAGER,
+            this.messageLogger.logError(traceable,
+                    BMH_COMPONENT.PLAYLIST_MANAGER,
                     BMH_ACTIVITY.PLAYLIST_WRITE, playlist, e);
             return null;
         }
         try (BufferedOutputStream os = new BufferedOutputStream(
                 Files.newOutputStream(playlistPath))) {
             JAXB.marshal(dacList, os);
-            this.messageLogger.logPlaylistActivity(dacList);
+            this.messageLogger.logPlaylistActivity(traceable, dacList);
         } catch (Exception e) {
-            statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                    "Unable to write playlist file.", e);
-            this.messageLogger.logError(BMH_COMPONENT.PLAYLIST_MANAGER,
+            statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR, traceMsg
+                    + "Unable to write playlist file.", e);
+            this.messageLogger.logError(traceable,
+                    BMH_COMPONENT.PLAYLIST_MANAGER,
                     BMH_ACTIVITY.PLAYLIST_WRITE, playlist, e);
             return null;
         }
@@ -798,8 +824,8 @@ public class PlaylistManager implements IContextStateProcessor {
                     "jms-generic:topic:" + topic,
                     SerializationUtil.transformToThrift(notif));
         } catch (EdexException | SerializationException e) {
-            statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                    "Unable to send playlist notification.", e);
+            statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR, traceMsg
+                    + "Unable to send playlist notification.", e);
         } finally {
             if (event != null && this.operational) {
                 event.finalizeEvent();
@@ -811,7 +837,7 @@ public class PlaylistManager implements IContextStateProcessor {
         return dacList;
     }
 
-    private DacPlaylist convertPlaylistForDAC(Playlist db) {
+    private DacPlaylist convertPlaylistForDAC(Playlist db, ITraceable traceable) {
         DacPlaylist dac = new DacPlaylist();
         Suite suite = db.getSuite();
         dac.setPriority(suite.getType().ordinal());
@@ -830,7 +856,11 @@ public class PlaylistManager implements IContextStateProcessor {
             if (message.isSuccess()
                     && ((message.getExpirationTime() == null) || message
                             .getExpirationTime().after(db.getModTime()))) {
-                DacPlaylistMessageId dacMessage = convertMessageForDAC(message);
+                DacPlaylistMessageId dacMessage = convertMessageForDAC(message,
+                        traceable);
+                if (TraceableUtil.hasTraceId(traceable)) {
+                    dacMessage.setTraceId(traceable.getTraceId());
+                }
                 dacMessage.setExpire(message.getExpirationTime());
                 dac.addMessage(dacMessage);
             }
@@ -875,7 +905,8 @@ public class PlaylistManager implements IContextStateProcessor {
                 + ".xml");
     }
 
-    private DacPlaylistMessageId convertMessageForDAC(BroadcastMsg broadcast) {
+    private DacPlaylistMessageId convertMessageForDAC(BroadcastMsg broadcast,
+            ITraceable traceable) {
         long id = broadcast.getId();
         final long metadataTimestamp = broadcast.getUpdateDate()
                 .getTimeInMillis();
@@ -905,6 +936,11 @@ public class PlaylistManager implements IContextStateProcessor {
                      */
                     dac.setWatch(messageType.getDesignation() == Designation.Watch);
                     dac.setWarning(messageType.getDesignation() == Designation.Warning);
+                }
+                if (TraceableUtil.hasTraceId(traceable)) {
+                    dac.setTraceId(traceable.getTraceId());
+                } else {
+                    dac.setTraceId(messageFile.toString());
                 }
                 if (broadcast.getInputMessage().getConfirm() != null) {
                     /*
@@ -1016,15 +1052,17 @@ public class PlaylistManager implements IContextStateProcessor {
                             String overLimitAreas = builder
                                     .summarizeOverLimitAreas();
                             if (overLimitAreas.isEmpty() == false) {
-                                statusHandler.error(
-                                        BMH_CATEGORY.SAME_TRUNCATION,
-                                    "Failed to add all areas to the SAME Message. "
-                                                + overLimitAreas);
+                                statusHandler
+                                        .error(BMH_CATEGORY.SAME_TRUNCATION,
+                                                TraceableUtil
+                                                        .createTraceMsgHeader(traceable)
+                                                        + "Failed to add all areas to the SAME Message. "
+                                                        + overLimitAreas);
                             }
                             if (invalidAreas.isEmpty() == false) {
                                 statusHandler.error(
                                         BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                                    "Failed to add all areas to the SAME Message. "
+                                        "Failed to add all areas to the SAME Message. "
                                                 + invalidAreas);
                             }
 
@@ -1039,13 +1077,14 @@ public class PlaylistManager implements IContextStateProcessor {
                         Charset.defaultCharset())) {
                     JAXB.marshal(dac, writer);
                 }
-                this.messageLogger.logCreationActivity(dac,
+                this.messageLogger.logCreationActivity(traceable, dac,
                         broadcast.getTransmitterGroup());
             }
         } catch (DataBindingException | IOException e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to write message file.", e);
-            this.messageLogger.logError(BMH_COMPONENT.PLAYLIST_MANAGER,
+            this.messageLogger.logError(traceable,
+                    BMH_COMPONENT.PLAYLIST_MANAGER,
                     BMH_ACTIVITY.PLAYLIST_WRITE, dac);
         }
         DacPlaylistMessageId playlistId = new DacPlaylistMessageId(id);

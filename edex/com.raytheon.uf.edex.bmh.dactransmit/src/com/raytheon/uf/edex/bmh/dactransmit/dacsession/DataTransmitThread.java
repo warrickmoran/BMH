@@ -85,6 +85,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Apr 16, 2015  #4405     rjpeter      Update to have hasSync initialized.
  * May 04, 2015  #4452     bkowal       Post a {@link SAMEMessageTruncatedNotification} when a SAME
  *                                      Message will be truncated during broadcast.
+ * May 13, 2015  #4429     rferrel      Changes to {@link DefaultMessageLogger} for traceId.
  * </pre>
  * 
  * @author dgilling
@@ -303,6 +304,7 @@ public final class DataTransmitThread extends AbstractTransmitThread {
                                     DefaultMessageLogger
                                             .getInstance()
                                             .logError(
+                                                    null,
                                                     BMH_COMPONENT.DAC_TRANSMIT,
                                                     BMH_ACTIVITY.AUDIO_BROADCAST,
                                                     playbackData.getMessage(),
@@ -330,7 +332,7 @@ public final class DataTransmitThread extends AbstractTransmitThread {
                             logger.error(
                                     "Uncaught exception thrown from message playback loop.",
                                     t);
-                            DefaultMessageLogger.getInstance().logError(
+                            DefaultMessageLogger.getInstance().logError(null,
                                     BMH_COMPONENT.DAC_TRANSMIT,
                                     BMH_ACTIVITY.AUDIO_BROADCAST,
                                     playbackData.getMessage(), t);
@@ -340,6 +342,7 @@ public final class DataTransmitThread extends AbstractTransmitThread {
                     executorService.submit(playbackData.getEndPlayBackTask());
                     // broadcast of the message has finished, log it.
                     DefaultMessageLogger.getInstance().logBroadcastActivity(
+                            playbackData.getMessage(),
                             playbackData.getMessage());
                     playingInterrupt = false;
                 } catch (Throwable t) {

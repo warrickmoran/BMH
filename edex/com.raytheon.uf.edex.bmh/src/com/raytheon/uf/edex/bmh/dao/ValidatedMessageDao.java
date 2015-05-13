@@ -27,6 +27,7 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
+import com.raytheon.uf.common.bmh.trace.TraceableId;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
@@ -43,6 +44,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Sep 02, 2014  3568     bkowal      Added getValidatedMsgByInputMsg
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Apr 16, 2015  4396     rferrel     Added {@link #getAllUnexpiredMessages(Calendar)}.
+ * May 13, 2015  4429     rferrel     Added {@link #getByTraceableId(TraceableId)}.
  * 
  * 
  * </pre>
@@ -94,5 +96,17 @@ public class ValidatedMessageDao extends
         return (List<ValidatedMessage>) findByNamedQueryAndNamedParam(
                 ValidatedMessage.ALL_UNEXPIRED_VALIDATED_MSGS, "currentTime",
                 currentTime);
+    }
+
+    /**
+     * Get Validated Message using the TraceableId.
+     * 
+     * @param tId
+     * @return validMessage
+     */
+    public ValidatedMessage getByTraceableId(TraceableId tId) {
+        ValidatedMessage validatedMessage = getByID(tId.getId());
+        validatedMessage.setTraceId(tId.getTraceId());
+        return validatedMessage;
     }
 }

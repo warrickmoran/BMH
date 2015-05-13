@@ -53,6 +53,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
+import com.raytheon.uf.common.bmh.trace.TraceableId;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -102,6 +104,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Apr 15, 2015  #4293     bkowal      Notify the playlist manager when a message has been expired.
  * Apr 20, 2015  #4397     bkowal      Forward the message expiration request time when applicable.
  * Apr 27, 2015  #4397     bkowal      Set the {@link InputMessage} update date.
+ * May 13, 2015  #4229     rferrel     Changes for traceId.
  * 
  * </pre>
  * 
@@ -169,6 +172,7 @@ public class NewBroadcastMsgHandler extends
     @Override
     public Object handleRequest(NewBroadcastMsgRequest request)
             throws Exception {
+        String traceId = request.getTraceId();
         // TODO: logging
         InputMessage inputMessage = request.getInputMessage();
         inputMessage = updateInputMessage(request);
@@ -184,9 +188,10 @@ public class NewBroadcastMsgHandler extends
         ValidatedMessage validMsg = null;
         if (inputMessage.getId() != 0) {
             validMsg = validatedMsgDao.getValidatedMsgByInputMsg(inputMessage);
+            validMsg.setTraceId(traceId);
         }
         if (validMsg == null) {
-            validMsg = new ValidatedMessage();
+            validMsg = new ValidatedMessage(traceId);
         }
 
         List<String> unacceptableWords = UnacceptableWordFilter
@@ -208,6 +213,8 @@ public class NewBroadcastMsgHandler extends
             throw new IllegalArgumentException(
                     inputMessage.getName()
                             + "("
+                            + traceId
+                            + ": "
                             + inputMessage.getAfosid()
                             + ") failed to validate because it contains the following unacceptable words: "
                             + unacceptableWords.toString());
@@ -237,9 +244,10 @@ public class NewBroadcastMsgHandler extends
             }
             // we are finished, send the validated message to the message
             // transformer.
+            TraceableId tId = new TraceableId(validMsg.getId(),
+                    validMsg.getTraceId());
             this.sendToDestination(
-                    BMHJmsDestinations.getBMHTransformDestination(request),
-                    validMsg.getId());
+                    BMHJmsDestinations.getBMHTransformDestination(request), tId);
             return inputMessage.getId();
         }
 
@@ -249,7 +257,7 @@ public class NewBroadcastMsgHandler extends
          * dictionaries cannot be applied.
          */
         Path recordedAudioOutputPath = this.writeOutputAudio(
-                request.getMessageAudio(), inputMessage);
+                request.getMessageAudio(), inputMessage, traceId);
 
         /* build broadcast messages. */
         List<BroadcastMsg> broadcastRecords = this.buildBroadcastRecords(
@@ -280,6 +288,7 @@ public class NewBroadcastMsgHandler extends
         }
         BroadcastMsgGroup messagesToSend = new BroadcastMsgGroup();
         messagesToSend.setIds(messageIdsToSend);
+        messagesToSend.setTraceId(traceId);
         this.sendToDestination(
                 BMHJmsDestinations.getBMHScheduleDestination(request),
                 SerializationUtil.transformToThrift(messagesToSend));
@@ -366,7 +375,8 @@ public class NewBroadcastMsgHandler extends
             } catch (Exception e) {
                 statusHandler
                         .error(BMH_CATEGORY.LDAD_ERROR,
-                                "Failed to convert audio to the "
+                                TraceableUtil.createTraceMsgHeader(traceId)
+                                        + "Failed to convert audio to the "
                                         + ldadConfig.getEncoding().toString()
                                         + " format for ldad configuration: "
                                         + ldadConfig.getName()
@@ -383,11 +393,12 @@ public class NewBroadcastMsgHandler extends
              */
             try {
                 this.writeOutputAudio(convertedAudio,
-                        alternateRecordedAudioOutputPath);
+                        alternateRecordedAudioOutputPath, traceId);
             } catch (Exception e) {
                 statusHandler
                         .error(BMH_CATEGORY.LDAD_ERROR,
-                                "Failed to write audio: "
+                                traceId
+                                        + " Failed to write audio: "
                                         + alternateRecordedAudioOutputPath
                                                 .toString()
                                         + " in an alternate format for ldad configuration: "
@@ -421,13 +432,11 @@ public class NewBroadcastMsgHandler extends
                         BMHJmsDestinations.getBMHLdadDestination(request),
                         SerializationUtil.transformToThrift(ldadMsg));
             } catch (Exception e) {
-                statusHandler.error(
-                        BMH_CATEGORY.LDAD_ERROR,
-                        "Failed to trigger the ldad dissemination of: "
-                                + ldadMsg.getOutputName()
-                                + " for ldad configuration: "
-                                + ldadConfig.getName() + " (id = "
-                                + ldadConfig.getId() + ").", e);
+                statusHandler.error(BMH_CATEGORY.LDAD_ERROR, traceId
+                        + " Failed to trigger the ldad dissemination of: "
+                        + ldadMsg.getOutputName() + " for ldad configuration: "
+                        + ldadConfig.getName() + " (id = " + ldadConfig.getId()
+                        + ").", e);
             }
         }
 
@@ -456,8 +465,8 @@ public class NewBroadcastMsgHandler extends
                 request.isOperational(), this.getMessageLogger(request));
         InputMessage previous = inputMessageDao.getByID(inputMessage.getId());
         if (inputMessage.equals(previous)) {
-            throw new IllegalStateException(
-                    "Duplicate message will be ignored.");
+            throw new IllegalStateException(request.getTraceId()
+                    + " Duplicate message will be ignored.");
         }
 
         /*
@@ -524,8 +533,8 @@ public class NewBroadcastMsgHandler extends
         return broadcastRecords;
     }
 
-    private Path writeOutputAudio(final byte[] audio, InputMessage inputMsg)
-            throws IOException {
+    private Path writeOutputAudio(final byte[] audio, InputMessage inputMsg,
+            String traceId) throws IOException {
         final String fileNamePartsSeparator = "_";
 
         Date current = TimeUtil.newGmtCalendar().getTime();
@@ -542,15 +551,16 @@ public class NewBroadcastMsgHandler extends
         fileName.append(DEFAULT_TTS_FILE_EXTENSION);
 
         Path audioFilePath = datedWxMsgDirectory.resolve(fileName.toString());
-        this.writeOutputAudio(audio, audioFilePath);
+        this.writeOutputAudio(audio, audioFilePath, traceId);
 
         return audioFilePath;
     }
 
-    private void writeOutputAudio(final byte[] audio, final Path audioFilePath)
-            throws IOException {
+    private void writeOutputAudio(final byte[] audio, final Path audioFilePath,
+            String traceId) throws IOException {
         Files.write(audioFilePath, audio);
-        statusHandler.info("Successfully wrote Weather Message audio file: "
+        statusHandler.info(traceId
+                + " Successfully wrote Weather Message audio file: "
                 + audioFilePath.toString() + ".");
     }
 

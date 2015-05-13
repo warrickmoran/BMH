@@ -23,6 +23,7 @@ import java.io.Serializable;
 
 import org.springframework.transaction.TransactionException;
 
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
@@ -37,6 +38,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 6, 2015  3651       bkowal      Initial creation
+ * May 13, 2015 4429       rferrel     Use traceId in log messages.
  * 
  * </pre>
  * 
@@ -70,7 +72,12 @@ public abstract class AbstractBMHPersistenceLoggingDao<T, I extends Serializable
         try {
             super.persist(obj);
         } catch (Exception e) {
-            this.messageLogger.logDaoError(BMH_ACTIVITY.DATA_STORAGE, obj, e);
+            ITraceable it = null;
+            if (obj instanceof ITraceable) {
+                it = (ITraceable) obj;
+            }
+            this.messageLogger.logDaoError(it, BMH_ACTIVITY.DATA_STORAGE, obj,
+                    e);
             throw e;
         }
     }
@@ -86,7 +93,12 @@ public abstract class AbstractBMHPersistenceLoggingDao<T, I extends Serializable
         try {
             super.saveOrUpdate(obj);
         } catch (Exception e) {
-            this.messageLogger.logDaoError(BMH_ACTIVITY.DATA_STORAGE, obj, e);
+            ITraceable it = null;
+            if (obj instanceof ITraceable) {
+                it = (ITraceable) obj;
+            }
+            this.messageLogger.logDaoError(it, BMH_ACTIVITY.DATA_STORAGE, obj,
+                    e);
             throw e;
         }
     }

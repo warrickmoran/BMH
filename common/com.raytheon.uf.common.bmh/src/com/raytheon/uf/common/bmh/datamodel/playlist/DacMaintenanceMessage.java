@@ -27,6 +27,7 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 
 /**
  * Metadata associated with a dac maintenance message. Consists of a subset of
@@ -44,6 +45,7 @@ import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
  * ------------ ---------- ----------- --------------------------
  * Apr 22, 2015 4394       bkowal      Initial creation
  * Apr 29, 2015 4394       bkowal      Added {@link #transmitterGroup}.
+ * May 19, 2015 4429       rferrel     Implement {@link ITraceable}.
  * 
  * </pre>
  * 
@@ -52,7 +54,7 @@ import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
  */
 @XmlRootElement(name = "bmhMessage")
 @XmlAccessorType(XmlAccessType.NONE)
-public class DacMaintenanceMessage {
+public class DacMaintenanceMessage implements ITraceable {
 
     @XmlElement
     private String name;
@@ -68,6 +70,9 @@ public class DacMaintenanceMessage {
 
     @XmlElement
     private String transmitterGroup;
+
+    @XmlElement
+    private String traceId;
 
     private transient Path path;
 
@@ -173,5 +178,13 @@ public class DacMaintenanceMessage {
      */
     public void setPath(Path path) {
         this.path = path;
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 }

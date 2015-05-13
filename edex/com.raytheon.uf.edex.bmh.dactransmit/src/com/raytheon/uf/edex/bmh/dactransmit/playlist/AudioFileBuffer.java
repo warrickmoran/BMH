@@ -59,6 +59,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  * Mar 13, 2015  4251      bkowal       Limit messages accompanied by tones to 2 minutes.
  * Mar 17, 2015  4251      bkowal       Handle shorter interrupts without buffer underflows.
  * May 04, 2015  4452      bkowal       Added {@link #toneTruncationRequired()}.
+ * May 13, 2015  4429       rferrel     Changes to {@link DefaultMessageLogger} for traceId.
  * 
  * </pre>
  * 
@@ -185,11 +186,11 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
                 // SAME and/or alert tones have been broadcast, log it.
                 if (this.message.getSAMEtone() != null) {
                     DefaultMessageLogger.getInstance().logTonesActivity(
-                            TONE_TYPE.SAME, this.message);
+                            this.message, TONE_TYPE.SAME, this.message);
                 }
                 if (this.message.isAlertTone()) {
                     DefaultMessageLogger.getInstance().logTonesActivity(
-                            TONE_TYPE.ALERT, this.message);
+                            this.message, TONE_TYPE.ALERT, this.message);
                 }
             }
         }
@@ -214,7 +215,7 @@ public class AudioFileBuffer extends AbstractAudioFileBuffer {
             if (this.endOfMessageTones.hasRemaining() == false) {
                 // end tones have been broadcast, log it.
                 DefaultMessageLogger.getInstance().logTonesActivity(
-                        TONE_TYPE.END, this.message);
+                        this.message, TONE_TYPE.END, this.message);
             }
         }
 

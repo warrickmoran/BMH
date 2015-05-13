@@ -66,6 +66,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Mar 05, 2015  4222     bkowal      Use null for messages that never expire.
  * Mar 05, 2015  4199     rferrel     The afosidPattern excepts valid spaces in the id.
  * Apr 27, 2015  4397     bkowal      Set the {@link InputMessage} update date.
+ * May 13, 2015  4429     rferrel     Changes loggers for traceId.
  * 
  * </pre>
  * 
@@ -122,6 +123,7 @@ public class InputMessageParser {
         String fileName = headers.get("CamelFileNameOnly").toString();
         message.setName(fileName);
         message.setValidHeader(true);
+        statusHandler.info("Parsing file: " + fileName);
         try {
             int index = findStart(text);
             index = parseMessageFormat(message, text, index);
@@ -143,7 +145,8 @@ public class InputMessageParser {
         } catch (ParseException e) {
             statusHandler.error(BMH_CATEGORY.INPUT_MESSAGE_PARSE_ERROR,
                     fileName + " failed to parse", e);
-            this.messageLogger.logError(BMH_COMPONENT.INPUT_MESSAGE_PARSER,
+            this.messageLogger.logError(null,
+                    BMH_COMPONENT.INPUT_MESSAGE_PARSER,
                     BMH_ACTIVITY.MESSAGE_PARSING, message, e);
             message.setValidHeader(false);
             if (message.getContent() == null) {

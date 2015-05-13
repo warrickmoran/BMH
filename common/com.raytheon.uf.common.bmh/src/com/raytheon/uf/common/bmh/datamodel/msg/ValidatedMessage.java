@@ -37,12 +37,15 @@ import javax.persistence.NamedQuery;
 import javax.persistence.OneToOne;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
+import com.raytheon.uf.common.bmh.trace.TraceableId;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -69,6 +72,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 02, 2014  3614     bsteffen    Add Unacceptable status.
  * Apr 16, 2015  4396     rferrel     Added {@link #ALL_UNEXPIRED_VALIDATED_MSGS_QUERY}.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * May 13, 2016  4429     rferrel     Implement {@link ITraceable}.
  * </pre>
  * 
  * @author bsteffen
@@ -81,7 +85,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Table(name = "validated_msg")
 @SequenceGenerator(initialValue = 1, name = ValidatedMessage.GEN, sequenceName = "validated_msg_seq")
 @DynamicSerialize
-public class ValidatedMessage {
+public class ValidatedMessage implements ITraceable {
 
     public static final String GET_VALIDATED_MSG_FOR_INPUT_MSG = "getValidatedMsgForInputMsg";
 
@@ -151,6 +155,18 @@ public class ValidatedMessage {
     @Enumerated(EnumType.STRING)
     private LdadStatus ldadStatus;
 
+    @DynamicSerializeElement
+    @Transient
+    private String traceId;
+
+    public ValidatedMessage() {
+        this(null);
+    }
+
+    public ValidatedMessage(String traceId) {
+        this.traceId = traceId;
+    }
+
     public int getId() {
         return id;
     }
@@ -202,4 +218,15 @@ public class ValidatedMessage {
                 + transmissionStatus + ", ldadStatus=" + ldadStatus + "]";
     }
 
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
+
+    public TraceableId getTraceableId() {
+        return new TraceableId(id, traceId);
+    }
 }

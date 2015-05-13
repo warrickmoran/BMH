@@ -45,4 +45,5 @@ Export-Package: com.raytheon.uf.common.bmh,
  com.raytheon.uf.common.bmh.same,
  com.raytheon.uf.common.bmh.stats,
  com.raytheon.uf.common.bmh.systemstatus,
- com.raytheon.uf.common.bmh.tones
+ com.raytheon.uf.common.bmh.tones,
+ com.raytheon.uf.common.bmh.trace

@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.datamodel.msg;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -39,6 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
+ * May 08, 2015  4429     rferrel     Implement {@link ITraceable}.
  * 
  * </pre>
  * 
@@ -46,12 +48,15 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class BroadcastMsgGroup {
+public class BroadcastMsgGroup implements ITraceable {
 
     private List<BroadcastMsg> messages;
 
     @DynamicSerializeElement
     private List<Long> ids;
+
+    @DynamicSerializeElement
+    private String traceId;
 
     public BroadcastMsgGroup() {
 
@@ -60,7 +65,6 @@ public class BroadcastMsgGroup {
     public BroadcastMsgGroup(List<BroadcastMsg> messages) {
         this.messages = messages;
     }
-
 
     public List<BroadcastMsg> getMessages() {
         return messages;
@@ -87,5 +91,11 @@ public class BroadcastMsgGroup {
         return true;
     }
 
+    public String getTraceId() {
+        return traceId;
+    }
 
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
 }

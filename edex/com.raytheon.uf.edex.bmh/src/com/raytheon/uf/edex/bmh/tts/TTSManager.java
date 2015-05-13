@@ -111,6 +111,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     message contents.
  * Apr 20, 2015 4314       bkowal      Made {@link #attemptAudioSynthesis(String, int, String)}
  *                                     public.
+ * May 13, 2015 4429       rferrel     Changes to logs for traceId.
  * 
  * </pre>
  * 
@@ -475,7 +476,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                             logIdentifier.toString());
                 } catch (IOException e) {
                     writeSuccess = false;
-                    this.messageLogger.logError(BMH_COMPONENT.TTS_MANAGER,
+                    this.messageLogger.logError(null,
+                            BMH_COMPONENT.TTS_MANAGER,
                             BMH_ACTIVITY.AUDIO_WRITE, message, e);
                 }
                 fragment.setSuccess(writeSuccess);
@@ -485,7 +487,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             } else {
                 /* Synthesis Failed */
                 this.logSynthesisError(ttsReturn, logIdentifier.toString());
-                this.messageLogger.logError(BMH_COMPONENT.TTS_MANAGER,
+                this.messageLogger.logError(null, BMH_COMPONENT.TTS_MANAGER,
                         BMH_ACTIVITY.AUDIO_SYNTHESIS, message);
             }
         }
@@ -578,7 +580,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                         outputPath, logIdentifier.toString());
             } catch (IOException e) {
                 writeSuccess = false;
-                this.messageLogger.logError(BMH_COMPONENT.TTS_MANAGER,
+                this.messageLogger.logError(null, BMH_COMPONENT.TTS_MANAGER,
                         BMH_ACTIVITY.AUDIO_WRITE, message, e);
             }
             message.setSuccess(writeSuccess);
@@ -588,7 +590,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         } else {
             /* Synthesis Failed */
             this.logSynthesisError(ttsReturn, logIdentifier.toString());
-            this.messageLogger.logError(BMH_COMPONENT.TTS_MANAGER,
+            this.messageLogger.logError(null, BMH_COMPONENT.TTS_MANAGER,
                     BMH_ACTIVITY.AUDIO_SYNTHESIS, message);
         }
 

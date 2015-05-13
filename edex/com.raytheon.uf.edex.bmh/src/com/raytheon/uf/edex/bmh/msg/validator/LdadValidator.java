@@ -23,10 +23,11 @@ import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
-import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
@@ -45,6 +46,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  *                                    run mode.
  * Jan 05, 2015  3651     bkowal      Use {@link IMessageLogger} to log message errors.
  * Jan 07, 2015  3958     bkowal      The ldad configs returned by the dao will never be {@code null}.
+ * May 13, 2015 4429      rferrel     Add traceId to log messages.
  * 
  * </pre>
  * 
@@ -73,13 +75,13 @@ public class LdadValidator {
                 status = LdadStatus.ACCEPTED;
             }
         } catch (Exception e) {
-            statusHandler.error(
-                    BMH_CATEGORY.MESSAGE_VALIDATION_FAILED,
-                    "Failed to determine if validated message: "
+            statusHandler.error(BMH_CATEGORY.MESSAGE_VALIDATION_FAILED,
+                    TraceableUtil.createTraceMsgHeader(message)
+                            + "Failed to determine if validated message: "
                             + message.getId()
                             + " has any applicable ldad configurations.", e);
             status = LdadStatus.ERROR;
-            this.messageLogger.logError(BMH_COMPONENT.LDAD_VALIDATOR,
+            this.messageLogger.logError(message, BMH_COMPONENT.LDAD_VALIDATOR,
                     BMH_ACTIVITY.MESSAGE_VALIDATION, message, e);
         }
 

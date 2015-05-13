@@ -63,6 +63,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Dec 11, 2014 3651       bkowal      Updates to {@link AbstractAudioFileBuffer}.
  * Dec 12, 2014 3603       bsteffen    Updates to TonesGenerator.
  * Jan 05, 2015 3651       bkowal      Use {@link DefaultMessageLogger} to log msg errors.
+ * May 13, 2015 4429       rferrel     Changes to {@link DefaultMessageLogger} for traceId.
  * 
  * </pre>
  * 
@@ -178,13 +179,13 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                 this.notifyAttemptComplete();
                 AudioRetrievalException audioEx = new AudioRetrievalException(
                         msg, e);
-                DefaultMessageLogger.getInstance().logError(
+                DefaultMessageLogger.getInstance().logError(this.message,
                         BMH_COMPONENT.DAC_TRANSMIT, BMH_ACTIVITY.AUDIO_READ,
                         this.message, audioEx);
                 throw audioEx;
             } catch (AudioRetrievalException e) {
                 this.notifyAttemptComplete();
-                DefaultMessageLogger.getInstance().logError(
+                DefaultMessageLogger.getInstance().logError(this.message,
                         BMH_COMPONENT.DAC_TRANSMIT,
                         BMH_ACTIVITY.AUDIO_ALTERATION, this.message, e);
                 throw e;

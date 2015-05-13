@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -44,6 +45,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.bmh.tones.TonesManager;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
@@ -73,6 +75,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  *                                     playback.
  * Apr 29, 2015 4394       bkowal      Connect to the Comms Manager. Submit a
  *                                     {@link MaintenanceMessagePlayback} when playback begins.
+ * May 13, 2015 4429       rferrel     Changes for traceId logging.
  * </pre>
  * 
  * @author bkowal
@@ -136,20 +139,25 @@ public class DacMaintenanceSession implements IDacSession,
         /*
          * Read the message file.
          */
-        message = JAXB.unmarshal(
-                Files.newInputStream(this.config.getMessageFilePath()),
+        Path messagePath = this.config.getMessageFilePath();
+        message = JAXB.unmarshal(Files.newInputStream(messagePath),
                 DacMaintenanceMessage.class);
+
+        message.setTraceId(messagePath.getFileName().toString());
+
         /*
          * Ensure that a duration has been specified for audio maintenance
          * messages.
          */
         if (this.message.isAudio() && this.config.getTestDuration() == null) {
             throw new Exception(
-                    "A duration must be specified to broadcast alignment test audio. Specify duration using the -d command line argument.");
+                    TraceableUtil.createTraceMsgHeader(message)
+                            + "A duration must be specified to broadcast alignment test audio. Specify duration using the -d command line argument.");
 
         } else if (this.message.isTones()
                 && this.config.getTestDuration() != null) {
-            logger.info("Ignoring duration: {} for Tone Maintenance Messages.",
+            logger.info(TraceableUtil.createTraceMsgHeader(message)
+                    + "Ignoring duration: {} for Tone Maintenance Messages.",
                     this.config.getTestDuration());
         }
         message.setPath(this.config.getMessageFilePath());
@@ -212,9 +220,10 @@ public class DacMaintenanceSession implements IDacSession,
     public void startPlayback() throws IOException {
         this.commsManager.start();
         this.eventBus.register(this);
-
-        logger.info("Running in MAINTENANCE MODE. Running in MAINTENANCE MODE. Running in MAINTENANCE MODE.");
-        logger.info("Session configuration: " + config.toString());
+        String header = TraceableUtil.createTraceMsgHeader(this.message);
+        logger.info(header
+                + "Running in MAINTENANCE MODE. Running in MAINTENANCE MODE. Running in MAINTENANCE MODE.");
+        logger.info(header + "Session configuration: " + config.toString());
 
         /*
          * Initialize the reaper to ensure that the process will not run forever
@@ -280,7 +289,8 @@ public class DacMaintenanceSession implements IDacSession,
          */
         final int segmentCount = requiredBytes
                 / DacSessionConstants.SINGLE_PAYLOAD_SIZE;
-        logger.info("Preparing " + segmentCount + " packets of audio.");
+        logger.info(TraceableUtil.createTraceMsgHeader(this.message)
+                + "Preparing " + segmentCount + " packets of audio.");
         List<byte[]> segmentedAudio = new LinkedList<>();
         while (stagingBuffer.hasRemaining()) {
             byte[] segment = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
@@ -298,7 +308,8 @@ public class DacMaintenanceSession implements IDacSession,
     }
 
     private void shutdown() {
-        logger.info("Initiating shutdown...");
+        String header = TraceableUtil.createTraceMsgHeader(this.message);
+        logger.info(header + "Initiating shutdown...");
 
         this.controlThread.shutdown();
         try {
@@ -314,16 +325,17 @@ public class DacMaintenanceSession implements IDacSession,
         /*
          * We have finished. Attempt to purge the maintenance message file.
          */
-        logger.info("Deleting maintenance message file: "
+        logger.info(header + "Deleting maintenance message file: "
                 + this.message.getPath() + " ...");
         try {
             Files.delete(this.message.getPath());
         } catch (IOException e) {
-            logger.error("Failed to delete maintenance message file: "
+            logger.error(header + "Failed to delete maintenance message file: "
                     + this.message.getPath() + ".", e);
         }
 
-        logger.info("Exiting MAINTENANCE MODE. Exiting MAINTENANCE MODE. Exiting MAINTENANCE MODE.");
+        logger.info(header
+                + "Exiting MAINTENANCE MODE. Exiting MAINTENANCE MODE. Exiting MAINTENANCE MODE.");
     }
 
     /*
@@ -338,7 +350,8 @@ public class DacMaintenanceSession implements IDacSession,
         try {
             this.transmitThread.join();
         } catch (InterruptedException e) {
-            logger.warn("Interrupted while waiting for the data transmission thread to shutdown.");
+            logger.warn(TraceableUtil.createTraceMsgHeader(this.message)
+                    + "Interrupted while waiting for the data transmission thread to shutdown.");
         }
 
         this.shutdown();
@@ -372,13 +385,13 @@ public class DacMaintenanceSession implements IDacSession,
                  * SAME Tones have started.
                  */
                 DefaultMessageLogger.getInstance().logMaintenanceTonesActivity(
-                        TONE_TYPE.SAME, this.message);
+                        this.message, TONE_TYPE.SAME, this.message);
             } else if (packetCount == this.endTonesStartPacket) {
                 /*
                  * End Tones have started.
                  */
                 DefaultMessageLogger.getInstance().logMaintenanceTonesActivity(
-                        TONE_TYPE.END, this.message);
+                        this.message, TONE_TYPE.END, this.message);
             }
         } else {
             if (packetCount == 1) {
@@ -386,7 +399,7 @@ public class DacMaintenanceSession implements IDacSession,
                  * Transfer tones have started.
                  */
                 DefaultMessageLogger.getInstance().logMaintenanceTonesActivity(
-                        TONE_TYPE.TRANSFER, this.message);
+                        this.message, TONE_TYPE.TRANSFER, this.message);
             }
         }
     }

@@ -24,6 +24,7 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -41,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 21, 2014  #3385     bkowal      Transmitter selection is valid in the case of
  *                                     Weather Msgs and Emergency Override
  * Apr 20, 2015  #4397     bkowal      Added {@link #expireRequestTime}.
+ * May 08, 2015  #4429     rferrel     Implement {@link ITraceable}.
  * 
  * </pre>
  * 
@@ -48,7 +50,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class NewBroadcastMsgRequest extends AbstractBMHServerRequest {
+public class NewBroadcastMsgRequest extends AbstractBMHServerRequest implements
+        ITraceable {
 
     /**
      * Set to the current time in milliseconds when this request object is used
@@ -68,6 +71,9 @@ public class NewBroadcastMsgRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private List<Transmitter> selectedTransmitters;
+
+    @DynamicSerializeElement
+    private String traceId;
 
     /**
 	 * 
@@ -137,5 +143,13 @@ public class NewBroadcastMsgRequest extends AbstractBMHServerRequest {
      */
     public void setSelectedTransmitters(List<Transmitter> selectedTransmitters) {
         this.selectedTransmitters = selectedTransmitters;
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 }

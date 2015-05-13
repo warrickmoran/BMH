@@ -23,11 +23,13 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.TimeZone;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioFormat.Encoding;
@@ -102,6 +104,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 22, 2015   4397      bkowal      Trigger statistic generation when a 
  *                                      {@link AbstractBMHSystemConfigRequest} is encountered.
  * May 19, 2015   4482      rjpeter     Added isDbReset()/setDbReset().
+ * May 19, 2015   4429      rferrel     Added {@link #genererateTraceId(Class)}.
  * </pre>
  * 
  * @author mpduff
@@ -631,5 +634,19 @@ public class BmhUtils {
 
     public static boolean isDbReset() {
         return (System.currentTimeMillis() - dbResetTime.get() <= 5 * TimeUtil.MILLIS_PER_SECOND);
+    }
+    
+    /**
+     * Generate traceId string based on the class name, user id and time stamp.
+     * 
+     * @param clazz
+     * @return traceId
+     */
+    public static String genererateTraceId(Class<?> clazz) {
+        String user = UserController.getUserObject().uniqueId().toString();
+        String className = clazz.getSimpleName();
+        Calendar cal = TimeUtil.newCalendar(TimeZone.getTimeZone("UTC"));
+        return String.format("%s_%s_%3$tY-%3$tm-%3$td-%3$tk%3$tM.%3$tS",
+                className, user, cal);
     }
 }

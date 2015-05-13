@@ -47,6 +47,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * ------------- -------- ----------- --------------------------
  * Mar 24, 2015  4290     bsteffen    Initial creation
  * May 18, 2015  4483     bkowal      Added {@link #handleMrdIdentityReplace(InputMessage, Calendar, Set)}.
+ * May 19, 2015 4429      rferrel     Changes to logs for traceId.
  * 
  * </pre>
  * 
@@ -294,7 +295,7 @@ public class ReplacementManager {
 
     protected void logReplacement(InputMessage replacer, InputMessage replacee) {
         if (messageLogger != null) {
-            messageLogger.logReplacementActivity(replacer, replacee);
+            messageLogger.logReplacementActivity(null, replacer, replacee);
         }
     }
 

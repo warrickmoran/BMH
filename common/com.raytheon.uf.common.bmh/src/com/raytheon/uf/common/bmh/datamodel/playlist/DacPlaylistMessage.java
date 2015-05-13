@@ -29,6 +29,7 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
@@ -69,6 +70,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Apr 07, 2015  4293     bkowal      Added get/set methods for {@link #messageBroadcastNotificationSent}.
  * Apr 27, 2015  4397     bkowal      Added {@link #initialRecognitionTime} and {@link #recognized}.
  * May 11, 2015  4002     bkowal      Added {@link #initialBLDelayNotificationSent}.
+ * May 13, 2015  4429     rferrel     Added traceId to {@link #toString()}.
  * 
  * </pre>
  * 
@@ -165,14 +167,14 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      * version of the containing playlist is read.
      */
     private boolean messageBroadcastNotificationSent;
-    
+
     /**
      * boolean used to ensure that once one delay notification is sent out for a
      * single {@link DacPlaylistMessage} that may be associated with more than
      * one delay scenario.
      */
     private transient boolean initialBLDelayNotificationSent;
-    
+
     /**
      * {@link #initialRecognitionTime} and {@link #recognized} only exist to
      * fulfill the statistics requirements. The {@link #initialRecognitionTime}
@@ -204,7 +206,8 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         StringBuilder builder = new StringBuilder();
         builder.append("DACPlaylistMessage [broadcastId=").append(broadcastId)
                 .append(", messageType=").append(messageType)
-                .append(", expire=").append(expire).append("]");
+                .append(", traceId=").append(traceId).append(", expire=")
+                .append(expire).append("]");
         return builder.toString();
     }
 
@@ -403,7 +406,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
             boolean initialBLDelayNotificationSent) {
         this.initialBLDelayNotificationSent = initialBLDelayNotificationSent;
     }
-    
+
     /**
      * @return the initialRecognitionTime
      */
@@ -418,7 +421,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     public void setInitialRecognitionTime(long initialRecognitionTime) {
         this.initialRecognitionTime = initialRecognitionTime;
     }
-
 
     /**
      * @return the recognized

@@ -27,6 +27,7 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 
 /**
  * 
@@ -46,6 +47,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 07, 2015  4293     bkowal      Added {@link #timestamp} to be written
  *                                    to the playlist.
+ * May 13, 2015  4429     rferrel     Implement {@link ITraceable}.
  * 
  * </pre>
  * 
@@ -53,7 +55,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
  * @version 1.0
  */
 @XmlAccessorType(XmlAccessType.NONE)
-public class DacPlaylistMessageId {
+public class DacPlaylistMessageId implements ITraceable {
 
     @XmlAttribute
     protected long broadcastId;
@@ -64,6 +66,9 @@ public class DacPlaylistMessageId {
      */
     @XmlAttribute
     private Long timestamp;
+
+    @XmlAttribute
+    protected String traceId;
 
     @XmlElement
     protected Calendar expire;
@@ -147,4 +152,11 @@ public class DacPlaylistMessageId {
         return true;
     }
 
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
 }

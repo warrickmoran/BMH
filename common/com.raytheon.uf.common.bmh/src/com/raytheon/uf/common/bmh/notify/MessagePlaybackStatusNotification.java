@@ -22,6 +22,7 @@ package com.raytheon.uf.common.bmh.notify;
 import java.util.Calendar;
 import java.util.Formatter;
 
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 25, 2014  #3286     dgilling     Initial creation
+ * May 13, 2015  #4429     rferrel      Implement {@link ITraceable}.
  * 
  * </pre>
  * 
@@ -64,6 +66,9 @@ public class MessagePlaybackStatusNotification {
     @DynamicSerializeElement
     private String transmitterGroup;
 
+    @DynamicSerializeElement
+    private String traceId;
+
     public MessagePlaybackStatusNotification() {
         // empty constructor for serialization support
     }
@@ -84,6 +89,7 @@ public class MessagePlaybackStatusNotification {
         StringBuilder builder = new StringBuilder();
         builder.append("MessagePlaybackStatusNotification [broadcastId=");
         builder.append(broadcastId);
+        builder.append(", traceId=").append(traceId);
         builder.append(", transmitTime=");
         try (Formatter formatter = new Formatter(builder)) {
             formatter.format("%1$tY%1$tm%1$td%1$tH%1$tM", transmitTime);
@@ -98,6 +104,14 @@ public class MessagePlaybackStatusNotification {
         builder.append(transmitterGroup);
         builder.append("]");
         return builder.toString();
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 
     public long getBroadcastId() {
