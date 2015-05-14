@@ -108,6 +108,8 @@ import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
  * Apr 24, 2015  4423      rferrel      Added {@link #changeTimezone(ChangeTimeZone)}.
  * Apr 27, 2015  4397      bkowal       Create a {@link DeliveryTimeEvent} for newly processed
  *                                      messages.
+ * May 14, 2015  4460      bkowal       Only update {@link DacPlaylistMessage} metadata when metadata
+ *                                      is actually read.
  * 
  * </pre>
  * 
@@ -423,9 +425,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             message = this.readMessageMetadata(id, true);
 
             cachedMessages.put(id, message);
+            message.setExpire(id.getExpire());
+            message.setTimestamp(id.getTimestamp());
         }
-        message.setExpire(id.getExpire());
-        message.setTimestamp(id.getTimestamp());
         return message;
     }
 
@@ -756,8 +758,14 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                     }
                 }
 
-                Files.delete(playlist.getPath());
-                logger.info("Deleted " + playlist.getPath());
+                /*
+                 * Playlist may be deleted before the purge runs if a newer
+                 * version of the playlist is received.
+                 */
+                if (Files.exists(playlist.getPath())) {
+                    Files.delete(playlist.getPath());
+                    logger.info("Deleted " + playlist.getPath());
+                }
             } catch (Throwable e) {
                 logger.error("Error deleting playlist " + playlist.getPath()
                         + " from disk.", e);
