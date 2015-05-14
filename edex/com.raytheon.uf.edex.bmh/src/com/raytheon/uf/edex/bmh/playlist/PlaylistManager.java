@@ -29,15 +29,20 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
 
 import org.apache.commons.io.FileUtils;
+import org.springframework.util.CollectionUtils;
 
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
@@ -177,7 +182,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * May 05, 2015  4456     bkowal      Do not write an interrupt playlist for a {@link BroadcastMsg}
  *                                    that has already played as an interrupt.
  * May 06, 2015  4471     bkowal      Added support for Demo Message SAME Tones.
- * May 11, 2015  4002     bkowal      Set the trigger message id in the playlist.
+ * May 11, 2015  4002     bkowal      Added {@link #applyMrdFollowsSorting(SortedSet, Map, DacPlaylist)}.
  * May 12, 2015  4248     rjpeter     Fixed misspelling.
  * </pre>
  * 
@@ -816,7 +821,12 @@ public class PlaylistManager implements IContextStateProcessor {
         dac.setStart(db.getStartTime());
         dac.setExpired(db.getEndTime());
         dac.setInterrupt(suite.getType() == SuiteType.INTERRUPT);
-        for (BroadcastMsg message : db.getSortedMessages()) {
+
+        SortedSet<BroadcastMsg> sorted = db.getSortedMessages();
+        Map<Long, List<Long>> mrdFollowsMap = db.buildFollowsMapping();
+
+        for (BroadcastMsg message : this.applyMrdFollowsSorting(sorted,
+                mrdFollowsMap, dac)) {
             if (message.isSuccess()
                     && ((message.getExpirationTime() == null) || message
                             .getExpirationTime().after(db.getModTime()))) {
@@ -827,6 +837,32 @@ public class PlaylistManager implements IContextStateProcessor {
         }
         dac.setTriggerBroadcastId(db.getTriggerBroadcastId());
         return dac;
+    }
+
+    private Collection<BroadcastMsg> applyMrdFollowsSorting(
+            SortedSet<BroadcastMsg> sorted,
+            Map<Long, List<Long>> mrdFollowsMap, DacPlaylist playlist) {
+        if (CollectionUtils.isEmpty(mrdFollowsMap)) {
+            return sorted;
+        }
+
+        List<Long> sortedIdList = new LinkedList<>();
+        Map<Long, BroadcastMsg> idToBroadcastMap = new HashMap<>(sorted.size(),
+                1.0f);
+        for (BroadcastMsg broadcastMsg : sorted) {
+            sortedIdList.add(broadcastMsg.getId());
+            idToBroadcastMap.put(broadcastMsg.getId(), broadcastMsg);
+        }
+
+        MRDFollowsManager mrdFollowsManager = new MRDFollowsManager(
+                sortedIdList, mrdFollowsMap);
+        sortedIdList = mrdFollowsManager.orderWithFollows(playlist.toString());
+
+        List<BroadcastMsg> sortedWithFollows = new LinkedList<>();
+        for (long id : sortedIdList) {
+            sortedWithFollows.add(idToBroadcastMap.get(id));
+        }
+        return sortedWithFollows;
     }
 
     private Path determineMessageFile(BroadcastMsg broadcast,

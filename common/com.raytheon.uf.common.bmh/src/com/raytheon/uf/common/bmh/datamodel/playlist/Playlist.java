@@ -19,12 +19,15 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -53,6 +56,7 @@ import org.hibernate.annotations.Index;
 
 import com.raytheon.uf.common.bmh.StaticMessageIdentifier;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
@@ -97,6 +101,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 04, 2015  4449     bkowal      Added {@link #QUERY_BY_UNEXPIRED_PLAYLIST_MSG_ON_TRANSMITTER}.
  * May 11, 2015  4002     bkowal      Added {@link #triggerBroadcastId}.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * May 12, 2015  4484     bkowal      Added {@link #buildFollowsMapping()}.
  * </pre>
  * 
  * @author bsteffen
@@ -235,6 +240,81 @@ public class Playlist {
                 new BroadcastMsgSuiteOrderComparator(suite));
         sorted.addAll(messages);
         return sorted;
+    }
+
+    /**
+     * Build a {@link Map} of {@link BroadcastMsg}s that should be scheduled for
+     * broadcast after a certain {@link BroadcastMsg} based on mrd follow rules.
+     * 
+     * @return a {@link Map} of {@link BroadcastMsg}s that should follow a
+     *         specific {@link BroadcastMsg}.
+     */
+    public Map<Long, List<Long>> buildFollowsMapping() {
+        /*
+         * First build a mapping of mrd to broadcast message.
+         */
+        Map<Integer, BroadcastMsg> mrdBroadcastMap = new HashMap<>(
+                this.messages.size(), 1.0f);
+        /*
+         * Also determine if there are actually any messages that define an mrd
+         * follow.
+         */
+        List<BroadcastMsg> broadcastMrdFollowList = new ArrayList<>(
+                this.messages.size());
+        for (BroadcastMsg broadcastMsg : this.messages) {
+            if (broadcastMsg.isSuccess() == false
+                    || broadcastMsg.getForcedExpiration()
+                    || (broadcastMsg.getExpirationTime() != null && broadcastMsg
+                            .getExpirationTime().after(this.getModTime()) == false)) {
+                /*
+                 * Do not include unusable messages.
+                 */
+                continue;
+            }
+
+            InputMessage im = broadcastMsg.getInputMessage();
+            if (im.getMrd() != null) {
+                mrdBroadcastMap.put(im.getMrdId(), broadcastMsg);
+                if (im.getMrdFollows().length > 0) {
+                    broadcastMrdFollowList.add(broadcastMsg);
+                }
+            }
+        }
+
+        if (broadcastMrdFollowList.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        /*
+         * Mapping of a {@link BroadcastMsg} to the {@link BroadcastMsg}s that
+         * follow it.
+         */
+        Map<Long, List<Long>> mrdFollowsMap = new HashMap<>();
+        for (BroadcastMsg broadcastMsg : broadcastMrdFollowList) {
+            for (int mrdFollow : broadcastMsg.getInputMessage().getMrdFollows()) {
+                /*
+                 * The followed {@link BroadcastMsg} is associated with the
+                 * follows mrd.
+                 */
+                BroadcastMsg followedBroadcastMsg = mrdBroadcastMap
+                        .get(mrdFollow);
+                if (followedBroadcastMsg != null) {
+                    if (mrdFollowsMap.containsKey(followedBroadcastMsg.getId()) == false) {
+                        mrdFollowsMap.put(followedBroadcastMsg.getId(),
+                                new ArrayList<Long>());
+                    }
+                    /*
+                     * The {@link BroadcastMsg} that defined the mrd is added to
+                     * the {@link List} in the {@link Map} indicating that it
+                     * follows the followed {@link BroadcastMsg}.
+                     */
+                    mrdFollowsMap.get(followedBroadcastMsg.getId()).add(
+                            broadcastMsg.getId());
+                }
+            }
+        }
+
+        return mrdFollowsMap;
     }
 
     /**
