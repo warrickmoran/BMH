@@ -55,8 +55,11 @@ import bmh.test.suite.scenario.scheduling.TriggerNowAndLaterScenario as TriggerN
 import bmh.test.suite.scenario.scheduling.GeneralOrderedScenario as GeneralOrderedScenario
 import bmh.test.suite.scenario.scheduling.GeneralReversedScenario as GeneralReversedScenario
 import bmh.test.suite.scenario.scheduling.GeneralUnorderedScenario as GeneralUnorderedScenario
-
-
+import bmh.test.suite.scenario.scheduling.SAMEAlertWxrScenario as SAMEAlertWxrScenario
+import bmh.test.suite.scenario.scheduling.SAMEWxrScenario as SAMEWxrScenario
+import bmh.test.suite.scenario.scheduling.SAMEAlertCivScenario as SAMEAlertCivScenario
+import bmh.test.suite.scenario.scheduling.SAMECivScenario as SAMECivScenario
+import bmh.test.suite.scenario.scheduling.NonSAMEMultipleTrx as NonSAMEMultipleTrx
 
 class TestRunner(object):
     '''
@@ -121,7 +124,11 @@ class TestRunner(object):
         self._bmhScenarios.append(GeneralOrderedScenario.GeneralOrderedScenario())
         self._bmhScenarios.append(GeneralReversedScenario.GeneralReversedScenario())
         self._bmhScenarios.append(GeneralUnorderedScenario.GeneralUnorderedScenario())
-
+        self._bmhScenarios.append(SAMEAlertWxrScenario.SAMEAlertWxrScenario())
+        self._bmhScenarios.append(SAMEWxrScenario.SAMEWxrScenario())
+        self._bmhScenarios.append(SAMEAlertCivScenario.SAMEAlertCivScenario())
+        self._bmhScenarios.append(SAMECivScenario.SAMECivScenario())
+        self._bmhScenarios.append(NonSAMEMultipleTrx.NonSAMEMultipleTrx())
 
     def _buildNameMappingForPrompt(self):
         self._scenarioCount = len(self._bmhScenarios)
