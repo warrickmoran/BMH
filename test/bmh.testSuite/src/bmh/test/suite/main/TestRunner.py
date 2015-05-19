@@ -66,6 +66,9 @@ import bmh.test.suite.scenario.scheduling.SixInterruptsScenario as SixInterrupts
 import bmh.test.suite.scenario.scheduling.SixTriggersInterruptsCombineScenario as SixTriggersInterruptsCombineScenario
 import bmh.test.suite.scenario.scheduling.MRDMultipleTrxReplace as MRDMultipleTrxReplace
 import bmh.test.suite.scenario.scheduling.MRDMultipleTrxReplaceWithAddl as MRDMultipleTrxReplaceWithAddl
+import bmh.test.suite.scenario.scheduling.MATInterruptReplaceScenario as MATInterruptReplaceScenario
+import bmh.test.suite.scenario.scheduling.MATMultipleTrxReplaceScenario as MATMultipleTrxReplaceScenario
+import bmh.test.suite.scenario.scheduling.MATNoReplaceScenario as MATNoReplaceScenario
 
 class TestRunner(object):
     '''
@@ -141,6 +144,9 @@ class TestRunner(object):
         self._bmhScenarios.append(SixTriggersInterruptsCombineScenario.SixTriggersInterruptsCombineScenario())
         self._bmhScenarios.append(MRDMultipleTrxReplace.MRDMultipleTrxReplace())
         self._bmhScenarios.append(MRDMultipleTrxReplaceWithAddl.MRDMultipleTrxReplaceWithAddl())
+        self._bmhScenarios.append(MATInterruptReplaceScenario.MATInterruptReplaceScenario())
+        self._bmhScenarios.append(MATMultipleTrxReplaceScenario.MATMultipleTrxReplaceScenario())
+        self._bmhScenarios.append(MATNoReplaceScenario.MATNoReplaceScenario())
 
     def _buildNameMappingForPrompt(self):
         self._scenarioCount = len(self._bmhScenarios)
