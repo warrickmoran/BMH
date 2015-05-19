@@ -148,6 +148,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * May 06, 2015  #4466     bkowal       No longer crash when invalid / incomplete playlists are
  *                                      read during startup.
  * May 11, 2015  #4002     bkowal       Handle all Broadcast Live message delay scenarios.
+ * May 19, 2015  4508      rjpeter      Add exception handling to newPlaylistReceived.
  * </pre>
  * 
  * @author dgilling
@@ -710,7 +711,15 @@ public final class PlaylistScheduler implements
 
             @Override
             public void run() {
-                processNewPlaylist(notification);
+                try {
+                    processNewPlaylist(notification);
+                } catch (Throwable t) {
+                    logger.error(
+                            "Error processing playlist update ["
+                                    + (notification != null ? notification
+                                            .getPlaylistPath() : notification)
+                                    + "]", t);
+                }
             }
         });
     }

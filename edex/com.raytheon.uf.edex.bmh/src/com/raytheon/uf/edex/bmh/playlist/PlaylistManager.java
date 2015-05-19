@@ -187,6 +187,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * May 11, 2015  4002     bkowal      Added {@link #applyMrdFollowsSorting(SortedSet, Map, DacPlaylist)}.
  * May 12, 2015  4248     rjpeter     Fixed misspelling.
  * May 13, 2015  4429     rferrel     Changes for traceId.
+ * May 19, 2015  4508     rjpeter     Set timestamp on  {@link DacPlaylistMessage}.
  * </pre>
  * 
  * @author bsteffen
@@ -918,6 +919,7 @@ public class PlaylistManager implements IContextStateProcessor {
                     metadataTimestamp);
             if (!Files.exists(messageFile)) {
                 dac.setBroadcastId(id);
+                dac.setTimestamp(metadataTimestamp);
                 InputMessage input = broadcast.getInputMessage();
                 dac.setInitialRecognitionTime(input.getUpdateDate()
                         .getTimeInMillis());
