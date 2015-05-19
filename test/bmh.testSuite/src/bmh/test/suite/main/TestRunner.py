@@ -69,6 +69,7 @@ import bmh.test.suite.scenario.scheduling.MRDMultipleTrxReplaceWithAddl as MRDMu
 import bmh.test.suite.scenario.scheduling.MATInterruptReplaceScenario as MATInterruptReplaceScenario
 import bmh.test.suite.scenario.scheduling.MATMultipleTrxReplaceScenario as MATMultipleTrxReplaceScenario
 import bmh.test.suite.scenario.scheduling.MATNoReplaceScenario as MATNoReplaceScenario
+import bmh.test.suite.scenario.scheduling.FutureIdentityScenario as FutureIdentityScenario
 
 class TestRunner(object):
     '''
@@ -147,6 +148,7 @@ class TestRunner(object):
         self._bmhScenarios.append(MATInterruptReplaceScenario.MATInterruptReplaceScenario())
         self._bmhScenarios.append(MATMultipleTrxReplaceScenario.MATMultipleTrxReplaceScenario())
         self._bmhScenarios.append(MATNoReplaceScenario.MATNoReplaceScenario())
+        self._bmhScenarios.append(FutureIdentityScenario.FutureIdentityScenario())
 
     def _buildNameMappingForPrompt(self):
         self._scenarioCount = len(self._bmhScenarios)
