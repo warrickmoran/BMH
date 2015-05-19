@@ -45,6 +45,7 @@ import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -86,7 +87,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  *                                     available in the playlist cache.
  * Mar 25, 2015   4290     bsteffen    Switch to global replacement.
  * Apr 29, 2015   4394     bkowal      Support {@link INonStandardBroadcast}.
- * 
+ * May 19, 2015   4482     rjpeter     Added check of isDbReset.
  * </pre>
  * 
  * @author mpduff
@@ -230,8 +231,13 @@ public class PlaylistData {
         BroadcastMsg broadcastMsg = this.dataManager
                 .getBroadcastMessage(broadcastId);
         if (broadcastMsg == null) {
-            statusHandler.warn("Broadcast Message with id: " + broadcastId
-                    + " no longer exists.");
+            String msg = "Broadcast Message with id: " + broadcastId
+                    + " no longer exists.";
+            if (BmhUtils.isDbReset()) {
+                statusHandler.info(msg);
+            } else {
+                statusHandler.warn(msg);
+            }
             return;
         }
 

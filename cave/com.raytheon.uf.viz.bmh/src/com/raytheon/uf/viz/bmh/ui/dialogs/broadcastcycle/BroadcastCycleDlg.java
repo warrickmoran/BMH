@@ -73,14 +73,15 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
+import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.INonStandardBroadcast;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
-import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
@@ -190,6 +191,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     when a message is expired on all.
  * May 04, 2015  4449      bkowal      Only allow the user to expire messages on transmitters that it has
  *                                     actually been scheduled on.
+ * May 19, 2015  4482      rjpeter     Added handling of ResetNotification.
  * </pre>
  * 
  * @author mpduff
@@ -1614,6 +1616,14 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 } else if (o instanceof TransmitterGroupConfigNotification) {
                     TransmitterGroupConfigNotification notification = (TransmitterGroupConfigNotification) o;
                     this.updateDisplayForTransmitterGrpConfigChange(notification);
+                } else if (o instanceof ResetNotification) {
+                    VizApp.runAsync(new Runnable() {
+                        @Override
+                        public void run() {
+                            populateTransmitters(true);
+                            closeChangeSuiteDlg();
+                        }
+                    });
                 } else if (o instanceof DacTransmitShutdownNotification) {
                     DacTransmitShutdownNotification notification = (DacTransmitShutdownNotification) o;
                     final String group = notification.getTransmitterGroup();

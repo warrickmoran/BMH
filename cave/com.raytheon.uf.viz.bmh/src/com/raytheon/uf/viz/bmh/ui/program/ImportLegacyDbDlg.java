@@ -71,7 +71,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 05, 2014  #3824     rferrel     Initial creation
  * Mar 03, 2015  #4175     bkowal      Always expect at least one voice.
  * Mar 27, 2015  #4315     rferrel     Check to allow Spanish and disable when no voices.
- * 
+ * May 19, 2015  4482      rjpeter     Update to call setDbResetTime.
  * </pre>
  * 
  * @author rferrel
@@ -313,13 +313,6 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
         });
     }
 
-    private int determineSize(List<?> list) {
-        if (list == null) {
-            return 0;
-        }
-        return list.size();
-    }
-
     private int determineSize(Map<?, ?> map) {
         if (map == null) {
             return 0;
@@ -414,9 +407,11 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
                                             .lastIndexOf('/') + 1),
                             IProgressMonitor.UNKNOWN);
                     try {
+                        BmhUtils.setDbResetTime();
                         o = BmhUtils.sendRequest(request);
                         if (o instanceof Boolean) {
                             boolean result = ((Boolean) o).booleanValue();
+
                             if (result) {
                                 saved.set(true);
                             }
