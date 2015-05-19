@@ -35,11 +35,11 @@ import com.raytheon.uf.common.bmh.datamodel.dac.DacComparator;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -49,7 +49,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
 import com.raytheon.uf.common.bmh.legacy.ascii.TransmitterMessages;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
@@ -89,6 +91,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
  * Feb 26, 2015 4187       rjpeter     Respect operational flag on reset notification.
  * Mar 03, 2015 4175       bkowal      Use {@link TTSVoiceManager}.
  * Mar 13, 2015 4213       bkowal      Updated the persistence of transmitter languages.
+ * May 19, 2015 4482       rjpeter     Added sending of TransmitterGroupConfigNotification on clear.
  * </pre>
  * 
  * @author rferrel
@@ -138,8 +141,6 @@ public class ImportLegacyDatabase {
                             + " has failed.", ex);
             throw ex;
         }
-
-        clearTables();
 
         BufferedReader reader = new BufferedReader(new StringReader(input));
         AsciiFileTranslator asciiFile = new AsciiFileTranslator(reader, source,
@@ -355,7 +356,11 @@ public class ImportLegacyDatabase {
     /**
      * Clear tables except DAC, TtsVoice, Dictionary and Word.
      */
-    private void clearTables() {
+    @SuppressWarnings("unchecked")
+    public void clearTables() {
+        statusHandler.info("Clearing BMH " + (operational ? "" : "Practice ")
+                + "Database.");
+
         clearTable(new PlaylistDao(operational, this.messageLogger));
         clearTable(new BroadcastMsgDao(operational, this.messageLogger));
         clearTable(new ValidatedMessageDao(operational, this.messageLogger));
@@ -366,14 +371,30 @@ public class ImportLegacyDatabase {
         clearTable(new ZoneDao(operational));
         clearTable(new AreaDao(operational));
         clearTable(new TransmitterLanguageDao(operational));
-        clearTable(new TransmitterGroupDao(operational));
+        List<?> groups = clearTable(new TransmitterGroupDao(operational));
+
+        try {
+            BmhMessageProducer.sendConfigMessage(
+                    new TransmitterGroupConfigNotification(
+                            ConfigChangeType.Delete,
+                            (List<TransmitterGroup>) groups), operational);
+        } catch (Exception e) {
+            statusHandler
+                    .error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
+                            "Error occurred sending transmitter group config delete notification for legacy import",
+                            e);
+        }
+
+        statusHandler.info("BMH " + (operational ? "" : "Practice ")
+                + "Database cleared.");
     }
 
-    private void clearTable(AbstractBMHDao<?, ?> dao) {
+    private List<?> clearTable(AbstractBMHDao<?, ?> dao) {
         List<?> all = dao.getAll();
-        if ((all != null) && (all.size() > 0)) {
+        if (!CollectionUtil.isNullOrEmpty(all)) {
             dao.deleteAll(all);
         }
+        return all;
     }
 
     /**

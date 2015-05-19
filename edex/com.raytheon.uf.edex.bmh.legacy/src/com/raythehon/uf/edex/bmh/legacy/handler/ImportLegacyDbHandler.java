@@ -41,7 +41,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
  * Dec 05, 2014  3824     rferrel     Initial creation.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Mar 03, 2015  4175     bkowal      Use {@link TTSVoiceManager}.
- * 
+ * May 19, 2015  4482     rjpeter     Added direct call to clearTables.
  * </pre>
  * 
  * @author rferrel
@@ -71,15 +71,26 @@ public class ImportLegacyDbHandler extends
         boolean operational = request.isOperational();
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
 
-        new ImportLegacyDatabase(input, source, operational,
-                this.getMessageLogger(request), this.getVoiceManager(request))
-                .saveImport();
+        ImportLegacyDatabase legacy = new ImportLegacyDatabase(input, source,
+                operational, this.getMessageLogger(request),
+                this.getVoiceManager(request));
+
+        legacy.clearTables();
+
+        if (logger.isPriorityEnabled(Priority.INFO)) {
+            String user = BMHLoggerUtils.getUser(request);
+            logger.info("User " + user + " cleared BMH "
+                    + (operational ? "" : "Practice ") + "Database");
+        }
+
+        legacy.saveImport();
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
             logger.info("User " + user + " performed import legacy database: "
                     + source);
         }
+
         return true;
     }
 

@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioFormat.Encoding;
@@ -100,6 +101,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Mar 25, 2015   4305      rferrel     Added {@link #getRootCauseMessage(Throwable)}.
  * Apr 22, 2015   4397      bkowal      Trigger statistic generation when a 
  *                                      {@link AbstractBMHSystemConfigRequest} is encountered.
+ * May 19, 2015   4482      rjpeter     Added isDbReset()/setDbReset().
  * </pre>
  * 
  * @author mpduff
@@ -134,6 +136,8 @@ public class BmhUtils {
      * SayAs SSML close snippet
      */
     public static String SAYAS_CLOSE = "</say-as>";
+
+    private static AtomicLong dbResetTime = new AtomicLong(0);
 
     /**
      * Convert the provided text to speech and play it
@@ -619,5 +623,13 @@ public class BmhUtils {
             return StringUtils.EMPTY;
         }
         return rootCauseMsg.substring(rootCauseMsg.indexOf(":") + 1).trim();
+    }
+
+    public static void setDbResetTime() {
+        dbResetTime.set(System.currentTimeMillis());
+    }
+
+    public static boolean isDbReset() {
+        return (System.currentTimeMillis() - dbResetTime.get() <= 5 * TimeUtil.MILLIS_PER_SECOND);
     }
 }
