@@ -62,6 +62,8 @@ import bmh.test.suite.scenario.scheduling.SAMECivScenario as SAMECivScenario
 import bmh.test.suite.scenario.scheduling.NonSAMEMultipleTrx as NonSAMEMultipleTrx
 import bmh.test.suite.scenario.scheduling.IdentityReplaceSameMRD as IdentityReplaceSameMRD
 import bmh.test.suite.scenario.scheduling.IdentityDifferentMRD as IdentityDifferentMRD
+import bmh.test.suite.scenario.scheduling.SixInterruptsScenario as SixInterruptsScenario
+import bmh.test.suite.scenario.scheduling.SixTriggersInterruptsCombineScenario as SixTriggersInterruptsCombineScenario
 
 class TestRunner(object):
     '''
@@ -133,6 +135,8 @@ class TestRunner(object):
         self._bmhScenarios.append(NonSAMEMultipleTrx.NonSAMEMultipleTrx())
         self._bmhScenarios.append(IdentityReplaceSameMRD.IdentityReplaceSameMRD())
         self._bmhScenarios.append(IdentityDifferentMRD.IdentityDifferentMRD())
+        self._bmhScenarios.append(SixInterruptsScenario.SixInterruptsScenario())
+        self._bmhScenarios.append(SixTriggersInterruptsCombineScenario.SixTriggersInterruptsCombineScenario())
 
     def _buildNameMappingForPrompt(self):
         self._scenarioCount = len(self._bmhScenarios)
