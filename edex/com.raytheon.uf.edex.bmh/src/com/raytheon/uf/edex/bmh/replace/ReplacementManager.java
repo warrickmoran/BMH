@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Mar 24, 2015  4290     bsteffen    Initial creation
+ * May 18, 2015  4483     bkowal      Added {@link #handleMrdIdentityReplace(InputMessage, Calendar, Set)}.
  * 
  * </pre>
  * 
@@ -83,6 +84,7 @@ public class ReplacementManager {
         if (inputMessage.getMrd() != null) {
             replacements.addAll(handleMrdReplace(inputMessage, replaceTime));
             handleReverseMrdReplace(inputMessage, replaceTime);
+            handleMrdIdentityReplace(inputMessage, replaceTime, replacements);
         } else {
             replacements
                     .addAll(handleIdentityReplace(inputMessage, replaceTime));
@@ -153,6 +155,32 @@ public class ReplacementManager {
             inputMessageDao.saveOrUpdate(firstReplacer);
             inputMessageDao.saveOrUpdate(inputMessage);
             logReplacement(firstReplacer, inputMessage);
+        }
+    }
+
+    private void handleMrdIdentityReplace(InputMessage inputMessage,
+            Calendar replaceTime, Set<InputMessage> replacements) {
+        /*
+         * Find all active {@link InputMessage}s with the same afos id and mrd
+         * id.
+         */
+        String mrdLike = mrdFormat.format(inputMessage.getMrdId());
+        List<InputMessage> replacees = inputMessageDao.getActiveWithMrdLike(
+                mrdLike, replaceTime);
+        for (InputMessage replacee : replacees) {
+            if (replacee.getId() == inputMessage.getId()) {
+                continue;
+            }
+            if (replacee.getMrdId() != inputMessage.getMrdId()) {
+                continue;
+            }
+
+            if (inputMessage.getUpdateDate().after(replacee.getUpdateDate())) {
+                replacee.setExpirationTime(replaceTime);
+                inputMessageDao.saveOrUpdate(replacee);
+                logReplacement(inputMessage, replacee);
+                replacements.add(replacee);
+            }
         }
     }
 

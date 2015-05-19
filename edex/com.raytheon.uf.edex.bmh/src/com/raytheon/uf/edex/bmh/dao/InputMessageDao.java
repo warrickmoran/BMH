@@ -50,6 +50,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Apr 01, 2015  4326     bsteffen    Allow reuse of MRD after old message expires.
  * Apr 16, 2015  4395     rferrel     Added {@link #getAllUnexpiredInputMessages(Calendar)}.
  * May 11, 2015  4476     bkowal      Added {@link #getAllWithAfosIdAndName(String, String)}.
+ * May 18, 2015  4483     bkowal      Contents are now used in {@link #checkDuplicate(InputMessage)}.
  * 
  * </pre>
  * 
@@ -80,11 +81,10 @@ public class InputMessageDao extends
     public boolean checkDuplicate(final InputMessage message) {
         List<?> messages = findByNamedQueryAndNamedParam(
                 InputMessage.DUP_QUERY_NAME,
-                new String[] { "id", "afosid", "mrd", "effectiveTime",
+                new String[] { "id", "afosid", "effectiveTime",
                         "expirationTime" },
                 new Object[] { message.getId(), message.getAfosid(),
-                        message.getMrd(), message.getEffectiveTime(),
-                        message.getExpirationTime() });
+                        message.getEffectiveTime(), message.getExpirationTime() });
         for (Object obj : messages) {
             InputMessage dup = (InputMessage) obj;
             if (dup.getId() == message.getId()) {
@@ -95,14 +95,8 @@ public class InputMessageDao extends
                     message.getAreaCodeList())) {
                 continue;
             }
-            int mrd = message.getMrdId();
-            if (mrd != -1
-                    && mrd == dup.getMrdId()
-                    && (dup.getExpirationTime() == null || dup
-                            .getExpirationTime().after(
-                                    message.getEffectiveTime()))) {
-                return true;
-            } else if (dup.getContent().equals(message.getContent())) {
+            if (message.getMrdId() == dup.getMrdId()
+                    && dup.getContent().equals(message.getContent())) {
                 return true;
             }
         }

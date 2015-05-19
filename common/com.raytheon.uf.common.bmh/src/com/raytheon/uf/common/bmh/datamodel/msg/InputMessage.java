@@ -96,6 +96,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Apr 21, 2015  4397     bkowal      Added {@link #updateDate}.
  * May 11, 2015  4476     bkowal      Added {@link #ALL_WITH_NAME_AND_AFOSID_QUERY}.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * May 19, 2015  4483     bkowal      Updated {@link #DUP_QUERY} to match effective and
+ *                                    expiration times and removed mrd comparison.
  * </pre>
  * 
  * @author bsteffen
@@ -132,7 +134,7 @@ public class InputMessage {
      */
     public static final String DUP_QUERY_NAME = "getDuplicateInputMessages";
 
-    protected static final String DUP_QUERY = "FROM InputMessage m WHERE m.id != :id AND m.afosid = :afosid AND ((m.mrd = :mrd) OR (m.effectiveTime <= :effectiveTime AND m.expirationTime >= :expirationTime))";
+    protected static final String DUP_QUERY = "FROM InputMessage m WHERE m.id != :id AND m.afosid = :afosid AND (m.effectiveTime = :effectiveTime AND m.expirationTime = :expirationTime)";
 
     /**
      * Named query to delete all old messages

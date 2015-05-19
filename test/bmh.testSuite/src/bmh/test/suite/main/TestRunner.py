@@ -60,6 +60,8 @@ import bmh.test.suite.scenario.scheduling.SAMEWxrScenario as SAMEWxrScenario
 import bmh.test.suite.scenario.scheduling.SAMEAlertCivScenario as SAMEAlertCivScenario
 import bmh.test.suite.scenario.scheduling.SAMECivScenario as SAMECivScenario
 import bmh.test.suite.scenario.scheduling.NonSAMEMultipleTrx as NonSAMEMultipleTrx
+import bmh.test.suite.scenario.scheduling.IdentityReplaceSameMRD as IdentityReplaceSameMRD
+import bmh.test.suite.scenario.scheduling.IdentityDifferentMRD as IdentityDifferentMRD
 
 class TestRunner(object):
     '''
@@ -129,6 +131,8 @@ class TestRunner(object):
         self._bmhScenarios.append(SAMEAlertCivScenario.SAMEAlertCivScenario())
         self._bmhScenarios.append(SAMECivScenario.SAMECivScenario())
         self._bmhScenarios.append(NonSAMEMultipleTrx.NonSAMEMultipleTrx())
+        self._bmhScenarios.append(IdentityReplaceSameMRD.IdentityReplaceSameMRD())
+        self._bmhScenarios.append(IdentityDifferentMRD.IdentityDifferentMRD())
 
     def _buildNameMappingForPrompt(self):
         self._scenarioCount = len(self._bmhScenarios)
