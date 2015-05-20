@@ -68,6 +68,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 10, 2015    4253    rferrel     Change label on cancel button.
  * Mar 16, 2015    4283    bkowal      Use {@link SSMLPhonemeParser}.
  * Mar 17, 2015    4281    rferrel     Add delete/insert of a builder composite.
+ * May 20, 2015    4490    bkowal      Added {@link #language}.
  * 
  * </pre>
  * 
@@ -115,6 +116,11 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
     private final String inputPhoneme;
 
     /**
+     * The {@link Language} that the phoneme is being built for.
+     */
+    private final Language language;
+
+    /**
      * SSML Snippet
      */
     private String ssmlSnippet;
@@ -159,8 +165,9 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
      * @param word
      *            Word
      */
-    public PronunciationBuilderDlg(Shell parentShell, String word) {
-        this(parentShell, word, null);
+    public PronunciationBuilderDlg(Shell parentShell, String word,
+            Language language) {
+        this(parentShell, word, null, language);
     }
 
     /**
@@ -176,13 +183,14 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
      *            WordType
      */
     public PronunciationBuilderDlg(Shell parentShell, String word,
-            String phoneme) {
+            String phoneme, Language language) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT);
         this.word = word;
         if (phoneme != null) {
             phoneme = phoneme.trim();
         }
         this.inputPhoneme = phoneme;
+        this.language = language;
 
         setText("Pronunciation Builder");
     }
@@ -308,7 +316,7 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
         btnC.setLayout(gl);
         btnC.setLayoutData(gd);
 
-        BuilderComposite bc = new BuilderComposite(c);
+        BuilderComposite bc = new BuilderComposite(c, this.language);
 
         Button btn = createButton(btnC, " ^ ", "Add element at start", bc);
         btn.addSelectionListener(topBcListener);
@@ -536,7 +544,7 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
      *            The text to play
      */
     private void playPhrase(String text) {
-        BmhUtils.playText(text);
+        BmhUtils.playText(text, this.language);
     }
 
     /**

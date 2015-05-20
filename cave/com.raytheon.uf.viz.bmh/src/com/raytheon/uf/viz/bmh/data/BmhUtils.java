@@ -47,6 +47,8 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.auth.exception.AuthorizationException;
 import com.raytheon.uf.common.auth.resp.SuccessfulExecution;
 import com.raytheon.uf.common.auth.user.IUser;
+import com.raytheon.uf.common.bmh.BMHVoice;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -105,6 +107,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      {@link AbstractBMHSystemConfigRequest} is encountered.
  * May 19, 2015   4482      rjpeter     Added isDbReset()/setDbReset().
  * May 19, 2015   4429      rferrel     Added {@link #genererateTraceId(Class)}.
+ * May 20, 2015   4490      bkowal      Cleanup. A {@link Language} is now required to synthesize text.
  * </pre>
  * 
  * @author mpduff
@@ -148,8 +151,8 @@ public class BmhUtils {
      * @param text
      *            The text to play
      */
-    public static void playText(String text) {
-        playText(text, TextToSpeechRequest.DEFAULT_VOICE);
+    public static void playText(String text, Language language) {
+        playText(text, getVoiceForLanguage(language).getId());
     }
 
     /**
@@ -166,19 +169,6 @@ public class BmhUtils {
         } catch (Exception e) {
             statusHandler.error("Error playing text", e);
         }
-    }
-
-    /**
-     * Convert the provided text to audio and return the audio
-     * 
-     * @param text
-     *            the text to convert
-     * @return the generated audio
-     * @throws Exception
-     *             if audio generation fails
-     */
-    public static byte[] textToAudio(String text) throws Exception {
-        return textToAudio(text, TextToSpeechRequest.DEFAULT_VOICE);
     }
 
     /**
@@ -248,7 +238,10 @@ public class BmhUtils {
         if (validatePhoneme(shell, text) == false) {
             return;
         }
-        playText(text);
+        /*
+         * NeoSpeech can only successfully process English phonemes.
+         */
+        playText(text, Language.ENGLISH);
     }
 
     /**
@@ -263,7 +256,10 @@ public class BmhUtils {
         if (validatePhoneme(shell, text) == false) {
             return;
         }
-        playText(textToPlay);
+        /*
+         * NeoSpeech can only successfully process English phonemes.
+         */
+        playText(textToPlay, Language.ENGLISH);
     }
 
     /**
@@ -635,7 +631,7 @@ public class BmhUtils {
     public static boolean isDbReset() {
         return (System.currentTimeMillis() - dbResetTime.get() <= 5 * TimeUtil.MILLIS_PER_SECOND);
     }
-    
+
     /**
      * Generate traceId string based on the class name, user id and time stamp.
      * 
@@ -648,5 +644,22 @@ public class BmhUtils {
         Calendar cal = TimeUtil.newCalendar(TimeZone.getTimeZone("UTC"));
         return String.format("%s_%s_%3$tY-%3$tm-%3$td-%3$tk%3$tM.%3$tS",
                 className, user, cal);
+    }
+
+    /**
+     * Returns the default {@link BMHVoice} associated with the specified
+     * {@link Language}.
+     * 
+     * This function will need to be updated if more voices or more languages
+     * are added. The definition of {@link Dictionary} may also need to change
+     * if more voices are added.
+     * 
+     * @param language
+     *            the specified {@link Language}
+     * @return the default {@link BMHVoice}
+     */
+    private static BMHVoice getVoiceForLanguage(final Language language) {
+        return (language == Language.ENGLISH) ? BMHVoice.PAUL
+                : BMHVoice.VIOLETA;
     }
 }

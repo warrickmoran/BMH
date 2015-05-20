@@ -43,6 +43,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest.InputMessageAction;
 import com.raytheon.uf.common.bmh.request.InputMessageResponse;
+import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -87,6 +88,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 10, 2015   4085      bkowal      Filter out input messages associated with
  *                                      static message types.
  * Feb 12, 2015   4113      bkowal      Dialog will now return a {@link InputMessageSequence}.
+ * May 20, 2015   4490      bkowal      Filter out input messages associated with demo message types.
  * 
  * </pre>
  * 
@@ -433,7 +435,14 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
 
         Iterator<InputMessage> it = tmpInputMsgList.iterator();
         while (it.hasNext()) {
-            if (staticAfosIds.contains(it.next().getAfosid())) {
+            final String afosId = it.next().getAfosid();
+            /*
+             * Also filter demo messages. They do not have a unique designation,
+             * so they must be filtered using inspection of the afos id.
+             */
+            if (staticAfosIds.contains(afosId)
+                    || (afosId.length() >= 6 && SAMEToneTextBuilder.DEMO_EVENT
+                            .equals(afosId.substring(3, 6)))) {
                 it.remove();
             }
         }

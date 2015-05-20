@@ -48,6 +48,7 @@ import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.request.DictionaryResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -89,6 +90,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 10, 2015     4082   bkowal      Revert the unsaved word flag when the user clicks
  *                                     "No" on the unsaved word confirmation dialog.
  * Mar 16, 2015     4283   bkowal      Use substitution in the place of phoneme labels.
+ * May 20, 2015     4490   bkowal      Specify {@link Language} when synthesizing text.
  * 
  * </pre>
  * 
@@ -382,7 +384,9 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (selectedWord != null) {
-                    BmhUtils.playText(wordValueLbl.getText());
+                    BmhUtils.playText(wordValueLbl.getText(),
+                            (selectedDictionary == null) ? Language.ENGLISH
+                                    : selectedDictionary.getLanguage());
                 }
             }
         });
@@ -485,7 +489,9 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
             public void widgetSelected(SelectionEvent e) {
                 // Open the Pronunciation Builder dialog
                 pronunciationBuilderDlg = new PronunciationBuilderDlg(
-                        getShell(), wordValueLbl.getText());
+                        getShell(), wordValueLbl.getText(),
+                        (selectedDictionary == null) ? Language.ENGLISH
+                                : selectedDictionary.getLanguage());
                 pronunciationBuilderDlg.setSsmlSnippet(neoValueTxt.getText());
                 neoPhoneme = (String) pronunciationBuilderDlg.open();
                 if (neoPhoneme != null) {
@@ -683,7 +689,9 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
                 this.legacyValueLbl.getText());
 
         this.pronunciationBuilderDlg = new PronunciationBuilderDlg(getShell(),
-                wordValueLbl.getText(), phoneme);
+                wordValueLbl.getText(), phoneme,
+                (selectedDictionary == null) ? Language.ENGLISH
+                        : selectedDictionary.getLanguage());
         neoPhoneme = (String) pronunciationBuilderDlg.open();
         if (neoPhoneme != null) {
             final String currentTxt = this.neoValueTxt.getText();

@@ -36,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 02, 2014  3642     bkowal      Added timeout.
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Feb 19, 2015  4142     bkowal      Added {@link #DEFAULT_VOICE}.
+ * May 20, 2015  4490     bkowal      Made {@link #DEFAULT_VOICE} private.
  * 
  * </pre>
  * 
@@ -44,9 +45,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @DynamicSerialize
 public class TextToSpeechRequest extends AbstractBMHServerRequest {
-    
-    public static final int DEFAULT_VOICE = 101;
-    
+
+    private static final int DEFAULT_VOICE = 101;
+
     /**
      * Phoneme/Phrase to speak
      */

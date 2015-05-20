@@ -35,6 +35,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.schemas.ssml.Break;
 import com.raytheon.uf.common.bmh.schemas.ssml.Phoneme;
 import com.raytheon.uf.common.bmh.schemas.ssml.SayAs;
@@ -56,6 +57,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.phonemes.PhonemesEditorDlg;
  * Sep 10, 2014    3355    mpduff      Make Combo boxes readonly
  * Jan 28, 2015    4045    bkowal      Use the new {@link DictionaryManager} constructor.
  * Mar 17, 2015    4281    rferrel     Additional setSayAs and setBreak methods.
+ * May 20, 2015    4490    bkowal      Added {@link #language}.
  * 
  * </pre>
  * 
@@ -172,14 +174,17 @@ public class BuilderComposite extends Composite {
      */
     private Text dynTextFld;
 
+    private final Language language;
+
     /**
      * Constructor.
      * 
      * @param parent
      *            parent composite
      */
-    public BuilderComposite(Composite parent) {
+    public BuilderComposite(Composite parent, Language language) {
         super(parent, SWT.BORDER);
+        this.language = language;
         init();
     }
 
@@ -367,17 +372,17 @@ public class BuilderComposite extends Composite {
         String text = null;
         if (bt == BuilderType.Text) {
             text = textTextFld.getText();
-            BmhUtils.playText(text);
+            BmhUtils.playText(text, this.language);
         } else if (bt == BuilderType.SayAs) {
             String toPlay = BmhUtils.getSayAsSnippet(getSayAsType(),
                     getSayAsText());
-            BmhUtils.playText(toPlay);
+            BmhUtils.playText(toPlay, this.language);
         } else if (bt == BuilderType.Phoneme) {
             text = phonemeTextFld.getText();
             BmhUtils.playAsPhoneme(this.getShell(), text);
         } else if (bt == BuilderType.Dynamic) {
             text = dynTextFld.getText();
-            BmhUtils.playText(text);
+            BmhUtils.playText(text, this.language);
         }
     }
 
