@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<alertConfiguration name="bmh">
+    <category textBox="1" categoryName="DAC_TRANSMIT" longName="DAC Transmit" locked="true"/>
+    <category textBox="0" categoryName="COMMS_MANAGER" longName="Comms Manager" locked="true"/>
+    <category textBox="0" categoryName="TTS" longName="Text To Speech" locked="true"/>
+    <category textBox="0" categoryName="BMH" longName="Broadcast Message Handler" locked="true"/>
+    <category textBox="0" categoryName="MESSAGE_PARSE" longName="Message Parse" locked="true"/>
+    <category textBox="0" categoryName="MESSAGE_VALIDATION" longName="Message Validation" locked="true"/>
+    <category textBox="0" categoryName="MESSAGE_TRANSFORM" longName="Message Transform" locked="true"/>
+    <category textBox="0" categoryName="PLAYLIST_MANAGER" longName="Playlist Manager" locked="true"/>
+    <category textBox="0" categoryName="TRANSMITTER" longName="Transmitter" locked="true"/>
+    <category textBox="0" categoryName="STATIC_MSG" longName="Static Message" locked="true"/>
+    <category textBox="0" categoryName="LDAD" longName="LDAD" locked="true"/>
+    <category textBox="0" categoryName="DATABASE_IMPORT" longName="Database Import" locked="true"/>
+    <source locked="true" name="BMH" longName="Broadcast Message Handler">
+        <configurationItem forced="false">
+            <metadata foreground="#ffffff" background="#000000" pythonEnabled="false" log="true" priority="EVENTA" popup="false" blink="false" text="true" audioEnabled="false"/>
+            <metadata foreground="#ffffff" background="#ff0000" pythonEnabled="false" log="true" priority="SIGNIFICANT" popup="true" blink="false" text="true" audioEnabled="true"/>
+            <metadata foreground="#000000" background="#ffffff" pythonEnabled="false" log="true" priority="VERBOSE" popup="false" blink="false" text="false" audioEnabled="false"/>
+            <metadata foreground="#ff0000" background="#000000" pythonEnabled="false" log="true" priority="CRITICAL" popup="true" blink="false" text="true" audioEnabled="true"/>
+            <metadata foreground="#7e7e7e" background="#000000" pythonEnabled="false" log="true" priority="PROBLEM" popup="true" blink="false" text="true" audioEnabled="false"/>
+            <metadata foreground="#000000" background="#7e7e7e" pythonEnabled="false" log="true" priority="EVENTB" popup="false" blink="false" text="true" audioEnabled="false"/>
+        </configurationItem>
+        <configurationMonitor>
+            <metadata/>
+        </configurationMonitor>
+    </source>
+</alertConfiguration>

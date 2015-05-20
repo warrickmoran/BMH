@@ -46,7 +46,7 @@ import java.util.Map;
  * Feb 17, 2015 4136       bkowal      Added {@link #AUDIO_TRUNCATED}.
  * Feb 18, 2015 4136       bkowal      Added {@link #EXCESSIVE_FILE_SIZE}.
  * Mar 31, 2015 4339       bkowal      Added {@link #SAME_TRUNCATION}.
- * 
+ * May 20, 2015 4430       rjpeter     Added alertVizCategory.
  * </pre>
  * 
  * @author bkowal
@@ -55,128 +55,128 @@ import java.util.Map;
 
 public enum BMH_CATEGORY {
     /* Indicates a successful operation. */
-    SUCCESS(0),
+    SUCCESS(0, "BMH"),
     /*
      * Specific to the TTS Components: indicates that additional data can be
      * read from the TTS Server.
      */
-    TTS_CONTINUE(1),
+    TTS_CONTINUE(1, "TTS"),
     /*
      * Specific to the TTS Components: used to indicate that a TTS operation has
      * failed due to a software or API issue (ex: invalid input).
      */
-    TTS_SOFTWARE_ERROR(2),
+    TTS_SOFTWARE_ERROR(2, "TTS"),
     /*
      * Specific to the TTS Components: used to indicate that a TTS operation has
      * failed due to a system or server error outside the jurisdiction of the
      * TTS Software and/or TTS components (ex: disk full, networking problems,
      * etc.)
      */
-    TTS_SYSTEM_ERROR(3),
+    TTS_SYSTEM_ERROR(3, "TTS"),
     /*
      * Specific to the TTS Components: an error that cannot be recovered from.
      */
-    TTS_FATAL_ERROR(4),
+    TTS_FATAL_ERROR(4, "TTS"),
     /*
      * Specific to the TTS Components: used to indicate that the TTS components
      * were not configured correctly.
      */
-    TTS_CONFIGURATION_ERROR(5),
+    TTS_CONFIGURATION_ERROR(5, "TTS"),
     /*
      * Specific to the input message parser. used to indicate that the parser
      * cannot understand the format of the input.
      */
-    INPUT_MESSAGE_PARSE_ERROR(6),
+    INPUT_MESSAGE_PARSE_ERROR(6, "MESSAGE_PARSE"),
     /*
      * Specific to the message validation component: used to indicate that an
      * unexpected error occured during validation.
      */
-    MESSAGE_VALIDATION_ERROR(7),
+    MESSAGE_VALIDATION_ERROR(7, "MESSAGE_VALIDATION"),
     /*
      * Specific to the message validation component: used to indicate that a
      * massage has failed validation.
      */
-    MESSAGE_VALIDATION_FAILED(8),
+    MESSAGE_VALIDATION_FAILED(8, "MESSAGE_VALIDATION"),
     /*
      * Specific to the Message Transformation Components; used to indicate that
      * an afos id was encountered without an associated message type.
      */
-    XFORM_MISSING_MSG_TYPE(9),
+    XFORM_MISSING_MSG_TYPE(9, "MESSAGE_TRANSFORM"),
     /*
      * Specific to the Message Transformation Components; used to indicate that
      * a transmitter group, language combination was encountered that did not
      * have an associated dictionary.
      */
-    XFORM_MISSING_DICTIONARY(10),
+    XFORM_MISSING_DICTIONARY(10, "MESSAGE_TRANSFORM"),
     /*
      * Specific to the message validation component: used to indicate that a
-     * massage area is not in the configuration.
+     * message area is not in the configuration.
      */
-    MESSAGE_AREA_UNCONFIGURED(11),
+    MESSAGE_AREA_UNCONFIGURED(11, "MESSAGE_VALIDATION"),
     /*
      * Specific to the Message Transformation Components; used to indicate that
      * SSML Generation failed when attempting to transform a message using a
      * dictionary.
      */
-    XFORM_SSML_GENERATION_FAILED(12),
+    XFORM_SSML_GENERATION_FAILED(12, "MESSAGE_TRANSFORM"),
     /*
      * An error has occurred adding a message to a playlist.
      */
-    PLAYLIST_MANAGER_ERROR(13),
+    PLAYLIST_MANAGER_ERROR(13, "PLAYLIST_MANAGER"),
     /*
      * An error has occurred while tracking the status of a transmitter.
      */
-    TRANSMITTER_STATUS_ERROR(14),
+    TRANSMITTER_STATUS_ERROR(14, "TRANSMITTER"),
     /*
      * An error has occurred while configuring the comms manager.
      */
-    COMMS_CONFIGURATOR_ERROR(15),
+    COMMS_CONFIGURATOR_ERROR(15, "COMMS_MANAGER"),
     /*
      * An error has occurred during static message generation.
      */
-    STATIC_MSG_ERROR(16),
+    STATIC_MSG_ERROR(16, "STATIC_MSG"),
 
-    COMMS_MANAGER_ERROR(17),
+    COMMS_MANAGER_ERROR(17, "COMMS_MANAGER"),
 
-    DAC_TRANSMIT_ERROR(18),
+    DAC_TRANSMIT_ERROR(18, "DAC_TRANSMIT"),
 
-    DAC_TRANSMIT_SILENCE(19),
+    DAC_TRANSMIT_SILENCE(19, "DAC_TRANSMIT"),
     /*
      * An error has occurred during ldad processing.
      */
-    LDAD_ERROR(20),
+    LDAD_ERROR(20, "LDAD"),
     /*
      * indicates that a warning or interrupt cannot be broadcast on a
      * transmitter due to an active broadcast live session.
      */
-    DAC_TRANSMIT_BROADCAST_DELAY(21),
+    DAC_TRANSMIT_BROADCAST_DELAY(21, "DAC_TRANSMIT"),
     /*
      * indicates that audio has been truncated because its duration exceeded the
      * maximum allowed duration.
      */
-    AUDIO_TRUNCATED(22),
+    AUDIO_TRUNCATED(22, "TTS"),
     /*
      * indicates that an incoming file has been discarded because its size was
      * greater than the maximum allowed size.
      */
-    EXCESSIVE_FILE_SIZE(23),
+    EXCESSIVE_FILE_SIZE(23, "MESSAGE_PARSE"),
     /*
      * indicates that one or more areas have not been included in a SAME tone
      * because the maximum number of areas has been exceeded.
      */
-    SAME_TRUNCATION(24),
+    SAME_TRUNCATION(24, "PLAYLIST_MANAGER"),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.
      */
-    LEGACY_DATABASE_IMPORT(500),
+    LEGACY_DATABASE_IMPORT(500, "DATABASE_IMPORT"),
     /*
      * Indicates that a thread has been interrupted while performing some
      * action.
      */
-    INTERRUPTED(1000),
+    INTERRUPTED(1000, "BMH"),
     /* Indicates a failed operation with an unknown or unclear cause. */
-    UNKNOWN(9999);
+    UNKNOWN(9999, "BMH");
 
     private static final Map<Integer, BMH_CATEGORY> lookupMap;
 
@@ -187,14 +187,21 @@ public enum BMH_CATEGORY {
         }
     }
 
-    private int code;
+    private final int code;
 
-    private BMH_CATEGORY(int code) {
+    private final String alertVizCategory;
+
+    private BMH_CATEGORY(int code, String alertVizCategory) {
         this.code = code;
+        this.alertVizCategory = alertVizCategory;
     }
 
     public int getCode() {
         return this.code;
+    }
+
+    public String getAlertVizCategory() {
+        return this.alertVizCategory;
     }
 
     public static BMH_CATEGORY lookup(int code) {
