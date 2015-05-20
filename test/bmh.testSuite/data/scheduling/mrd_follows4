@@ -1,0 +1,8 @@
+aT_ENGMRDFLWFOR14080902091408090211        664CD   AKC050c1508280323
+
+This is a M R D follows message. This message will use the F M R D attribute
+to specify an alternate order of message scheduling to override the defined
+suite order. This message be the first message in the sequence and it will precede
+mrd_follows5.
+
+b
