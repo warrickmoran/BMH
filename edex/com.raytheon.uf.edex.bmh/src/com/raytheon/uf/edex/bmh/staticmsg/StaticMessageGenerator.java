@@ -60,6 +60,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.Prosody;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.SpeechRateFormatter;
+import com.raytheon.uf.common.bmh.trace.TraceableId;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
@@ -131,6 +132,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
  *                                     Transmitter specific.
  * May 11, 2015 4476       bkowal      Inline replace {@link InputMessage}s that do not have an associated
  *                                     {@link BroadcastMsg} or are associated with failure.
+ * May 20, 2015 4490       bkowal      Fixes for {@link TraceableId}.
  * 
  * </pre>
  * 
@@ -181,7 +183,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         locker = new ClusterLocker(AbstractBMHDao.getDatabaseName(operational));
     }
 
-    public List<ValidatedMessage> process(Object notificationObject) {
+    public List<TraceableId> process(Object notificationObject) {
         if (notificationObject instanceof MessageTypeConfigNotification) {
             MessageTypeConfigNotification notification = (MessageTypeConfigNotification) notificationObject;
             statusHandler.info("Processing "
@@ -232,7 +234,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                  */
                 return Collections.emptyList();
             }
-            List<ValidatedMessage> generatedMsgs = new ArrayList<>();
+            List<TraceableId> generatedMsgs = new ArrayList<>();
             for (TransmitterGroupIdentifier identifier : notification
                     .getIdentifiers()) {
                 TransmitterGroup group = this.transmitterGroupDao
@@ -240,8 +242,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 if (group == null) {
                     continue;
                 }
-                List<ValidatedMessage> msgs = this
-                        .generateStaticMessages(group);
+                List<TraceableId> msgs = this.generateStaticMessages(group);
                 if (msgs == null || msgs.isEmpty()) {
                     continue;
                 }
@@ -249,11 +250,10 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             }
             return generatedMsgs;
         } else if (notificationObject instanceof ResetNotification) {
-            List<ValidatedMessage> generatedMsgs = new ArrayList<>();
+            List<TraceableId> generatedMsgs = new ArrayList<>();
             for (TransmitterGroup group : this.transmitterGroupDao
                     .getEnabledTransmitterGroups()) {
-                List<ValidatedMessage> msgs = this
-                        .generateStaticMessages(group);
+                List<TraceableId> msgs = this.generateStaticMessages(group);
                 if (msgs == null || msgs.isEmpty()) {
                     continue;
                 }
@@ -309,15 +309,15 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 /*
                  * Generate a validated message (if applicable).
                  */
-                ValidatedMessage msg = this.generateStaticMessage(
+                TraceableId traceableId = this.generateStaticMessage(
                         staticMsgType.getTransmitterLanguage(), group,
                         staticMsgType, groupSet);
-                if (msg == null) {
+                if (traceableId == null) {
                     return Collections.emptyList();
                 }
 
-                List<ValidatedMessage> messageList = new ArrayList<>(1);
-                messageList.add(msg);
+                List<TraceableId> messageList = new ArrayList<>(1);
+                messageList.add(traceableId);
 
                 return messageList;
             }
@@ -432,15 +432,15 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 || notificationObject instanceof SuiteConfigNotification || notificationObject instanceof ProgramConfigNotification) == false;
     }
 
-    private List<ValidatedMessage> generateStaticMessage(
+    private List<TraceableId> generateStaticMessage(
             List<TransmitterGroup> transmitterGroups) {
         if (transmitterGroups.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<ValidatedMessage> generatedMsgs = new ArrayList<>();
+        List<TraceableId> generatedMsgs = new ArrayList<>();
         for (TransmitterGroup group : transmitterGroups) {
-            List<ValidatedMessage> msgs = this.generateStaticMessages(group);
+            List<TraceableId> msgs = this.generateStaticMessages(group);
             if (msgs == null || msgs.isEmpty()) {
                 continue;
             }
@@ -450,7 +450,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         return generatedMsgs;
     }
 
-    private List<ValidatedMessage> generateStaticMessages(MessageType type) {
+    private List<TraceableId> generateStaticMessages(MessageType type) {
         /*
          * In this case, we need to examine all enabled transmitter groups and
          * every language associated with each transmitter group.
@@ -466,7 +466,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         synchronized (configurationLock) {
             List<MessageType> types = new ArrayList<>(1);
             types.add(type);
-            List<ValidatedMessage> generatedMessages = new ArrayList<>();
+            List<TraceableId> generatedMessages = new ArrayList<>();
 
             /* Iterate through the enabled transmitter groups. */
             for (TransmitterGroup group : groups) {
@@ -477,8 +477,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 List<TransmitterLanguage> languages = this.transmitterLanguageDao
                         .getLanguagesForTransmitterGroup(group);
 
-                List<ValidatedMessage> msgs = this.generateStaticMessages(
-                        group, languages);
+                List<TraceableId> msgs = this.generateStaticMessages(group,
+                        languages);
                 if (msgs.isEmpty() == false) {
                     generatedMessages.addAll(msgs);
                 }
@@ -488,7 +488,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         }
     }
 
-    private List<ValidatedMessage> generateStaticMessages(
+    private List<TraceableId> generateStaticMessages(
             TransmitterLanguage language) {
         TransmitterGroup group = language.getTransmitterGroup();
         if (group.getEnabledTransmitters() == null
@@ -507,7 +507,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         }
     }
 
-    private List<ValidatedMessage> generateStaticMessages(TransmitterGroup group) {
+    private List<TraceableId> generateStaticMessages(TransmitterGroup group) {
         /* Is the group currently enabled? */
         if (CollectionUtils.isEmpty(group.getEnabledTransmitters())) {
             statusHandler
@@ -532,8 +532,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         }
     }
 
-    private List<ValidatedMessage> generateStaticMessages(
-            TransmitterGroup group, List<TransmitterLanguage> languages) {
+    private List<TraceableId> generateStaticMessages(TransmitterGroup group,
+            List<TransmitterLanguage> languages) {
         if (languages == null || languages.isEmpty()) {
             statusHandler
                     .info("Skipping message generation for transmitter group "
@@ -545,7 +545,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         final Set<TransmitterGroup> groupSet = new HashSet<TransmitterGroup>(1);
         groupSet.add(group);
 
-        List<ValidatedMessage> generatedMessages = new ArrayList<>();
+        List<TraceableId> generatedMessages = new ArrayList<>();
 
         for (TransmitterLanguage language : languages) {
             /*
@@ -560,10 +560,10 @@ public class StaticMessageGenerator implements IContextStateProcessor {
              */
             for (StaticMessageType staticMsgType : language
                     .getStaticMessageTypes()) {
-                ValidatedMessage msg = this.generateStaticMessage(language,
+                TraceableId traceableId = this.generateStaticMessage(language,
                         group, staticMsgType, groupSet);
-                if (msg != null) {
-                    generatedMessages.add(msg);
+                if (traceableId != null) {
+                    generatedMessages.add(traceableId);
                 }
             }
         }
@@ -571,9 +571,9 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         return generatedMessages;
     }
 
-    private ValidatedMessage generateStaticMessage(
-            TransmitterLanguage language, TransmitterGroup group,
-            StaticMessageType staticMsgType, Set<TransmitterGroup> groupSet) {
+    private TraceableId generateStaticMessage(TransmitterLanguage language,
+            TransmitterGroup group, StaticMessageType staticMsgType,
+            Set<TransmitterGroup> groupSet) {
         String text = StaticMessageIdentifierUtil.getText(staticMsgType);
 
         if (staticMsgType.getMsgTypeSummary().getDesignation() == Designation.TimeAnnouncement) {
@@ -609,7 +609,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         }
     }
 
-    private ValidatedMessage generateStaticMessage(TransmitterGroup group,
+    private TraceableId generateStaticMessage(TransmitterGroup group,
             TransmitterLanguage language, StaticMessageType staticMsgType,
             final String text, final Set<TransmitterGroup> groupSet) {
         if (text == null || text.trim().isEmpty()) {
@@ -841,7 +841,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         return sb.toString();
     }
 
-    private ValidatedMessage createOrupdate(TransmitterLanguage language,
+    private TraceableId createOrupdate(TransmitterLanguage language,
             StaticMessageType staticMsgType, final String text,
             final Set<TransmitterGroup> groupSet) {
         Calendar now = TimeUtil.newCalendar();
@@ -904,6 +904,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         validMsg.setLdadStatus(LdadStatus.ERROR);
         validMsg.setTransmissionStatus(TransmissionStatus.ACCEPTED);
         validMsg.setTransmitterGroups(groupSet);
+        validMsg.setTraceId(inputMsgName);
 
         StringBuilder logMsg = new StringBuilder(logText
                 + " static message for transmitter group ");
@@ -917,10 +918,10 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
         this.validatedMessageDao.persistCascade(validMsg);
 
-        return validMsg;
+        return new TraceableId(validMsg.getId(), validMsg.getTraceId());
     }
 
-    private ValidatedMessage update(BroadcastMsg existingMsg,
+    private TraceableId update(BroadcastMsg existingMsg,
             StaticMessageType staticMsgType, final String text) {
         InputMessage inputMsg = existingMsg.getInputMessage();
         ValidatedMessage validMsg = this.validatedMessageDao
@@ -950,7 +951,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
         this.validatedMessageDao.persistCascade(validMsg);
 
-        return validMsg;
+        return new TraceableId(validMsg.getId(), validMsg.getTraceId());
     }
 
     /**

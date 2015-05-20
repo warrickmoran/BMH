@@ -24,6 +24,7 @@
 		<route id="practice_bmhTransformer">
 			<from uri="jms-generic:queue:BMH.Practice.Transform" />
 			<doTry>
+				<bean ref="serializationUtil" method="transformFromThrift" />
 				<bean ref="practice_validatedMessageDao" method="getByTraceableId" />
 				<bean ref="practice_messageTransformer" method="process" />
 				<split>

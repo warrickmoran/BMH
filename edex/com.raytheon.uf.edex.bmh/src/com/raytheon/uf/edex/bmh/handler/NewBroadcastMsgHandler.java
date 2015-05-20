@@ -105,6 +105,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Apr 20, 2015  #4397     bkowal      Forward the message expiration request time when applicable.
  * Apr 27, 2015  #4397     bkowal      Set the {@link InputMessage} update date.
  * May 13, 2015  #4229     rferrel     Changes for traceId.
+ * May 20, 2015  #4490     bkowal      Fixes for {@link TraceableId}.
  * 
  * </pre>
  * 
@@ -247,7 +248,8 @@ public class NewBroadcastMsgHandler extends
             TraceableId tId = new TraceableId(validMsg.getId(),
                     validMsg.getTraceId());
             this.sendToDestination(
-                    BMHJmsDestinations.getBMHTransformDestination(request), tId);
+                    BMHJmsDestinations.getBMHTransformDestination(request),
+                    SerializationUtil.transformToThrift(tId));
             return inputMessage.getId();
         }
 

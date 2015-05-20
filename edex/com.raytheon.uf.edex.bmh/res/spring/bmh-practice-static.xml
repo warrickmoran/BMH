@@ -60,9 +60,7 @@
 				<bean ref="practice_staticMessageGenerator" method="process" />
 				<split>
 					<simple>${body}</simple>
-					<setBody>
-						<simple>${body.getId}</simple>
-					</setBody>
+					<bean ref="serializationUtil" method="transformToThrift" />
 					<to uri="jms-generic:queue:BMH.Practice.Transform" />
 				</split>
 				<doCatch>

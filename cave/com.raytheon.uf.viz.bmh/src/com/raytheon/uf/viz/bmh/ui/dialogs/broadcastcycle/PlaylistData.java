@@ -88,6 +88,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Mar 25, 2015   4290     bsteffen    Switch to global replacement.
  * Apr 29, 2015   4394     bkowal      Support {@link INonStandardBroadcast}.
  * May 19, 2015   4482     rjpeter     Added check of isDbReset.
+ * May 20, 2015   4490     bkowal      Ensure that an interrupt message is only displayed in
+ *                                     red during the initial playback.
  * </pre>
  * 
  * @author mpduff
@@ -393,7 +395,8 @@ public class PlaylistData {
                             .getPeriodicColor());
                 }
 
-                if (inputMsg.getInterrupt() && pred.getPlayCount() <= 1) {
+                if (inputMsg.getInterrupt()
+                        && message.isPlayedInterrupt() == false) {
                     cycleTableData.setMessageIdColor(colorManager
                             .getInterruptColor());
                 }

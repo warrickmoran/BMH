@@ -17,7 +17,6 @@ Packager: Bryan Kowal
 provides: awips2-bmh-test
 requires: awips2
 requires: awips2-bmh
-requires: awips2-bmh-database
 requires: awips2-edex-bmh
 
 %description
