@@ -103,6 +103,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 09, 2014  3906      lvenable    Changed the grid data for the suite and message type tables.
  * Feb 09, 2015  4095      bsteffen    Remove Transmitter Name.
  * Mar 31, 2015  4248      rjpeter     Use ordered view of suite messages.
+ * May 20, 2015   4490     bkowal      Display existing {@link Program} name in the rename dialog.
+ *                                     Fix warnings without suppressing them.
  * </pre>
  * 
  * @author lvenable
@@ -299,9 +301,11 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                 ProgramNameValidator pnv = new ProgramNameValidator(
                         programNames);
 
+                String existingName = (selectedProgram == null) ? null
+                        : selectedProgram.getName();
                 InputTextDlg inputDlg = new InputTextDlg(shell,
-                        "Rename Program", "Type in a new program name:", pnv,
-                        false);
+                        "Rename Program", "Type in a new program name:",
+                        existingName, pnv, false);
                 inputDlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
@@ -456,8 +460,15 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             @Override
             public void dialogClosed(Object returnValue) {
                 if ((returnValue != null) && (returnValue instanceof List<?>)) {
-
-                    List<TransmitterGroup> selectedTransmitters = (List<TransmitterGroup>) returnValue;
+                    List<?> objects = (List<?>) returnValue;
+                    if (objects.isEmpty()) {
+                        return;
+                    }
+                    List<TransmitterGroup> selectedTransmitters = new ArrayList<>(
+                            objects.size());
+                    for (Object object : objects) {
+                        selectedTransmitters.add((TransmitterGroup) object);
+                    }
 
                     handleAddTransmitters(selectedTransmitters);
                 }

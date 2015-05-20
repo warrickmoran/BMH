@@ -82,6 +82,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     when the user wants to perform and action on the selected object.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Apr 02, 2015   4359     rferrel     Fix index exception in {@link #handleDeleteMessageType()}.
+ * May 20, 2015   4490     bkowal      Display existing {@link MessageType} name in the rename dialog.
  * 
  * </pre>
  * 
@@ -426,8 +427,11 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         MessgaeTypeAfosValidator mtValidator = new MessgaeTypeAfosValidator(
                 existingAfosIds);
 
+        String existingName = (this.getSelectedMessageType() == null) ? null
+                : this.getSelectedMessageType().getAfosid();
         InputTextDlg inputDlg = new InputTextDlg(shell, "Rename Message Type",
-                "Type in a new message type name:", mtValidator, true);
+                "Type in a new message type name:", existingName, mtValidator,
+                true);
         inputDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {

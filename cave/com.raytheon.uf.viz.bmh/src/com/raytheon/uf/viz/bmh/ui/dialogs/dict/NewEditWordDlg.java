@@ -32,6 +32,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -61,6 +62,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 26, 2015    4054    rferrel     Fixed setup to PronunciationBuilderDlg to use ssml snippet.
  * Mar 16, 2015    4283    bkowal      Use substitution in the place of phoneme labels.
  * Mar 19, 2014    4282    rferrel     No longer force phonemeTxt to lower case.
+ * May 20, 2015    4490    bkowal      Specify {@link Language} when synthesizing text.
  * </pre>
  * 
  * @author mpduff
@@ -166,7 +168,9 @@ public class NewEditWordDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (wordTxt.getText().trim().length() > 0) {
-                    BmhUtils.playText(wordTxt.getText().trim());
+                    BmhUtils.playText(wordTxt.getText().trim(),
+                            (dictionary == null) ? Language.ENGLISH
+                                    : dictionary.getLanguage());
                 }
             }
         });
@@ -227,7 +231,7 @@ public class NewEditWordDlg extends CaveSWTDialog {
 
         gd = new GridData(175, SWT.DEFAULT);
         Button createPhonemeBtn = new Button(phonemeBtnComp, SWT.PUSH);
-        createPhonemeBtn.setText("Create/Edit Phoneme...");
+        createPhonemeBtn.setText("Create/Edit Substitution...");
         createPhonemeBtn.setLayoutData(gd);
         createPhonemeBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -375,7 +379,9 @@ public class NewEditWordDlg extends CaveSWTDialog {
         if ((pronunciationBuilderDlg == null)
                 || pronunciationBuilderDlg.isDisposed()) {
             pronunciationBuilderDlg = new PronunciationBuilderDlg(getShell(),
-                    wordTxt.getText().trim());
+                    wordTxt.getText().trim(),
+                    (this.dictionary == null) ? Language.ENGLISH
+                            : this.dictionary.getLanguage());
             if (phonemeTxt.getText().trim().length() > 0) {
                 pronunciationBuilderDlg.setSsmlSnippet(phonemeTxt.getText());
             }
