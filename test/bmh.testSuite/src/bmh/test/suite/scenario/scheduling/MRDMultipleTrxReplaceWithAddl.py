@@ -12,7 +12,8 @@ class MRDMultipleTrxReplaceWithAddl(AbstractSchedulingScenario.AbstractSchedulin
         super(MRDMultipleTrxReplaceWithAddl, self).__init__('Multiple MRD Trx + 1 Replace Scenario', 
             'Message mrd_replace_me3 will be played on PABE. Message mrd_replace_me4 will be played ' \
             'on PANC. Message mrd_replacer2 will replace mrd_replace_me3 and mrd_replace_me4. ' \
-            'Message mrd_replacer2 will be played on PABE and PAKN.')
+            'Message mrd_replacer2 will be played on PABE and PAKN. Message mrd_replacer2 will not be ' \
+            'broadcast on PANC due to a change in affected areas.')
         
     def _prepareInputs(self, dataDirectory):
         self._expireMinutes = 15
