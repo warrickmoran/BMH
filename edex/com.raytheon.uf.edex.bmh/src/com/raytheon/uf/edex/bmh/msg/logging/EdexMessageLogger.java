@@ -417,9 +417,16 @@ public class EdexMessageLogger implements IMessageLogger {
     }
 
     @Override
-    public void logMessageActivity(ITraceable traceable, MESSAGE_ACTIVITY activity,
-            InputMessage msg) {
+    public void logMessageActivity(ITraceable traceable,
+            MESSAGE_ACTIVITY activity, InputMessage msg) {
         this.getMessageLogger().logMessageActivity(traceable, activity, msg);
+    }
+
+    @Override
+    public void logInfo(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, BroadcastMsg msg, String details) {
+        this.getMessageLogger().logInfo(traceable, component, activity, msg,
+                details);
     }
 
     /**

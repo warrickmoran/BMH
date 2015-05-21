@@ -593,32 +593,31 @@ public class PlaylistManager implements IContextStateProcessor {
     public void newMessage(BroadcastMsg msg, ITraceable traceable) {
         TransmitterGroup group = msg.getTransmitterGroup();
         if (!group.isEnabled()) {
-            statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
-                    + "group not enabled for new message.");
+            logBroadcastMsgInfo(traceable, msg,
+                    "group not enabled for new message.");
             return;
         }
         if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
-            statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
-                    + "new message not active.");
+            logBroadcastMsgInfo(traceable, msg, "new message not active.");
             return;
         }
         if (msg.getForcedExpiration()) {
-            statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
-                    + "forced expiration of new message.");
+            logBroadcastMsgInfo(traceable, msg,
+                    "forced expiration of new message.");
             return;
         }
         Program program = programDao.getProgramForTransmitterGroup(group);
         if (program == null) {
-            statusHandler
-                    .info(TraceableUtil.createTraceMsgHeader(traceable)
-                            + "No program is currently assigned to Transmitter Group: "
+            logBroadcastMsgInfo(
+                    traceable,
+                    msg,
+                    "No program is currently assigned to Transmitter Group: "
                             + group.getName()
                             + ". Broadcast Message will not be scheduled for broadcast.");
             return;
         }
 
-        statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
-                + "Creating new message.");
+        logBroadcastMsgInfo(traceable, msg, "Creating new message.");
 
         if (msg.getInputMessage().getInterrupt()
                 && msg.isPlayedInterrupt() == false) {
@@ -646,6 +645,12 @@ public class PlaylistManager implements IContextStateProcessor {
                 addMessageToPlaylist(msg, group, programSuite, traceable);
             }
         }
+    }
+
+    private void logBroadcastMsgInfo(ITraceable traceable, BroadcastMsg msg,
+            String details) {
+        messageLogger.logInfo(traceable, BMH_COMPONENT.PLAYLIST_MANAGER,
+                BMH_ACTIVITY.PLAYLIST_WRITE, msg, details);
     }
 
     private void addMessageToPlaylist(BroadcastMsg msg, TransmitterGroup group,

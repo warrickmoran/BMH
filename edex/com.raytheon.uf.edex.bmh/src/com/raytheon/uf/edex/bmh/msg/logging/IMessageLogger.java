@@ -83,6 +83,8 @@ public interface IMessageLogger {
     /**
      * Logs that the specified {@link BroadcastMsg} has been activated.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param msg
      *            the specified {@link BroadcastMsg}
      */
@@ -92,6 +94,8 @@ public interface IMessageLogger {
      * Logs that the specified {@link DacPlaylistMessage} has just been created
      * for broadcast to the specified {@link TransmitterGroup}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param msg
      *            the specified {@link DacPlaylistMessage}
      * @param tg
@@ -104,6 +108,8 @@ public interface IMessageLogger {
      * Logs that the specified newMsg {@link InputMessage} has replaced the
      * specified replacedMsg {@link InputMessage}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param newMsg
      *            the {@link BroadcastMsg} that will take the place of another
      *            {@link InputMessage}.
@@ -125,6 +131,8 @@ public interface IMessageLogger {
      * Logs that the specified {@link BroadcastMsg} will trigger an automatic
      * switch to the specified {@link DacPlaylist}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param msg
      *            the specified {@link BroadcastMsg}
      * @param playlist
@@ -147,6 +155,7 @@ public interface IMessageLogger {
      * Log activity on the specified {@link InputMessage}.
      * 
      * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param activity
      * @param msg
      */
@@ -157,6 +166,8 @@ public interface IMessageLogger {
      * Logs that the specified {@link TONE_TYPE} has just been broadcast for the
      * specified {@link DacPlaylistMessage}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param toneType
      *            the specified {@link TONE_TYPE}
      * @param msg
@@ -170,6 +181,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link InputMessage}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -187,6 +200,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link InputMessage}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -207,6 +222,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link ValidatedMessage}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -224,6 +241,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link ValidatedMessage}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -244,6 +263,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link BroadcastMsg}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -261,6 +282,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link BroadcastMsg}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -281,6 +304,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link LdadMsg}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -298,6 +323,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link LdadMsg}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -318,6 +345,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link DacPlaylistMessage}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -335,6 +364,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link DacPlaylistMessage}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -355,6 +386,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link Playlist}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -372,6 +405,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link Playlist}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -392,6 +427,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link DacPlaylist}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -409,6 +446,8 @@ public interface IMessageLogger {
      * {@link BMH_COMPONENT} while performing the specified {@link BMH_ACTIVITY}
      * using the specified {@link DacPlaylist}.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param component
      *            The specified BMH Component that encountered the error
      * @param activity
@@ -427,6 +466,8 @@ public interface IMessageLogger {
     /**
      * Logs any errors that are encountered by a BMH Dao component.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param activity
      *            the {@link BMH_ACTIVITY} that the dao was attempting to
      *            complete when the error was encountered
@@ -438,4 +479,24 @@ public interface IMessageLogger {
      */
     public void logDaoError(ITraceable traceable, BMH_ACTIVITY activity,
             Object object, Throwable e);
+
+    /**
+     * Log an information message is the same format as the error log.
+     * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
+     * @param component
+     *            the {@link BMH_ACTIVITY} that the dao was attempting to
+     *            complete when the information was generated.
+     * @param activity
+     *            the {@link BMH_ACTIVITY} that the dao was attempting to
+     *            complete when the information was generated.
+     * @param msg
+     *            the {@link BroadcastMsg} that the component was interacting
+     *            with when the information generated.
+     * @param details
+     *            Additional details to be added to the log message.
+     */
+    public void logInfo(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, BroadcastMsg msg, String details);
 }

@@ -289,8 +289,8 @@ public class DefaultMessageLogger implements IMessageLogger {
     }
 
     @Override
-    public void logMessageActivity(ITraceable traceable, MESSAGE_ACTIVITY activity,
-            InputMessage msg) {
+    public void logMessageActivity(ITraceable traceable,
+            MESSAGE_ACTIVITY activity, InputMessage msg) {
         final String expire = this.getExpirationDate(msg.getExpirationTime());
         Object[] logDetails = new Object[] { msg.getId(), expire };
         logActivity(traceable, activity, logDetails);
@@ -560,6 +560,27 @@ public class DefaultMessageLogger implements IMessageLogger {
         }
     }
 
+    @Override
+    public void logInfo(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, BroadcastMsg msg, String details) {
+        logInfo(traceable, component, activity, this.getMsgId(msg), details);
+    }
+
+    private void logInfo(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, String msgId, String details) {
+        String msg = createLogMsg(traceable, component, activity, msgId);
+        this.activityLogger.info(msg + ": " + details);
+    }
+
+    private String createLogMsg(ITraceable traceable, BMH_COMPONENT component,
+            BMH_ACTIVITY activity, String msgId) {
+        StringBuilder msg = new StringBuilder(
+                TraceableUtil.createTraceMsgHeader(traceable));
+        msg.append(String.format(ErrorActivity.LOG_FORMAT, component, activity,
+                msgId, this.host));
+        return msg.toString();
+    }
+
     private void logActivity(final ITraceable traceable,
             final MESSAGE_ACTIVITY activityType, final Object[] logDetails) {
         StringBuilder sb = new StringBuilder(
@@ -575,14 +596,11 @@ public class DefaultMessageLogger implements IMessageLogger {
 
     private void logError(ITraceable traceable, BMH_COMPONENT component,
             BMH_ACTIVITY activity, String msgId, Throwable e) {
-        final StringBuilder msg = new StringBuilder(
-                TraceableUtil.createTraceMsgHeader(traceable));
-        msg.append(String.format(ErrorActivity.LOG_FORMAT, component, activity,
-                msgId, this.host));
+        String msg = createLogMsg(traceable, component, activity, msgId);
         if (e == null) {
-            this.errorLogger.error(msg.toString());
+            this.errorLogger.error(msg);
         } else {
-            this.errorLogger.error(msg.toString(), e);
+            this.errorLogger.error(msg, e);
         }
     }
 
