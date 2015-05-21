@@ -80,6 +80,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * May 05, 2015   4456     bkowal      Update the interrupt flag associated with a {@link BroadcastMsg}
  *                                     after it has played as an interrupt.
  * May 08, 2015   4478     bkowal      Prevent NPE in {@link #setToneFlags(PlaylistDataStructure, long)}.
+ * May 21, 2015   4397     bkowal      Update the broadcast flag on {@link BroadcastMsg}.
  * 
  * </pre>
  * 
@@ -328,13 +329,13 @@ public class PlaylistStateManager {
                 : playlistData.getSuiteName().startsWith("Interrupt");
         MessagePlaybackPrediction prediction = playlistData.getPredictionMap()
                 .get(broadcastId);
+        BroadcastMsg broadcastMessage = playlistData.getPlaylistMap().get(
+                broadcastId);
         if (prediction.isPlayedAlertTone() || prediction.isPlayedSameTone()
                 || interrupt) {
-            BroadcastMsg broadcastMessage = playlistData.getPlaylistMap().get(
-                    broadcastId);
             if (broadcastMessage != null) {
                 if (tonesMatch(prediction, broadcastMessage)
-                        && interrupt == false) {
+                        && interrupt == false && broadcastMessage.isBroadcast()) {
                     return;
                 }
             }
@@ -354,9 +355,22 @@ public class PlaylistStateManager {
                     broadcastMessage.setPlayedInterrupt(interrupt);
                     updated = true;
                 }
+                if (broadcastMessage.isBroadcast() == false) {
+                    broadcastMessage.setBroadcast(true);
+                    updated = true;
+                }
                 if (updated) {
                     broadcastMsgDao.persist(broadcastMessage);
                 }
+            }
+        } else {
+            if (broadcastMessage != null && broadcastMessage.isBroadcast()) {
+                return;
+            }
+            broadcastMessage = broadcastMsgDao.getByID(broadcastId);
+            if (broadcastMessage != null) {
+                broadcastMessage.setBroadcast(true);
+                broadcastMsgDao.persist(broadcastMessage);
             }
         }
     }
