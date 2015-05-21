@@ -84,6 +84,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 16, 2015  4395     rferrel     Added {@link #ALL_UNEXPIRED_MSGS_QUERY}.
  * May 05, 2015  4456     bkowal      Added {@link #playedInterrupt}.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * May 21, 2015  4397     bkowal      Added {@link #broadcast}.
  * </pre>
  * 
  * @author bkowal
@@ -181,6 +182,17 @@ public class BroadcastMsg {
     @Column(nullable = false)
     @DynamicSerializeElement
     private boolean playedInterrupt = false;
+
+    /**
+     * boolean flag indicating whether or not this message has been successfully
+     * broadcast. This flag is used to calculate the message delivery
+     * statistics. This flag will be set at the same time the
+     * {@link #playedAlertTone}, {@link #playedSameTone}, and
+     * {@link #playedInterrupt} flags are set.
+     */
+    @Column(nullable = false)
+    @DynamicSerializeElement
+    private boolean broadcast = false;
 
     @Column(nullable = false)
     @DynamicSerializeElement
@@ -375,6 +387,20 @@ public class BroadcastMsg {
      */
     public void setPlayedInterrupt(boolean playedInterrupt) {
         this.playedInterrupt = playedInterrupt;
+    }
+
+    /**
+     * @return the broadcast
+     */
+    public boolean isBroadcast() {
+        return broadcast;
+    }
+
+    /**
+     * @param broadcast the broadcast to set
+     */
+    public void setBroadcast(boolean broadcast) {
+        this.broadcast = broadcast;
     }
 
     public boolean getForcedExpiration() {
