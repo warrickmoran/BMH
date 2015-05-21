@@ -30,6 +30,7 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
@@ -51,7 +52,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Dec 16, 2014  3753     bsteffen    Add isEmpty()
  * Mar 05, 2015  4222     bkowal      Handle playlists that never expire.
  * May 11, 2015  4002     bkowal      Added {@link #triggerBroadcastId}.
- * 
+ * May 21, 2015  4429     rjpeter     Implement {@link ITraceable}.
  * </pre>
  * 
  * @author bsteffen
@@ -59,7 +60,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  */
 @XmlRootElement(name = "bmhPlaylist")
 @XmlAccessorType(XmlAccessType.NONE)
-public class DacPlaylist {
+public class DacPlaylist implements ITraceable {
 
     @XmlAttribute
     private String transmitterGroup;
@@ -92,6 +93,9 @@ public class DacPlaylist {
     private List<DacPlaylistMessageId> messages = new ArrayList<>();
 
     private transient Path path;
+
+    @XmlAttribute(name = "traceId")
+    private String traceId;
 
     public DacPlaylist() {
 
@@ -231,5 +235,22 @@ public class DacPlaylist {
      */
     public boolean isEmpty() {
         return (expired != null && !expired.after(start)) || messages.isEmpty();
+    }
+
+    /**
+     * @return the traceId
+     */
+    @Override
+    public String getTraceId() {
+        return traceId;
+    }
+
+    /**
+     * @param traceId
+     *            the traceId to set
+     */
+    @Override
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 }

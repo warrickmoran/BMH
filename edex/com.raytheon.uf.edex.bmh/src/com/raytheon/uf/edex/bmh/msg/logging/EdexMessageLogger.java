@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.msg.logging;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
@@ -50,7 +51,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  *                                     logging methods for playlists.
  * Jan 06, 2015 3651       bkowal      Implemented {@link #logDaoError(BMH_ACTIVITY, Object, Throwable)}.
  * May 13, 2015 4429       rferrel     Changes for traceId.
- * 
+ * May 21, 2015 4429       rjpeter     Added additional logging methods.
  * </pre>
  * 
  * @author bkowal
@@ -119,9 +120,9 @@ public class EdexMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup)
      */
     @Override
-    public void logCreationActivity(ITraceable traceable,
+    public void logPlaylistMessageActivity(ITraceable traceable,
             DacPlaylistMessage msg, TransmitterGroup tg) {
-        this.getMessageLogger().logCreationActivity(traceable, msg, tg);
+        this.getMessageLogger().logPlaylistMessageActivity(traceable, msg, tg);
     }
 
     /*
@@ -418,7 +419,7 @@ public class EdexMessageLogger implements IMessageLogger {
 
     @Override
     public void logMessageActivity(ITraceable traceable,
-            MESSAGE_ACTIVITY activity, InputMessage msg) {
+            MESSAGE_ACTIVITY activity, Object msg) {
         this.getMessageLogger().logMessageActivity(traceable, activity, msg);
     }
 
@@ -427,6 +428,38 @@ public class EdexMessageLogger implements IMessageLogger {
             BMH_ACTIVITY activity, BroadcastMsg msg, String details) {
         this.getMessageLogger().logInfo(traceable, component, activity, msg,
                 details);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logValidationActivity
+     * (com.raytheon.uf.common.bmh.trace.ITraceable,
+     * com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage)
+     */
+    @Override
+    public void logValidationActivity(ValidatedMessage msg) {
+        this.getMessageLogger().logValidationActivity(msg);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logParseActivity(
+     * com.raytheon.uf.common.bmh.datamodel.msg.InputMessage)
+     */
+    @Override
+    public void logParseActivity(InputMessage msg) {
+        this.getMessageLogger().logParseActivity(msg);
+    }
+
+    @Override
+    public void logTTSSucces(ITraceable traceable, BroadcastFragment msg,
+            int playbackTimeSeconds) {
+        this.getMessageLogger().logTTSSucces(traceable, msg,
+                playbackTimeSeconds);
     }
 
     /**
@@ -439,4 +472,5 @@ public class EdexMessageLogger implements IMessageLogger {
     private DefaultMessageLogger getMessageLogger() {
         return messageLogger;
     }
+
 }

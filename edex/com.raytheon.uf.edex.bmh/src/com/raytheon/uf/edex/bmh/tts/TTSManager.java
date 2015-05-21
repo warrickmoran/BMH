@@ -47,6 +47,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
 import com.raytheon.uf.common.bmh.notify.status.TTSStatus;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
@@ -56,6 +57,7 @@ import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
@@ -112,7 +114,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Apr 20, 2015 4314       bkowal      Made {@link #attemptAudioSynthesis(String, int, String)}
  *                                     public.
  * May 13, 2015 4429       rferrel     Changes to logs for traceId.
- * 
+ * May 21, 2015 4429       rjpeter     Added additional logging methods.
  * </pre>
  * 
  * @author bkowal
@@ -394,10 +396,24 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         return true;
     }
 
+    /**
+     * Invoked by the Camel Route to process the BroadcastMsgGroup - the primary
+     * purpose of this class.
+     * 
+     * @param group
+     *            the messages to process
+     * @return an updated {@link BroadcastMsg} that will indicate whether or not
+     *         the synthesis and file write are successful as well as the output
+     *         file location when synthesis is successful
+     */
     public BroadcastMsgGroup process(BroadcastMsgGroup group) throws Exception {
+        messageLogger.logMessageActivity(group, MESSAGE_ACTIVITY.TTS_START,
+                group);
         for (BroadcastMsg message : group.getMessages()) {
-            process(message);
+            process(group, message);
         }
+        messageLogger
+                .logMessageActivity(group, MESSAGE_ACTIVITY.TTS_END, group);
         return group;
     }
 
@@ -411,7 +427,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      *         the synthesis and file write are successful as well as the output
      *         file location when synthesis is successful
      */
-    public BroadcastMsg process(BroadcastMsg message) throws Exception {
+    private BroadcastMsg process(ITraceable traceable, BroadcastMsg message)
+            throws Exception {
         if (message == null
                 || message.getLatestBroadcastContents() == null
                 || message.getLatestBroadcastContents().getFragments() == null
@@ -458,11 +475,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 byte[] synthesizedAudio = ttsReturn.getVoiceData();
                 int totalPlaybackSeconds = this
                         .getAudioPlaybackDurationSeconds(synthesizedAudio);
-                statusHandler
-                        .info("Text-to-Speech Transformation completed successfully for "
-                                + logIdentifier.toString()
-                                + ".  Length of playback = "
-                                + totalPlaybackSeconds + " seconds");
 
                 /* Write the output file. */
                 File outputFile = this.determineOutputFile(message.getId(),
@@ -481,8 +493,11 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                             BMH_ACTIVITY.AUDIO_WRITE, message, e);
                 }
                 fragment.setSuccess(writeSuccess);
+
                 if (writeSuccess) {
                     fragment.setOutputName(outputFile.getAbsolutePath());
+                    messageLogger.logTTSSucces(traceable, fragment,
+                            totalPlaybackSeconds);
                 }
             } else {
                 /* Synthesis Failed */

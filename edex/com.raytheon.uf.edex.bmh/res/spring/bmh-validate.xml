@@ -45,6 +45,7 @@
   					<setBody>
   						<simple>${body.getTraceableId}</simple>
 					</setBody>
+                    <bean ref="serializationUtil" method="transformToThrift" />
   					<to uri="jms-durable:queue:BMH.Transform" />
 				</pipeline>
 				<doCatch>

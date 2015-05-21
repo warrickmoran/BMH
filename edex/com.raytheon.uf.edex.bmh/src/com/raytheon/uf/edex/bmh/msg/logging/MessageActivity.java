@@ -31,7 +31,7 @@ package com.raytheon.uf.edex.bmh.msg.logging;
  * Dec 10, 2014 3651       bkowal      Initial creation
  * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
  * May 19, 2015 4429       rferrel     Added Transformer messages.
- * 
+ * May 21, 2015  4429      rjpeter     Added additional activities.
  * </pre>
  * 
  * @author bkowal
@@ -64,7 +64,7 @@ public class MessageActivity {
     protected static final String REPLACEMENT_FORMAT = MESSAGE_FMT
             + " has replaced " + MESSAGE_FMT + " " + MESSAGE_EXPIRES_FMT + ".";
 
-    protected static final String CREATION_FORMAT = MESSAGE_FMT
+    protected static final String PLAYLIST_MSG_FORMAT = MESSAGE_FMT
             + " was successfully created and will be broadcast to "
             + TRANSMITTER_GRP_FMT + " " + MESSAGE_EXPIRES_FMT + ".";
 
@@ -88,10 +88,25 @@ public class MessageActivity {
             + " has been updated/created " + PLAYLIST_EXPIRES_FMT + ".";
 
     protected static final String TRANSFORM_START_FORMAT = MESSAGE_FMT
-            + " start transforming message " + MESSAGE_EXPIRES_FMT;
+            + " starting message transform.";
 
     protected static final String TRANSFORM_END_FORMAT = MESSAGE_FMT
-            + " transform successfully generated " + MESSAGE_EXPIRES_FMT;
+            + " message successfully transformed";
+
+    protected static final String TTS_START_FORMAT = MESSAGE_FMT
+            + " starting text to speech";
+
+    protected static final String TTS_SUCCESS_FORMAT = MESSAGE_FMT
+            + " generated audio file %s.  Audio length: %s";
+
+    protected static final String TTS_END_FORMAT = MESSAGE_FMT
+            + " text to speech complete";
+
+    protected static final String VALIDATION_START_FORMAT = MESSAGE_FMT
+            + " starting validation";
+
+    protected static final String VALIDATION_END_FORMAT = MESSAGE_FMT
+            + " validation status is: transmissionStatus=%s, ldadStatus=%s";
 
     /**
      * Enum identifying the types of message activities that need to be logged.
@@ -115,7 +130,7 @@ public class MessageActivity {
         /* A message has been replaced */
         REPLACEMENT(REPLACEMENT_FORMAT),
         /* A message has been created */
-        CREATION(CREATION_FORMAT),
+        PLAYLIST_MSG(PLAYLIST_MSG_FORMAT),
         /* A message has been activated */
         ACTIVATION(ACTIVATION_FORMAT),
         /* Alert or End Tones have been broadcast */
@@ -129,7 +144,17 @@ public class MessageActivity {
         /* An input message starts transform. */
         TRANSFORM_START(TRANSFORM_START_FORMAT),
         /* An input message ends transform. */
-        TRANSFORM_END(TRANSFORM_END_FORMAT);
+        TRANSFORM_END(TRANSFORM_END_FORMAT),
+        /* An input message starts transform. */
+        TTS_START(TTS_START_FORMAT),
+        /* An input message ends transform. */
+        TTS_SUCCESS(TTS_SUCCESS_FORMAT),
+        /* An input message ends transform. */
+        TTS_END(TTS_END_FORMAT),
+        /* An input message starts validation */
+        VALIDATION_START(VALIDATION_START_FORMAT),
+        /* An input message finishes validation */
+        VALIDATION_END(VALIDATION_END_FORMAT);
 
         private final String logMsgFormat;
 

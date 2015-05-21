@@ -67,7 +67,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Mar 05, 2015  4199     rferrel     The afosidPattern excepts valid spaces in the id.
  * Apr 27, 2015  4397     bkowal      Set the {@link InputMessage} update date.
  * May 13, 2015  4429     rferrel     Changes loggers for traceId.
- * 
+ * May 21, 2015  4429     rjpeter     Added additional logging.
  * </pre>
  * 
  * @author bsteffen
@@ -115,15 +115,15 @@ public class InputMessageParser {
         this.messageLogger = messageLogger;
     }
 
-    public InputMessage parse(@Body
-    CharSequence text, @Headers
-    Map<String, Object> headers) {
+    public InputMessage parse(@Body CharSequence text,
+            @Headers Map<String, Object> headers) {
         InputMessage message = new InputMessage();
         message.setUpdateDate(TimeUtil.newGmtCalendar());
         String fileName = headers.get("CamelFileNameOnly").toString();
         message.setName(fileName);
         message.setValidHeader(true);
-        statusHandler.info("Parsing file: " + fileName);
+        messageLogger.logParseActivity(message);
+
         try {
             int index = findStart(text);
             index = parseMessageFormat(message, text, index);

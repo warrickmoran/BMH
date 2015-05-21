@@ -148,7 +148,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Apr 10, 2015 4356       bkowal      Clean up newlines at the paragraph level of separation. Handle the case
  *                                     when a period is directly against text that matches a dict rule.
  * May 13, 2015 4429       rferrel     Implement traceId.
- * 
+ * May 21, 2015 4429       rjpeter     Added additional logging.
  * </pre>
  * 
  * @author bkowal
@@ -194,10 +194,10 @@ public class MessageTransformer implements IContextStateProcessor {
     private final TimeMessagesGenerator tmGenerator;
 
     /* Cached national dictionaries */
-    private ConcurrentMap<Language, Dictionary> nationalDictionaryLanguageMap = new ConcurrentHashMap<>(
+    private final ConcurrentMap<Language, Dictionary> nationalDictionaryLanguageMap = new ConcurrentHashMap<>(
             Language.values().length, 1.0f);
 
-    private Table<TransmitterGroup, Language, TransmitterLanguage> transmitterLanguageTableCache = HashBasedTable
+    private final Table<TransmitterGroup, Language, TransmitterLanguage> transmitterLanguageTableCache = HashBasedTable
             .create();
 
     /* Used to fulfill the message logging requirement. */
@@ -346,20 +346,20 @@ public class MessageTransformer implements IContextStateProcessor {
         }
 
         List<Object> result = new ArrayList<Object>();
-        result.add(new BroadcastMsgGroup(generatedMessages));
+        result.add(new BroadcastMsgGroup(traceId, generatedMessages));
 
         /* Transformation complete. */
         statusHandler.info(msgHeader + "Transformation of message: "
                 + message.getId() + " was successful. Generated "
                 + generatedMessages.size() + " Broadcast Message(s).");
-        this.messageLogger.logMessageActivity(message, MESSAGE_ACTIVITY.TRANSFORM_END,
-                message.getInputMessage());
+        this.messageLogger.logMessageActivity(message,
+                MESSAGE_ACTIVITY.TRANSFORM_END, message.getInputMessage());
         if (message.getLdadStatus() == LdadStatus.ACCEPTED) {
             statusHandler.info(msgHeader
                     + "Building ldad message(s) for message: "
                     + message.getId() + "...");
             try {
-                result.addAll(this.processLdad(msgHeader, messageType,
+                result.addAll(this.processLdad(traceId, msgHeader, messageType,
                         formattedText));
             } catch (SSMLConversionException e) {
                 StringBuilder errorString = new StringBuilder();
@@ -384,9 +384,10 @@ public class MessageTransformer implements IContextStateProcessor {
         return result;
     }
 
-    private List<LdadMsg> processLdad(final String msgHeader,
-            final MessageType messageType, final String formattedText)
-            throws SSMLConversionException, TransformationException {
+    private List<LdadMsg> processLdad(final String traceId,
+            final String msgHeader, final MessageType messageType,
+            final String formattedText) throws SSMLConversionException,
+            TransformationException {
         /*
          * Retrieve all ldad configuration(s) associated with the specified
          * message type.
@@ -428,11 +429,13 @@ public class MessageTransformer implements IContextStateProcessor {
                         + ".");
                 continue;
             }
+
             LdadMsg ldadMsg = new LdadMsg();
             ldadMsg.setLdadId(ldadConfig.getId());
             ldadMsg.setAfosid(messageType.getAfosid());
             ldadMsg.setVoiceNumber(ldadConfig.getVoice().getVoiceNumber());
             ldadMsg.setEncoding(ldadConfig.getEncoding());
+            ldadMsg.setTraceId(traceId);
             if (ldadConfig.getDictionary() == null
                     && ldadConfig.getSpeechRate() == SpeechRateFormatter.DEFAULT_RATE) {
                 /*

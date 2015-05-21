@@ -36,6 +36,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.core.EdexException;
 
@@ -56,7 +57,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Jan 14, 2015  3969     bkowal      Post a {@link MessageExpiredNotification} when a
  *                                    watch/warning fails validation because it expired.
  * May 13, 2015  4429     rferrel     Set traceId.
- * 
+ * May 21, 2015  4429     rjpeter     Added additional logging.
  * </pre>
  * 
  * @author bsteffen
@@ -95,7 +96,9 @@ public class InputMessageValidator {
     public ValidatedMessage validate(InputMessage input) {
         ValidatedMessage valid = new ValidatedMessage();
         valid.setInputMessage(input);
-        valid.setTraceId(input.getName());
+        valid.setTraceId(input.getName() + "_" + input.getId());
+        messageLogger.logMessageActivity(valid,
+                MESSAGE_ACTIVITY.VALIDATION_START, input);
         List<String> unacceptableWords = UnacceptableWordFilter.check(input);
         if (unacceptableWords.isEmpty()) {
             transmissionCheck.validate(valid);
@@ -163,12 +166,7 @@ public class InputMessageValidator {
                     BMH_COMPONENT.INPUT_MESSAGE_VALIDATOR,
                     BMH_ACTIVITY.MESSAGE_VALIDATION, valid);
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append(TraceableUtil.createTraceMsgHeader(valid)).append(
-                "input message validation status is ");
-        sb.append(" transmissionStatus=").append(valid.getTransmissionStatus());
-        sb.append(", ldadStatus=").append(valid.getLdadStatus());
-        statusHandler.info(sb.toString());
+        this.messageLogger.logValidationActivity(valid);
         return valid;
     }
 }

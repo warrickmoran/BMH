@@ -26,7 +26,9 @@ import java.util.Calendar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
@@ -36,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
+import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -63,8 +66,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  * Apr 24, 2015  4394      bkowal      Added {@link #logMaintenanceTonesActivity(TONE_TYPE, DacMaintenanceMessage)}
  *                                     and {@link #getMsgId(DacMaintenanceMessage)}.
  * May 07, 2015  4466      bkowal      Added {@link #logPlaylistError(BMH_COMPONENT, BMH_ACTIVITY, String, Throwable)}.
- * May 13, 2015 4429       rferrel     Changes for traceId.
- * 
+ * May 13, 2015  4429      rferrel     Changes for traceId.
+ * May 21, 2015  4429      rjpeter     Added additional logging methods.
  * </pre>
  * 
  * @author bkowal
@@ -164,12 +167,12 @@ public class DefaultMessageLogger implements IMessageLogger {
      * com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup)
      */
     @Override
-    public void logCreationActivity(ITraceable traceable,
+    public void logPlaylistMessageActivity(ITraceable traceable,
             DacPlaylistMessage msg, TransmitterGroup tg) {
         final String expire = this.getExpirationDate(msg.getExpire());
         Object[] logDetails = new Object[] { this.getMsgId(msg), tg.getName(),
                 expire };
-        this.logActivity(traceable, MESSAGE_ACTIVITY.CREATION, logDetails);
+        this.logActivity(traceable, MESSAGE_ACTIVITY.PLAYLIST_MSG, logDetails);
     }
 
     /*
@@ -262,6 +265,37 @@ public class DefaultMessageLogger implements IMessageLogger {
      * (non-Javadoc)
      * 
      * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logValidationActivity
+     * (com.raytheon.uf.common.bmh.trace.ITraceable,
+     * com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage)
+     */
+    @Override
+    public void logValidationActivity(ValidatedMessage msg) {
+        Object[] logDetails = new Object[] { this.getMsgId(msg),
+                msg.getTransmissionStatus().toString(),
+                msg.getLdadStatus().toString() };
+        this.logActivity(msg, MESSAGE_ACTIVITY.VALIDATION_END, logDetails);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logTTSSucces(com.
+     * raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment, int)
+     */
+    @Override
+    public void logTTSSucces(ITraceable traceable, BroadcastFragment msg,
+            int playbackTimeSeconds) {
+        Object[] logDetails = new Object[] { this.getMsgId(msg),
+                msg.getOutputName(), playbackTimeSeconds };
+        this.logActivity(traceable, MESSAGE_ACTIVITY.TTS_SUCCESS, logDetails);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
      * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logPlaylistActivity
      * (com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist)
      */
@@ -290,9 +324,8 @@ public class DefaultMessageLogger implements IMessageLogger {
 
     @Override
     public void logMessageActivity(ITraceable traceable,
-            MESSAGE_ACTIVITY activity, InputMessage msg) {
-        final String expire = this.getExpirationDate(msg.getExpirationTime());
-        Object[] logDetails = new Object[] { msg.getId(), expire };
+            MESSAGE_ACTIVITY activity, Object msg) {
+        Object[] logDetails = new Object[] { getMsgId(msg) };
         logActivity(traceable, activity, logDetails);
     }
 
@@ -594,6 +627,19 @@ public class DefaultMessageLogger implements IMessageLogger {
         this.activityLogger.info(sb.toString());
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logParseActivity(
+     * com.raytheon.uf.common.bmh.datamodel.msg.InputMessage)
+     */
+    @Override
+    public void logParseActivity(InputMessage msg) {
+        this.activityLogger.info(String.format("Parsing file: %s",
+                msg.getName()));
+    }
+
     private void logError(ITraceable traceable, BMH_COMPONENT component,
             BMH_ACTIVITY activity, String msgId, Throwable e) {
         String msg = createLogMsg(traceable, component, activity, msgId);
@@ -618,6 +664,33 @@ public class DefaultMessageLogger implements IMessageLogger {
             return NO_EXPIRATION;
         }
         return calendar.getTime().toString();
+    }
+
+    private String getMsgId(Object msg) {
+        if (msg instanceof DacPlaylistMessage) {
+            return getMsgId((DacPlaylistMessage) msg);
+        } else if (msg instanceof DacMaintenanceMessage) {
+            return getMsgId((DacMaintenanceMessage) msg);
+        } else if (msg instanceof BroadcastFragment) {
+            return getMsgId(msg);
+        } else if (msg instanceof BroadcastMsg) {
+            return getMsgId((BroadcastMsg) msg);
+        } else if (msg instanceof BroadcastMsgGroup) {
+            return getMsgId((BroadcastMsgGroup) msg);
+        } else if (msg instanceof InputMessage) {
+            return getMsgId((InputMessage) msg);
+        } else if (msg instanceof ValidatedMessage) {
+            return getMsgId((ValidatedMessage) msg);
+        } else if (msg instanceof LdadMsg) {
+            return getMsgId((LdadMsg) msg);
+        } else {
+            if (msg == null) {
+                throw new IllegalArgumentException(
+                        "Required argument msg can not be NULL.");
+            }
+
+            return msg.toString();
+        }
     }
 
     /**
@@ -685,6 +758,55 @@ public class DefaultMessageLogger implements IMessageLogger {
 
     /**
      * Creates an identification {@link String} based on the specified
+     * {@link BroadcastFragment}.
+     * 
+     * @param msg
+     *            the specified {@link BroadcastFragment}
+     * @return an identification {@link String}
+     */
+    private String getMsgId(BroadcastFragment msg) {
+        if (msg == null) {
+            throw new IllegalArgumentException(
+                    "Required argument msg can not be NULL.");
+        }
+
+        StringBuilder sb = new StringBuilder("BroadcastFragment [id=");
+        sb.append(msg.getId());
+        sb.append("]");
+
+        return sb.toString();
+    }
+
+    /**
+     * Creates an identification {@link String} based on the specified
+     * {@link BroadcastMsgGroup}.
+     * 
+     * @param msg
+     *            the specified {@link BroadcastMsg}
+     * @return an identification {@link String}
+     */
+    private String getMsgId(BroadcastMsgGroup msg) {
+        if (msg == null) {
+            throw new IllegalArgumentException(
+                    "Required argument msg can not be NULL.");
+        }
+
+        StringBuilder sb = new StringBuilder("BroadcastMsgGroup [");
+
+        if (!CollectionUtil.isNullOrEmpty(msg.getMessages())) {
+            BroadcastMsg bMsg = msg.getMessages().get(0);
+            sb.append("afosid=");
+            sb.append(bMsg.getAfosid());
+            sb.append(", name=");
+            sb.append(bMsg.getInputMessage().getName());
+        }
+        sb.append("]");
+
+        return sb.toString();
+    }
+
+    /**
+     * Creates an identification {@link String} based on the specified
      * {@link InputMessage}.
      * 
      * @param msg
@@ -728,7 +850,6 @@ public class DefaultMessageLogger implements IMessageLogger {
         sb.append(msg.getInputMessage().getAfosid());
         sb.append(", name=");
         sb.append(msg.getInputMessage().getName());
-        sb.append(", traceId=").append(TraceableUtil.getTraceId(msg));
         sb.append("]");
 
         return sb.toString();
@@ -773,4 +894,5 @@ public class DefaultMessageLogger implements IMessageLogger {
 
         return sb.toString();
     }
+
 }
