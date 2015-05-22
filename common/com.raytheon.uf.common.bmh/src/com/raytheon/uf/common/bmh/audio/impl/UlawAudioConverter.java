@@ -46,6 +46,8 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.PCMToUlawAlgorithm;
  * Jul 17, 2014 3383       bkowal      Initial creation
  * Dec 3, 2014  3880       bkowal      Extend JavaRecognizedAudioConverter.
  * Apr 09, 2015 4365       bkowal      Updated to use {@link PCMToUlawAlgorithm}.
+ * May 22, 2015 4490       bkowal      Provide the destination array to
+ *                                     {@link AlgorithmicAudioUtils}.
  * 
  * </pre>
  * 
@@ -104,8 +106,7 @@ public class UlawAudioConverter extends JavaRecognizedAudioConverter {
                  * Ensure that the PCM data has the correct format. Down-sample,
                  * if necessary.
                  */
-                src = AlgorithmicAudioUtils.resamplePCMData(audioInputStream,
-                        src.length);
+                AlgorithmicAudioUtils.resamplePCMData(audioInputStream, src);
 
             } catch (UnsupportedAudioFileException | IOException e) {
                 throw new AudioConversionException("Failed to convert the "
