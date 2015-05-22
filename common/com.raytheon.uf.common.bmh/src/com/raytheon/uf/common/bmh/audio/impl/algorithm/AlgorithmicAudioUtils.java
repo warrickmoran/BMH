@@ -41,6 +41,7 @@ import com.sun.media.sound.AudioFloatFormatConverter;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 22, 2014 3383       bkowal      Initial creation
+ * May 22, 2015 4490       bkowal      Eliminated unnecessary array creation.
  * 
  * </pre>
  * 
@@ -76,20 +77,16 @@ public final class AlgorithmicAudioUtils {
      * @throws AudioConversionException
      *             if the re-sampling proces fails
      */
-    public static byte[] resamplePCMData(
-            final AudioInputStream audioInputStream,
-            final int originalSampleLength) throws AudioConversionException {
+    public static void resamplePCMData(final AudioInputStream audioInputStream,
+            byte[] destination) throws AudioConversionException {
 
-        byte[] resampledData = new byte[originalSampleLength];
         try (AudioInputStream resampledAudioInputStream = new AudioFloatFormatConverter()
-                .getAudioInputStream(COMPATIBLE_PCM_FORMAT, audioInputStream);) {
-            resampledAudioInputStream.read(resampledData);
+                .getAudioInputStream(COMPATIBLE_PCM_FORMAT, audioInputStream)) {
+            resampledAudioInputStream.read(destination);
         } catch (IllegalArgumentException | IOException e) {
             throw new AudioConversionException("Failed to resample PCM data!",
                     e);
         }
-
-        return resampledData;
     }
 
     /**
