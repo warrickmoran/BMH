@@ -149,6 +149,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      read during startup.
  * May 11, 2015  #4002     bkowal       Handle all Broadcast Live message delay scenarios.
  * May 19, 2015  4508      rjpeter      Add exception handling to newPlaylistReceived.
+ * May 21, 2015  4429      rjpeter      Update message logging.
  * </pre>
  * 
  * @author dgilling
@@ -749,9 +750,11 @@ public final class PlaylistScheduler implements
                 this.checkPurgeUnusablePlaylist(playlistPath);
                 return;
             }
+            DefaultMessageLogger.getInstance().logPlaylistActivity(newPlaylist,
+                    newPlaylist);
+
             newPlaylist.setPath(playlistPath);
             cache.retrieveAudio(newPlaylist);
-            logger.debug("Received new playlist: " + newPlaylist.toString());
 
             ITimer timer = TimeUtil.getTimer();
             timer.start();

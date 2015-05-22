@@ -41,7 +41,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * May 08, 2015  4429     rferrel     Implement {@link ITraceable}.
- * 
+ * May 21, 2015  4429     rjpeter     Updated constructor.
  * </pre>
  * 
  * @author bsteffen
@@ -62,7 +62,8 @@ public class BroadcastMsgGroup implements ITraceable {
 
     }
 
-    public BroadcastMsgGroup(List<BroadcastMsg> messages) {
+    public BroadcastMsgGroup(String traceId, List<BroadcastMsg> messages) {
+        this.traceId = traceId;
         this.messages = messages;
     }
 
@@ -91,10 +92,12 @@ public class BroadcastMsgGroup implements ITraceable {
         return true;
     }
 
+    @Override
     public String getTraceId() {
         return traceId;
     }
 
+    @Override
     public void setTraceId(String traceId) {
         this.traceId = traceId;
     }

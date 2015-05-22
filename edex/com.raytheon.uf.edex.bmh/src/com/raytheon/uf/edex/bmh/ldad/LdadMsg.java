@@ -19,13 +19,15 @@
  **/
 package com.raytheon.uf.edex.bmh.ldad;
 
+import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-
-import com.raytheon.uf.edex.bmh.xformer.MessageTransformer;
 import com.raytheon.uf.edex.bmh.tts.TTSManager;
-import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.edex.bmh.xformer.MessageTransformer;
 
 /**
  * Message associated with a {@link LdadConfig}. Ldad Messages are generated
@@ -43,7 +45,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
  * Nov 19, 2014 3385       bkowal      Initial creation
  * Nov 20, 2014 3385       bkowal      Add additional fields that will be
  *                                     required by TTS Manager.
- * 
+ * May 21, 2015 4429       rjpeter     Implement {@link ITraceable}.
  * </pre>
  * 
  * @author bkowal
@@ -51,7 +53,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
  */
 
 @DynamicSerialize
-public class LdadMsg {
+public class LdadMsg implements ITraceable {
 
     /**
      * Id of the ldad configuration that the additional synthesis is being
@@ -106,6 +108,9 @@ public class LdadMsg {
      */
     @DynamicSerializeElement
     private String outputName;
+
+    @DynamicSerializeElement
+    private String traceId;
 
     /**
      * 
@@ -167,7 +172,8 @@ public class LdadMsg {
     }
 
     /**
-     * @param encoding the encoding to set
+     * @param encoding
+     *            the encoding to set
      */
     public void setEncoding(BMHAudioFormat encoding) {
         this.encoding = encoding;
@@ -205,5 +211,27 @@ public class LdadMsg {
         sb.append("]");
 
         return sb.toString();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.bmh.trace.ITraceable#getTraceId()
+     */
+    @Override
+    public String getTraceId() {
+
+        return traceId;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.common.bmh.trace.ITraceable#setTraceId(java.lang.String)
+     */
+    @Override
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 }

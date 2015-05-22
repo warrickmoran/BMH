@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.msg.logging;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
@@ -52,7 +53,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Mar 25, 2015 4290       bsteffen    Switch to global replacement.
  * Apr 24, 2015 4394       bkowal      Added {@link TONE_TYPE#TRANSFER}.
  * May 13, 2015 4429       rferrel     Changes for traceId.
- * 
+ * May 21, 2015 4429       rjpeter     Added additional logging methods.
  * </pre>
  * 
  * @author bkowal
@@ -101,7 +102,7 @@ public interface IMessageLogger {
      * @param tg
      *            the specified {@link TransmitterGroup}
      */
-    public void logCreationActivity(ITraceable traceable,
+    public void logPlaylistMessageActivity(ITraceable traceable,
             DacPlaylistMessage msg, TransmitterGroup tg);
 
     /**
@@ -160,7 +161,35 @@ public interface IMessageLogger {
      * @param msg
      */
     public void logMessageActivity(ITraceable traceable,
-            MessageActivity.MESSAGE_ACTIVITY activity, InputMessage msg);
+            MessageActivity.MESSAGE_ACTIVITY activity, Object msg);
+
+    /**
+     * Logs that the specified {@link ValidatedMessage} has been validated.
+     * 
+     * @param msg
+     *            the specified {@link ValidatedMessage}
+     */
+    public void logValidationActivity(ValidatedMessage msg);
+
+    /**
+     * Logs parse activity
+     * 
+     * @param msg
+     *            the specified {@link InputMessage}
+     */
+    public void logParseActivity(InputMessage msg);
+
+    /**
+     * Logs TTS Success
+     * 
+     * @param traceable
+     * @param msg
+     *            the specified {@link InputMessage}
+     * @param playbackTimeSeconds
+     *            number of seconds to play back fragment
+     */
+    public void logTTSSucces(ITraceable traceable, BroadcastFragment msg,
+            int playbackTimeSeconds);
 
     /**
      * Logs that the specified {@link TONE_TYPE} has just been broadcast for the
