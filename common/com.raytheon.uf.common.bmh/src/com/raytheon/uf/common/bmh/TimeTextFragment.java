@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.staticmsg;
+package com.raytheon.uf.common.bmh;
 
 /**
  * POJO representing a time message fragment. Created to wrap time message
@@ -31,6 +31,7 @@ package com.raytheon.uf.edex.bmh.staticmsg;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 1, 2014  3642       bkowal      Initial creation
+ * May 26, 2015 4481       bkowal      Move to common.
  * 
  * </pre>
  * 
@@ -40,7 +41,7 @@ package com.raytheon.uf.edex.bmh.staticmsg;
 
 public class TimeTextFragment {
 
-    public static final String TIME_PLACEHOLDER = "HH:mm z";
+    public static final String TIME_PLACEHOLDER = "[* TIME PLACEHOLDER *]";
 
     private String text;
 

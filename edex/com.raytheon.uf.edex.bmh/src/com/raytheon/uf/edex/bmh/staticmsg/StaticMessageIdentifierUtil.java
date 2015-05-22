@@ -25,6 +25,7 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.StaticMessageIdentifier;
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
+import com.raytheon.uf.common.bmh.TimeTextFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
@@ -45,6 +46,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * Feb 10, 2015 4085       bkowal      Refactor into common
  *                                     {@link StaticMessageIdentifier}.
  * Mar 13, 2015 4213       bkowal      Recognize {@link StaticMessageType}s.
+ * May 26, 2015 4481       bkowal      {@link TimeTextFragment} is now in common.
  * 
  * </pre>
  * 

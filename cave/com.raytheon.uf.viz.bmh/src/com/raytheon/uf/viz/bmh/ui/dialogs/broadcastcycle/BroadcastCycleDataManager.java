@@ -34,12 +34,14 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest.BroadcastMessageAction;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgResponse;
 import com.raytheon.uf.common.bmh.request.PlaylistRequest;
+import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
 import com.raytheon.uf.common.bmh.request.PlaylistRequest.PlaylistAction;
 import com.raytheon.uf.common.bmh.request.PlaylistResponse;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
@@ -48,6 +50,8 @@ import com.raytheon.uf.common.bmh.request.ProgramResponse;
 import com.raytheon.uf.common.bmh.request.SuiteRequest;
 import com.raytheon.uf.common.bmh.request.SuiteRequest.SuiteAction;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
+import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest.TransmitterLanguageRequestAction;
+import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest.TransmitterRequestAction;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
@@ -82,6 +86,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Jan 13, 2015    3844    bsteffen    Add getPlaylist
  * Apr 14, 2015    4394    bkowal      Added {@link #getConfiguredTransmitterGroupList()}.
  * May 04, 2015    4449    bkowal      Added {@link #isMessageScheduledForBroadcast(String, long)}.
+ * May 22, 2015    4481    bkowal      Added {@link #getStaticMsgTypeForAfosIdAndTransmitterGrp(String, TransmitterGroup)}.
  * 
  * </pre>
  * 
@@ -395,5 +400,19 @@ public class BroadcastCycleDataManager {
         PlaylistResponse response = (PlaylistResponse) BmhUtils
                 .sendRequest(request);
         return response.getPlaylist();
+    }
+
+    public StaticMessageType getStaticMsgTypeForAfosIdAndTransmitterGrp(
+            final String afosId, final TransmitterGroup transmitterGroup)
+            throws Exception {
+        TransmitterLanguageRequest request = new TransmitterLanguageRequest();
+        request.setAction(TransmitterLanguageRequestAction.GetStaticMsgTypeForTransmitterGrpAndAfosId);
+        request.setAfosId(afosId);
+        request.setTransmitterGroup(transmitterGroup);
+
+        TransmitterLanguageResponse response = (TransmitterLanguageResponse) BmhUtils
+                .sendRequest(request);
+
+        return response.getStaticMsgType();
     }
 }

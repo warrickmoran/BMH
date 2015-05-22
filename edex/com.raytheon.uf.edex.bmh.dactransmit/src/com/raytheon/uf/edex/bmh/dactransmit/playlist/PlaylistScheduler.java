@@ -150,6 +150,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * May 11, 2015  #4002     bkowal       Handle all Broadcast Live message delay scenarios.
  * May 19, 2015  4508      rjpeter      Add exception handling to newPlaylistReceived.
  * May 21, 2015  4429      rjpeter      Update message logging.
+ * May 22, 2015  4481      bkowal       Specify if the audio is dynamic when setting the audio in
+ *                                      {@link DacMessagePlaybackData}.
  * </pre>
  * 
  * @author dgilling
@@ -476,7 +478,7 @@ public final class PlaylistScheduler implements
                 audioData.setReturnTones(nextMessage.shouldPlayTones(TimeUtil
                         .newGmtCalendar()));
             }
-            nextMessageData.setAudio(audioData);
+            nextMessageData.setAudio(audioData, audioDataBuffer.isDynamic());
         } else {
             if (warnNoMessages) {
                 logger.warn("There are currently no valid playlists or messages to play.");

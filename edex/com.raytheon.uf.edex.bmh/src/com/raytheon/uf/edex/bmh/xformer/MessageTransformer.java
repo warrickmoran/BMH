@@ -40,6 +40,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
+import com.raytheon.uf.common.bmh.TimeTextFragment;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
@@ -86,7 +87,6 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
 import com.raytheon.uf.edex.bmh.staticmsg.StaticMessageIdentifierUtil;
 import com.raytheon.uf.edex.bmh.staticmsg.TimeMessagesGenerator;
-import com.raytheon.uf.edex.bmh.staticmsg.TimeTextFragment;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.bmh.xformer.data.DynamicNumericTextTransformation;
@@ -149,6 +149,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     when a period is directly against text that matches a dict rule.
  * May 13, 2015 4429       rferrel     Implement traceId.
  * May 21, 2015 4429       rjpeter     Added additional logging.
+ * May 26, 2015 4481       bkowal      {@link TimeTextFragment} is now in common.
  * </pre>
  * 
  * @author bkowal

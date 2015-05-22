@@ -42,6 +42,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jul 28, 2014  #3286     dgilling     Initial creation
  * Aug 04, 2014  #3286     dgilling     Added additional fields for GUI.
  * Jan 08, 2015  #3912     bsteffen     Add convenience constructors
+ * May 22, 2015  #4481     bkowal       Added {@link #dynamic}.
  * 
  * </pre>
  * 
@@ -70,6 +71,13 @@ public final class MessagePlaybackPrediction {
     @DynamicSerializeElement
     private boolean playedSameTone;
 
+    /**
+     * boolean flag indicating whether or not this prediction is associated with
+     * a message with dynamic content.
+     */
+    @DynamicSerializeElement
+    private boolean dynamic;
+
     public MessagePlaybackPrediction() {
         // for serialization use only
     }
@@ -80,6 +88,7 @@ public final class MessagePlaybackPrediction {
         this.lastTransmitTime = message.getLastTransmitTime();
         this.playedAlertTone = false;
         this.playedSameTone = false;
+        this.dynamic = message.isDynamic();
     }
 
     public MessagePlaybackPrediction(Calendar playbackTime,
@@ -139,5 +148,20 @@ public final class MessagePlaybackPrediction {
 
     public void setPlayedSameTone(boolean playedSameTone) {
         this.playedSameTone = playedSameTone;
+    }
+
+    /**
+     * @return the dynamic
+     */
+    public boolean isDynamic() {
+        return dynamic;
+    }
+
+    /**
+     * @param dynamic
+     *            the dynamic to set
+     */
+    public void setDynamic(boolean dynamic) {
+        this.dynamic = dynamic;
     }
 }

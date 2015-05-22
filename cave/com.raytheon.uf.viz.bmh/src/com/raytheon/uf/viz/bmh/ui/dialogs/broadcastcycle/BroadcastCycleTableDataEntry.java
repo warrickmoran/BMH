@@ -36,6 +36,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
  * ------------ ---------- ----------- --------------------------
  * Aug 21, 2014     3432   mpduff      Initial creation
  * Nov 22, 2014     3844   mpduff      Add message id color
+ * May 22, 2015     4481   bkowal      Added {@link #dynamic}.
  * 
  * </pre>
  * 
@@ -68,6 +69,8 @@ public class BroadcastCycleTableDataEntry {
     private InputMessage inputMsg;
 
     private Color messageIdColor;
+
+    private boolean dynamic;
 
     /**
      * @return the transmitTime
@@ -247,5 +250,20 @@ public class BroadcastCycleTableDataEntry {
      */
     public void setMessageIdColor(Color messageIdColor) {
         this.messageIdColor = messageIdColor;
+    }
+
+    /**
+     * @return the dynamic
+     */
+    public boolean isDynamic() {
+        return dynamic;
+    }
+
+    /**
+     * @param dynamic
+     *            the dynamic to set
+     */
+    public void setDynamic(boolean dynamic) {
+        this.dynamic = dynamic;
     }
 }

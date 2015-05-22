@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -58,6 +59,7 @@ import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableItem;
 
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.bmh.TimeTextFragment;
 import com.raytheon.uf.common.bmh.broadcast.ExpireBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
@@ -70,6 +72,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.BMHTimeZone;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
@@ -192,6 +195,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 04, 2015  4449      bkowal      Only allow the user to expire messages on transmitters that it has
  *                                     actually been scheduled on.
  * May 19, 2015  4482      rjpeter     Added handling of ResetNotification.
+ * May 22, 2015  4481      bkowal      Message contents can now be constructed dynamically for messages
+ *                                     with dynamic text.
  * </pre>
  * 
  * @author mpduff
@@ -203,6 +208,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
     private final String NA = "N/A";
 
     private final SimpleDateFormat timeFormatter = new SimpleDateFormat("mm:ss");
+
+    private final String dynamicTimeFormat = "h:mm a";
 
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(BroadcastCycleDlg.class);
@@ -1386,7 +1393,13 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             // If the entry is null then don't update the text as there will be
             // other text displayed.
             if ((entry != null) && (entry.getInputMsg() != null)) {
-                String content = entry.getInputMsg().getContent();
+                String content = null;
+                if (entry.isDynamic()) {
+                    content = this.buildDynamicContent(entry.getInputMsg(),
+                            entry.getTransmitTime());
+                } else {
+                    content = entry.getInputMsg().getContent();
+                }
                 this.messageTextArea.setText(content);
             } else {
                 this.messageTextArea
@@ -1395,6 +1408,19 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         } else {
             this.messageTextArea.setText(StringUtils.EMPTY);
         }
+    }
+
+    public String buildDynamicContent(InputMessage inputMsg,
+            Calendar predictedTime) {
+        BMHTimeZone tz = BMHTimeZone
+                .getTimeZoneByID(this.selectedTransmitterGroupObject
+                        .getTimeZone());
+        predictedTime.setTimeZone(tz.getTz());
+        SimpleDateFormat sdf = new SimpleDateFormat(this.dynamicTimeFormat);
+        final String formattedTime = sdf.format(predictedTime.getTime()) + " "
+                + tz.getLongDisplayName();
+        return inputMsg.getContent().replace(TimeTextFragment.TIME_PLACEHOLDER,
+                formattedTime);
     }
 
     @Override

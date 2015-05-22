@@ -90,6 +90,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * May 19, 2015   4482     rjpeter     Added check of isDbReset.
  * May 20, 2015   4490     bkowal      Ensure that an interrupt message is only displayed in
  *                                     red during the initial playback.
+ * May 22, 2015   4481     bkowal      Set the dynamic flag on {@link BroadcastCycleTableDataEntry}.
  * </pre>
  * 
  * @author mpduff
@@ -279,8 +280,10 @@ public class PlaylistData {
             pred.setNextTransmitTime(null);
             pred.setPlayedAlertTone(notification.isPlayedAlertTone());
             pred.setPlayedSameTone(notification.isPlayedSameTone());
+            pred.setDynamic(notification.isDynamic());
         } else {
             pred = new MessagePlaybackPrediction();
+            pred.setDynamic(notification.isDynamic());
             predictionMap.put(id, pred);
         }
     }
@@ -370,6 +373,7 @@ public class PlaylistData {
                 cycleTableData.setExpirationTime(message.getExpirationTime());
                 cycleTableData.setMessageId(message.getAfosid());
                 cycleTableData.setInputMsg(inputMsg);
+                cycleTableData.setDynamic(pred.isDynamic());
             } else {
                 cycleTableData.setExpirationTime(null);
                 cycleTableData.setMessageId("Unknown");

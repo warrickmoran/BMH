@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Jul 25, 2014  #3286     dgilling     Initial creation
  * May 13, 2015  #4429     rferrel      Implement {@link ITraceable}.
+ * May 22, 2015  #4481     bkowal       Added {@link #dynamic}.
  * 
  * </pre>
  * 
@@ -68,6 +69,9 @@ public class MessagePlaybackStatusNotification {
 
     @DynamicSerializeElement
     private String traceId;
+
+    @DynamicSerializeElement
+    private boolean dynamic;
 
     public MessagePlaybackStatusNotification() {
         // empty constructor for serialization support
@@ -160,5 +164,20 @@ public class MessagePlaybackStatusNotification {
 
     public void setTransmitterGroup(String transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    /**
+     * @return the dynamic
+     */
+    public boolean isDynamic() {
+        return dynamic;
+    }
+
+    /**
+     * @param dynamic
+     *            the dynamic to set
+     */
+    public void setDynamic(boolean dynamic) {
+        this.dynamic = dynamic;
     }
 }

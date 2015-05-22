@@ -86,6 +86,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * May 04, 2015  #4452     bkowal       Post a {@link SAMEMessageTruncatedNotification} when a SAME
  *                                      Message will be truncated during broadcast.
  * May 13, 2015  #4429     rferrel      Changes to {@link DefaultMessageLogger} for traceId.
+ * May 26, 2015  #4481     bkowal       Allow broadcasts to interrupt the no messages loop.
  * </pre>
  * 
  * @author dgilling
@@ -208,6 +209,11 @@ public final class DataTransmitThread extends AbstractTransmitThread {
                         if (warnNoData) {
                             logger.error("There are no valid messages available for transmit.");
                             warnNoData = false;
+                        }
+
+                        if (pausePlayback && keepRunning) {
+                            warnNoData = true;
+                            continue OUTER_LOOP;
                         }
 
                         playbackData = playlistMgr.next();
