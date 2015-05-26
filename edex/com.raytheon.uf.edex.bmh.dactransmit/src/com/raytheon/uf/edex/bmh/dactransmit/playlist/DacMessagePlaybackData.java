@@ -68,6 +68,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DataTransmitConstants;
  * Mar 09, 2015  #4170     bsteffen     Avoid NPE
  * Mar 25, 2015  #4290     bsteffen     Switch to global replacement.
  * May 04, 2015  #4452     bkowal       Added {@link #requiresToneTruncationNotification()}.
+ * May 22, 2015  #4481     bkowal       Added {@link #dynamicAudio}.
  * 
  * </pre>
  * 
@@ -85,6 +86,8 @@ public final class DacMessagePlaybackData {
     private DacPlaylistMessage message;
 
     private AudioFileBuffer audio;
+
+    private boolean dynamicAudio;
 
     private boolean interrupt;
 
@@ -186,6 +189,7 @@ public final class DacMessagePlaybackData {
         MessagePlaybackStatusNotification playbackStatus = new MessagePlaybackStatusNotification(
                 message.getBroadcastId(), transmitTime, playCount,
                 playedSameTone, playedAlertTone, null);
+        playbackStatus.setDynamic(this.dynamicAudio);
         firstCallToGet = false;
         if (!resume || !resumePlayback()) {
             if (USE_POSITION_STREAM) {
@@ -337,6 +341,13 @@ public final class DacMessagePlaybackData {
         return audio;
     }
 
+    /**
+     * @return the dynamicAudio
+     */
+    public boolean isDynamicAudio() {
+        return dynamicAudio;
+    }
+
     public boolean isInterrupt() {
         return interrupt;
     }
@@ -345,8 +356,9 @@ public final class DacMessagePlaybackData {
         this.message = message;
     }
 
-    public void setAudio(AudioFileBuffer audio) {
+    public void setAudio(AudioFileBuffer audio, boolean dynamicAudio) {
         this.audio = audio;
+        this.dynamicAudio = dynamicAudio;
     }
 
     public void setInterrupt(boolean interrupt) {

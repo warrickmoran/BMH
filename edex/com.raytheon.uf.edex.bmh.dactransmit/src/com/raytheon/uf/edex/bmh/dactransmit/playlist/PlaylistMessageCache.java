@@ -51,6 +51,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
@@ -112,6 +113,7 @@ import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
  * May 14, 2015  4460      bkowal       Only update {@link DacPlaylistMessage} metadata when metadata
  *                                      is actually read.
  * May 13, 2015 4429       rferrel      Changes to {@link DefaultMessageLogger} for traceId.
+ * May 26, 2015 4481       bkowal       Set dynamic on the {@link DacPlaylistMessage}.
  * 
  * </pre>
  * 
@@ -441,6 +443,15 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         DacPlaylistMessage message = JAXB.unmarshal(messagePath.toFile(),
                 DacPlaylistMessage.class);
         message.setPath(messagePath);
+        if (CollectionUtil.isNullOrEmpty(message.getSoundFiles()) == false) {
+            for (String soundFile : message.getSoundFiles()) {
+                if (Files.isDirectory(Paths.get(soundFile))) {
+                    message.setDynamic(true);
+                    break;
+                }
+            }
+        }
+
         /*
          * Fulfill the statistics requirement.
          */

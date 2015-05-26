@@ -43,6 +43,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 28, 2015  4248     bkowal      Added {@link TransmitterLanguageRequestAction#ValidateStaticMsgType} and
  *                                    {@link #language}.
  * May 11, 2015  4476     bkowal      Removed deprecated fields.
+ * May 22, 2015  4481     bkowal      Added {@link TransmitterLanguageRequestAction#GetStaticMsgTypeForTransmitterGrpAndAfosId}
+ *                                    and {@link #afosId}.
  * 
  * </pre>
  * 
@@ -56,7 +58,9 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
      * yet-to-be-implemented dialog
      */
     public enum TransmitterLanguageRequestAction {
-        GetTransmitterLanguagesForTransmitterGrp, UpdateTransmitterLanguage, DeleteTransmitterLanguage, ValidateStaticMsgType
+        GetTransmitterLanguagesForTransmitterGrp, UpdateTransmitterLanguage, DeleteTransmitterLanguage, ValidateStaticMsgType,
+
+        GetStaticMsgTypeForTransmitterGrpAndAfosId
     }
 
     @DynamicSerializeElement
@@ -73,6 +77,9 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private Language language;
+
+    @DynamicSerializeElement
+    private String afosId;
 
     /**
      * 
@@ -153,5 +160,20 @@ public class TransmitterLanguageRequest extends AbstractBMHServerRequest {
      */
     public void setLanguage(Language language) {
         this.language = language;
+    }
+
+    /**
+     * @return the afosId
+     */
+    public String getAfosId() {
+        return afosId;
+    }
+
+    /**
+     * @param afosId
+     *            the afosId to set
+     */
+    public void setAfosId(String afosId) {
+        this.afosId = afosId;
     }
 }

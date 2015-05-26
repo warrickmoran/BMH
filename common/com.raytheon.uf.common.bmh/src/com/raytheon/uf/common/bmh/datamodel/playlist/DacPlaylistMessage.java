@@ -71,6 +71,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Apr 27, 2015  4397     bkowal      Added {@link #initialRecognitionTime} and {@link #recognized}.
  * May 11, 2015  4002     bkowal      Added {@link #initialBLDelayNotificationSent}.
  * May 13, 2015  4429     rferrel     Added traceId to {@link #toString()}.
+ * May 26, 2015  4481     bkowal      Added {@link #dynamic}.
  * 
  * </pre>
  * 
@@ -191,6 +192,8 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     private boolean recognized = false;
 
     private transient Path path;
+
+    private transient boolean dynamic;
 
     public DacPlaylistMessage() {
 
@@ -629,5 +632,20 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      */
     public boolean isMessageBroadcastNotificationSent() {
         return messageBroadcastNotificationSent;
+    }
+
+    /**
+     * @return the dynamic
+     */
+    public boolean isDynamic() {
+        return dynamic;
+    }
+
+    /**
+     * @param dynamic
+     *            the dynamic to set
+     */
+    public void setDynamic(boolean dynamic) {
+        this.dynamic = dynamic;
     }
 }

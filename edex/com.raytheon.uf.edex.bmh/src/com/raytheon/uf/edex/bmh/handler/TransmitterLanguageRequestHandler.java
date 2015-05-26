@@ -36,6 +36,7 @@ import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
 
@@ -58,6 +59,7 @@ import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
  * Mar 13, 2015  4213     bkowal      Added support for saving and deleting {@link StaticMessageType}s.
  * Apr 28, 2015  4248     bkowal      Added {@link #validateStaticMessageType(TransmitterLanguageRequest)}.
  * May 11, 2015  4476     bkowal      Removed deprecated methods.
+ * May 22, 2015  4481     bkowal      Added {@link #getStaticMsgTypeForTransmitterGroupAndMessageType(TransmitterLanguageRequest)}.
  * 
  * </pre>
  * 
@@ -95,6 +97,10 @@ public class TransmitterLanguageRequestHandler extends
         case ValidateStaticMsgType:
             this.validateStaticMessageType(request);
             return null;
+        case GetStaticMsgTypeForTransmitterGrpAndAfosId:
+            response = this
+                    .getStaticMsgTypeForTransmitterGroupAndMessageType(request);
+            break;
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -230,5 +236,16 @@ public class TransmitterLanguageRequestHandler extends
             String user = BMHLoggerUtils.getUser(request);
             BMHLoggerUtils.logDelete(request, user, oldTl);
         }
+    }
+
+    private TransmitterLanguageResponse getStaticMsgTypeForTransmitterGroupAndMessageType(
+            TransmitterLanguageRequest request) {
+        TransmitterLanguageResponse response = new TransmitterLanguageResponse();
+        StaticMessageTypeDao dao = new StaticMessageTypeDao(
+                request.isOperational());
+        response.setStaticMsgType(dao.getStaticForMsgTypeAndTransmittergroup(
+                request.getAfosId(), request.getTransmitterGroup()));
+
+        return response;
     }
 }

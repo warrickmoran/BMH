@@ -81,6 +81,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  *                                     after it has played as an interrupt.
  * May 08, 2015   4478     bkowal      Prevent NPE in {@link #setToneFlags(PlaylistDataStructure, long)}.
  * May 21, 2015   4397     bkowal      Update the broadcast flag on {@link BroadcastMsg}.
+ * May 22, 2015   4481     bkowal      Set the dynamic flag on the {@link MessagePlaybackPrediction}.
  * 
  * </pre>
  * 
@@ -320,6 +321,7 @@ public class PlaylistStateManager {
         pred.setNextTransmitTime(null);
         pred.setPlayedAlertTone(notification.isPlayedAlertTone());
         pred.setPlayedSameTone(notification.isPlayedSameTone());
+        pred.setDynamic(notification.isDynamic());
         setToneFlags(playlistData, id);
     }
 
