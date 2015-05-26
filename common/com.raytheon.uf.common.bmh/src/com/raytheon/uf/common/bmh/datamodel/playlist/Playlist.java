@@ -102,6 +102,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 11, 2015  4002     bkowal      Added {@link #triggerBroadcastId}.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * May 12, 2015  4484     bkowal      Added {@link #buildFollowsMapping()}.
+ * May 22, 2015  4429     rjpeter     Updated setTimes to handle null expireTimes.
  * </pre>
  * 
  * @author bsteffen
@@ -416,6 +417,7 @@ public class Playlist {
         Calendar startTime = null;
         List<Calendar> triggerTimes = new LinkedList<>();
         Calendar endTime = null;
+        boolean hasNullEnd = false;
         for (BroadcastMsg message : messages) {
             if (triggerAfosids.contains(message.getAfosid())) {
                 Calendar messageStart = message.getEffectiveTime();
@@ -427,8 +429,16 @@ public class Playlist {
                 if (endTime == null || endTime.before(messageEnd)) {
                     endTime = messageEnd;
                 }
+
+                // trigger can never expire, meaning playlist never expires
+                hasNullEnd |= messageEnd == null;
             }
         }
+
+        if (hasNullEnd) {
+            endTime = null;
+        }
+
         if (startTime == null) {
             /*
              * If this.startTime is not null then this playlist may have been
@@ -444,6 +454,7 @@ public class Playlist {
             this.startTime = startTime;
             this.endTime = endTime;
         }
+
         if (forced || suite.getType() == SuiteType.GENERAL) {
             return Collections.singletonList(modTime);
         }
