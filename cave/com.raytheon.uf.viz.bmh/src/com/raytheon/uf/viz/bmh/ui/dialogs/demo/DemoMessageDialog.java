@@ -88,6 +88,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Apr 27, 2015  4397     bkowal      Set the {@link InputMessage} update date.
  * May 06, 2015  4471     bkowal      Set the SAME Tone Flag in {@link InputMessage} to
  *                                    {@link Boolean#TRUE}.
+ * May 27, 2016  4431     rferrel     Persist the messages for a language.
  * </pre>
  * 
  * @author bsteffen
@@ -98,8 +99,17 @@ public class DemoMessageDialog extends AbstractBMHDialog {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(BroadcastLiveDlg.class);
 
+    /**
+     * Default messages for language. The initial message and one to use when
+     * message text is cleared.
+     */
     private final Map<Language, String> defaultMessages = new EnumMap<>(
             Language.class);
+
+    /**
+     * Current messages for a given language.
+     */
+    private final Map<Language, String> messages = new EnumMap<>(Language.class);
 
     private org.eclipse.swt.widgets.List transmitterSelectionList;
 
@@ -112,6 +122,11 @@ public class DemoMessageDialog extends AbstractBMHDialog {
     private StyledText messageText;
 
     private Combo voiceSelectionCombo;
+
+    /**
+     * The language messageText is for.
+     */
+    private Language currentLanguage = null;
 
     /**
      * List of voices displayed in the dialog, in the exact same order as the
@@ -130,6 +145,10 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         defaultMessages
                 .put(Language.SPANISH,
                         "La interrupción de transmisión para una demostración del sistema de radio nacional de meteorología.");
+
+        for (Language key : defaultMessages.keySet()) {
+            messages.put(key, defaultMessages.get(key));
+        }
     }
 
     @Override
@@ -257,16 +276,30 @@ public class DemoMessageDialog extends AbstractBMHDialog {
     }
 
     protected void populateMessageText() {
-        String currentText = messageText.getText();
-        if (currentText.isEmpty()
-                || defaultMessages.values().contains(currentText)) {
-            TtsVoice voice = getSelectedVoice();
-            Language language = Language.ENGLISH;
-            if (voice != null) {
-                language = voice.getLanguage();
-            }
-            messageText.setText(defaultMessages.get(language));
+        if (transmitterSelectionList.getSelectionCount() == 0) {
+            return;
         }
+
+        TtsVoice voice = getSelectedVoice();
+        Language language = Language.ENGLISH;
+        if (voice != null) {
+            language = voice.getLanguage();
+        }
+
+        String currentText = messageText.getText();
+
+        // Save possibly modified message for the current language
+        if (currentLanguage != null) {
+            String oldMsg = currentText.trim();
+
+            if (oldMsg.isEmpty()) {
+                currentText = defaultMessages.get(currentLanguage);
+            }
+            messages.put(currentLanguage, currentText);
+        }
+
+        currentLanguage = language;
+        messageText.setText(messages.get(language));
     }
 
     protected void createButtons() {
