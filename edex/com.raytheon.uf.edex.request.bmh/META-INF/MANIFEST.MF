@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: BMH Edex Request Thrift Registration
-Bundle-SymbolicName: com.raytheon.uf.edex.bmh.request
+Bundle-SymbolicName: com.raytheon.uf.edex.request.bmh
 Bundle-Version: 0.14.0.qualifier
 Bundle-Vendor: RAYTHEON
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
