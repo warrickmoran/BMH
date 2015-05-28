@@ -197,6 +197,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 19, 2015  4482      rjpeter     Added handling of ResetNotification.
  * May 22, 2015  4481      bkowal      Message contents can now be constructed dynamically for messages
  *                                     with dynamic text.
+ * May 28, 2015  4490      bkowal      Handle unplayed messages with dynamic text.
  * </pre>
  * 
  * @author mpduff
@@ -1412,6 +1413,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     public String buildDynamicContent(InputMessage inputMsg,
             Calendar predictedTime) {
+        if (predictedTime == null) {
+            return inputMsg.getContent();
+        }
         BMHTimeZone tz = BMHTimeZone
                 .getTimeZoneByID(this.selectedTransmitterGroupObject
                         .getTimeZone());
