@@ -29,7 +29,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.TimeZone;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioFormat.Encoding;
@@ -106,8 +105,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 22, 2015   4397      bkowal      Trigger statistic generation when a 
  *                                      {@link AbstractBMHSystemConfigRequest} is encountered.
  * May 19, 2015   4482      rjpeter     Added isDbReset()/setDbReset().
- * May 19, 2015   4429      rferrel     Added {@link #genererateTraceId(Class)}.
+ * May 19, 2015   4429      rferrel     Added {@link #generateTraceId(Class)}.
  * May 20, 2015   4490      bkowal      Cleanup. A {@link Language} is now required to synthesize text.
+ * May 28, 2015   4429      rjpeter     Add traceId to all requests sent to edex.
  * </pre>
  * 
  * @author mpduff
@@ -359,6 +359,9 @@ public class BmhUtils {
     public static Object sendRequest(AbstractBMHServerRequest request)
             throws Exception {
         request.setOperational(CAVEMode.getMode() == CAVEMode.OPERATIONAL);
+        if (request.getTraceId() == null) {
+            request.setTraceId(generateTraceId(request.getClass()));
+        }
         if (request instanceof AbstractBMHSystemConfigRequest) {
             request = BMHConfigStatisticsGenerator
                     .prepareStatistic((AbstractBMHSystemConfigRequest) request);
@@ -638,10 +641,10 @@ public class BmhUtils {
      * @param clazz
      * @return traceId
      */
-    public static String genererateTraceId(Class<?> clazz) {
+    public static String generateTraceId(Class<?> clazz) {
         String user = UserController.getUserObject().uniqueId().toString();
         String className = clazz.getSimpleName();
-        Calendar cal = TimeUtil.newCalendar(TimeZone.getTimeZone("UTC"));
+        Calendar cal = TimeUtil.newGmtCalendar();
         return String.format("%s_%s_%3$tY-%3$tm-%3$td-%3$tk%3$tM.%3$tS",
                 className, user, cal);
     }

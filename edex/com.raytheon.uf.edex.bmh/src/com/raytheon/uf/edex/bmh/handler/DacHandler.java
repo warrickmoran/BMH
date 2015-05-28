@@ -43,7 +43,7 @@ import com.raytheon.uf.edex.bmh.dao.DacDao;
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 19, 2014  3699     mpduff      Added save and delete actions
  * Oct 22, 2014  3687     bsteffen    Send notifications.
- * 
+ * May 28, 2015  4429     rjpeter     Add ITraceable
  * </pre>
  * 
  * @author mpduff
@@ -63,14 +63,14 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
         case SaveDac:
             response = saveDac(request);
             BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
-                    ConfigChangeType.Update, request.getDac()), request
-                    .isOperational());
+                    ConfigChangeType.Update, request.getDac(), request),
+                    request.isOperational());
             break;
         case DeleteDac:
             deleteDac(request);
             BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
-                    ConfigChangeType.Delete, request.getDac()), request
-                    .isOperational());
+                    ConfigChangeType.Delete, request.getDac(), request),
+                    request.isOperational());
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()

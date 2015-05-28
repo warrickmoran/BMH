@@ -71,6 +71,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.bmh.notify.config.MessageForcedExpirationNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
@@ -189,6 +190,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * May 13, 2015  4429     rferrel     Changes for traceId.
  * May 19, 2015  4508     rjpeter     Set timestamp on  {@link DacPlaylistMessage}.
  * May 21, 2015  4429     rjpeter     Added additional logging methods.
+ * May 28, 2015  4429     rjpeter     Add ITraceable.
  * </pre>
  * 
  * @author bsteffen
@@ -253,14 +255,14 @@ public class PlaylistManager implements IContextStateProcessor {
             if (programSuite == null) {
                 continue;
             }
-            refreshPlaylist(group, programSuite, false, null);
+            refreshPlaylist(group, programSuite, false, null, notification);
         }
     }
 
     public void processProgramChange(ProgramConfigNotification notification) {
         Program program = programDao.getByID(notification.getId());
         for (TransmitterGroup group : program.getTransmitterGroups()) {
-            refreshTransmitterGroup(group, program, null, null);
+            refreshTransmitterGroup(group, program, null, null, notification);
         }
     }
 
@@ -312,7 +314,7 @@ public class PlaylistManager implements IContextStateProcessor {
                             sb.toString(), e);
                 }
             } else {
-                refreshTransmitterGroup(group, null, null, null);
+                refreshTransmitterGroup(group, null, null, null, notification);
             }
         }
     }
@@ -332,9 +334,9 @@ public class PlaylistManager implements IContextStateProcessor {
                 event = new MessageExpirationProcessingEvent(
                         notification.getExpireRequestTime());
             }
-            this.checkRefreshForBroadcastMsgs(messages, event);
+            this.checkRefreshForBroadcastMsgs(messages, event, notification);
         }
-        refreshReplaced(needsRefresh);
+        refreshReplaced(needsRefresh, notification);
     }
 
     public void processMessageForcedExpiration(
@@ -355,11 +357,11 @@ public class PlaylistManager implements IContextStateProcessor {
         this.checkRefreshForBroadcastMsgs(
                 messages,
                 new MessageExpirationProcessingEvent(notification
-                        .getRequestTime()));
+                        .getRequestTime()), notification);
     }
 
     private void checkRefreshForBroadcastMsgs(List<BroadcastMsg> messages,
-            AbstractBMHProcessingTimeEvent event) {
+            AbstractBMHProcessingTimeEvent event, ITraceable traceable) {
         for (BroadcastMsg message : messages) {
             TransmitterGroup group = message.getTransmitterGroup();
             if (!group.isEnabled()) {
@@ -379,7 +381,8 @@ public class PlaylistManager implements IContextStateProcessor {
             for (ProgramSuite programSuite : program.getProgramSuites()) {
                 if (programSuite.getSuite().containsSuiteMessage(
                         message.getAfosid())) {
-                    refreshPlaylist(group, programSuite, false, event);
+                    refreshPlaylist(group, programSuite, false, event,
+                            traceable);
                     break;
                 }
             }
@@ -387,20 +390,21 @@ public class PlaylistManager implements IContextStateProcessor {
     }
 
     public boolean processForceSuiteSwitch(final TransmitterGroup group,
-            final Suite suite, AbstractBMHProcessingTimeEvent event) {
+            final Suite suite, AbstractBMHProcessingTimeEvent event,
+            ITraceable traceable) {
         statusHandler.info("User requested transmitter group ["
                 + group.getName() + "] switch to suite [" + suite.getName()
                 + "].");
-        return refreshTransmitterGroup(group, null, suite, event);
+        return refreshTransmitterGroup(group, null, suite, event, traceable);
     }
 
-    public void processResetNotification() {
-        refreshAll();
+    public void processResetNotification(ResetNotification notification) {
+        refreshAll(notification);
     }
 
-    private void refreshAll() {
+    private void refreshAll(ITraceable traceable) {
         for (TransmitterGroup group : transmitterGroupDao.getAll()) {
-            refreshTransmitterGroup(group, null, null, null);
+            refreshTransmitterGroup(group, null, null, null, traceable);
         }
     }
 
@@ -419,7 +423,7 @@ public class PlaylistManager implements IContextStateProcessor {
      */
     protected boolean refreshTransmitterGroup(TransmitterGroup group,
             Program program, Suite forcedSuite,
-            AbstractBMHProcessingTimeEvent event) {
+            AbstractBMHProcessingTimeEvent event, ITraceable traceable) {
         /*
          * Start with the assumption that all lists should be deleted. Analyze
          * the programs and find lists that should exist, refresh only those
@@ -445,7 +449,7 @@ public class PlaylistManager implements IContextStateProcessor {
                             .getProgramSuite(forcedSuite);
                     if (forcedProgramSuite != null) {
                         if (!refreshPlaylist(group, forcedProgramSuite, true,
-                                event)) {
+                                event, traceable)) {
                             return false;
                         }
                     }
@@ -457,7 +461,8 @@ public class PlaylistManager implements IContextStateProcessor {
                         continue;
                     }
                     if (!programSuite.getSuite().equals(forcedSuite)) {
-                        refreshPlaylist(group, programSuite, false, event);
+                        refreshPlaylist(group, programSuite, false, event,
+                                traceable);
                     }
                     Iterator<Playlist> listIterator = listsToDelete.iterator();
                     while (listIterator.hasNext()) {
@@ -514,7 +519,7 @@ public class PlaylistManager implements IContextStateProcessor {
      */
     protected boolean refreshPlaylist(TransmitterGroup group,
             ProgramSuite programSuite, boolean forced,
-            AbstractBMHProcessingTimeEvent event) {
+            AbstractBMHProcessingTimeEvent event, ITraceable traceable) {
         ClusterTask ct = null;
         do {
             ct = locker.lock("playlist", group.getName() + "-"
@@ -536,7 +541,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
                 DacPlaylist dacPlaylist = persistPlaylist(playlist,
-                        programSuite, forced, event, null);
+                        programSuite, forced, event, traceable);
                 return !dacPlaylist.isEmpty();
             } else {
                 return false;
@@ -550,7 +555,8 @@ public class PlaylistManager implements IContextStateProcessor {
         }
     }
 
-    protected void refreshReplaced(Set<InputMessage> needsRefresh) {
+    protected void refreshReplaced(Set<InputMessage> needsRefresh,
+            ITraceable traceable) {
         for (InputMessage inputMessage : needsRefresh) {
             List<BroadcastMsg> messages = broadcastMsgDao
                     .getMessagesByInputMsgId(inputMessage.getId());
@@ -570,7 +576,8 @@ public class PlaylistManager implements IContextStateProcessor {
                 for (ProgramSuite programSuite : program.getProgramSuites()) {
                     if (programSuite.getSuite().containsSuiteMessage(
                             message.getAfosid())) {
-                        refreshPlaylist(group, programSuite, false, null);
+                        refreshPlaylist(group, programSuite, false, null,
+                                traceable);
                         break;
                     }
                 }
@@ -584,14 +591,10 @@ public class PlaylistManager implements IContextStateProcessor {
         for (BroadcastMsg message : group.getMessages()) {
             newMessage(message, group);
         }
-        refreshReplaced(needsRefresh);
+        refreshReplaced(needsRefresh, group);
     }
 
-    public void newMessage(BroadcastMsg msg) {
-        newMessage(msg, null);
-    }
-
-    public void newMessage(BroadcastMsg msg, ITraceable traceable) {
+    private void newMessage(BroadcastMsg msg, ITraceable traceable) {
         TransmitterGroup group = msg.getTransmitterGroup();
         if (!group.isEnabled()) {
             logBroadcastMsgInfo(traceable, msg,
@@ -866,9 +869,6 @@ public class PlaylistManager implements IContextStateProcessor {
                             .getExpirationTime().after(db.getModTime()))) {
                 DacPlaylistMessageId dacMessage = convertMessageForDAC(message,
                         traceable);
-                if (TraceableUtil.hasTraceId(traceable)) {
-                    dacMessage.setTraceId(traceable.getTraceId());
-                }
                 dacMessage.setExpire(message.getExpirationTime());
                 dac.addMessage(dacMessage);
             }
@@ -946,13 +946,7 @@ public class PlaylistManager implements IContextStateProcessor {
                     dac.setWatch(messageType.getDesignation() == Designation.Watch);
                     dac.setWarning(messageType.getDesignation() == Designation.Warning);
                 }
-                if (TraceableUtil.hasTraceId(traceable)) {
-                    dac.setTraceId(traceable.getTraceId());
-                } else {
-                    /* generated by system restart */
-                    InputMessage iMsg = broadcast.getInputMessage();
-                    dac.setTraceId("edex_restart_" + iMsg.getId());
-                }
+                dac.setTraceId(traceable.getTraceId());
                 if (broadcast.getInputMessage().getConfirm() != null) {
                     /*
                      * determine if the initial broadcast of the message should
@@ -1100,6 +1094,7 @@ public class PlaylistManager implements IContextStateProcessor {
         }
         DacPlaylistMessageId playlistId = new DacPlaylistMessageId(id);
         playlistId.setTimestamp(metadataTimestamp);
+        playlistId.setTraceId(traceable.getTraceId());
         return playlistId;
     }
 
@@ -1170,7 +1165,7 @@ public class PlaylistManager implements IContextStateProcessor {
     @Override
     public void preStart() {
         validateDaos();
-        refreshAll();
+        refreshAll(TraceableUtil.createCurrentTraceId("Edex-Start"));
     }
 
     @Override

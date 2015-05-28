@@ -52,6 +52,8 @@ import com.raytheon.uf.common.bmh.legacy.ascii.TransmitterMessages;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
@@ -92,6 +94,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
  * Mar 03, 2015 4175       bkowal      Use {@link TTSVoiceManager}.
  * Mar 13, 2015 4213       bkowal      Updated the persistence of transmitter languages.
  * May 19, 2015 4482       rjpeter     Added sending of TransmitterGroupConfigNotification on clear.
+ * May 28, 2015 4429       rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author rferrel
@@ -122,9 +125,10 @@ public class ImportLegacyDatabase {
         this.ttsVoiceManager = ttsVoiceManager;
     }
 
-    public void saveImport() throws Exception {
+    public void saveImport(ITraceable traceable) throws Exception {
 
-        statusHandler.info("Start Importing Legacy Database: " + source);
+        statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
+                + "Start Importing Legacy Database: " + source);
         BmhData data = null;
 
         // Ensure that all default voices have been registered.
@@ -342,23 +346,25 @@ public class ImportLegacyDatabase {
                     }
                 }
 
-                BmhMessageProducer.sendConfigMessage(new ResetNotification(),
-                        operational);
+                BmhMessageProducer.sendConfigMessage(new ResetNotification(
+                        traceable), operational);
             } catch (Throwable e) {
                 statusHandler.error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
                         "Error occurred saving legacy data to database", e);
                 throw e;
             }
         }
-        statusHandler.info("Finished Importing Legacy Database: " + source);
+        statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
+                + "Finished Importing Legacy Database: " + source);
     }
 
     /**
      * Clear tables except DAC, TtsVoice, Dictionary and Word.
      */
     @SuppressWarnings("unchecked")
-    public void clearTables() {
-        statusHandler.info("Clearing BMH " + (operational ? "" : "Practice ")
+    public void clearTables(ITraceable traceable) {
+        statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
+                + "Clearing BMH " + (operational ? "" : "Practice ")
                 + "Database.");
 
         clearTable(new PlaylistDao(operational, this.messageLogger));
@@ -377,7 +383,8 @@ public class ImportLegacyDatabase {
             BmhMessageProducer.sendConfigMessage(
                     new TransmitterGroupConfigNotification(
                             ConfigChangeType.Delete,
-                            (List<TransmitterGroup>) groups), operational);
+                            (List<TransmitterGroup>) groups, traceable),
+                    operational);
         } catch (Exception e) {
             statusHandler
                     .error(BMH_CATEGORY.LEGACY_DATABASE_IMPORT,
@@ -385,7 +392,8 @@ public class ImportLegacyDatabase {
                             e);
         }
 
-        statusHandler.info("BMH " + (operational ? "" : "Practice ")
+        statusHandler.info(TraceableUtil.createTraceMsgHeader(traceable)
+                + "BMH " + (operational ? "" : "Practice ")
                 + "Database cleared.");
     }
 

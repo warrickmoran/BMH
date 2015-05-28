@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.notify.config;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -35,7 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 11, 2014 3618       bkowal      Initial creation
  * Dec 15, 2014 3618       bkowal      Added {@link #language}.
  * Dec 16, 2014 3618       bkowal      Added {@link #NationalDictionaryConfigNotification()}.
- * 
+ * May 28, 2015 4429       rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author bkowal
@@ -56,8 +57,9 @@ public class NationalDictionaryConfigNotification extends ConfigNotification {
     /**
      * Constructor
      */
-    public NationalDictionaryConfigNotification(ConfigChangeType type) {
-        super(type);
+    public NationalDictionaryConfigNotification(ConfigChangeType type,
+            ITraceable traceable) {
+        super(type, traceable);
     }
 
     /**

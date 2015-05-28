@@ -34,8 +34,8 @@ import com.raytheon.uf.edex.bmh.BmhMessageProducer;
  * 
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
- * Oct 21, 2014  2687     bsteffen     Initial creation
- * 
+ * Oct 21, 2014  2687     bsteffen    Initial creation
+ * May 28, 2015  4429     rjpeter     Add ITraceable
  * </pre>
  * 
  * @author bsteffen
@@ -56,11 +56,9 @@ public class PracticeModeHandler extends
         } else {
             type = ConfigChangeType.Delete;
         }
-        BmhMessageProducer
-        .sendConfigMessage(new PracticeModeConfigNotification(
-                type), false);
+        BmhMessageProducer.sendConfigMessage(
+                new PracticeModeConfigNotification(type, request), false);
         return Boolean.TRUE;
     }
-
 
 }

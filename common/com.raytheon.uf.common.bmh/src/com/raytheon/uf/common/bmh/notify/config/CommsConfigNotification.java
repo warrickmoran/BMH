@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 
 /**
@@ -31,7 +32,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Apr 06, 2015  4370     rjpeter     Initial creation
- * 
+ * May 28, 2015  4429     rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author rjpeter
@@ -40,7 +41,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 @DynamicSerialize
 public class CommsConfigNotification extends ConfigNotification {
     public CommsConfigNotification() {
-        super(ConfigChangeType.Update);
+
+    }
+
+    public CommsConfigNotification(ITraceable traceable) {
+        super(ConfigChangeType.Update, traceable);
     }
 
     public static String getTopicName(boolean operational) {

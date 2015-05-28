@@ -80,6 +80,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * May 06, 2015  4470     bkowal      Added {@link #disableTransmitterGroup(TransmitterRequest)} and
  *                                    {@link #saveTransmitters(Collection, AbstractBMHServerRequest)}.
  * May 08, 2015  4470     bkowal      Added {@link #enableTransmitterGroup(TransmitterRequest)}.
+ * May 28, 2015  4429     rjpeter     Add ITraceable
  * </pre>
  * 
  * @author mpduff
@@ -113,48 +114,54 @@ public class TransmitterHandler extends
             response = saveTransmitter(request);
             notification = new TransmitterGroupConfigNotification(
                     ConfigChangeType.Update, request.getTransmitter()
-                            .getTransmitterGroup());
+                            .getTransmitterGroup(), request);
             break;
         case SaveGroup:
             response = saveTransmitterGroup(request);
             notification = new TransmitterGroupConfigNotification(
-                    ConfigChangeType.Update, request.getTransmitterGroup());
+                    ConfigChangeType.Update, request.getTransmitterGroup(),
+                    request);
             break;
         case DeleteTransmitter:
             notification = new TransmitterGroupConfigNotification(
                     ConfigChangeType.Delete, request.getTransmitter()
-                            .getTransmitterGroup());
+                            .getTransmitterGroup(), request);
             deleteTransmitter(request);
             break;
         case DeleteTransmitterGroup:
             notification = new TransmitterGroupConfigNotification(
-                    ConfigChangeType.Delete, request.getTransmitterGroup());
+                    ConfigChangeType.Delete, request.getTransmitterGroup(),
+                    request);
             deleteTransmitterGroup(request);
             break;
         case DisableTransmitterGroup:
             this.disableTransmitterGroup(request);
             notification = new TransmitterGroupConfigNotification(
-                    ConfigChangeType.Update, request.getTransmitterGroup());
+                    ConfigChangeType.Update, request.getTransmitterGroup(),
+                    request);
             break;
         case EnableTransmitterGroup:
             this.enableTransmitterGroup(request);
             notification = new TransmitterGroupConfigNotification(
-                    ConfigChangeType.Update, request.getTransmitterGroup());
+                    ConfigChangeType.Update, request.getTransmitterGroup(),
+                    request);
             break;
         case SaveGroupList:
             response = saveTransmitterGroups(request);
             notification = new TransmitterGroupConfigNotification(
-                    ConfigChangeType.Update, request.getTransmitterGroupList());
+                    ConfigChangeType.Update, request.getTransmitterGroupList(),
+                    request);
             break;
         case SaveTransmitterDeleteGroup:
             response = saveTransmitterDeleteGroup(request);
             notification = new TransmitterGroupConfigNotification(
                     ConfigChangeType.Update, request.getTransmitter()
-                            .getTransmitterGroup());
+                            .getTransmitterGroup(), request);
             BmhMessageProducer.sendConfigMessage(notification,
                     request.isOperational());
             notification = new TransmitterGroupConfigNotification(
-                    ConfigChangeType.Delete, request.getTransmitterGroup());
+                    ConfigChangeType.Delete, request.getTransmitterGroup(),
+                    request);
             break;
         case GetTransmittersByFips:
             response = getTransmittersByFips(request);
@@ -288,7 +295,7 @@ public class TransmitterHandler extends
                     && (group.getDac() != null)
                     && !CollectionUtils.isEmpty(group.getTransmitterList())) {
                 ChangeTimeZoneConfigNotification notification = new ChangeTimeZoneConfigNotification(
-                        group.getTimeZone(), group.getName());
+                        group.getTimeZone(), group.getName(), request);
                 BmhMessageProducer.sendConfigMessage(notification,
                         request.isOperational());
             }

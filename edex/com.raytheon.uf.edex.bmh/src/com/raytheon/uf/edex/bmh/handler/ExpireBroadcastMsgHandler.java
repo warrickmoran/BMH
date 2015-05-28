@@ -41,9 +41,9 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 15, 2015 4293       bkowal      Initial creation
- * Apr 20, 2015  #4397     bkowal      Forward the request time of the message
+ * Apr 20, 2015 4397       bkowal      Forward the request time of the message
  *                                     expiration request.
- * 
+ * May 28, 2015 4429       rjpeter     Add ITraceable
  * </pre>
  * 
  * @author bkowal
@@ -86,7 +86,7 @@ public class ExpireBroadcastMsgHandler extends
          * Notify the playlist manager.
          */
         MessageForcedExpirationNotification notification = new MessageForcedExpirationNotification(
-                request.getRequestTime());
+                request.getRequestTime(), request);
         notification.setBroadcastIds(expiredIds);
         BmhMessageProducer.sendConfigMessage(notification,
                 request.isOperational());

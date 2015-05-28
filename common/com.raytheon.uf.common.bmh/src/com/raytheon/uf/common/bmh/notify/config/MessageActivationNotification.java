@@ -19,10 +19,11 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -40,7 +41,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 19, 2015  4011     bkowal      Support de-activating/activating
  *                                    multiple messages at once.
  * Apr 20, 2015  4397     bkowal      Added {@link #expireRequestTime}.
- * 
+ * May 28, 2015  4429     rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author bsteffen
@@ -60,15 +61,15 @@ public class MessageActivationNotification extends ConfigNotification {
     }
 
     public MessageActivationNotification(InputMessage inputMessage,
-            Long expireRequestTime) {
-        super(getType(inputMessage.getActive()));
+            Long expireRequestTime, ITraceable traceable) {
+        super(getType(inputMessage.getActive()), traceable);
         this.addInputMessageId(inputMessage.getId());
         this.expireRequestTime = expireRequestTime;
     }
 
     public MessageActivationNotification(List<InputMessage> inputMessages,
-            boolean active) {
-        super(getType(active));
+            boolean active, ITraceable traceable) {
+        super(getType(active), traceable);
         for (InputMessage im : inputMessages) {
             this.addInputMessageId(im.getId());
         }

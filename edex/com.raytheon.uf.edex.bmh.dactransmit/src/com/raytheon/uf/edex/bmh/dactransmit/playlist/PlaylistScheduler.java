@@ -152,6 +152,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * May 21, 2015  4429      rjpeter      Update message logging.
  * May 22, 2015  4481      bkowal       Specify if the audio is dynamic when setting the audio in
  *                                      {@link DacMessagePlaybackData}.
+ * May 28, 2015  4429      rjpeter      Updated log statements.
  * </pre>
  * 
  * @author dgilling
@@ -816,12 +817,8 @@ public final class PlaylistScheduler implements
                                 + " that has an older creation date. Ignoring new playlist.");
                         Path old = newPlaylist.getPath();
                         if (!newPlaylist.getPath().equals(old)) {
-                            logger.debug("Deleting " + newPlaylist
-                                    + " because current is better ");
+                            logger.debug("Deleting old playlist " + newPlaylist);
                             expirePlaylist(newPlaylist);
-                        } else {
-                            logger.debug("Did not delete " + old
-                                    + " because it was the same as current");
                         }
                         return;
                     }
@@ -833,13 +830,10 @@ public final class PlaylistScheduler implements
                     activePlaylists.add(newPlaylist);
                     Path old = currentPlaylist.getPath();
                     if (!newPlaylist.getPath().equals(old)) {
-                        logger.debug("Deleting " + old
-                                + " because new is better ");
+                        logger.debug("Deleting old playlist " + old);
                         expirePlaylist(currentPlaylist);
-                    } else {
-                        logger.debug("Did not delete " + old
-                                + " because it was the same as new");
                     }
+
                     currentPlaylist = newPlaylist;
                 } else {
                     DacPlaylist toReplace = findMatchingPlaylist(newPlaylist,

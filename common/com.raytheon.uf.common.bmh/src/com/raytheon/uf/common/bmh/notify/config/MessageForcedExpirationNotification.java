@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.notify.config;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -36,7 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Apr 15, 2015 4293       bkowal      Initial creation
  * Apr 20, 2015 4397       bkowal      Added {@link #requestTime}.
- * 
+ * May 28, 2015 4429       rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author bkowal
@@ -55,14 +56,18 @@ public class MessageForcedExpirationNotification extends ConfigNotification {
      * No argument constructor for DynamicSerialize
      */
     public MessageForcedExpirationNotification() {
-        super(ConfigChangeType.Delete);
+    }
+
+    public MessageForcedExpirationNotification(ITraceable traceable) {
+        super(ConfigChangeType.Delete, traceable);
     }
 
     /**
      * Constructor.
      */
-    public MessageForcedExpirationNotification(long requestTime) {
-        super(ConfigChangeType.Delete);
+    public MessageForcedExpirationNotification(long requestTime,
+            ITraceable traceable) {
+        this(traceable);
         this.requestTime = requestTime;
     }
 
@@ -74,7 +79,8 @@ public class MessageForcedExpirationNotification extends ConfigNotification {
     }
 
     /**
-     * @param requestTime the requestTime to set
+     * @param requestTime
+     *            the requestTime to set
      */
     public void setRequestTime(long requestTime) {
         this.requestTime = requestTime;

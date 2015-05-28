@@ -24,8 +24,8 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
-import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.request.WordRequest;
 import com.raytheon.uf.common.bmh.request.WordResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -54,7 +54,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Jan 05, 2015  3618     bkowal      Notify other components of dictionary
  *                                    modifications using a 
  *                                    {@link NationalDictionaryConfigNotification}.
- * 
+ * May 28, 2015  4429     rjpeter     Add ITraceable
  * </pre>
  * 
  * @author mpduff
@@ -77,7 +77,7 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
             if (request.getWord().getDictionary() != null
                     && request.getWord().getDictionary().isNational()) {
                 notification = new NationalDictionaryConfigNotification(
-                        ConfigChangeType.Update);
+                        ConfigChangeType.Update, request);
                 notification.setLanguage(request.getWord().getDictionary()
                         .getLanguage());
             }
@@ -86,7 +86,7 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
             if (request.getWord().getDictionary() != null
                     && request.getWord().getDictionary().isNational()) {
                 notification = new NationalDictionaryConfigNotification(
-                        ConfigChangeType.Delete);
+                        ConfigChangeType.Delete, request);
                 notification.setLanguage(request.getWord().getDictionary()
                         .getLanguage());
             }
@@ -97,7 +97,7 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
             if (request.getWord().getDictionary() != null
                     && request.getWord().getDictionary().isNational()) {
                 notification = new NationalDictionaryConfigNotification(
-                        ConfigChangeType.Update);
+                        ConfigChangeType.Update, request);
                 notification.setLanguage(request.getWord().getDictionary()
                         .getLanguage());
             }

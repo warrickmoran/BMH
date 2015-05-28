@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 
 /**
@@ -36,7 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Oct 21, 2014  2687     bsteffen     Initial creation
- * 
+ * May 28, 2015  4429     rjpeter      Update for ITraceable
  * </pre>
  * 
  * @author bsteffen
@@ -49,8 +50,9 @@ public class PracticeModeConfigNotification extends ConfigNotification {
         super();
     }
 
-    public PracticeModeConfigNotification(ConfigChangeType type) {
-        super(type);
+    public PracticeModeConfigNotification(ConfigChangeType type,
+            ITraceable traceable) {
+        super(type, traceable);
     }
 
 }

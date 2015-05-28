@@ -37,13 +37,13 @@ import com.raytheon.uf.edex.bmh.stats.SuiteChangeProcessingEvent;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Sep 25, 2014  #3589     dgilling     Initial creation
+ * Sep 25, 2014  #3589     dgilling    Initial creation
  * Oct 13, 2014  #3413     rferrel     Implement User roles.
  * Oct 15, 2014, #3636     rferrel     Implement Logging
  * Dec 16, 2014  #3753     bsteffen    Actually return success or failure.
  * Apr 20, 2015  #4397     bkowal      Forward the request time of the change suite
  *                                     request.
- * 
+ * May 28, 2015  4429      rjpeter     Add ITraceable
  * </pre>
  * 
  * @author dgilling
@@ -74,7 +74,7 @@ public final class ForceSuiteChangeHandler extends
         SuiteChangeProcessingEvent event = new SuiteChangeProcessingEvent(
                 request.getRequestTime());
         boolean result = playlistMgr.processForceSuiteSwitch(group, suite,
-                event);
+                event, request);
 
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         if (logger.isPriorityEnabled(Priority.INFO)) {

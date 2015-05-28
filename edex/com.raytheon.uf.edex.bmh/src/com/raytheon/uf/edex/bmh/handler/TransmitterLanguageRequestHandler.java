@@ -60,7 +60,7 @@ import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
  * Apr 28, 2015  4248     bkowal      Added {@link #validateStaticMessageType(TransmitterLanguageRequest)}.
  * May 11, 2015  4476     bkowal      Removed deprecated methods.
  * May 22, 2015  4481     bkowal      Added {@link #getStaticMsgTypeForTransmitterGroupAndMessageType(TransmitterLanguageRequest)}.
- * 
+ * May 28, 2015  4429     rjpeter     Add ITraceable
  * </pre>
  * 
  * @author bkowal
@@ -86,12 +86,14 @@ public class TransmitterLanguageRequestHandler extends
              */
             response = this.updateTransmitterLanguage(request);
             notification = new TransmitterLanguageConfigNotification(
-                    ConfigChangeType.Update, request.getTransmitterLanguage());
+                    ConfigChangeType.Update, request.getTransmitterLanguage(),
+                    request);
             break;
         case DeleteTransmitterLanguage:
             response = new TransmitterLanguageResponse();
             notification = new TransmitterLanguageConfigNotification(
-                    ConfigChangeType.Delete, request.getTransmitterLanguage());
+                    ConfigChangeType.Delete, request.getTransmitterLanguage(),
+                    request);
             this.deleteTransmitterLanguage(request);
             break;
         case ValidateStaticMsgType:
@@ -168,8 +170,8 @@ public class TransmitterLanguageRequestHandler extends
                                         .getTransmitterLanguage()
                                         .getTransmitterGroup(),
                                 request.getTransmitterLanguage().getLanguage(),
-                                staticMsgType.getMsgTypeSummary().getAfosid()),
-                        request.isOperational());
+                                staticMsgType.getMsgTypeSummary().getAfosid(),
+                                request), request.isOperational());
             }
         }
 

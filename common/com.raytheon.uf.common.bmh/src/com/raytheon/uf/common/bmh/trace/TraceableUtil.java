@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.common.bmh.trace;
 
+import java.util.Calendar;
+
+import com.raytheon.uf.common.time.util.TimeUtil;
+
 /**
  * Useful static methods for Traceable products.
  * 
@@ -29,7 +33,7 @@ package com.raytheon.uf.common.bmh.trace;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 12, 2015 4429       rferrel     Initial creation
- * 
+ * May 28, 2015 4429       rjpeter     Added createCurrentTraceId().
  * </pre>
  * 
  * @author rferrel
@@ -85,5 +89,11 @@ public class TraceableUtil {
     public static boolean hasTraceId(ITraceable traceable) {
         return (traceable != null) && (traceable.getTraceId() != null)
                 && !traceable.getTraceId().trim().isEmpty();
+    }
+
+    public static ITraceable createCurrentTraceId(String msg) {
+        Calendar cal = TimeUtil.newGmtCalendar();
+        return new Traceable(String.format(
+                "%s_%2$tY-%2$tm-%2$td-%2$tk%2$tM.%2$tS", msg, cal));
     }
 }

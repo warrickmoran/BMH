@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.notify.config;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 23, 1015 4423       rferrel     Initial creation
+ * May 28, 2015 4429       rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author rferrel
@@ -49,13 +51,16 @@ public class ChangeTimeZoneConfigNotification extends ConfigNotification {
     private String transmitterGroup;
 
     public ChangeTimeZoneConfigNotification() {
-        super();
-        setType(ConfigChangeType.Update);
+
+    }
+
+    public ChangeTimeZoneConfigNotification(ITraceable traceable) {
+        super(ConfigChangeType.Update, traceable);
     }
 
     public ChangeTimeZoneConfigNotification(String timeZone,
-            String transmitterGroup) {
-        this();
+            String transmitterGroup, ITraceable traceable) {
+        super(ConfigChangeType.Update, traceable);
         this.timeZone = timeZone;
         this.transmitterGroup = transmitterGroup;
     }

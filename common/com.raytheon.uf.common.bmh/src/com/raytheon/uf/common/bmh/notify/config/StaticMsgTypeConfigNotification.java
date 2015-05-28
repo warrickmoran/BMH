@@ -19,9 +19,10 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
-import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -36,7 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 12, 2015 4213       bkowal      Initial creation
- * 
+ * May 28, 2015 4429       rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author bkowal
@@ -59,8 +60,9 @@ public class StaticMsgTypeConfigNotification extends ConfigNotification {
     }
 
     public StaticMsgTypeConfigNotification(ConfigChangeType type,
-            TransmitterGroup transmitterGroup, Language language, String afosId) {
-        super(type);
+            TransmitterGroup transmitterGroup, Language language,
+            String afosId, ITraceable traceable) {
+        super(type, traceable);
         this.transmitterGroup = transmitterGroup;
         this.language = language;
         this.afosId = afosId;

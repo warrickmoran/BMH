@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.request;
 
 import com.raytheon.uf.common.auth.req.AbstractPrivilegedRequest;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
@@ -37,7 +38,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * ------------- -------- ----------- --------------------------
  * Oct 07, 2014  3687     bsteffen    Initial creation
  * Oct 13, 2014  3413     rferrel     Made AbstractPrivilegedRequest.
- * 
+ * May 28, 2015  4429     rjpeter     Implement ITraceable
  * </pre>
  * 
  * @author bsteffen
@@ -45,10 +46,13 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  */
 @DynamicSerialize
 public abstract class AbstractBMHServerRequest extends
-        AbstractPrivilegedRequest {
+        AbstractPrivilegedRequest implements ITraceable {
 
     @DynamicSerializeElement
     private boolean operational;
+
+    @DynamicSerializeElement
+    private String traceId;
 
     protected AbstractBMHServerRequest() {
 
@@ -66,4 +70,20 @@ public abstract class AbstractBMHServerRequest extends
         this.operational = operational;
     }
 
+    /**
+     * @return the traceId
+     */
+    @Override
+    public String getTraceId() {
+        return traceId;
+    }
+
+    /**
+     * @param traceId
+     *            the traceId to set
+     */
+    @Override
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
 }

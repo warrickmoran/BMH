@@ -20,12 +20,13 @@
 package com.raytheon.uf.common.bmh.notify.config;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Notification that is used when a {@link LdadConfig} is created, updated,
- * or deleted.
+ * Notification that is used when a {@link LdadConfig} is created, updated, or
+ * deleted.
  * 
  * <pre>
  * 
@@ -34,7 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 13, 2014 3803       bkowal      Initial creation
- * 
+ * May 28, 2015 4429       rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author bkowal
@@ -48,15 +49,16 @@ public class LdadConfigNotification extends ConfigNotification {
      */
     @DynamicSerializeElement
     private long id;
-    
+
     public LdadConfigNotification() {
     }
 
     /**
      * @param type
      */
-    public LdadConfigNotification(ConfigChangeType type, LdadConfig ldadConfig) {
-        super(type);
+    public LdadConfigNotification(ConfigChangeType type, LdadConfig ldadConfig,
+            ITraceable traceable) {
+        super(type, traceable);
         this.id = ldadConfig.getId();
     }
 
@@ -68,7 +70,8 @@ public class LdadConfigNotification extends ConfigNotification {
     }
 
     /**
-     * @param id the id to set
+     * @param id
+     *            the id to set
      */
     public void setId(long id) {
         this.id = id;

@@ -32,7 +32,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 12, 2015 4429       rferrel     Initial creation
- * 
+ * May 28, 2015 4429       rjpeter     Extend Traceable
  * </pre>
  * 
  * @author rferrel
@@ -40,20 +40,22 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 
 @DynamicSerialize
-public class TraceableId implements ITraceable {
+public class TraceableId extends Traceable {
 
     @DynamicSerializeElement
     private int id;
 
-    @DynamicSerializeElement
-    private String traceId;
-
     public TraceableId() {
     }
 
-    public TraceableId(int id, String traceId) {
+    public TraceableId(int id, ITraceable traceable) {
+        super(traceable);
         this.id = id;
-        this.traceId = traceId;
+    }
+
+    public TraceableId(int id, String traceId) {
+        super(traceId);
+        this.id = id;
     }
 
     public int getId() {
@@ -64,11 +66,4 @@ public class TraceableId implements ITraceable {
         this.id = id;
     }
 
-    public String getTraceId() {
-        return traceId;
-    }
-
-    public void setTraceId(String traceId) {
-        this.traceId = traceId;
-    }
 }

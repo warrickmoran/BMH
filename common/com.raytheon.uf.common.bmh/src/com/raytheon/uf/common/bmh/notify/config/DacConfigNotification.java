@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.notify.config;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -34,7 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Oct 22, 2014  3687     bsteffen     Initial creation
- * 
+ * May 28, 2015  4429     rjpeter      Update for ITraceable
  * </pre>
  * 
  * @author bsteffen
@@ -50,8 +51,9 @@ public class DacConfigNotification extends ConfigNotification {
         super();
     }
 
-    public DacConfigNotification(ConfigChangeType type, Dac dac) {
-        super(type);
+    public DacConfigNotification(ConfigChangeType type, Dac dac,
+            ITraceable traceable) {
+        super(type, traceable);
         this.address = dac.getAddress();
     }
 

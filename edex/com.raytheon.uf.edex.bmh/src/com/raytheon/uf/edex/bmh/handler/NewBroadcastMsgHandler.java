@@ -106,7 +106,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Apr 27, 2015  #4397     bkowal      Set the {@link InputMessage} update date.
  * May 13, 2015  #4229     rferrel     Changes for traceId.
  * May 20, 2015  #4490     bkowal      Fixes for {@link TraceableId}.
- * 
+ * May 28, 2015  4429      rjpeter     Add ITraceable
  * </pre>
  * 
  * @author bkowal
@@ -233,7 +233,7 @@ public class NewBroadcastMsgHandler extends
                  */
                 BmhMessageProducer.sendConfigMessage(
                         new MessageActivationNotification(inputMessage, request
-                                .getExpireRequestTime()), request
+                                .getExpireRequestTime(), request), request
                                 .isOperational());
                 /*
                  * If the message transitioned from active to inactive. Now that
@@ -280,7 +280,8 @@ public class NewBroadcastMsgHandler extends
                 && Boolean.FALSE.equals(inputMessage.getActive())) {
             BmhMessageProducer.sendConfigMessage(
                     new MessageActivationNotification(inputMessage, request
-                            .getExpireRequestTime()), request.isOperational());
+                            .getExpireRequestTime(), request), request
+                            .isOperational());
         }
 
         // send the broadcast message(s) to the playlist scheduler.

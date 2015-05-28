@@ -17,16 +17,13 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.notify.config;
+package com.raytheon.uf.common.bmh.trace;
 
-import com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Further abstraction of {@link ConfigNotification} used to indicate the
- * statistic associated with the {@link #statisticKey} should be finalized and
- * persisted.
+ * Default implementation of ITraceable.
  * 
  * <pre>
  * 
@@ -34,47 +31,44 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 21, 2015 4397       bkowal      Initial creation
- * May 28, 2015 4429       rjpeter     Update for ITraceable
+ * May 26, 2015 4429       rjpeter     Initial creation
+ * 
  * </pre>
  * 
- * @author bkowal
+ * @author rjpeter
  * @version 1.0
  */
 @DynamicSerialize
-public class AbstractTraceableSystemConfigNotification extends
-        ConfigNotification {
-
+public class Traceable implements ITraceable {
     @DynamicSerializeElement
-    private String statisticKey;
+    private String traceId;
 
-    /**
-     * Empty constructor for {@link DynamicSerialize}.
-     */
-    public AbstractTraceableSystemConfigNotification() {
+    public Traceable() {
+
+    }
+
+    public Traceable(String traceId) {
+        this.traceId = traceId;
+    }
+
+    public Traceable(ITraceable traceable) {
+        this.traceId = traceable.getTraceId();
     }
 
     /**
-     * @param type
+     * @return the traceId
      */
-    public AbstractTraceableSystemConfigNotification(ConfigChangeType type,
-            AbstractBMHSystemConfigRequest request) {
-        super(type, request);
-        this.statisticKey = request.getStatisticKey();
+    @Override
+    public String getTraceId() {
+        return traceId;
     }
 
     /**
-     * @return the statisticKey
+     * @param traceId
+     *            the traceId to set
      */
-    public String getStatisticKey() {
-        return statisticKey;
-    }
-
-    /**
-     * @param statisticKey
-     *            the statisticKey to set
-     */
-    public void setStatisticKey(String statisticKey) {
-        this.statisticKey = statisticKey;
+    @Override
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 }

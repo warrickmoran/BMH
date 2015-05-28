@@ -20,13 +20,14 @@
 package com.raytheon.uf.common.bmh.notify.config;
 
 import java.util.Collections;
-import java.util.Set;
 import java.util.HashSet;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -44,7 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 19, 2015 4011       bkowal      Added {@link #transmitterGroup}.
  * Mar 13, 2015 4213       bkowal      Added {@link #staticAfosIds}.
  * Mar 31, 2015 4213       bkowal      Fix NPE when no static message types exist.
- * 
+ * May 28, 2015 4429       rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author bkowal
@@ -78,8 +79,8 @@ public class TransmitterLanguageConfigNotification extends ConfigNotification {
      * @param type
      */
     public TransmitterLanguageConfigNotification(ConfigChangeType type,
-            TransmitterLanguage tl) {
-        super(type);
+            TransmitterLanguage tl, ITraceable traceable) {
+        super(type, traceable);
         this.setKey(tl);
         this.transmitterGroup = tl.getTransmitterGroup();
         if (tl.getStaticMessageTypes() == null

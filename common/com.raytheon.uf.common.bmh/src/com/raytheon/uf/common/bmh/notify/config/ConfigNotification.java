@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -34,14 +35,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Aug 18, 2014  3486     bsteffen    Initial creation
- * 
+ * May 28, 2015  4429     rjpeter     Implement ITraceable
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 @DynamicSerialize
-public abstract class ConfigNotification {
+public abstract class ConfigNotification implements ITraceable {
 
     public static enum ConfigChangeType {
         /* Update is used for creation or changes */
@@ -53,11 +54,15 @@ public abstract class ConfigNotification {
     @DynamicSerializeElement
     private ConfigChangeType type;
 
+    @DynamicSerializeElement
+    private String traceId;
+
     public ConfigNotification() {
     }
 
-    public ConfigNotification(ConfigChangeType type) {
+    public ConfigNotification(ConfigChangeType type, ITraceable traceable) {
         this.type = type;
+        this.traceId = traceable.getTraceId();
     }
 
     public ConfigChangeType getType() {
@@ -66,6 +71,23 @@ public abstract class ConfigNotification {
 
     public void setType(ConfigChangeType type) {
         this.type = type;
+    }
+
+    /**
+     * @return the traceId
+     */
+    @Override
+    public String getTraceId() {
+        return traceId;
+    }
+
+    /**
+     * @param traceId
+     *            the traceId to set
+     */
+    @Override
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 
 }

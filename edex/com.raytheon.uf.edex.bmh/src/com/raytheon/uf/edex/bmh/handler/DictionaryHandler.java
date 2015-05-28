@@ -23,8 +23,8 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
-import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest;
 import com.raytheon.uf.common.bmh.request.DictionaryResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -53,7 +53,7 @@ import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
  * Dec 16, 2014  3618     bkowal      Added {@link #getNationalDictionaryForLanguage(DictionaryRequest)} and
  *                                    {@link #getNonNationalDictionariesForLanguage(DictionaryRequest)}.
  * Jan 05, 2015  3618     bkowal      The {@link Dictionary} is now specified for delete operations.
- * 
+ * May 28, 2015  4429     rjpeter     Add ITraceable
  * </pre>
  * 
  * @author mpduff
@@ -79,14 +79,14 @@ public class DictionaryHandler extends
             response = saveDictionary(request);
             if (request.getDictionary().isNational()) {
                 notification = new NationalDictionaryConfigNotification(
-                        ConfigChangeType.Update);
+                        ConfigChangeType.Update, request);
                 notification.setLanguage(request.getDictionary().getLanguage());
             }
             break;
         case Delete:
             if (request.getDictionary().isNational()) {
                 notification = new NationalDictionaryConfigNotification(
-                        ConfigChangeType.Delete);
+                        ConfigChangeType.Delete, request);
                 notification.setLanguage(request.getDictionary().getLanguage());
             }
             deleteDictionary(request);

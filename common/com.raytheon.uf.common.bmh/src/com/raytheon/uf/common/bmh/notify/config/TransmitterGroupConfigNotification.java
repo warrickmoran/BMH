@@ -19,12 +19,13 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.ArrayList;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -37,14 +38,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
+ * Date         Ticket#   Engineer    Description
+ * ------------ --------- ----------- --------------------------
  * Sep 04, 2014  3486     bsteffen    Initial creation
  * Sep 08, 2014  3568     bkowal      Updated the getIds method for
  *                                    dynamicserialize.
  * Jan 22, 2015  4017     bkowal      Replaced the numerical ids with
  *                                    {@link TransmitterGroupIdentifier}s.
- * 
+ * May 28, 2015  4429     rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author bsteffen
@@ -62,16 +63,16 @@ public class TransmitterGroupConfigNotification extends ConfigNotification {
     }
 
     public TransmitterGroupConfigNotification(ConfigChangeType type,
-            TransmitterGroup tg) {
-        super(type);
+            TransmitterGroup tg, ITraceable traceable) {
+        super(type, traceable);
         this.identifiers = new ArrayList<>(1);
         this.identifiers.add(new TransmitterGroupIdentifier(tg.getId(), tg
                 .getName()));
     }
 
     public TransmitterGroupConfigNotification(ConfigChangeType type,
-            List<TransmitterGroup> groups) {
-        super(type);
+            List<TransmitterGroup> groups, ITraceable traceable) {
+        super(type, traceable);
         this.identifiers = new ArrayList<>(groups.size());
         for (TransmitterGroup tg : groups) {
             this.identifiers.add(new TransmitterGroupIdentifier(tg.getId(), tg

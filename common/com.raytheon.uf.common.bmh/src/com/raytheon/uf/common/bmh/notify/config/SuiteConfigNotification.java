@@ -24,7 +24,6 @@ import java.util.List;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest;
-import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -42,8 +41,6 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 04, 2014  3554     bsteffen    Initial creation
  * Mar 25, 2015  4213     bkowal      Added {@link #associatedEnabledTransmitterGroups}.
  * Apr 22, 2015  4397     bkowal      Extend {@link AbstractTraceableSystemConfigNotification}.
- * May 13, 2015, 4429     rferrel     Implement {@link ITraceable}.
- * 
  * </pre>
  * 
  * @author bsteffen
@@ -51,13 +48,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @DynamicSerialize
 public class SuiteConfigNotification extends
-        AbstractTraceableSystemConfigNotification implements ITraceable {
+        AbstractTraceableSystemConfigNotification {
 
     @DynamicSerializeElement
     private int id;
-
-    @DynamicSerializeElement
-    private transient String traceId;
 
     /**
      * Used to provide a {@link List} of the {@link TransmitterGroup}s that may
@@ -107,16 +101,6 @@ public class SuiteConfigNotification extends
     public void setAssociatedEnabledTransmitterGroups(
             List<TransmitterGroup> associatedEnabledTransmitterGroups) {
         this.associatedEnabledTransmitterGroups = associatedEnabledTransmitterGroups;
-    }
-
-    @Override
-    public String getTraceId() {
-        return traceId;
-    }
-
-    @Override
-    public void setTraceId(String traceId) {
-        this.traceId = traceId;
     }
 
 }

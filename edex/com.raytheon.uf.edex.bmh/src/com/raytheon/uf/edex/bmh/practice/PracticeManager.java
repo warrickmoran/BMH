@@ -44,6 +44,8 @@ import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.DacConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
@@ -68,7 +70,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Nov 19, 2014  3817     bsteffen    Return boolean from checkTimeout to indicate if practice mode is running
  * Jan 14, 2014  3926     bsteffen    When creating a dac, pick the ports differently
  * Feb 03, 2015  4056     bsteffen    Extract DEFAULT_RECEIVE_ADDRESS to Dac.
- * 
+ * May 28, 2015  4429     rjpeter     Add ITraceable.
  * </pre>
  * 
  * @author bsteffen
@@ -105,7 +107,7 @@ public class PracticeManager {
     public void handleModeNotification(
             PracticeModeConfigNotification notification) {
         if (notification.getType() == ConfigChangeType.Update) {
-            handlePracticeStartup();
+            handlePracticeStartup(notification);
         } else {
             handlePracticeShutdown();
         }
@@ -139,9 +141,13 @@ public class PracticeManager {
             logger.info("Practice mode has timed out after {} minutes",
                     runTime / 1000 / 60);
             try {
-                BmhMessageProducer.sendConfigMessage(
-                        new PracticeModeConfigNotification(
-                                ConfigChangeType.Delete), false);
+                BmhMessageProducer
+                        .sendConfigMessage(
+                                new PracticeModeConfigNotification(
+                                        ConfigChangeType.Delete,
+                                        TraceableUtil
+                                                .createCurrentTraceId("Edex-PracticeMode-TimeOut")),
+                                false);
             } catch (EdexException | SerializationException e) {
                 logger.error("Unable to stop practice mode.", e);
             }
@@ -150,7 +156,7 @@ public class PracticeManager {
         return task.isRunning();
     }
 
-    private synchronized void handlePracticeStartup() {
+    private synchronized void handlePracticeStartup(ITraceable traceable) {
 
         logger.info("Starting practice mode.");
         /*
@@ -212,7 +218,7 @@ public class PracticeManager {
                 try {
                     BmhMessageProducer.sendConfigMessage(
                             new DacConfigNotification(ConfigChangeType.Update,
-                                    dac), false);
+                                    dac, traceable), false);
                 } catch (EdexException | SerializationException e) {
                     logger.error("Unable to properly configure new dac.", e);
                 }

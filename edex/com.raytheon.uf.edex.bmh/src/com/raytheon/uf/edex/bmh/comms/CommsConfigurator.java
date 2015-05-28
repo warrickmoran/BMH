@@ -39,6 +39,8 @@ import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.CommsConfigNotification;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
+import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
@@ -78,6 +80,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Nov 26, 2014  3821     bsteffen    Write silence alarm
  * Feb 09, 2015  4095     bsteffen    Remove Transmitter Name.
  * Apr 07, 2015  4370     rjpeter     Update CommsConfigurator to have cluster lock and send jms notification.
+ * May 28, 2015  4429     rjpeter     Add ITraceable.
  * </pre>
  * 
  * @author bsteffen
@@ -105,7 +108,7 @@ public class CommsConfigurator implements IContextStateProcessor {
         locker = new ClusterLocker(AbstractBMHDao.getDatabaseName(operational));
     }
 
-    public CommsConfig configure() {
+    public CommsConfig configure(ITraceable traceable) {
         Path configFilePath = CommsConfig.getDefaultPath(operational);
         ClusterTask ct = null;
         try {
@@ -178,8 +181,9 @@ public class CommsConfigurator implements IContextStateProcessor {
                 try {
                     JAXB.marshal(config, configFilePath.toFile());
 
-                    BmhMessageProducer.sendConfigMessage(
-                            new CommsConfigNotification(), operational);
+                    BmhMessageProducer
+                            .sendConfigMessage(new CommsConfigNotification(
+                                    traceable), operational);
                 } catch (DataBindingException e) {
                     statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
                             "Cannot save comms config file.", e);
@@ -356,7 +360,7 @@ public class CommsConfigurator implements IContextStateProcessor {
     @Override
     public void preStart() {
         validateDaos();
-        configure();
+        configure(TraceableUtil.createCurrentTraceId("Edex-Start"));
     }
 
     @Override

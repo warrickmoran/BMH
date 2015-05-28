@@ -19,9 +19,9 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.ArrayList;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
@@ -48,7 +48,7 @@ import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
  * Dec 4, 2014  3880       bkowal      Added handleRetrieveSupportedEncodings.
  * Feb 09, 2015 4091       bkowal      Use {@link EdexAudioConverterManager}.
  * Feb 16, 2015 4118       bkowal      Added {@link #handleAudioConversion(LdadConfigResponse, LdadConfigRequest)}.
- * 
+ * May 28, 2015 4429       rjpeter     Add ITraceable
  * </pre>
  * 
  * @author bkowal
@@ -66,7 +66,7 @@ public class LdadConfigHandler extends
         switch (request.getAction()) {
         case Delete:
             notification = new LdadConfigNotification(ConfigChangeType.Delete,
-                    request.getLdadConfig());
+                    request.getLdadConfig(), request);
             this.handleDeleteRecord(response, request);
             break;
         case RetrieveRecord:
@@ -81,7 +81,7 @@ public class LdadConfigHandler extends
         case Save:
             this.handleSaveRecord(response, request);
             notification = new LdadConfigNotification(ConfigChangeType.Update,
-                    response.getLdadConfigurations().get(0));
+                    response.getLdadConfigurations().get(0), request);
             break;
         case RetrieveSupportedEncodings:
             this.handleRetrieveSupportedEncodings(response);

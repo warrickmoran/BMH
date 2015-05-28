@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.notify.config;
 
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 
 /**
@@ -33,7 +34,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Oct 13, 2014  3687     bsteffen    Initial creation
- * 
+ * May 28, 2015  4429     rjpeter     Update for ITraceable
  * </pre>
  * 
  * @author bsteffen
@@ -41,5 +42,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  */
 @DynamicSerialize
 public class ResetNotification extends ConfigNotification {
-    /* No extra information needed. */
+    public ResetNotification() {
+
+    }
+
+    public ResetNotification(ITraceable traceable) {
+        super(ConfigChangeType.Update, traceable);
+    }
 }
