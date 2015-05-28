@@ -60,6 +60,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     the associated Transmitter Language.
  * Apr 28, 2015 4248       bkowal      Validate message contents before allowing people to
  *                                     confirm message alterations.
+ * May 28, 2015 4490       bkowal      Use a proxy {@link StaticMessageType} for validation to
+ *                                     prevent pass-by-reference overrides.
  * 
  * </pre>
  * 
@@ -267,20 +269,26 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
             msg2Text = this.txtMsg2Txt.getText().trim();
         }
 
-        this.staticMessageType.setTextMsg1(msg1Text);
-        this.staticMessageType.setTextMsg2(msg2Text);
-        this.staticMessageType.setPeriodicity(periodicity);
+        StaticMessageType validateStaticMsgType = new StaticMessageType();
+        validateStaticMsgType.setMsgTypeSummary(this.staticMessageType
+                .getMsgTypeSummary());
+        validateStaticMsgType.setTextMsg1(msg1Text);
+        validateStaticMsgType.setTextMsg2(msg2Text);
 
         /*
          * Verify that the message contents are allowed.
          */
         try {
-            this.tldm.validateStaticMessageType(this.staticMessageType,
+            this.tldm.validateStaticMessageType(validateStaticMsgType,
                     this.language);
         } catch (Exception e) {
             statusHandler.error("Static Message validation has failed.", e);
             return;
         }
+
+        this.staticMessageType.setTextMsg1(msg1Text);
+        this.staticMessageType.setTextMsg2(msg2Text);
+        this.staticMessageType.setPeriodicity(periodicity);
 
         setReturnValue(this.staticMessageType);
 
