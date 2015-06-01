@@ -21,11 +21,10 @@ package com.raytheon.bmh.comms.broadcast;
 
 import com.raytheon.bmh.comms.AbstractJmsAlarm;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
-import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
+import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 
 /**
- * Used to build a log message using a {@link MessageBroadcastNotifcation} that
- * will be sent to AlertViz.
+ * Alarm for a {@link SAMEMessageTruncatedNotification}.
  * 
  * <pre>
  * 
@@ -33,8 +32,7 @@ import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan 19, 2015 4002       bkowal      Initial creation
- * Jun 01, 2015 4490       bkowal      Extend {@link AbstractJmsAlarm}.
+ * Jun 1, 2015  4490       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -42,29 +40,26 @@ import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
  * @version 1.0
  */
 
-public class BroadcastDelayAlarm extends AbstractJmsAlarm {
+public class SAMEDurationTruncatedAlarm extends AbstractJmsAlarm {
 
     /**
      * Constructor.
      */
-    public BroadcastDelayAlarm() {
-        super(BMH_CATEGORY.DAC_TRANSMIT_BROADCAST_DELAY);
+    public SAMEDurationTruncatedAlarm() {
+        super(BMH_CATEGORY.SAME_DURATION_TRUNCATION);
     }
 
-    private static final String CLASSIFY_INTERRUPT = "Interrupt";
-
-    private static final String CLASSIFY_WARNING = "Warning";
-
-    public void notify(final MessageDelayedBroadcastNotification notification) {
-        final String msgClassification = notification.isInterrupt() ? CLASSIFY_INTERRUPT
-                : CLASSIFY_WARNING;
-
-        /*
-         * Submit the notification message.
-         */
+    /**
+     * Triggers an alarm for the specified
+     * {@link SAMEMessageTruncatedNotification}.
+     * 
+     * @param notification
+     *            the specified {@link SAMEMessageTruncatedNotification}
+     */
+    public void notify(final SAMEMessageTruncatedNotification notification) {
         logger.error(
-                "The broadcast of {} message {} on Transmitter {} will be delayed due to an active Broadcast Live Session (Message Expires: {}).",
-                msgClassification, notification.getMessageIdentification(),
+                "SAME Message {} scheduled for broadcast on Transmitter {} has been truncated to fit within the two minute limit (Message Expires: {}).",
+                notification.getMessageIdentification(),
                 notification.getTransmitterGroup(), notification.getExpire());
     }
 }

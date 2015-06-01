@@ -17,13 +17,16 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.notify;
+package com.raytheon.bmh.comms;
 
-import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.raytheon.bmh.comms.logging.JmsStatusMessageAppender;
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 
 /**
- * Notification generated when a SAME Message is truncated for broadcast.
+ * Abstraction of an alarmable notification handler.
  * 
  * <pre>
  * 
@@ -31,8 +34,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 30, 2015 4452       bkowal      Initial creation
- * Jun 01, 2015 4490       bkowal      Extend {@link AbstractAlarmableMessageNotification}.
+ * Jun 1, 2015  4490       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -40,15 +42,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * @version 1.0
  */
 
-@DynamicSerialize
-public class SAMEMessageTruncatedNotification extends
-        AbstractAlarmableMessageNotification {
+public abstract class AbstractJmsAlarm {
 
-    public SAMEMessageTruncatedNotification() {
-        super();
-    }
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-    public SAMEMessageTruncatedNotification(DacPlaylistMessage message) {
-        super(message);
+    public AbstractJmsAlarm(final BMH_CATEGORY bmhCategory) {
+        JmsStatusMessageAppender.registerAlarm(getClass(), bmhCategory);
     }
 }

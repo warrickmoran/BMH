@@ -21,11 +21,10 @@ package com.raytheon.bmh.comms.broadcast;
 
 import com.raytheon.bmh.comms.AbstractJmsAlarm;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
-import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
+import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 
 /**
- * Used to build a log message using a {@link MessageBroadcastNotifcation} that
- * will be sent to AlertViz.
+ * Alarm for a {@link MessageNotBroadcastNotification}.
  * 
  * <pre>
  * 
@@ -33,8 +32,7 @@ import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan 19, 2015 4002       bkowal      Initial creation
- * Jun 01, 2015 4490       bkowal      Extend {@link AbstractJmsAlarm}.
+ * Jun 1, 2015  4490       bkowal     Initial creation
  * 
  * </pre>
  * 
@@ -42,29 +40,27 @@ import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
  * @version 1.0
  */
 
-public class BroadcastDelayAlarm extends AbstractJmsAlarm {
+public class WtchOrWrnNotBroadcastAlarm extends AbstractJmsAlarm {
 
     /**
      * Constructor.
      */
-    public BroadcastDelayAlarm() {
-        super(BMH_CATEGORY.DAC_TRANSMIT_BROADCAST_DELAY);
+    public WtchOrWrnNotBroadcastAlarm() {
+        super(BMH_CATEGORY.WTCH_OR_WRN_NOT_BROADCAST);
     }
 
-    private static final String CLASSIFY_INTERRUPT = "Interrupt";
-
-    private static final String CLASSIFY_WARNING = "Warning";
-
-    public void notify(final MessageDelayedBroadcastNotification notification) {
-        final String msgClassification = notification.isInterrupt() ? CLASSIFY_INTERRUPT
-                : CLASSIFY_WARNING;
-
-        /*
-         * Submit the notification message.
-         */
+    /**
+     * Triggers an alarm for the specified
+     * {@link MessageNotBroadcastNotification}.
+     * 
+     * @param notification
+     *            the specified {@link MessageNotBroadcastNotification}
+     */
+    public void notify(final MessageNotBroadcastNotification notification) {
         logger.error(
-                "The broadcast of {} message {} on Transmitter {} will be delayed due to an active Broadcast Live Session (Message Expires: {}).",
-                msgClassification, notification.getMessageIdentification(),
+                "{} message {} expired before it could be broadcast on Transmitter {} (Message Expires: {}).",
+                notification.getDesignation(),
+                notification.getMessageIdentification(),
                 notification.getTransmitterGroup(), notification.getExpire());
     }
 }

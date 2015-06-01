@@ -45,14 +45,12 @@ import java.util.concurrent.ExecutorService;
 
 import javax.xml.bind.JAXB;
 
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
@@ -153,6 +151,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * May 22, 2015  4481      bkowal       Specify if the audio is dynamic when setting the audio in
  *                                      {@link DacMessagePlaybackData}.
  * May 28, 2015  4429      rjpeter      Updated log statements.
+ * Jun 01, 2015  4490      bkowal       Use new {@link SAMEMessageTruncatedNotification} constructor.
  * </pre>
  * 
  * @author dgilling
@@ -637,6 +636,21 @@ public final class PlaylistScheduler implements
                         }
                     }
                     if (nextMessage == null) {
+                        /*
+                         * Handle the case when a playlist containing watches
+                         * and/or warnings expires before the messages can even
+                         * be scanned once. Scenario: a warning is submitted
+                         * during an active broadcast live session; the
+                         * broadcast live ends after the message has expired.
+                         */
+                        for (DacPlaylistMessageId expiredMessageId : nextPlaylist
+                                .getMessages()) {
+                            DacPlaylistMessage expiredMessage = this.cache
+                                    .getMessage(expiredMessageId);
+                            if (expiredMessage.getPlayCount() == 0) {
+                                this.sendNotBroadcastNotification(expiredMessage);
+                            }
+                        }
                         expiredPlaylists.add(nextPlaylist);
                         activePlaylists.remove(nextPlaylist);
                         logger.info("Purging playlist because no messages are playable: "
@@ -983,11 +997,8 @@ public final class PlaylistScheduler implements
 
     private void publishDelayedNotification(DacPlaylistMessage messageData,
             final boolean interrupt) {
-        final String expire = (messageData.getExpire() == null) ? StringUtils.EMPTY
-                : messageData.getExpire().getTime().toString();
         MessageDelayedBroadcastNotification notification = new MessageDelayedBroadcastNotification(
-                messageData.getBroadcastId(), interrupt, messageData.getName(),
-                messageData.getMessageType(), expire);
+                messageData, interrupt);
         this.eventBus.post(notification);
     }
 
@@ -1261,13 +1272,6 @@ public final class PlaylistScheduler implements
             return;
         }
 
-        /*
-         * Determine the message designation.
-         */
-        final String designation = message.isWarning() ? MessageType.Designation.Warning
-                .toString() : MessageType.Designation.Watch.toString();
-
-        this.eventBus.post(new MessageNotBroadcastNotification(message
-                .getBroadcastId(), designation));
+        this.eventBus.post(new MessageNotBroadcastNotification(message));
     }
 }

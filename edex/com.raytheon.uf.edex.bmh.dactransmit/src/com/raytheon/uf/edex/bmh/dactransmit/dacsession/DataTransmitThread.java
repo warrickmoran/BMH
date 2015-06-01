@@ -87,6 +87,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      Message will be truncated during broadcast.
  * May 13, 2015  #4429     rferrel      Changes to {@link DefaultMessageLogger} for traceId.
  * May 26, 2015  #4481     bkowal       Allow broadcasts to interrupt the no messages loop.
+ * Jun 01, 2015  #4490     bkowal       Use new {@link SAMEMessageTruncatedNotification} constructor.
  * </pre>
  * 
  * @author dgilling
@@ -255,8 +256,7 @@ public final class DataTransmitThread extends AbstractTransmitThread {
                          */
                         this.eventBus
                                 .post(new SAMEMessageTruncatedNotification(
-                                        playbackData.getMessage()
-                                                .getBroadcastId()));
+                                        playbackData.getMessage()));
                     }
                     while ((playbackData.hasRemaining())
                             && (playingInterrupt || (!playlistMgr

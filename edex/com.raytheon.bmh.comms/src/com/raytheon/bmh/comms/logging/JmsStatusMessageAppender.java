@@ -20,19 +20,18 @@
 package com.raytheon.bmh.comms.logging;
 
 import java.util.Date;
-
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.jms.JMSException;
 
 import org.slf4j.Marker;
-
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.Layout;
 
+import com.raytheon.bmh.comms.AbstractJmsAlarm;
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.bmh.comms.SilenceAlarm;
-import com.raytheon.bmh.comms.broadcast.BroadcastDelayAlarm;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.message.StatusMessage;
@@ -56,6 +55,7 @@ import com.raytheon.uf.edex.bmh.status.BMH_ACTION;
  * Nov 03, 2014  3525     bsteffen    Initial Implementation
  * Nov 26, 2014  3821     bsteffen    Utilize the BMHNotificationManager
  * Jan 19, 2015  4002     bkowal      Added support for {@link MessageDelayedBroadcastNotification}.
+ * Jun 01, 2015  4490     bkowal      Added {@link #bmhAlarmToCategoryMap}.
  * 
  * 
  * </pre>
@@ -67,6 +67,11 @@ public class JmsStatusMessageAppender extends AppenderBase<ILoggingEvent> {
 
     protected Layout<ILoggingEvent> layout;
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see ch.qos.logback.core.AppenderBase#append(java.lang.Object)
+     */
     @Override
     protected void append(ILoggingEvent event) {
         StatusMessage sm = new StatusMessage();
@@ -83,22 +88,18 @@ public class JmsStatusMessageAppender extends AppenderBase<ILoggingEvent> {
         } else {
             sm.setPriority(Priority.EVENTB);
         }
-        BMH_CATEGORY bmhCategory = null;
-        Marker marker = event.getMarker();
-        if (event.getLoggerName().equals(SilenceAlarm.class.getName())) {
-            sm.setCategory("DAC_TRANSMIT");
-            bmhCategory = BMH_CATEGORY.DAC_TRANSMIT_SILENCE;
-        } else if (event.getLoggerName().equals(
-                BroadcastDelayAlarm.class.getName())) {
-            sm.setCategory("DAC_TRANSMIT");
-            bmhCategory = BMH_CATEGORY.DAC_TRANSMIT_BROADCAST_DELAY;
-        } else if (marker != null && marker.contains("Dac Transmit")) {
-            sm.setCategory("DAC_TRANSMIT");
-            bmhCategory = BMH_CATEGORY.DAC_TRANSMIT_ERROR;
-        } else {
-            sm.setCategory("COMMS_MANAGER");
-            bmhCategory = BMH_CATEGORY.COMMS_MANAGER_ERROR;
+        BMH_CATEGORY bmhCategory = bmhAlarmToCategoryMap.get(event
+                .getLoggerName());
+        if (bmhCategory == null) {
+            Marker marker = event.getMarker();
+            if (marker != null && marker.contains("Dac Transmit")) {
+                bmhCategory = BMH_CATEGORY.DAC_TRANSMIT_ERROR;
+            } else {
+                bmhCategory = BMH_CATEGORY.COMMS_MANAGER_ERROR;
+            }
         }
+        sm.setCategory(bmhCategory.getAlertVizCategory());
+
         BMHNotificationAction notificationAction = BMHNotificationManager
                 .getInstance().getAction(bmhCategory, sm.getPriority());
         for (BMH_ACTION action : notificationAction.getActions()) {
@@ -134,8 +135,15 @@ public class JmsStatusMessageAppender extends AppenderBase<ILoggingEvent> {
 
     private static JmsCommunicator communicator;
 
+    private static final ConcurrentMap<String, BMH_CATEGORY> bmhAlarmToCategoryMap = new ConcurrentHashMap<>();
+
     public static void setJmsCommunicator(JmsCommunicator communicator) {
         JmsStatusMessageAppender.communicator = communicator;
     }
 
+    public static void registerAlarm(
+            Class<? extends AbstractJmsAlarm> alarmClass,
+            final BMH_CATEGORY bmhCategory) {
+        bmhAlarmToCategoryMap.put(alarmClass.getName(), bmhCategory);
+    }
 }
