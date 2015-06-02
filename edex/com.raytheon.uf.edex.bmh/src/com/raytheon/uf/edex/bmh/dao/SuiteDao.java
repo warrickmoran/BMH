@@ -58,6 +58,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessagePk;
  * Oct 29, 2014  3636     rferrel     Change template for id to Integer.
  * Dec 07, 2014  3752     mpduff      Add getSuiteByName
  * Apr 21, 2015  4248     rjpeter     Fix removal of triggers when message removed from suite.
+ * Jun 02, 2015  4248     rjpeter     Remove bmh schema.
  * </pre>
  * 
  * @author bsteffen
@@ -250,7 +251,7 @@ public class SuiteDao extends AbstractBMHDao<Suite, Integer> {
 
                 for (SuiteMessagePk id : suite.getRemovedTriggerSuiteMessages()) {
                     session.createSQLQuery(
-                            "DELETE FROM bmh.program_trigger WHERE suite_id = ? AND msgtype_id = ?")
+                            "DELETE FROM program_trigger WHERE suite_id = ? AND msgtype_id = ?")
                             .setParameter(0, id.getSuiteId())
                             .setParameter(1, id.getMsgTypeId()).executeUpdate();
                 }
@@ -271,6 +272,7 @@ public class SuiteDao extends AbstractBMHDao<Suite, Integer> {
      *            The Suite Name
      * @return The Suite
      */
+    @SuppressWarnings("unchecked")
     public Suite getSuiteByName(String name) {
         List<Suite> suiteList = (List<Suite>) findByNamedQueryAndNamedParam(
                 Suite.GET_SUITE_BY_NAME, "name", name);
