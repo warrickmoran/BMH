@@ -35,6 +35,7 @@
  * Jan 21, 2015 3960       bkowal      Added on delete cascade for foreign key fk_1xd877wghwn3fnawv8d7u6xrx.
  * Feb 23, 2014 4140       rjpeter     Updated constraint names, add Message Default Transmitter Groups cascades.
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign keys.
+ * Jun 05, 2015 4482       rjpeter     Add cascade delete to message type defaults.
  **/
 
 /**
@@ -170,12 +171,22 @@ alter table msg_type_same_transmitter add constraint fk_msg_type_same_tx_to_tx
     foreign key (transmitter_id) references transmitter (id) on delete cascade;
 
 /**
- * Message Default Transmitter Groups to MessageType and TransmitterGroup
+ * Message Type Default Area to Area
  */
-alter table msg_type_default_transmitter_groups drop constraint fk_msg_type_def_tx_groups_to_msg_type;
-alter table msg_type_default_transmitter_groups add constraint fk_msg_type_def_tx_groups_to_msg_type
- foreign key (msgtype_id) references msg_type (id) on delete cascade;
+alter table msg_type_default_areas drop constraint fk_msg_type_def_areas_to_area;
+alter table msg_type_default_areas add constraint fk_msg_type_def_areas_to_area
+    foreign key (area_id) references area (id) on delete cascade;
 
+/**
+ * Message Type Default Zone to Zone
+ */
+alter table msg_type_default_zones drop constraint fk_msg_type_def_zones_to_zone;
+alter table msg_type_default_zones add constraint fk_msg_type_def_zones_to_zone
+    foreign key (zone_id) references zone (id) on delete cascade;
+
+/**
+ * Message Default Transmitter Groups to TransmitterGroup
+ */
 alter table msg_type_default_transmitter_groups drop constraint fk_msg_type_def_tx_groups_to_tx_group;
 alter table msg_type_default_transmitter_groups add constraint fk_msg_type_def_tx_groups_to_tx_group
  foreign key (transmitter_group_id) references transmitter_group (id) on delete cascade;
