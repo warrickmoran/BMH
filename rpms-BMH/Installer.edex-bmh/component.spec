@@ -23,6 +23,7 @@ BuildRequires: awips2-java
 provides: awips2-edex-bmh
 requires: awips2
 requires: awips2-edex-base
+requires: awips2-edex
 requires: awips2-python
 requires: awips2-java
 requires: awips2-psql
