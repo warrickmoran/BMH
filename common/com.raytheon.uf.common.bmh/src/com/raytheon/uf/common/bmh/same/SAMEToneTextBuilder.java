@@ -75,6 +75,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                    of all areas that cannot be added as well as summary methods
  *                                    for reporting the areas that cannot be added.
  * May 06, 2015  4471     bkowal      Made {@link #DEMO_EVENT} public.
+ * Jun 01, 2015  4490     bkowal      Defined {@link #AREA_COUNT_LIMIT}.
  * 
  * </pre>
  * 
@@ -103,7 +104,9 @@ public class SAMEToneTextBuilder {
 
     private SAMEStateCodes stateCodes = SAMEStateCodes.DEFAULT;
 
-    private List<CharSequence> area = new ArrayList<>(31);
+    private static final int AREA_COUNT_LIMIT = 31;
+
+    private List<CharSequence> area = new ArrayList<>(AREA_COUNT_LIMIT);
 
     private Calendar effectiveTime;
 
@@ -198,7 +201,7 @@ public class SAMEToneTextBuilder {
      *             if too many areas are provided(only 31 can be encoded.
      */
     public void addArea(CharSequence area) throws IllegalStateException {
-        if (this.area.size() >= 31) {
+        if (this.area.size() >= AREA_COUNT_LIMIT) {
             throw new SAMETruncationException(this.area.size(), area);
         }
         this.area.add(area);

@@ -47,6 +47,8 @@ import java.util.Map;
  * Feb 18, 2015 4136       bkowal      Added {@link #EXCESSIVE_FILE_SIZE}.
  * Mar 31, 2015 4339       bkowal      Added {@link #SAME_TRUNCATION}.
  * May 20, 2015 4430       rjpeter     Added alertVizCategory.
+ * Jun 01, 2015 4490       bkowal      Added {@link #SAME_AREA_TRUNCATION}, {@link #SAME_DURATION_TRUNCATION},
+ *                                     and {@link #WTCH_OR_WRN_NOT_BROADCAST}.
  * </pre>
  * 
  * @author bkowal
@@ -161,10 +163,20 @@ public enum BMH_CATEGORY {
      */
     EXCESSIVE_FILE_SIZE(23, "MESSAGE_PARSE"),
     /*
+     * indicates that a SAME Message has been truncated to two minutes during
+     * the initial broadcast.
+     */
+    SAME_DURATION_TRUNCATION(25, "DAC_TRANSMIT"),
+    /*
      * indicates that one or more areas have not been included in a SAME tone
      * because the maximum number of areas has been exceeded.
      */
-    SAME_TRUNCATION(24, "PLAYLIST_MANAGER"),
+    SAME_AREA_TRUNCATION(26, "PLAYLIST_MANAGER"),
+    /*
+     * indicates that a watch or warning message has exired before it could be
+     * broadcast.
+     */
+    WTCH_OR_WRN_NOT_BROADCAST(27, "DAC_TRANSMIT"),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.

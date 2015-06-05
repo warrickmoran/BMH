@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.bmh.notify;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -33,6 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 14, 2015 3969       bkowal      Initial creation
+ * Jun 01, 2015 4490       bkowal      Extend {@link AbstractAlarmableMessageNotification}.
  * 
  * </pre>
  * 
@@ -40,16 +43,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class MessageNotBroadcastNotification {
-
-    @DynamicSerializeElement
-    private long broadcastId;
+public class MessageNotBroadcastNotification extends
+        AbstractAlarmableMessageNotification {
 
     @DynamicSerializeElement
     private String designation;
-
-    @DynamicSerializeElement
-    private String transmitterGroup;
 
     /**
      * Constructor
@@ -57,26 +55,13 @@ public class MessageNotBroadcastNotification {
      * Empty constructor for {@link DynamicSerialize}.
      */
     public MessageNotBroadcastNotification() {
+        super();
     }
 
-    public MessageNotBroadcastNotification(long broadcastId, String designation) {
-        this.broadcastId = broadcastId;
-        this.designation = designation;
-    }
-
-    /**
-     * @return the broadcastId
-     */
-    public long getBroadcastId() {
-        return broadcastId;
-    }
-
-    /**
-     * @param broadcastId
-     *            the broadcastId to set
-     */
-    public void setBroadcastId(long broadcastId) {
-        this.broadcastId = broadcastId;
+    public MessageNotBroadcastNotification(DacPlaylistMessage message) {
+        super(message);
+        this.designation = message.isWarning() ? MessageType.Designation.Warning
+                .name() : MessageType.Designation.Watch.name();
     }
 
     /**
@@ -94,28 +79,13 @@ public class MessageNotBroadcastNotification {
         this.designation = designation;
     }
 
-    /**
-     * @return the transmitterGroup
-     */
-    public String getTransmitterGroup() {
-        return transmitterGroup;
-    }
-
-    /**
-     * @param transmitterGroup
-     *            the transmitterGroup to set
-     */
-    public void setTransmitterGroup(String transmitterGroup) {
-        this.transmitterGroup = transmitterGroup;
-    }
-
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(
                 "MessageNotBroadcastNotification [");
-        sb.append("broadcastId=").append(this.broadcastId);
+        sb.append("broadcastId=").append(super.getBroadcastId());
         sb.append(", designation=").append(this.designation);
-        sb.append(", transmitterGroup=").append(this.transmitterGroup)
+        sb.append(", transmitterGroup=").append(super.getTransmitterGroup())
                 .append("]");
 
         return sb.toString();

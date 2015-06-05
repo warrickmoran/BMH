@@ -191,6 +191,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * May 19, 2015  4508     rjpeter     Set timestamp on  {@link DacPlaylistMessage}.
  * May 21, 2015  4429     rjpeter     Added additional logging methods.
  * May 28, 2015  4429     rjpeter     Add ITraceable.
+ * Jun 01, 2015  4490     bkowal      Use the new {@link BMH_CATEGORY#SAME_AREA_TRUNCATION}.
  * </pre>
  * 
  * @author bsteffen
@@ -1058,7 +1059,7 @@ public class PlaylistManager implements IContextStateProcessor {
                                     .summarizeOverLimitAreas();
                             if (overLimitAreas.isEmpty() == false) {
                                 statusHandler
-                                        .error(BMH_CATEGORY.SAME_TRUNCATION,
+                                        .error(BMH_CATEGORY.SAME_AREA_TRUNCATION,
                                                 TraceableUtil
                                                         .createTraceMsgHeader(traceable)
                                                         + "Failed to add all areas to the SAME Message. "

@@ -7,7 +7,7 @@
     <category textBox="0" categoryName="MESSAGE_PARSE" longName="Message Parse" locked="true"/>
     <category textBox="0" categoryName="MESSAGE_VALIDATION" longName="Message Validation" locked="true"/>
     <category textBox="0" categoryName="MESSAGE_TRANSFORM" longName="Message Transform" locked="true"/>
-    <category textBox="0" categoryName="PLAYLIST_MANAGER" longName="Playlist Manager" locked="true"/>
+    <category textBox="1" categoryName="PLAYLIST_MANAGER" longName="Playlist Manager" locked="true"/>
     <category textBox="0" categoryName="TRANSMITTER" longName="Transmitter" locked="true"/>
     <category textBox="0" categoryName="STATIC_MSG" longName="Static Message" locked="true"/>
     <category textBox="0" categoryName="LDAD" longName="LDAD" locked="true"/>

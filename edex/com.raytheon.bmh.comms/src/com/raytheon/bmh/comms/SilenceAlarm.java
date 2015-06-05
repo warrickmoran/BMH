@@ -26,8 +26,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacVoiceStatus;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
@@ -50,16 +50,14 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Mar 11, 2015  4186     bsteffen    Notify comms manager of silence changes.
  * Apr 22, 2015  4404     bkowal      Added {@link #handleDacDisconnect(String)} and
  *                                    {@link #clearSilenceAlarm(String)}.
+ * Jun 01, 2015  4490     bkowal      Extend {@link AbstractJmsAlarm}.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class SilenceAlarm {
-
-    private static final Logger logger = LoggerFactory
-            .getLogger(SilenceAlarm.class);
+public class SilenceAlarm extends AbstractJmsAlarm {
 
     private static final int ALARM_AFTER_MS = Integer.getInteger(
             "SilenceAlarmInitialSeconds", 10) * 1000;
@@ -83,6 +81,7 @@ public class SilenceAlarm {
      *            the current configuration for the comms manager.
      */
     public SilenceAlarm(CommsManager commsManager) {
+        super(BMH_CATEGORY.DAC_TRANSMIT_SILENCE);
         this.commsManager = commsManager;
         reconfigure(commsManager.getCurrentConfigState());
     }
@@ -162,7 +161,7 @@ public class SilenceAlarm {
      */
     private void initiateSilenceThread(final String group) {
         if (!silenceTimes.containsKey(group)) {
-            silenceTimes.put(group, new SilenceTime(group));
+            silenceTimes.put(group, new SilenceTime(logger, group));
             if (thread == null) {
                 thread = new SilenceAlarmThread();
                 thread.setDaemon(true);
@@ -241,13 +240,16 @@ public class SilenceAlarm {
 
     private static class SilenceTime {
 
+        private final Logger logger;
+
         public final String transmitterGroup;
 
         public final long startSilence;
 
         private long lastAlarm;
 
-        public SilenceTime(String transmitterGroup) {
+        public SilenceTime(Logger logger, String transmitterGroup) {
+            this.logger = logger;
             this.transmitterGroup = transmitterGroup;
             this.startSilence = System.currentTimeMillis();
         }
@@ -267,7 +269,7 @@ public class SilenceAlarm {
             }
             if (currentTime >= alarmAt) {
                 lastAlarm = currentTime;
-                logger.error("{} has been silent for  {} seconds.",
+                this.logger.error("{} has been silent for  {} seconds.",
                         transmitterGroup, (currentTime - startSilence) / 1000);
                 return ALARM_REPEAT_MS;
             } else {

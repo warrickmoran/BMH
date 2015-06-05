@@ -82,6 +82,7 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
@@ -198,6 +199,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 22, 2015  4481      bkowal      Message contents can now be constructed dynamically for messages
  *                                     with dynamic text.
  * May 28, 2015  4490      bkowal      Handle unplayed messages with dynamic text.
+ * Jun 02, 2015  4369      rferrel     Handle {@link NoPlaybackMessageNotification}.
  * </pre>
  * 
  * @author mpduff
@@ -1692,6 +1694,15 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                                     notification);
                         }
                     });
+                } else if (o instanceof NoPlaybackMessageNotification) {
+                    NoPlaybackMessageNotification notification = (NoPlaybackMessageNotification) o;
+                    String group = notification.getGroupName();
+                    this.playlistData.purgeData(group);
+                    if (group.equals(this.selectedTransmitterGrp)) {
+                        tableData = this.playlistData
+                                .getUpdatedTableData(group);
+                        updateTable(tableData);
+                    }
                 }
             } catch (NotificationException e) {
                 statusHandler.error("Error processing update notification", e);

@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.broadcast.BroadcastDelayAlarm;
+import com.raytheon.bmh.comms.broadcast.SAMEDurationTruncatedAlarm;
+import com.raytheon.bmh.comms.broadcast.WtchOrWrnNotBroadcastAlarm;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
@@ -37,6 +39,7 @@ import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
+import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
@@ -90,7 +93,10 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  *                                    volatile.
  * Apr 24, 2015  4423     rferrel     Send {@link ChangeTimeZone} when time zone changes value.
  * Apr 27, 2015  4397     bkowal      Handle {@link DeliveryTimeEvent}.
- * May 04, 2015  4452     bkowa       Handle {@link SAMEMessageTruncatedNotification}.
+ * May 04, 2015  4452     bkowal      Handle {@link SAMEMessageTruncatedNotification}.
+ * Jun 01, 2015  4490     bkowal      Added {@link #sameDurationTruncatedAlarm} and
+ *                                    {@link #wtchOrWrnNotBroadcastAlarm}.
+ * Jun 02, 2015  4369     rferrel     Handle {@link NoPlaybackMessageNotification}.
  * 
  * </pre>
  * 
@@ -122,6 +128,10 @@ public class DacTransmitCommunicator extends Thread {
     private volatile boolean disconnected = false;
 
     private static final BroadcastDelayAlarm broadcastDelayAlarm = new BroadcastDelayAlarm();
+
+    private final SAMEDurationTruncatedAlarm sameDurationTruncatedAlarm = new SAMEDurationTruncatedAlarm();
+
+    private final WtchOrWrnNotBroadcastAlarm wtchOrWrnNotBroadcastAlarm = new WtchOrWrnNotBroadcastAlarm();
 
     public DacTransmitCommunicator(CommsManager manager, DacTransmitKey key,
             String groupName, int[] radios, Socket socket, double dbTarget) {
@@ -199,11 +209,15 @@ public class DacTransmitCommunicator extends Thread {
         } else if (message instanceof MessageNotBroadcastNotification) {
             MessageNotBroadcastNotification notification = (MessageNotBroadcastNotification) message;
             notification.setTransmitterGroup(this.groupName);
+            wtchOrWrnNotBroadcastAlarm.notify(notification);
+        } else if (message instanceof NoPlaybackMessageNotification) {
+            NoPlaybackMessageNotification notification = (NoPlaybackMessageNotification) message;
+            notification.setGroupName(groupName);
             manager.transmitDacStatus(notification);
         } else if (message instanceof MessageDelayedBroadcastNotification) {
             MessageDelayedBroadcastNotification notification = (MessageDelayedBroadcastNotification) message;
             notification.setTransmitterGroup(this.groupName);
-            broadcastDelayAlarm.notifyDelay(notification);
+            broadcastDelayAlarm.notify(notification);
         } else if (message instanceof LiveBroadcastLatencyEvent) {
             LiveBroadcastLatencyEvent event = (LiveBroadcastLatencyEvent) message;
             event.setTransmitterGroup(this.groupName);
@@ -215,7 +229,7 @@ public class DacTransmitCommunicator extends Thread {
         } else if (message instanceof SAMEMessageTruncatedNotification) {
             SAMEMessageTruncatedNotification notification = (SAMEMessageTruncatedNotification) message;
             notification.setTransmitterGroup(this.groupName);
-            manager.transmitDacStatus(notification);
+            sameDurationTruncatedAlarm.notify(notification);
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",
                     message.getClass().getSimpleName());

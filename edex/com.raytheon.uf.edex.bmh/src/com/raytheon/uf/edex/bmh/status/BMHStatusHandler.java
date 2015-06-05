@@ -40,6 +40,7 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 16, 2014 3291       bkowal      Initial creation
+ * Jun 01, 2015 4490       bkowal      Use the defined alertviz category.
  * 
  * </pre>
  * 
@@ -199,7 +200,7 @@ public class BMHStatusHandler implements IBMHStatusHandler {
             details = throwable.getLocalizedMessage();
         }
         EDEXUtil.sendMessageAlertViz(priority, PLUGIN_NAME, SOURCE,
-                category.toString(), message, details, audioFile);
+                category.getAlertVizCategory(), message, details, audioFile);
     }
 
     private void defaultAction(Priority priority, BMH_CATEGORY category,

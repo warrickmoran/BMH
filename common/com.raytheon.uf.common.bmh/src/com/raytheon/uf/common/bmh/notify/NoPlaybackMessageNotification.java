@@ -19,11 +19,11 @@
  **/
 package com.raytheon.uf.common.bmh.notify;
 
-import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Notification generated when a SAME Message is truncated for broadcast.
+ * Notification that no more messages available to play for a given group.
  * 
  * <pre>
  * 
@@ -31,24 +31,23 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 30, 2015 4452       bkowal      Initial creation
- * Jun 01, 2015 4490       bkowal      Extend {@link AbstractAlarmableMessageNotification}.
+ * Jun 1, 2015  4369       rferrel     Initial creation
  * 
  * </pre>
  * 
- * @author bkowal
+ * @author rferrel
  * @version 1.0
  */
-
 @DynamicSerialize
-public class SAMEMessageTruncatedNotification extends
-        AbstractAlarmableMessageNotification {
+public class NoPlaybackMessageNotification {
+    @DynamicSerializeElement
+    private String groupName;
 
-    public SAMEMessageTruncatedNotification() {
-        super();
+    public String getGroupName() {
+        return groupName;
     }
 
-    public SAMEMessageTruncatedNotification(DacPlaylistMessage message) {
-        super(message);
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
     }
 }
