@@ -21,7 +21,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.suites;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
@@ -73,7 +72,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 08, 2014  3479      lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Dec 13, 2014  3833      lvenable    Removed unused method.
- * 
+ * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * </pre>
  * 
  * @author lvenable
@@ -92,10 +91,10 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
     private SuiteConfigGroup suiteConfigGroup;
 
     /** Suite data manger. */
-    private SuiteDataManager suiteDataMgr = new SuiteDataManager();
+    private final SuiteDataManager suiteDataMgr = new SuiteDataManager();
 
     /** Set of existing suite names. */
-    private Set<String> suiteNames = new HashSet<String>();
+    private final Set<String> suiteNames = new HashSet<String>();
 
     /**
      * Constructor.
@@ -105,11 +104,10 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
      * @param dlgMap
      *            Map to add this dialog to for closing purposes.
      */
-    public SuiteManagerDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.SUITE_MANAGER.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public SuiteManagerDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+        setText(DlgInfo.SUITE_MANAGER.getTitle());
     }
 
     @Override
@@ -133,7 +131,6 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText(DlgInfo.SUITE_MANAGER.getTitle());
 
         retrieveDataFromDB();
         createSuiteTableGroup();

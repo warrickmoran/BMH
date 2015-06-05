@@ -25,10 +25,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
@@ -46,8 +44,10 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Layout;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.MessageBox;
@@ -99,7 +99,6 @@ import com.raytheon.uf.viz.bmh.ui.program.ImportLegacyDbDlg;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
-import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
 
 /**
  * 
@@ -154,7 +153,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * May 04, 2015   4452     bkowal      Handle {@link SAMEMessageTruncatedNotification}.
  * Jun 01, 2015   4490     bkowal      No longer manually notify users for alarmable message
  *                                     notifications.
- * 
+ * Jun 04, 2015   4490     rjpeter     Fix memory leak.
  * </pre>
  * 
  * @author lvenable
@@ -193,75 +192,15 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
     /** Broadcast cycle image. */
     private Image broadcastCycleImg;
 
-    /** Message type association dialog. */
-    private MessageTypeAssocDlg msgTypeAssocDlg;
-
     /** Legacy converter dialog. */
     private LegacyDictionaryConverterDlg dictConverterDlg;
-
-    /** LDAD config dialog */
-    private LdadConfigDlg ldadConfigDlg;
-
-    /** Broadcast Program dialog. */
-    private BroadcastProgramDlg broadcastProgDlg;
-
-    /** Suite manager dialog. */
-    private SuiteManagerDlg suiteManagerDlg;
-
-    /** Broadcast cycle dialog. */
-    private BroadcastCycleDlg broadcastCycleDlg;
-
-    /** Listening area configuration dialog */
-    private ListeningAreaDlg listeningAreaDlg;
-
-    /** Listening zone configuration dialog */
-    private ListeningZoneDlg listeningZoneDlg;
-
-    /** Message types dialog. */
-    private MessageTypesDlg messageTypesDlg;
-
-    /** Dictionary Manager Dialog */
-    private DictionaryManagerDlg dictManagerDlg;
-
-    /** Transmitter configuration dialog */
-    private TransmitterConfigDlg transmitterConfigDlg;
-
-    /** Weather Messages dialog. */
-    private WeatherMessagesDlg weatherMessagesDlg;
-
-    private DemoMessageDialog demoMessageDlg;
-
-    /** Emergency Override dialog. */
-    private EmergencyOverrideDlg emergecyOverrideDlg;
-
-    /** DAC configuration dialog. */
-    private DacConfigDlg dacConfigDlg;
-
-    /** Transmitter Alignment Dialog */
-    private TransmitterAlignmentDlg transmitterAlignmentDlg;
-
-    /** Broadcast Live Dialog. */
-    private BroadcastLiveDlg broadcastLiveDlg;
-
-    /** Import Legacy Dialog. */
-    private ImportLegacyDbDlg importDbDlg;
-
-    /** TTS Voice Configuration Dialog. */
-    private VoiceConfigDialog voiceDlg;
 
     /**
      * This is a map that contains dialog that may require some sort of save
      * action before closing. These dialogs are reported to the user so they can
      * take action to save any changes from open dialogs.
      */
-    private final Map<AbstractBMHDialog, String> dlgsToValidateCloseMap = new HashMap<AbstractBMHDialog, String>();
-
-    /**
-     * This is a set of dialogs that can be closed normally. This will also
-     * contain dialogs that may be created off of the display and would normally
-     * remain open if the main dialog is closed.
-     */
-    private final Set<CaveSWTDialogBase> dialogsSet = new HashSet<CaveSWTDialogBase>();
+    private final Map<String, AbstractBMHDialog> dlgsToValidateCloseMap = new HashMap<String, AbstractBMHDialog>();
 
     /** Tool tip for the Broadcast Cycle button. */
     private CustomToolTip broadcastCycleTip;
@@ -337,12 +276,12 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             public void shellClosed(ShellEvent e) {
 
                 List<String> openDialogs = new ArrayList<String>();
-                for (AbstractBMHDialog abd : dlgsToValidateCloseMap.keySet()) {
+                for (AbstractBMHDialog abd : dlgsToValidateCloseMap.values()) {
                     if (abd == null || abd.isDisposed()) {
                         continue;
                     }
 
-                    openDialogs.add(dlgsToValidateCloseMap.get(abd));
+                    openDialogs.add(abd.getText());
 
                 }
 
@@ -445,7 +384,10 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
      */
     private void closeDialogs() {
         // Force close the dialogs that may need action before closing.
-        for (AbstractBMHDialog abd : dlgsToValidateCloseMap.keySet()) {
+        List<AbstractBMHDialog> toClose = new ArrayList<>(
+                dlgsToValidateCloseMap.values());
+        dlgsToValidateCloseMap.clear();
+        for (AbstractBMHDialog abd : toClose) {
             if (abd == null || abd.isDisposed()) {
                 continue;
             }
@@ -453,10 +395,6 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             abd.forceClose();
         }
 
-        // Close dialogs that do not require any action before closing.
-        for (CaveSWTDialogBase dlg : dialogsSet) {
-            dlg.close();
-        }
     }
 
     /**
@@ -642,13 +580,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.TRANSMITTER_CONFIGURATION)) {
-                    if (transmitterConfigDlg == null
-                            || transmitterConfigDlg.isDisposed()) {
-                        transmitterConfigDlg = new TransmitterConfigDlg(shell,
-                                dlgsToValidateCloseMap);
-                        transmitterConfigDlg.open();
+                    String dialogKey = TransmitterConfigDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new TransmitterConfigDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        transmitterConfigDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -663,13 +606,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (isAuthorized(DlgInfo.TRANSMITTER_ALIGNMENT)) {
-                    if (transmitterAlignmentDlg == null
-                            || transmitterAlignmentDlg.isDisposed()) {
-                        transmitterAlignmentDlg = new TransmitterAlignmentDlg(
-                                shell, dlgsToValidateCloseMap);
-                        transmitterAlignmentDlg.open();
+                    String dialogKey = TransmitterAlignmentDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new TransmitterAlignmentDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        transmitterAlignmentDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -690,13 +638,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.LISTENING_AREAS)) {
-                    if (listeningAreaDlg == null
-                            || listeningAreaDlg.isDisposed()) {
-                        listeningAreaDlg = new ListeningAreaDlg(shell,
-                                dlgsToValidateCloseMap);
-                        listeningAreaDlg.open();
+                    String dialogKey = ListeningAreaDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new ListeningAreaDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        listeningAreaDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -708,13 +661,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.LISTENING_ZONES)) {
-                    if (listeningZoneDlg == null
-                            || listeningZoneDlg.isDisposed()) {
-                        listeningZoneDlg = new ListeningZoneDlg(shell,
-                                dlgsToValidateCloseMap);
-                        listeningZoneDlg.open();
+                    String dialogKey = ListeningZoneDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new ListeningZoneDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        listeningZoneDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -763,13 +721,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.BROADCAST_PROGRAMS)) {
-                    if (broadcastProgDlg == null
-                            || broadcastProgDlg.isDisposed()) {
-                        broadcastProgDlg = new BroadcastProgramDlg(getShell(),
-                                dlgsToValidateCloseMap);
-                        broadcastProgDlg.open();
+                    String dialogKey = BroadcastProgramDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new BroadcastProgramDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        broadcastProgDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -792,12 +755,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.SUITE_MANAGER)) {
-                    if (suiteManagerDlg == null || suiteManagerDlg.isDisposed()) {
-                        suiteManagerDlg = new SuiteManagerDlg(getShell(),
-                                dlgsToValidateCloseMap);
-                        suiteManagerDlg.open();
+                    String dialogKey = SuiteManagerDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new SuiteManagerDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        suiteManagerDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -812,12 +781,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.MESSAGE_TYPE)) {
-                    if (messageTypesDlg == null || messageTypesDlg.isDisposed()) {
-                        messageTypesDlg = new MessageTypesDlg(getShell(),
-                                dlgsToValidateCloseMap);
-                        messageTypesDlg.open();
+                    String dialogKey = MessageTypesDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new MessageTypesDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        messageTypesDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -832,12 +807,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.MESSAGE_TYPE_ASSOCIATION)) {
-                    if (msgTypeAssocDlg == null || msgTypeAssocDlg.isDisposed()) {
-                        msgTypeAssocDlg = new MessageTypeAssocDlg(getShell(),
-                                dlgsToValidateCloseMap);
-                        msgTypeAssocDlg.open();
+                    String dialogKey = MessageTypeAssocDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new MessageTypeAssocDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        msgTypeAssocDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -861,13 +842,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.DEMO_MESSAGE)) {
-                    if (demoMessageDlg == null
-                            || demoMessageDlg.isDisposed() == true) {
-                        demoMessageDlg = new DemoMessageDialog(
-                                dlgsToValidateCloseMap, shell);
-                        demoMessageDlg.open();
+                    String dialogKey = DemoMessageDialog.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new DemoMessageDialog(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        demoMessageDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -895,13 +881,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.BROADCAST_LIVE)) {
-                    if (broadcastLiveDlg == null
-                            || broadcastLiveDlg.isDisposed() == true) {
-                        broadcastLiveDlg = new BroadcastLiveDlg(
-                                dlgsToValidateCloseMap, shell);
-                        broadcastLiveDlg.open();
+                    String dialogKey = BroadcastLiveDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new BroadcastLiveDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        broadcastLiveDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -954,12 +945,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.LDAD_CONFIGURATION)) {
-                    if (ldadConfigDlg == null || ldadConfigDlg.isDisposed()) {
-                        ldadConfigDlg = new LdadConfigDlg(
-                                dlgsToValidateCloseMap, getShell());
-                        ldadConfigDlg.open();
+                    String dialogKey = LdadConfigDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new LdadConfigDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        ldadConfigDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -1010,13 +1007,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.DAC_CONFIGURATION)) {
-                    if (dacConfigDlg == null
-                            || dacConfigDlg.isDisposed() == true) {
-                        dacConfigDlg = new DacConfigDlg(shell,
-                                dlgsToValidateCloseMap);
-                        dacConfigDlg.open();
+                    String dialogKey = DacConfigDlg.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new DacConfigDlg(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        dacConfigDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -1031,12 +1033,18 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 if (isAuthorized(DlgInfo.TTS_VOICE_CONFIGURATION)) {
-                    if (voiceDlg == null || voiceDlg.isDisposed() == true) {
-                        voiceDlg = new VoiceConfigDialog(
-                                dlgsToValidateCloseMap, shell);
-                        voiceDlg.open();
+                    String dialogKey = VoiceConfigDialog.class.getName();
+                    AbstractBMHDialog dlg = dlgsToValidateCloseMap
+                            .get(dialogKey);
+
+                    if (dlg == null || dlg.isDisposed()) {
+                        dlg = new VoiceConfigDialog(shell);
+                        dlgsToValidateCloseMap.put(dialogKey, dlg);
+                        dlg.addListener(SWT.Dispose, new DisposeListener(
+                                dialogKey));
+                        dlg.open();
                     } else {
-                        voiceDlg.bringToTop();
+                        dlg.bringToTop();
                     }
                 }
             }
@@ -1066,12 +1074,16 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
      */
     private void launchDictionaryManager() {
         if (isAuthorized(DlgInfo.MANAGE_DICTIONARIES)) {
-            if (this.dictManagerDlg == null || this.dictManagerDlg.isDisposed()) {
-                dictManagerDlg = new DictionaryManagerDlg(shell,
-                        this.dlgsToValidateCloseMap);
-                dictManagerDlg.open();
+            String dialogKey = DictionaryManagerDlg.class.getName();
+            AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
+
+            if (dlg == null || dlg.isDisposed()) {
+                dlg = new DictionaryManagerDlg(shell);
+                dlgsToValidateCloseMap.put(dialogKey, dlg);
+                dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
+                dlg.open();
             } else {
-                dictManagerDlg.bringToTop();
+                dlg.bringToTop();
             }
         }
     }
@@ -1108,14 +1120,19 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             /**
              * Open the {@link DictionaryManagerDlg} and start the import.
              */
-            if (this.dictManagerDlg == null || this.dictManagerDlg.isDisposed()) {
-                dictManagerDlg = new DictionaryManagerDlg(shell,
-                        this.dlgsToValidateCloseMap);
-                dictManagerDlg.open();
+            String dialogKey = DictionaryManagerDlg.class.getName();
+            AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
+
+            if (dlg == null || dlg.isDisposed()) {
+                dlg = new DictionaryManagerDlg(shell);
+                dlgsToValidateCloseMap.put(dialogKey, dlg);
+                dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
+                dlg.open();
             } else {
-                dictManagerDlg.bringToTop();
+                dlg.bringToTop();
             }
-            dictManagerDlg.initiateDictionaryImport(importXMLPath);
+            ((DictionaryManagerDlg) dlg)
+                    .initiateDictionaryImport(importXMLPath);
         }
     }
 
@@ -1148,36 +1165,48 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
     private void launchBroadcastCycle() {
         if (isAuthorized(DlgInfo.BROADCAST_CYCLE)) {
-            if (broadcastCycleDlg == null || broadcastCycleDlg.isDisposed()) {
-                broadcastCycleDlg = new BroadcastCycleDlg(getShell(),
-                        dlgsToValidateCloseMap);
-                broadcastCycleDlg.open();
+            String dialogKey = BroadcastCycleDlg.class.getName();
+            AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
+
+            if (dlg == null || dlg.isDisposed()) {
+                dlg = new BroadcastCycleDlg(shell);
+                dlgsToValidateCloseMap.put(dialogKey, dlg);
+                dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
+                dlg.open();
             } else {
-                broadcastCycleDlg.bringToTop();
+                dlg.bringToTop();
             }
         }
     }
 
     private void launchWeatherMessages() {
         if (isAuthorized(DlgInfo.WEATHER_MESSAGES)) {
-            if (weatherMessagesDlg == null || weatherMessagesDlg.isDisposed()) {
-                weatherMessagesDlg = new WeatherMessagesDlg(getShell(),
-                        dlgsToValidateCloseMap);
-                weatherMessagesDlg.open();
+            String dialogKey = WeatherMessagesDlg.class.getName();
+            AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
+
+            if (dlg == null || dlg.isDisposed()) {
+                dlg = new WeatherMessagesDlg(shell);
+                dlgsToValidateCloseMap.put(dialogKey, dlg);
+                dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
+                dlg.open();
             } else {
-                weatherMessagesDlg.bringToTop();
+                dlg.bringToTop();
             }
         }
     }
 
     private void launchEmergencyOverride() {
         if (isAuthorized(DlgInfo.EMERGENCY_OVERRIDE)) {
-            if (emergecyOverrideDlg == null || emergecyOverrideDlg.isDisposed()) {
-                emergecyOverrideDlg = new EmergencyOverrideDlg(getShell(),
-                        dlgsToValidateCloseMap);
-                emergecyOverrideDlg.open();
+            String dialogKey = EmergencyOverrideDlg.class.getName();
+            AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
+
+            if (dlg == null || dlg.isDisposed()) {
+                dlg = new EmergencyOverrideDlg(shell);
+                dlgsToValidateCloseMap.put(dialogKey, dlg);
+                dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
+                dlg.open();
             } else {
-                emergecyOverrideDlg.bringToTop();
+                dlg.bringToTop();
             }
         }
     }
@@ -1229,11 +1258,16 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
     }
 
     private void importLegacyDB() {
-        if ((importDbDlg == null) || importDbDlg.isDisposed()) {
-            importDbDlg = new ImportLegacyDbDlg(shell, dlgsToValidateCloseMap);
-            importDbDlg.open();
+        String dialogKey = ImportLegacyDbDlg.class.getName();
+        AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
+
+        if (dlg == null || dlg.isDisposed()) {
+            dlg = new ImportLegacyDbDlg(shell);
+            dlgsToValidateCloseMap.put(dialogKey, dlg);
+            dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
+            dlg.open();
         } else {
-            importDbDlg.bringToTop();
+            dlg.bringToTop();
         }
     }
 
@@ -1314,5 +1348,26 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
         sb.append(", afosid=").append(afosid).append("]");
 
         return sb.toString();
+    }
+
+    private class DisposeListener implements Listener {
+        private final String key;
+
+        public DisposeListener(String key) {
+            this.key = key;
+        }
+
+        /*
+         * (non-Javadoc)
+         * 
+         * @see
+         * org.eclipse.swt.widgets.Listener#handleEvent(org.eclipse.swt.widgets
+         * .Event)
+         */
+        @Override
+        public void handleEvent(Event event) {
+            BMHLauncherDlg.this.dlgsToValidateCloseMap.remove(key);
+        }
+
     }
 }

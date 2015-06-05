@@ -95,83 +95,84 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * SOFTWARE HISTORY
  * 
- * Date          Ticket#  Engineer    Description
- * ------------- -------- ----------- --------------------------
- * Sep 11, 2014  3610     lvenable    Initial creation
- * Sep 25, 2014  3620     bsteffen    Add seconds to periodicity.
- * Oct 08, 2014  3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * Oct 13, 2014  3728     lvenable    Fixed date/time field arguments and added a call back
- *                                    to the select message type dialog.
- * Oct 14, 2014  3728     lvenable    Added reading in a text file and displaying the Message
- *                                    Text Contents dialog.
- * Oct 15, 2014  3728     lvenable    Added code to populate message type controls.
- * Oct 15, 2014  3728     lvenable    Added New/Edit buttons and call to select input message.
- * Oct 18, 2014  3728     lvenable    Hooked in more functionality.
- * Oct 21, 2014  3728     lvenable    Added code for area selection and populating the input message controls.
- * Oct 21, 2014  3728     lvenable    Added Preview and Play buttons.
- * Oct 23, 2014  3748     bkowal      Support sending weather messages to the server so that
- *                                    they can be broadcasted (initial implementation).
- * Oct 26, 2014  3728     lvenable    Updated to call new contents dialog.
- * Oct 26, 2014  3748     bkowal      Updated to use information from the new
- *                                    contents dialog. Finished create "NEW"
- *                                    weather message.
- * Oct 28, 2014  3750     bkowal      Validate contents prior to submit.
- * Oct 31, 2014  3778     bsteffen    Do not clear the id when editing messages.
- * Nov 01, 2014  3784     mpduff      Set defaults on Message Type selection
- * Nov 1, 2014   3657     bkowal      Display a confirmation dialog to notify the user that
- *                                    SAME / Alert Tones will be played.
- * Nov 02, 2014  3785     mpduff      Set Same Transmitter values.
- * Nov 3, 2014   3785     bkowal      Fix the weather messages dialog.
- * Nov 03, 2014  3781     dgilling    Set SAME tone flag on input messages.
- * Nov 4, 2014   3778     bsteffen    Change the id after a submit.
- * Nov 11, 2014  3413     rferrel     Use DlgInfo to get title.
- * Nov 12, 2014  3823     bkowal      Use the stored wx message content.
- * Nov 17, 2014  3793     bsteffen    Add same transmitters to input message.
- * Nov 18, 2014  3829     bkowal      Use WxMessagesContent for all content tracking.
- * Nov 22, 2014  3796     mpduff      Checks for areas on unsaved messages.
- * Dec 02, 2014  3877     lvenable    Added null checks.
- * Dec 02, 2014  3876     lvenable    Added check for area selection.
- * Dec 03, 2014  3876     lvenable    Added null check & cleared out area codes if they are removed.
- * Dec 02, 2014  3614     bsteffen    Do not report success when submit fails.
- * Dec 09, 2014  3893     lvenable    Fixed the area selection call to not repopulate the
- *                                    areas/zones/transmitters if they were previously removed.
- * Dec 09, 2014  3909     bkowal      Use {@link RecordedByUtils}.
- * Dec 15, 2014  3876     bkowal      Only use the checked SAME Transmitters for
- *                                    SAME Tones. Use affected Transmitters to
- *                                    determine where a message should be directed.
- * Jan 13, 2015  3876     lvenable    Update input message to use the area/zone codes from the selected
- *                                    message type if the user didn't change the area selection.
- * Jan 16, 2015  4005     bkowal      Determine area/zone codes at the time of the message type
- *                                    selection or existing input message selection.
- * Jan 20, 2015  4010     bkowal      Updated to pass accurate information to the
- *                                    Area Selection Dialog.
- * Feb 10, 2015  4085     bkowal      Prevent users from creating weather messages associated
- *                                    with static message types.
- * Feb 11, 2015  4115     bkowal      Confirm submission of expired messages.
- * Feb 11, 2015  4044     rjpeter     Only select transmitters whose program contains the message type.
- * Feb 12, 2015  4113     bkowal      Users can now advance through the input messages using a previous
- *                                    and next button.
- * Feb 16, 2015  4118     bkowal      Check for imported audio when determining message type.
- * Mar 03, 2015  4211     bkowal      Do not allow users to submit expired messages.
- * Mar 03, 2015  4212     bkowal      Display the Tone Playback confirmation for any combination
- *                                    of SAME and Alert tones.
- * Mar 05, 2015  4222     bkowal      Allow users to create messages that never expire.
- * Mar 10, 2015  4249     rferrel     Better help message for SAME disabled transmitters.
- * Mar 11, 2015  4254     rferrel     Better dialog message for bad words or duplicate message.
- * Mar 16, 2015  4244     bsteffen    Extract same transmitter logic into SAMETransmitterSelector.
- * Mar 17, 2015  4160     bsteffen    Check if tones have played when modifying an existing message.
- * Mar 18, 2015  4282     rferrel     Added Close button and editStatus flag.
- *                                    Add modification checks.
- *                                    Keep in edit mode when Next/Prev fails to retrieve message.
- * Apr 16, 2014  4408     rferrel     Put in edit state after submitting a new message.
- * Apr 20, 2015  4420     rferrel     When in edit mode display read only Area Selection dialog.
- * Apr 29, 2015  4451     bkowal      Message contents will now only be accessible when a Message
- *                                    Type has been selected.
- * May 04, 2015  4447     bkowal      SAME Transmitters assigned to an existing {@link InputMessage}
- *                                    will override SAME Transmitters assigned to a {@link MessageType}.
- * May 08, 2015  4477     bkowal      Disable the Contents button when a "New" message is started.
- * May 08, 2015  4429     rferrel     {@link #handleSubmitAction()} now sets traceId for the request.
- * May 28, 2015  4429     rjpeter     Fix misspelling.
+ * Date         Ticket#  Engineer    Description
+ * ------------ -------- ----------- --------------------------
+ * Sep 11, 2014 3610     lvenable    Initial creation
+ * Sep 25, 2014 3620     bsteffen    Add seconds to periodicity.
+ * Oct 08, 2014 3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 13, 2014 3728     lvenable    Fixed date/time field arguments and added a call back
+ *                                   to the select message type dialog.
+ * Oct 14, 2014 3728     lvenable    Added reading in a text file and displaying the Message
+ *                                   Text Contents dialog.
+ * Oct 15, 2014 3728     lvenable    Added code to populate message type controls.
+ * Oct 15, 2014 3728     lvenable    Added New/Edit buttons and call to select input message.
+ * Oct 18, 2014 3728     lvenable    Hooked in more functionality.
+ * Oct 21, 2014 3728     lvenable    Added code for area selection and populating the input message controls.
+ * Oct 21, 2014 3728     lvenable    Added Preview and Play buttons.
+ * Oct 23, 2014 3748     bkowal      Support sending weather messages to the server so that
+ *                                   they can be broadcasted (initial implementation).
+ * Oct 26, 2014 3728     lvenable    Updated to call new contents dialog.
+ * Oct 26, 2014 3748     bkowal      Updated to use information from the new
+ *                                   contents dialog. Finished create "NEW"
+ *                                   weather message.
+ * Oct 28, 2014 3750     bkowal      Validate contents prior to submit.
+ * Oct 31, 2014 3778     bsteffen    Do not clear the id when editing messages.
+ * Nov 01, 2014 3784     mpduff      Set defaults on Message Type selection
+ * Nov 01, 2014 3657     bkowal      Display a confirmation dialog to notify the user that
+ *                                   SAME / Alert Tones will be played.
+ * Nov 02, 2014 3785     mpduff      Set Same Transmitter values.
+ * Nov 03, 2014 3785     bkowal      Fix the weather messages dialog.
+ * Nov 03, 2014 3781     dgilling    Set SAME tone flag on input messages.
+ * Nov 04, 2014 3778     bsteffen    Change the id after a submit.
+ * Nov 11, 2014 3413     rferrel     Use DlgInfo to get title.
+ * Nov 12, 2014 3823     bkowal      Use the stored wx message content.
+ * Nov 17, 2014 3793     bsteffen    Add same transmitters to input message.
+ * Nov 18, 2014 3829     bkowal      Use WxMessagesContent for all content tracking.
+ * Nov 22, 2014 3796     mpduff      Checks for areas on unsaved messages.
+ * Dec 02, 2014 3877     lvenable    Added null checks.
+ * Dec 02, 2014 3876     lvenable    Added check for area selection.
+ * Dec 03, 2014 3876     lvenable    Added null check & cleared out area codes if they are removed.
+ * Dec 02, 2014 3614     bsteffen    Do not report success when submit fails.
+ * Dec 09, 2014 3893     lvenable    Fixed the area selection call to not repopulate the
+ *                                   areas/zones/transmitters if they were previously removed.
+ * Dec 09, 2014 3909     bkowal      Use {@link RecordedByUtils}.
+ * Dec 15, 2014 3876     bkowal      Only use the checked SAME Transmitters for
+ *                                   SAME Tones. Use affected Transmitters to
+ *                                   determine where a message should be directed.
+ * Jan 13, 2015 3876     lvenable    Update input message to use the area/zone codes from the selected
+ *                                   message type if the user didn't change the area selection.
+ * Jan 16, 2015 4005     bkowal      Determine area/zone codes at the time of the message type
+ *                                   selection or existing input message selection.
+ * Jan 20, 2015 4010     bkowal      Updated to pass accurate information to the
+ *                                   Area Selection Dialog.
+ * Feb 10, 2015 4085     bkowal      Prevent users from creating weather messages associated
+ *                                   with static message types.
+ * Feb 11, 2015 4115     bkowal      Confirm submission of expired messages.
+ * Feb 11, 2015 4044     rjpeter     Only select transmitters whose program contains the message type.
+ * Feb 12, 2015 4113     bkowal      Users can now advance through the input messages using a previous
+ *                                   and next button.
+ * Feb 16, 2015 4118     bkowal      Check for imported audio when determining message type.
+ * Mar 03, 2015 4211     bkowal      Do not allow users to submit expired messages.
+ * Mar 03, 2015 4212     bkowal      Display the Tone Playback confirmation for any combination
+ *                                   of SAME and Alert tones.
+ * Mar 05, 2015 4222     bkowal      Allow users to create messages that never expire.
+ * Mar 10, 2015 4249     rferrel     Better help message for SAME disabled transmitters.
+ * Mar 11, 2015 4254     rferrel     Better dialog message for bad words or duplicate message.
+ * Mar 16, 2015 4244     bsteffen    Extract same transmitter logic into SAMETransmitterSelector.
+ * Mar 17, 2015 4160     bsteffen    Check if tones have played when modifying an existing message.
+ * Mar 18, 2015 4282     rferrel     Added Close button and editStatus flag.
+ *                                   Add modification checks.
+ *                                   Keep in edit mode when Next/Prev fails to retrieve message.
+ * Apr 16, 2014 4408     rferrel     Put in edit state after submitting a new message.
+ * Apr 20, 2015 4420     rferrel     When in edit mode display read only Area Selection dialog.
+ * Apr 29, 2015 4451     bkowal      Message contents will now only be accessible when a Message
+ *                                   Type has been selected.
+ * May 04, 2015 4447     bkowal      SAME Transmitters assigned to an existing {@link InputMessage}
+ *                                   will override SAME Transmitters assigned to a {@link MessageType}.
+ * May 08, 2015 4477     bkowal      Disable the Contents button when a "New" message is started.
+ * May 08, 2015 4429     rferrel     {@link #handleSubmitAction()} now sets traceId for the request.
+ * May 28, 2015 4429     rjpeter     Fix misspelling.
+ * Jun 05, 2015 4490     rjpeter     Updated constructor.
  * </pre>
  * 
  * @author lvenable
@@ -284,14 +285,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
      * 
      * @param parentShell
      *            PArent shell.
-     * @param dlgMap
-     *            Map to add this dialog to for closing purposes.
      */
-    public WeatherMessagesDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.WEATHER_MESSAGES.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public WeatherMessagesDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
+                | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override

@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
-import java.util.Map;
-
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -50,7 +48,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
  * Jul 30, 2014    3173    mpduff      Initial creation
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Mar 12, 2015  4249      rferrel     Load/dispose disableImage used by TransmitterComp.
- * 
+ * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * </pre>
  * 
  * @author mpduff
@@ -67,12 +65,9 @@ public class TransmitterConfigDlg extends AbstractBMHDialog {
      * Constructor.
      * 
      * @param parentShell
-     * @param dlgMap
      */
-    public TransmitterConfigDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.TRANSMITTER_CONFIGURATION.getTitle(),
-                parentShell, SWT.DIALOG_TRIM | SWT.RESIZE,
+    public TransmitterConfigDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.RESIZE,
                 CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         setText(DlgInfo.TRANSMITTER_CONFIGURATION.getTitle());
     }

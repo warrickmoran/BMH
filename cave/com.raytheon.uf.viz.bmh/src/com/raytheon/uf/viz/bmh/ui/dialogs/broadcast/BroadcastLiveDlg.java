@@ -63,6 +63,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * Nov 21, 2014 3845       bkowal      Use BLBroadcastSettingsBuilder
  * Feb 05, 2015 3743       bsteffen    Allow subclasses to override loading of available groups.
  * May 12, 2015 4248       rjpeter     Fix misspelling.
+ * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * </pre>
  * 
  * @author bkowal
@@ -82,11 +83,9 @@ public class BroadcastLiveDlg extends AbstractBMHDialog {
 
     protected Map<String, TransmitterGroup> transmitterGroupLookupMap;
 
-    public BroadcastLiveDlg(Map<AbstractBMHDialog, String> map,
-            Shell parentShell) {
-        super(map, DlgInfo.BROADCAST_LIVE.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public BroadcastLiveDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
+                | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override

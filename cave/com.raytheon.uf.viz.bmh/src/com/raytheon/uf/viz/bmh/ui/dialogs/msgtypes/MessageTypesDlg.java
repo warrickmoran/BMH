@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -83,7 +82,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Apr 02, 2015   4359     rferrel     Fix index exception in {@link #handleDeleteMessageType()}.
  * May 20, 2015   4490     bkowal      Display existing {@link MessageType} name in the rename dialog.
- * 
+ * Jun 05, 2015   4490     rjpeter     Updated constructor.
  * </pre>
  * 
  * @author lvenable
@@ -114,7 +113,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
     private final MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
 
     /** Set of existing AFOS Ids. */
-    private Set<String> existingAfosIds = new HashSet<String>();
+    private final Set<String> existingAfosIds = new HashSet<String>();
 
     /** Selected AFOS Id from the selected message type in the table. */
     private String selectedAfosId = null;
@@ -123,13 +122,11 @@ public class MessageTypesDlg extends AbstractBMHDialog {
      * Constructor.
      * 
      * @param parentShell
-     * @param dlgMap
      */
-    public MessageTypesDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.MESSAGE_TYPE.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public MessageTypesDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+        setText(DlgInfo.MESSAGE_TYPE.getTitle());
     }
 
     @Override
@@ -158,8 +155,6 @@ public class MessageTypesDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText(DlgInfo.MESSAGE_TYPE.getTitle());
-
         retrieveDataFromDB();
 
         createMessageTypesGroup();

@@ -88,6 +88,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 24, 2015    4394    bkowal      Eliminated MaintenanceMessageResponse.
  * Apr 29, 2015    4394    bkowal      Include the transmitter group in the
  *                                     {@link MaintenanceMessageRequest}.
+ * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * </pre>
  * 
  * @author mpduff
@@ -149,14 +150,10 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
      * 
      * @param parentShell
      *            The parent shell
-     * @param dlgMap
-     *            Map of open dialogs
      */
-    public TransmitterAlignmentDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.TRANSMITTER_ALIGNMENT.getTitle(), parentShell,
-                SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
-                        | CAVE.DO_NOT_BLOCK);
+    public TransmitterAlignmentDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
+                | CAVE.DO_NOT_BLOCK);
         setText(DlgInfo.TRANSMITTER_ALIGNMENT.getTitle());
     }
 

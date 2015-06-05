@@ -108,7 +108,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 16, 2015  4244      bsteffen     Use only selected areas/same tone transmitters.
  * Apr 07, 2015  4304      rferrel      {@link #verifyMsgRebroadcast()} no longer modifies {@link #sameTransmitters}.
  * Apr 27, 2015  4397      bkowal       Set the {@link InputMessage} update date.
- * 
+ * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * </pre>
  * 
  * @author lvenable
@@ -174,14 +174,11 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
      * 
      * @param parentShell
      *            Parent shell.
-     * @param dlgMap
-     *            Map to add this dialog to for closing purposes.
      */
-    public EmergencyOverrideDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.EMERGENCY_OVERRIDE.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public EmergencyOverrideDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
+                | CAVE.PERSPECTIVE_INDEPENDENT);
+        setText(DlgInfo.EMERGENCY_OVERRIDE.getTitle());
     }
 
     @Override
@@ -200,8 +197,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText(DlgInfo.EMERGENCY_OVERRIDE.getTitle());
-
         createMainControls();
     }
 
