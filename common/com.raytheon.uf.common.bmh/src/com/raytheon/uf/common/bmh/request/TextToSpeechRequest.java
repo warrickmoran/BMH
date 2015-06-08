@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Feb 19, 2015  4142     bkowal      Added {@link #DEFAULT_VOICE}.
  * May 20, 2015  4490     bkowal      Made {@link #DEFAULT_VOICE} private.
+ * Jun 08, 2015  4403     bkowal      Added {@link #transform}.
  * 
  * </pre>
  * 
@@ -52,7 +53,7 @@ public class TextToSpeechRequest extends AbstractBMHServerRequest {
      * Phoneme/Phrase to speak
      */
     @DynamicSerializeElement
-    private String phoneme;
+    private String content;
 
     /**
      * The voice id
@@ -79,18 +80,25 @@ public class TextToSpeechRequest extends AbstractBMHServerRequest {
     private int timeout;
 
     /**
+     * boolean variable indicating whether or not transformation rules should be
+     * applied to the {@link #content} prior to the synthesis.
+     */
+    @DynamicSerializeElement
+    private boolean transform = false;
+
+    /**
      * @return the phoneme
      */
-    public String getPhoneme() {
-        return phoneme;
+    public String getContent() {
+        return content;
     }
 
     /**
-     * @param phoneme
+     * @param content
      *            the phoneme to set
      */
-    public void setPhoneme(String phoneme) {
-        this.phoneme = phoneme;
+    public void setContent(String content) {
+        this.content = content;
     }
 
     /**
@@ -144,5 +152,13 @@ public class TextToSpeechRequest extends AbstractBMHServerRequest {
 
     public void setTimeout(int timeout) {
         this.timeout = timeout;
+    }
+
+    public boolean isTransform() {
+        return transform;
+    }
+
+    public void setTransform(boolean transform) {
+        this.transform = transform;
     }
 }

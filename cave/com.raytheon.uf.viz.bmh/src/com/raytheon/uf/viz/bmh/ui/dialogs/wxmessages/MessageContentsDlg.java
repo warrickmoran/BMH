@@ -49,6 +49,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -87,6 +88,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 11, 2015  #3908     bkowal       Removed the "Edit" button.
  * Feb 16, 2015  #4118     bkowal       Added an option to import audio.
  * Apr 29, 2015  #4551     bkowal       Added {@link #voiceNumber}.
+ * Jun 08, 2015  #4403     bkowal       Added {@link #language}.
  * 
  * </pre>
  * 
@@ -145,6 +147,8 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
      */
     private final int voiceNumber;
 
+    private final Language language;
+
     /**
      * Constructor.
      * 
@@ -154,7 +158,8 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
     public MessageContentsDlg(Shell parentShell,
             List<InputMessageAudioData> audioDataList,
             final String existingMessageContent,
-            final CONTENT_TYPE contentType, final int voiceNumber) {
+            final CONTENT_TYPE contentType, final int voiceNumber,
+            final Language language) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL
                 | SWT.RESIZE, CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
@@ -162,6 +167,7 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         this.originalMessageContent = existingMessageContent;
         this.contentType = contentType;
         this.voiceNumber = voiceNumber;
+        this.language = language;
     }
 
     @Override
@@ -248,7 +254,7 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         stopBtn.setToolTipText("Stop message playback");
 
         delegate = new TextAudioPlaybackDelegate(this.getShell(), this.playBtn,
-                stopBtn, this.recordImages, this.voiceNumber);
+                stopBtn, this.recordImages, this.voiceNumber, this.language);
 
         /*
          * add text change listener and set the text now that the play button

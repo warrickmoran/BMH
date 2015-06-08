@@ -108,6 +108,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * May 19, 2015   4429      rferrel     Added {@link #generateTraceId(Class)}.
  * May 20, 2015   4490      bkowal      Cleanup. A {@link Language} is now required to synthesize text.
  * May 28, 2015   4429      rjpeter     Add traceId to all requests sent to edex.
+ * Jun 08, 2015   4403      bkowal      Added {@link #textToAudio(String, int, boolean)}.
  * </pre>
  * 
  * @author mpduff
@@ -183,10 +184,31 @@ public class BmhUtils {
      *             if audio generation fails
      */
     public static byte[] textToAudio(String text, int voice) throws Exception {
+        return textToAudio(text, voice, false);
+    }
+
+    /**
+     * Convert the provided text to audio and return the audio
+     * 
+     * @param text
+     *            the text to convert
+     * @param voice
+     *            the identifier of the voice to use when generating the audio.
+     * @param transform
+     *            indicates whether or not transformation rules should be
+     *            applied to the provided text prior to synthesis. Rules will be
+     *            applied when true.
+     * @return the generated audio
+     * @throws Exception
+     *             if audio generation fails
+     */
+    public static byte[] textToAudio(String text, int voice, boolean transform)
+            throws Exception {
         TextToSpeechRequest req = new TextToSpeechRequest();
-        req.setPhoneme(text);
+        req.setContent(text);
         req.setVoice(voice);
         req.setTimeout(10000);
+        req.setTransform(transform);
         req = (TextToSpeechRequest) BmhUtils.sendRequest(req);
         if (req.getByteData() == null) {
             throw new Exception("Failed to generate audio: " + req.getStatus());

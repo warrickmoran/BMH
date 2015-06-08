@@ -30,8 +30,15 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.VoiceConfigNotification;
+import com.raytheon.uf.common.jms.notification.INotificationObserver;
+import com.raytheon.uf.common.jms.notification.NotificationException;
+import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
@@ -42,6 +49,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackThread;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.IPlaybackCompleteListener;
 import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 
 /**
  * Handles synthesis and audio playback management of text entered into the
@@ -60,6 +68,8 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                     playback concludes.
  * Apr 29, 2015 4451       bkowal      Synthesize the message text using the Voice
  *                                     associated with the selected message type.
+ * Jun 08, 2015 4403       bkowal      Specify that the synthesized text must be transformed. Ensure
+ *                                     that the text is re-synthesized after dictionary changes.
  * 
  * </pre>
  * 
@@ -68,7 +78,7 @@ import com.raytheon.uf.viz.core.VizApp;
  */
 
 public class TextAudioPlaybackDelegate implements ModifyListener,
-        IPlaybackCompleteListener {
+        IPlaybackCompleteListener, INotificationObserver {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(TextAudioPlaybackDelegate.class);
 
@@ -128,6 +138,10 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
 
     private final int voiceNumber;
 
+    private final Language language;
+
+    private final Object synthesisLock = new Object();
+
     /**
      * Constructor
      * 
@@ -146,7 +160,8 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
      */
     public TextAudioPlaybackDelegate(final Shell shell,
             final Button startPauseButton, final Button stopButton,
-            RecordImages recordImages, final int voiceNumber) {
+            RecordImages recordImages, final int voiceNumber,
+            final Language language) {
         this.shell = shell;
 
         this.playPauseButton = startPauseButton;
@@ -156,6 +171,8 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
         this.recordImages = recordImages;
 
         this.voiceNumber = voiceNumber;
+
+        this.language = language;
 
         this.playText = this.playPauseButton.getText();
         this.playTooltip = this.playPauseButton.getToolTipText();
@@ -182,6 +199,9 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
                 handleStopAction();
             }
         });
+
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
     }
 
     /**
@@ -193,6 +213,9 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
         if (this.playbackThread != null) {
             this.playbackThread.halt();
         }
+
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
     }
 
     /**
@@ -216,14 +239,16 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
      */
     private void handlePlay() {
         /* Determine if audio needs to be synthesized */
-        if (this.encodedText == null
-                || this.encodedText.equals(this.inputText) == false) {
-            try {
-                this.synthesizeAudio();
-            } catch (Exception e) {
-                // audio synthesis has failed.
-                statusHandler.error("Failed to play the audio!", e);
-                return;
+        synchronized (this.synthesisLock) {
+            if (this.encodedText == null
+                    || this.encodedText.equals(this.inputText) == false) {
+                try {
+                    this.synthesizeAudio();
+                } catch (Exception e) {
+                    // audio synthesis has failed.
+                    statusHandler.error("Failed to play the audio!", e);
+                    return;
+                }
             }
         }
 
@@ -325,7 +350,8 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
                 monitor.beginTask("Generating Audio ...",
                         IProgressMonitor.UNKNOWN);
                 try {
-                    textAudio = BmhUtils.textToAudio(inputText, voiceNumber);
+                    textAudio = BmhUtils.textToAudio(inputText, voiceNumber,
+                            true);
                 } catch (Exception e) {
                     pMonitorSynException = e;
                 }
@@ -374,5 +400,46 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
                 executeStopTransition();
             }
         });
+    }
+
+    @Override
+    public void notificationArrived(NotificationMessage[] messages) {
+        if (this.disposing) {
+            return;
+        }
+
+        for (NotificationMessage message : messages) {
+            try {
+                Object o = message.getMessagePayload();
+                if (o instanceof VoiceConfigNotification) {
+                    VoiceConfigNotification notification = (VoiceConfigNotification) o;
+                    if (this.voiceNumber == notification.getId()) {
+                        synchronized (this.synthesisLock) {
+                            /*
+                             * Ensure that audio is re-generated because the
+                             * dictionary associated with the selected voice may
+                             * have changed.
+                             */
+                            this.encodedText = null;
+                        }
+                    }
+                } else if (o instanceof NationalDictionaryConfigNotification) {
+                    NationalDictionaryConfigNotification notification = (NationalDictionaryConfigNotification) o;
+                    if (notification.getLanguage() == this.language) {
+                        synchronized (this.synthesisLock) {
+                            /*
+                             * Ensure that audio is re-generated because the
+                             * national dictionary associated with the selected
+                             * language may have changed.
+                             */
+                            this.encodedText = null;
+                        }
+                    }
+                }
+            } catch (NotificationException e) {
+                statusHandler.error("Failed to process notification: "
+                        + message.getClass().getName() + ".", e);
+            }
+        }
     }
 }

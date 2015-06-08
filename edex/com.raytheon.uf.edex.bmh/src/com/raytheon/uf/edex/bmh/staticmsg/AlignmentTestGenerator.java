@@ -51,6 +51,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * Oct 27, 2014 3630       bkowal      Initial creation
  * Dec 12, 2014 3603       bsteffen    Move MAINTENANCE_DATA_DIRECTORY to BMHConstants
  * Mar 23, 2015 4299       bkowal      Do not add padding to the alignment tones.
+ * Jun 08, 2015 4403       bkowal      Updated text content field in {@link TextToSpeechRequest}.
  * 
  * </pre>
  * 
@@ -164,7 +165,7 @@ public class AlignmentTestGenerator {
                     "Failed to generate the text maintenance audio!", e);
         }
         request.setTimeout(TTSSynthesisFactory.NO_TIMEOUT);
-        request.setPhoneme(TEXT);
+        request.setContent(TEXT);
 
         byte[] audio = null;
         try {

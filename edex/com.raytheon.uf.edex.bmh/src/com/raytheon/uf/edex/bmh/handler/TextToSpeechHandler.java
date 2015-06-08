@@ -19,12 +19,24 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import com.raytheon.uf.common.bmh.BMHVoice;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
+import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.notify.config.VoiceConfigNotification;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
+import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
+import com.raytheon.uf.common.bmh.schemas.ssml.SpeechRateFormatter;
+import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.tts.TTSManager;
 import com.raytheon.uf.edex.bmh.tts.TTSReturn;
 import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
+import com.raytheon.uf.edex.bmh.xformer.MessageTransformer;
+import com.raytheon.uf.edex.bmh.xformer.data.ITextTransformation;
 
 /**
  * Handle the CAVE text to speech requests.
@@ -44,6 +56,8 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  *                                     in the request.
  * Oct 13, 2014    3413    rferrel     Implement User roles.
  * Oct 26, 2014    3759    bkowal      Update to support practice mode.
+ * Jun 08, 2015    4403    bkowal      Transform text prior to synthesis when the
+ *                                     associated flag has been set.
  * 
  * </pre>
  * 
@@ -55,23 +69,39 @@ public class TextToSpeechHandler extends
         AbstractBMHServerRequestHandler<TextToSpeechRequest> {
     private final TTSManager ttsManager;
 
-    private TTSManager practiceTTSManager;
+    private final TTSManager practiceTTSManager;
 
-    public TextToSpeechHandler(TTSManager ttsManager) {
+    private final MessageTransformer messageTransformer;
+
+    private final MessageTransformer practiceMessageTransformer;
+
+    private final ConcurrentMap<Integer, TtsVoice> voiceIdentifierMap = new ConcurrentHashMap<>(
+            BMHVoice.values().length, 1.0f);
+
+    private final ConcurrentMap<Integer, TtsVoice> practiceVoiceIdentifierMap = new ConcurrentHashMap<>(
+            BMHVoice.values().length, 1.0f);
+
+    public TextToSpeechHandler(TTSManager ttsManager,
+            TTSManager practiceTTSManager,
+            MessageTransformer messageTransformer,
+            MessageTransformer practiceMessageTransformer) {
         this.ttsManager = ttsManager;
+        this.practiceTTSManager = practiceTTSManager;
+        this.messageTransformer = messageTransformer;
+        this.practiceMessageTransformer = practiceMessageTransformer;
     }
 
     @Override
     public Object handleRequest(TextToSpeechRequest request) throws Exception {
-        TTSSynthesisFactory ttsSynthesisFactory = null;
-        // determine which synthesis factory to use based on request mode.
-        if (this.practiceTTSManager == null || request.isOperational()) {
-            ttsSynthesisFactory = this.ttsManager.getSynthesisFactory();
-        } else {
-            ttsSynthesisFactory = this.practiceTTSManager.getSynthesisFactory();
+        String content = request.getContent();
+        if (request.isTransform()) {
+            content = this.transformContent(request);
         }
 
-        TTSReturn output = ttsSynthesisFactory.synthesize(request.getPhoneme(),
+        final TTSSynthesisFactory ttsSynthesisFactory = (request
+                .isOperational()) ? this.ttsManager.getSynthesisFactory()
+                : this.practiceTTSManager.getSynthesisFactory();
+        TTSReturn output = ttsSynthesisFactory.synthesize(content,
                 request.getVoice(), TTS_FORMAT.TTS_FORMAT_MULAW,
                 request.getTimeout());
         TTS_RETURN_VALUE status = output.getReturnValue();
@@ -86,8 +116,59 @@ public class TextToSpeechHandler extends
         return request;
     }
 
-    public TTSManager setPracticeTTSManager(TTSManager practiceTTSManager) {
-        this.practiceTTSManager = practiceTTSManager;
-        return practiceTTSManager;
+    private String transformContent(TextToSpeechRequest request)
+            throws Exception {
+        /*
+         * Acquire the associated {@link TtsVoice}.
+         */
+        TtsVoice voice = this.lookupVoice(request.getVoice(),
+                request.isOperational());
+        if (voice == null) {
+            throw new Exception(
+                    "Failed to retrieve the voice associated with id: "
+                            + request.getVoice() + ".");
+        }
+
+        final MessageTransformer messageTransformer = (request.isOperational()) ? this.messageTransformer
+                : this.practiceMessageTransformer;
+        List<ITextTransformation> textTransformations = messageTransformer
+                .mergeDictionaries(voice.getLanguage(), null,
+                        voice.getDictionary());
+        SSMLDocument ssmlDocument = this.messageTransformer
+                .applyTransformations(this.messageTransformer
+                        .formatText(request.getContent()), SpeechRateFormatter
+                        .formatSpeechRate(SpeechRateFormatter.DEFAULT_RATE),
+                        voice.getLanguage(), textTransformations);
+        return ssmlDocument.toSSML();
+    }
+
+    private TtsVoice lookupVoice(final int id, boolean operational) {
+        ConcurrentMap<Integer, TtsVoice> voiceIdMap = (operational) ? this.voiceIdentifierMap
+                : this.practiceVoiceIdentifierMap;
+
+        /*
+         * The {@link TtsVoice} is already available in the cache.
+         */
+        if (voiceIdMap.containsKey(id)) {
+            return voiceIdMap.get(id);
+        }
+
+        /*
+         * Attempt to retrieve the {@link TtsVoice} from the database.
+         */
+        final TtsVoiceDao dao = new TtsVoiceDao(operational);
+        TtsVoice voice = dao.getByID(id);
+        if (voice != null) {
+            voiceIdMap.put(id, voice);
+        }
+        return voice;
+    }
+
+    public void voiceUpdated(VoiceConfigNotification notification) {
+        this.voiceIdentifierMap.remove(notification.getId());
+    }
+
+    public void voiceUpdatedPractice(VoiceConfigNotification notification) {
+        this.practiceVoiceIdentifierMap.remove(notification.getId());
     }
 }
