@@ -23,8 +23,11 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.Charset;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -41,7 +44,6 @@ import java.util.SortedSet;
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
 
-import org.apache.commons.io.FileUtils;
 import org.springframework.util.CollectionUtils;
 
 import com.raytheon.edex.site.SiteUtil;
@@ -192,6 +194,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * May 21, 2015  4429     rjpeter     Added additional logging methods.
  * May 28, 2015  4429     rjpeter     Add ITraceable.
  * Jun 01, 2015  4490     bkowal      Use the new {@link BMH_CATEGORY#SAME_AREA_TRUNCATION}.
+ * Jun 08, 2015  4490     bkowal      Walk the file tree that will be deleted to handle the case
+ *                                    when the dac transmit deletes files before we can reach them.
  * </pre>
  * 
  * @author bsteffen
@@ -297,7 +301,29 @@ public class PlaylistManager implements IContextStateProcessor {
                 }
 
                 try {
-                    FileUtils.deleteDirectory(groupPlaylistPath.toFile());
+                    Files.walkFileTree(groupPlaylistPath,
+                            new SimpleFileVisitor<Path>() {
+                                @Override
+                                public FileVisitResult visitFile(Path file,
+                                        BasicFileAttributes attrs)
+                                        throws IOException {
+                                    Files.deleteIfExists(file);
+                                    return FileVisitResult.CONTINUE;
+                                }
+
+                                @Override
+                                public FileVisitResult postVisitDirectory(
+                                        Path dir, IOException e)
+                                        throws IOException {
+                                    if (e == null) {
+                                        Files.deleteIfExists(dir);
+                                        return FileVisitResult.CONTINUE;
+                                    } else {
+                                        // directory iteration failed
+                                        throw e;
+                                    }
+                                }
+                            });
 
                     StringBuilder sb = new StringBuilder(
                             "Successfully removed the playlist file(s): ");
