@@ -173,6 +173,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 08, 2015 4429     rferrel     {@link #handleSubmitAction()} now sets traceId for the request.
  * May 28, 2015 4429     rjpeter     Fix misspelling.
  * Jun 05, 2015 4490     rjpeter     Updated constructor.
+ * Jun 08, 2015 4403     bkowal      Specify the {@link Language} when constructing the
+ *                                   {@link MessageContentsDlg}.
  * </pre>
  * 
  * @author lvenable
@@ -888,7 +890,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                 MessageContentsDlg mcd = new MessageContentsDlg(shell, content
                         .getAudioDataList(), content.getText(), content
                         .getContentType(), selectedMessageType.getVoice()
-                        .getVoiceNumber());
+                        .getVoiceNumber(), selectedMessageType.getVoice()
+                        .getLanguage());
                 mcd.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {

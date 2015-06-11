@@ -26,11 +26,6 @@
         <property name="bmhStatusDestination" ref="practice_bmhStatusDestination" />
 	</bean>
 	
-	<bean factory-bean="ttsHandler" factory-method="setPracticeTTSManager"
-		depends-on="ttsHandler">
-		<constructor-arg ref="practice_ttsManager" />
-	</bean>
-	
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
 		<constructor-arg ref="practice_bmh-tts" />
 		<constructor-arg ref="practice_ttsManager" />

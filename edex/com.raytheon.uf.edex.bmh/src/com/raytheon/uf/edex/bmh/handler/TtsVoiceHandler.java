@@ -23,8 +23,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.notify.config.VoiceConfigNotification;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
 import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
+import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
 
@@ -46,6 +48,8 @@ import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
  * Jan 13, 2015  3809     bkowal      Added {@link #getIdentifiersForLanguage(TtsVoiceRequest)}.
  * Mar 03, 2015  4175     bkowal      Support voice registration.
  * Mar 27, 2015  4315     rferrel     Added {@link #availableLanguage(TtsVoiceRequest)}.
+ * Jun 08, 2015  4403     bkowal      Create and disseminate a {@link VoiceConfigNotification}
+ *                                    whenever a {@link TtsVoice} is altered.
  * 
  * </pre>
  * 
@@ -75,8 +79,8 @@ public class TtsVoiceHandler extends
      */
     @Override
     public Object handleRequest(TtsVoiceRequest request) throws Exception {
+        VoiceConfigNotification notification = null;
         TtsVoiceResponse ttsVoiceResponse = new TtsVoiceResponse();
-
         switch (request.getAction()) {
         case AllVoices:
             ttsVoiceResponse = getVoices(request);
@@ -92,6 +96,8 @@ public class TtsVoiceHandler extends
             break;
         case UpdateVoice:
             ttsVoiceResponse = updateVoice(request);
+            notification = new VoiceConfigNotification(request.getVoice(),
+                    request);
             break;
         case RegisterVoice:
             ttsVoiceResponse = registerVoice(request);
@@ -105,6 +111,8 @@ public class TtsVoiceHandler extends
                     + request.getAction());
         }
 
+        BmhMessageProducer.sendConfigMessage(notification,
+                request.isOperational());
         return ttsVoiceResponse;
     }
 
