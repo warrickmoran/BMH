@@ -52,6 +52,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * Dec 12, 2014 3603       bsteffen    Move MAINTENANCE_DATA_DIRECTORY to BMHConstants
  * Mar 23, 2015 4299       bkowal      Do not add padding to the alignment tones.
  * Jun 08, 2015 4403       bkowal      Updated text content field in {@link TextToSpeechRequest}.
+ * Jun 11, 2015 4490       bkowal      Initialized by Spring.
  * 
  * </pre>
  * 
@@ -79,6 +80,8 @@ public class AlignmentTestGenerator {
     private static final double ALERT_DURATION = 30.0;
 
     private static final String SAME = "ZCZC-WXR-IPW-031071-031183-031015-031017-031089-031115-031009-031000-031149-031103+0600-3311401-KOAX/NWS-";
+
+    private Path audioMaintenancePath;
 
     private Path maintenanceTextPath;
 
@@ -108,22 +111,13 @@ public class AlignmentTestGenerator {
         this.bmhDataDirectory = bmhDataDirectory;
     }
 
-    public void initialize() throws BMHConfigurationException {
+    public void initialize() {
         this.validateDaos();
 
-        Path audioMaintenancePath = Paths.get(this.bmhDataDirectory,
+        audioMaintenancePath = Paths.get(this.bmhDataDirectory,
                 BMHConstants.AUDIO_DATA_DIRECTORY,
                 BMHConstants.MAINTENANCE_DATA_DIRECTORY);
 
-        if (Files.exists(audioMaintenancePath) == false) {
-            try {
-                Files.createDirectories(audioMaintenancePath);
-            } catch (IOException e) {
-                throw new BMHConfigurationException(
-                        "Failed to create the root audio maintenance directory for pre-synthesized maintenance messages: "
-                                + audioMaintenancePath.toString(), e);
-            }
-        }
         final String audioMaintenanceDirectory = audioMaintenancePath
                 .toString();
         statusHandler.info("BMH Audio Maintenance Directory is: "
@@ -137,10 +131,20 @@ public class AlignmentTestGenerator {
                 SAME_ULAW_NAME);
     }
 
-    public void process() throws StaticGenerationException {
+    public void process() throws StaticGenerationException,
+            BMHConfigurationException {
         /*
          * Generate any maintenance audio that does not exist.
          */
+        if (Files.exists(audioMaintenancePath) == false) {
+            try {
+                Files.createDirectories(audioMaintenancePath);
+            } catch (IOException e) {
+                throw new BMHConfigurationException(
+                        "Failed to create the root audio maintenance directory for pre-synthesized maintenance messages: "
+                                + audioMaintenancePath.toString(), e);
+            }
+        }
 
         if (Files.exists(maintenanceTextPath) == false) {
             this.generateText();

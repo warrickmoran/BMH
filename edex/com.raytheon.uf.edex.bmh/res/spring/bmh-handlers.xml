@@ -171,6 +171,7 @@
 	<bean id="maintenanceMessageHandler" 
 		class="com.raytheon.uf.edex.bmh.handler.MaintenanceMessageHandler">
 		<constructor-arg ref="alignmentTestGenerator" />
+		<constructor-arg ref="practice_alignmentTestGenerator" />
 	</bean>
     <bean factory-bean="handlerRegistry" factory-method="register">
         <constructor-arg

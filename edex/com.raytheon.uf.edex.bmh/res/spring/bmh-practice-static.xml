@@ -11,7 +11,8 @@
 	</bean>
 	
 	<bean id="practice_alignmentTestGenerator"
-		class="com.raytheon.uf.edex.bmh.staticmsg.AlignmentTestGenerator">
+		class="com.raytheon.uf.edex.bmh.staticmsg.AlignmentTestGenerator" 
+		init-method="initialize">
 		<constructor-arg ref="ttsHandler" />
 		<constructor-arg value="${BMH_DATA}/practice" />
 		<property name="ttsVoiceDao" ref="practice_ttsVoiceDao" />
@@ -30,11 +31,6 @@
 		<property name="messageTypeDao" ref="practice_messageTypeDao" />
 		<property name="inputMessageDao" ref="practice_inputMessageDao" />
 		<property name="staticMessageTypeDao" ref="practice_staticMessageTypeDao" />
-	</bean>
-	
-	<bean factory-bean="maintenanceMessageHandler" factory-method="setPracticeAlignmentTestGenerator"
-		depends-on="maintenanceMessageHandler">
-		<constructor-arg ref="practice_alignmentTestGenerator" />
 	</bean>
 
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">

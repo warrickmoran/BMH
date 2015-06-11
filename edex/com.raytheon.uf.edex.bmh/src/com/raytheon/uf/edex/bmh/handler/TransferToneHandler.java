@@ -19,18 +19,17 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
-import java.io.IOException;
-
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
 import com.raytheon.uf.common.bmh.request.TransferToneRequest;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
-import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
+import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
+import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 
 /**
  * 
@@ -48,6 +47,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
  * Apr 24, 2015  4394     bkowal       Updated to use {@link DacMaintenanceMessage}.
  * Apr 29, 2015  4394     bkowal       Include the Transmitter Group Name in the
  *                                     {@link DacMaintenanceMessage}.
+ * Jun 11, 2015  4490     bkowal       Maintenance traceability improvements.
  * </pre>
  * 
  * @author bsteffen
@@ -56,13 +56,24 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterDao;
 public class TransferToneHandler extends
         AbstractBMHServerRequestHandler<TransferToneRequest> {
 
+    private static final IBMHStatusHandler statusHandler = BMHStatusHandler
+            .getInstance(TransferToneHandler.class);
+
     private static final String TRANSMITTER_PRIMARY_ON = "TXP";
 
     private static final String TRANSMITTER_BACKUP_ON = "TXB";
 
     @Override
-    public Object handleRequest(TransferToneRequest request)
-            throws ToneGenerationException, IOException {
+    public Object handleRequest(TransferToneRequest request) throws Exception {
+        StringBuilder logMsg = new StringBuilder("traceId=");
+        logMsg.append(request.getTraceId()).append(": Handling ")
+                .append(request.getTxMode().name())
+                .append(" transfer tone request ");
+        if (request.isOperational() == false) {
+            logMsg.append("(PRACTICE) ");
+        }
+        logMsg.append("...");
+        statusHandler.info(logMsg.toString());
         TransmitterDao transmitterDao = new TransmitterDao(
                 request.isOperational());
         Transmitter transmitter = transmitterDao.getByID(request

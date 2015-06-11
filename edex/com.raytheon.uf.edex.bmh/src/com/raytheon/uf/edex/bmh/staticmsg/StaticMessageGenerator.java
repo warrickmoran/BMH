@@ -137,6 +137,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                     {@link BroadcastMsg} or are associated with failure.
  * May 20, 2015 4490       bkowal      Fixes for {@link TraceableId}.
  * May 28, 2015 4429       rjpeter     Add ITraceable.
+ * Jun 11, 2015 4490       bkowal      {@link AlignmentTestGenerator} is now initialized by Spring.
  * </pre>
  * 
  * @author bkowal
@@ -528,7 +529,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                             + " is not currently enabled. Generating / Verifying the existence of maintenance messages ...");
             try {
                 this.alignmentTestGenerator.process();
-            } catch (StaticGenerationException e) {
+            } catch (StaticGenerationException | BMHConfigurationException e) {
                 statusHandler.error(BMH_CATEGORY.STATIC_MSG_ERROR,
                         "Failed to generate the maintenance message audio.", e);
             }
@@ -1115,17 +1116,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
         this.validateDaos();
 
         try {
-            this.alignmentTestGenerator.initialize();
-        } catch (BMHConfigurationException e) {
-            statusHandler.fatal(BMH_CATEGORY.TTS_CONFIGURATION_ERROR,
-                    "Alignment Test Generator initialization failed!", e);
-            /* Halt the context startup. */
-            throw new RuntimeException(
-                    "Alignment Test Generator initialization failed!");
-        }
-        try {
             this.alignmentTestGenerator.process();
-        } catch (StaticGenerationException e) {
+        } catch (StaticGenerationException | BMHConfigurationException e) {
             statusHandler.fatal(BMH_CATEGORY.STATIC_MSG_ERROR,
                     "Maintenance message generation has failed!", e);
             /* Halt the context startup. */

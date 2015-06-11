@@ -76,6 +76,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  * Apr 29, 2015 4394       bkowal      Connect to the Comms Manager. Submit a
  *                                     {@link MaintenanceMessagePlayback} when playback begins.
  * May 13, 2015 4429       rferrel     Changes for traceId logging.
+ * Jun 11, 2015 4490       bkowal      Maintenance traceability improvements.
  * </pre>
  * 
  * @author bkowal
@@ -140,8 +141,17 @@ public class DacMaintenanceSession implements IDacSession,
          * Read the message file.
          */
         Path messagePath = this.config.getMessageFilePath();
-        message = JAXB.unmarshal(Files.newInputStream(messagePath),
-                DacMaintenanceMessage.class);
+        try {
+            message = JAXB.unmarshal(Files.newInputStream(messagePath),
+                    DacMaintenanceMessage.class);
+        } catch (Exception e) {
+            /*
+             * Specify the file that could not be loaded.
+             */
+            logger.error("Failed to unmarshal maintenance message file: {}.",
+                    messagePath.toString());
+            throw e;
+        }
 
         message.setTraceId(messagePath.getFileName().toString());
 
