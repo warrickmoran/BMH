@@ -52,6 +52,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -175,6 +176,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 05, 2015 4490     rjpeter     Updated constructor.
  * Jun 08, 2015 4403     bkowal      Specify the {@link Language} when constructing the
  *                                   {@link MessageContentsDlg}.
+ * Jun 12, 2015 4482     rjpeter     Fixed NPE.
  * </pre>
  * 
  * @author lvenable
@@ -1654,6 +1656,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
      */
     private Calendar updateCalFromDTF(Calendar currentCal,
             Map<Integer, Integer> fieldValuesMap) {
+        if (currentCal == null) {
+            currentCal = TimeUtil.newGmtCalendar();
+        }
+
         for (Integer calField : fieldValuesMap.keySet()) {
             currentCal.set(calField, fieldValuesMap.get(calField));
         }

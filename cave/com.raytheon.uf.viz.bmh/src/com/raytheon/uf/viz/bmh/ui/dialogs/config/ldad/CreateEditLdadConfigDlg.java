@@ -46,6 +46,7 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
@@ -86,7 +87,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 19, 2015    4142    bkowal      It is now possible to associate a rate of speech
  *                                     with a {@link LdadConfig}.
  * Feb 24, 2015    4157    bkowal      Supply a {@link Language} to the {@link RateOfSpeechComp}.
- * 
+ * Jun 12, 2015    4482    rjpeter     Added DO_NOT_BLOCK.
  * </pre>
  * 
  * @author mpduff
@@ -206,7 +207,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
      */
     public CreateEditLdadConfigDlg(Shell parentShell, LdadConfig ldadConfig) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.ldadConfig = ldadConfig;
         setText(this.ldadConfig == null ? CREATE_TITLE : EDIT_TITLE);
     }

@@ -89,6 +89,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     the associated Transmitter Language.
  * Apr 28, 2015 4248       bkowal      Provide the {@link Language} to the
  *                                     {@link CreateEditStaticMsgTypeDialog}.
+ * Jun 12, 2015 4482       rjpeter     Added DO_NOT_BLOCK.
  * </pre>
  * 
  * @author bkowal
@@ -184,7 +185,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             List<Language> unassignedLanguages,
             TransmitterGroup transmitterGroup, ProgramSummary selectedProgram) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.unassignedLanguages = unassignedLanguages;
         this.transmitterGroup = transmitterGroup;
         this.selectedProgram = selectedProgram;
@@ -197,7 +198,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             TransmitterLanguage transmitterLanguage,
             TransmitterGroup transmitterGroup, ProgramSummary selectedProgram) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.transmitterLanguage = transmitterLanguage;
         this.unassignedLanguages = Collections.emptyList();
         this.transmitterGroup = transmitterGroup;

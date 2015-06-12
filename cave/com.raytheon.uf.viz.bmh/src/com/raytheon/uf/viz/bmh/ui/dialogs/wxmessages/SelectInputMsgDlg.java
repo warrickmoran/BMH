@@ -89,7 +89,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      static message types.
  * Feb 12, 2015   4113      bkowal      Dialog will now return a {@link InputMessageSequence}.
  * May 20, 2015   4490      bkowal      Filter out input messages associated with demo message types.
- * 
+ * Jun 12, 2015   4482      rjpeter     Fixed NPE.
  * </pre>
  * 
  * @author lvenable
@@ -117,7 +117,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
     private List<InputMessage> filteredInputMessages = new ArrayList<>();
 
     /** Date format. */
-    private SimpleDateFormat dateFmt = new SimpleDateFormat(
+    private final SimpleDateFormat dateFmt = new SimpleDateFormat(
             "yyyy-MM-dd HH:mm:ss");
 
     /**
@@ -441,7 +441,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
              * so they must be filtered using inspection of the afos id.
              */
             if (staticAfosIds.contains(afosId)
-                    || (afosId.length() >= 6 && SAMEToneTextBuilder.DEMO_EVENT
+                    || (afosId != null && afosId.length() >= 6 && SAMEToneTextBuilder.DEMO_EVENT
                             .equals(afosId.substring(3, 6)))) {
                 it.remove();
             }

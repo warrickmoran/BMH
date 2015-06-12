@@ -87,7 +87,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     of the Message Type.
  * Mar 05, 2015    4222     bkowal     Handle messages that never expire.
  * Mar 10, 2015    4256     rferrel    Make message text read only.
- * 
+ * Jun 12, 2015    4482     rjpeter    Added DO_NOT_BLOCK.
  * </pre>
  * 
  * @author mpduff
@@ -135,7 +135,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
     public MessageDetailsDlg(Shell parent, MessageType mType,
             BroadcastMsg broadcastMsg) {
         super(parent, SWT.DIALOG_TRIM, CAVE.INDEPENDENT_SHELL
-                | CAVE.PERSPECTIVE_INDEPENDENT);
+                | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.messageType = mType;
         this.broadcastMsg = broadcastMsg;
         setText("Message Details/Information");

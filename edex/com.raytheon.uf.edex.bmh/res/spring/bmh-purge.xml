@@ -19,19 +19,41 @@
     <constructor-arg value="false" />
   </bean>
 
-  <camelContext id="bmhPurgeRoutes" xmlns="http://camel.apache.org/schema/spring"
+  <bean id="edexPurgeLogs" class="com.raytheon.uf.edex.purgesrv.PurgeLogs">
+    <property name="logDirectory" value="${edex.home}/logs" />
+    <property name="uncompressedDays" value="${bmh.purge.log.uncompressed.days}" />
+    <property name="compressedDays" value="${bmh.purge.log.compressed.days}" />
+  </bean>
+
+  <bean id="bmhPurgeLogs" class="com.raytheon.uf.edex.purgesrv.PurgeLogs">
+    <property name="logDirectory" value="${BMH_HOME}/logs" />
+    <property name="uncompressedDays" value="${bmh.purge.log.uncompressed.days}" />
+    <property name="compressedDays" value="${bmh.purge.log.compressed.days}" />
+  </bean>
+
+  <camelContext id="bmhClusteredPurgeRoutes" xmlns="http://camel.apache.org/schema/spring"
     errorHandlerRef="errorHandler">
 
-    <route id="bmhTimesPurge">
-      <from uri="timer://purgeInterval?fixedRate=true&amp;period=24h" />
+    <route id="bmhMessagePurge">
+      <from uri="timer://messagePurgeInterval?fixedRate=true&amp;period=24h" />
       <bean ref="bmhMessagePurger" method="purge"/>
       <bean ref="practice_bmhMessagePurger" method="purge"/>
     </route>
 
   </camelContext>
 
+  <camelContext id="bmhPurgeRoutes" xmlns="http://camel.apache.org/schema/spring"
+    errorHandlerRef="errorHandler">
+
+    <route id="bmhLogPurge">
+      <from uri="timer://logPurgeInterval?fixedRate=true&amp;period=24h" />
+      <bean ref="edexPurgeLogs" method="purge"/>
+      <bean ref="bmhPurgeLogs" method="purge"/>
+    </route>
+
+  </camelContext>
 
   <bean factory-bean="contextManager" factory-method="registerClusteredContext">
-    <constructor-arg ref="bmhPurgeRoutes" />
+    <constructor-arg ref="bmhClusteredPurgeRoutes" />
  </bean>
 </beans>

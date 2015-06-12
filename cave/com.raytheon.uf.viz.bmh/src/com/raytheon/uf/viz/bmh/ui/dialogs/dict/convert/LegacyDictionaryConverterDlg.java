@@ -91,7 +91,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     "No" on the unsaved word confirmation dialog.
  * Mar 16, 2015     4283   bkowal      Use substitution in the place of phoneme labels.
  * May 20, 2015     4490   bkowal      Specify {@link Language} when synthesizing text.
- * 
+ * Jun 12, 2015     4482   rjpeter     Added DO_NOT_BLOCK.
  * </pre>
  * 
  * @author mpduff
@@ -200,7 +200,8 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
      *            Path to legacy dictionary file
      */
     public LegacyDictionaryConverterDlg(Shell parentShell, String dictionaryPath) {
-        super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT);
+        super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
+                | CAVE.DO_NOT_BLOCK);
         setText("Legacy Dictionary Converter");
 
         dictionaryFile = new File(dictionaryPath);

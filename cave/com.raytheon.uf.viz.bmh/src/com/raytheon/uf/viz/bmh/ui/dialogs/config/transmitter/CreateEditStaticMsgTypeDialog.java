@@ -42,8 +42,8 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
-import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -62,7 +62,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     confirm message alterations.
  * May 28, 2015 4490       bkowal      Use a proxy {@link StaticMessageType} for validation to
  *                                     prevent pass-by-reference overrides.
- * 
+ * Jun 12, 2015 4482       rjpeter     Added DO_NOT_BLOCK.
  * </pre>
  * 
  * @author bkowal
@@ -82,7 +82,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
 
     private final Language language;
 
-    private StaticMessageType staticMessageType;
+    private final StaticMessageType staticMessageType;
 
     private Label txtMsg1Label;
 
@@ -97,7 +97,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
     public CreateEditStaticMsgTypeDialog(Shell parentShell,
             StaticMessageType staticMessageType, final Language language) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.staticMessageType = staticMessageType;
         this.language = language;
         this.setText(EDIT_TITLE);
@@ -106,7 +106,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
     public CreateEditStaticMsgTypeDialog(Shell parentShell,
             MessageType messageType, final Language language) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.staticMessageType = new StaticMessageType();
         this.staticMessageType.setMsgTypeSummary(messageType.getSummary());
         this.staticMessageType.setPeriodicity(messageType.getPeriodicity());

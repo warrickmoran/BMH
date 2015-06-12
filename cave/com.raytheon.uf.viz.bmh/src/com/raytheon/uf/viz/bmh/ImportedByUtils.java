@@ -35,7 +35,7 @@ import com.raytheon.uf.viz.core.VizApp;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 16, 2015 4118       bkowal      Initial creation
- * 
+ * Jun 12, 2015 4482       rjpeter     Fix NPE.
  * </pre>
  * 
  * @author bkowal
@@ -85,6 +85,6 @@ public class ImportedByUtils {
      * @return true, if the message is an imported by message; false, otherwise.
      */
     public static boolean isMessage(final String msg) {
-        return msg.trim().startsWith(IMPORTED_BY_PREFIX);
+        return msg != null && msg.trim().startsWith(IMPORTED_BY_PREFIX);
     }
 }

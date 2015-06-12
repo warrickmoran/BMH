@@ -36,7 +36,7 @@ import com.raytheon.uf.viz.core.VizApp;
  * Dec 09, 2014  #3909      bkowal      Initial creation
  * Feb 11, 2015  #3908      bkowal      Added '#' to the beginning
  *                                      of the standard Recording message.
- * 
+ * Jun 12, 2015  4482       rjpeter     Fix NPE.
  * </pre>
  * 
  * @author bkowal
@@ -79,6 +79,6 @@ public class RecordedByUtils {
      * @return true, if the message is a recorded by message; false, otherwise.
      */
     public static boolean isMessage(final String msg) {
-        return msg.trim().startsWith(RECORDED_BY_PREFIX);
+        return msg != null && msg.trim().startsWith(RECORDED_BY_PREFIX);
     }
 }
