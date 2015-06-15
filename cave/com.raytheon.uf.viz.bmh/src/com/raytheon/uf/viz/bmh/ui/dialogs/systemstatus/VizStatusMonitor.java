@@ -90,11 +90,16 @@ public class VizStatusMonitor extends SystemStatusMonitor implements
             DacHardwareStatusNotification dacStatus) {
         /*
          * Clear fields Viz doesn't use.
+         * 
+         * TODO: Consider redoing as a voltage specific message since everything
+         * else cleared. Would be more maintable.
          */
         dacStatus.setBufferSize(0);
         dacStatus.setOutputGain(null);
         dacStatus.setValidChannels(null);
         dacStatus.setVoiceStatus(null);
+        dacStatus.setRecoverablePacketErrors(0);
+        dacStatus.setUnrecoverablePacketErrors(0);
 
         /*
          * Viz status does not care about the true voltage of each dac power

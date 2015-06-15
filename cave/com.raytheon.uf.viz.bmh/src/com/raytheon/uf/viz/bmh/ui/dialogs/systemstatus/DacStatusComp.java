@@ -57,7 +57,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  *                                      the tooltip.
  * Jan 29, 2015  4029      bkowal       Simplified Dac Voltage reporting.
  * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
- * 
+ * Jun 15, 2015  4482      rjpeter      Fix resource leak.
  * </pre>
  * 
  * @author lvenable
@@ -66,12 +66,12 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
 public class DacStatusComp extends Composite {
 
     /** DAC information data class. */
-    private DacInfo dacInfo;
+    private final DacInfo dacInfo;
 
     /**
      * Status images - class that has the images used for displaying the status.
      */
-    private StatusImages statusImages;
+    private final StatusImages statusImages;
 
     /** DAC image. */
     private Image dacImage = null;
@@ -183,7 +183,6 @@ public class DacStatusComp extends Composite {
         dacComp.setLayoutData(gd);
 
         dacImgLbl = new Label(dacComp, SWT.NONE);
-        dacImgLbl.setImage(statusImages.getStatusImage(StatusImage.Dac));
         createToolTip(dacImgLbl);
 
         gd = new GridData();
