@@ -58,6 +58,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.phonemes.PhonemesEditorDlg;
  * Jan 28, 2015    4045    bkowal      Use the new {@link DictionaryManager} constructor.
  * Mar 17, 2015    4281    rferrel     Additional setSayAs and setBreak methods.
  * May 20, 2015    4490    bkowal      Added {@link #language}.
+ * Jun 11, 2015    4552    bkowal      Specify the {@link Language} when playing a phoneme.
  * 
  * </pre>
  * 
@@ -309,8 +310,7 @@ public class BuilderComposite extends Composite {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 PhonemesEditorDlg dlg = new PhonemesEditorDlg(getShell(), "",
-                        "Pronunciation", phonemeTextFld.getText(),
-                        new DictionaryManager());
+                        "Pronunciation", phonemeTextFld.getText(), language);
                 String phonemeText = (String) dlg.open();
                 if (phonemeText != null) {
                     phonemeTextFld.setText(phonemeText);
@@ -379,7 +379,7 @@ public class BuilderComposite extends Composite {
             BmhUtils.playText(toPlay, this.language);
         } else if (bt == BuilderType.Phoneme) {
             text = phonemeTextFld.getText();
-            BmhUtils.playAsPhoneme(this.getShell(), text);
+            BmhUtils.playAsPhoneme(this.getShell(), text, this.language);
         } else if (bt == BuilderType.Dynamic) {
             text = dynTextFld.getText();
             BmhUtils.playText(text, this.language);

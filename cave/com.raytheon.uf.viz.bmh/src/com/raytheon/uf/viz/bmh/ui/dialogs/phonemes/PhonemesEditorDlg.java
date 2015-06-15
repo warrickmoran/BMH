@@ -19,9 +19,6 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.phonemes;
 
-import java.util.Collections;
-import java.util.List;
-
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.MouseAdapter;
@@ -40,10 +37,15 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
-import com.raytheon.uf.viz.bmh.data.DictionaryManager;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter.WordType;
+import com.raytheon.uf.viz.bmh.voice.AbstractNeoSpeechPhonemeMapping;
+import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMappingFactory;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -67,10 +69,16 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 19, 2015    4150    bkowal      Take the space into account when calculating the new
  *                                     phoneme cursor position.
  * Mar 17, 2015    4277    rferrel     Remove Auto Generate button and legacy label.
+ * Jun 11, 2015    4552    bkowal      Cache phonemes locally as they are generated to limit
+ *                                     the NeoSpeech server resource usage.
  * 
  * </pre>
  */
 public class PhonemesEditorDlg extends CaveSWTDialog {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
+
     // Constants
     private final String VOWEL = "vowel";
 
@@ -78,11 +86,6 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
 
     /** Width of the letter buttons */
     private final int letterBtnWidth = 45;
-
-    /**
-     * The DictionaryManager
-     */
-    private final DictionaryManager dictionaryManager;
 
     /**
      * The selected word
@@ -122,7 +125,11 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
     /**
      * The legacy dictionary converter
      */
-    private final LegacyDictionaryConverter converter = new LegacyDictionaryConverter();
+    private final LegacyDictionaryConverter converter;
+
+    private final Language language;
+
+    private final AbstractNeoSpeechPhonemeMapping neoSpeechPhonemeMapping;
 
     /**
      * Constructor
@@ -139,12 +146,15 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
      *            DictionaryManager
      */
     public PhonemesEditorDlg(Shell parentShell, String word, String type,
-            String legacyPhoneme, DictionaryManager dictionaryManager) {
+            String legacyPhoneme, Language language) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT);
         this.selectedWord = word;
-        this.dictionaryManager = dictionaryManager;
         this.legacyPhoneme = legacyPhoneme;
         this.type = WordType.getWordType(type);
+        this.language = language;
+        neoSpeechPhonemeMapping = NeoSpeechPhonemeMappingFactory.getInstance()
+                .getNeoSpeechPhonemesForLanguage(language);
+        this.converter = new LegacyDictionaryConverter(this.language);
 
         this.setText("Phonemes Editor/Generator");
     }
@@ -236,7 +246,8 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
         phonemePlayBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                BmhUtils.playAsPhoneme(getShell(), phonemeTxt.getText());
+                BmhUtils.playAsPhoneme(getShell(), phonemeTxt.getText(),
+                        language);
             }
         });
 
@@ -264,7 +275,12 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
         Label vowelLbl = new Label(group, SWT.NONE);
         vowelLbl.setLayoutData(gd);
-        vowelLbl.setText("Use SHIFT+vowel or CTRL+vowel for accents");
+        StringBuilder vowelTxt = new StringBuilder("Use SHIFT+vowel");
+        if (neoSpeechPhonemeMapping.getNumericStressLimit() == 2) {
+            vowelTxt.append(" or CTRL+vowel");
+        }
+        vowelTxt.append(" for accents");
+        vowelLbl.setText(vowelTxt.toString());
 
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         gl = new GridLayout(8, true);
@@ -272,10 +288,7 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
         vowelButtonsComposite.setLayoutData(gd);
         vowelButtonsComposite.setLayout(gl);
 
-        List<String> vowels = dictionaryManager.getPhonemeMapping()
-                .getVowelPhonemes();
-        Collections.sort(vowels);
-        for (String vowel : vowels) {
+        for (String vowel : this.neoSpeechPhonemeMapping.getPhonemeVowels()) {
             gd = new GridData(letterBtnWidth, SWT.DEFAULT);
             Button b = new Button(vowelButtonsComposite, SWT.PUSH);
             b.setText(vowel);
@@ -304,10 +317,8 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
         consonantsBtnComp.setLayoutData(gd);
         consonantsBtnComp.setLayout(gl);
 
-        List<String> consonants = dictionaryManager.getPhonemeMapping()
-                .getConsonantPhonemes();
-        Collections.sort(consonants);
-        for (String consonant : consonants) {
+        for (String consonant : this.neoSpeechPhonemeMapping
+                .getPhonemeConsonants()) {
             gd = new GridData(letterBtnWidth, SWT.DEFAULT);
             Button b = new Button(consonantsBtnComp, SWT.PUSH);
             b.setLayoutData(gd);
@@ -383,7 +394,9 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
             boolean shift = false;
             boolean ctrl = false;
             shift = (e.stateMask == SWT.BUTTON1 + SWT.SHIFT);
-            ctrl = (e.stateMask == SWT.BUTTON1 + SWT.CTRL);
+            if (this.neoSpeechPhonemeMapping.getNumericStressLimit() == 2) {
+                ctrl = (e.stateMask == SWT.BUTTON1 + SWT.CTRL);
+            }
             if (shift || ctrl) {
                 left = true;
             }
@@ -403,15 +416,14 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
                 phonemeTxt.setText(String.format(textToUpdate, text));
                 this.phonemeTxt.setCaretOffset(cursorPosition);
 
-                BmhUtils.playAsPhoneme(this.shell, text);
+                this.playPhoneme(text);
             } else if (e.stateMask == SWT.BUTTON3) {
                 MenuItem speakPhoneme = new MenuItem(popupMenu, SWT.NONE);
                 speakPhoneme.setText("Say Phoneme without stressed accent");
                 speakPhoneme.addSelectionListener(new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent se) {
-                        String text = srcBtn.getText();
-                        BmhUtils.playAsPhoneme(getShell(), text + "0");
+                        playPhoneme(srcBtn.getText() + "0");
                     }
                 });
 
@@ -420,20 +432,20 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
                 speakPhoneme1.addSelectionListener(new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent se) {
-                        String text = srcBtn.getText();
-                        BmhUtils.playAsPhoneme(getShell(), text + "1");
+                        playPhoneme(srcBtn.getText() + "1");
                     }
                 });
 
-                MenuItem speakPhoneme2 = new MenuItem(popupMenu, SWT.NONE);
-                speakPhoneme2.setText("Say Phoneme with stressed level 2");
-                speakPhoneme2.addSelectionListener(new SelectionAdapter() {
-                    @Override
-                    public void widgetSelected(SelectionEvent se) {
-                        String text = srcBtn.getText();
-                        BmhUtils.playAsPhoneme(getShell(), text + "2");
-                    }
-                });
+                if (this.neoSpeechPhonemeMapping.getNumericStressLimit() == 2) {
+                    MenuItem speakPhoneme2 = new MenuItem(popupMenu, SWT.NONE);
+                    speakPhoneme2.setText("Say Phoneme with stressed level 2");
+                    speakPhoneme2.addSelectionListener(new SelectionAdapter() {
+                        @Override
+                        public void widgetSelected(SelectionEvent se) {
+                            playPhoneme(srcBtn.getText() + "2");
+                        }
+                    });
+                }
             }
         } else {
             if (e.stateMask == SWT.BUTTON1) {
@@ -441,20 +453,49 @@ public class PhonemesEditorDlg extends CaveSWTDialog {
                 cursorPosition += text.length();
                 phonemeTxt.setText(String.format(textToUpdate, text));
                 this.phonemeTxt.setCaretOffset(cursorPosition);
-                BmhUtils.playAsPhoneme(this.shell, text);
+                playPhoneme(text);
             } else if (e.stateMask == SWT.BUTTON3) {
                 MenuItem speakPhoneme = new MenuItem(popupMenu, SWT.NONE);
                 speakPhoneme.setText("Say Phoneme");
                 speakPhoneme.addSelectionListener(new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent se) {
-                        String text = srcBtn.getText();
-                        BmhUtils.playAsPhoneme(getShell(), text);
+                        playPhoneme(srcBtn.getText());
                     }
                 });
             }
         }
         popupMenu.setVisible(true);
+    }
+
+    private void playPhoneme(final String phonemeText) {
+        byte[] audio = PhonemeAudioCacheManager.getInstance().getCachedAudio(
+                this.language, phonemeText);
+        if (audio == null) {
+            Exception ex = null;
+            try {
+                audio = BmhUtils.getPhonemeAudio(getShell(), phonemeText,
+                        this.language);
+            } catch (Exception e) {
+                ex = e;
+            }
+            if (ex != null || audio == null) {
+                StringBuilder sb = new StringBuilder(
+                        "Failed to generate the audio for ");
+                sb.append(this.language.name()).append(" phoneme: ")
+                        .append(phonemeText).append(".");
+                DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
+                        "Phonemes Editor", sb.toString());
+                if (ex != null) {
+                    statusHandler.error(sb.toString(), ex);
+                }
+
+                return;
+            }
+            PhonemeAudioCacheManager.getInstance().cache(this.language,
+                    phonemeText, audio);
+        }
+        BmhUtils.playSound(audio);
     }
 
     /**

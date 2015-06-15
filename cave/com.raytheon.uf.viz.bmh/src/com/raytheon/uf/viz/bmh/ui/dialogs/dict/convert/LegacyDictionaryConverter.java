@@ -21,7 +21,9 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert;
 
 import java.util.Arrays;
 
-import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
+import com.raytheon.uf.viz.bmh.voice.AbstractNeoSpeechPhonemeMapping;
+import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMappingFactory;
 
 /**
  * Class to convert legacy dictionary values into NeoSpeech values.
@@ -34,6 +36,7 @@ import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
  * ------------ ---------- ----------- --------------------------
  * Jun 27, 2014    3355    mpduff      Initial creation
  * Jan 28, 2015    4045    bkowal      Use the {@link NeoSpeechPhonemeMapping} instance.
+ * Jun 11, 2015    4552    bkowal      Use {@link NeoSpeechPhonemeMappingFactory}.
  * 
  * </pre>
  * 
@@ -84,8 +87,7 @@ public class LegacyDictionaryConverter {
     /**
      * PhonemeMapping to use for conversion
      */
-    private final NeoSpeechPhonemeMapping phonemeMapping = NeoSpeechPhonemeMapping
-            .getInstance();
+    private final AbstractNeoSpeechPhonemeMapping phonemeMapping;
 
     /**
      * Brief phoneme prefix
@@ -96,6 +98,11 @@ public class LegacyDictionaryConverter {
      * Brief phoneme suffix
      */
     private final String suffix = "]";
+
+    public LegacyDictionaryConverter(final Language language) {
+        this.phonemeMapping = NeoSpeechPhonemeMappingFactory.getInstance()
+                .getNeoSpeechPhonemesForLanguage(language);
+    }
 
     /**
      * Convert word or phoneme to NeoSpeech format
@@ -216,8 +223,9 @@ public class LegacyDictionaryConverter {
             } else if (aChar == '.') {
                 accentLevel = '0';
             } else {
-                String vowelPhonemes = phonemeMapping.getVowelMap().get(aChar);
-                String consonantPhonemes = phonemeMapping.getConsonantMap()
+                String vowelPhonemes = phonemeMapping.getBmhVowelMap().get(
+                        aChar);
+                String consonantPhonemes = phonemeMapping.getBmhConsonantMap()
                         .get(aChar);
                 if (vowelPhonemes != null) {
                     buffer.append(vowelPhonemes

@@ -63,6 +63,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 16, 2015    4283    bkowal      Use substitution in the place of phoneme labels.
  * Mar 19, 2014    4282    rferrel     No longer force phonemeTxt to lower case.
  * May 20, 2015    4490    bkowal      Specify {@link Language} when synthesizing text.
+ * Jun 11, 2015    4552    bkowal      Specify the {@link Language} when playing a phoneme.
  * </pre>
  * 
  * @author mpduff
@@ -195,7 +196,9 @@ public class NewEditWordDlg extends CaveSWTDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (phoneme != null) {
-                    BmhUtils.playBriefPhoneme(getShell(), phoneme);
+                    BmhUtils.playBriefPhoneme(getShell(), phoneme,
+                            (dictionary == null) ? Language.ENGLISH
+                                    : dictionary.getLanguage());
                 }
             }
         });
