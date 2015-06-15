@@ -46,7 +46,8 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Jan 27, 2015  4029     bkowal      Added {@link #updateDacHardwareStatus(DacHardwareStatusNotification)}
  *                                    to override the buffer size.
  * Jan 29, 2015  4029     bkowal      Limit dac voltage variation during status comparison.
- * 
+ * Jun 15, 2015  4482     rjpeter     Null unused DacHardwareStatusNotification
+ *                                    fields to prevent frequent update.
  * </pre>
  * 
  * @author bsteffen
@@ -88,10 +89,13 @@ public class VizStatusMonitor extends SystemStatusMonitor implements
     protected void updateDacHardwareStatus(
             DacHardwareStatusNotification dacStatus) {
         /*
-         * Viz status does not utilize the buffer field. So, we do not want to
-         * trigger status updates whenever the buffer size changes.
+         * Clear fields Viz doesn't use.
          */
         dacStatus.setBufferSize(0);
+        dacStatus.setOutputGain(null);
+        dacStatus.setValidChannels(null);
+        dacStatus.setVoiceStatus(null);
+
         /*
          * Viz status does not care about the true voltage of each dac power
          * supply, it is only interested in indicating when their is no voltage,
