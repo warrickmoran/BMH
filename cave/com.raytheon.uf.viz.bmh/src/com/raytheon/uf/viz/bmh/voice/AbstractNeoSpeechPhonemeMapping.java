@@ -20,15 +20,15 @@
 package com.raytheon.uf.viz.bmh.voice;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.HashSet;
 import java.util.regex.Pattern;
 
 /**
- * NeoSpeech Phoneme data object.
+ * A generic neospeech phoneme mapping.
  * 
  * <pre>
  * 
@@ -36,126 +36,65 @@ import java.util.regex.Pattern;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 11, 2014   3355     mpduff      Initial creation
- * Jan 28, 2015   4045     bkowal      Made {@link NeoSpeechPhonemeMapping} an instance
- *                                     and added phoneme validation methods.
+ * Jun 10, 2015 4552       bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author mpduff
+ * @author bkowal
  * @version 1.0
  */
 
-public class NeoSpeechPhonemeMapping {
+public abstract class AbstractNeoSpeechPhonemeMapping {
 
-    private static final NeoSpeechPhonemeMapping instance = new NeoSpeechPhonemeMapping();
+    protected final int numericStressLimit;
 
     /**
      * Consonant map
      */
-    private Map<Character, String> bmhConsonantMap = null;
+    protected final Map<Character, String> bmhConsonantMap = new HashMap<>();
 
     /**
      * Vowel map
      */
-    private Map<Character, String> bmhVowelMap = null;
+    protected final Map<Character, String> bmhVowelMap = new HashMap<>();
 
     /**
-     * List of vowels
+     * Phoneme Consonants
      */
-    private List<String> vowelList;
+    private final List<String> phonemeConsonants;
 
     /**
-     * List of consonants
+     * Phoneme Vowels
      */
-    private List<String> consonantList;
+    private final List<String> phonemeVowels;
 
     private Pattern cmuPhonemePattern;
 
-    public static NeoSpeechPhonemeMapping getInstance() {
-        return instance;
+    public AbstractNeoSpeechPhonemeMapping(int numericStressLimit) {
+        this.numericStressLimit = numericStressLimit;
+        this.constructConsonantPhonemeMapping();
+        this.constructVowelPhonemeMapping();
+
+        this.phonemeConsonants = new ArrayList<>(new HashSet<>(
+                this.bmhConsonantMap.values()));
+        Collections.sort(this.phonemeConsonants);
+        this.phonemeVowels = new ArrayList<>(new HashSet<>(
+                this.bmhVowelMap.values()));
+        Collections.sort(this.phonemeVowels);
+
+        this.constructPhonemePattern();
     }
 
-    /**
-     * Constructor
-     */
-    protected NeoSpeechPhonemeMapping() {
-        bmhConsonantMap = new HashMap<Character, String>();
-        bmhVowelMap = new HashMap<Character, String>();
-        populatePhonemes();
-    }
+    protected abstract void constructConsonantPhonemeMapping();
 
-    public List<String> getConsonantPhonemes() {
-        return consonantList;
-    }
+    protected abstract void constructVowelPhonemeMapping();
 
-    public List<String> getVowelPhonemes() {
-        return vowelList;
-    }
-
-    private void populatePhonemes() {
-        bmhConsonantMap.put('b', "B");
-        bmhConsonantMap.put('C', "CH");
-        bmhConsonantMap.put('d', "D");
-        bmhConsonantMap.put('D', "DH");
-        bmhConsonantMap.put('f', "F");
-        bmhConsonantMap.put('F', "D");
-        bmhConsonantMap.put('g', "G");
-        bmhConsonantMap.put('h', "HH");
-        bmhConsonantMap.put('J', "JH");
-        bmhConsonantMap.put('k', "K");
-        bmhConsonantMap.put('l', "L");
-        bmhConsonantMap.put('m', "M");
-        bmhConsonantMap.put('n', "N");
-        bmhConsonantMap.put('G', "NG");
-        bmhConsonantMap.put('p', "P");
-        bmhConsonantMap.put('r', "R");
-        bmhConsonantMap.put('s', "S");
-        bmhConsonantMap.put('t', "T");
-        bmhConsonantMap.put('T', "TH");
-        bmhConsonantMap.put('S', "SH");
-        bmhConsonantMap.put('v', "V");
-        bmhConsonantMap.put('w', "W");
-        bmhConsonantMap.put('y', "Y");
-        bmhConsonantMap.put('z', "Z");
-        bmhConsonantMap.put('Z', "ZH");
-        bmhVowelMap.put('a', "AA");
-        bmhVowelMap.put('A', "AE");
-        bmhVowelMap.put('x', "AH");
-        bmhVowelMap.put('H', "AH");
-        bmhVowelMap.put('c', "AO");
-        bmhVowelMap.put('O', "OY");
-        bmhVowelMap.put('e', "EY");
-        bmhVowelMap.put('E', "EH");
-        bmhVowelMap.put('X', "EH");
-        bmhVowelMap.put('i', "IY");
-        bmhVowelMap.put('I', "IH");
-        bmhVowelMap.put('o', "OW");
-        bmhVowelMap.put('R', "ER");
-        bmhVowelMap.put('U', "UH");
-        bmhVowelMap.put('u', "UW");
-        bmhVowelMap.put('W', "AW");
-        bmhVowelMap.put('Y', "AY");
-
-        Set<String> set = new HashSet<String>();
-        for (String vowel : bmhVowelMap.values()) {
-            set.add(vowel);
-        }
-
-        this.vowelList = new ArrayList<String>(set);
-
-        set.clear();
-        for (String consonant : bmhConsonantMap.values()) {
-            set.add(consonant);
-        }
-
-        this.consonantList = new ArrayList<String>(set);
-
+    private void constructPhonemePattern() {
         /*
          * Build a regex for the cmu phonemes.
          */
         final String spaceRegex = "[\\s]+";
-        final String stressNumericRegex = "[0-2]";
+        final String stressNumericRegex = "[0-" + this.numericStressLimit + "]";
         final String separatorRegex = "|";
         final String lParensRegex = "(";
         final String rParensRegex = ")";
@@ -167,7 +106,7 @@ public class NeoSpeechPhonemeMapping {
          */
         StringBuilder vowelRegex = new StringBuilder(lParensRegex);
         boolean first = true;
-        for (String vowel : this.vowelList) {
+        for (String vowel : this.phonemeVowels) {
             if (first) {
                 first = false;
             } else {
@@ -182,7 +121,7 @@ public class NeoSpeechPhonemeMapping {
          */
         StringBuilder consonantRegex = new StringBuilder(lParensRegex);
         first = true;
-        for (String consonant : this.consonantList) {
+        for (String consonant : this.phonemeConsonants) {
             if (first) {
                 first = false;
             } else {
@@ -231,11 +170,23 @@ public class NeoSpeechPhonemeMapping {
         return this.cmuPhonemePattern.matcher(text.trim()).matches();
     }
 
-    public Map<Character, String> getVowelMap() {
+    public int getNumericStressLimit() {
+        return numericStressLimit;
+    }
+
+    public Map<Character, String> getBmhConsonantMap() {
+        return bmhConsonantMap;
+    }
+
+    public Map<Character, String> getBmhVowelMap() {
         return bmhVowelMap;
     }
 
-    public Map<Character, String> getConsonantMap() {
-        return bmhConsonantMap;
+    public List<String> getPhonemeConsonants() {
+        return phonemeConsonants;
+    }
+
+    public List<String> getPhonemeVowels() {
+        return phonemeVowels;
     }
 }

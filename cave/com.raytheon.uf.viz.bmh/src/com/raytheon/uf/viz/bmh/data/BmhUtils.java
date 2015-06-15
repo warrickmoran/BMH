@@ -68,7 +68,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.SSMLPhonemeParser;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
-import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
+import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMappingFactory;
 import com.raytheon.uf.viz.core.auth.UserController;
 import com.raytheon.viz.core.mode.CAVEMode;
 
@@ -109,6 +109,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * May 20, 2015   4490      bkowal      Cleanup. A {@link Language} is now required to synthesize text.
  * May 28, 2015   4429      rjpeter     Add traceId to all requests sent to edex.
  * Jun 08, 2015   4403      bkowal      Added {@link #textToAudio(String, int, boolean)}.
+ * Jun 11, 2015   4552      bkowal      Phonemes can now be generated for both the English and
+ *                                      Spanish languages.
  * </pre>
  * 
  * @author mpduff
@@ -254,16 +256,14 @@ public class BmhUtils {
      * @param text
      *            The phoneme text
      */
-    public static void playBriefPhoneme(Shell shell, String text) {
+    public static void playBriefPhoneme(Shell shell, String text,
+            final Language language) {
         text = text.replaceAll("\\[", PHONEME_OPEN);
         text = text.replaceAll("\\]", PHONEME_CLOSE);
-        if (validatePhoneme(shell, text) == false) {
+        if (validatePhoneme(shell, text, language) == false) {
             return;
         }
-        /*
-         * NeoSpeech can only successfully process English phonemes.
-         */
-        playText(text, Language.ENGLISH);
+        playText(text, language);
     }
 
     /**
@@ -273,15 +273,38 @@ public class BmhUtils {
      * @param text
      *            The bare phoneme text
      */
-    public static void playAsPhoneme(Shell shell, String text) {
+    public static void playAsPhoneme(Shell shell, String text,
+            final Language language) {
         String textToPlay = PHONEME_OPEN + text + PHONEME_CLOSE;
-        if (validatePhoneme(shell, text) == false) {
+        if (validatePhoneme(shell, text, language) == false) {
             return;
         }
         /*
          * NeoSpeech can only successfully process English phonemes.
          */
-        playText(textToPlay, Language.ENGLISH);
+        playText(textToPlay, language);
+    }
+
+    /**
+     * Generates audio for the provided phoneme. Does not play the audio.
+     * 
+     * @param shell
+     *            the current {@link Shell}
+     * @param text
+     *            the phoneme
+     * @param language
+     *            the {@link Language} to use during audio synthesis.
+     * @return the synthesized audio.
+     * @throws Exception
+     */
+    public static byte[] getPhonemeAudio(Shell shell, String text,
+            final Language language) throws Exception {
+        String textToPlay = PHONEME_OPEN + text + PHONEME_CLOSE;
+        if (validatePhoneme(shell, text, language) == false) {
+            return null;
+        }
+
+        return textToAudio(textToPlay, getVoiceForLanguage(language).getId());
     }
 
     /**
@@ -293,7 +316,8 @@ public class BmhUtils {
      *            the specified phoneme
      * @return true, if the phoneme is valid; false, otherwise.
      */
-    private static boolean validatePhoneme(final Shell shell, String text) {
+    private static boolean validatePhoneme(final Shell shell, String text,
+            final Language language) {
         text = text.trim();
 
         List<String> phonemes = null;
@@ -312,7 +336,9 @@ public class BmhUtils {
         }
 
         for (String phoneme : phonemes) {
-            if (NeoSpeechPhonemeMapping.getInstance().isValidPhoneme(phoneme) == false) {
+            if (NeoSpeechPhonemeMappingFactory.getInstance()
+                    .getNeoSpeechPhonemesForLanguage(language)
+                    .isValidPhoneme(phoneme) == false) {
                 DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
                         "Phoneme", "Invalid phoneme: " + phoneme
                                 + ". Please enter a valid phoneme.");
