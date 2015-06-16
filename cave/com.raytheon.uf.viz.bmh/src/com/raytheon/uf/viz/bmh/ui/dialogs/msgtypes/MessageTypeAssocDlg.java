@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
@@ -71,6 +70,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * Mar 24, 2015  4306      rferrel     No longer have default selected message type.
+ * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * </pre>
  * 
  * @author lvenable
@@ -129,14 +129,11 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
      * 
      * @param parentShell
      *            Parent shell.
-     * @param dlgMap
-     *            Map to add this dialog to for closing purposes.
      */
-    public MessageTypeAssocDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.MESSAGE_TYPE_ASSOCIATION.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public MessageTypeAssocDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                | CAVE.PERSPECTIVE_INDEPENDENT);
+        setText(DlgInfo.MESSAGE_TYPE_ASSOCIATION.getTitle());
     }
 
     @Override
@@ -163,8 +160,6 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText(DlgInfo.MESSAGE_TYPE_ASSOCIATION.getTitle());
-
         createMessageTypeControls();
         createMsgReplaceGroup();
         createAddRemoveButtons();

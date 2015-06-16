@@ -61,6 +61,7 @@ import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
@@ -154,6 +155,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * May 28, 2015  4429      rjpeter      Updated log statements.
  * Jun 01, 2015  4490      bkowal       Use new {@link SAMEMessageTruncatedNotification} constructor.
  * Jun 02, 2016  #4369     rferrel      Added method {@link #sendNoPlaybackNotification()}.
+ * Jun 04, 2015  4482      rjpeter      Create playlist directory on start.
  * </pre>
  * 
  * @author dgilling
@@ -292,6 +294,13 @@ public final class PlaylistScheduler implements
         Map<String, DacPlaylist> uniqueActivePlaylists = new HashMap<>();
         List<DacPlaylist> expiredPlaylists = new ArrayList<>();
         int interruptCounter = 0;
+
+        try {
+            Files.createDirectories(this.playlistDirectory);
+        } catch (Exception e) {
+            logger.error("Failed to create playlist directory: "
+                    + this.playlistDirectory, e);
+        }
 
         try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(
                 this.playlistDirectory, PLAYLIST_EXT)) {

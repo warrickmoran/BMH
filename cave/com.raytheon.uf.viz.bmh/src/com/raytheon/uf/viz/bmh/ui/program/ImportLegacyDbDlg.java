@@ -68,10 +68,11 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Dec 05, 2014  #3824     rferrel     Initial creation
- * Mar 03, 2015  #4175     bkowal      Always expect at least one voice.
- * Mar 27, 2015  #4315     rferrel     Check to allow Spanish and disable when no voices.
- * May 19, 2015  4482      rjpeter     Update to call setDbResetTime.
+ * Dec 05, 2014 #3824      rferrel     Initial creation
+ * Mar 03, 2015 #4175      bkowal      Always expect at least one voice.
+ * Mar 27, 2015 #4315      rferrel     Check to allow Spanish and disable when no voices.
+ * May 19, 2015 4482       rjpeter     Update to call setDbResetTime.
+ * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * </pre>
  * 
  * @author rferrel
@@ -95,14 +96,10 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
      * 
      * @param parentShell
      *            Parent shell.
-     * @param dlgMap
-     *            Map to add this dialog to for closing purposes.
      */
-    public ImportLegacyDbDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.IMPORT_LEGACY_DB.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public ImportLegacyDbDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
     @Override

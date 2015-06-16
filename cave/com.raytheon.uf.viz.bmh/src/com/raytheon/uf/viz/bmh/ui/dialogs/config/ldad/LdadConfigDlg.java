@@ -21,7 +21,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -46,11 +45,11 @@ import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
-import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
-import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
+import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
@@ -66,10 +65,10 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 10, 2014 3381       bkowal      Initial creation
- * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
- * Nov 13, 2014  3803      bkowal      Implemented.
- * Nov 18, 2014  3807      bkowal      Use BMHJmsDestinations.
- * 
+ * Nov 11, 2014 3413       rferrel     Use DlgInfo to get title.
+ * Nov 13, 2014 3803       bkowal      Implemented.
+ * Nov 18, 2014 3807       bkowal      Use BMHJmsDestinations.
+ * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * </pre>
  * 
  * @author bkowal
@@ -125,10 +124,9 @@ public class LdadConfigDlg extends AbstractBMHDialog implements
         }
     }
 
-    public LdadConfigDlg(Map<AbstractBMHDialog, String> map, Shell parentShell) {
-        super(map, DlgInfo.LDAD_CONFIGURATION.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public LdadConfigDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
         super.setText(DlgInfo.LDAD_CONFIGURATION.getTitle());
     }
 

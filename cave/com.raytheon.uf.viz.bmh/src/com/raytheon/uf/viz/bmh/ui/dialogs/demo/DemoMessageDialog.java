@@ -89,6 +89,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * May 06, 2015  4471     bkowal      Set the SAME Tone Flag in {@link InputMessage} to
  *                                    {@link Boolean#TRUE}.
  * May 27, 2016  4431     rferrel     Persist the messages for a language.
+ * Jun 05, 2015  4490     rjpeter     Updated constructor.
  * </pre>
  * 
  * @author bsteffen
@@ -134,11 +135,10 @@ public class DemoMessageDialog extends AbstractBMHDialog {
      */
     private List<TtsVoice> availableVoices;
 
-    public DemoMessageDialog(Map<AbstractBMHDialog, String> map,
-            Shell parentShell) {
-        super(map, DlgInfo.DEMO_MESSAGE.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public DemoMessageDialog(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+        this.setText(DlgInfo.DEMO_MESSAGE.getTitle());
         defaultMessages
                 .put(Language.ENGLISH,
                         "Interrupting broadcast for a demonstration of the national weather radio system.");
@@ -164,7 +164,6 @@ public class DemoMessageDialog extends AbstractBMHDialog {
     @Override
     protected void initializeComponents(Shell shell) {
         super.initializeComponents(shell);
-        this.setText(DlgInfo.DEMO_MESSAGE.getTitle());
 
         Composite transmitterAndVoiceComp = new Composite(shell, SWT.NONE);
         GridData gd = new GridData(SWT.NONE, SWT.FILL, false, true);

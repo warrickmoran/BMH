@@ -37,7 +37,6 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.bmh.comms.CommsCommunicationException;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
-import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcast.BroadcastLiveDlg;
 
 /**
@@ -52,7 +51,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.broadcast.BroadcastLiveDlg;
  * Date          Ticket#   Engineer    Description
  * ------------- --------- ----------- --------------------------
  * Feb 05, 2015  3743      bsteffen    Initial creation
- * 
+ * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * </pre>
  * 
  * @author bsteffen
@@ -64,7 +63,7 @@ public class StandaloneBroadcastLiveDlg extends BroadcastLiveDlg {
             .getHandler(StandaloneBroadcastLiveDlg.class);
 
     public StandaloneBroadcastLiveDlg(Shell parentShell) {
-        super(new HashMap<AbstractBMHDialog, String>(2), parentShell);
+        super(parentShell);
     }
 
     @Override

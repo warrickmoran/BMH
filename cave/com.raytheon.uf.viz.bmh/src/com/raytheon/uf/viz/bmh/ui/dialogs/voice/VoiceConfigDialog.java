@@ -19,8 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.voice;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
@@ -60,7 +60,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 13, 2014 3618       bkowal      Initial creation
  * Dec 16, 2014 3618       bkowal      Implemented
  * Mar 03, 2015 4175       bkowal      Implemented voice registration.
- * 
+ * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * </pre>
  * 
  * @author bkowal
@@ -75,7 +75,7 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
 
     private static final String GENDER_FEMALE = "FEMALE";
 
-    private Map<String, Integer> voiceIdentifierMap = new HashMap<>();
+    private final Map<String, Integer> voiceIdentifierMap = new HashMap<>();
 
     private Map<Integer, BMHVoice> unregisteredVoices;
 
@@ -105,11 +105,9 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
      */
     private List voiceList;
 
-    public VoiceConfigDialog(Map<AbstractBMHDialog, String> map,
-            Shell parentShell) {
-        super(map, DlgInfo.TTS_VOICE_CONFIGURATION.getTitle(), parentShell,
-                SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
-                        | CAVE.DO_NOT_BLOCK);
+    public VoiceConfigDialog(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
+                | CAVE.DO_NOT_BLOCK);
         this.setText(DlgInfo.TTS_VOICE_CONFIGURATION.getTitle());
     }
 

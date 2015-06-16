@@ -21,7 +21,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.listening.areas;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -69,7 +68,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 11, 2014  3413     rferrel     Use DlgInfo to get title.
  * Feb 09, 2015  4095     bsteffen    Remove Transmitter Name.
  * Mar 10, 2015  4247     rferrel     Fix sorting after delete and bug in search.
- * 
+ * Jun 05, 2015  4490     rjpeter     Updated constructor.
  * </pre>
  * 
  * @author mpduff
@@ -120,14 +119,10 @@ public class ListeningAreaDlg extends AbstractBMHDialog {
      * Constructor.
      * 
      * @param parentShell
-     * @param dlgMap
-     *            Map of open dialogs
      */
-    public ListeningAreaDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.LISTENING_AREAS.getTitle(), parentShell,
-                SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
-                        | CAVE.DO_NOT_BLOCK);
+    public ListeningAreaDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
+                | CAVE.DO_NOT_BLOCK);
         setText(DlgInfo.LISTENING_AREAS.getTitle());
     }
 

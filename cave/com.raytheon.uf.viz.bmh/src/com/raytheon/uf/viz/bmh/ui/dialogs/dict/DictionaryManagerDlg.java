@@ -26,7 +26,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
@@ -84,7 +83,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
  * Jan 06, 2015  3931      bkowal      Implemented {@link Dictionary} export.
  * Jan 07, 2014  3931      bkowal      Implemented a {@link Dictionary} import capability.
  * Jan 28, 2015  4045      bkowal      Use the new {@link DictionaryManager} constructor.
- * 
+ * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * </pre>
  * 
  * @author mpduff
@@ -153,14 +152,10 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
      * 
      * @param parentShell
      *            Parent shell
-     * @param map
-     *            Map of open dialogs for this to be added to
      */
-    public DictionaryManagerDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> map) {
-        super(map, DlgInfo.MANAGE_DICTIONARIES.getTitle(), parentShell,
-                SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
-                        | CAVE.DO_NOT_BLOCK);
+    public DictionaryManagerDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM, CAVE.PERSPECTIVE_INDEPENDENT
+                | CAVE.DO_NOT_BLOCK);
         setText(DlgInfo.MANAGE_DICTIONARIES.getTitle());
         dictionaryManager = new DictionaryManager();
     }

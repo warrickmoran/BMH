@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.dac;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -64,7 +63,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 19, 2014  #3699     mpduff       Implement dialog
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Feb 03, 2015  4056      bsteffen     Pass the data manager to the create/edit dialog.
- * 
+ * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * </pre>
  * 
  * @author lvenable
@@ -97,13 +96,11 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
      * 
      * @param parentShell
      *            Parent shell.
-     * @param dlgMap
-     *            Map to add this dialog to for closing purposes.
      */
-    public DacConfigDlg(Shell parentShell, Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.DAC_CONFIGURATION.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public DacConfigDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+        setText(DlgInfo.DAC_CONFIGURATION.getTitle());
     }
 
     @Override
@@ -143,8 +140,6 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText(DlgInfo.DAC_CONFIGURATION.getTitle());
-
         dataManager = new DacDataManager();
         createDacTable();
         createBottomActionButtons();

@@ -24,8 +24,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.raytheon.uf.common.serialization.SerializationException;
 
 /**
  * 
@@ -40,7 +43,7 @@ import org.slf4j.LoggerFactory;
  * ------------- -------- ----------- --------------------------
  * Aug 15, 2014  3486     bsteffen    Initial Creation
  * Sep 24, 2014  3485     bsteffen    Better logging and smoother shutdown.
- * 
+ * Jun 05, 2015  4482     rjpeter     Ignore IPVS port checks.
  * </pre>
  * 
  * @author bsteffen
@@ -103,10 +106,16 @@ public abstract class AbstractServerThread extends Thread {
             try {
                 socket = server.accept();
                 socket.setTcpNoDelay(true);
+
+                if (socket.getInputStream() == null) {
+
+                    continue;
+                }
             } catch (Throwable e) {
                 /*
                  * do not log if this is the exact exception we are expecting
-                 * for closing the connection(either from port change or shutdown)
+                 * for closing the connection(either from port change or
+                 * shutdown)
                  */
                 if (server == this.server || !(e instanceof SocketException)
                         || !"Socket closed".equals(e.getMessage())) {
@@ -116,6 +125,29 @@ public abstract class AbstractServerThread extends Thread {
             }
             try {
                 handleConnection(socket);
+            } catch (SerializationException e) {
+
+                /*
+                 * IPVS creates a connection on the port and then closes it to
+                 * validate process is available. Ignore them since it will
+                 * happen every second.
+                 */
+                boolean printError = true;
+                if (e.getCause() instanceof TTransportException) {
+                    if (((TTransportException) e.getCause()).getType() == TTransportException.END_OF_FILE) {
+                        printError = false;
+                    }
+                }
+
+                if (printError) {
+                    logger.error("Error accepting client", e);
+                }
+
+                try {
+                    socket.close();
+                } catch (IOException e2) {
+                    logger.error("Error closing socket", e2);
+                }
             } catch (Throwable e) {
                 try {
                     socket.close();

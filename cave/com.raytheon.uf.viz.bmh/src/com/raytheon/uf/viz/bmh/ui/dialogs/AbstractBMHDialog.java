@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs;
 
-import java.util.Map;
-
 import org.eclipse.swt.events.ShellAdapter;
 import org.eclipse.swt.events.ShellEvent;
 import org.eclipse.swt.widgets.Shell;
@@ -37,8 +35,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 15, 2014  #3387     lvenable     Initial creation
- * 
+ * Jul 15, 2014  #3387     lvenable    Initial creation
+ * Jun 05, 2015  4490      rjpeter     Dialog tracked via BMHLauncherDlg.
  * </pre>
  * 
  * @author lvenable
@@ -52,10 +50,6 @@ public abstract class AbstractBMHDialog extends CaveSWTDialog {
     /**
      * Constructor.
      * 
-     * @param map
-     *            Map of dialogs.
-     * @param dialogDesc
-     *            Dialog title/description.
      * @param parentShell
      *            Parent shell
      * @param style
@@ -63,12 +57,8 @@ public abstract class AbstractBMHDialog extends CaveSWTDialog {
      * @param caveStyle
      *            Cave style.
      */
-    protected AbstractBMHDialog(Map<AbstractBMHDialog, String> map,
-            String dialogDesc, Shell parentShell, int style, int caveStyle) {
+    protected AbstractBMHDialog(Shell parentShell, int style, int caveStyle) {
         super(parentShell, style, caveStyle);
-
-        map.put(this, dialogDesc);
-
     }
 
     /**

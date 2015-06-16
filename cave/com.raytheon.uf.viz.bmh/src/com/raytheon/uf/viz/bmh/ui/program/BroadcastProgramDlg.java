@@ -79,32 +79,33 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 20, 2014  #3174     lvenable    Initial creation
- * Aug 01, 2014  #3479     lvenable    Added additional capability for managing the controls.
- * Aug 03, 2014  #3479     lvenable    Updated code for validator changes.
- * Aug 06, 2014  #3490     lvenable    Update to populate controls with data from the database.
- * Aug 8,  2014  #3490     lvenable    Updated populate table method call.
- * Aug 12, 2014  #3490     lvenable    Updated to use data from the database.
- * Aug 15, 2014  #3490     lvenable    Updated to use data managers, added rename capability.
- * Aug 21, 2014  #3490     lvenable    Updated for program changes.
- * Aug 22, 2014  #3490     lvenable    Added input dialog flag.
- * Aug 23, 2014  #3490     lvenable    Added capability for add transmitters.
- * Aug 25, 2014  #3490     lvenable    Update suite config group when the program changes.
- * Sep 16, 2014  #3587     bkowal      Updated to only allow trigger assignment for {Program, Suite}
- * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
- * Oct 27, 2014  3750      lvenable    fixed message type table update when adding new suite.
- * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
- * Nov 13, 2014  3698      rferrel     Checks to allow only one GENERAL type suite per program.
- * Nov 22, 2014  3842      mpduff      Fully populate dialog on new program.
- * Dec 01, 2014  3698      rferrel     Changed message dialogs to only perform action when OK button is selected.
- * Dec 07, 2014  3846      mpduff      Only load the selected Program rather than all programs.
- *                                      Changing program selection now updates program's transmitters.
- * Dec 09, 2014  3906      lvenable    Changed the grid data for the suite and message type tables.
- * Feb 09, 2015  4095      bsteffen    Remove Transmitter Name.
- * Mar 31, 2015  4248      rjpeter     Use ordered view of suite messages.
- * May 20, 2015   4490     bkowal      Display existing {@link Program} name in the rename dialog.
+ * Jul 20, 2014 #3174      lvenable    Initial creation
+ * Aug 01, 2014 #3479      lvenable    Added additional capability for managing the controls.
+ * Aug 03, 2014 #3479      lvenable    Updated code for validator changes.
+ * Aug 06, 2014 #3490      lvenable    Update to populate controls with data from the database.
+ * Aug 8,  2014 #3490      lvenable    Updated populate table method call.
+ * Aug 12, 2014 #3490      lvenable    Updated to use data from the database.
+ * Aug 15, 2014 #3490      lvenable    Updated to use data managers, added rename capability.
+ * Aug 21, 2014 #3490      lvenable    Updated for program changes.
+ * Aug 22, 2014 #3490      lvenable    Added input dialog flag.
+ * Aug 23, 2014 #3490      lvenable    Added capability for add transmitters.
+ * Aug 25, 2014 #3490      lvenable    Update suite config group when the program changes.
+ * Sep 16, 2014 #3587      bkowal      Updated to only allow trigger assignment for {Program, Suite}
+ * Oct 08, 2014 #3479      lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Oct 13, 2014 3654       rjpeter     Updated to use MessageTypeSummary.
+ * Oct 27, 2014 3750       lvenable    fixed message type table update when adding new suite.
+ * Nov 11, 2014 3413       rferrel     Use DlgInfo to get title.
+ * Nov 13, 2014 3698       rferrel     Checks to allow only one GENERAL type suite per program.
+ * Nov 22, 2014 3842       mpduff      Fully populate dialog on new program.
+ * Dec 01, 2014 3698       rferrel     Changed message dialogs to only perform action when OK button is selected.
+ * Dec 07, 2014 3846       mpduff      Only load the selected Program rather than all programs.
+ *                                     Changing program selection now updates program's transmitters.
+ * Dec 09, 2014 3906       lvenable    Changed the grid data for the suite and message type tables.
+ * Feb 09, 2015 4095       bsteffen    Remove Transmitter Name.
+ * Mar 31, 2015 4248       rjpeter     Use ordered view of suite messages.
+ * May 20, 2015 4490       bkowal      Display existing {@link Program} name in the rename dialog.
  *                                     Fix warnings without suppressing them.
+ * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * </pre>
  * 
  * @author lvenable
@@ -181,11 +182,10 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      * @param dlgMap
      *            Map to add this dialog to for closing purposes.
      */
-    public BroadcastProgramDlg(Shell parentShell,
-            Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.BROADCAST_PROGRAMS.getTitle(), parentShell,
-                SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public BroadcastProgramDlg(Shell parentShell) {
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+        setText(DlgInfo.BROADCAST_PROGRAMS.getTitle());
     }
 
     @Override
@@ -209,7 +209,6 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-        setText(DlgInfo.BROADCAST_PROGRAMS.getTitle());
 
         // Get the ProgramSummary data.
         retrieveProgramSummariesFromDB();

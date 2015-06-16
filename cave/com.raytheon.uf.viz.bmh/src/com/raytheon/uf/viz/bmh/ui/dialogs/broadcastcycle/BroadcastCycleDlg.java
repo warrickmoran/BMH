@@ -200,6 +200,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     with dynamic text.
  * May 28, 2015  4490      bkowal      Handle unplayed messages with dynamic text.
  * Jun 02, 2015  4369      rferrel     Handle {@link NoPlaybackMessageNotification}.
+ * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * </pre>
  * 
  * @author mpduff
@@ -329,13 +330,10 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * 
      * @param parent
      *            The parent shell
-     * @param dlgMap
-     *            The opend dialogs map
      */
-    public BroadcastCycleDlg(Shell parent, Map<AbstractBMHDialog, String> dlgMap) {
-        super(dlgMap, DlgInfo.BROADCAST_CYCLE.getTitle(), parent,
-                SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
-                        | CAVE.PERSPECTIVE_INDEPENDENT);
+    public BroadcastCycleDlg(Shell parent) {
+        super(parent, SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
+                | CAVE.PERSPECTIVE_INDEPENDENT);
         this.dataManager = new BroadcastCycleDataManager();
         this.dacDataManager = new DacDataManager();
         setText(DlgInfo.BROADCAST_CYCLE.getTitle());
