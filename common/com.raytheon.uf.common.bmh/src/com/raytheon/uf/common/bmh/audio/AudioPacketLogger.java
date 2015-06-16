@@ -40,7 +40,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Oct 29, 2014  3774     bsteffen    Initial creation
- * 
+ * Jun 16, 2015  4482     rjpeter     Added reset.
  * </pre>
  * 
  * @author bsteffen
@@ -138,6 +138,24 @@ public class AudioPacketLogger implements AutoCloseable {
                     label);
         }
 
+    }
+
+    /**
+     * Print total statistics and reset to allow for new tracking at a later
+     * time.
+     */
+    public void reset() {
+        if (totalStats != null) {
+            if (incrementalStats != null
+                    && incrementalStats.getDuration() < totalStats
+                            .getDuration()) {
+                log(incrementalStats);
+            }
+            log(totalStats);
+        }
+
+        totalStats = null;
+        incrementalStats = null;
     }
 
     private void log(AudioPacketStats stats) {

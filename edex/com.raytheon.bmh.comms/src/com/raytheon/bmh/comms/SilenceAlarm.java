@@ -51,7 +51,7 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Apr 22, 2015  4404     bkowal      Added {@link #handleDacDisconnect(String)} and
  *                                    {@link #clearSilenceAlarm(String)}.
  * Jun 01, 2015  4490     bkowal      Extend {@link AbstractJmsAlarm}.
- * 
+ * Jun 12, 2015  4482     rjpeter     Keep Silence thread alive.
  * </pre>
  * 
  * @author bsteffen
@@ -71,7 +71,7 @@ public class SilenceAlarm extends AbstractJmsAlarm {
 
     private Set<String> alarmableGroups;
 
-    private SilenceAlarmThread thread = null;
+    private final SilenceAlarmThread thread;
 
     /**
      * Construct a new silence alarm that will notify based off the current
@@ -84,6 +84,9 @@ public class SilenceAlarm extends AbstractJmsAlarm {
         super(BMH_CATEGORY.DAC_TRANSMIT_SILENCE);
         this.commsManager = commsManager;
         reconfigure(commsManager.getCurrentConfigState());
+        thread = new SilenceAlarmThread();
+        thread.setDaemon(true);
+        thread.start();
     }
 
     /**
@@ -124,8 +127,10 @@ public class SilenceAlarm extends AbstractJmsAlarm {
         if (!alarmableGroups.contains(group)) {
             return;
         }
+
         SilenceTime canceledAlarm = null;
         synchronized (silenceTimes) {
+            /* status notification only contains info about the specific group */
             for (DacVoiceStatus voiceStatus : status.getVoiceStatus()) {
                 if (voiceStatus != DacVoiceStatus.IP_AUDIO) {
                     this.initiateSilenceThread(group);
@@ -134,6 +139,7 @@ public class SilenceAlarm extends AbstractJmsAlarm {
             }
             canceledAlarm = silenceTimes.remove(group);
         }
+
         if (canceledAlarm != null && canceledAlarm.isAlarming()) {
             commsManager.silenceStatusChanged();
         }
@@ -162,13 +168,7 @@ public class SilenceAlarm extends AbstractJmsAlarm {
     private void initiateSilenceThread(final String group) {
         if (!silenceTimes.containsKey(group)) {
             silenceTimes.put(group, new SilenceTime(logger, group));
-            if (thread == null) {
-                thread = new SilenceAlarmThread();
-                thread.setDaemon(true);
-                thread.start();
-            } else {
-                thread.interrupt();
-            }
+            thread.interrupt();
         }
     }
 
@@ -213,15 +213,11 @@ public class SilenceAlarm extends AbstractJmsAlarm {
                 boolean changed = false;
                 long sleepTime = Long.MAX_VALUE;
                 synchronized (silenceTimes) {
-                    if (silenceTimes.isEmpty()) {
-                        thread = null;
-                        return;
-                    }
-                    for (SilenceTime time : silenceTimes.values()) {
-                        boolean hasAlarmed = time.isAlarming();
-                        sleepTime = Math.min(sleepTime, time.alarm());
-                        if (hasAlarmed != time.isAlarming()) {
-                            changed = true;
+                    if (!silenceTimes.isEmpty()) {
+                        for (SilenceTime time : silenceTimes.values()) {
+                            boolean hasAlarmed = time.isAlarming();
+                            sleepTime = Math.min(sleepTime, time.alarm());
+                            changed |= hasAlarmed != time.isAlarming();
                         }
                     }
                 }
