@@ -50,6 +50,8 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.legacy.ascii.AsciiFileTranslator;
 import com.raytheon.uf.common.bmh.legacy.ascii.BmhData;
 import com.raytheon.uf.common.bmh.request.ImportLegacyDbRequest;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
@@ -73,6 +75,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 27, 2015 #4315      rferrel     Check to allow Spanish and disable when no voices.
  * May 19, 2015 4482       rjpeter     Update to call setDbResetTime.
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
+ * Jun 17, 2015 4490       bkowal      Added {@link #statusHandler}.
  * </pre>
  * 
  * @author rferrel
@@ -82,6 +85,9 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
 
     /** Remember browser's last directory. */
     private static String browserDirPath = "/";
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(ImportLegacyDbDlg.class);
 
     private Text fileTxt;
 
@@ -288,6 +294,9 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
             DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
                     "Verify Legacy Database",
                     "Unable to access current database.");
+
+            statusHandler.error("Failed to translate legacy ascii file: "
+                    + file.getAbsolutePath() + ".", ex);
         }
     }
 

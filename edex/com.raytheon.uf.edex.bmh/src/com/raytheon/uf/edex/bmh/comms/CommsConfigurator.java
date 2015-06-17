@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -81,6 +82,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Feb 09, 2015  4095     bsteffen    Remove Transmitter Name.
  * Apr 07, 2015  4370     rjpeter     Update CommsConfigurator to have cluster lock and send jms notification.
  * May 28, 2015  4429     rjpeter     Add ITraceable.
+ * Jun 18, 2015  4490     bkowal      Copy the operational clustered configuration to the
+ *                                    practice configuration.
  * </pre>
  * 
  * @author bsteffen
@@ -162,6 +165,7 @@ public class CommsConfigurator implements IContextStateProcessor {
                 config.setLineTapPort(config.getLineTapPort() + 100);
                 config.setClusterPort(config.getClusterPort() + 100);
                 config.setBroadcastLivePort(config.getBroadcastLivePort() + 100);
+                config.setClusterHosts(this.getOperationalClusterHosts());
             }
             assignPorts(dacs, dacMap, prevDacMap);
             config.setJmsConnection(BMHConstants
@@ -201,6 +205,51 @@ public class CommsConfigurator implements IContextStateProcessor {
                 locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
             }
         }
+    }
+
+    /**
+     * Retrieves and returns the cluster hosts that have been specified in the
+     * operational comms configuration file, if it exists.
+     * 
+     * @return the {@link Set} of operational {@link CommsHostConfig}s.
+     */
+    private Set<CommsHostConfig> getOperationalClusterHosts() {
+        Path configFilePath = CommsConfig.getDefaultPath(true);
+        if (Files.exists(configFilePath) == false) {
+            return Collections.emptySet();
+        }
+
+        final ClusterLocker operationalLocker = new ClusterLocker(
+                AbstractBMHDao.getDatabaseName(true));
+        ClusterTask ct = null;
+        CommsConfig commsConfig = null;
+        try {
+            /*
+             * This lock will not be used very long, if successful, because we
+             * are only reading the file. But, we want to mitigate the risk that
+             * we may attempt to read the file while the operational
+             * configurator is writing it.
+             */
+            do {
+                ct = operationalLocker.lock("configure", configFilePath
+                        .getFileName().toString(), 30000, true);
+            } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
+
+            commsConfig = JAXB.unmarshal(configFilePath.toFile(),
+                    CommsConfig.class);
+        } catch (DataBindingException e) {
+            statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
+                    "Cannot load existing operational comms config file: "
+                            + configFilePath.toString() + ".", e);
+            return Collections.emptySet();
+        } finally {
+            if (ct != null) {
+                operationalLocker.deleteLock(ct.getId().getName(), ct.getId()
+                        .getDetails());
+            }
+        }
+
+        return commsConfig.getClusterHosts();
     }
 
     /**
