@@ -68,6 +68,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Apr 27, 2015  4397     bkowal      Set the {@link InputMessage} update date.
  * May 13, 2015  4429     rferrel     Changes loggers for traceId.
  * May 21, 2015  4429     rjpeter     Added additional logging.
+ * Jun 17, 2015  4482     rjpeter     Ignore all polygon data.
  * </pre>
  * 
  * @author bsteffen
@@ -104,7 +105,7 @@ public class InputMessageParser {
     private static final Pattern ugcPattern = Pattern.compile("^([^c]*)c");
 
     private static final Pattern polygonPattern = Pattern
-            .compile("^([-]?[0-9]{3,4} [0-9]{3,5})( [-]?[0-9]{3,4} [0-9]{3,5}){0,19}");
+            .compile("^([-]?[0-9]{3,5} ?)");
 
     private static final Pattern endPattern = Pattern.compile("^(.*)\\eb",
             Pattern.DOTALL);
@@ -328,13 +329,46 @@ public class InputMessageParser {
     private int parsePolygon(InputMessage message, CharSequence text, int index) {
         Matcher polygon = polygonPattern.matcher(text);
         polygon.region(index, text.length());
-        if (polygon.find()) {
-            statusHandler.info("Found and ignored polygon(" + polygon.group()
-                    + ") inforamtion in input message(" + message.getName()
-                    + ").");
-            return polygon.end();
+        StringBuilder polygonText = new StringBuilder();
+        int end = index;
+        String validationMsg = null;
+        int polyCount = 0;
+        while (polygon.find()) {
+            // lat
+            polygonText.append(polygon.group());
+            end = polygon.end();
+            polygon.region(end, text.length());
+
+            if (polygon.find()) {
+                // lon
+                polygonText.append(polygon.group());
+                end = polygon.end();
+                polygon.region(end, text.length());
+            } else {
+                validationMsg = " Incomplete vertex detected.";
+            }
+            polyCount++;
         }
-        return index;
+
+        if (polygonText.length() > 0) {
+            StringBuilder msg = new StringBuilder(160);
+            msg.append("Found and ignored polygon(").append(polygonText)
+                    .append(") inforamtion in input message(")
+                    .append(message.getName()).append(").");
+            if (validationMsg != null || polyCount > 20) {
+                msg.append(" Polygon issues detected:");
+                if (validationMsg != null) {
+                    msg.append(validationMsg);
+                }
+                if (polyCount > 20) {
+                    msg.append(" ").append(polyCount)
+                            .append(" vertices detected, only 20 allowed.");
+                }
+            }
+
+            statusHandler.info(msg.toString());
+        }
+        return end;
     }
 
     private int parseAreaCodes(InputMessage message, CharSequence text,
