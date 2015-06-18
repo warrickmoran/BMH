@@ -29,6 +29,9 @@ import javax.sound.sampled.LineListener;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+
 /**
  * An implementation of the {@link IDacListener}. Collects data from the dac
  * receive thread and live streams it as enough data is accumulated.
@@ -41,7 +44,8 @@ import javax.sound.sampled.SourceDataLine;
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014 3374       bkowal      Initial creation
  * Aug 25, 2014 3487       bsteffen    Do not start playback until buffer is full.
- * 
+ * Jun 18, 2015 4482       rjpeter     Increase buffer to 2 seconds.  Buffer 1
+ *                                     second before starting audio.
  * </pre>
  * 
  * @author bkowal
@@ -54,6 +58,9 @@ public class DacLiveStreamer implements IDacListener, LineListener {
      */
     private static final AudioFormat ULAW_AUDIO_FMT = new AudioFormat(
             Encoding.ULAW, 8000, 8, 1, 1, 8000, true);
+
+    private static final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(DacLiveStreamer.class);
 
     /*
      * The channel to retrieve data for and stream data from.
@@ -71,13 +78,22 @@ public class DacLiveStreamer implements IDacListener, LineListener {
      */
     private List<LineListener> registeredListeners;
 
-    private long lastPacketTime = 0l;
+    private final int bufferSize;
+
+    private final int threshold;
+
+    /*
+     * If buffer is full, tossData until threshold to avoid falling further
+     * behind.
+     */
+    private boolean tossData = false;
 
     /**
-     * Constructor
+     * /** Constructor
      * 
      * @param channel
      *            the channel to receive data for
+     * 
      * @throws DacPlaybackException
      *             if the live stream cannot be successfully instantiated and
      *             started.
@@ -88,7 +104,12 @@ public class DacLiveStreamer implements IDacListener, LineListener {
         try {
             this.line = AudioSystem.getSourceDataLine(null);
             this.line.addLineListener(this);
-            this.line.open(ULAW_AUDIO_FMT);
+            /* 2 second audio buffer */
+            int recommendedSize = (int) (ULAW_AUDIO_FMT.getFrameSize()
+                    * ULAW_AUDIO_FMT.getFrameRate() * 2);
+            this.line.open(ULAW_AUDIO_FMT, recommendedSize);
+            bufferSize = this.line.getBufferSize();
+            threshold = bufferSize / 2;
         } catch (LineUnavailableException e) {
             this.closeAudioStream();
             throw new DacPlaybackException(e);
@@ -124,30 +145,54 @@ public class DacLiveStreamer implements IDacListener, LineListener {
      */
     @Override
     public void dataArrived(final byte[] payload) {
-        long packetTime = System.currentTimeMillis();
         int available = this.line.available();
+
         if (this.line.isActive()) {
-            int maxPacketInterval = this.line.getBufferSize() * 1000
-                    / (int) ULAW_AUDIO_FMT.getSampleRate();
-            if (packetTime - lastPacketTime > maxPacketInterval) {
+            if (bufferSize - available < payload.length) {
                 /*
-                 * If the length of time between packets is larger than the
-                 * buffer then stop and allow buffer to refill.
+                 * If buffer has less than a packet left, stop the line and
+                 * allow buffer to partially fill.
                  */
                 this.line.stop();
+                statusHandler
+                        .debug("Audio buffer empty, pausing audio to buffer audio");
+            } else {
+                if (tossData) {
+                    if (available < threshold) {
+                        /* buffer still too full */
+                        return;
+                    }
+
+                    /* buffer below threshold, allow data */
+                    tossData = false;
+                    statusHandler.debug("Resuming audio buffering");
+                } else if (available < payload.length) {
+                    /* buffer full, toss data */
+                    tossData = true;
+                    statusHandler
+                            .info("Audio buffer full, allowing audio buffer to drain");
+                    return;
+                }
             }
         } else {
-            if (available < payload.length) {
+            if (available <= threshold) {
                 /*
-                 * When the line is inactive(not playing) and the buffer is full
-                 * start playing.
+                 * When the line is inactive(not playing) and the buffer has
+                 * reached threshold start playing
                  */
                 this.line.start();
+                statusHandler.debug("Starting audio.  Buffer Size: "
+                        + line.getBufferSize() + ", Buffer Remaining: "
+                        + available);
             }
         }
-        this.line.write(payload, 0, payload.length);
-        /* Since write may have blocked get the time again. */
-        lastPacketTime = System.currentTimeMillis();
+
+        int bytesWritten = 0;
+
+        while (bytesWritten < payload.length) {
+            bytesWritten += line.write(payload, bytesWritten, payload.length
+                    - bytesWritten);
+        }
     }
 
     /*
