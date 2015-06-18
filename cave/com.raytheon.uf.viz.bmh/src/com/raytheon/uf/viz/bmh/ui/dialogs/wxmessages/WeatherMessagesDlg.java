@@ -179,6 +179,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 12, 2015 4482     rjpeter     Fixed NPE.
  * Jun 18, 2015 4490     bkowal      {@link RecordedByUtils} and
  *                                   {@link ImportedByUtils} relocated to common.
+ * Jun 18, 2015 4490     bkowal      Re-enable the expiration date/time spinners when a
+ *                                   new message is started.
  * </pre>
  * 
  * @author lvenable
@@ -1567,6 +1569,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             this.noExpireChk.setSelection(false);
             expirationDTF.setDateTimeSpinners(userInputMessage
                     .getExpirationTime());
+            this.expirationDTF.setEnabled(true);
         } else {
             if (this.userInputMessage.getId() != 0
                     && this.userInputMessage.isValidHeader()) {
