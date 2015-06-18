@@ -196,6 +196,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jun 01, 2015  4490     bkowal      Use the new {@link BMH_CATEGORY#SAME_AREA_TRUNCATION}.
  * Jun 08, 2015  4490     bkowal      Walk the file tree that will be deleted to handle the case
  *                                    when the dac transmit deletes files before we can reach them.
+ * Jun 18, 2015  4490     bkowal      Refresh all potential playlists when a message is
+ *                                    deactivated.
  * </pre>
  * 
  * @author bsteffen
@@ -401,8 +403,10 @@ public class PlaylistManager implements IContextStateProcessor {
                                 + group.getName() + "]");
                 continue;
             }
-            if (Boolean.TRUE.equals(message.getInputMessage().getActive())
-                    && message.getForcedExpiration() == false) {
+            final boolean activeMessage = Boolean.TRUE.equals(message
+                    .getInputMessage().getActive())
+                    && (message.getForcedExpiration() == false);
+            if (activeMessage) {
                 this.messageLogger.logActivationActivity(null, message);
             }
             for (ProgramSuite programSuite : program.getProgramSuites()) {
@@ -410,7 +414,16 @@ public class PlaylistManager implements IContextStateProcessor {
                         message.getAfosid())) {
                     refreshPlaylist(group, programSuite, false, event,
                             traceable);
-                    break;
+                    if (activeMessage) {
+                        /*
+                         * if the message has been deactivated, we want to
+                         * ensure that every playlist the message belongs to is
+                         * updated because the change will not necessarily
+                         * trigger a switch to a playlist that contains the
+                         * message.
+                         */
+                        break;
+                    }
                 }
             }
         }

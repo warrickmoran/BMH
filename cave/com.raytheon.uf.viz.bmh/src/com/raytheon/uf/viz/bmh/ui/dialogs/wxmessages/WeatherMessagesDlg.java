@@ -51,6 +51,8 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.audio.ImportedByUtils;
+import com.raytheon.uf.common.bmh.audio.RecordedByUtils;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -70,8 +72,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.bmh.ImportedByUtils;
-import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
@@ -177,6 +177,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 08, 2015 4403     bkowal      Specify the {@link Language} when constructing the
  *                                   {@link MessageContentsDlg}.
  * Jun 12, 2015 4482     rjpeter     Fixed NPE.
+ * Jun 18, 2015 4490     bkowal      {@link RecordedByUtils} and
+ *                                   {@link ImportedByUtils} relocated to common.
  * </pre>
  * 
  * @author lvenable

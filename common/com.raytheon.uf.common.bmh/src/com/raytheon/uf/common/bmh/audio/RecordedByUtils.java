@@ -17,16 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.bmh;
-
-import java.nio.file.Path;
+package com.raytheon.uf.common.bmh.audio;
 
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.core.VizApp;
 
 /**
- * Utility to generate and check for the default "Imported By ..." message for
- * imported audio.
+ * 
+ * Utility to generate and check for the default "Recorded By ..." message for
+ * pre-recorded audio.
  * 
  * <pre>
  * 
@@ -34,19 +32,19 @@ import com.raytheon.uf.viz.core.VizApp;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 16, 2015 4118       bkowal      Initial creation
- * Jun 12, 2015 4482       rjpeter     Fix NPE.
+ * Dec 09, 2014  #3909      bkowal      Initial creation
+ * Feb 11, 2015  #3908      bkowal      Added '#' to the beginning
+ *                                      of the standard Recording message.
+ * Jun 12, 2015  4482       rjpeter     Fix NPE.
+ * Jun 18, 2015  4490       bkowal      Relocated to common.
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
+public class RecordedByUtils {
 
-public class ImportedByUtils {
-
-    private static final String IMPORTED_BY_PREFIX = "#Imported by ";
-
-    private static final String FROM_FILE = " from file ";
+    private static final String RECORDED_BY_PREFIX = "#Recorded by ";
 
     private static final String MSG_ON = " on ";
 
@@ -55,21 +53,17 @@ public class ImportedByUtils {
     /**
      * Constructor - protected to prevent instantiation of this class.
      */
-    protected ImportedByUtils() {
+    protected RecordedByUtils() {
     }
 
     /**
-     * Builds the imported by message.
+     * Builds the recorded by message.
      * 
-     * @param importedFilePath
-     *            the {@link Path} of the file that was imported.
-     * @return the imported by message that is constructed.
+     * @return the recorded by message that is constructed.
      */
-    public static String getMessage(final Path importedFilePath) {
-        StringBuilder sb = new StringBuilder(IMPORTED_BY_PREFIX);
-        sb.append(VizApp.getWsId().getUserName());
-        sb.append(FROM_FILE);
-        sb.append(importedFilePath.toString());
+    public static String getMessage(String username) {
+        StringBuilder sb = new StringBuilder(RECORDED_BY_PREFIX);
+        sb.append(username);
         sb.append(MSG_ON);
         sb.append(TimeUtil.newCalendar().getTime().toString());
         sb.append(MSG_TERMINATOR);
@@ -78,13 +72,13 @@ public class ImportedByUtils {
     }
 
     /**
-     * Determines if the specified message is an imported by message.
+     * Determines if the specified message is a recorded by message.
      * 
      * @param msg
      *            the specified message
-     * @return true, if the message is an imported by message; false, otherwise.
+     * @return true, if the message is a recorded by message; false, otherwise.
      */
     public static boolean isMessage(final String msg) {
-        return msg != null && msg.trim().startsWith(IMPORTED_BY_PREFIX);
+        return msg != null && msg.trim().startsWith(RECORDED_BY_PREFIX);
     }
 }
