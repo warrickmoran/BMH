@@ -202,6 +202,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 02, 2015  4369      rferrel     Handle {@link NoPlaybackMessageNotification}.
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * Jun 12, 2015  4482      rjpeter     Added DO_NOT_BLOCK.
+ * Jun 18, 2015  4490      bkowal      Force reload an audio stream when the configuration
+ *                                     of the selected dac is altered.
  * </pre>
  * 
  * @author mpduff
@@ -962,6 +964,19 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         }
         Transmitter transmitter = (Transmitter) this.transmitterTable.getItem(
                 this.transmitterTable.getSelectionIndex()).getData();
+        if (reloadAudioStream == false) {
+            synchronized (this.disposalLock) {
+                /*
+                 * Determine if the audio stream needs to be reloaded either
+                 * because the dac or the dac port has been altered.
+                 */
+                reloadAudioStream = this.monitorThread != null
+                        && (this.selectedTransmitterGroupObject != null && ((transmitter
+                                .getTransmitterGroup().getDac() != this.selectedTransmitterGroupObject
+                                .getDac()) || (this.monitorThread.getChannel() != transmitter
+                                .getDacPort())));
+            }
+        }
         selectedTransmitterGroupObject = transmitter.getTransmitterGroup();
         selectedTransmitterGrp = selectedTransmitterGroupObject.getName();
         this.selectedTransmitter = transmitter.getMnemonic();

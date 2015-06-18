@@ -55,6 +55,7 @@ import com.raytheon.uf.viz.bmh.BMHServers;
  * Apr 14, 2015  4394     bkowal      Updated constructor to require information that is
  *                                    already known.
  * Jun 17, 2015  4482     rjpeter     Only process in 160 byte chunks.
+ * Jun 18, 2015  4490     bkowal      Added {@link #getChannel()}.
  * </pre>
  * 
  * @author bsteffen
@@ -182,6 +183,13 @@ public class MonitorInlineThread extends Thread {
      */
     public void cancel() {
         running = false;
+    }
+
+    /**
+     * @return the channel
+     */
+    public int getChannel() {
+        return channel;
     }
 
     /**
