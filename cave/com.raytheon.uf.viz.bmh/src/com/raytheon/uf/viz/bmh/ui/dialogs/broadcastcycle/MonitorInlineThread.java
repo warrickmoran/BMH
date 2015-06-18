@@ -137,8 +137,16 @@ public class MonitorInlineThread extends Thread {
                     totalRead += curRead;
                 }
 
+                long t0 = System.currentTimeMillis();
                 logger.packetProcessed();
                 listener.dataArrived(payload);
+                long t1 = System.currentTimeMillis();
+                if (t1 - t0 > 20) {
+                    statusHandler
+                            .debug("Processing of audio packet took "
+                                    + (t1 - t0)
+                                    + "ms.  Consider adding separate thread for audio processing");
+                }
             }
 
             SerializationUtil.transformToThriftUsingStream(
