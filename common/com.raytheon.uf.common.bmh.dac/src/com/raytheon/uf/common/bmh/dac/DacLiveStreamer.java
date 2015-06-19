@@ -153,6 +153,7 @@ public class DacLiveStreamer implements IDacListener, LineListener {
                  * If buffer has less than a packet left, stop the line and
                  * allow buffer to partially fill.
                  */
+                tossData = false;
                 this.line.stop();
                 statusHandler
                         .debug("Audio buffer empty, pausing audio to buffer audio");
@@ -180,6 +181,7 @@ public class DacLiveStreamer implements IDacListener, LineListener {
                  * When the line is inactive(not playing) and the buffer has
                  * reached threshold start playing
                  */
+                tossData = false;
                 this.line.start();
                 statusHandler.debug("Starting audio.  Buffer Size: "
                         + line.getBufferSize() + ", Buffer Remaining: "
