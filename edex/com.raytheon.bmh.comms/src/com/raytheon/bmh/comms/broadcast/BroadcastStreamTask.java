@@ -21,9 +21,9 @@ package com.raytheon.bmh.comms.broadcast;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.UUID;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -34,11 +34,11 @@ import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
-import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand.ACTION;
-import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand.ACTION;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
+import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 
@@ -76,7 +76,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  *                                     transmitter group.
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
  * Dec 1, 2014  3797       bkowal      Support broadcast clustering.
- * 
+ * Jun 19, 2015 4482       rjpeter     Always call stopBroadcast.
  * </pre>
  * 
  * @author bkowal
@@ -497,15 +497,22 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
     }
 
     protected void stopBroadcast() {
-        logger.info("Broadcast {} is shutting down ...", this.getName());
-        try {
-            this.socket.close();
-        } catch (IOException e) {
-            logger.warn("Failed to close the socket connection (Broadcast "
-                    + this.getName() + ")!", e);
+        if (!STATE.STOP.equals(this.state)) {
+            logger.info("Broadcast {} is shutting down ...", this.getName());
+
+            if (socket != null) {
+                try {
+                    this.socket.close();
+                } catch (IOException e) {
+                    logger.warn(
+                            "Failed to close the socket connection (Broadcast "
+                                    + this.getName() + ")!", e);
+                }
+            }
+
+            this.streamingServer.broadcastTaskFinished(this.getName());
+            this.state = STATE.STOP;
         }
-        this.streamingServer.broadcastTaskFinished(this.getName());
-        this.state = STATE.STOP;
     }
 
     /**
@@ -537,16 +544,21 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
     @Override
     public void run() {
-        if (this.command.getMsgSource() == MSGSOURCE.VIZ) {
-            logger.info("Running broadcast streaming task {}.", this.getName());
-        } else if (this.command.getMsgSource() == MSGSOURCE.COMMS) {
-            logger.info("Running CLUSTERED broadcast streaming task {}.",
-                    this.getName());
-        }
+        try {
+            if (this.command.getMsgSource() == MSGSOURCE.VIZ) {
+                logger.info("Running broadcast streaming task {}.",
+                        this.getName());
+            } else if (this.command.getMsgSource() == MSGSOURCE.COMMS) {
+                logger.info("Running CLUSTERED broadcast streaming task {}.",
+                        this.getName());
+            }
 
-        this.state = STATE.INIT;
-        while (this.state != STATE.STOP && this.state != STATE.ERROR) {
-            this.handleStateTransition();
+            this.state = STATE.INIT;
+            while (this.state != STATE.STOP && this.state != STATE.ERROR) {
+                this.handleStateTransition();
+            }
+        } finally {
+            stopBroadcast();
         }
     }
 
@@ -918,6 +930,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         this.shutdown();
     }
 
+    @Override
     public void shutdown() {
         /*
          * should shutdown wait until the live broadcasts have ended (max: 2

@@ -80,14 +80,6 @@ public class DacLiveStreamer implements IDacListener, LineListener {
 
     private final int bufferSize;
 
-    private final int threshold;
-
-    /*
-     * If buffer is full, tossData until threshold to avoid falling further
-     * behind.
-     */
-    private boolean tossData = false;
-
     /**
      * /** Constructor
      * 
@@ -104,12 +96,11 @@ public class DacLiveStreamer implements IDacListener, LineListener {
         try {
             this.line = AudioSystem.getSourceDataLine(null);
             this.line.addLineListener(this);
-            /* 2 second audio buffer */
+            /* 1 second audio buffer */
             int recommendedSize = (int) (ULAW_AUDIO_FMT.getFrameSize()
-                    * ULAW_AUDIO_FMT.getFrameRate() * 2);
+                    * ULAW_AUDIO_FMT.getFrameRate() * 1);
             this.line.open(ULAW_AUDIO_FMT, recommendedSize);
             bufferSize = this.line.getBufferSize();
-            threshold = bufferSize / 2;
         } catch (LineUnavailableException e) {
             this.closeAudioStream();
             throw new DacPlaybackException(e);
@@ -148,44 +139,24 @@ public class DacLiveStreamer implements IDacListener, LineListener {
         int available = this.line.available();
 
         if (this.line.isActive()) {
-            if (bufferSize - available < payload.length) {
+            if (bufferSize == available) {
                 /*
-                 * If buffer has less than a packet left, stop the line and
-                 * allow buffer to partially fill.
+                 * If buffer empty, stop the line and allow buffer to partially
+                 * fill.
                  */
-                tossData = false;
                 this.line.stop();
                 statusHandler
-                        .debug("Audio buffer empty, pausing audio to buffer audio");
-            } else {
-                if (tossData) {
-                    if (available < threshold) {
-                        /* buffer still too full */
-                        return;
-                    }
-
-                    /* buffer below threshold, allow data */
-                    tossData = false;
-                    statusHandler.debug("Resuming audio buffering");
-                } else if (available < payload.length) {
-                    /* buffer full, toss data */
-                    tossData = true;
-                    statusHandler
-                            .info("Audio buffer full, allowing audio buffer to drain");
-                    return;
-                }
+                        .info("Audio buffer empty, pausing audio to buffer audio");
             }
         } else {
-            if (available <= threshold) {
+            if (available < payload.length) {
                 /*
-                 * When the line is inactive(not playing) and the buffer has
-                 * reached threshold start playing
+                 * When the line is inactive(not playing) and the buffer is
+                 * full, start playing
                  */
-                tossData = false;
                 this.line.start();
-                statusHandler.debug("Starting audio.  Buffer Size: "
-                        + line.getBufferSize() + ", Buffer Remaining: "
-                        + available);
+                statusHandler.info("Starting audio.  Buffered: "
+                        + (bufferSize - available));
             }
         }
 

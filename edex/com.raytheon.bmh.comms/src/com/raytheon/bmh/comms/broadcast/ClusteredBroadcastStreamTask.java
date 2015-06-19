@@ -27,8 +27,10 @@ import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.broadcast.ManagedTransmitterGroup.STREAMING_STATUS;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
-import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
+import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand.ACTION;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastPlayCommand;
+import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
@@ -56,7 +58,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 25, 2014 3797       bkowal      Initial creation
- * 
+ * Jun 19, 2015 4482       rjpeter     Remove override of stopBroadcast.
  * </pre>
  * 
  * @author bkowal
@@ -159,17 +161,6 @@ public class ClusteredBroadcastStreamTask extends BroadcastStreamTask {
 
         // unknown transmitters are ignored
         this.waitExecutionUnlock(STATE.LIVE);
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.bmh.comms.broadcast.BroadcastStreamTask#stopBroadcast()
-     */
-    @Override
-    protected void stopBroadcast() {
-        logger.info("Broadcast {} is shutting down ...", this.getName());
-        this.state = STATE.STOP;
     }
 
     /**
