@@ -204,6 +204,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 12, 2015  4482      rjpeter     Added DO_NOT_BLOCK.
  * Jun 18, 2015  4490      bkowal      Force reload an audio stream when the configuration
  *                                     of the selected dac is altered.
+ * Jun 19, 2015  4481      bkowal      Set the time zone on the {@link SimpleDateFormat}.
  * </pre>
  * 
  * @author mpduff
@@ -1437,6 +1438,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         .getTimeZone());
         predictedTime.setTimeZone(tz.getTz());
         SimpleDateFormat sdf = new SimpleDateFormat(this.dynamicTimeFormat);
+        /*
+         * {@link Date} does not have the correct timezone after we set it in
+         * the {@link Calendar}; so, it also needs to be set on the {@link
+         * SimpleDateFormat}.
+         */
+        sdf.setTimeZone(tz.getTz());
         final String formattedTime = sdf.format(predictedTime.getTime()) + " "
                 + tz.getLongDisplayName();
         return inputMsg.getContent().replace(TimeTextFragment.TIME_PLACEHOLDER,
