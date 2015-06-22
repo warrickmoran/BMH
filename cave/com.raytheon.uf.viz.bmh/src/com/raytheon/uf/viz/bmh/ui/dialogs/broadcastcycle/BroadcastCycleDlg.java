@@ -205,6 +205,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 18, 2015  4490      bkowal      Force reload an audio stream when the configuration
  *                                     of the selected dac is altered.
  * Jun 19, 2015  4481      bkowal      Set the time zone on the {@link SimpleDateFormat}.
+ * Jun 22, 2015  4481      bkowal      Display the timezone display id in the time zone field.
  * </pre>
  * 
  * @author mpduff
@@ -985,7 +986,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 + selectedTransmitterGrp + " - Channel "
                 + transmitter.getDacPort());
         transmitterNameLbl.setText(selectedTransmitterGrp);
-        timeZoneValueLbl.setText(selectedTransmitterGroupObject.getTimeZone());
+        timeZoneValueLbl.setText(BMHTimeZone.getTimeZoneByID(
+                this.selectedTransmitterGroupObject.getTimeZone())
+                .getDisplayId());
 
         if ((selectedTransmitterGrp != null)
                 && (selectedTransmitterGrp.isEmpty() == false)) {
