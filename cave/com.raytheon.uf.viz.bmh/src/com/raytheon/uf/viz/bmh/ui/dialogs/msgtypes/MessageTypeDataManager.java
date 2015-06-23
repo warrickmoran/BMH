@@ -32,6 +32,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest.MessageTypeAction;
 import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
+import com.raytheon.uf.common.bmh.request.MessageTypeValidationRequest;
+import com.raytheon.uf.common.bmh.request.MessageTypeValidationResponse;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 
 /**
@@ -52,6 +54,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Feb 10, 2015   #4085    bkowal      Added {@link #getStaticMessageAfosIds()}.
  * Mar 12, 2015   #4213    bkowal      {@link #getStaticMessageAfosIds()} now includes
  *                                     all station id messages.
+ * Jun 23, 2015   #4572    bkowal      Added {@link #getMessageTypesForValidAfosIds(Set)}.
  * 
  * </pre>
  * 
@@ -227,6 +230,26 @@ public class MessageTypeDataManager {
         }
 
         return null;
+    }
+
+    /**
+     * Retrieves any {@link MessageType}s that are associated with the specified
+     * afos id. The provided response object,
+     * {@link MessageTypeValidationResponse} also specifies which afos ids were
+     * invalid and which afos ids were not associated with a {@link MessageType}
+     * .
+     * 
+     * @param afosIds
+     *            the specified afos ids
+     * @return a {@link MessageTypeValidationResponse}
+     * @throws Exception
+     */
+    public MessageTypeValidationResponse getMessageTypesForValidAfosIds(
+            Set<String> afosIds) throws Exception {
+        MessageTypeValidationRequest request = new MessageTypeValidationRequest();
+        request.setAfosIds(afosIds);
+
+        return (MessageTypeValidationResponse) BmhUtils.sendRequest(request);
     }
 
     /**

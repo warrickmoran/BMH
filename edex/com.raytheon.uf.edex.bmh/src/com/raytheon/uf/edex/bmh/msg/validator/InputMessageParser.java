@@ -69,6 +69,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * May 13, 2015  4429     rferrel     Changes loggers for traceId.
  * May 21, 2015  4429     rjpeter     Added additional logging.
  * Jun 17, 2015  4482     rjpeter     Ignore all polygon data.
+ * Jun 23, 2015  4572     bkowal      Extracted the afos id regex into {@link #AFOS_ID_REGEX}.
  * </pre>
  * 
  * @author bsteffen
@@ -78,6 +79,8 @@ public class InputMessageParser {
 
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(InputMessageParser.class);
+
+    public static final String AFOS_ID_REGEX = "^(([A-Z0-9]{3}| {3})[A-Z0-9]{5}[A-Z0-9 ])";
 
     private static final ThreadLocal<SimpleDateFormat> dateParser = TimeUtil
             .buildThreadLocalSimpleDateFormat("yyMMddHHmm",
@@ -91,8 +94,7 @@ public class InputMessageParser {
     /**
      * Match CCCNNNXXX, sssNNNXXX, CCCNNNXXs and sssNNNXXs where s is spaces.
      */
-    private static final Pattern afosidPattern = Pattern
-            .compile("^(([A-Z0-9]{3}| {3})[A-Z0-9]{5}[A-Z0-9 ])");
+    private static final Pattern afosidPattern = Pattern.compile(AFOS_ID_REGEX);
 
     private static final Pattern datePattern = Pattern.compile("^[0-9]{10}");
 
@@ -116,8 +118,9 @@ public class InputMessageParser {
         this.messageLogger = messageLogger;
     }
 
-    public InputMessage parse(@Body CharSequence text,
-            @Headers Map<String, Object> headers) {
+    public InputMessage parse(@Body
+    CharSequence text, @Headers
+    Map<String, Object> headers) {
         InputMessage message = new InputMessage();
         message.setUpdateDate(TimeUtil.newGmtCalendar());
         String fileName = headers.get("CamelFileNameOnly").toString();

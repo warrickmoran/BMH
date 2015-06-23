@@ -87,6 +87,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 05, 2015  4463      bkowal      Added {@link #originator}.
  * May 06, 2015  4463      bkowal      Default {@link #originator} to 'WXR'.
  * May 12, 2015  4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Jun 23, 2015  4572      bkowal      Added {@link #GET_MESSAGETYPES_FOR_AFOSIDS}.
  * </pre>
  * 
  * @author rjpeter
@@ -95,6 +96,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_AFOSID_TITLE, query = MessageType.GET_MESSAGETYPE_AFOSID_TITLE_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_AFOSID, query = MessageType.GET_MESSAGETYPE_FOR_AFOSID_QUERY),
+        @NamedQuery(name = MessageType.GET_MESSAGETYPES_FOR_AFOSIDS, query = MessageType.GET_MESSAGETYPES_FOR_AFOSIDS_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_AFOSID_DESIGNATION, query = MessageType.GET_MESSAGETYPE_AFOSID_DESIGNATION_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE, query = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, query = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION_QUERY),
@@ -125,6 +127,10 @@ public class MessageType {
 
     protected static final String GET_MESSAGETYPE_FOR_AFOSID_QUERY = "FROM MessageType m WHERE m.afosid = :afosid";
 
+    public static final String GET_MESSAGETYPES_FOR_AFOSIDS = "getMessageTypesForAfosIds";
+
+    protected static final String GET_MESSAGETYPES_FOR_AFOSIDS_QUERY = "FROM MessageType m WHERE m.afosid IN :afosids";
+
     public static final String GET_MESSAGETYPE_FOR_DESIGNATION = "getMessageTypeForDesignation";
 
     protected static final String GET_MESSAGETYPE_FOR_DESIGNATION_QUERY = "FROM MessageType m WHERE m.designation = :designation";
@@ -141,6 +147,8 @@ public class MessageType {
 
     protected static final String GET_REVERSE_REPLACEMENT_AFOSIDS_QUERY = "Select m FROM MessageType m, MessageTypeSummary s WHERE s.afosid = :afosid and s in elements(m.replacementMsgs)";
 
+    public static final int AFOS_ID_LENGTH = 9;
+
     // use surrogate key
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
@@ -148,7 +156,7 @@ public class MessageType {
     @DiffTitle(position = 3)
     protected int id;
 
-    @Column(length = 9)
+    @Column(length = AFOS_ID_LENGTH)
     @Index(name = "msg_type_afosid_idx")
     @DynamicSerializeElement
     @DiffTitle(position = 1)
