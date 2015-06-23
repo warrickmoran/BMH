@@ -198,6 +198,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    when the dac transmit deletes files before we can reach them.
  * Jun 18, 2015  4490     bkowal      Refresh all potential playlists when a message is
  *                                    deactivated.
+ * Jun 23, 2015  4490     bkowal      Cluster lock playlist directory deletions.
  * </pre>
  * 
  * @author bsteffen
@@ -293,16 +294,26 @@ public class PlaylistManager implements IContextStateProcessor {
                                             + ". Skipping playlist purge.");
                     continue;
                 }
-                Path groupPlaylistPath = playlistDir.resolve(identifier
-                        .getName());
-                if (Files.exists(groupPlaylistPath) == false) {
-                    statusHandler
-                            .info("No playlist file(s) exist for recently deleted Transmitter Group: "
-                                    + identifier.toString() + ".");
-                    continue;
-                }
-
+                ClusterTask ct = null;
+                Path groupPlaylistPath = null;
+                do {
+                    ct = locker.lock("playlist", identifier.getName(), 30000,
+                            true);
+                } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
                 try {
+                    /*
+                     * Only verify the files existence after we receive the
+                     * lock.
+                     */
+                    groupPlaylistPath = playlistDir.resolve(identifier
+                            .getName());
+                    if (Files.exists(groupPlaylistPath) == false) {
+                        statusHandler
+                                .info("No playlist file(s) exist for recently deleted Transmitter Group: "
+                                        + identifier.toString() + ".");
+                        continue;
+                    }
+
                     Files.walkFileTree(groupPlaylistPath,
                             new SimpleFileVisitor<Path>() {
                                 @Override
@@ -341,6 +352,9 @@ public class PlaylistManager implements IContextStateProcessor {
                     sb.append(identifier.toString()).append(".");
                     statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                             sb.toString(), e);
+                } finally {
+                    locker.deleteLock(ct.getId().getName(), ct.getId()
+                            .getDetails());
                 }
             } else {
                 refreshTransmitterGroup(group, null, null, null, notification);
