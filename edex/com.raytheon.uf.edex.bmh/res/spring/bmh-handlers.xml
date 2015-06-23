@@ -203,6 +203,14 @@
         <constructor-arg ref="transmitterLanguageRequestHandler" />
     </bean>
     
+    <bean id="messageTypeValidationHandler" 
+    	class="com.raytheon.uf.edex.bmh.handler.MessageTypeValidationHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.MessageTypeValidationRequest" />
+        <constructor-arg ref="messageTypeValidationHandler" />
+    </bean>    
+    
     <camelContext id="bmh-handle" xmlns="http://camel.apache.org/schema/spring"
 	errorHandlerRef="errorHandler">
     	<route id="bmhHandlersConfig">

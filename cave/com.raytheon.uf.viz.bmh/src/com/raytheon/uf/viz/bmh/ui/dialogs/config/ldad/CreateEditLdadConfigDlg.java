@@ -19,15 +19,22 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -38,6 +45,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
@@ -51,6 +59,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
+import com.raytheon.uf.common.bmh.request.MessageTypeValidationResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.DictionaryManager;
@@ -61,6 +70,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.RateOfSpeechComp;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.uf.viz.bmh.voice.VoiceDataManager;
@@ -88,6 +98,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     with a {@link LdadConfig}.
  * Feb 24, 2015    4157    bkowal      Supply a {@link Language} to the {@link RateOfSpeechComp}.
  * Jun 12, 2015    4482    rjpeter     Added DO_NOT_BLOCK.
+ * Jun 23, 2015    4572    bkowal      Added the ability to import {@link MessageType}s by
+ *                                     afos id.
  * </pre>
  * 
  * @author mpduff
@@ -139,6 +151,8 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
 
     private final LdadConfigDataManager ldadMgr = new LdadConfigDataManager();
 
+    private final MessageTypeDataManager mtdm = new MessageTypeDataManager();
+
     /**
      * Name text field
      */
@@ -182,6 +196,8 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
     private Button addMsgTypeButton;
 
     private Button removeMsgTypeButton;
+
+    private Button importMsgTypeButton;
 
     private MsgTypeTable selectedMsgTableComp;
 
@@ -411,16 +427,18 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         /* Controls */
         Composite selectedMsgTypeComposite = new Composite(
                 selectedMsgTypesGroup, SWT.NONE);
-        gl = new GridLayout(2, false);
+        gl = new GridLayout(3, false);
         selectedMsgTypeComposite.setLayout(gl);
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         selectedMsgTypeComposite.setLayoutData(gd);
+
+        final int buttonWidth = 80;
 
         /* Add Button */
         addMsgTypeButton = new Button(selectedMsgTypeComposite, SWT.PUSH);
         addMsgTypeButton.setText("Add...");
         gd = new GridData();
-        gd.widthHint = 80;
+        gd.widthHint = buttonWidth;
         addMsgTypeButton.setLayoutData(gd);
         addMsgTypeButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -433,7 +451,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         removeMsgTypeButton = new Button(selectedMsgTypeComposite, SWT.PUSH);
         removeMsgTypeButton.setText("Remove...");
         gd = new GridData();
-        gd.widthHint = 80;
+        gd.widthHint = buttonWidth;
         removeMsgTypeButton.setLayoutData(gd);
         removeMsgTypeButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -442,6 +460,18 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
             }
         });
         removeMsgTypeButton.setEnabled(false);
+
+        importMsgTypeButton = new Button(selectedMsgTypeComposite, SWT.PUSH);
+        importMsgTypeButton.setText("Import...");
+        gd = new GridData();
+        gd.widthHint = buttonWidth;
+        importMsgTypeButton.setLayoutData(gd);
+        importMsgTypeButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleMsgTypeImportAction();
+            }
+        });
 
         /* Table */
         selectedMsgTableComp = new MsgTypeTable(selectedMsgTypesGroup, 450, 100);
@@ -684,12 +714,12 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
             /*
              * Construct the msg type filter.
              */
+            Set<MessageTypeSummary> messageTypes = this
+                    .getSelectedMessageTypes();
             List<String> msgTypeIds = new ArrayList<>(this.selectedMsgTableComp
                     .getTableData().getTableRows().size());
-            for (TableRowData trd : this.selectedMsgTableComp.getTableData()
-                    .getTableRows()) {
-                msgTypeIds
-                        .add(((MessageTypeSummary) trd.getData()).getAfosid());
+            for (MessageTypeSummary mts : messageTypes) {
+                msgTypeIds.add(mts.getAfosid());
             }
             dlg.setFilteredMessageTypes(msgTypeIds);
         }
@@ -725,6 +755,147 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
                 .getTableData());
     }
 
+    private void handleMsgTypeImportAction() {
+        String[] filterNames = { "Text (*.txt)", "All Files (*)" };
+
+        // These filter extensions are used to filter which files are displayed.
+        String[] filterExtentions = { "*.txt", "*" };
+
+        FileDialog dlg = new FileDialog(shell, SWT.OPEN);
+        dlg.setFilterNames(filterNames);
+        dlg.setFilterExtensions(filterExtentions);
+        String fileName = dlg.open();
+        if (fileName == null) {
+            return;
+        }
+
+        Path importFilePath = Paths.get(fileName);
+        Set<String> importedAfosIds = new HashSet<>();
+        try (BufferedReader br = Files.newBufferedReader(importFilePath,
+                Charset.defaultCharset())) {
+            while (true) {
+                String line = br.readLine();
+                if (line == null) {
+                    break;
+                }
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("#")) {
+                    continue;
+                }
+                importedAfosIds.add(line);
+            }
+        } catch (IOException e) {
+            statusHandler.error(
+                    "Failed to read import file: " + fileName + ".", e);
+            return;
+        }
+
+        if (importedAfosIds.isEmpty()) {
+            /*
+             * The file did not contain any afos ids.
+             */
+            DialogUtility.showMessageBox(this.shell, SWT.ICON_INFORMATION
+                    | SWT.OK, "Ldad Configuration",
+                    "This specified import file: " + fileName
+                            + " did not include any message types.");
+            return;
+        }
+
+        /*
+         * Retrieve all applicable message types.
+         */
+        MessageTypeValidationResponse response = null;
+        try {
+            response = this.mtdm
+                    .getMessageTypesForValidAfosIds(importedAfosIds);
+            if (response == null) {
+                throw new Exception("Received unexpected NULL response.");
+            }
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to validate the imported message types.", e);
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        int dialogIcon = SWT.ICON_INFORMATION;
+        /*
+         * Determine if there are any invalid or missing message types that the
+         * user should be notified about.
+         */
+        if (CollectionUtils.isNotEmpty(response.getInvalidAfosIds())
+                || CollectionUtils.isNotEmpty(response.getMissingAfosIds())) {
+            sb.append("Unable to import all message types.");
+
+            if (CollectionUtils.isNotEmpty(response.getInvalidAfosIds())) {
+                sb.append("\n\nThe following message types are invalid: ");
+                sb.append(this.buildMtCSVList(response.getInvalidAfosIds()))
+                        .append(".");
+            }
+            if (CollectionUtils.isNotEmpty(response.getMissingAfosIds())) {
+                sb.append("\n\nThe following message types do not exist in the system: ");
+                sb.append(this.buildMtCSVList(response.getMissingAfosIds()))
+                        .append(".");
+            }
+
+            sb.append("\n\n");
+            dialogIcon = SWT.ICON_WARNING;
+        }
+
+        if (CollectionUtils.isEmpty(response.getMessageTypes())) {
+            sb.append("No message types have been imported.");
+        } else {
+            int duplicateCount = 0;
+            Set<MessageTypeSummary> messageTypesToAdd = response
+                    .getMessageTypes();
+            Set<MessageTypeSummary> existingMessageTypes = this
+                    .getSelectedMessageTypes();
+            Iterator<MessageTypeSummary> mtsIter = messageTypesToAdd.iterator();
+            while (mtsIter.hasNext()) {
+                if (existingMessageTypes.contains(mtsIter.next())) {
+                    ++duplicateCount;
+                    mtsIter.remove();
+                }
+            }
+            this.addSelectedMsgType(response.getMessageTypes());
+            sb.append("Successfully imported ");
+            sb.append(response.getMessageTypes().size());
+            sb.append(" message types.");
+            if (duplicateCount > 0) {
+                sb.append(" Ignored ").append(duplicateCount)
+                        .append(" duplicate message types.");
+            }
+        }
+
+        DialogUtility.showMessageBox(this.shell, dialogIcon | SWT.OK,
+                "Import Results", sb.toString());
+    }
+
+    private String buildMtCSVList(Set<String> afosIds) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (String afosId : afosIds) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(", ");
+            }
+            sb.append(afosId);
+        }
+
+        return sb.toString();
+    }
+
+    private Set<MessageTypeSummary> getSelectedMessageTypes() {
+        Set<MessageTypeSummary> messageTypes = new HashSet<>(
+                this.selectedMsgTableComp.getTableItemCount(), 1.0f);
+        for (TableRowData trd : this.selectedMsgTableComp.getTableData()
+                .getTableRows()) {
+            messageTypes.add((MessageTypeSummary) trd.getData());
+        }
+        return messageTypes;
+    }
+
     private void handleSaveAction() {
         if (this.valid() == false) {
             return;
@@ -744,13 +915,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         this.ldadConfig.setHost(this.hostTxt.getText());
         this.ldadConfig.setDirectory(this.directoryTxt.getText());
         /* add message types. */
-        for (TableRowData trd : this.selectedMsgTableComp.getTableData()
-                .getTableRows()) {
-            if (trd.getData() instanceof MessageTypeSummary == false) {
-                continue;
-            }
-            this.ldadConfig.addMessageType((MessageTypeSummary) trd.getData());
-        }
+        this.ldadConfig.setMessageTypes(this.getSelectedMessageTypes());
         if (this.dictCbo.getSelectionIndex() != -1) {
             Dictionary dictionary = null;
             try {
@@ -791,6 +956,10 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
     }
 
     private void addSelectedMsgType(Collection<?> messageTypes) {
+        if (CollectionUtils.isEmpty(messageTypes)) {
+            return;
+        }
+
         TableData tableData = this.selectedMsgTableComp.getTableData();
         for (Object object : messageTypes) {
             MessageTypeSummary messageTypeSummary = null;

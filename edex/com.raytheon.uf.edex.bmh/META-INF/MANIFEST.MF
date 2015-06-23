@@ -39,5 +39,6 @@ Require-Bundle: com.raytheon.uf.common.bmh,
  com.raytheon.uf.common.auth;bundle-version="1.14.0",
  com.raytheon.uf.common.bmh.legacy;bundle-version="0.14.0",
  com.raytheon.uf.common.bmh.dac;bundle-version="1.0.0",
- org.apache.camel
+ org.apache.camel,
+ org.apache.commons.collections;bundle-version="3.2.0"
 Import-Package: com.raytheon.edex.site
