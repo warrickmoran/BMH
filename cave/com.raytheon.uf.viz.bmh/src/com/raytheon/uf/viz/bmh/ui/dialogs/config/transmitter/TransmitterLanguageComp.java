@@ -24,7 +24,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -73,6 +76,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     whether the add button is disabled/enabled when it is
  *                                     not forcefully disabled.
  * Mar 18, 2015 4213       bkowal      Keep track of the currently selected program.
+ * Jun 24, 2015 4490       bkowal      Ensure that the {@link TransmitterLanguage}s remain sorted
+ *                                     when added to the table.
  * 
  * </pre>
  * 
@@ -103,8 +108,7 @@ public class TransmitterLanguageComp {
 
     private List<Language> unassignedLanguages = Collections.emptyList();
 
-    private final Map<Language, TransmitterLanguage> existingLanguagesMap = new HashMap<>(
-            Language.values().length, 1.0f);
+    private final SortedMap<Language, TransmitterLanguage> existingLanguagesMap = new TreeMap<>();
 
     private final Map<Language, TransmitterLanguage> archiveLanguagesMap = new HashMap<>(
             Language.values().length, 1.0f);
@@ -303,7 +307,8 @@ public class TransmitterLanguageComp {
             tableData.addDataRow(trd);
         }
         this.languagesTable.populateTable(tableData);
-        this.addButton.setEnabled(this.unassignedLanguages.isEmpty() == false);
+        this.addButton.setEnabled(CollectionUtils
+                .isNotEmpty(this.unassignedLanguages));
         this.editButton.setEnabled(false);
         this.deleteButton.setEnabled(false);
     }
@@ -357,12 +362,9 @@ public class TransmitterLanguageComp {
         dialog.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if ((returnValue == null)
-                        || ((returnValue instanceof TransmitterLanguage) == false)) {
-                    return;
+                if (returnValue instanceof TransmitterLanguage) {
+                    handleUpdatedLanguage((TransmitterLanguage) returnValue);
                 }
-
-                handleUpdatedLanguage((TransmitterLanguage) returnValue);
             }
         });
         dialog.open();

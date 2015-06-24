@@ -74,6 +74,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                     on add and remove.
  * May 11, 2015 4476       bkowal      Added {@link #removedStaticMsgTypes}.
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Jun 24, 2015 4490       bkowal      Updated {@link #GET_LANGUAGES_FOR_GROUP_QUERY} to
+ *                                     alphabetically sort the returned {@link TransmitterLanguage}s.
  * </pre>
  * 
  * @author rjpeter
@@ -87,7 +89,7 @@ public class TransmitterLanguage {
 
     public static final String GET_LANGUAGES_FOR_GROUP = "getLanguagesForGroup";
 
-    protected static final String GET_LANGUAGES_FOR_GROUP_QUERY = "FROM TransmitterLanguage tl WHERE tl.id.transmitterGroup = :group";
+    protected static final String GET_LANGUAGES_FOR_GROUP_QUERY = "FROM TransmitterLanguage tl WHERE tl.id.transmitterGroup = :group ORDER BY id";
 
     @EmbeddedId
     @DynamicSerializeElement
