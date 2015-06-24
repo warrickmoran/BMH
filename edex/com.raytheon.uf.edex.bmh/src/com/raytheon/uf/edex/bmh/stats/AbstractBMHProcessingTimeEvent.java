@@ -38,6 +38,7 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 20, 2015 4397       bkowal      Initial creation
+ * Jun 24, 2015 4397       bkowal      Added an empty constructor.
  * 
  * </pre>
  * 
@@ -55,13 +56,21 @@ public abstract class AbstractBMHProcessingTimeEvent extends StatisticsEvent {
     @DynamicSerializeElement
     private long processingTime;
 
-    private final long requestTime;
+    private long requestTime;
 
     private static final Map<String, String> FIELD_UNIT_MAP;
     static {
         Map<String, String> m = new HashMap<String, String>();
         m.put("processingTime", "ms");
         FIELD_UNIT_MAP = Collections.unmodifiableMap(m);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * Empty constructor for {@link DynamicSerialize}.
+     */
+    protected AbstractBMHProcessingTimeEvent() {
     }
 
     protected AbstractBMHProcessingTimeEvent(final long requestTime) {
@@ -116,5 +125,13 @@ public abstract class AbstractBMHProcessingTimeEvent extends StatisticsEvent {
      */
     public void setProcessingTime(long processingTime) {
         this.processingTime = processingTime;
+    }
+
+    public long getRequestTime() {
+        return requestTime;
+    }
+
+    public void setRequestTime(long requestTime) {
+        this.requestTime = requestTime;
     }
 }
