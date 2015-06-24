@@ -55,5 +55,9 @@
     </route>
 
   </camelContext>
+  
+  <bean factory-bean="contextManager" factory-method="registerClusteredContext">
+	<constructor-arg ref="bmhStatusContext" />
+  </bean>
 
 </beans>

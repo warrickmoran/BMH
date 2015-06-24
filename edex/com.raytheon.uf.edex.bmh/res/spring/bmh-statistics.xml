@@ -24,4 +24,8 @@
 
 	</camelContext>
 
+	<bean factory-bean="contextManager" factory-method="registerClusteredContext">
+		<constructor-arg ref="bmhStatisticContext" />
+	</bean>
+
 </beans>
