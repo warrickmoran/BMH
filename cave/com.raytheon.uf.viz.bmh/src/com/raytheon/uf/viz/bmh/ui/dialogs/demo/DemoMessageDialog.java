@@ -55,7 +55,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -65,8 +64,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcast.BroadcastLiveDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterDataManager;
-import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.TransmitterLanguageDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
+import com.raytheon.uf.viz.bmh.voice.VoiceDataManager;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 
 /**
@@ -90,6 +89,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  *                                    {@link Boolean#TRUE}.
  * May 27, 2016  4431     rferrel     Persist the messages for a language.
  * Jun 05, 2015  4490     rjpeter     Updated constructor.
+ * Jun 24, 2015  4490     bkowal      Retrieve and display {@link TtsVoice}s instead of
+ *                                    {@link TransmitterLanguage}s.
  * </pre>
  * 
  * @author bsteffen
@@ -99,6 +100,8 @@ public class DemoMessageDialog extends AbstractBMHDialog {
 
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(BroadcastLiveDlg.class);
+
+    private final VoiceDataManager vdm = new VoiceDataManager();
 
     /**
      * Default messages for language. The initial message and one to use when
@@ -252,13 +255,12 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         new QueryVoicesJob(getSelectedTransmitterGroup()).schedule();
     }
 
-    protected void populateVoices(List<TransmitterLanguage> languages) {
+    protected void populateVoices(List<TtsVoice> voices) {
         TtsVoice previousSelection = getSelectedVoice();
         voiceSelectionCombo.removeAll();
-        availableVoices = new ArrayList<>(languages.size());
-        for (TransmitterLanguage language : languages) {
-            availableVoices.add(language.getVoice());
-            voiceSelectionCombo.add(language.getVoice().getVoiceName());
+        availableVoices = voices;
+        for (int i = 0; i < availableVoices.size(); i++) {
+            voiceSelectionCombo.add(availableVoices.get(i).getVoiceName());
         }
 
         voiceSelectionCombo.select(0);
@@ -562,10 +564,8 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         protected IStatus run(IProgressMonitor monitor) {
             if (transmitterGroup != null) {
                 try {
-                    TransmitterLanguageDataManager tldm = new TransmitterLanguageDataManager();
-                    List<TransmitterLanguage> languages = tldm
-                            .getLanguagesForGroup(transmitterGroup);
-                    getDisplay().asyncExec(new PopulateVoicesTask(languages));
+                    getDisplay().asyncExec(
+                            new PopulateVoicesTask(vdm.getAllVoices()));
                 } catch (Throwable e) {
                     statusHandler.error(
                             "Unable to retrieve list of transmitters.", e);
@@ -578,17 +578,15 @@ public class DemoMessageDialog extends AbstractBMHDialog {
 
     private class PopulateVoicesTask implements Runnable {
 
-        private final List<TransmitterLanguage> languages;
+        private final List<TtsVoice> voices;
 
-        public PopulateVoicesTask(List<TransmitterLanguage> languages) {
-            this.languages = languages;
+        public PopulateVoicesTask(List<TtsVoice> voices) {
+            this.voices = voices;
         }
 
         @Override
         public void run() {
-            populateVoices(languages);
+            populateVoices(voices);
         }
-
     }
-
 }
