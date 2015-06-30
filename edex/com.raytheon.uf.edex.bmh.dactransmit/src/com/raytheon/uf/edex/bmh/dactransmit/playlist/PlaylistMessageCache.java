@@ -116,6 +116,7 @@ import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
  * May 26, 2015 4481       bkowal       Set dynamic on the {@link DacPlaylistMessage}.
  * Jun 25, 2015 4508       bkowal       Validate message metadata in {@link #retrieveAudio(DacPlaylist)}
  *                                      in every case.
+ * Jun 29, 2015 4602       bkowal       Fix updates in response to decibel changes.
  * 
  * </pre>
  * 
@@ -627,7 +628,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                     message.getBroadcastId());
             messageId.setTraceId(message.getTraceId());
             Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
-                    PriorityBasedExecutorService.PRIORITY_LOW, messageId);
+                    PriorityBasedExecutorService.PRIORITY_LOW, messageId,
+                    task.getIdentifier());
             cacheStatus.replace(messageId, jobStatus);
         }
 
@@ -654,7 +656,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage)
      */
     @Override
-    public void audioRetrievalFinished(String taskId, DacPlaylistMessage message) {
+    public void audioRetrievalFinished(String taskId,
+            DacPlaylistMessage message, IAudioFileBuffer buffer) {
         if (this.cachedRetrievalTasks.get(taskId) != null) {
             CachedAudioRetrievalTask task = this.cachedRetrievalTasks
                     .get(taskId);
@@ -665,6 +668,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                         + ".");
                 this.cachedRetrievalTasks.remove(message);
             }
+        }
+        if (buffer != null) {
+            this.cachedFiles.replace(message, buffer);
         }
     }
 

@@ -64,6 +64,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Dec 12, 2014 3603       bsteffen    Updates to TonesGenerator.
  * Jan 05, 2015 3651       bkowal      Use {@link DefaultMessageLogger} to log msg errors.
  * May 13, 2015 4429       rferrel     Changes to {@link DefaultMessageLogger} for traceId.
+ * Jun 29, 2015 4602       bkowal      Provide the buffer when notifying listeners that
+ *                                     the audio retrieval attempt is complete.
  * 
  * </pre>
  * 
@@ -176,7 +178,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             } catch (IOException e) {
                 String msg = "Failed to buffer audio file for message: "
                         + message.getBroadcastId() + ", file: " + filePath;
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 AudioRetrievalException audioEx = new AudioRetrievalException(
                         msg, e);
                 DefaultMessageLogger.getInstance().logError(this.message,
@@ -184,7 +186,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                         this.message, audioEx);
                 throw audioEx;
             } catch (AudioRetrievalException e) {
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 DefaultMessageLogger.getInstance().logError(this.message,
                         BMH_COMPONENT.DAC_TRANSMIT,
                         BMH_ACTIVITY.AUDIO_ALTERATION, this.message, e);
@@ -200,7 +202,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             } catch (ToneGenerationException e) {
                 String msg = "Unable to generate SAME/alert tones for message: "
                         + message.getBroadcastId();
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 throw new AudioRetrievalException(msg, e);
             }
         } else if (message.isAlertTone()) {
@@ -209,7 +211,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             } catch (ToneGenerationException e) {
                 String msg = "Unable to generate alert tones for message: "
                         + message.getBroadcastId();
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 throw new AudioRetrievalException(msg, e);
             }
         }
@@ -221,7 +223,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             } catch (ToneGenerationException e) {
                 String msg = "Unable to generate end of message SAME tones for message: "
                         + message.getBroadcastId();
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 throw new AudioRetrievalException(msg, e);
             }
         }
@@ -233,7 +235,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                         "SAME/Alert Tones");
                 tones = ByteBuffer.wrap(regulatedTones);
             } catch (AudioRetrievalException e) {
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 throw e;
             }
         }
@@ -243,7 +245,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                         endOfMessage.array(), "End of Message");
                 endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
             } catch (AudioRetrievalException e) {
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 throw e;
             }
         }
@@ -291,14 +293,15 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                 + message.getBroadcastId() + " in "
                 + TimeUtil.prettyDuration(System.currentTimeMillis() - start)
                 + ".");
-        this.notifyAttemptComplete();
+        this.notifyAttemptComplete(buffer);
 
         return buffer;
     }
 
-    private void notifyAttemptComplete() {
+    private void notifyAttemptComplete(final IAudioFileBuffer buffer) {
         if (this.listener != null && this.taskId != null) {
-            this.listener.audioRetrievalFinished(this.taskId, this.message);
+            this.listener.audioRetrievalFinished(this.taskId, this.message,
+                    buffer);
         }
     }
 }

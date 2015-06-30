@@ -48,6 +48,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * Feb 09, 2015 4091       bkowal      Use {@link EdexAudioConverterManager}.
  * Apr 09, 2015 4365       bkowal      Eliminated unnecessary byte[] creation. Reuse arrays
  *                                     during conversions and regulation.
+ * Jun 29, 2015 4602       bkowal      Support both audio attenuation and amplification.
  * 
  * </pre>
  * 
@@ -56,6 +57,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  */
 
 public class AudioRegulator {
+
     private long duration;
 
     /**
@@ -113,7 +115,7 @@ public class AudioRegulator {
             UlawToPCMAlgorithm.convert(ulawData, i * sampleSize, sampleSize,
                     pcmData);
 
-            this.regulateAudioSamplePCM(pcmData, dbTarget);
+            this.adjustAudioSamplePCM(pcmData, dbTarget);
 
             PCMToUlawAlgorithm.convert(pcmData, ulawData, i * sampleSize);
         }
@@ -121,7 +123,7 @@ public class AudioRegulator {
             UlawToPCMAlgorithm.convert(ulawData, numberSamples * sampleSize,
                     overflowCount, pcmData);
 
-            this.regulateAudioSamplePCM(pcmData, dbTarget, 0, overflowCount * 2);
+            this.adjustAudioSamplePCM(pcmData, dbTarget, 0, overflowCount * 2);
 
             PCMToUlawAlgorithm.convert(pcmData, 0, overflowCount * 2, ulawData,
                     numberSamples * sampleSize);
@@ -131,22 +133,21 @@ public class AudioRegulator {
         return ulawData;
     }
 
-    private void regulateAudioSamplePCM(final byte[] sample,
-            final double dbTarget) throws UnsupportedAudioFormatException,
-            AudioConversionException, AudioOverflowException {
-        this.regulateAudioSamplePCM(sample, dbTarget, 0, sample.length);
+    private void adjustAudioSamplePCM(final byte[] sample, final double dbTarget)
+            throws UnsupportedAudioFormatException, AudioConversionException,
+            AudioOverflowException {
+        this.adjustAudioSamplePCM(sample, dbTarget, 0, sample.length);
     }
 
-    private void regulateAudioSamplePCM(final byte[] sample,
+    private void adjustAudioSamplePCM(final byte[] sample,
             final double dbTarget, int offset, int length)
             throws UnsupportedAudioFormatException, AudioConversionException,
             AudioOverflowException {
         Range decibelRange = this.calculateBoundarySignals(sample, offset,
                 length);
-
         if ((decibelRange.getMinimumDouble() == Double.NEGATIVE_INFINITY && decibelRange
                 .getMaximumDouble() == Double.NEGATIVE_INFINITY)
-                || decibelRange.getMaximumDouble() <= dbTarget) {
+                || decibelRange.getMaximumDouble() == dbTarget) {
             return;
         }
 
