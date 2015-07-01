@@ -37,8 +37,6 @@ import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
-import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
-import com.raytheon.uf.edex.bmh.comms.DacConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
 import com.raytheon.uf.edex.bmh.dactransmit.DacMaintenanceArgParser;
 import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
@@ -62,7 +60,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
  * Apr 09, 2015 4364       bkowal      Add the broadcast timeout to the dac maintenance
  *                                     command line.
  * Apr 29, 2015 4394       bkowal      Add the management port to the command line arguments.
- * 
+ * Jul 01, 2015 4602       rjpeter     Use specific dataport.
  * </pre>
  * 
  * @author bkowal
@@ -206,7 +204,7 @@ public class MaintenanceTask extends AbstractBroadcastingTask {
         logger.info("Preparing to run the " + "The "
                 + command.getMaintenanceDetails() + " ...");
 
-        int dacDataPort = this.findDataPort();
+        int dacDataPort = command.getDataPort();
         logger.info("Using dac data port: " + dacDataPort + ".");
 
         logger.info("Building command line to start the process ...");
@@ -236,64 +234,6 @@ public class MaintenanceTask extends AbstractBroadcastingTask {
         args.add(Integer.toString(commsConfig.getDacTransmitPort()));
 
         return args;
-    }
-
-    private int findDataPort() throws TransmitterAlignmentException {
-        logger.info("Searching for an available dac data port ...");
-
-        List<Integer> allowedDataPorts = new ArrayList<Integer>(
-                this.command.getAllowedDataPorts());
-
-        /*
-         * Retrieve the {@link DacConfig} associated with the transmitter that
-         * we will be connecting to.
-         */
-        DacConfig alignmentDacConfig = null;
-        if (this.commsConfig != null && this.commsConfig.getDacs() != null) {
-            for (DacConfig dacConfig : this.commsConfig.getDacs()) {
-                if (dacConfig.getIpAddress().equals(
-                        this.command.getDacHostname())) {
-                    alignmentDacConfig = dacConfig;
-                    break;
-                }
-            }
-        }
-
-        /*
-         * No other transmitters are currently connected to the dac, return the
-         * last dac data port that is allowed.
-         */
-        if (alignmentDacConfig == null
-                || alignmentDacConfig.getChannels() == null
-                || alignmentDacConfig.getChannels().isEmpty()) {
-            return allowedDataPorts.get(allowedDataPorts.size() - 1);
-        }
-
-        /*
-         * Build a list of the dac data ports that have already been reserved /
-         * are in use.
-         */
-        List<Integer> reservedDataPorts = new ArrayList<>(alignmentDacConfig
-                .getChannels().size());
-        for (DacChannelConfig channel : alignmentDacConfig.getChannels()) {
-            reservedDataPorts.add(channel.getDataPort());
-        }
-
-        /*
-         * The {@link CommsConfigurator} will start at the beginning of the list
-         * when assigning ports. So, we will start at the end of the list to
-         * reduce the potential for conflicts during the test window if one of
-         * the other dac transmits that is using the set of ports is altered.
-         */
-        while (allowedDataPorts.isEmpty() == false) {
-            int dataPort = allowedDataPorts.remove(allowedDataPorts.size() - 1);
-            if (reservedDataPorts.contains(dataPort) == false) {
-                return dataPort;
-            }
-        }
-
-        throw new TransmitterAlignmentException(
-                "Unable to find an available dac data port!");
     }
 
     @Override

@@ -22,6 +22,7 @@ package com.raytheon.uf.edex.bmh.legacy;
 import java.io.BufferedReader;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -95,6 +96,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
  * Mar 13, 2015 4213       bkowal      Updated the persistence of transmitter languages.
  * May 19, 2015 4482       rjpeter     Added sending of TransmitterGroupConfigNotification on clear.
  * May 28, 2015 4429       rjpeter     Update for ITraceable
+ * Jul 01, 2015 4602       rjpeter     Updated port return type.
  * </pre>
  * 
  * @author rferrel
@@ -423,11 +425,10 @@ public class ImportLegacyDatabase {
         availableDacPorts = new ArrayList<>(rows.size() * 4);
 
         for (Dac dac : rows) {
-            Set<Integer> ports = dac.getDataPorts();
+            Collection<Integer> ports = dac.getDataPorts();
             if (CollectionUtil.isNullOrEmpty(ports) == false) {
-                int portVal = 1;
-                for (@SuppressWarnings("unused")
-                Integer port : ports) {
+
+                for (int portVal = 1; portVal <= ports.size(); portVal++) {
                     availableDacPorts.add(new Pair<>(dac.getId(), portVal++));
                 }
             }

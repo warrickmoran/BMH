@@ -124,6 +124,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 08, 2015    4470    bkowal      It is now possible to enable all configured Transmitter(s) within
  *                                     a group.
  * May 12, 2015 4248       rjpeter     Fix misspelling.
+ * Jul 01, 2015 4602       rjpeter     Use specific dataport.
  * </pre>
  * 
  * @author mpduff
@@ -1134,7 +1135,18 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     command.setMsgSource(MSGSOURCE.VIZ);
                     command.addTransmitterGroup(transmitterGroup);
                     command.setDacHostname(dac.getAddress());
-                    command.setAllowedDataPorts(dac.getDataPorts());
+                    List<Integer> radios = new LinkedList<>();
+
+                    for (Transmitter trans : transmitterGroup.getTransmitters()) {
+                        if (TxStatus.ENABLED.equals(trans.getTxStatus())
+                                || TxStatus.MAINT.equals(trans.getTxStatus())) {
+                            radios.add(trans.getDacPort());
+                        }
+                    }
+
+                    Collections.sort(radios);
+                    command.setDataPort(dac.getDataPorts().get(
+                            radios.get(0) - 1));
                     command.setRadios(new int[] { port });
                     command.setDecibelTarget(transmitterGroup
                             .getAudioDBTarget());

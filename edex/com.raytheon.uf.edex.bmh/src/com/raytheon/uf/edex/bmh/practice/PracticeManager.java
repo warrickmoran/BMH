@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
@@ -71,6 +70,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jan 14, 2014  3926     bsteffen    When creating a dac, pick the ports differently
  * Feb 03, 2015  4056     bsteffen    Extract DEFAULT_RECEIVE_ADDRESS to Dac.
  * May 28, 2015  4429     rjpeter     Add ITraceable.
+ * Jul 01, 2015  4602     rjpeter     Update DacPort collection type.
  * </pre>
  * 
  * @author bsteffen
@@ -201,8 +201,8 @@ public class PracticeManager {
                 int basePort = 30000 + ((Math.abs(address.hashCode()) % 1000) * 10);
 
                 dac.setReceivePort(basePort);
-                dac.setDataPorts(new HashSet<>(Arrays.<Integer> asList(
-                        basePort + 2, basePort + 4, basePort + 6, basePort + 8)));
+                dac.setDataPorts(Arrays.<Integer> asList(basePort + 2,
+                        basePort + 4, basePort + 6, basePort + 8));
                 String name = address.getHostName();
                 if (name != null) {
                     int index = name.indexOf('.');

@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.dac;
 
-import java.util.Set;
+import java.util.List;
 
 import javax.persistence.CollectionTable;
 import javax.persistence.Column;
@@ -29,6 +29,7 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
@@ -57,6 +58,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Oct 21, 2014  3746     rjpeter     Hibernate upgrade.
  * Feb 03, 2015  4056     bsteffen    Add DEFAULT_RECEIVE_ADDRESS
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Jul 01, 2015 4602      rjpeter     Port order matters.
  * </pre>
  * 
  * @author bsteffen
@@ -103,8 +105,9 @@ public class Dac {
     @ForeignKey(name = "fk_dac_ports_to_dac")
     @Column(name = "dataPort")
     @Fetch(FetchMode.SUBSELECT)
+    @OrderColumn(name = "position")
     @DynamicSerializeElement
-    private Set<Integer> dataPorts;
+    private List<Integer> dataPorts;
 
     public int getId() {
         return id;
@@ -138,11 +141,11 @@ public class Dac {
         this.receiveAddress = receiveAddress;
     }
 
-    public Set<Integer> getDataPorts() {
+    public List<Integer> getDataPorts() {
         return dataPorts;
     }
 
-    public void setDataPorts(Set<Integer> dataPorts) {
+    public void setDataPorts(List<Integer> dataPorts) {
         this.dataPorts = dataPorts;
     }
 

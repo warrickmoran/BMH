@@ -89,6 +89,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 29, 2015    4394    bkowal      Include the transmitter group in the
  *                                     {@link MaintenanceMessageRequest}.
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
+ * Jul 01, 2015 4602       rjpeter     Use specific dataport.
  * </pre>
  * 
  * @author mpduff
@@ -647,7 +648,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                     "No data ports have been assigned to dac " + dac.getName()
                             + ".");
         }
-        command.setAllowedDataPorts(dac.getDataPorts());
+        command.setDataPort(dac.getDataPorts().get(radios[0] - 1));
         command.setRadios(radios);
         command.setDecibelTarget(Double.parseDouble(this.dbValueLbl.getText()));
         command.setInputAudioFile(audioLocation);
