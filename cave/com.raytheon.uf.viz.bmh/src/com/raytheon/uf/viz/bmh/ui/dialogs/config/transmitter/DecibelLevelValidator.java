@@ -36,6 +36,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 23, 2014   3630     mpduff      Initial creation.
+ * Jul 01, 2015   4603     bkowal      Do not allow decibel values > 0 or < -40.
  * 
  * </pre>
  * 
@@ -56,7 +57,7 @@ public class DecibelLevelValidator implements IInputTextValidator {
         if (text.matches("[-+]?\\d*(\\.\\d+)?")) {
             try {
                 float value = Float.parseFloat(text);
-                if (value < -100 || value > 100) {
+                if (value < -40 || value > 0) {
                     valid = false;
                 }
             } catch (NumberFormatException e) {
@@ -69,7 +70,7 @@ public class DecibelLevelValidator implements IInputTextValidator {
         if (!valid) {
             DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
                     "Invalid Value",
-                    "Please enter a target decibel value between -100 and 100");
+                    "Please enter a target decibel value between -40 and 0");
         }
 
         return valid;

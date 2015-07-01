@@ -49,6 +49,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * Apr 09, 2015 4365       bkowal      Eliminated unnecessary byte[] creation. Reuse arrays
  *                                     during conversions and regulation.
  * Jun 29, 2015 4602       bkowal      Support both audio attenuation and amplification.
+ * Jul 01, 2015 4602       bkowal      Do not attenuate/amplify extremely quiet audio.
  * 
  * </pre>
  * 
@@ -57,6 +58,8 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  */
 
 public class AudioRegulator {
+
+    private static final double DB_SILENCE_LIMIT = -40.;
 
     private long duration;
 
@@ -90,10 +93,16 @@ public class AudioRegulator {
             AudioOverflowException {
         for (int i = offset; i < (offset + length); i += 2) {
             short audioSample = (short) (((sample[i + 1] & 0xff) << 8) | (sample[i] & 0xff));
-            audioSample = (short) (audioSample * volumeAdjustment);
-            if (Math.abs(audioSample) > BMHAudioConstants.MAX_AMPLITUDE) {
-                throw new AudioOverflowException(volumeAdjustment,
-                        Math.abs(audioSample));
+            final double decibels = this.calculateDecibels(audioSample);
+            if (decibels <= DB_SILENCE_LIMIT) {
+                audioSample = 0;
+            } else {
+                double calculation = audioSample * volumeAdjustment;
+                if (Math.abs(calculation) > BMHAudioConstants.MAX_AMPLITUDE) {
+                    audioSample = (short) BMHAudioConstants.MAX_AMPLITUDE;
+                } else {
+                    audioSample = (short) calculation;
+                }
             }
 
             sample[i] = (byte) audioSample;
