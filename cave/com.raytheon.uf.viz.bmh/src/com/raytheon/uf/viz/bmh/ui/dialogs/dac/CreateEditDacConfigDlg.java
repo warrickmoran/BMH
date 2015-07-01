@@ -24,6 +24,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -61,7 +62,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 19, 2014  #3699     mpduff       Implement dialog
  * Feb 03, 2015  4056      bsteffen     Auto populate new dac and validate all fields for duplicates.
  * Mar 09, 2015  4235      rferrel      Check for duplicate channel numbers.
- * 
+ * Jul 01, 2015  4602      rjpeter      Port order now matters.
  * </pre>
  * 
  * @author lvenable
@@ -483,7 +484,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             }
         }
 
-        Set<Integer> ports = new HashSet<Integer>();
+        Set<Integer> ports = new LinkedHashSet<Integer>();
 
         int portNum = 1;
         try {
@@ -521,7 +522,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             dac.setName(name);
             dac.setReceiveAddress(receiveAddress);
             dac.setReceivePort(receivePortInt);
-            dac.setDataPorts(ports);
+            dac.setDataPorts(new ArrayList<Integer>(ports));
 
             try {
                 dac = dataManager.saveDac(dac);
