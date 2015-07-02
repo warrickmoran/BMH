@@ -20,6 +20,9 @@
 package com.raytheon.uf.common.bmh.tones;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * This is a port of the Legacy CRS MP fskwave.c algorithm that is maintained by
@@ -55,6 +58,10 @@ public class FskTonesEncoder {
      * Symbol definitions
      */
     private static final int TABLE_LENGTH = 1024;
+
+    private static final int WRITE_LENGTH = 128;
+
+    private static final int MAX_SAMPLES_PER_BAUD = 1024;
 
     private static final double BMH_SAMPLE_RATE = 8000; // was 10,000 in CRS
 
@@ -159,15 +166,19 @@ public class FskTonesEncoder {
      * Port FskSignal in fskwave.c (excluding wav file management)
      */
     private short[] encode(final byte[] sameMessage) {
+        List<short[]> outputList = new LinkedList<short[]>();
         double dPhaseIncrement;
         this.dPhase = 0.0f;
         double lastTime = 0.0;
 
+        /*
+         * used to accumulate sample data as it is calculated.
+         */
+        short[] sSample = new short[WRITE_LENGTH + MAX_SAMPLES_PER_BAUD];
+
         int sameIndex = 0;
         int maskIndex = 0;
-        int numSamples = (int) (bitPeriod * sameMessage.length * 8 / samplePeriod);
-        short[] samples = new short[numSamples];
-        int sampleIndex = 0;
+        int uiBlockLength = 0;
 
         while (sameIndex < sameMessage.length) {
             if ((sameMessage[sameIndex] & MASK[maskIndex]) == 0) {
@@ -204,7 +215,8 @@ public class FskTonesEncoder {
                 /*
                  * store new value
                  */
-                samples[sampleIndex++] = (short) (sSample1 + sInterpolate);
+                sSample[uiBlockLength] = (short) (sSample1 + sInterpolate);
+                uiBlockLength++;
 
                 /*
                  * increment to next phase, for next sample
@@ -229,6 +241,16 @@ public class FskTonesEncoder {
                 dPhase += this.dTableLength;
             }
 
+            /*
+             * this version of the algorithm will not write the files. However,
+             * it will add the results to the algorithm output accumulator and
+             * start a new results array.
+             */
+            if (uiBlockLength >= WRITE_LENGTH) {
+                outputList.add(Arrays.copyOf(sSample, uiBlockLength));
+                uiBlockLength = 0;
+            }
+
             // advance to next bit
             maskIndex++;
             if (maskIndex >= MASK.length) {
@@ -237,6 +259,32 @@ public class FskTonesEncoder {
             }
         }
 
-        return samples;
+        /*
+         * If there are any samples then add them to the algorithm output
+         * accumulator.
+         */
+        if (uiBlockLength > 0) {
+            outputList.add(Arrays.copyOf(sSample, uiBlockLength));
+        }
+
+        return this.mergeShortData(outputList);
+    }
+
+    public short[] mergeShortData(List<short[]> dataList) {
+        /* Determine the overall length of the destination. */
+        int totalLength = 0;
+        for (short[] source : dataList) {
+            totalLength += source.length;
+        }
+
+        /* Create and populate the destination. */
+        short[] destination = new short[totalLength];
+        int startIndex = 0;
+        for (short[] source : dataList) {
+            System.arraycopy(source, 0, destination, startIndex, source.length);
+            startIndex += source.length;
+        }
+
+        return destination;
     }
 }
