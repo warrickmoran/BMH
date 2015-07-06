@@ -200,6 +200,13 @@ alter table ldad_config add constraint fk_ldad_config_to_dict
     foreign key (dictionary_name) references dictionary(name) on delete set null;
 
 /**
+ * TTS Voice to Dictionary
+ **/
+alter table tts_voice drop constraint fk_tts_voice_to_dict;
+alter table tts_voice add constraint fk_tts_voice_to_dict
+     foreign key (dictionary_name) references dictionary(name) on delete set null;
+
+/**
  * Ldad Config / Message Type Join Table Cascade Delete
  **/
 alter table ldad_config_msg_type drop constraint fk_ldad_config_msg_type_to_ldad_config;
