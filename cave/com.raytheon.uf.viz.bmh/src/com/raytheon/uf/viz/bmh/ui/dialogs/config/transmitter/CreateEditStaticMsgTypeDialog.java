@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
+import com.raytheon.uf.common.bmh.request.StaticMsgValidationResult;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
@@ -63,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * May 28, 2015 4490       bkowal      Use a proxy {@link StaticMessageType} for validation to
  *                                     prevent pass-by-reference overrides.
  * Jun 12, 2015 4482       rjpeter     Added DO_NOT_BLOCK.
+ * Jul 06, 2015 4603       bkowal      Display a message dialog if message text fails validation.
  * </pre>
  * 
  * @author bkowal
@@ -279,8 +281,14 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
          * Verify that the message contents are allowed.
          */
         try {
-            this.tldm.validateStaticMessageType(validateStaticMsgType,
-                    this.language);
+            StaticMsgValidationResult result = this.tldm
+                    .validateStaticMessageType(validateStaticMsgType,
+                            this.language);
+            if (result.isValid() == false) {
+                DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
+                        "Validation Failed", result.getMessage());
+                return;
+            }
         } catch (Exception e) {
             statusHandler.error("Static Message validation has failed.", e);
             return;

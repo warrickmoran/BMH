@@ -31,6 +31,7 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.StaticMsgTypeConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
+import com.raytheon.uf.common.bmh.request.StaticMsgValidationResult;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -61,6 +62,7 @@ import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
  * May 11, 2015  4476     bkowal      Removed deprecated methods.
  * May 22, 2015  4481     bkowal      Added {@link #getStaticMsgTypeForTransmitterGroupAndMessageType(TransmitterLanguageRequest)}.
  * May 28, 2015  4429     rjpeter     Add ITraceable
+ * Jul 06, 2015  4603     bkowal      Return a {@link StaticMsgValidationResult} when validating static message text.
  * </pre>
  * 
  * @author bkowal
@@ -97,8 +99,7 @@ public class TransmitterLanguageRequestHandler extends
             this.deleteTransmitterLanguage(request);
             break;
         case ValidateStaticMsgType:
-            this.validateStaticMessageType(request);
-            return null;
+            return this.validateStaticMessageType(request);
         case GetStaticMsgTypeForTransmitterGrpAndAfosId:
             response = this
                     .getStaticMsgTypeForTransmitterGroupAndMessageType(request);
@@ -186,7 +187,8 @@ public class TransmitterLanguageRequestHandler extends
         return response;
     }
 
-    private void validateStaticMessageType(TransmitterLanguageRequest request) {
+    private StaticMsgValidationResult validateStaticMessageType(
+            TransmitterLanguageRequest request) {
         StaticMessageType staticMsgType = request.getStaticMsgType();
 
         UnacceptableWordFilter uwf = UnacceptableWordFilter.getFilter(request
@@ -196,7 +198,8 @@ public class TransmitterLanguageRequestHandler extends
             final String textFieldName = (staticMsgType.getMsgTypeSummary()
                     .getDesignation() == Designation.StationID) ? "Station Id"
                     : "Time Preamble";
-            throw new IllegalArgumentException(
+            return new StaticMsgValidationResult(
+                    false,
                     textFieldName
                             + " failed to validate because it contains the following unacceptable words: "
                             + uw.toString());
@@ -209,11 +212,14 @@ public class TransmitterLanguageRequestHandler extends
         if (staticMsgType.getMsgTypeSummary().getDesignation() == Designation.TimeAnnouncement) {
             uw = uwf.check(staticMsgType.getTextMsg2());
             if (uw.isEmpty() == false) {
-                throw new IllegalArgumentException(
+                return new StaticMsgValidationResult(
+                        false,
                         "Time Postamble failed to validate because it contains the following unacceptable words: "
                                 + uw.toString());
             }
         }
+
+        return new StaticMsgValidationResult();
     }
 
     private void deleteTransmitterLanguage(TransmitterLanguageRequest request) {
