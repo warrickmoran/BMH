@@ -41,6 +41,7 @@ import javax.xml.bind.annotation.XmlElement;
  * Aug 04, 2014  2487     bsteffen    Add receivePort
  * Sep 25, 2014  3485     bsteffen    Add multicast options
  * Apr 07, 2015  4370     rjpeter     Added toString.
+ * Jul 07, 2015  4602     rjpeter     Fix NPE on getChannels.
  * </pre>
  * 
  * @author bsteffen
@@ -86,6 +87,10 @@ public class DacConfig {
     }
 
     public List<DacChannelConfig> getChannels() {
+        if (this.channels == null) {
+            this.channels = new ArrayList<>(1);
+        }
+
         return channels;
     }
 
