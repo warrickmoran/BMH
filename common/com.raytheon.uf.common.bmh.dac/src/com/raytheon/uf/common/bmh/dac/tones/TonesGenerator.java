@@ -42,6 +42,7 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  *                                      Add padding to the end of the preamble + SAME
  *                                      tones.
  * May 05, 2015  #4464     bkowal       SAME Tone Padding is now configurable via a system property.
+ * Jul 07, 2015  #4464     bkowal       Default SAME padding is now 0.
  * 
  * </pre>
  * 
@@ -58,7 +59,7 @@ public final class TonesGenerator {
      * transitional to operational builds.
      */
     private static final int SAME_PADDING = Integer.getInteger(
-            "samePaddingOverride", 4);
+            "samePaddingOverride", 0);
 
     private static StaticTones defaultTonesInstance;
 

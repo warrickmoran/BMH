@@ -44,6 +44,7 @@
 #                                                 audio attenuation / amplification before transmit.
 #    05/05/2015      4464          bkowal         Added SAME_PADDING and SAME_EOM_PADDING to optionally
 #                                                 alter the padding bytes after a SAME Tone.
+#    07/07/2015      4464          bkowal         Default SAME Tone padding is now 0.
 ##############################################################################
 
 
@@ -59,8 +60,8 @@ USE_POSITION_STREAM=false
 #Disabled audio attenuation. Exists primarily for debugging purposes. This does not affect live audio streams.
 DISABLE_AUDIO_ATTENUATION=false
 # Use to adjust the amount of padding bytes at the end of the SAME Tones.
-SAME_PADDING=4
-SAME_EOM_PADDING=2
+SAME_PADDING=0
+SAME_EOM_PADDING=0
 
 # This loop processes the command line args. We need to extract DAC_ADDRESS(-d)
 # and DAC_PORT(-p). To make it easier to grab the argument to flags $prev will
