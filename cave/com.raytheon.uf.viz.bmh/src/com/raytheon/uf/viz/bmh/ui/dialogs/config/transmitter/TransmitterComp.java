@@ -125,6 +125,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     a group.
  * May 12, 2015 4248       rjpeter     Fix misspelling.
  * Jul 01, 2015 4602       rjpeter     Use specific dataport.
+ * Jul 08, 2015 4636       bkowal      Use the decibel target specific to transfer tones.
  * </pre>
  * 
  * @author mpduff
@@ -1149,7 +1150,7 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                             radios.get(0) - 1));
                     command.setRadios(new int[] { port });
                     command.setDecibelTarget(transmitterGroup
-                            .getAudioDBTarget());
+                            .getTransferDBTarget());
                     command.setInputAudioFile(inputAudioFile);
                     command.setBroadcastDuration(-1);
                     command.setBroadcastTimeout((int) (TransmitterMaintenanceThread.MAINTENANCE_TIMEOUT / TimeUtil.MILLIS_PER_MINUTE));

@@ -35,6 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 5, 2014  3630       bkowal      Initial creation
  * Apr 24, 2015 4394       bkowal      Added {@link #duration}.
  * Apr 29, 2015 4394       bkowal      Added {@link #transmitterGroup}.
+ * Jul 08, 2015 4636       bkowal      Added {@link AUDIOTYPE#TRANSFER}.
  * 
  * </pre>
  * 
@@ -46,7 +47,7 @@ public class MaintenanceMessageRequest extends AbstractBMHServerRequest {
 
     /* simplified name for dynamicserialize */
     public static enum AUDIOTYPE {
-        TEXT, ALERT, SAME
+        TEXT, ALERT, SAME, TRANSFER
     }
 
     @DynamicSerializeElement

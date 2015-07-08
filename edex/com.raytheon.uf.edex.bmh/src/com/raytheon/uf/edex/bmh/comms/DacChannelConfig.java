@@ -44,6 +44,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * Oct 16, 2014  3687     bsteffen    Add playlistDirectory to xml.
  * Nov 26, 2014  3821     bsteffen    Add deadAirAlarm
  * Apr 07, 2015  4370     rjpeter     Added toString.
+ * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
  * </pre>
  * 
  * @author bsteffen
@@ -59,7 +60,13 @@ public class DacChannelConfig {
     private String playlistDirectory;
 
     @XmlAttribute
-    private double dbTarget;
+    private double audioDbTarget;
+
+    @XmlAttribute
+    private double sameDbTarget;
+
+    @XmlAttribute
+    private double alertDbTarget;
 
     @XmlAttribute
     private String timezone;
@@ -103,16 +110,46 @@ public class DacChannelConfig {
     /**
      * @return the dbTarget
      */
-    public double getDbTarget() {
-        return dbTarget;
+    public double getAudioDbTarget() {
+        return audioDbTarget;
     }
 
     /**
-     * @param dbTarget
+     * @param audioDbTarget
      *            the dbTarget to set
      */
-    public void setDbTarget(double dbTarget) {
-        this.dbTarget = dbTarget;
+    public void setAudioDbTarget(double audioDbTarget) {
+        this.audioDbTarget = audioDbTarget;
+    }
+
+    /**
+     * @return the sameDbTarget
+     */
+    public double getSameDbTarget() {
+        return sameDbTarget;
+    }
+
+    /**
+     * @param sameDbTarget
+     *            the sameDbTarget to set
+     */
+    public void setSameDbTarget(double sameDbTarget) {
+        this.sameDbTarget = sameDbTarget;
+    }
+
+    /**
+     * @return the alertDbTarget
+     */
+    public double getAlertDbTarget() {
+        return alertDbTarget;
+    }
+
+    /**
+     * @param alertDbTarget
+     *            the alertDbTarget to set
+     */
+    public void setAlertDbTarget(double alertDbTarget) {
+        this.alertDbTarget = alertDbTarget;
     }
 
     public String getTimezone() {
@@ -163,7 +200,11 @@ public class DacChannelConfig {
                 + ((controlPort == null) ? 0 : controlPort.hashCode());
         result = (prime * result) + dataPort;
         long temp;
-        temp = Double.doubleToLongBits(dbTarget);
+        temp = Double.doubleToLongBits(audioDbTarget);
+        result = (prime * result) + (int) (temp ^ (temp >>> 32));
+        temp = Double.doubleToLongBits(sameDbTarget);
+        result = (prime * result) + (int) (temp ^ (temp >>> 32));
+        temp = Double.doubleToLongBits(alertDbTarget);
         result = (prime * result) + (int) (temp ^ (temp >>> 32));
         result = (prime * result)
                 + ((playlistDirectory == null) ? 0 : playlistDirectory
@@ -199,8 +240,16 @@ public class DacChannelConfig {
         if (dataPort != other.dataPort) {
             return false;
         }
-        if (Double.doubleToLongBits(dbTarget) != Double
-                .doubleToLongBits(other.dbTarget)) {
+        if (Double.doubleToLongBits(audioDbTarget) != Double
+                .doubleToLongBits(other.audioDbTarget)) {
+            return false;
+        }
+        if (Double.doubleToLongBits(sameDbTarget) != Double
+                .doubleToLongBits(other.sameDbTarget)) {
+            return false;
+        }
+        if (Double.doubleToLongBits(alertDbTarget) != Double
+                .doubleToLongBits(other.alertDbTarget)) {
             return false;
         }
         if (playlistDirectory == null) {
@@ -236,8 +285,10 @@ public class DacChannelConfig {
     @Override
     public String toString() {
         return "DacChannelConfig [transmitterGroup=" + transmitterGroup
-                + ", playlistDirectory=" + playlistDirectory + ", dbTarget="
-                + dbTarget + ", timezone=" + timezone + ", radios="
+                + ", playlistDirectory=" + playlistDirectory
+                + ", audioDbTarget=" + audioDbTarget + ", sameDbTarget="
+                + sameDbTarget + ", alertDbTarget=" + alertDbTarget
+                + ", timezone=" + timezone + ", radios="
                 + Arrays.toString(radios) + ", dataPort=" + dataPort
                 + ", controlPort=" + controlPort + ", deadAirAlarm="
                 + deadAirAlarm + "]";

@@ -40,6 +40,7 @@ import com.google.common.eventbus.EventBus;
  * ------------ ---------- ----------- --------------------------
  * Apr 9, 2015  4364       bkowal      Initial creation
  * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
+ * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * </pre>
  * 
  * @author bkowal
@@ -51,7 +52,8 @@ public class MaintenanceBroadcastTransmitThread extends BroadcastTransmitThread 
     public MaintenanceBroadcastTransmitThread(String name, EventBus eventBus,
             InetAddress address, int port, Collection<Integer> transmitters,
             double dbTarget, boolean hasSync) throws SocketException {
-        super(name, eventBus, address, port, transmitters, dbTarget, hasSync);
+        super(name, eventBus, address, port, transmitters, dbTarget, -999,
+                -999, hasSync);
     }
 
     /**

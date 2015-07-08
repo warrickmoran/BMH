@@ -84,6 +84,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jun 18, 2015  4490     bkowal      Copy the operational clustered configuration to the
  *                                    practice configuration.
  * Jul 01, 2015  4602     rjpeter     Specific dac port now bound to transmitter.
+ * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
  * </pre>
  * 
  * @author bsteffen
@@ -328,7 +329,9 @@ public class CommsConfigurator implements IContextStateProcessor {
             channel.setDeadAirAlarm(group.getDeadAirAlarm());
             channel.setPlaylistDirectoryPath(playlistDirectoryPath
                     .resolve(group.getName()));
-            channel.setDbTarget(group.getAudioDBTarget());
+            channel.setAudioDbTarget(group.getAudioDBTarget());
+            channel.setSameDbTarget(group.getSameDBTarget());
+            channel.setAlertDbTarget(group.getAlertDBTarget());
             channel.setTimezone(group.getTimeZone());
             channel.setRadios(radios);
         }

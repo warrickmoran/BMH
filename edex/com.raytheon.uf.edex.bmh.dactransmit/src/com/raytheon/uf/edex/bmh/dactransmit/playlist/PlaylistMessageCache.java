@@ -117,6 +117,7 @@ import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
  * Jun 25, 2015 4508       bkowal       Validate message metadata in {@link #retrieveAudio(DacPlaylist)}
  *                                      in every case.
  * Jun 29, 2015 4602       bkowal       Fix updates in response to decibel changes.
+ * Jul 08, 2015 4636       bkowal       Support same and alert decibel levels.
  * 
  * </pre>
  * 
@@ -161,6 +162,10 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private double dbTarget;
 
+    private double sameDbTarget;
+
+    private double alertDbTarget;
+
     private volatile TimeZone timezone;
 
     private final PlaylistScheduler scheduler;
@@ -180,6 +185,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         this.cachedRetrievalTasks = new ConcurrentHashMap<>();
         this.eventBus = dacSession.getEventBus();
         this.dbTarget = config.getDbTarget();
+        this.sameDbTarget = config.getSameDbTarget();
+        this.alertDbTarget = config.getAlertDbTarget();
         this.timezone = config.getTimezone();
         this.scheduler = playlistScheduler;
         this.executorService = dacSession.getAsyncExecutor();
@@ -339,7 +346,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     private Future<IAudioFileBuffer> scheduleFileRetrieval(final int priority,
             final DacPlaylistMessageId id, final String taskId) {
         Callable<IAudioFileBuffer> retrieveAudioJob = new RetrieveAudioJob(
-                priority, this.dbTarget, this.getMessage(id), this, taskId);
+                priority, this.dbTarget, this.sameDbTarget, this.alertDbTarget,
+                this.getMessage(id), this, taskId);
         return executorService.submit(retrieveAudioJob);
     }
 
@@ -617,7 +625,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      */
     @Subscribe
     public void changeDecibelRange(ChangeDecibelTarget changeEvent) {
-        this.dbTarget = changeEvent.getDbTarget();
+        this.dbTarget = changeEvent.getAudioDbTarget();
+        this.sameDbTarget = changeEvent.getSameDbTarget();
+        this.alertDbTarget = changeEvent.getAlertDbTarget();
 
         CachedAudioRetrievalTask task = new CachedAudioRetrievalTask(
                 new HashSet<DacPlaylistMessage>(cachedFiles.keySet()));
@@ -633,7 +643,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             cacheStatus.replace(messageId, jobStatus);
         }
 
-        logger.info("Updated transmitter decibel target to: " + this.dbTarget);
+        logger.info(
+                "Updated transmitter decibel targets to: audio={}, same={}, alert={}.",
+                this.dbTarget, this.sameDbTarget, this.alertDbTarget);
     }
 
     /**

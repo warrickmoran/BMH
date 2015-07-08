@@ -23,7 +23,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
-import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
 
 /**
  * Target Decibel Value validator. Checks the target decibel level to make sure
@@ -37,6 +36,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * ------------ ---------- ----------- --------------------------
  * Sep 23, 2014   3630     mpduff      Initial creation.
  * Jul 01, 2015   4603     bkowal      Do not allow decibel values > 0 or < -40.
+ * Jul 09, 2015   4636     bkowal      Converted to a Util.
  * 
  * </pre>
  * 
@@ -44,11 +44,10 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * @version 1.0
  */
 
-public class DecibelLevelValidator implements IInputTextValidator {
+public class DecibelLevelValidator {
 
-    @Override
-    public boolean validateInputText(Shell shell, String text) {
-        // Validate that the text is a number between -100 and 100 inclusive
+    public static boolean validateInputText(Shell shell, String text,
+            final String descriptor) {
         boolean valid = true;
         if (text == null || text.isEmpty()) {
             valid = false;
@@ -69,8 +68,8 @@ public class DecibelLevelValidator implements IInputTextValidator {
 
         if (!valid) {
             DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
-                    "Invalid Value",
-                    "Please enter a target decibel value between -40 and 0");
+                    "Invalid Value", "Please enter a " + descriptor
+                            + " value between -40 and 0");
         }
 
         return valid;

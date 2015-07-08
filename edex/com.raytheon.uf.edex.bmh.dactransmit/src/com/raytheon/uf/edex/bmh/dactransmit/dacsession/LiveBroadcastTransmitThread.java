@@ -77,6 +77,7 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * Feb 11, 2015 4098       bsteffen    Maintain jitter buffer during broadcast.
  * Apr 15, 2015 4397       bkowal      Added {@link #generateStatistics()}.
  * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
+ * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * </pre>
  * 
  * @author bkowal
@@ -107,10 +108,11 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             final DataTransmitThread dataThread,
             final CommsManagerCommunicator commsManager,
             final BroadcastTransmitterConfiguration config,
-            final double dbTarget, final BROADCASTTYPE type,
+            final double dbTarget, final double sameDbTarget,
+            final double alertDbTarget, final BROADCASTTYPE type,
             final long requestTime, final boolean hasSync) throws IOException {
         super("LiveBroadcastTransmitThread", eventBus, address, port,
-                transmitters, dbTarget, hasSync);
+                transmitters, dbTarget, sameDbTarget, alertDbTarget, hasSync);
         this.broadcastId = broadcastId;
         this.dataThread = dataThread;
         this.commsManager = commsManager;
@@ -135,7 +137,29 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         this.notifyBroadcastSwitch(STATE.STARTED);
         if (this.type == BROADCASTTYPE.EO) {
             // play the Alert / SAME tones.
-            this.playTones(this.config.getToneAudio(), "SAME / Alert");
+            AudioPacketLogger packetLog = new AudioPacketLogger("SAME Tones",
+                    getClass(), 30);
+            if (this.config.getToneAudio().getSameTones() != null) {
+                this.playTones(this.config.getToneAudio().getSameTones(),
+                        "SAME", this.sameDbTarget, packetLog);
+            }
+            if (this.config.getToneAudio().getBeforeAlertTonePause() != null) {
+                this.playTones(this.config.getToneAudio()
+                        .getBeforeAlertTonePause(), "SAME", this.dbTarget,
+                        packetLog);
+            }
+            packetLog.close();
+            packetLog = new AudioPacketLogger("Alert Tones", getClass(), 30);
+            if (this.config.getToneAudio().getAlertTones() != null) {
+                this.playTones(this.config.getToneAudio().getAlertTones(),
+                        "Alert", this.alertDbTarget, packetLog);
+            }
+            if (this.config.getToneAudio().getBeforeMessagePause() != null) {
+                this.playTones(this.config.getToneAudio()
+                        .getBeforeMessagePause(), "Alert", this.dbTarget,
+                        packetLog);
+            }
+            packetLog.close();
         }
         BroadcastStatus status = new BroadcastStatus();
         status.setMsgSource(MSGSOURCE.DAC);
@@ -161,7 +185,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                 if (audio == null) {
                     continue;
                 }
-                this.streamAudio(audio);
+                this.streamAudio(audio, this.dbTarget);
                 packetLog.packetProcessed();
             } catch (AudioOverflowException | UnsupportedAudioFormatException
                     | AudioConversionException | InterruptedException e) {
@@ -171,9 +195,13 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         }
         packetLog.close();
 
+        packetLog = new AudioPacketLogger("End of Message Tones", getClass(),
+                30);
         if (this.type == BROADCASTTYPE.EO) {
-            this.playTones(this.config.getEndToneAudio(), "End of Message");
+            this.playTones(this.config.getEndToneAudio(), "End of Message",
+                    this.sameDbTarget, packetLog);
         }
+        packetLog.close();
         this.notifyBroadcastSwitch(STATE.FINISHED);
 
         this.dataThread.resumePlayback(previousPacket);
@@ -188,16 +216,14 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         super.playAudio(data);
     }
 
-    private void playTones(byte[] toneAudio, final String toneType) {
-        AudioPacketLogger packetLog = new AudioPacketLogger(
-                "Live Broadcast Tones", getClass(), 30);
-
+    private void playTones(byte[] toneAudio, final String toneType,
+            final double dbTarget, AudioPacketLogger packetLog) {
         ByteArrayInputStream tonesInputStream = new ByteArrayInputStream(
                 toneAudio);
         byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
         try {
             while (tonesInputStream.read(nextPayload) != -1) {
-                this.streamAudio(nextPayload);
+                this.streamAudio(nextPayload, dbTarget);
                 packetLog.packetProcessed();
             }
         } catch (IOException | AudioOverflowException
@@ -206,7 +232,6 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             this.notifyDacError("Failed to stream the " + toneType + " Tones!",
                     e);
         }
-        packetLog.close();
     }
 
     private void waitForAudio() {
@@ -220,7 +245,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         Arrays.fill(silence, DacSessionConstants.SILENCE);
         while (streaming && this.audioBuffer.isEmpty()) {
             try {
-                this.streamAudio(silence);
+                this.streamAudio(silence, this.dbTarget);
                 packetLog.packetProcessed();
             } catch (AudioOverflowException | UnsupportedAudioFormatException
                     | AudioConversionException | InterruptedException e) {

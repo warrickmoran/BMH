@@ -101,6 +101,7 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * Apr 14, 2015 4394       bkowal      Added {@link #GET_CONFIGURED_TRANSMITTER_GROUPS}.
  * May 08, 2015 4470       bkowal      Configured transmitters must have both an associated dac and port.
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Jul 08, 2015 4636       bkowal      Support multiple decibel target levels.
  * </pre>
  * 
  * @author rjpeter
@@ -168,12 +169,17 @@ public class TransmitterGroup implements PositionOrdered {
     @Column(nullable = false)
     private int position;
 
-    /*
-     * TODO: defaults? we may at least need defaults for the import of legacy
-     * information?
-     */
-    @Column(nullable = false)
-    private double audioDBTarget = -10.0;
+    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
+    private double audioDBTarget = 0.0;
+
+    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
+    private double sameDBTarget = 0.0;
+
+    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
+    private double alertDBTarget = 0.0;
+
+    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
+    private double transferDBTarget = 0.0;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
     @Fetch(FetchMode.SUBSELECT)
@@ -279,6 +285,48 @@ public class TransmitterGroup implements PositionOrdered {
      */
     public void setAudioDBTarget(double audioDBTarget) {
         this.audioDBTarget = audioDBTarget;
+    }
+
+    /**
+     * @return the sameDBTarget
+     */
+    public double getSameDBTarget() {
+        return sameDBTarget;
+    }
+
+    /**
+     * @param sameDBTarget the sameDBTarget to set
+     */
+    public void setSameDBTarget(double sameDBTarget) {
+        this.sameDBTarget = sameDBTarget;
+    }
+
+    /**
+     * @return the alertDBTarget
+     */
+    public double getAlertDBTarget() {
+        return alertDBTarget;
+    }
+
+    /**
+     * @param alertDBTarget the alertDBTarget to set
+     */
+    public void setAlertDBTarget(double alertDBTarget) {
+        this.alertDBTarget = alertDBTarget;
+    }
+
+    /**
+     * @return the transferDBTarget
+     */
+    public double getTransferDBTarget() {
+        return transferDBTarget;
+    }
+
+    /**
+     * @param transferDBTarget the transferDBTarget to set
+     */
+    public void setTransferDBTarget(double transferDBTarget) {
+        this.transferDBTarget = transferDBTarget;
     }
 
     public Set<Transmitter> getTransmitters() {

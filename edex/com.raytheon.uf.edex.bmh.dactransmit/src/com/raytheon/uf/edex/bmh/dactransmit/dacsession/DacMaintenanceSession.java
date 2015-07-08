@@ -77,6 +77,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  *                                     {@link MaintenanceMessagePlayback} when playback begins.
  * May 13, 2015 4429       rferrel     Changes for traceId logging.
  * Jun 11, 2015 4490       bkowal      Maintenance traceability improvements.
+ * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * </pre>
  * 
  * @author bkowal
@@ -183,8 +184,9 @@ public class DacMaintenanceSession implements IDacSession,
              * Determine what type of tones are required.
              */
             if (this.message.getSAMEtone() != null) {
-                byte[] same = TonesGenerator.getSAMEAlertTones(
-                        this.message.getSAMEtone(), false, true).array();
+                byte[] same = TonesGenerator
+                        .getSAMEAlertTones(this.message.getSAMEtone(), false,
+                                true).combineTonesArray().array();
                 /*
                  * Based on the length of the tones, determine which packet
                  * would mark the beginning of the end tones.

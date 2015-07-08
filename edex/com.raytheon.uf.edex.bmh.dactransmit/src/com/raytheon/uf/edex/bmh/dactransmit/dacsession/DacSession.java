@@ -111,6 +111,7 @@ import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
  * Apr 16, 2015  #4405     rjpeter      Fail live broadcast if we don't have sync to dac.
  * Apr 27, 2015  #4397     bkowal       Added {@link #handleDeliveryTimeStat(DeliveryTimeEvent)} and
  *                                      {@link #deliverAllStartupStats()}.
+ * Jul 08, 2015  #4636     bkowal       Support same and alert decibel levels.
  * </pre>
  * 
  * @author dgilling
@@ -444,7 +445,9 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                     this.config.getDataPort(), this.config.getTransmitters(),
                     startCommand.getBroadcastId(), this.dataThread,
                     this.commsManager, config, this.config.getDbTarget(),
-                    startCommand.getType(), startCommand.getRequestTime(), true);
+                    this.config.getSameDbTarget(),
+                    this.config.getAlertDbTarget(), startCommand.getType(),
+                    startCommand.getRequestTime(), true);
         } catch (IOException e) {
             logger.error("Failed to create a thread for broadcast "
                     + startCommand.getBroadcastId() + "!", e);
