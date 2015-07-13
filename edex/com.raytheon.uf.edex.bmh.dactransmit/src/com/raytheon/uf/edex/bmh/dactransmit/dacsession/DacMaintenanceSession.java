@@ -45,6 +45,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.bmh.tones.TonesManager;
+import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
@@ -78,6 +79,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  * May 13, 2015 4429       rferrel     Changes for traceId logging.
  * Jun 11, 2015 4490       bkowal      Maintenance traceability improvements.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * </pre>
  * 
  * @author bkowal
@@ -214,6 +216,21 @@ public class DacMaintenanceSession implements IDacSession,
             } else {
                 this.audio = TonesManager.generateTransferTone(this.message
                         .getTransferToneType());
+                /*
+                 * Depending on the transfer type, the 2400 audio bytes will
+                 * either be at the end or the beginning. Default is correct for
+                 * secondary to primary.
+                 */
+                int beginMaintenanceByte = 1;
+                int endMaintenanceByte = audio.length / 2;
+                if (this.message.getTransferToneType() == TransferType.PRIMARY_TO_SECONDARY) {
+                    beginMaintenanceByte = endMaintenanceByte;
+                    endMaintenanceByte = audio.length;
+                }
+
+                this.transmitThread.handleTransferToneDbTargets(
+                        this.config.getTransferDb(), beginMaintenanceByte,
+                        endMaintenanceByte);
             }
         }
 

@@ -102,6 +102,7 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * May 08, 2015 4470       bkowal      Configured transmitters must have both an associated dac and port.
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * Jul 08, 2015 4636       bkowal      Support multiple decibel target levels.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * </pre>
  * 
  * @author rjpeter
@@ -179,7 +180,10 @@ public class TransmitterGroup implements PositionOrdered {
     private double alertDBTarget = 0.0;
 
     @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double transferDBTarget = 0.0;
+    private double transferLowDBTarget = 0.0;
+
+    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
+    private double transferHighDBTarget = 0.0;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
     @Fetch(FetchMode.SUBSELECT)
@@ -295,7 +299,8 @@ public class TransmitterGroup implements PositionOrdered {
     }
 
     /**
-     * @param sameDBTarget the sameDBTarget to set
+     * @param sameDBTarget
+     *            the sameDBTarget to set
      */
     public void setSameDBTarget(double sameDBTarget) {
         this.sameDBTarget = sameDBTarget;
@@ -309,7 +314,8 @@ public class TransmitterGroup implements PositionOrdered {
     }
 
     /**
-     * @param alertDBTarget the alertDBTarget to set
+     * @param alertDBTarget
+     *            the alertDBTarget to set
      */
     public void setAlertDBTarget(double alertDBTarget) {
         this.alertDBTarget = alertDBTarget;
@@ -318,15 +324,31 @@ public class TransmitterGroup implements PositionOrdered {
     /**
      * @return the transferDBTarget
      */
-    public double getTransferDBTarget() {
-        return transferDBTarget;
+    public double getTransferLowDBTarget() {
+        return transferLowDBTarget;
     }
 
     /**
-     * @param transferDBTarget the transferDBTarget to set
+     * @param transferDBTarget
+     *            the transferDBTarget to set
      */
-    public void setTransferDBTarget(double transferDBTarget) {
-        this.transferDBTarget = transferDBTarget;
+    public void setTransferLowDBTarget(double transferLowDBTarget) {
+        this.transferLowDBTarget = transferLowDBTarget;
+    }
+
+    /**
+     * @return the transferHighDBTarget
+     */
+    public double getTransferHighDBTarget() {
+        return transferHighDBTarget;
+    }
+
+    /**
+     * @param transferHighDBTarget
+     *            the transferHighDBTarget to set
+     */
+    public void setTransferHighDBTarget(double transferHighDBTarget) {
+        this.transferHighDBTarget = transferHighDBTarget;
     }
 
     public Set<Transmitter> getTransmitters() {

@@ -50,6 +50,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  *                                     during conversions and regulation.
  * Jun 29, 2015 4602       bkowal      Support both audio attenuation and amplification.
  * Jul 01, 2015 4602       bkowal      Do not attenuate/amplify extremely quiet audio.
+ * Jul 13, 2015 4636       bkowal      Do not alter extremely quiet audio.
  * 
  * </pre>
  * 
@@ -94,9 +95,7 @@ public class AudioRegulator {
         for (int i = offset; i < (offset + length); i += 2) {
             short audioSample = (short) (((sample[i + 1] & 0xff) << 8) | (sample[i] & 0xff));
             final double decibels = this.calculateDecibels(audioSample);
-            if (decibels <= DB_SILENCE_LIMIT) {
-                audioSample = 0;
-            } else {
+            if (decibels >= DB_SILENCE_LIMIT) {
                 double calculation = audioSample * volumeAdjustment;
                 if (Math.abs(calculation) > BMHAudioConstants.MAX_AMPLITUDE) {
                     audioSample = (short) BMHAudioConstants.MAX_AMPLITUDE;

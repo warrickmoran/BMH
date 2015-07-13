@@ -20,10 +20,10 @@
 package com.raytheon.uf.edex.bmh.staticmsg;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
@@ -56,6 +56,8 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * Jun 08, 2015 4403       bkowal      Updated text content field in {@link TextToSpeechRequest}.
  * Jun 11, 2015 4490       bkowal      Initialized by Spring.
  * Jul 08, 2015 4636       bkowal      Support transfer tone transmitter alignment tests.
+ * Jul 13, 2015 4636       bkowal      Create separate alignment test files for 1800 and 2400 Hz
+ *                                     transfer tones.
  * 
  * </pre>
  * 
@@ -101,9 +103,14 @@ public class AlignmentTestGenerator {
     private static final String SAME_ULAW_NAME = "maintenanceSame"
             + BMHAudioFormat.ULAW.getExtension();
 
-    private Path maintenanceTransferPath;
+    private Path maintenance18TransferPath;
 
-    private static final String TRANSFER_ULAW_NAME = "maintenanceTransfer"
+    private static final String TRANSFER_18_ULAW_NAME = "maintenance18Transfer"
+            + BMHAudioFormat.ULAW.getExtension();
+
+    private Path maintenance24TransferPath;
+
+    private static final String TRANSFER_24_ULAW_NAME = "maintenance24Transfer"
             + BMHAudioFormat.ULAW.getExtension();
 
     private final TextToSpeechHandler ttsHandler;
@@ -137,8 +144,10 @@ public class AlignmentTestGenerator {
                 ALERT_ULAW_NAME);
         maintenanceSamePath = Paths.get(audioMaintenanceDirectory,
                 SAME_ULAW_NAME);
-        maintenanceTransferPath = Paths.get(audioMaintenanceDirectory,
-                TRANSFER_ULAW_NAME);
+        maintenance18TransferPath = Paths.get(audioMaintenanceDirectory,
+                TRANSFER_18_ULAW_NAME);
+        maintenance24TransferPath = Paths.get(audioMaintenanceDirectory,
+                TRANSFER_24_ULAW_NAME);
     }
 
     public void process() throws StaticGenerationException,
@@ -165,7 +174,10 @@ public class AlignmentTestGenerator {
         if (Files.exists(maintenanceSamePath) == false) {
             this.generateSame();
         }
-        if (Files.exists(maintenanceTransferPath) == false) {
+        if (Files.exists(maintenance18TransferPath) == false) {
+            this.generateTransfer();
+        }
+        if (Files.exists(maintenance24TransferPath) == false) {
             this.generateTransfer();
         }
     }
@@ -265,31 +277,50 @@ public class AlignmentTestGenerator {
     }
 
     private void generateTransfer() throws StaticGenerationException {
-        statusHandler.info("Generating transfer maintenance file: "
-                + maintenanceTransferPath.toString());
+        boolean write18 = false;
+        boolean write24 = false;
+        if (Files.exists(maintenance18TransferPath) == false) {
+            statusHandler.info("Generating transfer maintenance file: "
+                    + maintenance18TransferPath.toString());
+            write18 = true;
+        }
+        if (Files.exists(maintenance24TransferPath) == false) {
+            statusHandler.info("Generating transfer maintenance file: "
+                    + maintenance24TransferPath.toString());
+            write24 = true;
+        }
 
         byte[] audio;
         try {
-            byte[] ptos = TonesManager
+            audio = TonesManager
                     .generateTransferTone(TransferType.PRIMARY_TO_SECONDARY);
-            byte[] stop = TonesManager
-                    .generateTransferTone(TransferType.SECONDARY_TO_PRIMARY);
-
-            ByteBuffer buffer = ByteBuffer.allocate(ptos.length + stop.length);
-            buffer.put(ptos);
-            buffer.put(stop);
-            audio = buffer.array();
         } catch (ToneGenerationException e) {
             throw new StaticGenerationException(
                     "Failed to generate the transfer tone audio!", e);
         }
 
-        try {
-            Files.write(maintenanceTransferPath, audio);
-        } catch (IOException e) {
-            throw new StaticGenerationException(
-                    "Failed to write the transfer tone maintenance audio to file: "
-                            + maintenanceTransferPath.toString(), e);
+        if (write18) {
+            byte[] audioToWrite = Arrays
+                    .copyOfRange(audio, 0, audio.length / 2);
+            try {
+                Files.write(maintenance18TransferPath, audioToWrite);
+            } catch (IOException e) {
+                throw new StaticGenerationException(
+                        "Failed to write the transfer tone maintenance audio to file: "
+                                + maintenance18TransferPath.toString(), e);
+            }
+        }
+
+        if (write24) {
+            try {
+                byte[] audioToWrite = Arrays.copyOfRange(audio,
+                        audio.length / 2, audio.length);
+                Files.write(maintenance24TransferPath, audioToWrite);
+            } catch (IOException e) {
+                throw new StaticGenerationException(
+                        "Failed to write the transfer tone maintenance audio to file: "
+                                + maintenance24TransferPath.toString(), e);
+            }
         }
     }
 
@@ -332,7 +363,11 @@ public class AlignmentTestGenerator {
     /**
      * @return the maintenanceTransferPath
      */
-    public Path getMaintenanceTransferPath() {
-        return maintenanceTransferPath;
+    public Path getMaintenance18TransferPath() {
+        return maintenance18TransferPath;
+    }
+
+    public Path getMaintenance24TransferPath() {
+        return maintenance24TransferPath;
     }
 }

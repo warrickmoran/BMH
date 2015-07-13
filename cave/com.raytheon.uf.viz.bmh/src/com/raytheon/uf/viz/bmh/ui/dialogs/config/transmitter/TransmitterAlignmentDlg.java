@@ -52,6 +52,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest;
+import com.raytheon.uf.common.bmh.tones.TonesManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -92,6 +93,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Jul 01, 2015 4602       rjpeter     Use specific dataport.
  * Jul 08, 2015 4636       bkowal      Support setting multiple decibel levels. Support transfer tone
  *                                     alignment testing.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * </pre>
  * 
  * @author mpduff
@@ -129,7 +131,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
 
     private ToggleEditDisplayTextComp alertDbToggleText;
 
-    private ToggleEditDisplayTextComp transferDbToggleText;
+    private ToggleEditDisplayTextComp transfer18DbToggleText;
+
+    private ToggleEditDisplayTextComp transfer24DbToggleText;
 
     private Button editButton;
 
@@ -151,7 +155,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
 
     private Button textRdo;
 
-    private Button transferRdo;
+    private Button transfer18Rdo;
+
+    private Button transfer24Rdo;
 
     /** "Run Test" Button **/
     private Button testBtn;
@@ -265,7 +271,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
          */
         gl = new GridLayout(1, false);
         gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
-        gd.verticalSpan = 4;
+        gd.verticalSpan = 5;
 
         Composite buttonComp = new Composite(dbGroup, SWT.NONE);
         buttonComp.setLayoutData(gd);
@@ -315,11 +321,17 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         /*
          * Transfer Tone Decibel Level
          */
-        Label transferDbLbl = new Label(dbGroup, SWT.NONE);
-        transferDbLbl.setText("Transfer Decibel Level: ");
+        Label transfer18DbLbl = new Label(dbGroup, SWT.NONE);
+        transfer18DbLbl.setText("Transfer Decibel 1800 Hz: ");
 
-        this.transferDbToggleText = new ToggleEditDisplayTextComp(dbGroup, 50,
-                StringUtils.EMPTY);
+        this.transfer18DbToggleText = new ToggleEditDisplayTextComp(dbGroup,
+                50, StringUtils.EMPTY);
+
+        Label transfer24DbLbl = new Label(dbGroup, SWT.NONE);
+        transfer24DbLbl.setText("Transfer Decibel 2400 Hz: ");
+
+        this.transfer24DbToggleText = new ToggleEditDisplayTextComp(dbGroup,
+                50, StringUtils.EMPTY);
 
     }
 
@@ -327,7 +339,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         this.audioDbToggleText.toggleMode();
         this.sameDbToggleText.toggleMode();
         this.alertDbToggleText.toggleMode();
-        this.transferDbToggleText.toggleMode();
+        this.transfer18DbToggleText.toggleMode();
+        this.transfer24DbToggleText.toggleMode();
         this.editButton.setEnabled(false);
         this.saveButton.setEnabled(true);
     }
@@ -360,10 +373,14 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                 this.alertDbToggleText.getCurrentValue(), "Alert Decibel") == false) {
             return;
         }
-        if (DecibelLevelValidator
-                .validateInputText(this.shell,
-                        this.transferDbToggleText.getCurrentValue(),
-                        "Transfer Decibel") == false) {
+        if (DecibelLevelValidator.validateInputText(this.shell,
+                this.transfer18DbToggleText.getCurrentValue(),
+                "Transfer Decibel 1800 Hz") == false) {
+            return;
+        }
+        if (DecibelLevelValidator.validateInputText(this.shell,
+                this.transfer24DbToggleText.getCurrentValue(),
+                "Transfer Decibel 2400 Hz") == false) {
             return;
         }
 
@@ -373,8 +390,10 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                 .parseDouble(this.sameDbToggleText.getCurrentValue()));
         this.selectedTransmitterGrp.setAlertDBTarget(Double
                 .parseDouble(this.alertDbToggleText.getCurrentValue()));
-        this.selectedTransmitterGrp.setTransferDBTarget(Double
-                .parseDouble(this.transferDbToggleText.getCurrentValue()));
+        this.selectedTransmitterGrp.setTransferLowDBTarget((Double
+                .parseDouble(this.transfer18DbToggleText.getCurrentValue())));
+        this.selectedTransmitterGrp.setTransferHighDBTarget((Double
+                .parseDouble(this.transfer24DbToggleText.getCurrentValue())));
         try {
             this.dataManager.saveTransmitterGroup(this.selectedTransmitterGrp);
         } catch (Exception e) {
@@ -396,8 +415,10 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                 .toString(this.selectedTransmitterGrp.getSameDBTarget()));
         this.alertDbToggleText.setValue(Double
                 .toString(this.selectedTransmitterGrp.getAlertDBTarget()));
-        this.transferDbToggleText.setValue(Double
-                .toString(this.selectedTransmitterGrp.getTransferDBTarget()));
+        this.transfer18DbToggleText.setValue(Double
+                .toString(this.selectedTransmitterGrp.getTransferLowDBTarget()));
+        this.transfer24DbToggleText.setValue(Double
+                .toString(this.selectedTransmitterGrp.getTransferHighDBTarget()));
     }
 
     protected void changeDecibelLevelFields(Group group) {
@@ -525,17 +546,33 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             }
         });
 
-        transferRdo = new Button(rdoComp, SWT.RADIO);
-        transferRdo.setText("Transfer");
-        transferRdo.addSelectionListener(new SelectionAdapter() {
+        transfer18Rdo = new Button(rdoComp, SWT.RADIO);
+        transfer18Rdo.setText("Transfer 1800 Hz");
+        transfer18Rdo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 updateTestTarget();
                 /*
-                 * Default to 10 seconds to allow for a full playback of each
-                 * transfer tone.
+                 * Default to 5 seconds to allow for a full playback of each
+                 * transfer tone component.
                  */
-                durScaleComp.setSelectedValue(10);
+                durScaleComp
+                        .setSelectedValue((int) TonesManager.TRANSFER_TONE_DURATION);
+            }
+        });
+
+        transfer24Rdo = new Button(rdoComp, SWT.RADIO);
+        transfer24Rdo.setText("Transfer 2400 Hz");
+        transfer24Rdo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                updateTestTarget();
+                /*
+                 * Default to 5 seconds to allow for a full playback of each
+                 * transfer tone component.
+                 */
+                durScaleComp
+                        .setSelectedValue((int) TonesManager.TRANSFER_TONE_DURATION);
             }
         });
 
@@ -632,9 +669,12 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                     .toString(this.selectedTransmitterGrp.getSameDBTarget()));
             this.alertDbToggleText.setValue(Double
                     .toString(this.selectedTransmitterGrp.getAlertDBTarget()));
-            this.transferDbToggleText
-                    .setValue(Double.toString(this.selectedTransmitterGrp
-                            .getTransferDBTarget()));
+            this.transfer18DbToggleText.setValue(Double
+                    .toString(this.selectedTransmitterGrp
+                            .getTransferLowDBTarget()));
+            this.transfer24DbToggleText.setValue(Double
+                    .toString(this.selectedTransmitterGrp
+                            .getTransferHighDBTarget()));
             this.saveButton.setEnabled(false);
             this.editButton.setEnabled(true);
             this.updateTestTarget();
@@ -676,8 +716,10 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             currentDbTarget = this.alertDbToggleText.getCurrentValue();
         } else if (this.textRdo.getSelection()) {
             currentDbTarget = this.audioDbToggleText.getCurrentValue();
-        } else if (this.transferRdo.getSelection()) {
-            currentDbTarget = this.transferDbToggleText.getCurrentValue();
+        } else if (this.transfer18Rdo.getSelection()) {
+            currentDbTarget = this.transfer18DbToggleText.getCurrentValue();
+        } else if (this.transfer24Rdo.getSelection()) {
+            currentDbTarget = this.transfer24DbToggleText.getCurrentValue();
         }
 
         this.dbValueTxt.setText(currentDbTarget);
@@ -687,7 +729,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         return this.audioDbToggleText.hasChanged() == false
                 && this.sameDbToggleText.hasChanged() == false
                 && this.alertDbToggleText.hasChanged() == false
-                && this.transferDbToggleText.hasChanged() == false;
+                && this.transfer18DbToggleText.hasChanged() == false
+                && this.transfer24DbToggleText.hasChanged() == false;
     }
 
     /**
@@ -781,7 +824,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         this.sameRdo.setEnabled(enabled);
         this.alertRdo.setEnabled(enabled);
         this.textRdo.setEnabled(enabled);
-        this.transferRdo.setEnabled(enabled);
+        this.transfer18Rdo.setEnabled(enabled);
+        this.transfer24Rdo.setEnabled(enabled);
     }
 
     /**
@@ -927,8 +971,10 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             request.setType(MaintenanceMessageRequest.AUDIOTYPE.ALERT);
         } else if (this.textRdo.getSelection()) {
             request.setType(MaintenanceMessageRequest.AUDIOTYPE.TEXT);
-        } else if (this.transferRdo.getSelection()) {
-            request.setType(MaintenanceMessageRequest.AUDIOTYPE.TRANSFER);
+        } else if (this.transfer18Rdo.getSelection()) {
+            request.setType(MaintenanceMessageRequest.AUDIOTYPE.TRANSFER_18);
+        } else if (this.transfer24Rdo.getSelection()) {
+            request.setType(MaintenanceMessageRequest.AUDIOTYPE.TRANSFER_24);
         }
 
         return (String) BmhUtils.sendRequest(request);

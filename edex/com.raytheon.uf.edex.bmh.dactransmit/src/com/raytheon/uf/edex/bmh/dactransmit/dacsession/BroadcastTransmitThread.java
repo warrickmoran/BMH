@@ -49,6 +49,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
  * Apr 24, 2015 4394       bkowal      Updated to support {@link IBroadcastBufferListener}.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * </pre>
  * 
  * @author bkowal
@@ -93,6 +94,7 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
     public void run() {
         AudioPacketLogger packetLog = new AudioPacketLogger("Broadcast Audio",
                 getClass(), 30);
+        int bytesRead = 0;
         while (this.error == false && this.audioBuffer.isEmpty() == false) {
             try {
                 // check for data every 5ms, we only have a 20ms window.
@@ -101,7 +103,8 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
                 if (audio == null) {
                     continue;
                 }
-                this.streamAudio(audio, this.dbTarget);
+                bytesRead += audio.length;
+                this.streamAudio(audio, this.determineDecibelTarget(bytesRead));
                 packetLog.packetProcessed();
             } catch (AudioOverflowException | UnsupportedAudioFormatException
                     | AudioConversionException | InterruptedException e) {
@@ -122,6 +125,10 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
         }
 
         packetLog.close();
+    }
+
+    protected double determineDecibelTarget(int totalBytesRead) {
+        return this.dbTarget;
     }
 
     public void playAudio(List<byte[]> data) {

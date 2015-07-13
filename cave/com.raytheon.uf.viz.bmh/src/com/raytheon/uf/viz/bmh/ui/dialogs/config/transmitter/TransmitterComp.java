@@ -53,8 +53,8 @@ import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
+import com.raytheon.uf.common.bmh.broadcast.TrxTransferMaintenanceCommand;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
-import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
@@ -126,6 +126,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 12, 2015 4248       rjpeter     Fix misspelling.
  * Jul 01, 2015 4602       rjpeter     Use specific dataport.
  * Jul 08, 2015 4636       bkowal      Use the decibel target specific to transfer tones.
+ * Jul 13, 2015 4636       bkowal      Ensure that a port is selected for the transmitter that transfer tones
+ *                                     will be completed on.
  * </pre>
  * 
  * @author mpduff
@@ -1131,7 +1133,7 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     String inputAudioFile = (String) BmhUtils
                             .sendRequest(request);
 
-                    TransmitterMaintenanceCommand command = new TransmitterMaintenanceCommand();
+                    TrxTransferMaintenanceCommand command = new TrxTransferMaintenanceCommand();
                     command.setMaintenanceDetails("Transfer Tone");
                     command.setMsgSource(MSGSOURCE.VIZ);
                     command.addTransmitterGroup(transmitterGroup);
@@ -1139,8 +1141,7 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     List<Integer> radios = new LinkedList<>();
 
                     for (Transmitter trans : transmitterGroup.getTransmitters()) {
-                        if (TxStatus.ENABLED.equals(trans.getTxStatus())
-                                || TxStatus.MAINT.equals(trans.getTxStatus())) {
+                        if (trans.getTxStatus() != TxStatus.DECOMM) {
                             radios.add(trans.getDacPort());
                         }
                     }
@@ -1150,7 +1151,9 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                             radios.get(0) - 1));
                     command.setRadios(new int[] { port });
                     command.setDecibelTarget(transmitterGroup
-                            .getTransferDBTarget());
+                            .getTransferLowDBTarget());
+                    command.setDecibelTarget24(transmitterGroup
+                            .getTransferHighDBTarget());
                     command.setInputAudioFile(inputAudioFile);
                     command.setBroadcastDuration(-1);
                     command.setBroadcastTimeout((int) (TransmitterMaintenanceThread.MAINTENANCE_TIMEOUT / TimeUtil.MILLIS_PER_MINUTE));

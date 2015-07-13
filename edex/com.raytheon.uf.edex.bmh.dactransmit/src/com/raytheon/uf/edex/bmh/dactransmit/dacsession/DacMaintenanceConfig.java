@@ -35,6 +35,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Apr 09, 2015 4364       bkowal      Added {@link #executionTimeout}.
  * Apr 24, 2015 4394       bkowal      Field renaming based on usage.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * 
  * </pre>
  * 
@@ -49,17 +50,20 @@ public class DacMaintenanceConfig extends AbstractDacConfig {
     private final Integer testDuration;
 
     private final int executionTimeout;
+    
+    private final Double transferDb;
 
     /**
      * @param mode
      * @param commonConfig
      */
     public DacMaintenanceConfig(DacCommonConfig commonConfig,
-            Path messageFilePath, int testDuration, int executionTimeout) {
+            Path messageFilePath, int testDuration, int executionTimeout, Double transferDb) {
         super(DAC_MODE.MAINTENANCE, commonConfig);
         this.messageFilePath = messageFilePath;
         this.testDuration = testDuration;
         this.executionTimeout = executionTimeout;
+        this.transferDb = transferDb;
     }
 
     /**
@@ -83,6 +87,13 @@ public class DacMaintenanceConfig extends AbstractDacConfig {
         return executionTimeout;
     }
 
+    /**
+     * @return the transferDb
+     */
+    public Double getTransferDb() {
+        return transferDb;
+    }
+
     @Override
     public IDacSession buildDacSession() throws Exception {
         return new DacMaintenanceSession(this);
@@ -99,6 +110,10 @@ public class DacMaintenanceConfig extends AbstractDacConfig {
         stringBuilder.append(this.testDuration);
         stringBuilder.append(", executionTimeout=");
         stringBuilder.append(this.executionTimeout);
+        if (this.transferDb != null) {
+            stringBuilder.append(", transferDb=");
+            stringBuilder.append(this.transferDb);
+        }
         stringBuilder.append("]");
 
         return stringBuilder.toString();
