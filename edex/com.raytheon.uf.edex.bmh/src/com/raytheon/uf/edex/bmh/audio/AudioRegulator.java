@@ -94,14 +94,11 @@ public class AudioRegulator {
             AudioOverflowException {
         for (int i = offset; i < (offset + length); i += 2) {
             short audioSample = (short) (((sample[i + 1] & 0xff) << 8) | (sample[i] & 0xff));
-            final double decibels = this.calculateDecibels(audioSample);
-            if (decibels >= DB_SILENCE_LIMIT) {
-                double calculation = audioSample * volumeAdjustment;
-                if (Math.abs(calculation) > BMHAudioConstants.MAX_AMPLITUDE) {
-                    audioSample = (short) BMHAudioConstants.MAX_AMPLITUDE;
-                } else {
-                    audioSample = (short) calculation;
-                }
+            double calculation = audioSample * volumeAdjustment;
+            if (Math.abs(calculation) > BMHAudioConstants.MAX_AMPLITUDE) {
+                audioSample = (short) BMHAudioConstants.MAX_AMPLITUDE;
+            } else {
+                audioSample = (short) calculation;
             }
 
             sample[i] = (byte) audioSample;
@@ -155,7 +152,8 @@ public class AudioRegulator {
                 length);
         if ((decibelRange.getMinimumDouble() == Double.NEGATIVE_INFINITY && decibelRange
                 .getMaximumDouble() == Double.NEGATIVE_INFINITY)
-                || decibelRange.getMaximumDouble() == dbTarget) {
+                || decibelRange.getMaximumDouble() == dbTarget
+                || decibelRange.getMaximumDouble() <= DB_SILENCE_LIMIT) {
             return;
         }
 

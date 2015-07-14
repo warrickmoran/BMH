@@ -429,7 +429,7 @@ public class ImportLegacyDatabase {
             if (CollectionUtil.isNullOrEmpty(ports) == false) {
 
                 for (int portVal = 1; portVal <= ports.size(); portVal++) {
-                    availableDacPorts.add(new Pair<>(dac.getId(), portVal++));
+                    availableDacPorts.add(new Pair<>(dac.getId(), portVal));
                 }
             }
         }
