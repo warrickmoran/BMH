@@ -171,19 +171,19 @@ public class TransmitterGroup implements PositionOrdered {
     private int position;
 
     @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double audioDBTarget = 0.0;
+    private double audioDBTarget = -10.0;
 
     @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double sameDBTarget = 0.0;
+    private double sameDBTarget = -10.0;
 
     @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double alertDBTarget = 0.0;
+    private double alertDBTarget = -10.0;
 
     @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double transferLowDBTarget = 0.0;
+    private double transferLowDBTarget = -10.0;
 
     @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double transferHighDBTarget = 0.0;
+    private double transferHighDBTarget = -10.0;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
     @Fetch(FetchMode.SUBSELECT)
