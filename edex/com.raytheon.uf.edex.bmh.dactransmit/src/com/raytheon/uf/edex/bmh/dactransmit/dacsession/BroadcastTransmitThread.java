@@ -50,6 +50,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Apr 24, 2015 4394       bkowal      Updated to support {@link IBroadcastBufferListener}.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
+ * Jul 15, 2015 4636       bkowal      Set flag for audio alteration.
  * </pre>
  * 
  * @author bkowal
@@ -104,7 +105,8 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
                     continue;
                 }
                 bytesRead += audio.length;
-                this.streamAudio(audio, this.determineDecibelTarget(bytesRead));
+                this.streamAudio(audio, this.determineDecibelTarget(bytesRead),
+                        true);
                 packetLog.packetProcessed();
             } catch (AudioOverflowException | UnsupportedAudioFormatException
                     | AudioConversionException | InterruptedException e) {
@@ -135,13 +137,22 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
         this.audioBuffer.addAll(data);
     }
 
-    protected void streamAudio(byte[] data, double dbTarget)
+    protected void streamAudio(byte[] data, double dbTarget, boolean adjustAudio)
             throws AudioOverflowException, UnsupportedAudioFormatException,
             AudioConversionException, InterruptedException {
-        /*
-         * Adjust the audio based on the decibel target.
-         */
-        byte[] regulatedAudio = this.adjustAudio(data, dbTarget);
+
+        byte[] regulatedAudio = new byte[0];
+        if (adjustAudio) {
+            /*
+             * Adjust the audio based on the decibel target.
+             */
+            regulatedAudio = this.adjustAudio(data, dbTarget);
+        } else {
+            /*
+             * audio regulation has been disabled. use the data as is.
+             */
+            regulatedAudio = data;
+        }
 
         RtpPacketIn rtpPacket = buildRtpPacket(previousPacket, regulatedAudio);
 
@@ -167,7 +178,7 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
         }
     }
 
-    private byte[] adjustAudio(final byte[] sourceAudio, double dbTarget)
+    protected byte[] adjustAudio(final byte[] sourceAudio, double dbTarget)
             throws AudioOverflowException, UnsupportedAudioFormatException,
             AudioConversionException {
         byte[] regulatedAudio = new byte[0];

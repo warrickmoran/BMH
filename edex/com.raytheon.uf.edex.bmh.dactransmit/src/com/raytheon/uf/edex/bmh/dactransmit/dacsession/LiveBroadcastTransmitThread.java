@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
+import com.raytheon.uf.edex.bmh.audio.CollectibleAudioRegulator;
 import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
 
 /**
@@ -78,6 +79,8 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * Apr 15, 2015 4397       bkowal      Added {@link #generateStatistics()}.
  * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
+ * Jul 15, 2015 4636       bkowal      Alter all audio as it arrives. Do not alter it before
+ *                                     packaging as a packet.
  * </pre>
  * 
  * @author bkowal
@@ -185,7 +188,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                 if (audio == null) {
                     continue;
                 }
-                this.streamAudio(audio, this.dbTarget);
+                this.streamAudio(audio, this.dbTarget, false);
                 packetLog.packetProcessed();
             } catch (AudioOverflowException | UnsupportedAudioFormatException
                     | AudioConversionException | InterruptedException e) {
@@ -213,6 +216,18 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             this.bytesReceived = true;
             this.generateStatistics();
         }
+        /*
+         * Attenuate / amplify all received data before it is added to the
+         * buffer. Here we know that the audio db target will be used.
+         */
+        CollectibleAudioRegulator regulator = new CollectibleAudioRegulator(
+                data);
+        try {
+            data = regulator.regulateAudioCollection(this.dbTarget);
+        } catch (Exception e) {
+            logger.error("Failed to amplify/attenuate received audio.", e);
+        }
+
         super.playAudio(data);
     }
 
@@ -223,7 +238,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
         try {
             while (tonesInputStream.read(nextPayload) != -1) {
-                this.streamAudio(nextPayload, dbTarget);
+                this.streamAudio(nextPayload, dbTarget, true);
                 packetLog.packetProcessed();
             }
         } catch (IOException | AudioOverflowException
@@ -245,7 +260,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         Arrays.fill(silence, DacSessionConstants.SILENCE);
         while (streaming && this.audioBuffer.isEmpty()) {
             try {
-                this.streamAudio(silence, this.dbTarget);
+                this.streamAudio(silence, this.dbTarget, false);
                 packetLog.packetProcessed();
             } catch (AudioOverflowException | UnsupportedAudioFormatException
                     | AudioConversionException | InterruptedException e) {
