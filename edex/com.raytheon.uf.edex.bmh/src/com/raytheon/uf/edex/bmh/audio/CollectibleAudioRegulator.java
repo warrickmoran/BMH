@@ -54,7 +54,7 @@ public class CollectibleAudioRegulator extends AudioRegulator {
     /**
      * The peak decibel level across the entire audio {@link Collection}.
      */
-    private Double maxDbRange = Double.MIN_VALUE;
+    private Double maxDbRange = -Double.MAX_VALUE;
 
     /**
      * The minimum decibel level across the entire audio {@link Collection}.

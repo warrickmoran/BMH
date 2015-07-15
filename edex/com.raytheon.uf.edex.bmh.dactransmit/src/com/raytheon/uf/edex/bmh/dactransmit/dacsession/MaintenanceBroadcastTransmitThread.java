@@ -42,6 +42,7 @@ import com.google.common.eventbus.EventBus;
  * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
+ * Jul 15, 2015 4636       bkowal      Remove packet-level audio alteration information.
  * </pre>
  * 
  * @author bkowal
@@ -50,38 +51,11 @@ import com.google.common.eventbus.EventBus;
 
 public class MaintenanceBroadcastTransmitThread extends BroadcastTransmitThread {
 
-    private Double transferDb;
-
-    private int twentyFourKMinByteIndex;
-
-    private int twentyFourKMaxByteIndex;
-
     public MaintenanceBroadcastTransmitThread(String name, EventBus eventBus,
             InetAddress address, int port, Collection<Integer> transmitters,
             double dbTarget, boolean hasSync) throws SocketException {
         super(name, eventBus, address, port, transmitters, dbTarget, -999,
                 -999, hasSync);
-    }
-
-    @Override
-    protected double determineDecibelTarget(int totalBytesRead) {
-        if (transferDb == null) {
-            return this.dbTarget;
-        } else {
-            if (totalBytesRead > this.twentyFourKMinByteIndex
-                    && totalBytesRead <= this.twentyFourKMaxByteIndex) {
-                return this.transferDb.doubleValue();
-            }
-        }
-
-        return this.dbTarget;
-    }
-
-    public void handleTransferToneDbTargets(Double transferDb,
-            int twentyFourKMinByteIndex, int twentyFourKMaxByteIndex) {
-        this.transferDb = transferDb;
-        this.twentyFourKMinByteIndex = twentyFourKMinByteIndex;
-        this.twentyFourKMaxByteIndex = twentyFourKMaxByteIndex;
     }
 
     /**

@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
+import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.audio.CollectibleAudioRegulator;
 import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
 
@@ -79,8 +80,7 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * Apr 15, 2015 4397       bkowal      Added {@link #generateStatistics()}.
  * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
- * Jul 15, 2015 4636       bkowal      Alter all audio as it arrives. Do not alter it before
- *                                     packaging as a packet.
+ * Jul 15, 2015 4636       bkowal      Eliminate packet-level audio alterations.
  * </pre>
  * 
  * @author bkowal
@@ -188,7 +188,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                 if (audio == null) {
                     continue;
                 }
-                this.streamAudio(audio, this.dbTarget, false);
+                this.streamAudio(audio);
                 packetLog.packetProcessed();
             } catch (AudioOverflowException | UnsupportedAudioFormatException
                     | AudioConversionException | InterruptedException e) {
@@ -233,12 +233,25 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
     private void playTones(byte[] toneAudio, final String toneType,
             final double dbTarget, AudioPacketLogger packetLog) {
+        /*
+         * Attenuate / amplify all received data before it is added to the
+         * buffer. Here we know that the audio db target will be used.
+         */
+        AudioRegulator regulator = new AudioRegulator();
+        try {
+            toneAudio = regulator.regulateAudioVolume(toneAudio, dbTarget,
+                    toneAudio.length);
+        } catch (Exception e) {
+            logger.error("Failed to amplify/attenuate the " + toneType
+                    + " tone audio.", e);
+        }
+
         ByteArrayInputStream tonesInputStream = new ByteArrayInputStream(
                 toneAudio);
         byte[] nextPayload = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
         try {
             while (tonesInputStream.read(nextPayload) != -1) {
-                this.streamAudio(nextPayload, dbTarget, true);
+                this.streamAudio(nextPayload);
                 packetLog.packetProcessed();
             }
         } catch (IOException | AudioOverflowException
@@ -260,7 +273,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         Arrays.fill(silence, DacSessionConstants.SILENCE);
         while (streaming && this.audioBuffer.isEmpty()) {
             try {
-                this.streamAudio(silence, this.dbTarget, false);
+                this.streamAudio(silence);
                 packetLog.packetProcessed();
             } catch (AudioOverflowException | UnsupportedAudioFormatException
                     | AudioConversionException | InterruptedException e) {

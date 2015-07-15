@@ -31,7 +31,6 @@ import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
-import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
 
 /**
@@ -50,7 +49,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Apr 24, 2015 4394       bkowal      Updated to support {@link IBroadcastBufferListener}.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
- * Jul 15, 2015 4636       bkowal      Set flag for audio alteration.
+ * Jul 15, 2015 4636       bkowal      No longer alter audio packet-by-packet.
  * </pre>
  * 
  * @author bkowal
@@ -95,7 +94,6 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
     public void run() {
         AudioPacketLogger packetLog = new AudioPacketLogger("Broadcast Audio",
                 getClass(), 30);
-        int bytesRead = 0;
         while (this.error == false && this.audioBuffer.isEmpty() == false) {
             try {
                 // check for data every 5ms, we only have a 20ms window.
@@ -104,9 +102,7 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
                 if (audio == null) {
                     continue;
                 }
-                bytesRead += audio.length;
-                this.streamAudio(audio, this.determineDecibelTarget(bytesRead),
-                        true);
+                this.streamAudio(audio);
                 packetLog.packetProcessed();
             } catch (AudioOverflowException | UnsupportedAudioFormatException
                     | AudioConversionException | InterruptedException e) {
@@ -129,32 +125,15 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
         packetLog.close();
     }
 
-    protected double determineDecibelTarget(int totalBytesRead) {
-        return this.dbTarget;
-    }
-
     public void playAudio(List<byte[]> data) {
         this.audioBuffer.addAll(data);
     }
 
-    protected void streamAudio(byte[] data, double dbTarget, boolean adjustAudio)
-            throws AudioOverflowException, UnsupportedAudioFormatException,
-            AudioConversionException, InterruptedException {
+    protected void streamAudio(byte[] data) throws AudioOverflowException,
+            UnsupportedAudioFormatException, AudioConversionException,
+            InterruptedException {
 
-        byte[] regulatedAudio = new byte[0];
-        if (adjustAudio) {
-            /*
-             * Adjust the audio based on the decibel target.
-             */
-            regulatedAudio = this.adjustAudio(data, dbTarget);
-        } else {
-            /*
-             * audio regulation has been disabled. use the data as is.
-             */
-            regulatedAudio = data;
-        }
-
-        RtpPacketIn rtpPacket = buildRtpPacket(previousPacket, regulatedAudio);
+        RtpPacketIn rtpPacket = buildRtpPacket(previousPacket, data);
 
         sendPacket(rtpPacket);
         if (this.listener != null) {
@@ -176,18 +155,6 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
                 logger.warn("Application has re-gained sync with the DAC. Unable to restart audio stream!");
             }
         }
-    }
-
-    protected byte[] adjustAudio(final byte[] sourceAudio, double dbTarget)
-            throws AudioOverflowException, UnsupportedAudioFormatException,
-            AudioConversionException {
-        byte[] regulatedAudio = new byte[0];
-
-        AudioRegulator audioRegulator = new AudioRegulator();
-        regulatedAudio = audioRegulator.regulateAudioVolume(sourceAudio,
-                dbTarget, sourceAudio.length);
-
-        return regulatedAudio;
     }
 
     /**
