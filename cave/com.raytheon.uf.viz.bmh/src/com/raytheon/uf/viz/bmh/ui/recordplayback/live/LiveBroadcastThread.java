@@ -59,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  *                                     initialization failure.
  * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * Nov 21, 2014 3845       bkowal      Use Transmitter Groups
+ * Jul 15, 2015 4636       bkowal      Slighly increase the amount of audio that is accumulated.
  * 
  * </pre>
  * 
@@ -93,10 +94,10 @@ public class LiveBroadcastThread extends
     private static final int INITIAL_BUFFER_DELAY = 250;
 
     /*
-     * Accumulate audio for every 50ms afterwards until the end of the
+     * Accumulate audio for every 150ms afterwards until the end of the
      * broadcast.
      */
-    private static final int BUFFER_DELAY = 50;
+    private static final int BUFFER_DELAY = 150;
 
     /**
      * 

@@ -52,6 +52,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * Jul 01, 2015 4602       bkowal      Do not attenuate/amplify extremely quiet audio.
  * Jul 13, 2015 4636       bkowal      Do not alter extremely quiet audio.
  * Jul 14, 2015 4636       rjpeter     Check entire stream for max.
+ * Jul 15, 2015 4636       bkowal      Increased visibility of a few methods for abstraction.
  * </pre>
  * 
  * @author bkowal
@@ -59,7 +60,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  */
 
 public class AudioRegulator {
-    private static final double DB_SILENCE_LIMIT = -40.;
+    protected static final double DB_SILENCE_LIMIT = -40.;
 
     private long duration;
 
@@ -87,7 +88,7 @@ public class AudioRegulator {
      *             if the requested volume adjustment would generate invalid
      *             audio samples
      */
-    private void regulateAudioVolume(byte[] sample,
+    protected void regulateAudioVolume(byte[] sample,
             final double volumeAdjustment, int offset, int length)
             throws UnsupportedAudioFormatException, AudioConversionException,
             AudioOverflowException {
@@ -147,7 +148,7 @@ public class AudioRegulator {
         return ulawData;
     }
 
-    private void adjustAudioSamplePCM(final byte[] sample,
+    protected void adjustAudioSamplePCM(final byte[] sample,
             final double adjustmentRate, int offset, int length)
             throws UnsupportedAudioFormatException, AudioConversionException,
             AudioOverflowException {
@@ -176,7 +177,7 @@ public class AudioRegulator {
      *            the boundary signals
      * @return the calculated decibel range
      */
-    private Range calculateBoundarySignals(final byte[] audio, int offset,
+    protected Range calculateBoundarySignals(final byte[] audio, int offset,
             int length) {
         double runningMinAmplitude = 0.0;
         double runningMaxAmplitude = 0.0;
@@ -205,8 +206,8 @@ public class AudioRegulator {
             }
         }
 
-        return new DoubleRange(this.calculateDecibels(runningMinAmplitude),
-                this.calculateDecibels(runningMaxAmplitude));
+        return new DoubleRange(calculateDecibels(runningMinAmplitude),
+                calculateDecibels(runningMaxAmplitude));
     }
 
     /**
@@ -216,7 +217,7 @@ public class AudioRegulator {
      *            the specified amplitude
      * @return the amplitude converted to decibels
      */
-    private double calculateDecibels(double amplitude) {
+    private static double calculateDecibels(double amplitude) {
         amplitude = Math.abs(amplitude);
         double amplitudeRatio = amplitude / BMHAudioConstants.MAX_AMPLITUDE;
         return BMHAudioConstants.AMPLITUDE_TO_DB_CONSTANT
