@@ -51,7 +51,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * Jun 29, 2015 4602       bkowal      Support both audio attenuation and amplification.
  * Jul 01, 2015 4602       bkowal      Do not attenuate/amplify extremely quiet audio.
  * Jul 13, 2015 4636       bkowal      Do not alter extremely quiet audio.
- * 
+ * Jul 14, 2015 4636       rjpeter     Check entire stream for max.
  * </pre>
  * 
  * @author bkowal
@@ -59,7 +59,6 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  */
 
 public class AudioRegulator {
-
     private static final double DB_SILENCE_LIMIT = -40.;
 
     private long duration;
@@ -112,55 +111,53 @@ public class AudioRegulator {
             AudioConversionException {
         long start = System.currentTimeMillis();
 
-        final int overflowCount = ulawData.length % sampleSize;
-        final int numberSamples = (ulawData.length - overflowCount)
-                / sampleSize;
         byte[] pcmData = new byte[sampleSize * 2];
-        for (int i = 0; i < numberSamples; i++) {
-            UlawToPCMAlgorithm.convert(ulawData, i * sampleSize, sampleSize,
-                    pcmData);
+        int length = sampleSize;
+        double maxValue = -Double.MAX_VALUE;
 
-            this.adjustAudioSamplePCM(pcmData, dbTarget);
+        for (int i = 0; i < ulawData.length; i += sampleSize) {
+            if (i + length > ulawData.length) {
+                length = ulawData.length - i;
+            }
 
-            PCMToUlawAlgorithm.convert(pcmData, ulawData, i * sampleSize);
+            UlawToPCMAlgorithm.convert(ulawData, i, length, pcmData);
+            Range decRange = this.calculateBoundarySignals(pcmData, 0,
+                    length * 2);
+            if (decRange.getMaximumDouble() != Double.NEGATIVE_INFINITY) {
+                maxValue = Math.max(maxValue, decRange.getMaximumDouble());
+            }
         }
-        if (overflowCount > 0) {
-            UlawToPCMAlgorithm.convert(ulawData, numberSamples * sampleSize,
-                    overflowCount, pcmData);
 
-            this.adjustAudioSamplePCM(pcmData, dbTarget, 0, overflowCount * 2);
+        double difference = dbTarget - maxValue;
+        double adjustmentRate = Math.pow(
+                BMHAudioConstants.DB_ALTERATION_CONSTANT,
+                (difference / BMHAudioConstants.AMPLITUDE_TO_DB_CONSTANT));
+        length = sampleSize;
+        for (int i = 0; i < ulawData.length; i += sampleSize) {
+            if (i + length > ulawData.length) {
+                length = ulawData.length - i;
+            }
 
-            PCMToUlawAlgorithm.convert(pcmData, 0, overflowCount * 2, ulawData,
-                    numberSamples * sampleSize);
+            UlawToPCMAlgorithm.convert(ulawData, i, length, pcmData);
+            this.adjustAudioSamplePCM(pcmData, adjustmentRate, 0, length * 2);
+            PCMToUlawAlgorithm.convert(pcmData, 0, length * 2, ulawData, i);
         }
 
         this.duration = System.currentTimeMillis() - start;
         return ulawData;
     }
 
-    private void adjustAudioSamplePCM(final byte[] sample, final double dbTarget)
-            throws UnsupportedAudioFormatException, AudioConversionException,
-            AudioOverflowException {
-        this.adjustAudioSamplePCM(sample, dbTarget, 0, sample.length);
-    }
-
     private void adjustAudioSamplePCM(final byte[] sample,
-            final double dbTarget, int offset, int length)
+            final double adjustmentRate, int offset, int length)
             throws UnsupportedAudioFormatException, AudioConversionException,
             AudioOverflowException {
         Range decibelRange = this.calculateBoundarySignals(sample, offset,
                 length);
         if ((decibelRange.getMinimumDouble() == Double.NEGATIVE_INFINITY && decibelRange
                 .getMaximumDouble() == Double.NEGATIVE_INFINITY)
-                || decibelRange.getMaximumDouble() == dbTarget
                 || decibelRange.getMaximumDouble() <= DB_SILENCE_LIMIT) {
             return;
         }
-
-        double difference = dbTarget - decibelRange.getMaximumDouble();
-        double adjustmentRate = Math.pow(
-                BMHAudioConstants.DB_ALTERATION_CONSTANT,
-                (difference / BMHAudioConstants.AMPLITUDE_TO_DB_CONSTANT));
 
         this.regulateAudioVolume(sample, adjustmentRate, offset, length);
     }
