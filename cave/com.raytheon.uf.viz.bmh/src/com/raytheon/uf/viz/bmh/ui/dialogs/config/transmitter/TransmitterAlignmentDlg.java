@@ -52,7 +52,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest;
-import com.raytheon.uf.common.bmh.tones.TonesManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -94,6 +93,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Jul 08, 2015 4636       bkowal      Support setting multiple decibel levels. Support transfer tone
  *                                     alignment testing.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
+ * Jul 15, 2015 4649       rferrel     When saving Decible Levels update the Target Decible Level.
+ *                                     Duration default is 10 seconds and only the user can change its value.
  * </pre>
  * 
  * @author mpduff
@@ -415,10 +416,14 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
                 .toString(this.selectedTransmitterGrp.getSameDBTarget()));
         this.alertDbToggleText.setValue(Double
                 .toString(this.selectedTransmitterGrp.getAlertDBTarget()));
-        this.transfer18DbToggleText.setValue(Double
-                .toString(this.selectedTransmitterGrp.getTransferLowDBTarget()));
-        this.transfer24DbToggleText.setValue(Double
-                .toString(this.selectedTransmitterGrp.getTransferHighDBTarget()));
+        this.transfer18DbToggleText
+                .setValue(Double.toString(this.selectedTransmitterGrp
+                        .getTransferLowDBTarget()));
+        this.transfer24DbToggleText
+                .setValue(Double.toString(this.selectedTransmitterGrp
+                        .getTransferHighDBTarget()));
+
+        updateTestTarget();
     }
 
     protected void changeDecibelLevelFields(Group group) {
@@ -552,12 +557,6 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 updateTestTarget();
-                /*
-                 * Default to 5 seconds to allow for a full playback of each
-                 * transfer tone component.
-                 */
-                durScaleComp
-                        .setSelectedValue((int) TonesManager.TRANSFER_TONE_DURATION);
             }
         });
 
@@ -567,12 +566,6 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 updateTestTarget();
-                /*
-                 * Default to 5 seconds to allow for a full playback of each
-                 * transfer tone component.
-                 */
-                durScaleComp
-                        .setSelectedValue((int) TonesManager.TRANSFER_TONE_DURATION);
             }
         });
 
@@ -587,6 +580,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         durLbl.setText("Duration (seconds):");
 
         durScaleComp = new ScaleSpinnerComp(durComp, 1, 30, "", 85, 25);
+        durScaleComp.setSelectedValue(10);
 
         gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
         gd.horizontalSpan = 2;
