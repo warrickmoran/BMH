@@ -21,11 +21,8 @@ package com.raytheon.uf.edex.bmh.xformer.data;
 
 import java.io.Serializable;
 import java.util.List;
-import java.util.LinkedList;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-
-import org.apache.commons.lang.math.NumberUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
@@ -44,6 +41,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
  * Aug 26, 2014 3559       bkowal      Lower case all text when constructing dictionary
  *                                     regex and determining if rules apply.
  * Mar 24, 2015 4301       bkowal      Implement and override {@link #prepareTransformationRegex(String)}.
+ * Jul 16, 2015 4603       bkowal      Fixed dynamic numerical text matching.
  * 
  * </pre>
  * 
@@ -54,9 +52,9 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 public class DynamicNumericTextTransformation extends
         AbstractTextTransformation {
 
-    private static final String NUMBER_REGEX = "([0-9])";
+    private static final String NUMBER_REGEX = "[0-9]";
 
-    private static final Pattern NUMBER_PATTERN = Pattern.compile(NUMBER_REGEX);
+    private Pattern basePattern;
 
     /**
      * @param text
@@ -70,7 +68,37 @@ public class DynamicNumericTextTransformation extends
 
     @Override
     protected String prepareTransformationRegex(String text) {
-        return text.replace(Word.DYNAMIC_NUMERIC_CHAR, NUMBER_REGEX);
+        StringBuilder regexBuilder = new StringBuilder();
+        StringBuilder textBuilder = new StringBuilder();
+        int digitCount = 0;
+        for (char c : text.toCharArray()) {
+            if (c == '#') {
+                if (textBuilder.length() > 0) {
+                    regexBuilder.append(Pattern.quote(textBuilder.toString()));
+                    textBuilder = new StringBuilder();
+                }
+                ++digitCount;
+            } else {
+                if (digitCount > 0) {
+                    for (int i = 0; i < digitCount; i++) {
+                        regexBuilder.append("(").append(NUMBER_REGEX)
+                                .append(")");
+                    }
+                    digitCount = 0;
+                }
+                textBuilder.append(c);
+            }
+        }
+        if (digitCount > 0) {
+            for (int i = 0; i < digitCount; i++) {
+                regexBuilder.append("(").append(NUMBER_REGEX).append(")");
+            }
+        } else if (textBuilder.length() > 0) {
+            regexBuilder.append(Pattern.quote(textBuilder.toString()));
+        }
+
+        this.basePattern = Pattern.compile(regexBuilder.toString());
+        return super.prepareTransformationRegex(regexBuilder.toString());
     }
 
     /*
@@ -82,19 +110,20 @@ public class DynamicNumericTextTransformation extends
     @Override
     public List<Serializable> applyTransformation(String text)
             throws SSMLConversionException {
-        List<Integer> extractedNumerics = new LinkedList<>();
-        Matcher matcher = NUMBER_PATTERN.matcher(text.toLowerCase());
-        while (matcher.find()) {
-            /*
-             * If it matches the pattern, then there should be no reason to
-             * perform additional verifications to verify that it is numeric.
-             */
-            extractedNumerics.add(NumberUtils.toInt(matcher.group(0)));
-        }
+        /*
+         * The client will ensure that rules that do not specify an equal number
+         * of digits on both sides of the rule are not created. However, there
+         * is nothing to stop users from manually adding rules to the database
+         * ... so, we will be handling that here.
+         */
+
         String result = this.ssmlReplacement;
-        for (Integer extractedNumeric : extractedNumerics) {
-            result = result.replaceFirst(Word.DYNAMIC_NUMERIC_CHAR,
-                    extractedNumeric.toString());
+        Matcher matcher = this.basePattern.matcher(text.toLowerCase());
+        while (matcher.find()) {
+            for (int i = 1; i <= matcher.groupCount(); i++) {
+                result = result.replaceFirst(Word.DYNAMIC_NUMERIC_CHAR,
+                        matcher.group(i));
+            }
         }
 
         return convertSSML(result);

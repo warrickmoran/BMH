@@ -47,6 +47,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
  * Feb 24, 2015 4157       bkowal      Specify a {@link Language} for the {@link SSMLDocument}.
  * Mar 24, 2015 4301       bkowal      Provide better support for plain text rules.
  * Apr 10, 2015 4356       bkowal      Use the end index of the group of interest.
+ * Jul 06, 2015 4603       bkowal      Improved matching text retrieval.
  * 
  * </pre>
  * 
@@ -56,6 +57,13 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 
 public abstract class AbstractTextTransformation implements ITextTransformation {
 
+    /*
+     * apostrophes allowed before the character.
+     */
+    protected static final String NON_ALPHA_REGEX_APOSTROPHE = "(?<=[^\\w'])+";
+
+    protected static final String NON_ALPHA_REGEX = "(?=[^\\w])+";
+
     private static final String REPLACEMENT_TXT = "REPLACE_TXT";
 
     private static String ssmlSpeakWrapperText;
@@ -63,8 +71,6 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
     protected final Pattern transformationRegex;
 
     protected String ssmlReplacement;
-
-    private int matchGroup = 0;
 
     /**
      * Constructor
@@ -92,7 +98,29 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
     }
 
     protected String prepareTransformationRegex(String text) {
-        return text;
+        StringBuilder sb = new StringBuilder("(?:");
+
+        /*
+         * case 1: text is bounded by spaces or punctuation on both sides.
+         */
+        sb.append(NON_ALPHA_REGEX_APOSTROPHE).append(text)
+                .append(NON_ALPHA_REGEX);
+
+        /*
+         * case 2: text starts at the beginning of the character sequence and is
+         * bounded by spaces or punctuation on the right.
+         */
+        sb.append(")|(?:");
+        sb.append("^").append(text).append(NON_ALPHA_REGEX);
+
+        /*
+         * case 3: text is located at the end of the line and is bounded by
+         * spaces or punctuation on the left.
+         */
+        sb.append(")|(?:");
+        sb.append(NON_ALPHA_REGEX_APOSTROPHE).append(text).append("$)");
+
+        return sb.toString();
     }
 
     private static synchronized void generateSpeakSSMLWrapper()
@@ -128,8 +156,8 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
         Matcher matcher = this.transformationRegex.matcher(candidate.getText()
                 .toLowerCase());
         while (matcher.find()) {
-            final int endIndex = matcher.end(this.matchGroup);
-            final String matchText = matcher.group(this.matchGroup);
+            final int endIndex = matcher.end();
+            final String matchText = matcher.group();
             final int beginIndex = endIndex - matchText.length();
 
             candidate.claim(beginIndex, endIndex);
@@ -148,12 +176,4 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
     @Override
     public abstract List<Serializable> applyTransformation(String text)
             throws SSMLConversionException;
-
-    /**
-     * @param matchGroup
-     *            the matchGroup to set
-     */
-    protected void setMatchGroup(int matchGroup) {
-        this.matchGroup = matchGroup;
-    }
 }
