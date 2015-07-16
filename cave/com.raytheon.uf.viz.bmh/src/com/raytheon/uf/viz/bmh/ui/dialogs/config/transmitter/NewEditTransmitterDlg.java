@@ -100,6 +100,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 07, 2015     4371   bkowal      Ensure that the selected program is defined for the
  *                                     {@link TransmitterLanguageComp} when working with groups.
  * Apr 10, 2015     4373   rferrel     Purged ITransmitterStatusChange now handled by INotificationObserver.
+ * Jun 19, 2015     4490   bkowal      Limited the number of characters allowed in the mnemonic field.
+ * 
  * </pre>
  * 
  * @author mpduff
@@ -422,6 +424,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         mnemonicTxt = new Text(leftComp, SWT.BORDER);
         mnemonicTxt.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
                 false));
+        mnemonicTxt.setTextLimit(Transmitter.MNEMONIC_LENGTH);
         transmitterControlList.add(mnemonicTxt);
 
         Label frequencyLbl = new Label(leftComp, SWT.NONE);

@@ -46,6 +46,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 
+import com.raytheon.uf.common.bmh.audio.RecordedByUtils;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -54,7 +55,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
@@ -73,6 +73,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybackDlg;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -109,6 +110,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 07, 2015  4304      rferrel      {@link #verifyMsgRebroadcast()} no longer modifies {@link #sameTransmitters}.
  * Apr 27, 2015  4397      bkowal       Set the {@link InputMessage} update date.
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
+ * Jun 18, 2015  4490      bkowal      {@link RecordedByUtils} relocated to common.
  * </pre>
  * 
  * @author lvenable
@@ -780,7 +782,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         inputMsg.setNwrsameTone(false);
         inputMsg.setAreaCodes(settingsBuilder.getAreaCodeString());
         inputMsg.setExpirationTime(settingsBuilder.getExpireTime());
-        inputMsg.setContent(RecordedByUtils.getMessage());
+        inputMsg.setContent(RecordedByUtils.getMessage(VizApp.getWsId()
+                .getUserName()));
         inputMsg.setValidHeader(true);
 
         return inputMsg;

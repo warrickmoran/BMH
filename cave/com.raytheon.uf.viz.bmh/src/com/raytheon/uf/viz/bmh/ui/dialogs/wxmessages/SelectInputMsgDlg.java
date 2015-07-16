@@ -89,7 +89,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      static message types.
  * Feb 12, 2015   4113      bkowal      Dialog will now return a {@link InputMessageSequence}.
  * May 20, 2015   4490      bkowal      Filter out input messages associated with demo message types.
- * 
+ * Jun 12, 2015   4482      rjpeter     Fixed NPE.
+ * Jul 14, 2015   4162      rferrel     The filterAction combines text and time filtering.
  * </pre>
  * 
  * @author lvenable
@@ -117,7 +118,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
     private List<InputMessage> filteredInputMessages = new ArrayList<>();
 
     /** Date format. */
-    private SimpleDateFormat dateFmt = new SimpleDateFormat(
+    private final SimpleDateFormat dateFmt = new SimpleDateFormat(
             "yyyy-MM-dd HH:mm:ss");
 
     /**
@@ -441,7 +442,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
              * so they must be filtered using inspection of the afos id.
              */
             if (staticAfosIds.contains(afosId)
-                    || (afosId.length() >= 6 && SAMEToneTextBuilder.DEMO_EVENT
+                    || (afosId != null && afosId.length() >= 6 && SAMEToneTextBuilder.DEMO_EVENT
                             .equals(afosId.substring(3, 6)))) {
                 it.remove();
             }
@@ -484,32 +485,21 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
 
         for (int i = 0; i < allInputMessages.size(); i++) {
             im = allInputMessages.get(i);
-            for (int j = 0; j < inputMsgTable.getColumnCount(); j++) {
-                if (filterData.filterOnText() == true) {
-                    if (matchesTextFilter(filterData, im.getName())) {
-                        matchingIndexes.add(i);
-                        break;
-                    } else if (matchesTextFilter(filterData, im.getAfosid())) {
-                        matchingIndexes.add(i);
-                        break;
-                    } else if (matchesTextFilter(filterData,
-                            (im.getActive() ? " Yes" : "No"))) {
-                        matchingIndexes.add(i);
-                        break;
-                    }
+            if (filterData.filterOnText() == true) {
+                if (matchesTextFilter(filterData, im.getName())
+                        && matchesDateFilter(filterData, im)) {
+                    matchingIndexes.add(i);
+                } else if (matchesTextFilter(filterData, im.getAfosid())
+                        && matchesDateFilter(filterData, im)) {
+                    matchingIndexes.add(i);
+                } else if (matchesTextFilter(filterData,
+                        (im.getActive() ? " Yes" : "No"))
+                        && matchesDateFilter(filterData, im)) {
+                    matchingIndexes.add(i);
                 }
-
-                if (filterData.filterOnDate() == true) {
-                    if (im.getCreationTime() != null) {
-                        if (matchesDateFilter(filterData, im.getCreationTime()
-                                .getTime())) {
-                            matchingIndexes.add(i);
-                            break;
-                        }
-                    }
-                }
+            } else if (matchesDateFilter(filterData, im)) {
+                matchingIndexes.add(i);
             }
-
         }
 
         filteredInputMessages.clear();
@@ -584,11 +574,19 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
      *            Date.
      * @return True if the date matches the filter criteria.
      */
-    private boolean matchesDateFilter(FilterData filterData, Date date) {
+    private boolean matchesDateFilter(FilterData filterData, InputMessage im) {
 
         if (filterData.getDateFilterChoice() == DateFilterChoice.ALL) {
             return true;
-        } else if (filterData.getDateFilterChoice() == DateFilterChoice.AFTER) {
+        }
+
+        if (im.getCreationTime() == null) {
+            return false;
+        }
+
+        Date date = im.getCreationTime().getTime();
+
+        if (filterData.getDateFilterChoice() == DateFilterChoice.AFTER) {
             if (date.after(filterData.getStartDate())) {
                 return true;
             }

@@ -49,12 +49,13 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.audio.ImportedByUtils;
+import com.raytheon.uf.common.bmh.audio.RecordedByUtils;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.request.InputMessageAudioData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.bmh.ImportedByUtils;
-import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages.RecordAction;
@@ -62,6 +63,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad.LdadConfigDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -87,6 +89,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 11, 2015  #3908     bkowal       Removed the "Edit" button.
  * Feb 16, 2015  #4118     bkowal       Added an option to import audio.
  * Apr 29, 2015  #4551     bkowal       Added {@link #voiceNumber}.
+ * Jun 08, 2015  #4403     bkowal       Added {@link #language}.
+ * Jun 18, 2015  #4490     bkowal       {@link RecordedByUtils} and
+ *                                      {@link ImportedByUtils} relocated to common.
  * 
  * </pre>
  * 
@@ -145,6 +150,8 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
      */
     private final int voiceNumber;
 
+    private final Language language;
+
     /**
      * Constructor.
      * 
@@ -154,7 +161,8 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
     public MessageContentsDlg(Shell parentShell,
             List<InputMessageAudioData> audioDataList,
             final String existingMessageContent,
-            final CONTENT_TYPE contentType, final int voiceNumber) {
+            final CONTENT_TYPE contentType, final int voiceNumber,
+            final Language language) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL
                 | SWT.RESIZE, CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
@@ -162,6 +170,7 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         this.originalMessageContent = existingMessageContent;
         this.contentType = contentType;
         this.voiceNumber = voiceNumber;
+        this.language = language;
     }
 
     @Override
@@ -248,7 +257,7 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         stopBtn.setToolTipText("Stop message playback");
 
         delegate = new TextAudioPlaybackDelegate(this.getShell(), this.playBtn,
-                stopBtn, this.recordImages, this.voiceNumber);
+                stopBtn, this.recordImages, this.voiceNumber, this.language);
 
         /*
          * add text change listener and set the text now that the play button
@@ -680,8 +689,8 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
         /*
          * Process the audio as though it were recorded audio.
          */
-        this.audioLoaded(audioData, ImportedByUtils.getMessage(filePath),
-                "User Import");
+        this.audioLoaded(audioData, ImportedByUtils.getMessage(filePath, VizApp
+                .getWsId().getUserName()), "User Import");
     }
 
     /**
@@ -701,8 +710,9 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
                     return;
                 }
 
-                audioLoaded(((ByteBuffer) returnValue).array(),
-                        RecordedByUtils.getMessage(), "User Recording");
+                audioLoaded(((ByteBuffer) returnValue).array(), RecordedByUtils
+                        .getMessage(VizApp.getWsId().getUserName()),
+                        "User Recording");
             }
         });
         recPlaybackDlg.open();

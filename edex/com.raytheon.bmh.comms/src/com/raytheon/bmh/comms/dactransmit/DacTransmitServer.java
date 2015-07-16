@@ -74,6 +74,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  *                                    verify a connection to dac transmit.
  * Apr 24, 2015  4423     rferrel     Added {@link #changeTimeZone}.
  * Apr 29, 2015  4394     bkowal      Handle {@link DacMaintenanceRegister}.
+ * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
  * 
  * </pre>
  * 
@@ -158,7 +159,10 @@ public class DacTransmitServer extends AbstractServerThread {
             } else {
                 for (DacTransmitCommunicator communicator : entry.getValue()) {
                     communicator.setRadios(channel.getRadios());
-                    communicator.setTransmitterDBTarget(channel.getDbTarget());
+                    communicator.setTransmitterDBTarget(
+                            channel.getAudioDbTarget(),
+                            channel.getSameDbTarget(),
+                            channel.getAlertDbTarget());
                 }
             }
         }
@@ -373,7 +377,8 @@ public class DacTransmitServer extends AbstractServerThread {
         }
         DacTransmitCommunicator comms = new DacTransmitCommunicator(manager,
                 key, group, message.getTransmitters(), socket,
-                message.getDbTarget());
+                message.getAudioDbTarget(), message.getSameDbTarget(),
+                message.getAlertDbTarget());
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(key);
         if (communicators == null) {
@@ -399,7 +404,8 @@ public class DacTransmitServer extends AbstractServerThread {
         comms.start();
         if (keep) {
             comms.setRadios(channel.getRadios());
-            comms.setTransmitterDBTarget(channel.getDbTarget());
+            comms.setTransmitterDBTarget(channel.getAudioDbTarget(),
+                    channel.getSameDbTarget(), channel.getAlertDbTarget());
         } else {
             comms.shutdown(true);
         }

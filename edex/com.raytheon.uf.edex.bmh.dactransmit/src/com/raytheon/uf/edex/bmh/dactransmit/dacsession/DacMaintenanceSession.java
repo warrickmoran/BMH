@@ -45,7 +45,9 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.bmh.tones.TonesManager;
+import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
+import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
@@ -76,6 +78,10 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  * Apr 29, 2015 4394       bkowal      Connect to the Comms Manager. Submit a
  *                                     {@link MaintenanceMessagePlayback} when playback begins.
  * May 13, 2015 4429       rferrel     Changes for traceId logging.
+ * Jun 11, 2015 4490       bkowal      Maintenance traceability improvements.
+ * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
+ * Jul 15, 2015 4636       bkowal      Alter audio before it is packaged into packets.
  * </pre>
  * 
  * @author bkowal
@@ -100,7 +106,7 @@ public class DacMaintenanceSession implements IDacSession,
 
     private final DacMaintenanceMessage message;
 
-    private final byte[] audio;
+    private byte[] audio;
 
     private final ScheduledThreadPoolExecutor reaperExecutor = new ScheduledThreadPoolExecutor(
             1);
@@ -140,8 +146,17 @@ public class DacMaintenanceSession implements IDacSession,
          * Read the message file.
          */
         Path messagePath = this.config.getMessageFilePath();
-        message = JAXB.unmarshal(Files.newInputStream(messagePath),
-                DacMaintenanceMessage.class);
+        try {
+            message = JAXB.unmarshal(Files.newInputStream(messagePath),
+                    DacMaintenanceMessage.class);
+        } catch (Exception e) {
+            /*
+             * Specify the file that could not be loaded.
+             */
+            logger.error("Failed to unmarshal maintenance message file: {}.",
+                    messagePath.toString());
+            throw e;
+        }
 
         message.setTraceId(messagePath.getFileName().toString());
 
@@ -165,6 +180,7 @@ public class DacMaintenanceSession implements IDacSession,
         /*
          * Determine if we will be reading or generating the maintenance audio.
          */
+        boolean regulateAudio = true;
         if (this.message.isAudio()) {
             this.audio = Files.readAllBytes(Paths.get(this.message
                     .getSoundFile()));
@@ -173,8 +189,9 @@ public class DacMaintenanceSession implements IDacSession,
              * Determine what type of tones are required.
              */
             if (this.message.getSAMEtone() != null) {
-                byte[] same = TonesGenerator.getSAMEAlertTones(
-                        this.message.getSAMEtone(), false, true).array();
+                byte[] same = TonesGenerator
+                        .getSAMEAlertTones(this.message.getSAMEtone(), false,
+                                true).combineTonesArray().array();
                 /*
                  * Based on the length of the tones, determine which packet
                  * would mark the beginning of the end tones.
@@ -202,7 +219,45 @@ public class DacMaintenanceSession implements IDacSession,
             } else {
                 this.audio = TonesManager.generateTransferTone(this.message
                         .getTransferToneType());
+
+                byte[] segment1 = Arrays.copyOfRange(audio, 0,
+                        (audio.length / 2) - 1);
+                byte[] segment2 = Arrays.copyOfRange(audio, (audio.length / 2),
+                        audio.length - 1);
+
+                /*
+                 * Depending on the transfer type, the 2400 audio bytes will
+                 * either be at the end or the beginning. Default is correct for
+                 * primary to secondary.
+                 */
+                double seg1Db = this.config.getDbTarget();
+                double seg2Db = this.config.getTransferDb();
+                if (this.message.getTransferToneType() == TransferType.SECONDARY_TO_PRIMARY) {
+                    seg1Db = this.config.getTransferDb();
+                    seg2Db = this.config.getDbTarget();
+                }
+
+                /*
+                 * alter the audio based on transfer tones rules.
+                 */
+                AudioRegulator regulator = new AudioRegulator();
+                segment1 = regulator.regulateAudioVolume(segment1, seg1Db,
+                        segment1.length);
+                segment2 = regulator.regulateAudioVolume(segment2, seg2Db,
+                        segment2.length);
+                ByteBuffer regulatedAudio = ByteBuffer
+                        .allocate(this.audio.length);
+                regulatedAudio.put(segment1);
+                regulatedAudio.put(segment2);
+                this.audio = regulatedAudio.array();
+                regulateAudio = false;
             }
+        }
+
+        if (regulateAudio) {
+            AudioRegulator regulator = new AudioRegulator();
+            this.audio = regulator.regulateAudioVolume(this.audio,
+                    this.config.getDbTarget(), this.audio.length);
         }
 
         this.commsManager = new CommsManagerMaintenanceCommunicator(this,

@@ -1,0 +1,7 @@
+aT_ENGANCPNSANC14080902091408090211        CD   PKC052c1508280322
+
+This message will be broadcast on transmitter PABE. Another message
+named duplicate2 will fail to broadcast because it will be a duplicate
+of this message.
+
+b

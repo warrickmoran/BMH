@@ -21,7 +21,6 @@ package com.raytheon.uf.common.bmh.tones;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -37,7 +36,8 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 19, 2015 4299       bkowal      Initial creation
- * 
+ * Jul 01, 2015 4206       rjpeter     BitSet ignores trailing 0 bits,
+ *                                     updated to use bit masking.
  * </pre>
  * 
  * @author bkowal
@@ -50,6 +50,9 @@ public class FskTonesEncoder {
             (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB,
             (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB,
             (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB };
+
+    private static final byte[] MASK = { (byte) 0x01, (byte) 0x02, (byte) 0x04,
+            (byte) 0x08, (byte) 0x10, (byte) 0x20, (byte) 0x40, (byte) 0x80, };
 
     /*
      * Symbol definitions
@@ -88,7 +91,7 @@ public class FskTonesEncoder {
      * Member variables
      */
     // includes an extra index due to Java rounding.
-    private short[] sSineTable = new short[TABLE_LENGTH + 1];
+    private final short[] sSineTable = new short[TABLE_LENGTH + 1];
 
     private double samplePeriod;
 
@@ -116,7 +119,7 @@ public class FskTonesEncoder {
         // Set the global rate parameters.
         this.bitPeriod = ONES_CONSTANT / FSK_BIT_RATE;
         this.samplePeriod = ONES_CONSTANT / BMH_SAMPLE_RATE;
-        this.dTableLength = (double) TABLE_LENGTH;
+        this.dTableLength = TABLE_LENGTH;
 
         // Calculate the low and high tone phase increments.
         this.dLowPhaseIncrement = FSK_LOW_FREQ * this.samplePeriod
@@ -128,7 +131,7 @@ public class FskTonesEncoder {
         double mult = LEGACY_TWO_PI / this.dTableLength;
 
         for (int i = 0; i <= TABLE_LENGTH; i++) {
-            double A = AMPLITUDE * Math.sin(mult * (double) i);
+            double A = AMPLITUDE * Math.sin(mult * i);
             // round away from zero
             if (A >= 0.0) {
                 A += 0.5;
@@ -164,23 +167,24 @@ public class FskTonesEncoder {
      */
     private short[] encode(final byte[] sameMessage) {
         List<short[]> outputList = new LinkedList<short[]>();
-        BitSet sameMessageBits = BitSet.valueOf(sameMessage);
-
         double dPhaseIncrement;
         this.dPhase = 0.0f;
         double lastTime = 0.0;
-        int uiBlockLength = 0;
 
         /*
          * used to accumulate sample data as it is calculated.
          */
         short[] sSample = new short[WRITE_LENGTH + MAX_SAMPLES_PER_BAUD];
 
-        for (int i = 0; i < sameMessageBits.length(); i++) {
-            if (sameMessageBits.get(i)) {
-                dPhaseIncrement = this.dHighPhaseIncrement;
-            } else {
+        int sameIndex = 0;
+        int maskIndex = 0;
+        int uiBlockLength = 0;
+
+        while (sameIndex < sameMessage.length) {
+            if ((sameMessage[sameIndex] & MASK[maskIndex]) == 0) {
                 dPhaseIncrement = this.dLowPhaseIncrement;
+            } else {
+                dPhaseIncrement = this.dHighPhaseIncrement;
             }
 
             /*
@@ -244,8 +248,14 @@ public class FskTonesEncoder {
              */
             if (uiBlockLength >= WRITE_LENGTH) {
                 outputList.add(Arrays.copyOf(sSample, uiBlockLength));
-                sSample = new short[WRITE_LENGTH + MAX_SAMPLES_PER_BAUD];
                 uiBlockLength = 0;
+            }
+
+            // advance to next bit
+            maskIndex++;
+            if (maskIndex >= MASK.length) {
+                maskIndex = 0;
+                sameIndex++;
             }
         }
 

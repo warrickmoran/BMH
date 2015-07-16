@@ -42,6 +42,7 @@ import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
  * Oct 23, 2014 3748       bkowal      AudioRetrievalException is now in common
  * Mar 04, 2014 4224       bkowal      Optionally skip audio adjustments based on
  *                                     DISABLE_AUDIO_ATTENUATION.
+ * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * 
  * </pre>
  * 
@@ -62,7 +63,11 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
 
     private final int priority;
 
-    private final double dbTarget;
+    protected final double dbTarget;
+
+    protected final double sameDbTarget;
+
+    protected final double alertDbTarget;
 
     protected final DacPlaylistMessage message;
 
@@ -79,10 +84,13 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
      *            a {@code Logger} associated with the implementing class
      */
     public AbstractAudioJob(final int priority, final double dbTarget,
+            final double sameDbTarget, final double alertDbTarget,
             final DacPlaylistMessage message) {
         this.priority = priority;
         this.dbTarget = dbTarget;
         this.message = message;
+        this.sameDbTarget = sameDbTarget;
+        this.alertDbTarget = alertDbTarget;
     }
 
     /*
@@ -118,8 +126,8 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
      * @return the adjusted audio data
      * @throws AudioRetrievalException
      */
-    protected byte[] adjustAudio(final byte[] originalAudio, final String part)
-            throws AudioRetrievalException {
+    protected byte[] adjustAudio(final byte[] originalAudio, final String part,
+            final double dbTarget) throws AudioRetrievalException {
         if (DISABLE_AUDIO_ATTENUATION) {
             return originalAudio;
         }
@@ -128,7 +136,7 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
         try {
             AudioRegulator audioRegulator = new AudioRegulator();
             regulatedAudio = audioRegulator.regulateAudioVolume(originalAudio,
-                    this.dbTarget, AUDIO_SAMPLE_SIZE);
+                    dbTarget, AUDIO_SAMPLE_SIZE);
             logger.info("Successfully finished audio attenuation/amplification in "
                     + audioRegulator.getDuration()
                     + " ms for message: "

@@ -201,6 +201,12 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 28, 2015  4490      bkowal      Handle unplayed messages with dynamic text.
  * Jun 02, 2015  4369      rferrel     Handle {@link NoPlaybackMessageNotification}.
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
+ * Jun 12, 2015  4482      rjpeter     Added DO_NOT_BLOCK.
+ * Jun 18, 2015  4490      bkowal      Force reload an audio stream when the configuration
+ *                                     of the selected dac is altered.
+ * Jun 19, 2015  4481      bkowal      Set the time zone on the {@link SimpleDateFormat}.
+ * Jun 22, 2015  4481      bkowal      Display the timezone display id in the time zone field.
+ * Jul 13, 2015  4636      bkowal      Handle initial maintenance playback statuses.
  * </pre>
  * 
  * @author mpduff
@@ -333,7 +339,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      */
     public BroadcastCycleDlg(Shell parent) {
         super(parent, SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
-                | CAVE.PERSPECTIVE_INDEPENDENT);
+                | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.dataManager = new BroadcastCycleDataManager();
         this.dacDataManager = new DacDataManager();
         setText(DlgInfo.BROADCAST_CYCLE.getTitle());
@@ -789,12 +795,17 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             IPlaylistData playlistDataRecord = this.dataManager
                     .getPlaylistDataForTransmitter(selectedTransmitterGrp);
             PlaylistDataStructure dataStruct = null;
-            LiveBroadcastSwitchNotification notification = null;
+            LiveBroadcastSwitchNotification liveNotification = null;
+            MaintenanceMessagePlayback maintNotification = null;
             if (playlistDataRecord instanceof PlaylistDataStructure) {
                 dataStruct = (PlaylistDataStructure) playlistDataRecord;
-            } else {
-                notification = (LiveBroadcastSwitchNotification) playlistDataRecord;
-                dataStruct = notification.getActualPlaylist();
+            } else if (playlistDataRecord instanceof LiveBroadcastSwitchNotification) {
+                liveNotification = (LiveBroadcastSwitchNotification) playlistDataRecord;
+                dataStruct = liveNotification.getActualPlaylist();
+            } else if (playlistDataRecord instanceof MaintenanceMessagePlayback) {
+                maintNotification = (MaintenanceMessagePlayback) playlistDataRecord;
+                this.playlistData
+                        .handleMaintenanceNotification((MaintenanceMessagePlayback) playlistDataRecord);
             }
 
             if (dataStruct != null) {
@@ -804,7 +815,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 this.selectedSuite = dataStruct.getSuiteName();
             }
 
-            if ((notification == null) && (dataStruct != null)) {
+            if ((liveNotification == null) && (dataStruct != null)) {
                 if (this.selectedSuite != null) {
                     suiteValueLbl.setText(this.selectedSuite);
                 } else {
@@ -828,8 +839,16 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 }
                 handleTableSelection();
             } else {
-                playlistData
-                        .handleLiveBroadcastSwitchNotification(notification);
+                INonStandardBroadcast notification = null;
+                if (liveNotification != null) {
+                    playlistData
+                            .handleLiveBroadcastSwitchNotification(liveNotification);
+                    notification = liveNotification;
+                } else {
+                    this.playlistData
+                            .handleMaintenanceNotification(maintNotification);
+                    notification = maintNotification;
+                }
                 TableData tableData = playlistData
                         .getNonStandardTableData(notification);
                 this.updateDisplayForNonStandardBroadcast(tableData,
@@ -961,6 +980,19 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         }
         Transmitter transmitter = (Transmitter) this.transmitterTable.getItem(
                 this.transmitterTable.getSelectionIndex()).getData();
+        if (reloadAudioStream == false) {
+            synchronized (this.disposalLock) {
+                /*
+                 * Determine if the audio stream needs to be reloaded either
+                 * because the dac or the dac port has been altered.
+                 */
+                reloadAudioStream = this.monitorThread != null
+                        && (this.selectedTransmitterGroupObject != null && ((transmitter
+                                .getTransmitterGroup().getDac() != this.selectedTransmitterGroupObject
+                                .getDac()) || (this.monitorThread.getChannel() != transmitter
+                                .getDacPort())));
+            }
+        }
         selectedTransmitterGroupObject = transmitter.getTransmitterGroup();
         selectedTransmitterGrp = selectedTransmitterGroupObject.getName();
         this.selectedTransmitter = transmitter.getMnemonic();
@@ -968,7 +1000,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 + selectedTransmitterGrp + " - Channel "
                 + transmitter.getDacPort());
         transmitterNameLbl.setText(selectedTransmitterGrp);
-        timeZoneValueLbl.setText(selectedTransmitterGroupObject.getTimeZone());
+        timeZoneValueLbl.setText(BMHTimeZone.getTimeZoneByID(
+                this.selectedTransmitterGroupObject.getTimeZone())
+                .getDisplayId());
 
         if ((selectedTransmitterGrp != null)
                 && (selectedTransmitterGrp.isEmpty() == false)) {
@@ -1421,6 +1455,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                         .getTimeZone());
         predictedTime.setTimeZone(tz.getTz());
         SimpleDateFormat sdf = new SimpleDateFormat(this.dynamicTimeFormat);
+        /*
+         * {@link Date} does not have the correct timezone after we set it in
+         * the {@link Calendar}; so, it also needs to be set on the {@link
+         * SimpleDateFormat}.
+         */
+        sdf.setTimeZone(tz.getTz());
         final String formattedTime = sdf.format(predictedTime.getTime()) + " "
                 + tz.getLongDisplayName();
         return inputMsg.getContent().replace(TimeTextFragment.TIME_PLACEHOLDER,

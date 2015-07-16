@@ -324,7 +324,7 @@ public class InputMessage {
      * false some fields may not be populated and the content will be set to the
      * full file content including the invalid header.
      */
-    @Column
+    @Column(nullable = false)
     @DynamicSerializeElement
     private boolean validHeader;
 

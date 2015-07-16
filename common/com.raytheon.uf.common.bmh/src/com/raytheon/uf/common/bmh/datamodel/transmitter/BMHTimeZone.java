@@ -44,6 +44,7 @@ import java.util.TimeZone;
  * Mar 27, 2015  #4314     bkowal       Added {@link #getLongDisplayName()} and
  *                                      {@link #getLongDisplayName(boolean)}.
  * May 05, 2015  #4465     bkowal       Override display names of non-dst time zones.
+ * Jun 22, 2015  #4481     bkowal       Added {@link #displayIdOverride}.
  * 
  * </pre>
  * 
@@ -56,22 +57,23 @@ public enum BMHTimeZone {
     UTC(TimeZone.getTimeZone("UTC"), "UNIVERSAL COORDINATED TIME", 0), ATLANTIC(
             TimeZone.getTimeZone("Canada/Atlantic"), "ATLANTIC", 2), ATLANTIC_NO_DST(
             TimeZone.getTimeZone("America/Puerto_Rico"), "ATLANTIC", 1,
-            "Atlantic Standard Time"), EASTERN(TimeZone
+            "Atlantic Standard Time", null), EASTERN(TimeZone
             .getTimeZone("US/Eastern"), "EASTERN", 4), EASTERN_NO_DST(TimeZone
-            .getTimeZone("GMT-5"), "EASTERN", 3, "Eastern Standard Time"), CENTRAL(
-            TimeZone.getTimeZone("US/Central"), "CENTRAL", 6), CENTRAL_NO_DST(
-            TimeZone.getTimeZone("GMT-6"), "CENTRAL", 5,
-            "Central Standard Time"), MOUNTAIN(TimeZone
-            .getTimeZone("US/Mountain"), "MOUNTAIN", 8), MOUNTAIN_NO_DST(
+            .getTimeZone("GMT-5"), "EASTERN", 3, "Eastern Standard Time",
+            "US/Eastern"), CENTRAL(TimeZone.getTimeZone("US/Central"),
+            "CENTRAL", 6), CENTRAL_NO_DST(TimeZone.getTimeZone("GMT-6"),
+            "CENTRAL", 5, "Central Standard Time", "US/Central"), MOUNTAIN(
+            TimeZone.getTimeZone("US/Mountain"), "MOUNTAIN", 8), MOUNTAIN_NO_DST(
             TimeZone.getTimeZone("GMT-7"), "MOUNTAIN", 7,
-            "Mountain Standard Time"), PACIFIC(TimeZone
+            "Mountain Standard Time", "US/Mountain"), PACIFIC(TimeZone
             .getTimeZone("US/Pacific"), "PACIFIC", 10), PACIFIC_NO_DST(TimeZone
-            .getTimeZone("GMT-8"), "PACIFIC", 9, "Pacific Standard Time"), ALASKA(
-            TimeZone.getTimeZone("US/Alaska"), "ALASKA", 12), ALASKA_NO_DST(
-            TimeZone.getTimeZone("GMT-9"), "ALASKA", 11, "Alaska Standard Time"), ALEUTIAN(
-            TimeZone.getTimeZone("US/Aleutian"), "HAWAII-ALEUTIAN", 13), ALEUTIAN_NO_DST(
+            .getTimeZone("GMT-8"), "PACIFIC", 9, "Pacific Standard Time",
+            "US/Pacific"), ALASKA(TimeZone.getTimeZone("US/Alaska"), "ALASKA",
+            12), ALASKA_NO_DST(TimeZone.getTimeZone("GMT-9"), "ALASKA", 11,
+            "Alaska Standard Time", "US/Alaska"), ALEUTIAN(TimeZone
+            .getTimeZone("US/Aleutian"), "HAWAII-ALEUTIAN", 13), ALEUTIAN_NO_DST(
             TimeZone.getTimeZone("US/Hawaii"), "HAWAII-ALEUTIAN", -1,
-            "Hawaii-Aleutian Standard Time"), GUAM(TimeZone
+            "Hawaii-Aleutian Standard Time", null), GUAM(TimeZone
             .getTimeZone("Pacific/Guam"), "GUAM", 14), SOMOA(TimeZone
             .getTimeZone("US/Samoa"), "SOMOA", -1);
 
@@ -87,20 +89,28 @@ public enum BMHTimeZone {
 
     private final String displayOverride;
 
+    private final String displayIdOverride;
+
     private BMHTimeZone(TimeZone tz, String uiName, int legacyTzCode) {
-        this(tz, uiName, legacyTzCode, null);
+        this(tz, uiName, legacyTzCode, null, null);
     }
 
     private BMHTimeZone(TimeZone tz, String uiName, int legacyTzCode,
-            String displayOverride) {
+            String displayOverride, String displayIdOverride) {
         this.tz = tz;
         this.uiName = uiName;
         this.legacyTzCode = legacyTzCode;
         this.displayOverride = displayOverride;
+        this.displayIdOverride = displayIdOverride;
     }
 
     public TimeZone getTz() {
         return tz;
+    }
+
+    public String getDisplayId() {
+        return (this.displayIdOverride == null) ? this.tz.getID()
+                : this.displayIdOverride;
     }
 
     public String getShortDisplayName() {
@@ -118,10 +128,8 @@ public enum BMHTimeZone {
     }
 
     public String getLongDisplayName(boolean daylight) {
-        if (this.displayOverride != null) {
-            return this.displayOverride;
-        }
-        return this.tz.getDisplayName(daylight, TimeZone.LONG);
+        return (this.displayOverride == null) ? this.tz.getDisplayName(
+                daylight, TimeZone.LONG) : this.displayOverride;
     }
 
     public static BMHTimeZone getTimeZoneByID(final String id) {

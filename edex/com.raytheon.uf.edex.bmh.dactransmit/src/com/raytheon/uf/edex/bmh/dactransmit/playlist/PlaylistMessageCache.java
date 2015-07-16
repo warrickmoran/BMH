@@ -114,6 +114,10 @@ import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
  *                                      is actually read.
  * May 13, 2015 4429       rferrel      Changes to {@link DefaultMessageLogger} for traceId.
  * May 26, 2015 4481       bkowal       Set dynamic on the {@link DacPlaylistMessage}.
+ * Jun 25, 2015 4508       bkowal       Validate message metadata in {@link #retrieveAudio(DacPlaylist)}
+ *                                      in every case.
+ * Jun 29, 2015 4602       bkowal       Fix updates in response to decibel changes.
+ * Jul 08, 2015 4636       bkowal       Support same and alert decibel levels.
  * 
  * </pre>
  * 
@@ -158,6 +162,10 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private double dbTarget;
 
+    private double sameDbTarget;
+
+    private double alertDbTarget;
+
     private volatile TimeZone timezone;
 
     private final PlaylistScheduler scheduler;
@@ -177,6 +185,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         this.cachedRetrievalTasks = new ConcurrentHashMap<>();
         this.eventBus = dacSession.getEventBus();
         this.dbTarget = config.getDbTarget();
+        this.sameDbTarget = config.getSameDbTarget();
+        this.alertDbTarget = config.getAlertDbTarget();
         this.timezone = config.getTimezone();
         this.scheduler = playlistScheduler;
         this.executorService = dacSession.getAsyncExecutor();
@@ -203,6 +213,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                  */
                 logger.info("Completing initial load of {}.",
                         message.toString());
+                this.checkMessageMetadata(playlist, message, index, false);
 
                 /*
                  * This is intended to cause higher priority lists to get
@@ -219,72 +230,78 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                  * If the audio has been previously retrieved. Determine if any
                  * metadata updates are required.
                  */
-                DacPlaylistMessage dacMessage = this.cachedMessages
-                        .get(message);
-                if (message.getTimestamp() != dacMessage.getTimestamp()) {
-                    logger.info("Updating metadata for {}.", message.toString());
-
-                    /*
-                     * a metadata update is required.
-                     */
-                    DacPlaylistMessage updatedDacMessage = this
-                            .readMessageMetadata(message, false);
-                    /*
-                     * Override all information that is not persisted across
-                     * metadata writes.
-                     */
-                    updatedDacMessage.setPlayCount(dacMessage.getPlayCount());
-                    updatedDacMessage.setLastTransmitTime(dacMessage
-                            .getLastTransmitTime());
-                    updatedDacMessage
-                            .setMessageBroadcastNotificationSent(dacMessage
-                                    .isMessageBroadcastNotificationSent());
-                    updatedDacMessage.setPlayedAlertTone(dacMessage
-                            .isPlayedAlertTone());
-                    updatedDacMessage.setPlayedSameTone(dacMessage
-                            .isPlayedSameTone());
-
-                    try {
-                        this.persistMergedMessageMetadata(message,
-                                updatedDacMessage);
-                    } catch (IOException e) {
-                        logger.error(
-                                "Failed to write updated metadata for {}.",
-                                message.toString(), e);
-                    }
-
-                    this.cachedMessages.replace(message, updatedDacMessage);
-
-                    /*
-                     * Determine if an audio re-retrieval is necessary.
-                     */
-                    if (dacMessage.getSoundFiles().equals(
-                            updatedDacMessage.getSoundFiles()) == false) {
-                        logger.info("Updating audio for {}.",
-                                message.toString());
-
-                        Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
-                                PriorityBasedExecutorService.PRIORITY_NORMAL
-                                        + playlist.getPriority() * 100 + index,
-                                message);
-                        this.cacheStatus.replace(message, jobStatus);
-                        IAudioFileBuffer removedBuffer = this.cachedFiles
-                                .remove(dacMessage);
-                        if (removedBuffer == null) {
-                            logger.warn(
-                                    "No cached files have been removed for broadcast: {}.",
-                                    message.toString());
-                        } else {
-                            logger.warn(
-                                    "Successfully removed cache file for broadcast: {}.",
-                                    message.toString());
-                        }
-
-                        index = index + 1;
-                    }
+                if (this.checkMessageMetadata(playlist, message, index, true)) {
+                    ++index;
                 }
             }
         }
+    }
+
+    private boolean checkMessageMetadata(DacPlaylist playlist,
+            DacPlaylistMessageId message, int index, final boolean checkAudio) {
+        DacPlaylistMessage dacMessage = this.cachedMessages.get(message);
+        if (dacMessage == null) {
+            return false;
+        }
+        if (message.getTimestamp() != dacMessage.getTimestamp()) {
+            logger.info("Updating metadata for {}.", message.toString());
+
+            /*
+             * a metadata update is required.
+             */
+            DacPlaylistMessage updatedDacMessage = this.readMessageMetadata(
+                    message, false);
+            /*
+             * Override all information that is not persisted across metadata
+             * writes.
+             */
+            updatedDacMessage.setPlayCount(dacMessage.getPlayCount());
+            updatedDacMessage.setLastTransmitTime(dacMessage
+                    .getLastTransmitTime());
+            updatedDacMessage.setMessageBroadcastNotificationSent(dacMessage
+                    .isMessageBroadcastNotificationSent());
+            updatedDacMessage
+                    .setPlayedAlertTone(dacMessage.isPlayedAlertTone());
+            updatedDacMessage.setPlayedSameTone(dacMessage.isPlayedSameTone());
+
+            try {
+                this.persistMergedMessageMetadata(message, updatedDacMessage);
+            } catch (IOException e) {
+                logger.error("Failed to write updated metadata for {}.",
+                        message.toString(), e);
+            }
+
+            this.cachedMessages.replace(message, updatedDacMessage);
+
+            /*
+             * Determine if an audio re-retrieval is necessary.
+             */
+            if (checkAudio
+                    && dacMessage.getSoundFiles().equals(
+                            updatedDacMessage.getSoundFiles()) == false) {
+                logger.info("Updating audio for {}.", message.toString());
+
+                Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
+                        PriorityBasedExecutorService.PRIORITY_NORMAL
+                                + playlist.getPriority() * 100 + index, message);
+                this.cacheStatus.replace(message, jobStatus);
+                IAudioFileBuffer removedBuffer = this.cachedFiles
+                        .remove(dacMessage);
+                if (removedBuffer == null) {
+                    logger.warn(
+                            "No cached files have been removed for broadcast: {}.",
+                            message.toString());
+                } else {
+                    logger.warn(
+                            "Successfully removed cache file for broadcast: {}.",
+                            message.toString());
+                }
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -329,7 +346,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     private Future<IAudioFileBuffer> scheduleFileRetrieval(final int priority,
             final DacPlaylistMessageId id, final String taskId) {
         Callable<IAudioFileBuffer> retrieveAudioJob = new RetrieveAudioJob(
-                priority, this.dbTarget, this.getMessage(id), this, taskId);
+                priority, this.dbTarget, this.sameDbTarget, this.alertDbTarget,
+                this.getMessage(id), this, taskId);
         return executorService.submit(retrieveAudioJob);
     }
 
@@ -607,7 +625,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      */
     @Subscribe
     public void changeDecibelRange(ChangeDecibelTarget changeEvent) {
-        this.dbTarget = changeEvent.getDbTarget();
+        this.dbTarget = changeEvent.getAudioDbTarget();
+        this.sameDbTarget = changeEvent.getSameDbTarget();
+        this.alertDbTarget = changeEvent.getAlertDbTarget();
 
         CachedAudioRetrievalTask task = new CachedAudioRetrievalTask(
                 new HashSet<DacPlaylistMessage>(cachedFiles.keySet()));
@@ -618,11 +638,14 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                     message.getBroadcastId());
             messageId.setTraceId(message.getTraceId());
             Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
-                    PriorityBasedExecutorService.PRIORITY_LOW, messageId);
+                    PriorityBasedExecutorService.PRIORITY_LOW, messageId,
+                    task.getIdentifier());
             cacheStatus.replace(messageId, jobStatus);
         }
 
-        logger.info("Updated transmitter decibel target to: " + this.dbTarget);
+        logger.info(
+                "Updated transmitter decibel targets to: audio={}, same={}, alert={}.",
+                this.dbTarget, this.sameDbTarget, this.alertDbTarget);
     }
 
     /**
@@ -645,7 +668,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage)
      */
     @Override
-    public void audioRetrievalFinished(String taskId, DacPlaylistMessage message) {
+    public void audioRetrievalFinished(String taskId,
+            DacPlaylistMessage message, IAudioFileBuffer buffer) {
         if (this.cachedRetrievalTasks.get(taskId) != null) {
             CachedAudioRetrievalTask task = this.cachedRetrievalTasks
                     .get(taskId);
@@ -656,6 +680,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                         + ".");
                 this.cachedRetrievalTasks.remove(message);
             }
+        }
+        if (buffer != null) {
+            this.cachedFiles.replace(message, buffer);
         }
     }
 

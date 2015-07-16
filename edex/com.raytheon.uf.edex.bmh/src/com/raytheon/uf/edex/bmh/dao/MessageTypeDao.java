@@ -25,6 +25,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.hibernate.Query;
+import org.hibernate.Session;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
@@ -52,6 +58,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
  * Mar 13, 2015  4213     bkowal      Added the ability to filter message types retrieved by
  *                                    designation by language.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
+ * Jun 23, 2015  4572     bkowal      Added {@link #getByAfosIds(Set)}.
  * 
  * </pre>
  * 
@@ -147,6 +154,47 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
         }
 
         return null;
+    }
+
+    /**
+     * Returns a {@link List} of {@link MessageTypeSummary}s that can be found
+     * for the specified afosIds. Note: if this method is ever used by more than
+     * just ldad, it may be advisable to update the method to return
+     * {@link MessageType}s instead of {@link MessageTypeSummary}s.
+     * 
+     * @param afosIds
+     *            the specified afosIds
+     * @return a {@link List} containing the {@link MessageTypeSummary}s that
+     *         were found.
+     */
+    public List<MessageTypeSummary> getByAfosIds(final Set<String> afosIds) {
+        if (CollectionUtils.isEmpty(afosIds)) {
+            return Collections.emptyList();
+        }
+
+        List<?> returnObjects = txTemplate
+                .execute(new TransactionCallback<List<?>>() {
+                    @Override
+                    public List<?> doInTransaction(TransactionStatus status) {
+                        Session session = getCurrentSession();
+                        Query query = session
+                                .getNamedQuery(MessageType.GET_MESSAGETYPES_FOR_AFOSIDS);
+                        return query.setParameterList("afosids", afosIds)
+                                .list();
+                    }
+                });
+        if (CollectionUtils.isEmpty(returnObjects)) {
+            return Collections.emptyList();
+        }
+
+        List<MessageTypeSummary> messageTypes = new ArrayList<>(
+                returnObjects.size());
+        for (Object object : returnObjects) {
+            MessageType mt = (MessageType) object;
+            messageTypes.add(mt.getSummary());
+        }
+
+        return messageTypes;
     }
 
     /**

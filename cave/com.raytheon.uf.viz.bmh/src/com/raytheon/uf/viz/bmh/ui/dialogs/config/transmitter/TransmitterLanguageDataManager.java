@@ -26,6 +26,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.common.bmh.request.StaticMsgValidationResult;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest.TransmitterLanguageRequestAction;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
@@ -46,6 +47,8 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Apr 28, 2015 4248       bkowal      Added {@link #validateStaticMessageType(StaticMessageType, Language)}.
  * May 11, 2015 4476       bkowal      Removed methods deprecated by positional ordering of
  *                                     static message types.
+ * Jul 06, 2015 4603       bkowal      {@link #validateStaticMessageType(StaticMessageType, Language)} now
+ *                                     returns a {@link StaticMsgValidationResult}.
  * 
  * </pre>
  * 
@@ -106,13 +109,14 @@ public class TransmitterLanguageDataManager {
         BmhUtils.sendRequest(request);
     }
 
-    public void validateStaticMessageType(StaticMessageType staticMsgType,
-            Language language) throws Exception {
+    public StaticMsgValidationResult validateStaticMessageType(
+            StaticMessageType staticMsgType, Language language)
+            throws Exception {
         TransmitterLanguageRequest request = new TransmitterLanguageRequest();
         request.setAction(TransmitterLanguageRequestAction.ValidateStaticMsgType);
         request.setLanguage(language);
         request.setStaticMsgType(staticMsgType);
 
-        BmhUtils.sendRequest(request);
+        return (StaticMsgValidationResult) BmhUtils.sendRequest(request);
     }
 }

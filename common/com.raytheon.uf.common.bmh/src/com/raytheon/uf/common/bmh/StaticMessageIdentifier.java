@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 
 /**
  * Common utility to identify static message types.
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
  * Feb 5, 2015  4085       bkowal      Initial creation
  * Mar 13, 2015 4213       bkowal      Message types with a station id {@link Designation}
  *                                     will also be considered static.
+ * Jun 15, 2015 4490       bkowal      Added {@link #isStaticMsgType(MessageTypeSummary)}.
  * 
  * </pre>
  * 
@@ -59,7 +61,15 @@ public class StaticMessageIdentifier {
             throw new IllegalArgumentException(
                     "Required argument messageType cannot be NULL.");
         }
-        return messageType.getDesignation() == stationIdDesignation
-                || messageType.getDesignation() == timeDesignation;
+        return isStaticMsgType(messageType.getSummary());
+    }
+
+    public static boolean isStaticMsgType(MessageTypeSummary messageTypeSummary) {
+        if (messageTypeSummary == null) {
+            throw new IllegalArgumentException(
+                    "Required argument messageTypeSummary cannot be NULL.");
+        }
+        return messageTypeSummary.getDesignation() == stationIdDesignation
+                || messageTypeSummary.getDesignation() == timeDesignation;
     }
 }

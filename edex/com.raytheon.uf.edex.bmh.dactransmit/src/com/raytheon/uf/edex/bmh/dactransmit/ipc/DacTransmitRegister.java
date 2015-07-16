@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 18, 2014  3532     bkowal      Support transmitter decibel range
  * Sep 5, 2014   3532     bkowal      Use a decibel target instead of a range.
  * Apr 29, 2015  4394     bkowal      Extend {@link AbstractDacRegistration}.
+ * Jul 08, 2015 4636      bkowal      Support same and alert decibel levels.
  * 
  * </pre>
  * 
@@ -54,17 +55,26 @@ public class DacTransmitRegister extends AbstractDacRegistration {
     private int[] transmitters;
 
     @DynamicSerializeElement
-    private double dbTarget;
+    private double audioDbTarget;
+    
+    @DynamicSerializeElement
+    private double sameDbTarget;
+    
+    @DynamicSerializeElement
+    private double alertDbTarget;
 
     public DacTransmitRegister() {
     }
 
     public DacTransmitRegister(String inputDirectory, int dataPort,
-            String dacAddress, int[] transmitters, double dbTarget) {
+            String dacAddress, int[] transmitters, double audioDbTarget,
+            double sameDbTarget, double alertDbTarget) {
         super(dataPort, dacAddress, transmitters);
         this.inputDirectory = inputDirectory;
         this.transmitters = transmitters;
-        this.dbTarget = dbTarget;
+        this.audioDbTarget = audioDbTarget;
+        this.sameDbTarget = sameDbTarget;
+        this.alertDbTarget = alertDbTarget;
     }
 
     public String getInputDirectory() {
@@ -86,15 +96,43 @@ public class DacTransmitRegister extends AbstractDacRegistration {
     /**
      * @return the dbTarget
      */
-    public double getDbTarget() {
-        return dbTarget;
+    public double getAudioDbTarget() {
+        return audioDbTarget;
     }
 
     /**
-     * @param dbTarget
+     * @param audioDbTarget
      *            the dbTarget to set
      */
-    public void setDbTarget(double dbTarget) {
-        this.dbTarget = dbTarget;
+    public void setAudioDbTarget(double audioDbTarget) {
+        this.audioDbTarget = audioDbTarget;
+    }
+
+    /**
+     * @return the sameDbTarget
+     */
+    public double getSameDbTarget() {
+        return sameDbTarget;
+    }
+
+    /**
+     * @param sameDbTarget the sameDbTarget to set
+     */
+    public void setSameDbTarget(double sameDbTarget) {
+        this.sameDbTarget = sameDbTarget;
+    }
+
+    /**
+     * @return the alertDbTarget
+     */
+    public double getAlertDbTarget() {
+        return alertDbTarget;
+    }
+
+    /**
+     * @param alertDbTarget the alertDbTarget to set
+     */
+    public void setAlertDbTarget(double alertDbTarget) {
+        this.alertDbTarget = alertDbTarget;
     }
 }

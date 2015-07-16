@@ -65,6 +65,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Jan 06, 2015   3651     bkowal       Support AbstractBMHPersistenceLoggingDao.
  * Apr 02, 2015   4248     rjpeter      Use ordered fragments.
  * Apr 07, 2015   4293     bkowal       Return audio from the latest broadcast contents.
+ * Jun 12, 2015   4482     rjpeter      Removed exception on no ValidatedMessage.
  * </pre>
  * 
  * @author lvenable
@@ -181,10 +182,6 @@ public class InputMessageHandler extends
                 request.isOperational(), this.getMessageLogger(request));
         ValidatedMessage validatedMsg = validatedMsgDao
                 .getValidatedMsgByInputMsg(im);
-        if (validatedMsg == null) {
-            throw new Exception("Data Error:  Input message " + im.getId()
-                    + " is missing validated message.");
-        }
         response.setValidatedMessage(validatedMsg);
 
         return response;

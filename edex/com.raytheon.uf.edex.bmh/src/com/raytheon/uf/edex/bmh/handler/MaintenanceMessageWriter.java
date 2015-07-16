@@ -25,10 +25,14 @@ import java.nio.file.Path;
 
 import javax.xml.bind.JAXB;
 
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.util.SystemUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.bmh.BMHMaintenanceException;
+import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
+import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 
 /**
  * Common method to write {@link DacMaintenanceMessage} to an XML file in the
@@ -41,6 +45,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 24, 2015 4394       bkowal      Initial creation
+ * Jun 11, 2015 4490       bkowal      Maintenance traceability improvements.
  * 
  * </pre>
  * 
@@ -49,6 +54,9 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  */
 
 public class MaintenanceMessageWriter {
+
+    private static final IBMHStatusHandler statusHandler = BMHStatusHandler
+            .getInstance(MaintenanceMessageWriter.class);
 
     private static final String MESSAGES_DIRECTORY = "messages";
 
@@ -72,7 +80,8 @@ public class MaintenanceMessageWriter {
      *         {@link String}.
      */
     public static String writeMaintenanceMessage(DacMaintenanceMessage message,
-            final AbstractBMHServerRequest request) throws IOException {
+            final AbstractBMHServerRequest request)
+            throws BMHMaintenanceException {
         /*
          * Determine where to save the file and the name of the file.
          */
@@ -83,6 +92,10 @@ public class MaintenanceMessageWriter {
         }
         final String fileName = hostName + "_" + System.currentTimeMillis()
                 + ".xml";
+        statusHandler.info("traceId=" + request.getTraceId()
+                + ": Writing maintenace message file " + fileName
+                + " for broadcast on Transmitter "
+                + message.getTransmitterGroup() + " ...");
 
         Path maintenanceMessagesPath = BMHConstants
                 .getBmhDataDirectory(request.isOperational())
@@ -90,11 +103,37 @@ public class MaintenanceMessageWriter {
                 .resolve(BMHConstants.MAINTENANCE_DATA_DIRECTORY)
                 .resolve(MESSAGES_DIRECTORY);
         if (Files.exists(maintenanceMessagesPath) == false) {
-            Files.createDirectories(maintenanceMessagesPath);
+            try {
+                Files.createDirectories(maintenanceMessagesPath);
+            } catch (IOException e) {
+                BMHMaintenanceException ex = new BMHMaintenanceException(
+                        "Failed to create the maintenance output directory: "
+                                + maintenanceMessagesPath);
+                statusHandler
+                        .error(BMH_CATEGORY.UNKNOWN,
+                                "traceId="
+                                        + request.getTraceId()
+                                        + ": Failed to write the maintenance message file "
+                                        + fileName + ".", ex);
+                throw ex;
+            }
         }
         Path output = maintenanceMessagesPath.resolve(fileName);
 
-        JAXB.marshal(message, Files.newOutputStream(output));
+        try {
+            JAXB.marshal(message, Files.newOutputStream(output));
+        } catch (IOException e) {
+            BMHMaintenanceException ex = new BMHMaintenanceException(
+                    "Failed to marshal the maintenance message.");
+            statusHandler.error(BMH_CATEGORY.UNKNOWN,
+                    "traceId=" + request.getTraceId()
+                            + ": Failed to write the maintenance message file "
+                            + fileName + ".", ex);
+            throw ex;
+        }
+        statusHandler.info("traceId=" + request.getTraceId()
+                + ": Successfully wrote maintenance message file " + fileName
+                + ".");
 
         return output.toString();
     }

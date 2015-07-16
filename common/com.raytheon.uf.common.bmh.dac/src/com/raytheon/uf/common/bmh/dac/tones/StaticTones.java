@@ -40,6 +40,7 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  * Mar 23, 2015  #4299     bkowal       Ensure that the preamble and padding bytes
  *                                      are added to SAME and End of Message Tones.
  * May 05, 2015  #4464     bkowal       SAME Tone Padding is now configurable via a system property.
+ * Jul 07, 2015  #4464     bkowal       Default SAME padding is now 0.
  * 
  * </pre>
  * 
@@ -71,7 +72,7 @@ public final class StaticTones {
      * be overridable after we transitional to operational builds.
      */
     private static final int SAME_EOM_PADDING = Integer.getInteger(
-            "sameEomPaddingOverride", 2);
+            "sameEomPaddingOverride", 0);
 
     private final byte[] betweenPreambleOrClosingPause;
 

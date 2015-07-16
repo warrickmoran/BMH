@@ -39,6 +39,8 @@ import org.apache.commons.lang.StringUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
+import com.raytheon.uf.common.bmh.audio.ImportedByUtils;
+import com.raytheon.uf.common.bmh.audio.RecordedByUtils;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastContents;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
@@ -107,6 +109,8 @@ import com.raytheon.uf.edex.core.EdexException;
  * May 13, 2015  #4229     rferrel     Changes for traceId.
  * May 20, 2015  #4490     bkowal      Fixes for {@link TraceableId}.
  * May 28, 2015  4429      rjpeter     Add ITraceable
+ * Jun 18, 2015  4490      bkowal      Verify that recorded audio messages are not
+ *                                     overwritten due to a message attribute update.
  * </pre>
  * 
  * @author bkowal
@@ -219,8 +223,9 @@ public class NewBroadcastMsgHandler extends
                             + inputMessage.getAfosid()
                             + ") failed to validate because it contains the following unacceptable words: "
                             + unacceptableWords.toString());
-        } else if (request.getMessageAudio() == null) {
-
+        } else if (request.getMessageAudio() == null
+                && RecordedByUtils.isMessage(inputMessage.getContent()) == false
+                && ImportedByUtils.isMessage(inputMessage.getContent()) == false) {
             validatedMsgDao.persistCascade(validMsg);
             if (newInputMsg == false
                     && Boolean.FALSE.equals(inputMessage.getActive())) {
@@ -258,12 +263,30 @@ public class NewBroadcastMsgHandler extends
          * transmitters and (when applicable) ldad configurations because
          * dictionaries cannot be applied.
          */
-        Path recordedAudioOutputPath = this.writeOutputAudio(
-                request.getMessageAudio(), inputMessage, traceId);
+        List<BroadcastMsg> broadcastRecords = null;
+        Path recordedAudioOutputPath = null;
 
-        /* build broadcast messages. */
-        List<BroadcastMsg> broadcastRecords = this.buildBroadcastRecords(
-                validMsg, transmitterGroups, recordedAudioOutputPath, request);
+        if (request.getMessageAudio() == null) {
+            statusHandler
+                    .info("Retrieving broadcast records for unmodified recorded audio associated with input message: "
+                            + inputMessage.getId() + ".");
+            broadcastRecords = this.retrieveRecordedAudioBroadcastRecords(
+                    validMsg, transmitterGroups, request);
+            recordedAudioOutputPath = (broadcastRecords.isEmpty()) ? null
+                    : Paths.get(broadcastRecords.get(0)
+                            .getLatestBroadcastContents().getOrderedFragments()
+                            .get(0).getOutputName());
+        } else {
+            statusHandler
+                    .info("Updating/creating broadcast records for recorded audio associated with input message: "
+                            + inputMessage.getId() + ".");
+            recordedAudioOutputPath = this.writeOutputAudio(
+                    request.getMessageAudio(), inputMessage, traceId);
+
+            /* build broadcast messages. */
+            broadcastRecords = this.buildBroadcastRecords(validMsg,
+                    transmitterGroups, recordedAudioOutputPath, request);
+        }
 
         // persist all entities.
         List<Object> entitiesToPersist = new LinkedList<Object>();
@@ -318,6 +341,14 @@ public class NewBroadcastMsgHandler extends
          * the user that submitted the request will be notified via AlertViz
          * that an audio dissemination will not be completed.
          */
+
+        /*
+         * If the location of the audio is not known, we cannot process the ldad
+         * configuration - unlikely.
+         */
+        if (recordedAudioOutputPath == null) {
+            return inputMessage.getId();
+        }
 
         // retrieve the ldad configurations
         LdadConfigDao ldadConfigDao = new LdadConfigDao(request.isOperational());
@@ -530,6 +561,32 @@ public class NewBroadcastMsgHandler extends
             contents.addFragment(fragment);
             broadcastMsg.addBroadcastContents(contents);
 
+            broadcastRecords.add(broadcastMsg);
+        }
+
+        return broadcastRecords;
+    }
+
+    private List<BroadcastMsg> retrieveRecordedAudioBroadcastRecords(
+            final ValidatedMessage validMsg,
+            final Set<TransmitterGroup> transmitterGroups,
+            final AbstractBMHServerRequest request) {
+        List<BroadcastMsg> broadcastRecords = new ArrayList<>(
+                transmitterGroups.size());
+        BroadcastMsgDao broadcastMsgDao = new BroadcastMsgDao(
+                request.isOperational(), this.getMessageLogger(request));
+        for (TransmitterGroup transmitterGroup : transmitterGroups) {
+            BroadcastMsg broadcastMsg = broadcastMsgDao
+                    .getMessageByInputMessageAndGroup(
+                            validMsg.getInputMessage(), transmitterGroup);
+            if (broadcastMsg == null) {
+                statusHandler.warn(BMH_CATEGORY.UNKNOWN,
+                        "Unable to find an existing broadcast message associated with input message: "
+                                + validMsg.getInputMessage().getId()
+                                + " and transmitter group: " + transmitterGroup
+                                + ".");
+                continue;
+            }
             broadcastRecords.add(broadcastMsg);
         }
 

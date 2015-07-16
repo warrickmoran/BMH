@@ -88,7 +88,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * May 13, 2015  #4429     rferrel      Changes to {@link DefaultMessageLogger} for traceId.
  * May 26, 2015  #4481     bkowal       Allow broadcasts to interrupt the no messages loop.
  * Jun 01, 2015  #4490     bkowal       Use new {@link SAMEMessageTruncatedNotification} constructor.
- * Jun 02, 2016  #4369     rferrel      Send NoPlaybackMessageNotification when no messages to play.
+ * Jun 02, 2015  #4369     rferrel      Send NoPlaybackMessageNotification when no messages to play.
+ * Jun 16, 2015  4482      rjpeter      Reset packet logger on pause.
  * </pre>
  * 
  * @author dgilling
@@ -193,10 +194,12 @@ public final class DataTransmitThread extends AbstractTransmitThread {
             long nextPacketTime = System.currentTimeMillis();
             eventBus.register(this);
             OUTER_LOOP: while (keepRunning) {
+                AudioPacketLogger messagePacketLog = null;
                 try {
                     while (this.pausePlayback) {
                         logger.info("Pausing the playback of the current playlist.");
                         this.pauseLock.release();
+                        allPacketLog.reset();
                         /*
                          * Sleeping gives the pausing thread time to steal the
                          * lock.
@@ -240,10 +243,9 @@ public final class DataTransmitThread extends AbstractTransmitThread {
                      * to start.
                      */
                     playingInterrupt = playbackData.isInterrupt();
-                    AudioPacketLogger messagePacketLog = new AudioPacketLogger(
-                            "Transmit "
-                                    + playbackData.getMessage()
-                                            .getMessageType(), logger, 600);
+                    messagePacketLog = new AudioPacketLogger("Transmit "
+                            + playbackData.getMessage().getMessageType(),
+                            logger, 600);
 
                     if (playbackData.requiresConfirmation()) {
                         /*
@@ -346,7 +348,7 @@ public final class DataTransmitThread extends AbstractTransmitThread {
                                     playbackData.getMessage(), t);
                         }
                     }
-                    messagePacketLog.close();
+
                     executorService.submit(playbackData.getEndPlayBackTask());
                     // broadcast of the message has finished, log it.
                     DefaultMessageLogger.getInstance().logBroadcastActivity(
@@ -355,6 +357,10 @@ public final class DataTransmitThread extends AbstractTransmitThread {
                     playingInterrupt = false;
                 } catch (Throwable t) {
                     logger.error("Uncaught exception thrown from main loop.", t);
+                } finally {
+                    if (messagePacketLog != null) {
+                        messagePacketLog.close();
+                    }
                 }
             }
         } finally {

@@ -38,12 +38,13 @@ import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
+import com.raytheon.uf.common.bmh.request.StaticMsgValidationResult;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
-import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -62,7 +63,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     confirm message alterations.
  * May 28, 2015 4490       bkowal      Use a proxy {@link StaticMessageType} for validation to
  *                                     prevent pass-by-reference overrides.
- * 
+ * Jun 12, 2015 4482       rjpeter     Added DO_NOT_BLOCK.
+ * Jul 06, 2015 4603       bkowal      Display a message dialog if message text fails validation.
  * </pre>
  * 
  * @author bkowal
@@ -82,7 +84,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
 
     private final Language language;
 
-    private StaticMessageType staticMessageType;
+    private final StaticMessageType staticMessageType;
 
     private Label txtMsg1Label;
 
@@ -97,7 +99,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
     public CreateEditStaticMsgTypeDialog(Shell parentShell,
             StaticMessageType staticMessageType, final Language language) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.staticMessageType = staticMessageType;
         this.language = language;
         this.setText(EDIT_TITLE);
@@ -106,7 +108,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
     public CreateEditStaticMsgTypeDialog(Shell parentShell,
             MessageType messageType, final Language language) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.staticMessageType = new StaticMessageType();
         this.staticMessageType.setMsgTypeSummary(messageType.getSummary());
         this.staticMessageType.setPeriodicity(messageType.getPeriodicity());
@@ -279,8 +281,14 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
          * Verify that the message contents are allowed.
          */
         try {
-            this.tldm.validateStaticMessageType(validateStaticMsgType,
-                    this.language);
+            StaticMsgValidationResult result = this.tldm
+                    .validateStaticMessageType(validateStaticMsgType,
+                            this.language);
+            if (result.isValid() == false) {
+                DialogUtility.showMessageBox(shell, SWT.ICON_ERROR | SWT.OK,
+                        "Validation Failed", result.getMessage());
+                return;
+            }
         } catch (Exception e) {
             statusHandler.error("Static Message validation has failed.", e);
             return;

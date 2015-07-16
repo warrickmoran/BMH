@@ -26,8 +26,10 @@ import javax.sound.sampled.AudioFormat.Encoding;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineEvent;
 import javax.sound.sampled.LineListener;
-import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
+
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 
 /**
  * An implementation of the {@link IDacListener}. Collects data from the dac
@@ -41,7 +43,11 @@ import javax.sound.sampled.SourceDataLine;
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014 3374       bkowal      Initial creation
  * Aug 25, 2014 3487       bsteffen    Do not start playback until buffer is full.
- * 
+ * Jun 18, 2015 4482       rjpeter     Increase buffer to 2 seconds.  Buffer 1
+ *                                     second before starting audio.
+ * Jun 22, 2015 4482       rjpeter     Added dedicated audio streaming thread with 0.5s 
+ *                                     buffer in audio line and additional 0.5s in memory.
+ * Jul 15, 2015 4636       bkowal      Eliminate stream restarting notification.
  * </pre>
  * 
  * @author bkowal
@@ -55,15 +61,13 @@ public class DacLiveStreamer implements IDacListener, LineListener {
     private static final AudioFormat ULAW_AUDIO_FMT = new AudioFormat(
             Encoding.ULAW, 8000, 8, 1, 1, 8000, true);
 
+    private static final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(DacLiveStreamer.class);
+
     /*
      * The channel to retrieve data for and stream data from.
      */
     private final int channel;
-
-    /*
-     * Used to stream audio. Currently, to the default audio device.
-     */
-    private SourceDataLine line;
 
     /*
      * Allows classes that implement {@link LineListener} to subscribe to audio
@@ -71,28 +75,24 @@ public class DacLiveStreamer implements IDacListener, LineListener {
      */
     private List<LineListener> registeredListeners;
 
-    private long lastPacketTime = 0l;
+    private volatile boolean closed = false;
+
+    private final PacketStreamingThread streamingThread;
 
     /**
-     * Constructor
+     * /** Constructor
      * 
      * @param channel
      *            the channel to receive data for
+     * 
      * @throws DacPlaybackException
      *             if the live stream cannot be successfully instantiated and
      *             started.
      */
     public DacLiveStreamer(final int channel) throws DacPlaybackException {
         this.channel = channel;
-        /* prepare the live audio stream */
-        try {
-            this.line = AudioSystem.getSourceDataLine(null);
-            this.line.addLineListener(this);
-            this.line.open(ULAW_AUDIO_FMT);
-        } catch (LineUnavailableException e) {
-            this.closeAudioStream();
-            throw new DacPlaybackException(e);
-        }
+        streamingThread = new PacketStreamingThread();
+        streamingThread.start();
     }
 
     /**
@@ -100,19 +100,8 @@ public class DacLiveStreamer implements IDacListener, LineListener {
      * listener is no longer required.
      */
     public void dispose() {
-        this.closeAudioStream();
-    }
-
-    /**
-     * Closes the live audio stream.
-     */
-    private void closeAudioStream() {
-        if (this.line == null) {
-            return;
-        }
-
-        this.line.close();
-        this.line = null;
+        closed = true;
+        streamingThread.interrupt();
     }
 
     /*
@@ -124,30 +113,16 @@ public class DacLiveStreamer implements IDacListener, LineListener {
      */
     @Override
     public void dataArrived(final byte[] payload) {
-        long packetTime = System.currentTimeMillis();
-        int available = this.line.available();
-        if (this.line.isActive()) {
-            int maxPacketInterval = this.line.getBufferSize() * 1000
-                    / (int) ULAW_AUDIO_FMT.getSampleRate();
-            if (packetTime - lastPacketTime > maxPacketInterval) {
-                /*
-                 * If the length of time between packets is larger than the
-                 * buffer then stop and allow buffer to refill.
-                 */
-                this.line.stop();
+        if (!closed) {
+            try {
+                streamingThread.addData(payload);
+            } catch (InterruptedException e) {
+                // ignore
             }
         } else {
-            if (available < payload.length) {
-                /*
-                 * When the line is inactive(not playing) and the buffer is full
-                 * start playing.
-                 */
-                this.line.start();
-            }
+            throw new IllegalStateException(
+                    "Cannot write to audio line.  Audio line closed");
         }
-        this.line.write(payload, 0, payload.length);
-        /* Since write may have blocked get the time again. */
-        lastPacketTime = System.currentTimeMillis();
     }
 
     /*
@@ -197,6 +172,179 @@ public class DacLiveStreamer implements IDacListener, LineListener {
     public void deregisterPlaybackListener(LineListener listener) {
         synchronized (this.registeredListeners) {
             this.registeredListeners.remove(listener);
+        }
+    }
+
+    private class PacketStreamingThread extends Thread {
+        /* 0.5 second audio buffer */
+        private final int bufferSize = 4000;
+
+        private final byte[] buffer = new byte[bufferSize];
+
+        private int size = 0;
+
+        private int head = 0;
+
+        private int tail = 0;
+
+        @Override
+        public void run() {
+            int tryCount = 0;
+
+            while (!closed) {
+                /* prepare the live audio stream */
+                try (SourceDataLine line = AudioSystem.getSourceDataLine(null)) {
+                    line.addLineListener(DacLiveStreamer.this);
+
+                    line.open(ULAW_AUDIO_FMT, bufferSize);
+
+                    int available = line.available();
+
+                    // initial buffering of line
+                    while (!closed && available > 0) {
+                        writeDataToLine(line, available);
+                        available = line.available();
+                    }
+
+                    // line fully buffered, start audio
+                    statusHandler.debug("Starting audio.  available: "
+                            + available + ", total buffer: "
+                            + line.getBufferSize());
+                    line.start();
+                    available = line.available();
+
+                    while (!closed && lineOk(line)) {
+                        writeDataToLine(line, available);
+                        available = line.available();
+                        while (!closed && available < 160) {
+                            Thread.sleep(20);
+                            available = line.available();
+                        }
+                    }
+
+                    if (!closed) {
+                        /*
+                         * Loop exited due to audio line buffer problem. Let
+                         * audio line close and be recreated.
+                         */
+                        statusHandler
+                                .debug("Audio line error detected, closing audio line.  New audio line will be opened and buffered.");
+                        synchronized (buffer) {
+                            /*
+                             * Use entire buffer as it will have already wrapped
+                             * around.
+                             */
+                            head = tail;
+                            size = buffer.length;
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    // ignore
+                } catch (Exception e) {
+                    if (tryCount > 3) {
+                        closed = true;
+                    } else {
+                        tryCount++;
+                    }
+
+                    statusHandler.error("Error occurred with audio line", e);
+                }
+
+                synchronized (buffer) {
+                    buffer.notifyAll();
+                }
+            }
+        }
+
+        /**
+         * Write data from byte buffer to line. Will block if no data current in
+         * byte buffer.
+         * 
+         * @param line
+         * @param available
+         * @throws InterruptedException
+         */
+        public void writeDataToLine(SourceDataLine line, int available)
+                throws InterruptedException {
+            synchronized (buffer) {
+                while (size <= 0 && !closed) {
+                    buffer.wait();
+                }
+
+                int bytesToWrite = available;
+                if (bytesToWrite > size) {
+                    bytesToWrite = size;
+                }
+
+                if (bytesToWrite > 0) {
+                    /* check buffer wrap around */
+                    if (head + bytesToWrite >= buffer.length) {
+                        int wrapBytesToWrite = buffer.length - head;
+                        line.write(buffer, head, wrapBytesToWrite);
+                        bytesToWrite -= wrapBytesToWrite;
+                        size -= wrapBytesToWrite;
+                        head = 0;
+                    }
+
+                    /* may have written entire buffer already */
+                    if (bytesToWrite > 0) {
+                        line.write(buffer, head, bytesToWrite);
+                        size -= bytesToWrite;
+                        head += bytesToWrite;
+                    }
+
+                    buffer.notify();
+                }
+            }
+        }
+
+        /**
+         * Write data to circular byte buffer. Will block if not enough room
+         * currently available.
+         * 
+         * @param payload
+         * @throws InterruptedException
+         */
+        public void addData(byte[] payload) throws InterruptedException {
+            synchronized (buffer) {
+                if (payload.length > buffer.length) {
+                    throw new IllegalArgumentException(
+                            "payload too large to write to buffer");
+                }
+
+                while (size + payload.length > buffer.length && !closed) {
+                    buffer.wait();
+                }
+
+                int bytesToWrite = payload.length;
+
+                /* Check buffer wrap around */
+                if (tail + bytesToWrite >= buffer.length) {
+                    int wrapBytesToWrite = buffer.length - tail;
+                    System.arraycopy(payload, 0, buffer, tail, wrapBytesToWrite);
+                    bytesToWrite -= wrapBytesToWrite;
+                    tail = 0;
+                }
+
+                /* may have written entire buffer already */
+                if (bytesToWrite > 0) {
+                    System.arraycopy(payload, 0, buffer, tail, bytesToWrite);
+                    tail += bytesToWrite;
+                }
+
+                size += payload.length;
+                buffer.notify();
+            }
+        }
+
+        private boolean lineOk(SourceDataLine line) {
+            if (line.available() > line.getBufferSize()) {
+                return false;
+            } else if (line.available() == line.getBufferSize()) {
+                return false;
+            }
+
+            return true;
         }
     }
 }

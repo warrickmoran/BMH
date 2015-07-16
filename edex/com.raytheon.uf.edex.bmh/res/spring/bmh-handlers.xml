@@ -60,6 +60,9 @@
 
     <bean id="ttsHandler" class="com.raytheon.uf.edex.bmh.handler.TextToSpeechHandler">
         <constructor-arg ref="ttsManager" />
+        <constructor-arg ref="practice_ttsManager" />
+        <constructor-arg ref="messageTransformer" />
+        <constructor-arg ref="practice_messageTransformer" />
     </bean>
     <bean factory-bean="handlerRegistry" factory-method="register">
         <constructor-arg
@@ -168,6 +171,7 @@
 	<bean id="maintenanceMessageHandler" 
 		class="com.raytheon.uf.edex.bmh.handler.MaintenanceMessageHandler">
 		<constructor-arg ref="alignmentTestGenerator" />
+		<constructor-arg ref="practice_alignmentTestGenerator" />
 	</bean>
     <bean factory-bean="handlerRegistry" factory-method="register">
         <constructor-arg
@@ -198,4 +202,49 @@
             value="com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest" />
         <constructor-arg ref="transmitterLanguageRequestHandler" />
     </bean>
+    
+    <bean id="messageTypeValidationHandler" 
+    	class="com.raytheon.uf.edex.bmh.handler.MessageTypeValidationHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.request.MessageTypeValidationRequest" />
+        <constructor-arg ref="messageTypeValidationHandler" />
+    </bean>    
+    
+    <camelContext id="bmh-handle" xmlns="http://camel.apache.org/schema/spring"
+	errorHandlerRef="errorHandler">
+    	<route id="bmhHandlersConfig">
+    		<from uri="jms-durable:topic:BMH.Config" />
+    		<doTry>
+    			<bean ref="serializationUtil" method="transformFromThrift" />
+    			<filter>
+    				<simple>${body} is
+    					"com.raytheon.uf.common.bmh.notify.config.VoiceConfigNotification"
+    				</simple>
+    				<bean ref="ttsHandler" method="voiceUpdated" />
+    			</filter>
+    			<doCatch>
+  					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR" />    			
+    			</doCatch>
+    		</doTry>
+    	</route>
+    
+    	<route id="practice_bmhHandlersConfig">
+    		<from uri="jms-generic:topic:BMH.Practice.Config" />
+    		<doTry>
+    			<bean ref="serializationUtil" method="transformFromThrift" />
+    			<filter>
+    				<simple>${body} is
+    					"com.raytheon.uf.common.bmh.notify.config.VoiceConfigNotification"
+    				</simple>
+    				<bean ref="ttsHandler" method="voiceUpdatedPractice" />    			
+    			</filter>
+    			<doCatch>
+  					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR" />
+    			</doCatch>
+    		</doTry>
+    	</route>
+    </camelContext>
 </beans>

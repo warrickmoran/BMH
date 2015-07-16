@@ -37,53 +37,6 @@
 			</doTry>
 		</route>
 
-		<route id="bmhPlaylistManagerConfig">
-			<from uri="jms-durable:topic:BMH.Config" />
-			<doTry>
-				<bean ref="serializationUtil" method="transformFromThrift" />
-				<filter>
-					<simple>${body} is
-						"com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification"
-					</simple>
-					<bean ref="playlistManager" method="processSuiteChange" />
-				</filter>
-				<filter>
-					<simple>${body} is
-						"com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification"
-					</simple>
-					<bean ref="playlistManager" method="processProgramChange" />
-				</filter>
-				<filter>
-					<simple>${body} is
-						"com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification"
-					</simple>
-					<bean ref="playlistManager" method="processTransmitterGroupChange" />
-				</filter>
-				<filter>
-					<simple>${body} is
-						"com.raytheon.uf.common.bmh.notify.config.ResetNotification"
-					</simple>
-					<bean ref="playlistManager" method="processResetNotification" />
-				</filter>
-                <filter>
-                    <simple>${body} is
-                        "com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification"
-                    </simple>
-                    <bean ref="playlistManager" method="processMessageActivationChange" />
-                </filter>
-                <filter>
-                	<simple>${body} is
-                        "com.raytheon.uf.common.bmh.notify.config.MessageForcedExpirationNotification"
-                	</simple>
-                	<bean ref="playlistManager" method="processMessageForcedExpiration" />
-                </filter>
-				<doCatch>
-					<exception>java.lang.Throwable</exception>
-					<to uri="log:bmh?level=ERROR" />
-				</doCatch>
-			</doTry>
-		</route>
-
 		<route id="bmhPlaylistStateRoute">
 			<from uri="jms-generic:topic:BMH.Status" />
 			<doTry>
@@ -133,9 +86,63 @@
 			</doTry>
 		</route>
 	</camelContext>
+	
+	<camelContext id="bmh-playlist-config" xmlns="http://camel.apache.org/schema/spring"
+	errorHandlerRef="errorHandler">
+		<route id="bmhPlaylistManagerConfig">
+			<from uri="jms-durable:topic:BMH.Config" />
+			<doTry>
+				<bean ref="serializationUtil" method="transformFromThrift" />
+				<filter>
+					<simple>${body} is
+						"com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification"
+					</simple>
+					<bean ref="playlistManager" method="processSuiteChange" />
+				</filter>
+				<filter>
+					<simple>${body} is
+						"com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification"
+					</simple>
+					<bean ref="playlistManager" method="processProgramChange" />
+				</filter>
+				<filter>
+					<simple>${body} is
+						"com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification"
+					</simple>
+					<bean ref="playlistManager" method="processTransmitterGroupChange" />
+				</filter>
+				<filter>
+					<simple>${body} is
+						"com.raytheon.uf.common.bmh.notify.config.ResetNotification"
+					</simple>
+					<bean ref="playlistManager" method="processResetNotification" />
+				</filter>
+                <filter>
+                    <simple>${body} is
+                        "com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification"
+                    </simple>
+                    <bean ref="playlistManager" method="processMessageActivationChange" />
+                </filter>
+                <filter>
+                	<simple>${body} is
+                        "com.raytheon.uf.common.bmh.notify.config.MessageForcedExpirationNotification"
+                	</simple>
+                	<bean ref="playlistManager" method="processMessageForcedExpiration" />
+                </filter>
+				<doCatch>
+					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR" />
+				</doCatch>
+			</doTry>
+		</route>		
+	</camelContext>
 
 	<bean factory-bean="contextManager" factory-method="registerContextStateProcessor">
 		<constructor-arg ref="bmh-playlist" />
 		<constructor-arg ref="playlistManager" />
+	</bean>
+	
+	<bean factory-bean="contextManager" factory-method="registerClusteredContext">
+		<constructor-arg ref="bmh-playlist-config" />
 	</bean>
 </beans>

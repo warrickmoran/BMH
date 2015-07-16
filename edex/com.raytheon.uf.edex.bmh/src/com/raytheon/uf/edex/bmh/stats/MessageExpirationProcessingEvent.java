@@ -31,6 +31,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 20, 2015 4397       bkowal      Initial creation
+ * Jun 24, 2015 4397       bkowal      Added an empty constructor.
  * 
  * </pre>
  * 
@@ -42,6 +43,14 @@ public class MessageExpirationProcessingEvent extends
         AbstractBMHProcessingTimeEvent {
 
     private static final long serialVersionUID = -8814178589937754712L;
+
+    /**
+     * Constructor.
+     * 
+     * Empty constructor for {@link DynamicSerialize}.
+     */
+    public MessageExpirationProcessingEvent() {
+    }
 
     /**
      * @param requestTime

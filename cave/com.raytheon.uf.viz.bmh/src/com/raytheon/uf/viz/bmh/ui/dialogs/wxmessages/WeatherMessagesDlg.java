@@ -51,7 +51,10 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.audio.ImportedByUtils;
+import com.raytheon.uf.common.bmh.audio.RecordedByUtils;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -69,8 +72,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.bmh.ImportedByUtils;
-import com.raytheon.uf.viz.bmh.RecordedByUtils;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ButtonImageCreator;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
@@ -173,6 +174,13 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 08, 2015 4429     rferrel     {@link #handleSubmitAction()} now sets traceId for the request.
  * May 28, 2015 4429     rjpeter     Fix misspelling.
  * Jun 05, 2015 4490     rjpeter     Updated constructor.
+ * Jun 08, 2015 4403     bkowal      Specify the {@link Language} when constructing the
+ *                                   {@link MessageContentsDlg}.
+ * Jun 12, 2015 4482     rjpeter     Fixed NPE.
+ * Jun 18, 2015 4490     bkowal      {@link RecordedByUtils} and
+ *                                   {@link ImportedByUtils} relocated to common.
+ * Jun 18, 2015 4490     bkowal      Re-enable the expiration date/time spinners when a
+ *                                   new message is started.
  * </pre>
  * 
  * @author lvenable
@@ -888,7 +896,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                 MessageContentsDlg mcd = new MessageContentsDlg(shell, content
                         .getAudioDataList(), content.getText(), content
                         .getContentType(), selectedMessageType.getVoice()
-                        .getVoiceNumber());
+                        .getVoiceNumber(), selectedMessageType.getVoice()
+                        .getLanguage());
                 mcd.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
@@ -1560,6 +1569,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             this.noExpireChk.setSelection(false);
             expirationDTF.setDateTimeSpinners(userInputMessage
                     .getExpirationTime());
+            this.expirationDTF.setEnabled(true);
         } else {
             if (this.userInputMessage.getId() != 0
                     && this.userInputMessage.isValidHeader()) {
@@ -1651,6 +1661,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
      */
     private Calendar updateCalFromDTF(Calendar currentCal,
             Map<Integer, Integer> fieldValuesMap) {
+        if (currentCal == null) {
+            currentCal = TimeUtil.newGmtCalendar();
+        }
+
         for (Integer calField : fieldValuesMap.keySet()) {
             currentCal.set(calField, fieldValuesMap.get(calField));
         }

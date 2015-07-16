@@ -57,7 +57,6 @@ import org.hibernate.annotations.Index;
 import com.raytheon.uf.common.bmh.StaticMessageIdentifier;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
-import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
@@ -103,6 +102,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * May 12, 2015  4484     bkowal      Added {@link #buildFollowsMapping()}.
  * May 22, 2015  4429     rjpeter     Updated setTimes to handle null expireTimes.
+ * Jun 15, 2015  4490     bkowal      All valid messages in a General Suite can now trigger a
+ *                                    Suite change.
  * </pre>
  * 
  * @author bsteffen
@@ -390,30 +391,36 @@ public class Playlist {
             boolean forced) {
         Set<String> triggerAfosids = new HashSet<>(triggers == null ? 0
                 : triggers.size(), 1.0f);
-        if (!forced) {
-            if (suite.getType() == SuiteType.GENERAL) {
+        if (suite.getType() == SuiteType.GENERAL) {
+            /*
+             * if this is a General {@link Suite}, include all messages.
+             */
+            for (SuiteMessage message : suite.getSuiteMessages()) {
+                triggerAfosids.add(message.getAfosid());
+            }
+        } else {
+            if (forced) {
+                /*
+                 * not the General {@link Suite} and a forced suite change,
+                 * include all non-static messages.
+                 */
                 for (SuiteMessage message : suite.getSuiteMessages()) {
-                    triggerAfosids.add(message.getAfosid());
+                    if (StaticMessageIdentifier.isStaticMsgType(message
+                            .getMsgTypeSummary()) == false) {
+                        triggerAfosids.add(message.getAfosid());
+                    }
                 }
             } else if (triggers != null) {
+                /*
+                 * not the General {@link Suite} and NOT a forced suite change,
+                 * include all defined triggers.
+                 */
                 for (MessageTypeSummary trigger : triggers) {
                     triggerAfosids.add(trigger.getAfosid());
                 }
             }
-        } else {
-            for (SuiteMessage message : suite.getSuiteMessages()) {
-                /*
-                 * special case: all messages with a station id designation are
-                 * considered a static message.
-                 */
-                boolean isStatic = (message.getMsgTypeSummary()
-                        .getDesignation() == StaticMessageIdentifier.timeDesignation)
-                        || (message.getMsgTypeSummary().getDesignation() == Designation.StationID);
-                if (isStatic == false) {
-                    triggerAfosids.add(message.getAfosid());
-                }
-            }
         }
+
         Calendar startTime = null;
         List<Calendar> triggerTimes = new LinkedList<>();
         Calendar endTime = null;

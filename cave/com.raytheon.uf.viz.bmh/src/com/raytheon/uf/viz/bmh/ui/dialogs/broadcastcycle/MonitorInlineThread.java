@@ -54,7 +54,8 @@ import com.raytheon.uf.viz.bmh.BMHServers;
  * Oct 29, 2014  3774     bsteffen    Log Packets
  * Apr 14, 2015  4394     bkowal      Updated constructor to require information that is
  *                                    already known.
- * 
+ * Jun 17, 2015  4482     rjpeter     Only process in 160 byte chunks.
+ * Jun 18, 2015  4490     bkowal      Added {@link #getChannel()}.
  * </pre>
  * 
  * @author bsteffen
@@ -75,7 +76,7 @@ public class MonitorInlineThread extends Thread {
 
     private volatile boolean running = true;
 
-    private Set<DisconnectListener> listeners = new CopyOnWriteArraySet<>();
+    private final Set<DisconnectListener> listeners = new CopyOnWriteArraySet<>();
 
     public MonitorInlineThread(String transmitterGroup,
             final String dacReceiveAddress, final int receivePort,
@@ -122,15 +123,26 @@ public class MonitorInlineThread extends Thread {
                     this.channel), outputStream);
             byte[] payload = new byte[160];
             listener = new DacLiveStreamer(0);
+            int totalRead = 0;
+            int curRead = 0;
             while (running) {
-                int read = inputStream.read(payload);
-                logger.packetProcessed();
-                if (read > 0) {
-                    listener.dataArrived(payload);
-                } else if (read < 0) {
-                    throw new IOException("Unexpected end of stream.");
+                totalRead = 0;
+                // need the full 160 bytes
+                while (totalRead < payload.length) {
+                    curRead = inputStream.read(payload, totalRead,
+                            payload.length - totalRead);
+                    if (curRead < 0) {
+                        throw new IOException(
+                                "Unexpected end of stream on monitor inline.");
+                    }
+
+                    totalRead += curRead;
                 }
+
+                logger.packetProcessed();
+                listener.dataArrived(payload);
             }
+
             SerializationUtil.transformToThriftUsingStream(
                     new LineTapDisconnect(), outputStream);
             disconnect(null);
@@ -164,6 +176,13 @@ public class MonitorInlineThread extends Thread {
      */
     public void cancel() {
         running = false;
+    }
+
+    /**
+     * @return the channel
+     */
+    public int getChannel() {
+        return channel;
     }
 
     /**

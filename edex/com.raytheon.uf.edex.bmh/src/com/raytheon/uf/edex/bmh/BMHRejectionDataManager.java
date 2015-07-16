@@ -39,6 +39,8 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 19, 2015 4136       bkowal      Initial creation
+ * Jun 17, 2015 4490       bkowal      Handle the case when a rejected data file may have the
+ *                                     same name as a previously rejected data file.
  * 
  * </pre>
  * 
@@ -52,6 +54,8 @@ public class BMHRejectionDataManager {
             .getInstance(BMHRejectionDataManager.class);
 
     private static final String BMH_REJECT_DESTINATION = "bmh.data.reject";
+
+    private final int MAX_UNIQUE_INDEX = 99;
 
     private final Path dataRejectionPath;
 
@@ -124,6 +128,40 @@ public class BMHRejectionDataManager {
 
         Path targetFilePath = this.dataRejectionPath.resolve(rejectedFilePath
                 .getFileName());
+
+        /*
+         * Verify that a rejected file with the same name does not already
+         * exist.
+         */
+        if (Files.exists(targetFilePath)) {
+            /*
+             * Attempt to find a unique name for the rejected file.
+             */
+            int count = 1;
+            targetFilePath = this.dataRejectionPath.resolve(rejectedFilePath
+                    .getFileName() + "_" + count);
+            while (Files.exists(targetFilePath)) {
+                ++count;
+                if (count > MAX_UNIQUE_INDEX) {
+                    /*
+                     * there are already 100 rejected files with the same name.
+                     * do not attempt to copy another to the rejection
+                     * destination.
+                     */
+                    statusHandler
+                            .warn(category,
+                                    "Unable to copy reject file: "
+                                            + rejectedFilePath.getFileName()
+                                            + ". 100 rejected files with the same name already exist; please review the contents of the BMH rejected data directory: "
+                                            + this.dataRejectionPath.toString()
+                                            + ".");
+                    return;
+                }
+                targetFilePath = this.dataRejectionPath
+                        .resolve(rejectedFilePath.getFileName() + "_" + count);
+            }
+        }
+
         BMHRejectionException ex = null;
         try {
             Files.move(rejectedFilePath, targetFilePath);

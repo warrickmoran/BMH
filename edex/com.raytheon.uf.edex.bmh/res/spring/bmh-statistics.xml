@@ -7,6 +7,8 @@
 
 	<bean id="statisticsAccumulator" class="com.raytheon.uf.edex.bmh.stats.StatisticsAccumulator" />
 
+    <bean id="bmhStatisticBridge" class="com.raytheon.uf.edex.bmh.stats.StatusToStatisticBridge"/>
+
 	<camelContext id="bmhStatisticContext" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
 
@@ -22,6 +24,21 @@
 			</doTry>
 		</route>
 
+        <route id="bmhStatusStatisticRoute">
+            <from uri="jms-durable:topic:BMH.Status" />
+            <doTry>
+                <bean ref="serializationUtil" method="transformFromThrift" />
+                <bean ref="bmhStatisticBridge" method="handleStatusMessage" />
+                <doCatch>
+                    <exception>java.lang.Throwable</exception>
+                    <to uri="log:bmh?level=ERROR" />
+                </doCatch>
+            </doTry>
+        </route>
 	</camelContext>
+
+	<bean factory-bean="contextManager" factory-method="registerClusteredContext">
+		<constructor-arg ref="bmhStatisticContext" />
+	</bean>
 
 </beans>

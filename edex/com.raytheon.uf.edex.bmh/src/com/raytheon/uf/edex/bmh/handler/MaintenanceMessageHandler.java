@@ -26,6 +26,8 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest;
 import com.raytheon.uf.edex.bmh.staticmsg.AlignmentTestGenerator;
 import com.raytheon.uf.edex.bmh.staticmsg.StaticGenerationException;
+import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
+import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 
 /**
  * Handles {@link MaintenanceMessageRequest} requests. Returns the location of
@@ -42,6 +44,9 @@ import com.raytheon.uf.edex.bmh.staticmsg.StaticGenerationException;
  * Apr 24, 2015 4394       bkowal      Updated to use {@link DacMaintenanceMessage}.
  * Apr 29, 2015 4394       bkowal      Include the Transmitter Group Name in the
  *                                     {@link DacMaintenanceMessage}.
+ * Jun 11, 2015 4490       bkowal      Maintenance traceability improvements.
+ * Jul 08, 2015 4636       bkowal      Support transfer tone transmitter alignment tests.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * 
  * </pre>
  * 
@@ -52,23 +57,33 @@ import com.raytheon.uf.edex.bmh.staticmsg.StaticGenerationException;
 public class MaintenanceMessageHandler extends
         AbstractBMHServerRequestHandler<MaintenanceMessageRequest> {
 
+    private static final IBMHStatusHandler statusHandler = BMHStatusHandler
+            .getInstance(MaintenanceMessageHandler.class);
+
     private final AlignmentTestGenerator alignmentTestGenerator;
 
-    private AlignmentTestGenerator practiceAlignmentTestGenerator;
+    private final AlignmentTestGenerator practiceAlignmentTestGenerator;
 
     public MaintenanceMessageHandler(
-            final AlignmentTestGenerator alignmentTestGenerator) {
+            final AlignmentTestGenerator alignmentTestGenerator,
+            AlignmentTestGenerator practiceAlignmentTestGenerator) {
         this.alignmentTestGenerator = alignmentTestGenerator;
+        this.practiceAlignmentTestGenerator = practiceAlignmentTestGenerator;
     }
 
     @Override
     public Object handleRequest(MaintenanceMessageRequest request)
             throws Exception {
-        AlignmentTestGenerator generator = this.alignmentTestGenerator;
-        if (request.isOperational() == false
-                && practiceAlignmentTestGenerator != null) {
-            generator = this.practiceAlignmentTestGenerator;
+        StringBuilder logMsg = new StringBuilder("traceId=");
+        logMsg.append(request.getTraceId()).append(": Handling ")
+                .append(request.getType().name()).append(" alignment request ");
+        if (request.isOperational() == false) {
+            logMsg.append("(PRACTICE) ");
         }
+        logMsg.append("...");
+        statusHandler.info(logMsg.toString());
+        AlignmentTestGenerator generator = (request.isOperational()) ? this.alignmentTestGenerator
+                : this.practiceAlignmentTestGenerator;
 
         DacMaintenanceMessage message = new DacMaintenanceMessage();
         StringBuilder sb = new StringBuilder(request.getType().name());
@@ -87,6 +102,12 @@ public class MaintenanceMessageHandler extends
             break;
         case TEXT:
             audioPath = generator.getMaintenanceTextPath();
+            break;
+        case TRANSFER_18:
+            audioPath = generator.getMaintenance18TransferPath();
+            break;
+        case TRANSFER_24:
+            audioPath = generator.getMaintenance24TransferPath();
             break;
         }
 
@@ -115,16 +136,6 @@ public class MaintenanceMessageHandler extends
      * @return the practiceAlignmentTestGenerator
      */
     public AlignmentTestGenerator getPracticeAlignmentTestGenerator() {
-        return practiceAlignmentTestGenerator;
-    }
-
-    /**
-     * @param practiceAlignmentTestGenerator
-     *            the practiceAlignmentTestGenerator to set
-     */
-    public AlignmentTestGenerator setPracticeAlignmentTestGenerator(
-            AlignmentTestGenerator practiceAlignmentTestGenerator) {
-        this.practiceAlignmentTestGenerator = practiceAlignmentTestGenerator;
         return practiceAlignmentTestGenerator;
     }
 }

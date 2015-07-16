@@ -31,7 +31,6 @@ import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
-import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
 
 /**
@@ -48,6 +47,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Feb 11, 2015 4098       bsteffen    Maintain jitter buffer during broadcast.
  * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
  * Apr 24, 2015 4394       bkowal      Updated to support {@link IBroadcastBufferListener}.
+ * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
+ * Jul 15, 2015 4636       bkowal      No longer alter audio packet-by-packet.
  * </pre>
  * 
  * @author bkowal
@@ -56,7 +58,11 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
 
 public class BroadcastTransmitThread extends AbstractTransmitThread {
 
-    private final double dbTarget;
+    protected final double dbTarget;
+
+    protected final double sameDbTarget;
+
+    protected final double alertDbTarget;
 
     protected LinkedBlockingQueue<byte[]> audioBuffer = new LinkedBlockingQueue<>();
 
@@ -76,9 +82,12 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
      */
     public BroadcastTransmitThread(String name, EventBus eventBus,
             InetAddress address, int port, Collection<Integer> transmitters,
-            final double dbTarget, boolean hasSync) throws SocketException {
+            final double dbTarget, final double sameDbTarget,
+            final double alertDbTarget, boolean hasSync) throws SocketException {
         super(name, eventBus, address, port, transmitters, hasSync);
         this.dbTarget = dbTarget;
+        this.sameDbTarget = sameDbTarget;
+        this.alertDbTarget = alertDbTarget;
     }
 
     @Override
@@ -123,12 +132,8 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
     protected void streamAudio(byte[] data) throws AudioOverflowException,
             UnsupportedAudioFormatException, AudioConversionException,
             InterruptedException {
-        /*
-         * Adjust the audio based on the decibel target.
-         */
-        byte[] regulatedAudio = this.adjustAudio(data);
 
-        RtpPacketIn rtpPacket = buildRtpPacket(previousPacket, regulatedAudio);
+        RtpPacketIn rtpPacket = buildRtpPacket(previousPacket, data);
 
         sendPacket(rtpPacket);
         if (this.listener != null) {
@@ -150,18 +155,6 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
                 logger.warn("Application has re-gained sync with the DAC. Unable to restart audio stream!");
             }
         }
-    }
-
-    private byte[] adjustAudio(final byte[] sourceAudio)
-            throws AudioOverflowException, UnsupportedAudioFormatException,
-            AudioConversionException {
-        byte[] regulatedAudio = new byte[0];
-
-        AudioRegulator audioRegulator = new AudioRegulator();
-        regulatedAudio = audioRegulator.regulateAudioVolume(sourceAudio,
-                this.dbTarget, sourceAudio.length);
-
-        return regulatedAudio;
     }
 
     /**

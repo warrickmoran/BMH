@@ -17,12 +17,11 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.bmh;
+package com.raytheon.uf.common.bmh.audio;
 
 import java.nio.file.Path;
 
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * Utility to generate and check for the default "Imported By ..." message for
@@ -35,7 +34,8 @@ import com.raytheon.uf.viz.core.VizApp;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 16, 2015 4118       bkowal      Initial creation
- * 
+ * Jun 12, 2015 4482       rjpeter     Fix NPE.
+ * Jun 18, 2015 4490       bkowal      Relocated to common.
  * </pre>
  * 
  * @author bkowal
@@ -65,9 +65,9 @@ public class ImportedByUtils {
      *            the {@link Path} of the file that was imported.
      * @return the imported by message that is constructed.
      */
-    public static String getMessage(final Path importedFilePath) {
+    public static String getMessage(final Path importedFilePath, String username) {
         StringBuilder sb = new StringBuilder(IMPORTED_BY_PREFIX);
-        sb.append(VizApp.getWsId().getUserName());
+        sb.append(username);
         sb.append(FROM_FILE);
         sb.append(importedFilePath.toString());
         sb.append(MSG_ON);
@@ -85,6 +85,6 @@ public class ImportedByUtils {
      * @return true, if the message is an imported by message; false, otherwise.
      */
     public static boolean isMessage(final String msg) {
-        return msg.trim().startsWith(IMPORTED_BY_PREFIX);
+        return msg != null && msg.trim().startsWith(IMPORTED_BY_PREFIX);
     }
 }

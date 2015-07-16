@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacMaintenanceConfig;
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Apr 09, 2015 4364       bkowal      Defined the {@link #MAINT_EXEC_TIMEOUT} argument.
  * Apr 24, 2015 4394       bkowal      Updated argument descriptions based on new usage.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * 
  * </pre>
  * 
@@ -60,6 +61,13 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
     public static final char MAINT_AUDIO_LENGTH_KEY = 'l';
 
     public static final char MAINT_EXEC_TIMEOUT = 'o';
+
+    /*
+     * This decibel target, when specified, will be applied to the 2400 Hz
+     * portion of the transfer tone audio.
+     */
+    public static final String MAINT_TRANSFER_DB_TARGET = TRANSMISSION_DB_TARGET_KEY
+            + "t";
 
     public DacMaintenanceArgParser() {
         super(true);
@@ -94,10 +102,18 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
                 .create(MAINT_EXEC_TIMEOUT);
         executionTimeout.setRequired(true);
 
+        Option transferDbTarget = OptionBuilder
+                .withDescription(
+                        "Decibel target applied to the 2400 Hz portion of a transfer tone.")
+                .hasArg().withArgName("transfer db range")
+                .withType(Double.class).create(MAINT_TRANSFER_DB_TARGET);
+        transferDbTarget.setRequired(false);
+
         List<Option> options = new ArrayList<>();
         options.add(inputAudio);
         options.add(audioDuration);
         options.add(executionTimeout);
+        options.add(transferDbTarget);
 
         return options;
     }
@@ -118,7 +134,13 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
         Integer timeout = Integer.parseInt(cmd
                 .getOptionValue(MAINT_EXEC_TIMEOUT));
 
+        Double transferDb = null;
+        if (cmd.hasOption(MAINT_TRANSFER_DB_TARGET)) {
+            transferDb = Double.parseDouble(cmd
+                    .getOptionValue(MAINT_TRANSFER_DB_TARGET));
+        }
+
         return new DacMaintenanceConfig(commonConfig, messageFilePath,
-                duration, timeout);
+                duration, timeout, transferDb);
     }
 }

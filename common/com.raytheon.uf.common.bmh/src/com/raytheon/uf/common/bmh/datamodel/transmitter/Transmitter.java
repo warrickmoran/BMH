@@ -61,6 +61,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Apr 02, 2015  4248     rjpeter     Implement PositionOrdered.
  * Apr 14, 2015  4390     rferrel     Removed constraint on position to allow reordering using PositionOrdered.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Jun 19, 2015  4490     bkowal      Added {@link #MNEMONIC_LENGTH}.
  * </pre>
  * 
  * @author rjpeter
@@ -83,12 +84,14 @@ public class Transmitter implements PositionOrdered {
         PRIMARY, SECONDARY
     }
 
+    public static final int MNEMONIC_LENGTH = 5;
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
     @DiffTitle(position = 2)
     protected int id;
 
-    @Column(length = 5, nullable = false)
+    @Column(length = MNEMONIC_LENGTH, nullable = false)
     @DiffTitle(position = 1)
     private String mnemonic;
 

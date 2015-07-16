@@ -1,36 +1,19 @@
 <configuration debug="false" scan="true">
+   <include file="${edex.home}/conf/logback-edex-properties.xml"/>
+   <include file="${edex.home}/conf/logback-edex-appenders.xml" />
+
+   <include file="${edex.home}/conf/logback-edex-loggers.xml" />
+   <include file="${edex.home}/conf/logback-edex-hibernate-logger.xml" />
+
 	<!-- EDEX needs to use both the operational -->
 	<property name="messaging.base" value="edex" />
 	<include file="${BMH_HOME}/conf/logback-bmh-messages.xml" />
+
 	<!-- and the practice message logs -->
 	<property name="messaging.base" value="edex-practice" />
 	<property name="logger.prefix" value="PracticeMessage" />
 	<include file="${BMH_HOME}/conf/logback-bmh-messages.xml" />
 
-	<!-- general application log -->
-	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
-		<param name="Threshold" value="INFO" />
-		<encoder>
-			<pattern>%-5p %d [%t] %c{0}: %m%n</pattern>
-		</encoder>
-	</appender>
-
-	<!-- <appender name="asyncConsole" class="ch.qos.logback.classic.AsyncAppender"> 
-		<appender-ref ref="console" /> </appender> -->
-
-	<!-- hibernate log -->
-	<appender name="HibernateLog"
-		class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-			<fileNamePattern>${edex.home}/logs/edex-${edex.run.mode}-hibernate-%d{yyyyMMdd}.log
-			</fileNamePattern>
-			<maxHistory>30</maxHistory>
-		</rollingPolicy>
-
-		<encoder>
-			<pattern>%-5p %d [%t] %c{0}: %m%n %nopex</pattern>
-		</encoder>
-	</appender>
 
 	<!-- BMH User Change log -->
 	<appender name="BmhUserChangeLogger"
@@ -70,13 +53,9 @@
 		<appender-ref ref="PracticeBmhUserChangeLogger" />
 	</logger>
 
-	<logger name="com.raytheon">
-		<level value="INFO" />
-	</logger>
-
 	<!-- default logging -->
 	<root>
 		<level value="INFO" />
-		<appender-ref ref="console" />
+		<appender-ref ref="asyncConsole" />
 	</root>
 </configuration>

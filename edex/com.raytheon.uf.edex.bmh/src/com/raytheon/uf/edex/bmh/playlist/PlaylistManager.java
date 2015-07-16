@@ -23,8 +23,11 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.Charset;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -41,7 +44,6 @@ import java.util.SortedSet;
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
 
-import org.apache.commons.io.FileUtils;
 import org.springframework.util.CollectionUtils;
 
 import com.raytheon.edex.site.SiteUtil;
@@ -192,6 +194,11 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * May 21, 2015  4429     rjpeter     Added additional logging methods.
  * May 28, 2015  4429     rjpeter     Add ITraceable.
  * Jun 01, 2015  4490     bkowal      Use the new {@link BMH_CATEGORY#SAME_AREA_TRUNCATION}.
+ * Jun 08, 2015  4490     bkowal      Walk the file tree that will be deleted to handle the case
+ *                                    when the dac transmit deletes files before we can reach them.
+ * Jun 18, 2015  4490     bkowal      Refresh all potential playlists when a message is
+ *                                    deactivated.
+ * Jun 23, 2015  4490     bkowal      Cluster lock playlist directory deletions.
  * </pre>
  * 
  * @author bsteffen
@@ -287,17 +294,49 @@ public class PlaylistManager implements IContextStateProcessor {
                                             + ". Skipping playlist purge.");
                     continue;
                 }
-                Path groupPlaylistPath = playlistDir.resolve(identifier
-                        .getName());
-                if (Files.exists(groupPlaylistPath) == false) {
-                    statusHandler
-                            .info("No playlist file(s) exist for recently deleted Transmitter Group: "
-                                    + identifier.toString() + ".");
-                    continue;
-                }
-
+                ClusterTask ct = null;
+                Path groupPlaylistPath = null;
+                do {
+                    ct = locker.lock("playlist", identifier.getName(), 30000,
+                            true);
+                } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
                 try {
-                    FileUtils.deleteDirectory(groupPlaylistPath.toFile());
+                    /*
+                     * Only verify the files existence after we receive the
+                     * lock.
+                     */
+                    groupPlaylistPath = playlistDir.resolve(identifier
+                            .getName());
+                    if (Files.exists(groupPlaylistPath) == false) {
+                        statusHandler
+                                .info("No playlist file(s) exist for recently deleted Transmitter Group: "
+                                        + identifier.toString() + ".");
+                        continue;
+                    }
+
+                    Files.walkFileTree(groupPlaylistPath,
+                            new SimpleFileVisitor<Path>() {
+                                @Override
+                                public FileVisitResult visitFile(Path file,
+                                        BasicFileAttributes attrs)
+                                        throws IOException {
+                                    Files.deleteIfExists(file);
+                                    return FileVisitResult.CONTINUE;
+                                }
+
+                                @Override
+                                public FileVisitResult postVisitDirectory(
+                                        Path dir, IOException e)
+                                        throws IOException {
+                                    if (e == null) {
+                                        Files.deleteIfExists(dir);
+                                        return FileVisitResult.CONTINUE;
+                                    } else {
+                                        // directory iteration failed
+                                        throw e;
+                                    }
+                                }
+                            });
 
                     StringBuilder sb = new StringBuilder(
                             "Successfully removed the playlist file(s): ");
@@ -313,6 +352,9 @@ public class PlaylistManager implements IContextStateProcessor {
                     sb.append(identifier.toString()).append(".");
                     statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                             sb.toString(), e);
+                } finally {
+                    locker.deleteLock(ct.getId().getName(), ct.getId()
+                            .getDetails());
                 }
             } else {
                 refreshTransmitterGroup(group, null, null, null, notification);
@@ -375,8 +417,10 @@ public class PlaylistManager implements IContextStateProcessor {
                                 + group.getName() + "]");
                 continue;
             }
-            if (Boolean.TRUE.equals(message.getInputMessage().getActive())
-                    && message.getForcedExpiration() == false) {
+            final boolean activeMessage = Boolean.TRUE.equals(message
+                    .getInputMessage().getActive())
+                    && (message.getForcedExpiration() == false);
+            if (activeMessage) {
                 this.messageLogger.logActivationActivity(null, message);
             }
             for (ProgramSuite programSuite : program.getProgramSuites()) {
@@ -384,7 +428,16 @@ public class PlaylistManager implements IContextStateProcessor {
                         message.getAfosid())) {
                     refreshPlaylist(group, programSuite, false, event,
                             traceable);
-                    break;
+                    if (activeMessage) {
+                        /*
+                         * if the message has been deactivated, we want to
+                         * ensure that every playlist the message belongs to is
+                         * updated because the change will not necessarily
+                         * trigger a switch to a playlist that contains the
+                         * message.
+                         */
+                        break;
+                    }
                 }
             }
         }

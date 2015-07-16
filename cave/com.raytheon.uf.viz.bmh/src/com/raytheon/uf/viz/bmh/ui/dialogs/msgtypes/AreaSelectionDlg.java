@@ -84,7 +84,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     edge of the dialog when loaded with a large number of items.
  * Feb 25, 2015   4122     rferrel     Message type constructor now take data to populate table.
  * Apr 20, 2015   4420     rferrell    Allow Read Only display of the dialog.
- * 
+ * Jun 12, 2015   4482     rjpeter     Added DO_NOT_BLOCK.
  * </pre>
  * 
  * @author mpduff
@@ -207,7 +207,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     public AreaSelectionDlg(Shell parentShell, MessageType messageType,
             AreaSelectionSaveData data, boolean readOnly) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         if (messageType == null) {
             throw new IllegalArgumentException(
                     "Required argument messageType can not be NULL.");
@@ -246,7 +246,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     public AreaSelectionDlg(Shell parentShell, AreaSelectionSaveData data,
             boolean readOnly) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         if (data == null) {
             throw new IllegalArgumentException(
                     "Required argument data can not be NULL.");

@@ -150,6 +150,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * May 13, 2015 4429       rferrel     Implement traceId.
  * May 21, 2015 4429       rjpeter     Added additional logging.
  * May 26, 2015 4481       bkowal      {@link TimeTextFragment} is now in common.
+ * Jun 08, 2015 4403       bkowal      Updated to make dictionary substitution reusable.
  * </pre>
  * 
  * @author bkowal
@@ -799,7 +800,7 @@ public class MessageTransformer implements IContextStateProcessor {
         return true;
     }
 
-    private String formatText(String content) {
+    public String formatText(String content) {
         /*
          * Replace multiple new line characters with a single new line
          * character.
@@ -822,7 +823,7 @@ public class MessageTransformer implements IContextStateProcessor {
      * @return the merged list of {@link ITextTransformation} rules.
      * @throws SSMLConversionException
      */
-    private List<ITextTransformation> mergeDictionaries(Language language,
+    public List<ITextTransformation> mergeDictionaries(Language language,
             final Dictionary transmitterDictionary,
             final Dictionary voiceDictionary) throws SSMLConversionException,
             TransformationException {
@@ -978,7 +979,7 @@ public class MessageTransformer implements IContextStateProcessor {
         return transformationCandidates;
     }
 
-    private SSMLDocument applyTransformations(final String content,
+    public SSMLDocument applyTransformations(final String content,
             final String speechRate, final Language language,
             List<ITextTransformation> textTransformations)
             throws SSMLConversionException {

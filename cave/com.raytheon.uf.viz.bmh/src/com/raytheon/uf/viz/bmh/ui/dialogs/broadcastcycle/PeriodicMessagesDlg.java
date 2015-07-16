@@ -57,7 +57,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Oct 10, 2014    3646    rferrel     Convert tableComp to GenericTable.
  * Dec 13, 2014    3843    mpduff      Implement periodic messages.
  * Jan 13, 2015    3843    bsteffen    Use playlist data to populate table correctly.
- * 
+ * Jun 12, 2015    4482    rjpeter     Added DO_NOT_BLOCK.
  * </pre>
  * 
  * @author mpduff
@@ -86,7 +86,8 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
     public PeriodicMessagesDlg(Shell parent,
             BroadcastCycleDataManager dataManager, PlaylistData playlistData,
             String selectedTransmitterGrp) {
-        super(parent, CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(parent, CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT
+                | CAVE.DO_NOT_BLOCK);
         setText("Periodic Messages");
         this.dataManager = dataManager;
         this.playlistData = playlistData;
@@ -180,8 +181,7 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
                 return;
             }
             TableRowData selection = selectionList.get(0);
-            BroadcastMsg broadcastMsg = (BroadcastMsg) selection
-                    .getData();
+            BroadcastMsg broadcastMsg = (BroadcastMsg) selection.getData();
             String afosId = broadcastMsg.getInputMessage().getAfosid();
             MessageType messageType = dataManager.getMessageType(afosId);
             long key = broadcastMsg.getId();

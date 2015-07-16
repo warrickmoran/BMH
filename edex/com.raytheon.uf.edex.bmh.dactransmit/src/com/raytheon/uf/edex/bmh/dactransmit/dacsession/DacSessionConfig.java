@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  * Nov 7, 2014   #3630     bkowal       Refactor for maintenance mode.
  * Apr 29, 2015  #4394     bkowal       The manager port is now required for all
  *                                      dac modes.
+ * Jul 08, 2015  #4636     bkowal       Support same and alert decibel levels.
  * </pre>
  * 
  * @author dgilling
@@ -58,11 +59,17 @@ public final class DacSessionConfig extends AbstractDacConfig {
 
     private final TimeZone timezone;
 
+    private final double sameDbTarget;
+
+    private final double alertDbTarget;
+
     public DacSessionConfig(DacCommonConfig commonConfig, Path inputDirectory,
-            TimeZone timezone) {
+            TimeZone timezone, double sameDbTarget, double alertDbTarget) {
         super(DAC_MODE.OPERATIONAL, commonConfig);
         this.inputDirectory = inputDirectory;
         this.timezone = timezone;
+        this.sameDbTarget = sameDbTarget;
+        this.alertDbTarget = alertDbTarget;
     }
 
     /*
@@ -89,6 +96,20 @@ public final class DacSessionConfig extends AbstractDacConfig {
 
     public TimeZone getTimezone() {
         return timezone;
+    }
+
+    /**
+     * @return the sameDbTarget
+     */
+    public double getSameDbTarget() {
+        return sameDbTarget;
+    }
+
+    /**
+     * @return the alertDbTarget
+     */
+    public double getAlertDbTarget() {
+        return alertDbTarget;
     }
 
     @Override

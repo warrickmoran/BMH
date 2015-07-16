@@ -25,22 +25,31 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * Stat event used to track suite change processing time.
  * 
  * <pre>
- *
+ * 
  * SOFTWARE HISTORY
- *
+ * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 20, 2015 4397       bkowal      Initial creation
- *
+ * Jun 24, 2015 4397       bkowal      Added an empty constructor.
+ * 
  * </pre>
- *
+ * 
  * @author bkowal
- * @version 1.0	
+ * @version 1.0
  */
 @DynamicSerialize
 public class SuiteChangeProcessingEvent extends AbstractBMHProcessingTimeEvent {
 
     private static final long serialVersionUID = -415299845757146279L;
+
+    /**
+     * Constructor.
+     * 
+     * Empty constructor for {@link DynamicSerialize}.
+     */
+    public SuiteChangeProcessingEvent() {
+    }
 
     /**
      * @param requestTime

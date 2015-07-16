@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -89,6 +88,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     the associated Transmitter Language.
  * Apr 28, 2015 4248       bkowal      Provide the {@link Language} to the
  *                                     {@link CreateEditStaticMsgTypeDialog}.
+ * Jun 12, 2015 4482       rjpeter     Added DO_NOT_BLOCK.
+ * Jun 18, 2015 4490       bkowal      Ensure multiple static message types with the same
+ *                                     afos ids are not created when creating a new transmitter.
  * </pre>
  * 
  * @author bkowal
@@ -178,13 +180,13 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
 
     private Button deleteMsgTypeButton;
 
-    private List<StaticMessageType> newStaticMessageTypes;
+    private Map<MessageTypeSummary, StaticMessageType> newStaticMessageTypes;
 
     public CreateEditTransmitterLangDialog(Shell parentShell,
             List<Language> unassignedLanguages,
             TransmitterGroup transmitterGroup, ProgramSummary selectedProgram) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.unassignedLanguages = unassignedLanguages;
         this.transmitterGroup = transmitterGroup;
         this.selectedProgram = selectedProgram;
@@ -197,7 +199,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             TransmitterLanguage transmitterLanguage,
             TransmitterGroup transmitterGroup, ProgramSummary selectedProgram) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
-                CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.transmitterLanguage = transmitterLanguage;
         this.unassignedLanguages = Collections.emptyList();
         this.transmitterGroup = transmitterGroup;
@@ -475,7 +477,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             return this.transmitterLanguage.getOrderedStaticMessageTypes();
         } else {
             if (this.newStaticMessageTypes != null) {
-                return this.newStaticMessageTypes;
+                return new ArrayList<>(this.newStaticMessageTypes.values());
             }
         }
 
@@ -522,10 +524,14 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
              * saved when the transmitter language is saved.
              */
             if (this.newStaticMessageTypes == null) {
-                this.newStaticMessageTypes = new ArrayList<>();
+                this.newStaticMessageTypes = new HashMap<>();
             }
-            this.newStaticMessageTypes.add(staticMsgType);
-            this.addStaticMsgTypeToTable(staticMsgType);
+            if (this.newStaticMessageTypes.containsKey(staticMsgType
+                    .getMsgTypeSummary()) == false) {
+                this.addStaticMsgTypeToTable(staticMsgType);
+            }
+            this.newStaticMessageTypes.put(staticMsgType.getMsgTypeSummary(),
+                    staticMsgType);
         } else {
             boolean update = true;
             /*
@@ -611,19 +617,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
              * the transmitter language has not been created yet - just need to
              * remove references to the static message type in the dialog.
              */
-            Iterator<StaticMessageType> staticMsgIterator = this.newStaticMessageTypes
-                    .iterator();
-            while (staticMsgIterator.hasNext()) {
-                if (staticMsgIterator
-                        .next()
-                        .getMsgTypeSummary()
-                        .getAfosid()
-                        .equals(staticMessageType.getMsgTypeSummary()
-                                .getAfosid())) {
-                    staticMsgIterator.remove();
-                    break;
-                }
-            }
+            this.newStaticMessageTypes.remove(staticMessageType
+                    .getMsgTypeSummary());
         } else {
             this.transmitterLanguage.removeStaticMessageType(staticMessageType);
         }
@@ -879,7 +874,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
                  * be scheduled because no program has been selected yet.
                  */
                 sb.append("No program has been selected. Unable to determine if the following static message types will be successfully scheduled:");
-                for (StaticMessageType staticMsgType : this.newStaticMessageTypes) {
+                for (StaticMessageType staticMsgType : this.newStaticMessageTypes
+                        .values()) {
                     sb.append("\n").append(
                             staticMsgType.getMsgTypeSummary().getAfosid());
                 }
@@ -893,7 +889,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
                 try {
                     List<String> staticAfosIds = this.pdm
                             .getStaticAfosIdsForProgram(this.selectedProgram);
-                    for (StaticMessageType smt : this.newStaticMessageTypes) {
+                    for (StaticMessageType smt : this.newStaticMessageTypes
+                            .values()) {
                         if (staticAfosIds.contains(smt.getMsgTypeSummary()
                                 .getAfosid()) == false) {
                             unrecognizedMsgTypes.add(smt.getMsgTypeSummary()
@@ -951,7 +948,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             this.transmitterLanguage.setId(pk);
             if (this.newStaticMessageTypes != null) {
                 this.transmitterLanguage
-                        .setOrderedStaticMessageTypes(this.newStaticMessageTypes);
+                        .setOrderedStaticMessageTypes(new ArrayList<>(
+                                this.newStaticMessageTypes.values()));
             }
         }
 

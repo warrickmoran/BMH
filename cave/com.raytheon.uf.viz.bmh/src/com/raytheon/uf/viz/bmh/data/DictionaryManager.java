@@ -35,7 +35,6 @@ import com.raytheon.uf.common.bmh.request.WordRequest;
 import com.raytheon.uf.common.bmh.request.WordRequest.WordAction;
 import com.raytheon.uf.common.bmh.request.WordResponse;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
-import com.raytheon.uf.viz.bmh.voice.NeoSpeechPhonemeMapping;
 import com.raytheon.uf.viz.core.exception.VizException;
 
 /**
@@ -58,6 +57,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Jan 05, 2015    3618    bkowal      Specify the {@link Dictionary} for deletion.
  * Jan 07, 2015    3931    bkowal      Added {@link #verifyNameUniqueness(String)}.
  * Jan 28, 2015    4045    bkowal      Use a {@link NeoSpeechPhonemeMapping} instance.
+ * Jun 11, 2015    4552    bkowal      Removed the English-specific phonemeMapping instance.
  * </pre>
  * 
  * @author mpduff
@@ -70,12 +70,6 @@ public class DictionaryManager {
     public enum Gender {
         MALE, FEMALE
     }
-
-    /**
-     * The voice object
-     */
-    private final NeoSpeechPhonemeMapping phonemeMapping = NeoSpeechPhonemeMapping
-            .getInstance();
 
     /**
      * Get all the available dictionaries.
@@ -145,15 +139,6 @@ public class DictionaryManager {
         }
 
         return response.getDictionaries();
-    }
-
-    /**
-     * Get the voice object
-     * 
-     * @return The voice object
-     */
-    public NeoSpeechPhonemeMapping getPhonemeMapping() {
-        return phonemeMapping;
     }
 
     /**

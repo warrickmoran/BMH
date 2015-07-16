@@ -57,6 +57,7 @@ import com.raytheon.uf.common.bmh.tones.data.Tone;
  *                                     padding to all generated tones. 
  *                                     Use {@link FskTonesEncoder}.
  * Apr 24, 2015 4394       bkowal      Renamed TRANSFER_TYPE to {@link TransferType}.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * 
  * </pre>
  * 
@@ -85,7 +86,7 @@ public class TonesManager {
 
     private static final double TRANSFER_TONE_AMPLITUDE = 24000.0;
 
-    private static final double TRANSFER_TONE_DURATION = 5.0;
+    public static final double TRANSFER_TONE_DURATION = 5.0;
 
     public static enum TransferType {
         PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY;

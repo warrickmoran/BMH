@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.dac.tones;
 
 import java.nio.ByteBuffer;
 
+import com.raytheon.uf.common.bmh.tones.GeneratedTonesBuffer;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.bmh.tones.TonesManager;
 
@@ -42,6 +43,8 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  *                                      Add padding to the end of the preamble + SAME
  *                                      tones.
  * May 05, 2015  #4464     bkowal       SAME Tone Padding is now configurable via a system property.
+ * Jul 07, 2015  #4464     bkowal       Default SAME padding is now 0.
+ * Jul 08, 2015  #4636     bkowal       Updated to use {@link GeneratedTonesBuffer}.
  * 
  * </pre>
  * 
@@ -58,7 +61,7 @@ public final class TonesGenerator {
      * transitional to operational builds.
      */
     private static final int SAME_PADDING = Integer.getInteger(
-            "samePaddingOverride", 4);
+            "samePaddingOverride", 0);
 
     private static StaticTones defaultTonesInstance;
 
@@ -87,7 +90,7 @@ public final class TonesGenerator {
      *             If an error occurred encoding the SAME tone header string or
      *             generating any of the necessary static tones.
      */
-    public static ByteBuffer getSAMEAlertTones(String sameHeader,
+    public static GeneratedTonesBuffer getSAMEAlertTones(String sameHeader,
             boolean includeAlertTone, boolean includeSilence)
             throws ToneGenerationException {
         StaticTones staticTones = getStaticTones();
@@ -99,23 +102,24 @@ public final class TonesGenerator {
 
         int bufferSize = (3 * (preambleHeader.length))
                 + (2 * betweenPause.length) + beforeMessagePause.length;
-        if (includeAlertTone) {
-            bufferSize += (staticTones.getAlertTone().length + staticTones
-                    .getBeforeAlertTonePause().length);
-        }
 
         ByteBuffer retVal = ByteBuffer.allocate(bufferSize);
         retVal.put(preambleHeader).put(betweenPause);
         retVal.put(preambleHeader).put(betweenPause);
         retVal.put(preambleHeader);
+
+        GeneratedTonesBuffer buffer = new GeneratedTonesBuffer();
+        buffer.setSameTones(retVal.array());
+
         if (includeAlertTone) {
-            retVal.put(defaultTonesInstance.getBeforeAlertTonePause());
-            retVal.put(defaultTonesInstance.getAlertTone());
+            buffer.setBeforeAlertTonePause(defaultTonesInstance
+                    .getBeforeAlertTonePause());
+            buffer.setAlertTones(defaultTonesInstance.getAlertTone());
         }
         if (includeSilence) {
-            retVal.put(beforeMessagePause);
+            buffer.setBeforeMessagePause(beforeMessagePause);
         }
-        return retVal;
+        return buffer;
     }
 
     /**
@@ -125,16 +129,15 @@ public final class TonesGenerator {
      * @throws ToneGenerationException
      *             If there was an error generating the static alert tone.
      */
-    public static ByteBuffer getOnlyAlertTones() throws ToneGenerationException {
+    public static GeneratedTonesBuffer getOnlyAlertTones()
+            throws ToneGenerationException {
         StaticTones staticTones = getStaticTones();
 
-        byte[] beforeMessagePause = staticTones.getBeforeMessagePause();
-        byte[] alertTones = staticTones.getAlertTone();
+        GeneratedTonesBuffer buffer = new GeneratedTonesBuffer();
+        buffer.setBeforeMessagePause(staticTones.getBeforeMessagePause());
+        buffer.setAlertTones(staticTones.getAlertTone());
 
-        ByteBuffer tones = ByteBuffer.allocate(alertTones.length
-                + beforeMessagePause.length);
-        tones.put(alertTones).put(beforeMessagePause);
-        return tones;
+        return buffer;
     }
 
     /**

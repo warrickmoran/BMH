@@ -21,8 +21,8 @@ import bmh.test.suite.scenario.parsing.InvalidMsgTone as InvalidMsgTone
 import bmh.test.suite.scenario.parsing.InvalidMsgAreaCodes as InvalidMsgAreaCodes
 import bmh.test.suite.scenario.parsing.InvalidMsgExpireDate as InvalidMsgExpireDate
 import bmh.test.suite.scenario.parsing.InvalidMsgNoEnd as InvalidMsgNoEnd
-import bmh.test.suite.scenario.parsing.InvalidMsgIncompleteVertices as InvalidMsgIncompleteVertices
-import bmh.test.suite.scenario.parsing.InvalidMsgGt20Vertices as InvalidMsgGt20Vertices
+import bmh.test.suite.scenario.parsing.ValidMsgIncompleteVertices as ValidMsgIncompleteVertices
+import bmh.test.suite.scenario.parsing.ValidMsgGt20Vertices as ValidMsgGt20Vertices
 import bmh.test.suite.scenario.parsing.ValidMsgIncludesPolygon as ValidMsgIncludesPolygon
 import bmh.test.suite.scenario.parsing.WarningAlreadyExpiredScenario as WarningAlreadyExpiredScenario
 import bmh.test.suite.scenario.parsing.ValidMsgIncludesMrd as ValidMsgIncludesMrd
@@ -105,8 +105,8 @@ class TestRunner(object):
         self._bmhScenarios.append(InvalidMsgAreaCodes.InvalidMsgAreaCodes())
         self._bmhScenarios.append(InvalidMsgExpireDate.InvalidMsgExpireDate())
         self._bmhScenarios.append(InvalidMsgNoEnd.InvalidMsgNoEnd())
-        self._bmhScenarios.append(InvalidMsgIncompleteVertices.InvalidMsgIncompleteVertices())
-        self._bmhScenarios.append(InvalidMsgGt20Vertices.InvalidMsgGt20Vertices())
+        self._bmhScenarios.append(ValidMsgIncompleteVertices.ValidMsgIncompleteVertices())
+        self._bmhScenarios.append(ValidMsgGt20Vertices.ValidMsgGt20Vertices())
         self._bmhScenarios.append(ValidMsgIncludesPolygon.ValidMsgIncludesPolygon())
         self._bmhScenarios.append(WarningAlreadyExpiredScenario.WarningAlreadyExpiredScenario())
         self._bmhScenarios.append(ValidMsgIncludesMrd.ValidMsgIncludesMrd())

@@ -49,6 +49,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  * Feb 27, 2915  #3962     rferrel      Add status images for transmitters.
  * Mar 11, 2015  #4186     bsteffen     Show alarm disabled image even if there is silence.
  * Apr 01, 2015  #4219     bsteffen     Display N/A for transmitters within a group that are not assigned a port.
+ * Jun 19, 2015  #4490     bkowal       No longer limit the width of the standalone {@link Transmitter}
+ *                                      mnemonic label.
  * 
  * </pre>
  * 
@@ -182,42 +184,39 @@ public class TransmitterGroupStatusComp extends Composite {
      */
     private void createTransmitterForGroupControls(Composite xmitComp,
             TransmitterInfo ti) {
-            GridData gd = new GridData();
-            gd.widthHint = 20;
-            Label txStatusImgLbl = new Label(xmitComp, SWT.NONE);
-            txStatusImgLbl.setLayoutData(gd);
-            if (ti.getTxStatus() == TxStatus.DECOMM) {
-                txStatusImgLbl.setImage(statusImages
-                        .getStatusImage(StatusImage.Decommissioned));
-            } else if (ti.getTxStatus() == TxStatus.MAINT) {
-                txStatusImgLbl.setImage(statusImages
-                        .getStatusImage(StatusImage.Maintenance));
-            }
+        GridData gd = new GridData();
+        gd.widthHint = 20;
+        Label txStatusImgLbl = new Label(xmitComp, SWT.NONE);
+        txStatusImgLbl.setLayoutData(gd);
+        if (ti.getTxStatus() == TxStatus.DECOMM) {
+            txStatusImgLbl.setImage(statusImages
+                    .getStatusImage(StatusImage.Decommissioned));
+        } else if (ti.getTxStatus() == TxStatus.MAINT) {
+            txStatusImgLbl.setImage(statusImages
+                    .getStatusImage(StatusImage.Maintenance));
+        }
 
-            gd = new GridData();
-            gd.widthHint = 20;
-            Label transmitterImgLbl = new Label(xmitComp, SWT.NONE);
-            transmitterImgLbl.setLayoutData(gd);
+        gd = new GridData();
+        gd.widthHint = 20;
+        Label transmitterImgLbl = new Label(xmitComp, SWT.NONE);
+        transmitterImgLbl.setLayoutData(gd);
 
-            if (ti.getTxStatus() == TxStatus.ENABLED) {
-                transmitterImgLbl.setImage(statusImages
-                        .getStatusImage(StatusImage.Transmitter));
-            } else {
-                transmitterImgLbl.setImage(statusImages
-                        .getStatusImage(StatusImage.TransmitterDisabled));
-            }
-            createTransmitterToolTip(transmitterImgLbl, ti, false);
+        if (ti.getTxStatus() == TxStatus.ENABLED) {
+            transmitterImgLbl.setImage(statusImages
+                    .getStatusImage(StatusImage.Transmitter));
+        } else {
+            transmitterImgLbl.setImage(statusImages
+                    .getStatusImage(StatusImage.TransmitterDisabled));
+        }
+        createTransmitterToolTip(transmitterImgLbl, ti, false);
 
-            // gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
-            Label transmitterDescLbl = new Label(xmitComp, SWT.NONE);
-            // transmitterDescLbl.setLayoutData(gd);
-            transmitterDescLbl.setText(ti.getMnemonic());
+        Label transmitterDescLbl = new Label(xmitComp, SWT.NONE);
+        transmitterDescLbl.setText(ti.getMnemonic());
 
-            gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
-            Label transmitterPortLbl = new Label(xmitComp, SWT.NONE);
-            transmitterPortLbl.setLayoutData(gd);
-            transmitterPortLbl.setText(" - Port: "
-                    + checkForNull(ti.getDacPort()));
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
+        Label transmitterPortLbl = new Label(xmitComp, SWT.NONE);
+        transmitterPortLbl.setLayoutData(gd);
+        transmitterPortLbl.setText(" - Port: " + checkForNull(ti.getDacPort()));
     }
 
     /**
@@ -286,10 +285,7 @@ public class TransmitterGroupStatusComp extends Composite {
         createTransmitterToolTip(transmitterImgLbl, transmitterInfo,
                 transmitterGrpInfo.isDisabledSilenceAlarm());
 
-        gd = new GridData();
-        gd.widthHint = 30;
         Label transmitterDescLbl = new Label(xmitComp, SWT.NONE);
-        transmitterDescLbl.setLayoutData(gd);
         transmitterDescLbl.setText(transmitterInfo.getMnemonic());
 
         gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
