@@ -20,6 +20,8 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import java.text.DecimalFormat;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -45,6 +47,7 @@ import org.eclipse.swt.widgets.Scale;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2015 4636       bkowal      Initial creation
+ * Jul 17, 2015 4636       bkowal      Added {@link #enable()} and {@link #disable()}.
  * 
  * </pre>
  * 
@@ -54,13 +57,11 @@ import org.eclipse.swt.widgets.Scale;
 
 public class TransmitterVolumeComp {
 
-    private final DecimalFormat displayFormat = new DecimalFormat("#.#");
+    private static final DecimalFormat displayFormat = new DecimalFormat("#.#");
 
-    private final double INTERVAL_DB = 0.1;
+    private static final double MIN_VOLUME_DB = -20.0;
 
-    private final double MIN_VOLUME_DB = -20.0;
-
-    private final int MAX_SCALED = 200;
+    private static final int MAX_SCALED = 200;
 
     private final Composite parent;
 
@@ -147,14 +148,28 @@ public class TransmitterVolumeComp {
         });
     }
 
+    public void disable() {
+        this.setCurrentDecibelVolume(MIN_VOLUME_DB);
+        this.volumeScale.setEnabled(false);
+        this.incrementButton.setEnabled(false);
+        this.decrementButton.setEnabled(false);
+    }
+
+    public void enable() {
+        this.volumeScale.setEnabled(true);
+        this.incrementButton.setEnabled(true);
+        this.decrementButton.setEnabled(true);
+    }
+
     private void updateVolumeLevel(int newLevel) {
         this.volumeScale.setSelection(newLevel);
         this.syncWithVolumeLevel();
     }
 
     private void syncWithVolumeLevel() {
-        this.decrementButton.setEnabled(this.setVolume > 0);
-        this.incrementButton.setEnabled(this.setVolume < MAX_SCALED);
+        this.decrementButton.setEnabled(this.volumeScale.getSelection() > 0);
+        this.incrementButton
+                .setEnabled(this.volumeScale.getSelection() < MAX_SCALED);
         this.currentValueLabel.setText(this.getScaledDisplay());
         if (this.listener != null) {
             this.listener.volumeChanged();
@@ -162,16 +177,18 @@ public class TransmitterVolumeComp {
     }
 
     public void setCurrentDecibelVolume(double volumeDb) {
-        this.setVolume = (int) ((Math.abs(MIN_VOLUME_DB) + volumeDb) / INTERVAL_DB);
+        this.setVolume = ScaledDecimalMapping.getInstance().getScaledMapping(
+                volumeDb);
         this.updateVolumeLevel(setVolume);
     }
 
     public double getCurrentDecibelValue() {
-        return MIN_VOLUME_DB + (this.volumeScale.getSelection() * INTERVAL_DB);
+        return ScaledDecimalMapping.getInstance().getDecibelMapping(
+                this.volumeScale.getSelection());
     }
 
     private String getScaledDisplay() {
-        double scaledCurrentValue = (((double) this.volumeScale.getSelection() / MAX_SCALED) * 100);
+        double scaledCurrentValue = (((double) this.volumeScale.getSelection() / (double) MAX_SCALED) * 100);
         return displayFormat.format(scaledCurrentValue) + "%";
     }
 
@@ -192,5 +209,39 @@ public class TransmitterVolumeComp {
      */
     public void setListener(IVolumeChangeListener listener) {
         this.listener = listener;
+    }
+
+    private static final class ScaledDecimalMapping {
+
+        private static final ScaledDecimalMapping instance = new ScaledDecimalMapping();
+
+        private static final double INTERVAL_DB = 0.1;
+
+        private final Map<Double, Integer> decibelToScaledMapping = new HashMap<>(
+                MAX_SCALED + 1, 1.0f);
+
+        private final Map<Integer, Double> scaledToDecibelMapping = new HashMap<>(
+                MAX_SCALED + 1, 1.0f);
+
+        public static ScaledDecimalMapping getInstance() {
+            return instance;
+        }
+
+        protected ScaledDecimalMapping() {
+            for (int i = 0; i <= MAX_SCALED; i++) {
+                double calculatedValue = Double.valueOf(displayFormat
+                        .format(MIN_VOLUME_DB + ((double) i * INTERVAL_DB)));
+                decibelToScaledMapping.put(calculatedValue, i);
+                scaledToDecibelMapping.put(i, calculatedValue);
+            }
+        }
+
+        public double getDecibelMapping(int scaledValue) {
+            return scaledToDecibelMapping.get(scaledValue);
+        }
+
+        public int getScaledMapping(double decibelValue) {
+            return decibelToScaledMapping.get(decibelValue);
+        }
     }
 }

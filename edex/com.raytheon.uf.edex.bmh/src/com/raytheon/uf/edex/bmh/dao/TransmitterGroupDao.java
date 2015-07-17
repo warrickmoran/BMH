@@ -23,10 +23,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.hibernate.Session;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.util.CollectionUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -50,6 +52,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * Feb 09, 2015  4082     bkowal      Added {@link #createGroupAndLanguages(TransmitterGroup, Collection)}.
  * Apr 14, 2015  4390     rferrel     Added {@link #reorderTransmitterGroup(List)}.
  * Apr 14, 2015  4394     bkowal      Added {@link #getConfiguredTransmitterGroups()}.
+ * Jul 17, 2015  4636     bkowal      Added {@link #getTransmitterGroupsWithIds(Set)}.
  * </pre>
  * 
  * @author bkowal
@@ -92,6 +95,23 @@ public class TransmitterGroupDao extends
         }
 
         return tGroup;
+    }
+
+    public List<TransmitterGroup> getTransmitterGroupsWithIds(
+            final Set<Integer> ids) {
+        List<?> returnObjects = this.findAllByNamedInQuery(
+                TransmitterGroup.GET_TRANSMITTER_GROUPS_FOR_IDS, "tgids", ids);
+        if (CollectionUtils.isEmpty(returnObjects)) {
+            return Collections.emptyList();
+        }
+
+        List<TransmitterGroup> transmitterGroups = new ArrayList<>(
+                returnObjects.size());
+        for (Object object : returnObjects) {
+            transmitterGroups.add((TransmitterGroup) object);
+        }
+
+        return transmitterGroups;
     }
 
     @SuppressWarnings("unchecked")
