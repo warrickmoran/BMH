@@ -70,7 +70,6 @@ import bmh.test.suite.scenario.scheduling.MATInterruptReplaceScenario as MATInte
 import bmh.test.suite.scenario.scheduling.MATMultipleTrxReplaceScenario as MATMultipleTrxReplaceScenario
 import bmh.test.suite.scenario.scheduling.MATNoReplaceScenario as MATNoReplaceScenario
 import bmh.test.suite.scenario.scheduling.FutureIdentityScenario as FutureIdentityScenario
-import bmh.test.suite.scenario.scheduling.MRDFollowsScenario as MRDFollowsScenario
 import bmh.test.suite.scenario.scheduling.MRDPlaysScenario as MRDPlaysScenario
 import bmh.test.suite.scenario.scheduling.MRDInterruptReplaceSame as MRDInterruptReplaceSame
 import bmh.test.suite.scenario.scheduling.MRDInterruptReplaceDiff as MRDInterruptReplaceDiff
@@ -154,7 +153,6 @@ class TestRunner(object):
         self._bmhScenarios.append(MATMultipleTrxReplaceScenario.MATMultipleTrxReplaceScenario())
         self._bmhScenarios.append(MATNoReplaceScenario.MATNoReplaceScenario())
         self._bmhScenarios.append(FutureIdentityScenario.FutureIdentityScenario())
-        self._bmhScenarios.append(MRDFollowsScenario.MRDFollowsScenario())
         self._bmhScenarios.append(MRDPlaysScenario.MRDPlaysScenario())
         self._bmhScenarios.append(MRDInterruptReplaceSame.MRDInterruptReplaceSame())
         self._bmhScenarios.append(MRDInterruptReplaceDiff.MRDInterruptReplaceDiff())
