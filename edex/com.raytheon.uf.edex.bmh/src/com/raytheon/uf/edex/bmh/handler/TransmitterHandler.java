@@ -82,6 +82,8 @@ import com.raytheon.uf.edex.core.EdexException;
  * May 08, 2015  4470     bkowal      Added {@link #enableTransmitterGroup(TransmitterRequest)}.
  * May 28, 2015  4429     rjpeter     Add ITraceable
  * Jul 17, 2015  4636     bkowal      Added {@link #getTransmitterGroupsWithIds(TransmitterRequest)}.
+ * Jul 21, 2015  4424     bkowal      Added {@link #getTransmitterGroupByName(TransmitterRequest)} and
+ *                                    {@link #getTransmitterByMnemonic(TransmitterRequest)}
  * </pre>
  * 
  * @author mpduff
@@ -101,6 +103,8 @@ public class TransmitterHandler extends
             break;
         case GetTransmitterGroupsWithIds:
             response = getTransmitterGroupsWithIds(request);
+        case GetTransmitterGroupByName:
+            response = getTransmitterGroupByName(request);
             break;
         case GetTransmitters:
             response = getTransmitters(request);
@@ -170,6 +174,9 @@ public class TransmitterHandler extends
         case GetTransmittersByFips:
             response = getTransmittersByFips(request);
             break;
+        case GetTransmitterByMnemonic:
+            response = getTransmitterByMnemonic(request);
+            break;
         default:
             throw new UnsupportedOperationException(this.getClass()
                     .getSimpleName()
@@ -200,6 +207,21 @@ public class TransmitterHandler extends
                 .getTransmitterGroupsWithIds(request.getIds()));
 
         return response;
+    }
+
+    private TransmitterResponse getTransmitterGroupByName(
+            TransmitterRequest request) {
+        TransmitterResponse resp = new TransmitterResponse();
+        TransmitterGroupDao dao = new TransmitterGroupDao(
+                request.isOperational());
+        TransmitterGroup tg = dao.getByGroupName(request.getArgument());
+        if (tg != null) {
+            List<TransmitterGroup> transmitterGroupList = new ArrayList<>(1);
+            transmitterGroupList.add(tg);
+            resp.setTransmitterGroupList(transmitterGroupList);
+        }
+
+        return resp;
     }
 
     private TransmitterResponse saveTransmitter(TransmitterRequest request) {
@@ -407,6 +429,15 @@ public class TransmitterHandler extends
         List<Transmitter> transmitters = dao.getTransmitterByFips(request
                 .getArgument());
         response.setTransmitterList(transmitters);
+        return response;
+    }
+
+    private TransmitterResponse getTransmitterByMnemonic(
+            TransmitterRequest request) {
+        TransmitterResponse response = new TransmitterResponse();
+        TransmitterDao dao = new TransmitterDao(request.isOperational());
+        response.setTransmitter(dao.getTransmitterByMnemonic(request
+                .getArgument()));
         return response;
     }
 

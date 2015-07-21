@@ -50,6 +50,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 08, 2015  4470     bkowal      Added {@link TransmitterRequestAction#EnableTransmitterGroup}.
  * Jul 17, 2015  4636     bkowal      Added {@link TransmitterRequestAction#GetTransmitterGroupsWithIds} and
  *                                    {@link #ids}.
+ * Jul 21, 2015  4424     bkowal      Added {@link TransmitterRequestAction#GetTransmitterGroupByName} and
+ *                                    {@link TransmitterRequestAction#GetTransmitterByMnemonic}.
  * 
  * </pre>
  * 
@@ -59,11 +61,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class TransmitterRequest extends AbstractBMHServerRequest {
     public enum TransmitterRequestAction {
-        GetTransmitterGroups, GetTransmitterGroupsWithIds, GetTransmitters, GetEnabledTransmitterGroups, GetConfiguredTransmitterGroups,
+        GetTransmitterGroups, GetTransmitterGroupsWithIds, GetTransmitterGroupByName, GetTransmitters, GetEnabledTransmitterGroups, GetConfiguredTransmitterGroups,
 
         GetTransmitterGroupWithTransmitter, SaveTransmitter, SaveTransmitterDeleteGroup,
 
-        SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup, GetTransmittersByFips, DisableTransmitterGroup, EnableTransmitterGroup;
+        SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup, GetTransmittersByFips, GetTransmitterByMnemonic, DisableTransmitterGroup, EnableTransmitterGroup;
     }
 
     /**

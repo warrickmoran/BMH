@@ -62,12 +62,15 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Apr 14, 2015  4390     rferrel     Removed constraint on position to allow reordering using PositionOrdered.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * Jun 19, 2015  4490     bkowal      Added {@link #MNEMONIC_LENGTH}.
+ * Jul 19, 2015  4424     bkowal      Added {@link #GET_TRANSMITTER_FOR_MNEMONIC_QUERY}.
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
-@NamedQueries({ @NamedQuery(name = Transmitter.GET_TRANSMITTERS_FOR_FIPS, query = Transmitter.GET_TRANSMITTERS_FOR_FIPS_QUERY) })
+@NamedQueries({
+        @NamedQuery(name = Transmitter.GET_TRANSMITTERS_FOR_FIPS, query = Transmitter.GET_TRANSMITTERS_FOR_FIPS_QUERY),
+        @NamedQuery(name = Transmitter.GET_TRANSMITTER_FOR_MNEMONIC, query = Transmitter.GET_TRANSMITTER_FOR_MNEMONIC_QUERY) })
 @Entity
 @Table(name = "transmitter", uniqueConstraints = { @UniqueConstraint(name = "uk_tx_mnemonic", columnNames = { "mnemonic" }) })
 @SequenceGenerator(initialValue = 1, allocationSize = 1, name = Transmitter.GEN, sequenceName = "transmitter_seq")
@@ -79,6 +82,10 @@ public class Transmitter implements PositionOrdered {
     public static final String GET_TRANSMITTERS_FOR_FIPS = "getTransmittersForFips";
 
     protected static final String GET_TRANSMITTERS_FOR_FIPS_QUERY = "SELECT distinct t FROM Transmitter t WHERE t.fipsCode = :fipscode";
+
+    public static final String GET_TRANSMITTER_FOR_MNEMONIC = "getTransmitterForMnemonic";
+
+    protected static final String GET_TRANSMITTER_FOR_MNEMONIC_QUERY = "FROM Transmitter t WHERE t.mnemonic = :mnemonic";
 
     public enum TxMode {
         PRIMARY, SECONDARY

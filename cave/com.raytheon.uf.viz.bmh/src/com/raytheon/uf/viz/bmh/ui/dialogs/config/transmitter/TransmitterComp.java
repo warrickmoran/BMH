@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
@@ -76,6 +77,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
+import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DetailsDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.NewEditTransmitterDlg.TransmitterEditType;
@@ -129,6 +132,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 13, 2015 4636       bkowal      Ensure that a port is selected for the transmitter that transfer tones
  *                                     will be completed on.
  * Jul 14, 2015 4650       rferrel     Disable mode change when any transmitter in the group is not disabled.
+ * Jul 21, 2015 4424       bkowal      Added rename menu options for transmitters and transmitter groups.
  * </pre>
  * 
  * @author mpduff
@@ -335,6 +339,22 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     }
                 });
 
+                enableItem = CollectionUtils.isEmpty(group
+                        .getEnabledTransmitters())
+                        && CollectionUtils.isEmpty(group
+                                .getTransmitterWithStatus(TxStatus.MAINT));
+                MenuItem renameItem = createItem(menu, SWT.PUSH, enableItem,
+                        "Group cannot be renamed when active.");
+                renameItem.setText("Rename Group...");
+                renameItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        if (enabledWidget(e.widget)) {
+                            renameMenuAction();
+                        }
+                    }
+                });
+
                 enableItem = group.getTransmitters().isEmpty();
                 MenuItem deleteItem = createItem(menu, SWT.PUSH, enableItem,
                         "Group cannot be deleted when it contains transmitters.");
@@ -424,6 +444,24 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                         .getTxStatus() == TxStatus.ENABLED))
                         || ((standaloneGroup != null) && (standaloneGroup
                                 .getTransmitterList().get(0).getTxStatus() == TxStatus.ENABLED));
+
+                /*
+                 * Rename menu option.
+                 */
+                enableItem = transmitterMaint == false
+                        && transmitterEnabled == false;
+                MenuItem renameItem = createItem(menu, SWT.PUSH, enableItem,
+                        "Transmitter cannot be renamed when active.");
+                renameItem.setText("Rename Transmitter...");
+                renameItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        if (enabledWidget(e.widget)) {
+                            renameMenuAction();
+                        }
+                    }
+                });
+
                 if (transmitterEnabled == false) {
                     transmitterDecommissioned = ((groupTransmitter != null) && (groupTransmitter
                             .getTxStatus() == TxStatus.DECOMM))
@@ -826,6 +864,84 @@ public class TransmitterComp extends Composite implements INotificationObserver 
         }
 
         newEditDlg.open();
+    }
+
+    private void renameMenuAction() {
+        Object o = tree.getSelection()[0].getData();
+        TransmitterGroup group = null;
+        Transmitter transmitter = null;
+        if (o instanceof Transmitter) {
+            transmitter = (Transmitter) o;
+        } else if (o instanceof TransmitterGroup) {
+            group = (TransmitterGroup) o;
+            if (group.getTransmitters().isEmpty() == false) {
+                /*
+                 * there is a possibility that this is a standalone transmitter
+                 * group.
+                 */
+                transmitter = group.getTransmitterList().get(0);
+            }
+        }
+
+        String currentName = StringUtils.EMPTY;
+        String dialogTitle = "Rename ";
+        String dialogDescription = "Enter a new ";
+        IInputTextValidator renameValidator = null;
+        final Object objectToRename;
+        if (group == null || group.isStandalone()) {
+            currentName = transmitter.getMnemonic();
+            dialogTitle += "Transmitter";
+            dialogDescription += "Mnemonic:";
+            renameValidator = new InputTextTransmitterMnemonicValidator(
+                    currentName);
+            objectToRename = transmitter;
+        } else {
+            currentName = group.getName();
+            dialogTitle += "Transmitter Group";
+            dialogDescription += "Name:";
+            renameValidator = new InputTextTransmitterGroupNameValidator(
+                    currentName);
+            objectToRename = group;
+        }
+
+        InputTextDlg inputDlg = new InputTextDlg(this.getShell(), dialogTitle,
+                dialogDescription, currentName, renameValidator, false);
+        inputDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue instanceof String) {
+                    executeRename(objectToRename, (String) returnValue);
+                }
+            }
+        });
+        inputDlg.open();
+    }
+
+    private void executeRename(Object objectToRename, String name) {
+        name = name.trim();
+        if (objectToRename instanceof Transmitter) {
+            Transmitter transmitter = (Transmitter) objectToRename;
+            if (transmitter.getMnemonic().equals(name)) {
+                return;
+            }
+            transmitter.setMnemonic(name);
+        } else {
+            TransmitterGroup transmitterGroup = (TransmitterGroup) objectToRename;
+            if (transmitterGroup.getName().equals(name)) {
+                return;
+            }
+            transmitterGroup.setName(name);
+        }
+
+        /*
+         * TODO: remove after server-side implementation is finalized.
+         */
+        DialogUtility
+                .showMessageBox(
+                        this.getShell(),
+                        SWT.ICON_INFORMATION | SWT.OK,
+                        "Not Implemented",
+                        "This functionality has not been implemented on the server yet. It will be available in the next changeset.");
     }
 
     /**
