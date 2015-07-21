@@ -70,6 +70,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * May 21, 2015  4429     rjpeter     Added additional logging.
  * Jun 17, 2015  4482     rjpeter     Ignore all polygon data.
  * Jun 23, 2015  4572     bkowal      Extracted the afos id regex into {@link #AFOS_ID_REGEX}.
+ * Jul 21, 2015  4671     bkowal      Ignore mrd follows.
  * </pre>
  * 
  * @author bsteffen
@@ -241,7 +242,24 @@ public class InputMessageParser {
         Matcher mrd = mrdPattern.matcher(text);
         mrd.region(index, text.length());
         if (mrd.find()) {
-            message.setMrd(mrd.group());
+            String mrdStr = mrd.group();
+            /*
+             * Determine if follows mrds are present.
+             */
+            int followsIdx = mrdStr.indexOf('F');
+            if (followsIdx != -1) {
+                final String mrdFollows = mrdStr.substring(followsIdx);
+                mrdStr = mrdStr.substring(0, followsIdx);
+
+                StringBuilder sb = new StringBuilder(
+                        "Found and ignored mrd follows (");
+                sb.append(mrdFollows)
+                        .append(") information in input message (");
+                sb.append(message.getName()).append(").");
+
+                statusHandler.info(sb.toString());
+            }
+            message.setMrd(mrdStr);
             return mrd.end();
         } else {
             return index;
