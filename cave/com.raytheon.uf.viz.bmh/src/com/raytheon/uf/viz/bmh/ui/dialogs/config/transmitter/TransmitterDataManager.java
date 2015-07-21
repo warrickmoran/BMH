@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
@@ -61,6 +62,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Apr 14, 2015    4390    rferrel     Added {@link #saveTransmitterGroups(List, boolean)} to allow reordering.
  * May 06, 2015    4470    bkowal      Added {@link #disableTransmitterGroup(TransmitterGroup)}.
  * May 08, 2015    4470    bkowal      Added {@link #enableTransmitterGroup(TransmitterGroup)}.
+ * Jul 17, 2015    4636    bkowal      Added {@link #getTransmitterGroupsWithIds(Set)}.
  * </pre>
  * 
  * @author mpduff
@@ -76,6 +78,21 @@ public class TransmitterDataManager {
      */
     public List<TransmitterGroup> getTransmitterGroups() throws Exception {
         return getTransmitterGroups(null);
+    }
+
+    public List<TransmitterGroup> getTransmitterGroupsWithIds(
+            final Set<Integer> ids) throws Exception {
+        TransmitterRequest request = new TransmitterRequest();
+        request.setAction(TransmitterRequestAction.GetTransmitterGroupsWithIds);
+        request.setIds(ids);
+
+        TransmitterResponse response = (TransmitterResponse) BmhUtils
+                .sendRequest(request);
+        List<TransmitterGroup> tgList = response.getTransmitterGroupList();
+        if (tgList == null) {
+            return Collections.emptyList();
+        }
+        return tgList;
     }
 
     /**

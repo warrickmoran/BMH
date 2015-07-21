@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -49,16 +50,25 @@ import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest;
+import com.raytheon.uf.common.jms.notification.INotificationObserver;
+import com.raytheon.uf.common.jms.notification.NotificationException;
+import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ScaleSpinnerComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 
 /**
  * The transmitter alignment dialog.
@@ -94,6 +104,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Jul 15, 2015 4649       rferrel     When saving Decible Levels update the Target Decible Level.
  *                                     Duration default is 10 seconds and only the user can change its value.
  * Jul 16, 2015 4636       bkowal      Updated to use volume sliders.
+ * Jul 17, 2015 4636       bkowal      Automatically updates internal data structures in response to
+ *                                     Transmitter Group updates.
  * </pre>
  * 
  * @author mpduff
@@ -101,7 +113,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  */
 
 public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
-        IVolumeChangeListener {
+        IVolumeChangeListener, INotificationObserver {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(TransmitterAlignmentDlg.class);
 
@@ -165,6 +177,13 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
     java.util.List<TransmitterGroup> transmittersDisabledByDialog = new ArrayList<>();
 
     /**
+     * Used to lock knowledge of the known current state of all known
+     * {@link TransmitterGroup}s. Lock is applied both when using the knowledge
+     * and when updating the knowledge.
+     */
+    private final Object transmitterGrpLock = new Object();
+
+    /**
      * Constructor.
      * 
      * @param parentShell
@@ -221,7 +240,22 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         createBottomButtons(mainComp);
 
         populateTransmitters();
-        populate();
+        synchronized (transmitterGrpLock) {
+            populate();
+        }
+    }
+
+    @Override
+    protected void opened() {
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
+    }
+
+    @Override
+    protected void disposed() {
+        super.disposed();
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
     }
 
     private void createTransmitterList(Composite comp) {
@@ -240,7 +274,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         transmitterList.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                populate();
+                synchronized (transmitterGrpLock) {
+                    populate();
+                }
             }
         });
     }
@@ -275,7 +311,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         saveButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                handleSaveAction();
+                synchronized (transmitterGrpLock) {
+                    handleSaveAction();
+                }
             }
         });
     }
@@ -441,7 +479,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         testBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                handleRunTest();
+                synchronized (transmitterGrpLock) {
+                    handleRunTest();
+                }
             }
         });
     }
@@ -503,6 +543,11 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
             String grpName = transmitterList.getSelection()[0];
             selectedTransmitterGrp = transmitterGroupNameMap.get(grpName);
 
+            this.audioVolume.enable();
+            this.sameVolume.enable();
+            this.alertVolume.enable();
+            this.tfr1800Volume.enable();
+            this.tfr2400Volume.enable();
             this.audioVolume.setCurrentDecibelVolume(selectedTransmitterGrp
                     .getAudioDBTarget());
             this.sameVolume.setCurrentDecibelVolume(selectedTransmitterGrp
@@ -540,6 +585,15 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
                         .setEnabled(this
                                 .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
             }
+        } else {
+            this.statusLbl.setText("<No Transmitter Selected>");
+            this.audioVolume.disable();
+            this.sameVolume.disable();
+            this.alertVolume.disable();
+            this.tfr1800Volume.disable();
+            this.tfr2400Volume.disable();
+            this.updateLevelTestState(false);
+            this.changeStatusBtn.setEnabled(false);
         }
     }
 
@@ -863,8 +917,125 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         return true;
     }
 
+    private void syncTransmitterUpdates(
+            TransmitterGroupConfigNotification notification) {
+        /*
+         * Have the transmitters been updated (added) or removed?
+         */
+        if (notification.getType() == ConfigChangeType.Delete) {
+            boolean selectedDeleted = false;
+            final java.util.List<String> transmittersToRemove = new ArrayList<>(
+                    notification.getIdentifiers().size());
+            for (TransmitterGroupIdentifier identifier : notification
+                    .getIdentifiers()) {
+                if (selectedTransmitterGrp != null
+                        && selectedTransmitterGrp.getName().equals(
+                                identifier.getName())) {
+                    selectedDeleted = true;
+                }
+                if (this.transmitterGroupNameMap.remove(identifier.getName()) != null) {
+                    transmittersToRemove.add(identifier.getName());
+                }
+            }
+
+            final boolean reloadSelection = selectedDeleted;
+            VizApp.runAsync(new Runnable() {
+
+                @Override
+                public void run() {
+                    synchronized (transmitterGrpLock) {
+                        for (String transmitterGrp : transmittersToRemove) {
+                            transmitterList.remove(transmitterGrp);
+                        }
+                        if (reloadSelection) {
+                            selectedTransmitterGrp = null;
+                            populate();
+                        }
+                    }
+                }
+            });
+        } else {
+            boolean selectedUpdated = false;
+            final Set<Integer> groupIds = new HashSet<>(notification
+                    .getIdentifiers().size(), 1.0f);
+            for (TransmitterGroupIdentifier identifier : notification
+                    .getIdentifiers()) {
+                if (selectedTransmitterGrp != null
+                        && selectedTransmitterGrp.getName().equals(
+                                identifier.getName())) {
+                    selectedUpdated = true;
+                }
+                groupIds.add(identifier.getId());
+            }
+
+            /*
+             * Attempt to retrieve all {@link TransmitterGroup}s that have been
+             * added or updated.
+             */
+            java.util.List<TransmitterGroup> updatedTransmitterGroups;
+            try {
+                updatedTransmitterGroups = this.dataManager
+                        .getTransmitterGroupsWithIds(groupIds);
+            } catch (Exception e) {
+                statusHandler
+                        .error("Failed to retrieve the updated Transmitter Groups associated with notification: "
+                                + notification.toString() + ".", e);
+                return;
+            }
+
+            final java.util.List<String> newGroupNames = new ArrayList<>(
+                    updatedTransmitterGroups.size());
+            for (TransmitterGroup tg : updatedTransmitterGroups) {
+                if (transmitterGroupNameMap.containsKey(tg.getName()) == false) {
+                    newGroupNames.add(tg.getName());
+                }
+                transmitterGroupNameMap.put(tg.getName(), tg);
+            }
+
+            if (selectedUpdated || newGroupNames.isEmpty() == false) {
+                final boolean reloadSelection = selectedUpdated;
+                VizApp.runAsync(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        synchronized (transmitterGrpLock) {
+                            for (String groupName : newGroupNames) {
+                                transmitterList.add(groupName);
+                            }
+
+                            if (reloadSelection) {
+                                populate();
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+
     @Override
     public void volumeChanged() {
         this.saveButton.setEnabled(this.dataIsCurrent() == false);
+    }
+
+    @Override
+    public void notificationArrived(NotificationMessage[] messages) {
+        if (isDisposed()) {
+            return;
+        }
+
+        for (NotificationMessage message : messages) {
+            try {
+                Object o = message.getMessagePayload();
+                if (o instanceof TransmitterGroupConfigNotification) {
+                    TransmitterGroupConfigNotification notification = (TransmitterGroupConfigNotification) o;
+                    synchronized (this.transmitterGrpLock) {
+                        this.syncTransmitterUpdates(notification);
+                    }
+                }
+            } catch (NotificationException e) {
+                statusHandler.error("Error processing update notification", e);
+            }
+        }
     }
 }

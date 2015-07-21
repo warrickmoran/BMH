@@ -81,6 +81,7 @@ import com.raytheon.uf.edex.core.EdexException;
  *                                    {@link #saveTransmitters(Collection, AbstractBMHServerRequest)}.
  * May 08, 2015  4470     bkowal      Added {@link #enableTransmitterGroup(TransmitterRequest)}.
  * May 28, 2015  4429     rjpeter     Add ITraceable
+ * Jul 17, 2015  4636     bkowal      Added {@link #getTransmitterGroupsWithIds(TransmitterRequest)}.
  * </pre>
  * 
  * @author mpduff
@@ -97,6 +98,9 @@ public class TransmitterHandler extends
         switch (request.getAction()) {
         case GetTransmitterGroups:
             response = getTransmitterGroups(request);
+            break;
+        case GetTransmitterGroupsWithIds:
+            response = getTransmitterGroupsWithIds(request);
             break;
         case GetTransmitters:
             response = getTransmitters(request);
@@ -185,6 +189,17 @@ public class TransmitterHandler extends
         resp.setTransmitterGroupList(tGroups);
 
         return resp;
+    }
+
+    private TransmitterResponse getTransmitterGroupsWithIds(
+            TransmitterRequest request) {
+        TransmitterResponse response = new TransmitterResponse();
+        TransmitterGroupDao dao = new TransmitterGroupDao(
+                request.isOperational());
+        response.setTransmitterGroupList(dao
+                .getTransmitterGroupsWithIds(request.getIds()));
+
+        return response;
     }
 
     private TransmitterResponse saveTransmitter(TransmitterRequest request) {
