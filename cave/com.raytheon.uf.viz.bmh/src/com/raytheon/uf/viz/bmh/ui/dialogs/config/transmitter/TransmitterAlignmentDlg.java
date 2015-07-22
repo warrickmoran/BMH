@@ -106,6 +106,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Jul 16, 2015 4636       bkowal      Updated to use volume sliders.
  * Jul 17, 2015 4636       bkowal      Automatically updates internal data structures in response to
  *                                     Transmitter Group updates.
+ * Jul 22, 2015 4676       bkowal      Prevent widget-disposed errors.
  * </pre>
  * 
  * @author mpduff
@@ -513,6 +514,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
      * Populate the dialog for the selected transmitter
      */
     private void populate() {
+        if (this.isDisposed()) {
+            return;
+        }
         if (this.selectedTransmitterGrp != null) {
             /*
              * Determine if any changes have been made.

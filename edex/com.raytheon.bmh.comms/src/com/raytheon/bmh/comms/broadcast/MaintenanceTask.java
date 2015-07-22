@@ -63,6 +63,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
  * Apr 29, 2015 4394       bkowal      Add the management port to the command line arguments.
  * Jul 01, 2015 4602       rjpeter     Use specific dataport.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
+ * Jul 22, 2015 4676       bkowal      Improved results reporting.
  * </pre>
  * 
  * @author bkowal
@@ -182,11 +183,15 @@ public class MaintenanceTask extends AbstractBroadcastingTask {
             resultMsg.append(" successfully finished");
             success = true;
         } else {
-            resultMsg.append(" failed ");
+            resultMsg.append(" failed");
         }
         resultMsg.append(" in ");
         resultMsg.append(Double.toString((System.currentTimeMillis() - start)));
         resultMsg.append(" ms.");
+        if (success == false) {
+            resultMsg
+                    .append(" Please check the server logs for additional information.");
+        }
         logger.info(resultMsg.toString());
 
         BroadcastStatus status = new BroadcastStatus();

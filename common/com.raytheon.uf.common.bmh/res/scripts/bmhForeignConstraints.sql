@@ -36,6 +36,7 @@
  * Feb 23, 2014 4140       rjpeter     Updated constraint names, add Message Default Transmitter Groups cascades.
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign keys.
  * Jun 05, 2015 4482       rjpeter     Add cascade delete to message type defaults.
+ * Jul 22, 2015 4676       bkowal      Add cascade delete to fk_tx_lang_to_dict.
  **/
 
 /**
@@ -204,6 +205,13 @@ alter table ldad_config add constraint fk_ldad_config_to_dict
  **/
 alter table tts_voice drop constraint fk_tts_voice_to_dict;
 alter table tts_voice add constraint fk_tts_voice_to_dict
+     foreign key (dictionary_name) references dictionary(name) on delete set null;
+
+/**
+ * Transmitter Language to Dictionary
+ **/
+alter table transmitter_language drop constraint fk_tx_lang_to_dict;
+alter table transmitter_language add constraint fk_tx_lang_to_dict
      foreign key (dictionary_name) references dictionary(name) on delete set null;
 
 /**
