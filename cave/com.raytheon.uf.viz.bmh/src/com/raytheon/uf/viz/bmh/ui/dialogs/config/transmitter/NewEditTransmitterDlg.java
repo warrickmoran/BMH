@@ -103,6 +103,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 19, 2015     4490   bkowal      Limited the number of characters allowed in the mnemonic field.
  * Jul 21, 2015     4424   bkowal      Improved validation of the transmitter group name and transmitter
  *                                     mnemonic fields. Name and mnemonic can no longer be altered in edit mode.
+ * Jul 22, 2015     4424   bkowal      Transmitter naming validation improvements.                                    
  * 
  * </pre>
  * 
@@ -957,7 +958,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if (type == TransmitterEditType.NEW_TRANSMITTER_GROUP) {
             final TransmitterGroupNameValidator nameValidator = new TransmitterGroupNameValidator();
             try {
-                if (nameValidator.validate(tg.getName()) == false) {
+                if (nameValidator.validate(tg, tg.getName()) == false) {
                     sb.append("\tGroup Name\n").append("\t")
                             .append(nameValidator.getMessage());
 
@@ -1065,19 +1066,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             sb.append("\tLocation\n");
         }
 
-        String mnemonic = this.mnemonicTxt.getText().trim();
-        final TransmitterMnemonicValidator mnemonicValidator = new TransmitterMnemonicValidator();
-        try {
-            if (mnemonicValidator.validate(mnemonic) == false) {
-                valid = false;
-                sb.append("\t").append(mnemonicValidator.getMessage())
-                        .append("\n");
-            }
-        } catch (Exception e) {
-            statusHandler.error(mnemonicValidator.getMessage(), e);
-            return false;
-        }
-
         String callSign = this.callSignTxt.getText().trim();
         if ((callSign.length() == 0) || (callSign.length() > 10)) {
             valid = false;
@@ -1127,6 +1115,22 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
          */
 
         StringBuilder sb = new StringBuilder();
+
+        /*
+         * Verify that there are not any transmitters with the same mnemonic.
+         */
+        String mnemonic = this.mnemonicTxt.getText().trim();
+        final TransmitterMnemonicValidator mnemonicValidator = new TransmitterMnemonicValidator();
+        try {
+            if (mnemonicValidator.validate(transToBeSaved, mnemonic) == false) {
+                valid = false;
+                sb.append("\t").append(mnemonicValidator.getMessage())
+                        .append("\n");
+            }
+        } catch (Exception e) {
+            statusHandler.error(mnemonicValidator.getMessage(), e);
+            return false;
+        }
 
         // Check for valid DAC and port.
         if (transToBeSaved.getDacPort() != null) {
@@ -1264,20 +1268,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                         + transToBeSaved.getTxStatus().name() + " state.";
                 valid = false;
                 sb.append(msg).append("\n");
-            }
-        }
-
-        if (grpNameCbo.getSelectionIndex() > 0) {
-            String grpName = grpNameCbo.getText();
-
-            if (grpName.equals(mnemonicTxt.getText().trim())) {
-                if (transToBeSaved.getTransmitterGroup().getTransmitters()
-                        .size() > 1) {
-                    valid = false;
-                    String msg = "Transmitter cannot have same mnemonic as the "
-                            + "group unless there is only one transmitter in the group\n";
-                    sb.append(msg);
-                }
             }
         }
 

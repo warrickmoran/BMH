@@ -133,6 +133,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     will be completed on.
  * Jul 14, 2015 4650       rferrel     Disable mode change when any transmitter in the group is not disabled.
  * Jul 21, 2015 4424       bkowal      Added rename menu options for transmitters and transmitter groups.
+ * Jul 22, 2015 4424       bkowal      Transmitter naming validation improvements.
  * </pre>
  * 
  * @author mpduff
@@ -893,14 +894,14 @@ public class TransmitterComp extends Composite implements INotificationObserver 
             dialogTitle += "Transmitter";
             dialogDescription += "Mnemonic:";
             renameValidator = new InputTextTransmitterMnemonicValidator(
-                    currentName);
+                    currentName, transmitter);
             objectToRename = transmitter;
         } else {
             currentName = group.getName();
             dialogTitle += "Transmitter Group";
             dialogDescription += "Name:";
             renameValidator = new InputTextTransmitterGroupNameValidator(
-                    currentName);
+                    currentName, group);
             objectToRename = group;
         }
 

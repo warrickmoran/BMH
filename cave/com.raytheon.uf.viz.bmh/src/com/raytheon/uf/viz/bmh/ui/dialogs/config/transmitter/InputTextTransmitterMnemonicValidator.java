@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
@@ -38,6 +39,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2015 4424       bkowal      Initial creation
+ * Jul 22, 2015 4424       bkowal      Improved validation.
  * 
  * </pre>
  * 
@@ -57,15 +59,16 @@ public class InputTextTransmitterMnemonicValidator implements
      */
     private final String currentName;
 
-    /**
-     * Constructor.
+    /*
+     * The {@link Transmitter} that is being renamed. Used to determine if there
+     * are any naming conflicts with {@link TransmitterGroup}s.
      */
-    public InputTextTransmitterMnemonicValidator() {
-        this(null);
-    }
+    private final Transmitter transmitter;
 
-    public InputTextTransmitterMnemonicValidator(final String currentName) {
+    public InputTextTransmitterMnemonicValidator(final String currentName,
+            final Transmitter transmitter) {
         this.currentName = currentName;
+        this.transmitter = transmitter;
     }
 
     /*
@@ -85,7 +88,7 @@ public class InputTextTransmitterMnemonicValidator implements
 
         TransmitterMnemonicValidator validator = new TransmitterMnemonicValidator();
         try {
-            if (validator.validate(text) == false) {
+            if (validator.validate(this.transmitter, text) == false) {
                 DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
                         "Mnemonic Validation Failed", validator.getMessage());
 

@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
@@ -37,6 +38,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 21, 2015 4424       bkowal      Initial creation
+ * Jul 22, 2015 4424       bkowal      Improved validation.
  * 
  * </pre>
  * 
@@ -56,15 +58,12 @@ public class InputTextTransmitterGroupNameValidator implements
      */
     private final String currentName;
 
-    /**
-     * 
-     */
-    public InputTextTransmitterGroupNameValidator() {
-        this(null);
-    }
+    private final TransmitterGroup tg;
 
-    public InputTextTransmitterGroupNameValidator(final String currentName) {
+    public InputTextTransmitterGroupNameValidator(final String currentName,
+            final TransmitterGroup tg) {
         this.currentName = currentName;
+        this.tg = tg;
     }
 
     /*
@@ -80,7 +79,7 @@ public class InputTextTransmitterGroupNameValidator implements
 
         TransmitterGroupNameValidator validator = new TransmitterGroupNameValidator();
         try {
-            if (validator.validate(text) == false) {
+            if (validator.validate(this.tg, text) == false) {
                 DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
                         "Name Validation Failed", validator.getMessage());
 
