@@ -31,6 +31,7 @@ import java.io.IOException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
+ * Jul 22, 2015 4676       bkowal      Set status code in the constructor.
  * 
  * </pre>
  * 
@@ -45,7 +46,7 @@ public interface IDacSession {
         private int statusCode;
 
         SHUTDOWN_STATUS(int statusCode) {
-
+            this.statusCode = statusCode;
         }
 
         public int getStatusCode() {

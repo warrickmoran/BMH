@@ -71,6 +71,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * Mar 24, 2015  4306      rferrel     No longer have default selected message type.
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
+ * Jul 22, 2015  4676      bkowal      Ensure that message types that have already been selected
+ *                                     are not added to the available list.
  * </pre>
  * 
  * @author lvenable
@@ -124,6 +126,8 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
 
     private MessageType selectedMessageType;
 
+    private List<String> selectedAfosIds;
+
     /**
      * Constructor.
      * 
@@ -167,7 +171,6 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         createBottomButtons();
 
         loadData();
-        populateMsgTypeAvailTable();
     }
 
     /**
@@ -222,7 +225,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         msgReplaceTableComp.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {
-                if (selectionCount > 0) {
+                if (selectedMessageType != null && selectionCount > 0) {
                     removeMsgTypesBtn.setEnabled(true);
                 } else {
                     removeMsgTypesBtn.setEnabled(false);
@@ -295,7 +298,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         msgAvailTableComp.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {
-                if (selectionCount > 0) {
+                if (selectedMessageType != null && selectionCount > 0) {
                     addMsgTypesBtn.setEnabled(true);
                 } else {
                     addMsgTypesBtn.setEnabled(false);
@@ -363,6 +366,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
                 if (mt != null) {
                     selectedMessageType = mt;
                     populateSelection();
+                    populateMsgTypeAvailTable();
                 }
             }
         });
@@ -377,6 +381,8 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
                 + selectedMessageType.getAfosid() + msgReplaceGrpTextSuffix);
 
         selectedMessageTableData.deleteAllRows();
+        this.selectedAfosIds = new ArrayList<>(selectedMessageType
+                .getReplacementMsgs().size());
         for (MessageTypeSummary replace : selectedMessageType
                 .getReplacementMsgs()) {
             TableRowData row = new TableRowData();
@@ -384,6 +390,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
             row.addTableCellData(new TableCellData(replace.getTitle()));
             row.setData(replace);
             selectedMessageTableData.addDataRow(row);
+            this.selectedAfosIds.add(replace.getAfosid());
         }
 
         msgReplaceTableComp.populateTable(selectedMessageTableData);
@@ -414,15 +421,12 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
     private void addSelectedMessage() {
         List<TableRowData> selectedList = msgAvailTableComp.getSelection();
         for (TableRowData trd : selectedList) {
-            if (!selectedMessageTableData.getTableRows().contains(trd)) {
-                if (!((MessageTypeSummary) trd.getData()).getAfosid().equals(
-                        selectedMessageType.getAfosid())) {
-                    selectedMessageTableData.addDataRow(trd);
-                }
-            }
+            selectedMessageTableData.addDataRow(trd);
+            availableMessageTableData.deleteRow(trd);
         }
 
         msgReplaceTableComp.populateTable(selectedMessageTableData);
+        this.msgAvailTableComp.populateTable(this.availableMessageTableData);
     }
 
     /**
@@ -432,15 +436,23 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         List<TableRowData> selectedList = msgReplaceTableComp.getSelection();
         for (TableRowData trd : selectedList) {
             selectedMessageTableData.deleteRow(trd);
+            availableMessageTableData.addDataRow(trd);
         }
+
         msgReplaceTableComp.populateTable(selectedMessageTableData);
+        this.msgAvailTableComp.populateTable(this.availableMessageTableData);
     }
 
     /**
      * Populate the available message table
      */
     private void populateMsgTypeAvailTable() {
+        availableMessageTableData.deleteAllRows();
         for (MessageType mt : messageTypeList) {
+            if (this.selectedMessageType.getAfosid().equals(mt.getAfosid())
+                    || this.selectedAfosIds.contains(mt.getAfosid())) {
+                continue;
+            }
             TableRowData trd = new TableRowData();
             trd.addTableCellData(new TableCellData(mt.getAfosid()));
             trd.addTableCellData(new TableCellData(mt.getTitle()));
